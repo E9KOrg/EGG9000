@@ -1,0 +1,50 @@
+﻿@using EGG9000.Common.Helpers
+@model List<EGG9000.Site.Controllers.AdminController.Ghost>
+@{
+
+}
+
+
+<h2>Ghosts</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Discord Name</th>
+            <th>Co-op</th>
+            <th>Server</th>
+            <th>Last Mention</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var ghost in Model.Where(x => !x.Mentioned)) {
+            <tr class="@(ghost.MissingFromMain ? "Missing" : "NotMentioned")">
+                <td>@ghost.UserName</td>
+                <td>@ghost.Coop</td>
+                <td>@ghost.ServerName</td>
+                <td>
+                    @if(ghost.MissingFromMain) {
+                        <div>Not In Main <a href="/admin/deleteghost?UserId=@(ghost.UserId)&CoopId=@(ghost.CoopId)" class="btn btn-sm btn-primary btn-danger">Delete</a> </div>
+                        }
+                </td>
+            </tr>
+        }
+        @foreach(var ghost in Model.Where(x => x.Mentioned).OrderBy(x => x.LastMention)) {
+            <tr class="@(ghost.MissingFromMain ? "Missing" : "")">
+                <td>@ghost.UserName</td>
+                <td>@ghost.Coop</td>
+                <td>@ghost.ServerName</td>
+                <td>@Math.Round(((DateTimeOffset.Now - ghost.LastMention)?.TotalDays ?? 0), 1) days</td>
+            </tr>
+        }
+    </tbody>
+</table>
+<style>
+    tr.NotMentioned td {
+        background-color: lightgoldenrodyellow;
+    }
+    tr.Missing td {
+        background-color: lightpink;
+    }
+</style>
+

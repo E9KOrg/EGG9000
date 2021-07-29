@@ -1,0 +1,29 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@{
+    ViewData["Title"] = "Home Page";
+
+}
+
+
+@{
+    @*var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
+
+    foreach (var claim in claimsIdentity.Claims) {
+        <div>@claim.Type: @claim.Value</div>
+    }*@
+}
+
+<div class="text-center">
+    @if (SignInManager.IsSignedIn(User)) {
+        <div>Logged in as @User.Identity.Name</div>
+        <a class="" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a>
+        @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
+            <a class="" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
+        }
+
+    } else {
+        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
+    }
+</div>
+

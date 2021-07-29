@@ -1,0 +1,311 @@
+﻿@model EGG9000.Site.Controllers.HomeController.CoopModel
+@{
+    ViewData["Title"] = "Co-op";
+    bool inDb = Model.UserInfos.Any(x => x.Xref != null);
+    var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
+
+    string PercentString(double number) {
+        number *= 100;
+        string percent;
+        if(number >= 100) {
+            percent = number.ToString("0");
+        } else if(number >= 10) {
+            percent = number.ToString("0.#");
+        } else {
+            percent = number.ToString("0.##");
+        }
+        return percent;
+    }
+
+    string percent = PercentString(Math.Min(Model.Progress, 1));
+    var projectPercent = PercentString(Model.UserInfos.Sum(x => x.ProjectedAbsolute) / Model.GoalDetails.Last().Goal.TargetAmount);
+
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+}
+
+
+<div class="card">
+    <h3 class="card-header text-center">
+        @Model.CoopStatus.CoopIdentifier
+        <span class="text-nowrap">
+            <img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="EggThumb" />
+            @Model.Contract?.Name
+            @(Model.League == 0 ? "Elite" : "Standard")
+        </span>
+        <span class="text-nowrap">
+            (@Model.CoopStatus.ContractIdentifier)
+        </span>
+        @{
+            var status = "success";
+            if(Model.GoalDetails.Last().Status == EGG9000.Site.Controllers.HomeController.GoalStatus.NotAchievable) {
+                status = "danger";
+            }
+        }
+        @if(Model.CoopStatus.Public) {
+            <div style="font-size: 60%">Public</div>
+        }
+        <div class="progress" style="height: 22px; margin-top: 10px;">
+            <div class="progress-bar bg-@(status) text-dark" role="progressbar" style="width: @percent%;" aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100">
+                <span>@percent%</span>
+            </div>
+            <span>Projected @projectPercent%</span>
+        </div>
+        <div class="text-center" style="font-size: 60%;">
+            @if(Model.GoalDetails.Last().Status == EGG9000.Site.Controllers.HomeController.GoalStatus.Completed) {
+                @:Finished
+            } else if(Model.CoopStatus.SecondsRemaining <= 0) {
+                @: Ended @TimeSpan.FromSeconds(-Model.CoopStatus.SecondsRemaining).Humanize(2).ShortenTime()
+                if(!Model.CoopStatus.AllMembersReporting) {
+                    @: Waiting on all members to report
+                }
+
+            } else {
+                @: Farm expires in @TimeSpan.FromSeconds(Model.CoopStatus.SecondsRemaining).Humanize(2).ShortenTime()
+                if(Model.CoopStatus.SecondsRemaining > Model.GoalDetails.Last().TimeLeft.TotalSeconds) {
+                    @:- Finishes in @Model.GoalDetails.Last().TimeLeft.Humanize(2).ShortenTime()
+                } else if(Model.GoalDetails.Last().Status != EGG9000.Site.Controllers.HomeController.GoalStatus.Never) {
+                    @:- Behind by @Model.GoalDetails.Last().TimeLeft.Subtract(TimeSpan.FromSeconds(Model.CoopStatus.SecondsRemaining)).Humanize(2).ShortenTime()
+                }
+            }
+        </div>
+    </h3>
+    <div class="row no-gutters">
+        <div class="col-lg">
+            <h3 class="text-center">Goals</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th><img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="Emoji" /></th>
+                        <th>Reward</th>
+                        @*<th>Status</th>*@
+                    </tr>
+                </thead>
+                @for(var i = 0; i < 3; i++) {
+                    if(i < Model.GoalDetails.Count) {
+                        var goalDetail = Model.GoalDetails[i];
+                        //var progress = goalDetail.;
+                        if(goalDetail.Progress >= 1) {
+                            percent = "100";
+                        } else if(Model.Progress >= .1) {
+                            percent = (goalDetail.Progress * 100).ToString("0.#");
+                        } else {
+                            percent = (goalDetail.Progress * 100).ToString("0.##");
+                        }
+                        <tr>
+                            <td>
+                                @goalDetail.Goal.TargetAmount.ToEggString()
+                            </td>
+                            <td style="max-width: 200px;">
+                                @Html.Raw(EmojiToImage(EggIncEggs.GetReward(goalDetail.Goal)))
+                            </td>
+                            @*<td>
+                                @switch(goalDetail.Status) {
+                                    case EGG9000.Site.Controllers.HomeController.GoalStatus.Completed:
+                                        status = "success";
+                                        <img src="https://discord.com/assets/212e30e47232be03033a87dc58edaa95.svg" class="Emoji" />
+                                        break;
+                                    case EGG9000.Site.Controllers.HomeController.GoalStatus.Achievable:
+                                        status = "success";
+                                        <img src="https://discord.com/assets/86c16c39d96283551fd4ca7392e22681.svg" class="Emoji" /> @:in @goalDetail.TimeLeft.Humanize(2).ShortenTime()
+                                        break;
+                                    case EGG9000.Site.Controllers.HomeController.GoalStatus.NotAchievable:
+                                        status = "danger";
+                                        @: Behind by @goalDetail.TimeLeft.Subtract(TimeSpan.FromSeconds(Model.CoopStatus.SecondsRemaining)).Humanize(2).ShortenTime()
+                                        break;
+                                    case EGG9000.Site.Controllers.HomeController.GoalStatus.Never:
+                                        status = "danger";
+                                        @: ∞
+                                        break;
+                                }
+                            </td>*@
+                        </tr>
+                        <tr>
+                            <td colspan="99" style="border-top-width: 0; padding-top: 0;">
+                                <div class="progress" style="height: 11px;">
+                                    <div class="progress-bar bg-@(status) text-dark" role="progressbar" style="width: @percent%;" aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100">
+                                        <span style="font-size: 80%">@percent%</span>
+                                    </div>
+                                </div>
+                                @if(goalDetail.Status == EGG9000.Site.Controllers.HomeController.GoalStatus.Achievable) {
+                                    <div class="text-center">
+                                        Complete in @goalDetail.TimeLeft.Humanize(2).ShortenTime()
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </table>
+        </div>
+        <div class="col-lg" style="        border-left: 1px solid #dee2e6;">
+            <h3 class="text-center">Participants</h3>
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        @if(isAdmin) {
+                            <th></th>
+                        }
+                        <th>Ingame</th>
+                        @if(inDb) {
+                            <th>Discord</th>
+                        }
+                        @if(Model.UserInfos.Any(u => u.Farm != null)) {
+                    <th class="right">🐔</th>
+                        }
+                        <th class="right">EB</th>
+                        <th class="right"><img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="Emoji" /></th>
+                        <th class="right">Rate</th>
+                        @if(Model.CoopStatus.SecondsRemaining > 0) {
+                            <th class="right text-nowrap"><img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="Emoji" /><img src="https://discord.com/assets/3bfe17056153e8a390c99fe243e0a649.svg" class="Emoji" /></th>
+                        }
+                        <th class="right">%</th>
+                        <th class="right"><img src="https://cdn.discordapp.com/emojis/724397091211968604.png" class="Emoji" /></th>
+                        @if(Model.UserInfos.Any(u => u.Farm != null)) {
+                            <th class="right text-nowrap"><img src="https://cdn.discordapp.com/emojis/724397091211968604.png" class="Emoji" />💲</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var userInfo in Model.UserInfos.OrderByDescending(x => x.Projected)) {
+                    <tr>
+                        @if(isAdmin) {
+                            <td><a href="/MyFarms/ViewUserId?eggIncId=@userInfo.Contribution.UserId">🔎</a></td>
+                        }
+
+                        <td>@userInfo.Contribution.UserName</td>
+                        @if(inDb) {
+                            <td>@ebrgx.Replace(userInfo.Xref?.User.DiscordUsername ?? "", "").Trim()</td>
+                        }
+                        @if(Model.UserInfos.Any(u => u.Farm != null)) {
+                            <td align="right">@userInfo.Farm?.NumChickens.ToEggString()</td>
+                        }
+                        <td align="right">@userInfo.Backup?.EarningsBonus.ToEggString()</td>
+                        <td align="right">@userInfo.Contribution.ContributionAmount.ToEggString()</td>
+                        <td align="right">@((userInfo.Contribution.ContributionRate * 3600).ToEggString())/h</td>
+                        @if(Model.CoopStatus.SecondsRemaining > 0) {
+                            <td align="right">@userInfo.Projected.ToEggString()</td>
+                        }
+                        <td align="right">
+                            @{
+                                var share = userInfo.Share * 100;
+                                if(share >= 10) {
+                                    @share.ToString("0")@:%
+                                } else if(share >= 1) {
+                                    @share.ToString("0.#")@:%
+                                } else {
+                                    @share.ToString("0.##")@:%
+                                }
+                            }
+                        </td>
+                        <td align="right">@userInfo.Contribution.BoostTokens</td>
+                        @if(Model.UserInfos.Any(u => u.Farm != null)) {
+                            <td align="right">@userInfo.Farm?.BoostTokensSpent</td>
+                        }
+                    </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        @if(isAdmin) {
+                            <td></td>
+                        }
+                        <td>@Model.UserInfos.Count/@Model.Contract.Details.MaxCoopSize</td>
+                        @if(inDb) {
+                            <td></td>
+                        }
+                        @if(Model.UserInfos.Any(u => u.Farm != null)) {
+                            <td align="right">
+                                @Model.UserInfos.Sum(x => x.Farm?.NumChickens ?? 0.0).ToEggString()
+                            </td>
+                        }
+                        <td></td>
+                        <td align="right">@Model.UserInfos.Sum(x => x.Contribution.ContributionAmount).ToEggString()</td>
+                        <td align="right">@Model.UserInfos.Sum(x => (x.Contribution.ContributionRate * 3600)).ToEggString()/h</td>
+                        @if(Model.CoopStatus.SecondsRemaining > 0) {
+                            <td align="right">@Model.UserInfos.Sum(x => x.Projected).ToEggString()</td>
+                            <td align="right">
+                                @((Model.UserInfos.Sum(x => x.Projected) / Model.GoalDetails.Last().Goal.TargetAmount * 100).ToString("0"))%
+                            </td>
+                        }
+                        <td colspan="99"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+
+</div>
+
+
+@functions {
+    string EmojiToImage(string str) {
+        var rgx = new Regex(@"<:\w+:(\d+)>");
+        return rgx.Replace(str, match => $"<img class='Emoji' src=\"https://cdn.discordapp.com/emojis/{match.Groups[1].Value}.png?v=1\" />");
+    }
+}
+
+@section Scripts {
+    <style>
+        td {
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 100px;
+            overflow: hidden;
+        }
+
+        .progress-bar span {
+            mix-blend-mode: darken;
+            color: #555;
+            font-weight: bold;
+            font-size: 110%;
+            line-height: .8em;
+        }
+
+        .progress > span {
+            position: absolute;
+            right: 4px;
+            top: 3px;
+        }
+
+        .progress {
+            position: relative;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .EggThumb {
+            height: 1.5em;
+            vertical-align: text-bottom;
+        }
+
+        .Emoji {
+            height: 1.3em;
+            vertical-align: text-bottom;
+            position: relative;
+            top: 0;
+        }
+
+        .card .table {
+            margin-bottom: 0;
+        }
+
+        .grid-inline {
+            display: inline-grid;
+        }
+
+        .goal {
+            max-width: 500px;
+        }
+    </style>
+    <script src="~/js/jquery.jsonview.js"></script>
+    <link href="~/css/jquery.jsonview.css" rel="stylesheet" />
+    <script>
+    $(function () {
+        $("#json").JSONView(@Html.Raw(JsonConvert.SerializeObject(Model.CoopStatus, Formatting.Indented)), { collapsed: true });
+    });
+    </script>
+} 

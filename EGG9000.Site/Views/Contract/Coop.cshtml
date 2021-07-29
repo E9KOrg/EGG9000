@@ -1,0 +1,519 @@
+﻿@using static EGG9000.Common.Helpers.Prefarm
+@using Discord.WebSocket
+@using DiscordCoopCodes.EggIncAPI
+@inject DiscordCoopCodes.Services.APILink _apiLink
+@model EGG9000.Site.Controllers.ContractController.CoopsViewModel
+@{
+    ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
+    var targetAmount = Model.GuildContract.Contract.Details.GoalSets[Model.GuildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+
+    var alienBackups = await GetBackupsForAliens(Model.Coops, Model.PreFarms, Model.GuildContract.Contract, _apiLink);
+
+    var currentCoops = Model.Coops.Select(coop => {
+        var prefarms = GetPrefarmsForCoop(coop, Model.PreFarms, alienBackups, Model.GuildContract.Contract);
+        return new {
+            Coop = coop,
+            Prefarms = prefarms,
+            TimeRemaining = GetTimeRemainingValue(targetAmount, prefarms.Sum(x => x.Rate), prefarms.Sum(x => x.EggsPaidFor + x.Rate * x.TimeSinceUpdate.TotalSeconds)),
+            HasSpots = Model.GuildContract.Contract.Details.MaxCoopSize > prefarms.Count
+        };
+    }).OrderBy(x => x.Coop.Finished).ThenByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
+
+    DiscordSocketClient discord = ViewBag.Discord;
+
+
+    var allPreFarms = Model.PreFarms;
+    var guildContract = Model.GuildContract;
+    var guild = discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID);
+    var coops = Model.Coops;
+    //var users = Model.PreFarms.Where(x => x.Elite == Model.GuildContract.Elite &&
+    //    !Model.Coops.Any(c => c.UserCoopsXrefs.Any(xr =>
+    //        (xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId)
+    //        && (
+    //            c.Status != CoopStatusEnum.Failed ||
+    //            x.CoopName == c.Name.ToLower()
+    //        )
+    //    ))
+    //).ToList();
+
+    //var coopsBreakdown = GetBreakdown(users, Model.GuildContract, discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID));
+
+    var prefarms = allPreFarms.Where(X => !X.User.TempDisabled).Where(x => x.Elite == guildContract.Elite || x.Completed).ToList();
+    prefarms = prefarms.Where(x =>
+        !coops.Any(c => c.UserCoopsXrefs.Any(xr =>
+        (xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId)
+        && (
+            c.Status != CoopStatusEnum.Failed ||
+            x.CoopName == c.Name.ToLower()
+        )
+    ))).ToList();
+
+
+    var coopsBreakdown = GetBreakdown(prefarms, guildContract, guild);
+
+
+    var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
+    var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
+
+    var count = currentCoops.Count;
+
+    var ebrgx = new Regex(@"\(.+?\)");
+
+
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+    //isAdmin = false;
+    var activeCoops = currentCoops.Select(c => new {
+        c.Coop.Name,
+        c.Coop.ContractID,
+        CurrentCoop = c.Prefarms.Any(x => x.DiscordId.ToString() == discordId),
+        Status = c.Coop.Finished ? "Finished" : c.TimeRemaining < TimeSpan.Zero ? "Complete once everyone checks in" : $"Time to complete {c.TimeRemaining.Humanize(precision: 2).ShortenTime()}",
+        Users = c.Prefarms.OrderByDescending(x => x.Projected).Select(u => new {
+            Name = (u.User != null && u.User.CreateOn > DateTimeOffset.Now.AddDays(-7) ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
+            NumChickens = u.NumChickens.ToEggString(),
+            Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
+            Projected = u.Projected.ToEggString(),
+            Status = u.Coop,
+            Locked = true,
+        }),
+        MaxSize = Model.GuildContract.Contract.Details.MaxCoopSize,
+        Rate = $"{ArgumentsHelper.NumberToString(c.Prefarms.Sum(x => x.Rate) * 60 * 60, false)}/h",
+        Percent = (c.Prefarms.Sum(x => x.Projected) / targetAmount).ToString("P0"),
+        CoopId = c.Coop.Id
+    });
+
+    var isSolo = Model.GuildContract.Contract.MaxUsers <= 1;
+
+    if(isSolo) {
+        coopsBreakdown.Coops = new List<CoopDetails> {
+            new CoopDetails {
+                 Users = coopsBreakdown.Coops.SelectMany(c => c.Users).ToList()
+            }
+        };
+    }
+
+    var potentialCoops = coopsBreakdown.Coops.Select(c => {
+        var users = c.Users.OrderByDescending(x => x.Projected).Select(u => new {
+            u.EggIncId,
+            u.DatabaseId,
+            Name = (u.User != null && u.User.CreateOn > DateTimeOffset.Now.AddDays(-7) ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
+            NumChickens = u.NumChickens.ToEggString(),
+            Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
+            ProjectedPercent = u.Projected / targetAmount,
+            Status = isSolo
+                ? (u.Projected < targetAmount ? $"{ArgumentsHelper.NumberToString((targetAmount - u.EggsPaidFor) / u.TimeLeft?.TotalHours ?? 0, false)}/h" : "")
+                : u.TimeLeft?.Humanize(precision: 2).ShortenTime(),
+            TimeLeft = u.TimeLeft.Value.TotalSeconds,
+            EB = u.Backup.EarningsBonus.ToEggString(),
+            EBValue = u.Backup.EarningsBonus,
+            Locked = !isAdmin
+        });
+        dynamic model = new {
+            Count = ++count,
+            CurrentCoop = c.Users.Any(x => x.DiscordId.ToString() == discordId),
+            Users = isSolo ? users.OrderBy(u => u.Name) : users.OrderByDescending(u => u.ProjectedPercent),
+            MaxSize = Model.GuildContract.Contract.Details.MaxCoopSize,
+            Rate = $"{ArgumentsHelper.NumberToString(c.Users.Sum(x => x.Rate) * 60 * 60, false)}/h",
+        };
+        return model;
+    });
+}
+<style>
+    #CurrentCoop {
+        border-color: #00ff90;
+    }
+
+    .card {
+        margin-bottom: 10px;
+    }
+
+    .card-header {
+        background-color: white;
+    }
+
+    .CurrentCoop .card-header {
+        background-color: #a2ffa1;
+    }
+
+    .card-body {
+        padding: 0;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .card-header div {
+        float: left;
+    }
+
+    .card-header span {
+        font-weight: normal;
+        font-size: 90%;
+        float: right;
+    }
+
+    .dndPlaceHolder {
+        background-color: #ddd !important;
+        display: block;
+        min-height: 42px;
+    }
+
+    .container {
+        max-width: initial;
+    }
+
+    @if(isSolo) {<text>
+    .col-sm {
+        flex-grow: 0 !important;
+    }
+    </text>}
+</style>
+<div class="container" ng-controller="Page">
+    <h3>@Model.GuildContract.Contract.Name - @(Model.GuildContract.Elite ? "Elite" : "Standard") </h3>
+    @if(isSolo) {
+        var accounts = currentCoops.SelectMany(x => x.Prefarms.Where(x => x.DiscordId.ToString() == discordId)).ToList();
+        if(accounts.Count == 0) {
+            <p>You are not currently in this contract</p>
+        } else if(accounts.Count == 1) {
+            <p><a href="#@accounts.First().EggIncId">Jump to me</a></p>
+        } else {
+            foreach(var account in accounts) {
+                <p><a href="#@account.EggIncId">Jump to @account.EggIncId</a></p>
+            }
+        }
+    } else if(currentCoops.Any(coop => coop.Prefarms.Any(x => x.DiscordId.ToString() == discordId)) || coopsBreakdown.Coops.Any(coop => coop.Users.Any(x => x.DiscordId.ToString() == discordId))) {
+        foreach(var coop in currentCoops.Where(c => c.Prefarms.Any(x => x.DiscordId.ToString() == discordId))) {
+            <p><a href="#@coop.Coop.Name">Jump to my co-op @coop.Coop.Name</a></p>
+        }
+
+        foreach(var coop in coopsBreakdown.Coops.Where(c => c.Users.Any(x => x.DiscordId.ToString() == discordId))) {
+            var coopNum = coopsBreakdown.Coops.IndexOf(coop) + currentCoops.Count + 1;
+            <p><a href="#@coopNum">Jump to my co-op @coopNum</a></p>
+        }
+    } else {
+        <p>You are not currently in a co-op nor prefarming</p>
+    }
+
+    <div class="row">
+        @if(currentCoops.Count > 0) {
+            <div class="col-sm">
+                <h2>Active Coops</h2>
+                @if(isAdmin) {
+                    <p ng-if>
+                        Note: The co-ops are sorted such that the top ones listed have spots available with the soonest ending on top.
+                    </p>
+                }
+                <div class="card" ng-repeat="coop in ActiveCoops" ng-class="{ CurrentCoop: coop.CurrentCoop}">
+                    <div style="position: relative; top: -20px;" id="{{coop.Name}}" ng-if="coop.CurrentCoop"></div>
+                    <h5 class="card-header" ng-click="coop.Hide = !coop.Hide">
+                        <a ng-if="IsAdmin || coop.CurrentCoop" ng-href="/coop/{{coop.ContractID}}/{{coop.Name}}">{{coop.Name}}</a>
+                        <div ng-if="!IsAdmin">Co-op</div>
+                        <span>{{coop.Status}}</span>
+                    </h5>
+                    <div class="card-body" ng-show="!coop.Hide">
+                        <table class="table table-striped">
+                            <tbody class="sortablers" ui-sortable="sortableOptionsTarget" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
+                                <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }">
+                                    <td>{{user.Name}}</td>
+                                    <td align="right">{{user.NumChickens}}</td>
+                                    <td align="right">{{user.Rate}}</td>
+                                    <td align="right">{{user.Projected}}</td>
+                                    <td>{{user.Status}}</td>
+                                </tr>
+                                <tr class="dndPlaceholder"><td colspan="99"></td></tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
+                                    <td></td>
+                                    <td align="right">{{coop.Rate}}</td>
+                                    <td align="right">{{coop.Percent}}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+
+
+        @{
+            <div class="col-sm">
+                @if(isAdmin) {
+                <button class="btn-success btn btn-sm" ng-click="CurrentCoopCount = CurrentCoopCount + 1; EmptyCoops.push({ Users: [], MaxSize: @Model.GuildContract.Contract.Details.MaxCoopSize, Count: CurrentCoopCount})">+ Empty Co-op</button>
+                }
+                <label>
+                    <input type="checkbox" ng-model="ShowAll" />
+                    Show All Users
+                </label>
+                <div class="card" ng-repeat="coop in EmptyCoops">
+                    <h5 class="card-header">
+                        @if(!isSolo) {
+                            <div>Co-op {{coop.Count}}</div>
+                            <span>{{MinimumTime(coop.Users)}}</span>
+                            <button ng-if="IsAdmin" ng-click="Start(coop, EmptyCoops)" class="btn btn-primary btn-sm">Start Co-op</button>
+                        }
+                    </h5>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            @{ PotentialHeader(); }
+                            <tbody class="sortablers" ui-sortable="sortableOptions" ng-model="coop.Users" dnd-list="coop.Users">
+                                <tr class="notsortable" ng-if="coop.Users.length == 0"><td style="height: 10px; background-color: white;" colspan="99"></td></tr>
+                                <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }" dnd-draggable="user" dnd-moved="coop.Users.splice($index,1)" dnd-effect-allowed="move">
+                                    @{ PotentialRowDetails(); }
+                                </tr>
+                                <tr class="dndPlaceholder"><td colspan="99"></td></tr>
+                            </tbody>
+                            @{ PotentialFooter(); }
+                        </table>
+                    </div>
+                </div>
+
+                <div ng-if="ShowPotential">
+                    @if(isSolo) {
+                        <h2>Solo</h2>
+                    } else {
+                        <h2>Potential Co-ops</h2>
+                    }
+
+                    <div class="card" ng-repeat="coop in PotentialCoops" ng-class="{ CurrentCoop: coop.CurrentCoop}">
+                        <div style="position: relative; top: -20px;" id="{{coop.Count}}"></div>
+                        <h5 class="card-header">
+                            @if(!isSolo) {
+                                <div>Co-op {{coop.Count}}</div>
+                                <span>{{MinimumTime(coop.Users)}}</span>
+                                <button ng-if="IsAdmin" ng-click="Start(coop, PotentialCoops)" class="btn btn-primary btn-sm">Start Co-op</button>
+                            }
+                        </h5>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                @{ PotentialHeader(); }
+                                <tbody dnd-list="coop.Users">
+                                    <tr class="notsortable" ng-if="coop.Users.length == 0"><td style="height: 10px; background-color: white;" colspan="99"></td></tr>
+                                    <tr ng-repeat="user in coop.Users" dnd-draggable="user" dnd-moved="coop.Users.splice($index,1)" dnd-effect-allowed="move" dnd-disable-if="!IsAdmin">
+                                        @{ PotentialRowDetails(); }
+                                    </tr>
+                                    <tr class="dndPlaceholder"><td colspan="99"></td></tr>
+                                </tbody>
+                                @{ PotentialFooter(); }
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm" ng-show="ShowAll">
+                Sort By: <label><input type="radio" ng-model="SortAll" value="EBValue" />EB</label> <label><input type="radio" ng-model="SortAll" value="TimeLeft" />Time Left</label>
+                <div>
+                    <table class="table table-striped">
+                        @{ PotentialHeader(); }
+                        <tbody dnd-list="UsersByEB">
+                            <tr ng-repeat="user in UsersByEB" dnd-draggable="user" dnd-moved="UsersByEB.splice($index,1)" dnd-effect-allowed="move" dnd-disable-if="!IsAdmin">
+                                @{PotentialRowDetails(); }
+                            </tr>
+                            <tr class="dndPlaceholder"><td colspan="99"></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+</div>
+@{
+    void PotentialRowDetails() {
+        <td>
+            @if(isSolo) {
+                <div style="position: relative; top: -20px;" id="{{user.EggIncId}}"></div>
+            }
+            {{user.Name}}
+        </td>
+        <td align="right">{{user.NumChickens}}</td>
+        <td align="right">{{user.Rate}}</td>
+        <td align="right">{{user.ProjectedPercent | percentage:0}}</td>
+        <td align="right">{{user.EB}}</td>
+        <td>{{user.Status}}</td>
+    }
+
+    void PotentialHeader() {
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>🐔</th>
+                <th>Rate</th>
+                <th>📈</th>
+                <th>EB</th>
+                @if(isSolo) {
+                    <th>Rate Needed</th>
+                } else {
+                    <th>Status</th>
+                }
+            </tr>
+        </thead>
+    }
+    void PotentialFooter() {
+        <tfoot>
+            <tr>
+                <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
+                <td></td>
+                <td align="right">{{coop.Rate}}</td>
+                <td align="right">{{PercentSum(coop.Users) | percentage:0}}</td>
+                <td></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    }
+}
+@section Scripts {
+    i
+    <script src="~/lib/angular-drag-and-drop-lists.min.js"></script>
+    <script>
+        //angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages', 'ui.sortable'])
+        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages', 'dndLists'])
+            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+                $scope.IsAdmin = @JsonConvert.SerializeObject(isAdmin);
+
+                $scope.ActiveCoops = @Html.Raw(JsonConvert.SerializeObject(activeCoops));
+                $scope.EmptyCoops = [];
+
+                $scope.PotentialCoops = @Html.Raw(JsonConvert.SerializeObject(potentialCoops));
+                $scope.ShowPotential = true;
+                $scope.ShowAll = false;
+                $scope.SortAll = 'EBValue';
+
+                $scope.CurrentCoopCount = @count;
+
+                $scope.PercentSum = function (users) {
+                    if (users.length == 0)
+                        return "";
+                    var percent = 0;
+                    angular.forEach(users, function (u) { percent += u.ProjectedPercent; });
+                    return percent;
+                };
+
+                $scope.MinimumTime = function (users) {
+                    if (users.length == 0)
+                        return "";
+                    var min = _.minBy(users, function (o) { return o.TimeLeft; });
+                    return min.Status;
+                };
+
+                $scope.sortableOptions = {
+                    connectWith: ".sortablers",
+                    items: "tr:not(.notsortable)"
+                };
+
+                $scope.dropCallback = function (item, coop) {
+                    if (confirm("Do you want to move " + item.Name + " to " + coop.Name)) {
+                        $http.post("/contract/movetocoop?CoopId=" + coop.CoopId + "&UserId=" + item.DatabaseId + "&EggIncId=" + item.EggIncId, {}).then(function Success(response) {
+                            if (response.data.error) {
+                                alert("Error: " + response.data.error);
+                            } else {
+                                console.log(response);
+                                RemoveUser(item);
+
+                                //alert(response.data.userName + " moved to " + response.data.coopName);
+                            }
+                        }, function Error(response) {
+                            alert("Error");
+                            console.log(response);
+                        });
+                        return item;
+                    } else {
+                        return false;
+                    }
+                };
+
+                $scope.Start = function (coop, coopList, potential) {
+                    if (confirm("Are you sure you want to start this co-op?")) {
+                        var prefarms = [];
+                        angular.forEach(coop.Users, function (user) {
+                            prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
+                        });
+                        $http.post("/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&Elite=@Model.GuildContract.Elite", prefarms).then(function Success(response) {
+                            console.log(response);
+                            //alert("Co-op " + response.data + " Created");
+                            $scope.ActiveCoops.unshift(coop);
+                            coop.Name = response.data;
+                            coop.Stats = "Just Created";
+                            //$.each(coop.Users, function () { this.Locked = true; });
+                            $.each(coopList, function (i) {
+                                console.log(coopList[i].Count, coop.Count);
+                                if (coopList[i].Count == coop.Count) {
+                                    coopList.splice(i, 1);
+                                    return;
+                                }
+                            });
+
+                            $.each(coop.Users, function (index, User) {
+                                RemoveUser(User);
+                            });
+
+                        }, function Error(response) {
+                            alert("Error");
+                            console.log(response);
+                        });
+                    }
+                };
+
+
+                function RemoveUser(user) {
+                    console.log(user);
+                    _.forEach($scope.PotentialCoops, function (coop) {
+                        _.forEach(coop.Users, function (coopUser, index) {
+                            if (!coopUser) {
+                                console.log(coopUser, index, coop);
+                                return;
+                            }
+                            if (coopUser.EggIncId == user.EggIncId) {
+                                coop.Users.splice(index, 1);
+                                console.log("Removed " + user.Name);
+                            }
+                        });
+                    });
+
+                    //$.each($scope.PotentialCoops, function (i) {
+                    //    $.each($scope.PotentialCoops[i].Users, function (coopUserIndex, coopUser) {
+                    //        if (user.EggIncId == coopUser.EggIncId) {
+                    //            $scope.PotentialCoops[i].Users.splice(coopUserIndex, 1);
+                    //            console.log("Removed " + user.Name);
+                    //        }
+                    //    });
+                    //});
+                    $scope.UsersByEB = _.sortBy(GetUsersByEB(), [$scope.SortAll]);
+                //    $.each($scope.UsersByEB, function (coopUserIndex, coopUser) {
+                //        if (!coopUser) {
+                //            console.log(coopUser)
+                //            return;
+                //        }
+                //        if (user.EggIncId == coopUser.EggIncId) {
+                //            $scope.UsersByEB.splice(coopUserIndex, 1);
+                //            console.log("Removed " + user.Name);
+                //        }
+                //    });
+                }
+
+                $scope.UsersByEB = GetUsersByEB();
+
+                function GetUsersByEB() {
+                    var users = [];
+                    _.forEach($scope.PotentialCoops, function (value, key) {
+                        _.forEach(value.Users, function (user, key) {
+                            users.push(user);
+                        });
+                    });
+                    return users;
+                }
+
+                $scope.$watch("SortAll", function (newValue) {
+                    $scope.UsersByEB = _.sortBy($scope.UsersByEB, [newValue]);
+                });
+            }]);
+        angular.module('egg9000').filter('percentage', ['$filter', function ($filter) {
+            return function (input, decimals) {
+                return $filter('number')(input * 100, decimals) + '%';
+            };
+        }]);
+    </script>
+}

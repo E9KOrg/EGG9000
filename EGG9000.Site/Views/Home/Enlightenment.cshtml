@@ -1,0 +1,58 @@
+﻿@model List<LeaderboardUser>
+@inject Discord.WebSocket.DiscordSocketClient discord
+@{
+    ViewData["Title"] = "Enlightenment";
+
+    var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
+    List<UserSnapShot> snapshots = ViewBag.Snapshots;
+
+    var accounts = Model.Where(x => x.Backup.Farms.Any(y => y.EggType == Ei.Egg.Enlightenment) ).Select(x => { //&& x.Backup.EggIncId == "EI6229292070993920"
+        var farm = x.Backup.Farms.First(y => y.EggType == Ei.Egg.Enlightenment);
+        var stats = farm.WithStats(x.Backup);
+        Console.WriteLine(JsonConvert.SerializeObject(farm, Formatting.Indented));
+        return new {
+            x.Backup,
+            Farm = farm,
+            x.DiscordUser,
+            FarmStats = stats,
+            TimeToComplete = stats.InternalHatchery > 0 ?  TimeSpan.FromMinutes((10e9 - farm.NumChickens) / (stats.InternalHatchery * 4 * 3)) : TimeSpan.MaxValue
+        };
+    }).Where(x => x != null).OrderBy(x => x.TimeToComplete);
+}
+
+<style>
+        .container
+
+    {
+        max-width: initial;
+    }
+</style>
+<div>
+    <h2>Enlightenment Progress</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>EB</th>
+                @*<th>Started</th>*@
+            <th>🐔</th>
+            <th>🐔 Space</th>
+            <th>🐔 Rate</th>
+            <th>📈</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var account in accounts) {
+                <tr>
+                    <td id="@account.Backup.EggIncId">@account.DiscordUser.GetCleanName()</td>
+                    @*<td>@((account.Farm.Started - DateTimeOffset.Now).Humanize())</td>*@
+                    <td>@account.Backup.EarningsBonus.ToEggString()</td>
+                    <td>@account.Farm.NumChickens.ToEggString()</td>
+                    <td>@account.FarmStats.HabSpace.ToEggString()</td>
+                    <td>@account.FarmStats.InternalHatchery/m/hab</td>
+                    <td>@Math.Round(account.TimeToComplete.TotalDays)d</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

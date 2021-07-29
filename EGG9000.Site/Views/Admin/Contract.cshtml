@@ -1,0 +1,139 @@
+﻿@model List<DiscordCoopCodes.Database.Entities.DBUser>
+@{
+    ViewData["Title"] = "Contract";
+    var contractid = ViewBag.ContractID;
+
+
+
+    var prefarmers = Model.SelectMany(u => u.Backups.Where(x => x.Farms.Any(y => y.ContractId == contractid && y.Started > DateTimeOffset.Now.AddMonths(-4))).Select(x => new {
+        User = u,
+        Farm = x.Farms.First(y => y.ContractId == contractid),
+        Backup = x
+    })).OrderByDescending(x => x.Farm.CashEarned);
+
+    List<Guild> guilds = ViewBag.Guilds;
+
+
+    var max = prefarmers.Max(x => Math.Log(x.Farm.EggsPaidFor, 10));
+
+    var chartData = prefarmers.Select(x => new {
+        name = x.User.DiscordUsername + (x.User.EggIncIds.Count > 1 ? $" ({x.Backup.UserName})" : ""),
+        data = new object[] { new object[] { x.Backup.EarningsBonus.GetNumberOfZeros(), GetScore(x.Farm.EggsPaidFor) } }
+    });
+
+
+    double GetScore(double eggs) {
+        return Math.Max(0, Math.Log10(eggs) / max);
+    }
+
+    //var chartData = prefarmers.Select(x => new object[] { x.Backup.EarningsBonus.GetNumberOfZeros(), Math.Log10(x.Farm.EggsPaidFor) });
+}
+
+
+<h2>@contractid <button class="btn btn-primary" onclick="$('table').toggleClass('StandardOnly')">Standards Only</button></h2>
+
+<div id="chart"></div>
+
+@{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th></th>
+                <th>EB</th>
+                <th>Cash Earned</th>
+                <th>Cash Spent</th>
+                <th>Cash/Chicken</th>
+                <th>Chickens</th>
+                <th>Tokens Received</th>
+                <th>Tokens Spent</th>
+                <th>Time Cheat</th>
+                @*<th>Guild</th>*@
+                <th>Joined</th>
+                <th>Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var farmer in prefarmers.OrderBy(x => Math.Log(x.Farm.EggsPaidFor, 10))) {
+                var farm = farmer.Farm.WithStats(farmer.Backup);
+            <tr class="@(farmer.Backup.EarningsBonus > 10e12 ? "Elite" : "Standard")">
+                <td><a href="/Home/ViewUser/@(farmer.User.Id)">@farmer.User.DiscordUsername</a></td>
+                <td>@farmer.Backup.EarningsBonus.ToEggString() </td>
+                <td>@farmer.Farm.CashEarned.ToEggString()</td>
+                <td>@farmer.Farm.CashSpent.ToEggString()</td>
+                <td>@farm.Income.ToEggString()/s</td>
+                <td>@farmer.Farm.NumChickens.ToEggString()</td>
+                <td>@farmer.Farm.BoostTokensReceived</td>
+                <td>@farmer.Farm.BoostTokensSpent</td>
+                <td>
+                    @if(farmer.Farm.TimeCheatDebt > 0) {
+                    <span>@(farmer.Farm.TimeCheatDebt)s x@(farmer.Farm.TimeCheatsDetected)</span>
+                        }
+                </td>
+                @*<td>@guilds.FirstOrDefault(x => x.Id == farmer.User.GuildId)?.Name</td>*@
+                <td>@((DateTimeOffset.Now - farmer.User.CreateOn).Humanize())</td>
+                <td>@(GetScore(farmer.Farm.EggsPaidFor))</td>
+            </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<style>
+    .StandardOnly .Elite {
+        display: none;
+    }
+
+    .Standard td {
+        color: #42a479;
+    }
+</style>
+@if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    var options = {
+        chart: {
+            type: 'scatter',
+            zoom: {
+                enabled: true,
+                type: 'xy'
+            }
+        },
+@*series: [{
+        data: @Html.Raw(JsonConvert.SerializeObject(chartData))
+    }],*@
+        series: @Html.Raw(JsonConvert.SerializeObject(chartData)),
+        yaxis: {
+        //logarithmic: true
+        decimalsInFloat: 2
+        },
+        xaxis: {
+        //logarithmic: true,
+        //type: "numeric",
+        tickAmount: 10
+
+        //    type: 'datetime'
+        },
+        //tooltip: {
+        //    x: {
+        //        format: 'dd MMM yyyy'
+        //    }
+        //},
+        dataLabels: {
+        enabled: false
+        },
+        stroke: {
+        width: 2
+        },
+        legend: {
+        show: false
+        },
+        animations: {
+        enabled: false
+        }
+        }
+
+        var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+        chart.render();
+</script>
+        }

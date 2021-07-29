@@ -1,0 +1,98 @@
+﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
+@{
+    ViewData["Title"] = "Admin";
+    var days = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value });
+}
+
+@if(User.IsInRole("Admin")) {
+    <a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
+}
+<a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
+<a href="/admin/ghosts" class="btn btn-primary">Ghosts</a>
+@if(User.IsInRole("Admin")) {
+    <a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
+}
+
+<div class="clearfix">
+    <div class="float-left card">
+        <div class="card-body">
+            <h5 class="card-title">
+                Server Stats
+            </h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Server</th>
+                        <th>Channels</th>
+                        <th>Active Coops</th>
+                        <th>🏁 Coops</th>
+                    </tr>
+                </thead>
+                @foreach(var guild in Model.Guilds) {
+                    <tr>
+                        <td>@guild.Name</td>
+                        <td>@guild.ChannelCount</td>
+                        <td>@guild.ActiveCoops</td>
+                        <td>@guild.FinishedCoops</td>
+                    </tr>
+                }
+            </table>
+        </div>
+    </div>
+
+    <div class="float-left card">
+        <div class="card-body">
+            <h5 class="card-title">
+                Recent Contracts
+            </h5>
+
+            @foreach(var contract in Model.Contracts) {
+                <div><a href="/admin/contract?contractid=@contract.ID">@contract.Name</a></div>
+            }
+        </div>
+    </div>
+</div>
+<div>
+    <div id="chart"></div>
+
+</div>
+
+<style>
+    .card {
+        margin-right: 20px;
+        margin-top: 20px;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    var options = {
+        chart: {
+            type: 'area',
+            zoom: {
+                autoScaleYaxis: true
+            }
+        },
+        series: [{
+            data: @Html.Raw(JsonConvert.SerializeObject(days))
+        }],
+        xaxis: {
+            type: 'datetime'
+        },
+        tooltip: {
+            x: {
+                format: 'dd MMM yyyy'
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            width: 2
+        }
+    }
+
+            var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+            chart.render();
+</script>
