@@ -1,0 +1,44 @@
+﻿@using EGG9000.Common.Helpers
+@model List<Coop>
+@{
+    var xrefs = (List<UserCoopXref>)ViewBag.Xrefs;
+}
+
+
+<h2>Leechers</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Co-op</th>
+            <th>Egg Inc Name</th>
+            <th>Eggs Shipped</th>
+            <th>Farm Population</th>
+            <th>EB</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var coop in Model.Where(x => x.LastStatusUpdate.Contributors.Any(y => y.Leech))) {
+            foreach(var user in coop.LastStatusUpdate.Contributors.Where(y => y.Leech)) {
+                var xref = xrefs.FirstOrDefault(xref => xref.EggIncId == user.UserId);
+                <tr>
+                    <td>@coop.Name</td>
+                    <td>@user.UserName</td>
+                    <td>@user.ContributionAmount.ToEggString()</td>
+                    <td>@user.ProductionParams.FarmPopulation.ToEggString()</td>
+                    <td>@xref?.User.Backups.FirstOrDefault(x => x.EggIncId == user.UserId).EarningsBonus.ToEggString()</td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+<style>
+    tr.NotMentioned td {
+        background-color: lightgoldenrodyellow;
+    }
+
+    tr.Missing td {
+        background-color: lightpink;
+    }
+</style>
+

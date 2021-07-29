@@ -1,0 +1,34 @@
+﻿@model EGG9000.Site.Controllers.AdminController.UserPermissionsModel
+@{
+    var users = Model.Users.Select(u => {
+        var login = Model.Logins.FirstOrDefault(l => l.UserId == u.Id);
+        if(login == null)
+            return null;
+        var dbuser = Model.DbUsers.FirstOrDefault(du => du.DiscordId.ToString() == login.ProviderKey);
+        return new {
+            DBUser = dbuser,
+            User = u,
+            Roles = Model.UserRoles.Where(ur => ur.UserId == u.Id).Select(ur => Model.Roles.First(r => r.Id == ur.RoleId))
+        };
+    });
+}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Roles</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var user in users) {
+            <tr>
+                <td>@(user.DBUser?.DiscordUsername ?? user.User.Email)</td>
+                <td>
+                    @foreach(var role in user.Roles) {
+                        <span>@role.Name</span>
+                    }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

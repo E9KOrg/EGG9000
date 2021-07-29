@@ -1,0 +1,147 @@
+﻿@model List<LeaderboardUser>
+@inject Discord.WebSocket.DiscordSocketClient discord
+@{
+    ViewData["Title"] = "Leaderboard";
+
+    var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
+    List<UserSnapShot> snapshots = ViewBag.Snapshots;
+
+    var allaccounts = Model.Select(x => {
+        var snapshot = snapshots.FirstOrDefault(y => y.EggIncID == x.Backup.EggIncId);
+        if(snapshot == null)
+            return null;
+        return new {
+            x.Backup,
+            SoulEggAmount = x.Backup.SoulEggs - snapshot.SoulEggs,
+            SoulEggPercent = (x.Backup.SoulEggs - snapshot.SoulEggs) / snapshot.SoulEggs,
+            NumOfPrestiges = x.Backup.NumPrestiges - snapshot.Prestiges,
+            EarningsBonusAmount = x.Backup.EarningsBonus - snapshot.EarningsBonus,
+            EarningsBonusPercent = (x.Backup.EarningsBonus - snapshot.EarningsBonus) / snapshot.EarningsBonus,
+            x.DiscordUser
+        };
+    }).Where(x => x != null);
+}
+
+<style>
+        .container
+
+    {
+        max-width: initial;
+    }
+</style>
+@foreach(var accounts in allaccounts.GroupBy(x => x.DiscordUser.Roles.First(x => x.Name.ToLower().EndsWith("farmer")))) {
+<div>
+    <h2>@accounts.Key.Name</h2>
+    <h2>Soul Egg Increase</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var account in accounts.OrderByDescending(x => x.SoulEggAmount).Take(2)) {
+                <tr>
+                    <td>@account.DiscordUser.GetCleanName()</td>
+                    <td>@account.SoulEggAmount.ToEggString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h2>Soul Egg Percent</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var account in accounts.OrderByDescending(x => x.SoulEggPercent).Take(2)) {
+                <tr>
+                    <td>@account.DiscordUser.GetCleanName()</td>
+                    <td>@account.SoulEggPercent.ToString("P")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <h2>Prestiges</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var account in accounts.OrderByDescending(x => x.NumOfPrestiges).Take(2)) {
+                <tr>
+                    <td>@account.DiscordUser.GetCleanName()</td>
+                    <td>@account.NumOfPrestiges.ToEggString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <h2>EB</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var account in accounts.OrderByDescending(x => x.EarningsBonusAmount).Take(2)) {
+                <tr>
+                    <td>@account.DiscordUser.GetCleanName()</td>
+                    <td>@account.EarningsBonusAmount.ToEggString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <h2>EB Percent</h2>
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var account in accounts.OrderByDescending(x => x.EarningsBonusPercent).Take(2)) {
+                <tr>
+                    <td>@account.DiscordUser.GetCleanName()</td>
+                    <td>@account.EarningsBonusPercent.ToString("P")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <br /><br />
+</div>
+}
+
+@*{
+        void RowTemplate(LeaderboardUser account, int i) {
+            var snapshot = snapshots.FirstOrDefault(x => x.EggIncID == account.Backup.EggIncId);
+            <tr id="@account.User.DiscordId">
+
+                <td align="right"> @i </td>
+
+                <td style="max-width: 150px; text-overflow: ellipsis; line-break: strict;">
+                    @account.DiscordUser.GetCleanName()
+                </td>
+                <td align="right"> @account.Backup.SoulEggs.ToEggString() </td>
+
+                <td align="right"> @account.Backup.EggsOfProphecy </td>
+
+                <td align="right"> @account.Backup.EarningsBonus.ToEggString() </td>
+
+                <td align="right"> @account.Backup.NumPrestiges </td>
+                @if(snapshot != null) {
+                    <td align="right"> @snapshot.SoulEggs.ToEggString() </td>
+
+                    <td align="right"> @snapshot.EggsOfProphecy </td>
+
+                    <td align="right"> @snapshot.EarningsBonus.ToEggString() </td>
+                    <td align="right"> @snapshot.Prestiges</td>
+                }
+            </tr>
+        }
+    }*@

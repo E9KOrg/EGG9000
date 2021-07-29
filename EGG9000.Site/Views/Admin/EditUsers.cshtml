@@ -1,0 +1,42 @@
+﻿@model EGG9000.Site.Controllers.AdminController.EditUserModel
+@{
+
+}
+
+
+<h2>Edit Users</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            @foreach(var role in Model.Roles) {
+                <th>
+                    @role.Name
+                </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var user in Model.Users.OrderByDescending(x => Model.UserRoles.Any(ur => ur.UserId == x.Id))) {
+            <tr>
+                <td>@user.UserName</td>
+                @foreach(var role in Model.Roles) {
+                    <td>
+                        <input type="checkbox" checked="@Model.UserRoles.Any(ur => ur.RoleId == role.Id && ur.UserId == user.Id)" onchange="Change(this, '@user.Id', '@role.Id')" />
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+<script>
+    function Change(element, userid, roleid) {
+        var setRole = element.checked;
+        $(element).css("background-color", "yellow");
+        $.post("/admin/setrole", { SetRole: setRole, UserID: userid, RoleId: roleid }, function (data) {
+            element.checked = data;
+            $(element).css("background-color", "green");
+        });
+    }
+</script>

@@ -1,0 +1,185 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div ng-controller="Page">
+    <div class="form-inline">
+        <label>Max Tokens</label>
+        <input type="number" ng-model="maxTokens" class="form-control mb-2" />
+        <label>Earning Per Second</label>
+        <input type="number" ng-model="earningsPerSecond" class="form-control md-2" />
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" ng-model="hide8Hour">
+            <label class="form-check-label" for="defaultCheck1">
+                Hide 8h boosts
+            </label>
+        </div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Boost 1</th>
+                <th>Boost 2</th>
+                <th>Boost 3</th>
+                <th>Boost 4</th>
+                <th>Boost 5</th>
+                <th>Cost</th>
+                <th>Multiplier</th>
+                <th>Per Token</th>
+                <th>Time</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="combo in combos track by $index">
+                <td ng-repeat="boost in combo.boosts track by $index">
+                    <div ng-if="boost.A">
+                        {{boost.A}}x for {{boost.T}}m E
+                    </div>
+                    <div ng-if="boost.B">
+                        {{boost.B}}x for {{boost.T}}m B
+                    </div>
+                </td>
+                <td>
+                    {{combo.cost}}
+                </td>
+                <td>
+                    {{combo.multiplier}}
+                </td>
+                <td>
+                    {{combo.pertoken}}
+                </td>
+                <td>
+                    {{combo.time}}
+                </td>
+                <td>
+                    {{combo.total | number}}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="alert alert-info" role="alert" ng-if="calculating">
+        Calculating...
+    </div>
+</div>
+
+
+@section Scripts {
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap-tpls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/1.2.0/angular-moment.min.js"></script>
+
+
+
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-animate.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-aria.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-messages.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.js"></script>
+
+
+    <script>
+        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
+            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+
+                var allBoosts = [
+                    { A: 2, T: 60, C: 1 },
+                    { A: 2, T: 60 * 8, C: 1 },
+                    { A: 10, T: 30, C: 2 },
+                    { A: 10, T: 120, C: 3 },
+                    { A: 50, T: 10, C: 3 }, { A: 50, T: 60, C: 5 },
+                    { B: 2, T: 30, C: 5 },
+                    { B: 10, T: 10, C: 10 },
+                    { B: 5, T: 60, C: 15 },
+                    { B: 50, T: 10, C: 50 },
+                    { C: 0, T: 0 }
+                ];
+
+
+                var maxTime = 40099;
+
+                $scope.maxTokens = 75;
+                $scope.earningsPerSecond = 1;
+                $scope.hide8Hour = false;
+                //StartCalculate();
+
+                $scope.$watchGroup(['maxTokens','earningsPerSecond','hide8Hour'], StartCalculate)
+                //$scope.$watch('earningsPerSecond', StartCalculate)
+                //$scope.$watch('hide8Hour', StartCalculate)
+
+                function StartCalculate() {
+                    $scope.calculating = true;
+                    $scope.combos = [];
+                    $timeout(CalculateAll, 1);
+                }
+
+                function CalculateAll() {
+                    console.log("Calculating");
+
+                    var boosts = _.filter(allBoosts, function (item) {
+                        console.log(!$scope.hide8Hour || item.T < 480, !$scope.hide8Hour, item.T < 480, item.T);
+                        return !$scope.hide8Hour || item.T < 480
+                    });
+
+                    //var amount = $scope.earningsPerSecond * 60;
+                    for (var a1 = 0; a1 < boosts.length; a1++) {
+                        for (var a2 = a1; a2 < boosts.length; a2++) {
+                            for (var a3 = a2; a3 < boosts.length; a3++) {
+                                for (var a4 = a3; a4 < boosts.length; a4++) {
+                                    for (var a5 = a4; a5 < boosts.length; a5++) {
+                                        var combo = [boosts[a1], boosts[a2], boosts[a3], boosts[a4], boosts[a5]];
+                                        var cost = _.sumBy(combo, "C");
+                                        var aSum = _.sumBy(combo, "A");
+                                        var time = _.max(combo, "T").T;
+                                        if (cost < $scope.maxTokens && aSum > 0 && time < maxTime) {
+                                            var item = {
+                                                cost: cost,
+                                                boosts: combo,
+                                                time: time
+                                            };
+                                            CalculateM(item);
+                                            $scope.combos.push(item);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    $scope.combos = _.orderBy($scope.combos, ['total'], ['desc']);
+
+
+                    for (var i = 0; i < $scope.combos.length - 1; i++) {
+                        var c1 = $scope.combos[i];
+                        for (var j = i + 1; j < $scope.combos.length; j++) {
+                            var c2 = $scope.combos[j];
+                            if (c2.cost > c1.cost || (c2.cost == c1.cost && c2.total <= c1.total && c2.time >= c1.time)) {
+                                c2.delete = true;
+                            }
+
+                        }
+                    }
+
+                    $scope.combos = _.filter($scope.combos, function (item) { return !item.delete; });
+                    $scope.calculating = false;
+                }
+
+                function CalculateM(combo) {
+                    var multiplier = 0;
+                    for (var m = 0; m < _.max(combo.boosts, "T").T; m++) {
+                        var earnings = _.filter(combo.boosts, function (item) { return item.A > 0 && item.T > m; });
+                        var boost = _.filter(combo.boosts, function (item) { return item.B > 0 && item.T > m; });
+                        multiplier += _.sumBy(earnings, "A") * Math.max(_.sumBy(boost, "B"), 1);
+                        //console.log(combo, earnings, Math.max(_.sumBy(boost, "B"), 1));
+                    }
+                    combo.multiplier = multiplier;
+                    combo.pertoken = Math.round(multiplier / combo.cost);
+                    combo.total = Math.round(multiplier * $scope.earningsPerSecond * 60);
+                }
+            }]);
+    </script>
+}

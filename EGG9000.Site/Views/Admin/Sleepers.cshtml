@@ -1,0 +1,49 @@
+﻿@using EGG9000.Common.Helpers
+@model List<EGG9000.Site.Controllers.AdminController.SleeperDetail>
+@{
+
+}
+
+
+<h2>Sleepers</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Discord Name</th>
+            <th>Co-op</th>
+            <th>Contract</th>
+            <th>Empty</th>
+            <th>Total Empty</th>
+            <th>
+                Demerits last 2 days
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var sleeper in Model.OrderByDescending(x => x.CurrentSleep).ThenByDescending(x => x.TotalCoopSleep)) {
+    <tr class="@(sleeper.FreshEgg ? "FreshEgg" : "")">
+        <td>@sleeper.DiscordName</td>
+        <td>
+            <a target="_blank" href="https://discord.com/channels/@sleeper.GuildId/@sleeper.DiscordChannelId">@sleeper.CoopName</a>
+        </td>
+        <td>@sleeper.ContractName</td>
+        <td>@Math.Max(sleeper.CurrentSleep, 0) h</td>
+        <td>@sleeper.TotalCoopSleep h</td>
+        <td>
+            @if(sleeper.FreshEgg) {
+            @: FreshEgg
+            }
+            @foreach(var demerit in sleeper.Demerits) {
+                <div>@((DateTimeOffset.Now - demerit.When).Humanize().ShortenTime()) ago - @demerit.Reason</div>
+            }
+        </td>
+    </tr>
+}
+    </tbody>
+</table>
+<style>
+    .FreshEgg td {
+        background-color: #fcf78c;
+    }
+</style>

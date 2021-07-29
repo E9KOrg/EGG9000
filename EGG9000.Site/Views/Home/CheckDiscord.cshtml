@@ -1,0 +1,28 @@
+﻿@model List<DBUser>
+@{
+    Discord.WebSocket.DiscordSocketClient discord = ViewBag.Discord;
+}
+
+@foreach (var user in Model.Where( x=> x.CreateOn < DateTimeOffset.Now.AddDays(-14))) {
+    var guilds = discord.Guilds.Where(x => x.Users.Any(y => y.Id == user.DiscordId));
+    if (user.GuildId == 0 && guilds.Count() > 0) {
+        <div>
+            @user.DiscordUsername: @String.Join(", ", guilds.Select(x => x.Name)) - Add
+        </div>
+    } else if (user.GuildId > 0 && guilds.Count() == 0) {
+        <div>
+            @user.DiscordUsername: No guilds - Remove
+        </div>
+
+    } else if(user.GuildId > 0) {
+        @*var discordUser = discord.Guilds.FirstOrDefault(x => x.Id == user.GuildId)?.GetUser(user.GuildId);
+        if (discordUser == null) {
+            <div>@user.DiscordUsername: Null in guild? @user.GuildId</div>
+        } else {
+            var name = discordUser.Nickname ?? discordUser.Username;
+            if (name != user.DiscordUsername) {
+            <div>@user.DiscordUsername -> @name</div>
+            }
+        }*@
+    }
+}
