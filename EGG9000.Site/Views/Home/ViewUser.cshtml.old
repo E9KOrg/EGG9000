@@ -1,4 +1,4 @@
-﻿@model DiscordCoopCodes.Database.Entities.DBUser
+﻿@model EGG9000.Common.Database.Entities.DBUser
 @{
     ViewData["Title"] = "Leaderboard";
 }

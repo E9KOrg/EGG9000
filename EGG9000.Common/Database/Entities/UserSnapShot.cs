@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.IO;
 using System.Text;
 
-namespace DiscordCoopCodes.Database.Entities {
+namespace EGG9000.Common.Database.Entities {
     public class UserSnapShot {
         [Column(TypeName = "Date")]
         public DateTime Date { get; set; }

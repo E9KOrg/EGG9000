@@ -1,4 +1,4 @@
-﻿using DiscordCoopCodes.Database;
+﻿using EGG9000.Common.Database;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscordCoopCodes.Services {
+namespace EGG9000.Bot.Services {
     public class DatabaseChange {
         public object Item { get; set; }
         public string Property { get; set; }

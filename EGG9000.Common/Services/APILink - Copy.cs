@@ -1,5 +1,5 @@
-﻿//using DiscordCoopCodes.Database;
-//using DiscordCoopCodes.Database.Entities;
+﻿//using EGG9000.Common.Database;
+//using EGG9000.Common.Database.Entities;
 
 //using Microsoft.Extensions.Caching.Memory;
 //using Microsoft.Extensions.Hosting;
@@ -22,7 +22,7 @@
 
 //using static EGG9000.Common.Helpers.Prefarm;
 
-//namespace DiscordCoopCodes.Services {
+//namespace EGG9000.Bot.Services {
 //    public class BackupRequest2 {
 //        public string UserId { get; set; }
 //        public double LastBackupTime { get; set; }

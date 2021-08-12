@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DiscordCoopCodes.Helpers {
+namespace EGG9000.Bot.Helpers {
     public static class UpdateParticipantsInCoop {
         public static async System.Threading.Tasks.Task UpodateAsync(List<DBUser> users, ApplicationDbContext _db, Coop coop, Ei.ContractCoopStatusResponse status, ITextChannel coopChannel, DiscordSocketClient _client) {
             foreach (var p in status.Participants) {

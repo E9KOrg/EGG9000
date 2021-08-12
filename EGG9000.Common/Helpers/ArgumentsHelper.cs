@@ -4,7 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 
-namespace DiscordCoopCodes {
+namespace EGG9000.Bot {
     public static class ArgumentsHelper {
         public static List<KeyValuePair<int, string>> bignums = new List<KeyValuePair<int, string>> {
             new KeyValuePair<int, string>(3, "K"),

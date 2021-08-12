@@ -83,6 +83,8 @@ namespace EGG9000.Common.Helpers {
                 return null;
             }
             var artifact = GetArtifactsDB().FirstOrDefault(x => x.Name == (int)artifactSpec.Name);
+            if(artifact == null)
+                return null;
             var response = new EggIncArtifactInstance {
                 Additive = artifact.Additive,
                 Artifact = artifact.Artifact,

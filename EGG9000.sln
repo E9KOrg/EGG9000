@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29001.49
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscordCoopCodes", "DiscordCoopCodes\DiscordCoopCodes.csproj", "{76A9F853-4FDF-4D2F-80F4-923D4871F7B1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Bot", "EGG9000.Bot\EGG9000.Bot.csproj", "{76A9F853-4FDF-4D2F-80F4-923D4871F7B1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Site", "EGG9000.Site\EGG9000.Site.csproj", "{E07A294A-6B62-4E21-864A-EA78B3AC8CD5}"
 EndProject

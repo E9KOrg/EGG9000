@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 
 using EGG9000.Common.Helpers;
 

@@ -1,5 +1,5 @@
-﻿using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 
 using EGG9000.Common.Database;
 
@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace DiscordCoopCodes.Services {
+namespace EGG9000.Bot.Services {
     public class BackupRequest {
         public string UserId { get; set; }
         public float LastBackupTime { get; set; }
@@ -35,6 +35,7 @@ namespace DiscordCoopCodes.Services {
 
     public class APILink {
         //private static string urlBase = "http://localhost:5014/Home/";
+        //private static string urlBase = "https://localhost:44316/Home/";
         private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
 
         private IMemoryCache _cache;

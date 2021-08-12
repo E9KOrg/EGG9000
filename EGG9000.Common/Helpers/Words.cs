@@ -7,7 +7,7 @@ using Discord.WebSocket;
 
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace DiscordCoopCodes
+namespace EGG9000.Bot
 {
     public class Words
     {

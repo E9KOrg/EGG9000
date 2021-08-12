@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace DiscordCoopCodes.Migrations
+namespace EGG9000.Common.Migrations
 {
     public partial class TrackGuildCoop : Migration
     {

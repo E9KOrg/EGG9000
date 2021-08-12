@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DiscordCoopCodes.Helpers {
+namespace EGG9000.Bot.Helpers {
     public class BotText {
         public static List<string> SleepingMessages {
             get {

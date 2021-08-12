@@ -4,7 +4,7 @@
 //using System.Linq;
 //using System.Text;
 
-//namespace DiscordCoopCodes.Proto {
+//namespace EGG9000.Bot.Proto {
 //    //[ProtoContract]
 //    //public class ContractsProto {
 //    //    [ProtoMember(1)]

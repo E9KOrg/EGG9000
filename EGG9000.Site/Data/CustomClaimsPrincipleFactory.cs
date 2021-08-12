@@ -1,4 +1,4 @@
-﻿using DiscordCoopCodes.Database;
+﻿using EGG9000.Common.Database;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;

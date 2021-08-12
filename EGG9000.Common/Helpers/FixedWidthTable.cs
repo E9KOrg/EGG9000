@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace DiscordCoopCodes.Helpers {
+namespace EGG9000.Bot.Helpers {
     public class FixedWidthTable {
         public static string GetTable(List<List<FixedWidthCell>> contents) {
             var sb = new StringBuilder();

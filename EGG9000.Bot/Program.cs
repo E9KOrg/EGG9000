@@ -1,12 +1,12 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using DiscordCoopCodes;
-using DiscordCoopCodes.Automated;
-using DiscordCoopCodes.Commands;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot;
+using EGG9000.Bot.Automated;
+using EGG9000.Bot.Commands;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -19,12 +19,11 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Services;
 using Bugsnag.AspNet.Core;
 using Discord.Rest;
 using System.Threading;
 using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Common.Database;
 using System.Diagnostics;
 
 namespace DiscordCoopCords {
@@ -116,15 +115,20 @@ namespace DiscordCoopCords {
                     }
 
 
+                    //var ids = usersTask.Result.Where(x => x.GuildId == 847108222644650004).SelectMany(x => x.Backups.Select(y => y.EggIncId));
+                    //var b =_apiLink.GetUserBackups(ids, false);
+                    //b.Wait();
 
+
+                    
                     client.Log += Log;
 
 
 
-                    client.LoginAsync(TokenType.Bot, Configuration["Token"]).Wait();
+                    client.LoginAsync(TokenType.Bot, Configuration["ConnectionStrings:Token"]).Wait();
                     client.StartAsync().Wait();
 
-                    restclient.LoginAsync(TokenType.Bot, Configuration["Token"]).Wait();
+                    restclient.LoginAsync(TokenType.Bot, Configuration["ConnectionStrings:Token"]).Wait();
 
 
                     Console.WriteLine("Waiting on Discord Connect");
@@ -221,7 +225,7 @@ namespace DiscordCoopCords {
 
                 if(message.Content.StartsWith("!")) {
                     Console.WriteLine($"Message: {message}");
-                    var command = message.Content.Substring(1).Split(' ')[0].ToLower();
+                    var command = message.Content.Substring(1).Split(' ')[0].ToLower().Replace("-", "");
                     var args = message.Content.Split(' ').Skip(1).ToArray();
 
                     if(users == null) {
@@ -260,7 +264,7 @@ namespace DiscordCoopCords {
 
                     //Admin commands
                     if(isAdmin) {
-                        switch(command.Replace("-", "")) {
+                        switch(command) {
                             case "say":
                                 await RegisterCommands.Say(message, args);
                                 return;
@@ -521,8 +525,8 @@ namespace DiscordCoopCords {
 **!addcoop {coopname}** Allows you to add an external coop that wasn't created with !newcode
 **!demerits** List a users demerits
 **!skip #contract-channel** Allows the user to opt out of that contract
-**!skipNoPe  Allows the user to opt out of contracts with no <:Egg_of_Prophecy_PE:669981330477547580>
-**!unSkipNoPe  Undos the !skipnope command
+**!skipNoPe**  Allows the user to opt out of contracts with no <:Egg_of_Prophecy_PE:669981330477547580>
+**!unSkipNoPe**  Undos the !skipnope command
 **!skip #contract-channel** Allows the user to opt out of that contract
 **!takeabreak** Bot will not ping you about not pre-farming, this status will stay until the next time you start pre-farming
 **!userstatus** Gives your status and last backup time
@@ -566,10 +570,6 @@ Admin Only Commands:
                             **!opencoops** Will show you all contracts with open spots
                             */
                             break;
-                        case "test": {
-                            await ContractCommands.Test(message, db);
-                        }
-                        break;
                         default:
                             await message.Channel.SendMessageAsync(BotText.UnknownCommand(command) + $" {message.Author.Mention}");
                             break;

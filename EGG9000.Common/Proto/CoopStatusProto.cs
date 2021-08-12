@@ -1,4 +1,4 @@
-﻿//using DiscordCoopCodes.Database.Entities;
+﻿//using EGG9000.Common.Database.Entities;
 //using Newtonsoft.Json;
 //using ProtoBuf;
 //using System;
@@ -7,7 +7,7 @@
 //using System.Linq;
 //using System.Text;
 
-//namespace DiscordCoopCodes.Proto {
+//namespace EGG9000.Bot.Proto {
 //    [ProtoContract]
 //    public class CoopRequestProto {
 //        [ProtoMember(1)]

@@ -3,14 +3,13 @@ using Discord.Commands;
 using Discord.Net;
 using Discord.WebSocket;
 
-using DiscordCoopCodes.Automated;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Helpers;
-using DiscordCoopCodes.Services;
-
+using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Bot.Services;
+
 
 using Humanizer;
 
@@ -30,9 +29,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 
-namespace DiscordCoopCodes.Commands {
+namespace EGG9000.Bot.Commands {
     public static class RegisterCommands {
         public static async Task UserJoined(SocketGuildUser user, ApplicationDbContext db) {
             if(user.IsBot)

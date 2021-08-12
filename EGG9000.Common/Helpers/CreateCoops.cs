@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-using DiscordCoopCodes;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Bot;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 
 using static EGG9000.Common.Helpers.Prefarm;
 

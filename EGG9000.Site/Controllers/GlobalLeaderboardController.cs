@@ -6,12 +6,12 @@
 //using Microsoft.AspNetCore.Mvc;
 //using Microsoft.Extensions.Logging;
 //using EGG9000.Site.Models;
-//using DiscordCoopCodes.Database;
+//using EGG9000.Common.Database;
 //using Microsoft.EntityFrameworkCore;
-//using DiscordCoopCodes.EggIncAPI;
+//using EGG9000.Bot.EggIncAPI;
 //using Microsoft.AspNetCore.Identity;
 //using Microsoft.AspNetCore.Authorization;
-//using DiscordCoopCodes.Database.Entities;
+//using EGG9000.Common.Database.Entities;
 //using Microsoft.AspNetCore.Cors;
 //using System.Net.Http;
 //using System.IO;
@@ -19,7 +19,7 @@
 //using Discord.WebSocket;
 //using Discord;
 //using Newtonsoft.Json;
-//using DiscordCoopCodes.Services;
+//using EGG9000.Bot.Services;
 //using EGG9000.Common.Database;
 
 //namespace EGG9000.Site.Controllers {

@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 
 using EGG9000.Common.Database;
 
@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace DiscordCoopCodes.Helpers {
+namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpers {
         public static String GetName(this IGuildUser user) {
             return string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;

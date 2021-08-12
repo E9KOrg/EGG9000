@@ -1,11 +1,11 @@
 ﻿using Discord;
 using Discord.WebSocket;
 
-using DiscordCoopCodes.Automated;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot.Automated;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 
 using EGG9000.Common.Helpers;
 
@@ -25,10 +25,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace DiscordCoopCodes.Commands {
+namespace EGG9000.Bot.Commands {
     public static class MiscCommands {
         public static async Task TestEmoji(SocketMessage message, string[] args) {
             try {

@@ -1,11 +1,11 @@
-﻿//using DiscordCoopCodes.Database.Entities;
+﻿//using EGG9000.Common.Database.Entities;
 //using System;
 //using System.Collections.Generic;
 //using System.Linq;
 //using System.Text;
 //using System.Threading.Tasks;
 
-//namespace DiscordCoopCodes.Helpers {
+//namespace EGG9000.Bot.Helpers {
 //    public class Charts {
 //        public static String GetUrlForCoop(List<CoopStatus> statuses) {
 

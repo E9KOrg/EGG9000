@@ -1,7 +1,7 @@
 ﻿using Discord.WebSocket;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -11,21 +11,21 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot.Helpers;
 using Discord;
-using DiscordCoopCodes.Commands;
+using EGG9000.Bot.Commands;
 using Discord.Rest;
 using System.Numerics;
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
 using static EGG9000.Common.Helpers.Prefarm;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Services;
 using System.Diagnostics;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase {
         public static TimeSpan UpdateTime = TimeSpan.FromMinutes(30);
         private IConfiguration _configuration;
@@ -259,8 +259,8 @@ $"With great EB comes great responsibility. Congrats on hitting an EB of {eb}%, 
                                 case "Exafarmer":
                                     messages.AddRange(new List<string> {
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%, {discordUser.Mention}! You really like eggs, eh? Eggciting hobby, isnt it?",
-$"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}!Wow.It seems like just yesterday you were running your first chickens. Celebrate!",
-$"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelettes .Anyone have eggs? Congrats on the impressive EB of { eb}% !",
+$"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}! Wow. It seems like just yesterday you were running your first chickens. Celebrate!",
+$"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelettes. Anyone have eggs? Congrats on the impressive EB of { eb}% !",
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
 $"Choo Choo!All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { eb}%, jump on now!",
 $"Congrats { discordUser.Mention}, you are a { role.Name} now with the EB of { eb}% !How eggciting!",

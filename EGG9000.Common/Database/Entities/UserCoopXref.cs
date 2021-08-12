@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
-namespace DiscordCoopCodes.Database.Entities
+namespace EGG9000.Common.Database.Entities
 {
     public class UserCoopXref
     {

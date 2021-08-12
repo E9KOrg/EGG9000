@@ -1,13 +1,13 @@
 ﻿using Humanizer;
 using Discord.WebSocket;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using System.Diagnostics;
 
