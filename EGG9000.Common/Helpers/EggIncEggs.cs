@@ -1,4 +1,4 @@
-﻿using DiscordCoopCodes;
+﻿using EGG9000.Bot;
 using Humanizer;
 using System;
 using System.Collections.Generic;

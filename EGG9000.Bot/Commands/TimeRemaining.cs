@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DiscordCoopCodes.Commands {
+namespace EGG9000.Bot.Commands {
     public class TimeRemaining {
         public static async Task ExecuteAsync(SocketMessage message, string[] args) {
             if (args.Length != 3) {

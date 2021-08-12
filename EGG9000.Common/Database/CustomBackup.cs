@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Bot.EggIncAPI;
 
 using EGG9000.Common.Helpers;
 
@@ -128,9 +128,11 @@ namespace EGG9000.Common.Database {
 
                 customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
                     var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                    if(artifact == null)
+                        return null;
                     artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
                     return artifact;
-                }));
+                }).Where(x => x != null));
 
                 //customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null)
                 //    .SelectMany(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId)?.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y))));

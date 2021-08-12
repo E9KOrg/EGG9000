@@ -1,7 +1,7 @@
 ﻿using Discord.WebSocket;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -11,12 +11,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot.Helpers;
 using Discord;
-using DiscordCoopCodes.Commands;
+using EGG9000.Bot.Commands;
 using Discord.Rest;
 using Humanizer;
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
@@ -24,12 +24,12 @@ using System.Diagnostics;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Helpers;
 using Ei;
-using DiscordCoopCodes.Migrations;
+using EGG9000.Common.Migrations;
 using Polly;
 using Microsoft.Data.SqlClient;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Services;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase {
         public static TimeSpan _updateInterval = TimeSpan.FromMinutes(6);
         private IConfiguration _configuration;
@@ -662,7 +662,7 @@ namespace DiscordCoopCodes.Automated {
             }));
 
             if(coopName != "Expired Farms" && coopName != "Already in coop") {
-                var percent = $"{coop.Projected:P0}"; //$"{coop.Users.Sum(x => x.Projected) / target:P0}";
+                var percent = $"{coop.Projected:P0}".Replace(",",""); //$"{coop.Users.Sum(x => x.Projected) / target:P0}";
 
                 table.Add(new List<FixedWidthCell> {
                             new FixedWidthCell($"{coop.Users.Count}/{size}"),

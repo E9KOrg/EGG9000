@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using DiscordCoopCodes.Database;
+using EGG9000.Common.Database;
 using EGG9000.Site.Services;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Cors.Infrastructure;
@@ -22,7 +22,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 using Microsoft.AspNetCore.Http;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Services;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 

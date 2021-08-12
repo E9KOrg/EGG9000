@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DiscordCoopCodes
+namespace EGG9000.Common.Helpers
 {
     public class Secrets
     {

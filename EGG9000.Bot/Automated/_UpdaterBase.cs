@@ -8,7 +8,7 @@ using Discord.WebSocket;
 
 using Microsoft.Extensions.Hosting;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public abstract class _UpdaterBase : IHostedService {
         private Timer _timer;
         private Timer _watchDogTimer;

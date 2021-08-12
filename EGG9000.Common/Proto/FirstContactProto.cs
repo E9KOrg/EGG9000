@@ -3,7 +3,7 @@
 //using System.Collections.Generic;
 //using System.Text;
 
-//namespace DiscordCoopCodes.Proto {
+//namespace EGG9000.Bot.Proto {
 //    [ProtoContract]
 //    public class FirstContactRequestProto {
 //        [ProtoMember(1)]

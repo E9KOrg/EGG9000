@@ -7,7 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 
-namespace DiscordCoopCodes.Database.Entities {
+namespace EGG9000.Common.Database.Entities {
     public class Coop {
         public Guid Id { get; set; }
         public string ContractID { get; set; }

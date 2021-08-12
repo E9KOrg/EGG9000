@@ -1,4 +1,6 @@
-﻿using DiscordCoopCodes.Database.Entities;
+﻿using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace DiscordCoopCodes.Database {
+namespace EGG9000.Common.Database {
     public class ApplicationDbFactory : IDesignTimeDbContextFactory<ApplicationDbContext> {
         public ApplicationDbContext CreateDbContext(string[] args) {
             //Console.WriteLine("Creating DB Context");

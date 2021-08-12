@@ -17,7 +17,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace DiscordCoopCodes.Database.Entities {
+namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
     public class DBUser {
         public Guid Id { get; set; }

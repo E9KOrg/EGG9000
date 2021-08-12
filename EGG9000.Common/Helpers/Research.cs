@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace DiscordCoopCodes.EggIncAPI {
+namespace EGG9000.Bot.EggIncAPI {
     public class Research {
 
         public class ResearchItem {

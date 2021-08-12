@@ -1,6 +1,6 @@
 ﻿using System;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;

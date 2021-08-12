@@ -1,7 +1,7 @@
 ﻿using Discord.WebSocket;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -11,12 +11,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot.Helpers;
 using Discord;
-using DiscordCoopCodes.Commands;
+using EGG9000.Bot.Commands;
 using Discord.Rest;
 using Humanizer;
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
@@ -24,12 +24,12 @@ using System.Diagnostics;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Helpers;
 using Ei;
-using DiscordCoopCodes.Migrations;
+using EGG9000.Common.Migrations;
 using Polly;
 using Microsoft.Data.SqlClient;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Services;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase {
         private readonly IConfiguration _configuration;
 
@@ -58,7 +58,7 @@ namespace DiscordCoopCodes.Automated {
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
                     if(contract == null) {
-                        contract = new Database.Entities.Contract {
+                        contract = new EGG9000.Common.Database.Entities.Contract {
                             ID = contractResponse.Identifier,
                             Created = DateTime.Now,
                             Description = contractResponse.Description,

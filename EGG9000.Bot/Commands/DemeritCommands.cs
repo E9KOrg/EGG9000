@@ -1,10 +1,10 @@
 ﻿using Discord;
 using Discord.WebSocket;
 
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 
 using Humanizer;
 
@@ -22,9 +22,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 
-namespace DiscordCoopCodes.Commands {
+namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         public static async Task AddDemerit(SocketMessage message, string[] args, ApplicationDbContext db) {
             try {

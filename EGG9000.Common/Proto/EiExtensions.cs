@@ -1,5 +1,5 @@
-﻿using DiscordCoopCodes;
-using DiscordCoopCodes.EggIncAPI;
+﻿using EGG9000.Bot;
+using EGG9000.Bot.EggIncAPI;
 
 using EGG9000.Common.Helpers;
 
@@ -45,27 +45,27 @@ namespace Ei {
 
         public string TotalString { get { return ArgumentsHelper.NumberToString(this.TotalAmount, false); } }
 
-        private double _targetAmoun(DiscordCoopCodes.Database.Entities.Contract contract, int League) {
+        private double _targetAmoun(EGG9000.Common.Database.Entities.Contract contract, int League) {
             return contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
             ;
         }
 
-        public double ProjectedPercent(DiscordCoopCodes.Database.Entities.Contract contract, int League) {
+        public double ProjectedPercent(EGG9000.Common.Database.Entities.Contract contract, int League) {
             return Projected / _targetAmoun(contract, League);
         }
 
-        public bool ProjectedToFinish(DiscordCoopCodes.Database.Entities.Contract contract, int League) {
+        public bool ProjectedToFinish(EGG9000.Common.Database.Entities.Contract contract, int League) {
             //var targetAmount = contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
             //var target = contract.GoalsDetail.Last().TargetAmount;
             return Projected > _targetAmoun(contract, League);
         }
-        public bool Finished(DiscordCoopCodes.Database.Entities.Contract contract, int League) {
+        public bool Finished(EGG9000.Common.Database.Entities.Contract contract, int League) {
             var targetAmount = contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
             //var target = contract.GoalsDetail.Last().TargetAmount;
             return this.TotalAmount > _targetAmoun(contract, League);
         }
 
-        public bool Failed(DiscordCoopCodes.Database.Entities.Contract contract, int League) {
+        public bool Failed(EGG9000.Common.Database.Entities.Contract contract, int League) {
             return this.TotalAmount < _targetAmoun(contract, League) && (this.AllMembersReporting == true || this.GracePeriodSecondsRemaining < 0) && this.SecondsRemaining < 0;
         }
 

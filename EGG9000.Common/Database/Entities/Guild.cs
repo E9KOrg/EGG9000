@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 
-namespace DiscordCoopCodes.Database.Entities {
+namespace EGG9000.Common.Database.Entities {
     public class Guild {
         public ulong Id { get; set; }
         public string Name { get; set; }

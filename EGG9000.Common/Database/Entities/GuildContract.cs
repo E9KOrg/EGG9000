@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.IO;
 using System.Text;
 
-namespace DiscordCoopCodes.Database.Entities {
+namespace EGG9000.Common.Database.Entities {
     public class GuildContract {
         public string ContractID { get; set; }
         public ulong GuildID { get; set; }

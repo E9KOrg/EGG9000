@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DiscordCoopCodes.Helpers {
+namespace EGG9000.Bot.Helpers {
     public class SIPrefix {
         public static PrefixDetails GetPrefix(double number) {
             var lastPrefix = new PrefixDetails { Base = 0, Name = "" };

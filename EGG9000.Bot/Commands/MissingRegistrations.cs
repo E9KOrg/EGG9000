@@ -1,6 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using DiscordCoopCodes.Database;
+using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DiscordCoopCodes.Commands {
+namespace EGG9000.Bot.Commands {
     public class MissingRegistrations {
         public static async Task Run(SocketMessage message, ApplicationDbContext db, DiscordSocketClient client) {
             var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == message.Channel.Id));

@@ -1,7 +1,7 @@
 ﻿using Discord.WebSocket;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -11,17 +11,17 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot.Helpers;
 using Discord;
-using DiscordCoopCodes.Commands;
+using EGG9000.Bot.Commands;
 using Discord.Rest;
 using System.Numerics;
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
 using EGG9000.Common.Helpers;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public class EventUpdater : _UpdaterBase {
         private IConfiguration _config;
         private ApplicationDbContext _db;

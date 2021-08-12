@@ -7,9 +7,9 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Discord.WebSocket;
 
-using DiscordCoopCodes;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
+using EGG9000.Bot;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 
 using EGG9000.Common.Helpers;
 

@@ -1,16 +1,16 @@
 ﻿using Discord.WebSocket;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Bot.Helpers;
 using Discord;
 using Discord.Rest;
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
 using System.Diagnostics;
@@ -21,9 +21,8 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using EGG9000.Common.Database;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase {
         private readonly IConfiguration _configuration;
         private int _counter;

@@ -1,12 +1,12 @@
 ﻿using Discord;
 using Discord.WebSocket;
 
-using DiscordCoopCodes.Automated;
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Helpers;
-using DiscordCoopCodes.Services;
+using EGG9000.Bot.Automated;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Bot.Services;
 
 using EGG9000.Common.Helpers;
 
@@ -27,10 +27,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static DiscordCoopCodes.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace DiscordCoopCodes.Commands {
+namespace EGG9000.Bot.Commands {
     public static class ContractCommands {
         [Command(Command = "makepublic", Description = "Makes a co-op public", AdminOnly = true)]
         public static async Task MakePublic(SocketMessage message, ApplicationDbContext db) {
@@ -117,43 +117,6 @@ namespace DiscordCoopCodes.Commands {
 
             await message.Channel.SendMessageAsync($"{coopsBreakdown.Coops.SelectMany(x => x.Users).Count()} prefarmers added");
         }
-
-        public static async Task Test(SocketMessage message, ApplicationDbContext db) {
-            //try {
-
-            //    var e = await db.Events.OrderBy(x => x.Ends).LastAsync();
-
-            //    var embed = EventUpdater.GetEmbed(new Ei.EggIncEvent {
-            //        Identifier = e.Identifier,
-            //        Multiplier = e.Multiplier,
-            //        Subtitle = e.Subtitle,
-            //        Type = e.Type,
-            //        SecondsRemaining = (DateTimeOffset.Now - e.Ends).TotalSeconds
-            //    });
-
-            //    await message.Channel.SendMessageAsync(embed: embed);
-            //} catch (Exception e) {
-            //    await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
-            //}
-        }
-
-        //public static async Task OpenCoops(SocketMessage message, ApplicationDbContext db) {
-        //    //try {
-        //    var coops = await db.Coops.Include(x => x.Contract).Where(x => x.CurrentUsers < x.MaxUsers && x.CoopEnds > DateTimeOffset.Now).ToListAsync();
-        //    foreach (var coop in coops) {
-        //        var coopStatus = await ContractsAPI.GetCoopStatus(coop.Contract.ID, coop.Name);
-        //        if (coopStatus != null) {
-        //            foreach (var str in await GetStatusStringAsync(coopStatus, db)) {
-        //                await message.Channel.SendMessageAsync(str);
-        //            }
-        //        } else {
-        //            await message.Channel.SendMessageAsync("\nERROR: " + coopStatus.Error);
-        //        }
-        //    }
-        //    //} catch (Exception e) {
-        //    //    await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message}");
-        //    //}
-        //}
 
         public static async Task RemoveCoop(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client) {
             Console.WriteLine("Removing Coop");

@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Services;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Services;
 
 using EGG9000.Common.Database;
 

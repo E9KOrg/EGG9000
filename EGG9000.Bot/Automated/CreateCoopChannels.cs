@@ -1,10 +1,10 @@
 ﻿using Discord;
 using Discord.WebSocket;
 
-using DiscordCoopCodes.Database;
-using DiscordCoopCodes.Database.Entities;
-using DiscordCoopCodes.EggIncAPI;
-using DiscordCoopCodes.Helpers;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,7 +18,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DiscordCoopCodes.Automated {
+namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase {
         private IConfiguration _config;
         private ApplicationDbContext _db;
