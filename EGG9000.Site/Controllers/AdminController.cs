@@ -281,5 +281,29 @@ namespace EGG9000.Site.Controllers {
             }
             return Json(SetRole);
         }
+
+        [Authorize(Roles ="Admin")]
+        public async Task<IActionResult> SearchID([FromQuery] string id) {
+            var users = await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync();
+
+            if(id.StartsWith("EI")) {
+
+                var matchingUser = users.FirstOrDefault(x => x._eggIncIds?.Contains(id) ?? false);
+                if(matchingUser != null) {
+                    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser.DiscordId });
+                } 
+
+                return RedirectToAction("ViewUserId", "MyFarms", new { eggIncId = id });
+            } else if(id.Trim().All(x => x >= '0' && x <= '9')) {
+                return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
+            }
+
+            var matchingUser2 = users.FirstOrDefault(x => x.DiscordUsername?.Contains(id) ?? false);
+            if(matchingUser2 != null) {
+                return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
+            }
+
+            return RedirectToAction("Index");
+        }
     }
 }

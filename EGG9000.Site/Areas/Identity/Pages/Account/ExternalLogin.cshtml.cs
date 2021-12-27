@@ -101,14 +101,14 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
                 return await OnPostConfirmationAsync(returnUrl);
                 // If the user does not have an account, then ask the user to create an account.
                 //
-                ReturnUrl = returnUrl;
-                LoginProvider = info.LoginProvider;
-                if (info.Principal.HasClaim(c => c.Type == ClaimTypes.Email)) {
-                    Input = new InputModel {
-                        Email = info.Principal.FindFirstValue(ClaimTypes.Email)
-                    };
-                }
-                return Page();
+                //ReturnUrl = returnUrl;
+                //LoginProvider = info.LoginProvider;
+                //if (info.Principal.HasClaim(c => c.Type == ClaimTypes.Email)) {
+                //    Input = new InputModel {
+                //        Email = info.Principal.FindFirstValue(ClaimTypes.Email)
+                //    };
+                //}
+                //return Page();
             }
         }
 

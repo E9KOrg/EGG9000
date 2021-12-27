@@ -90,6 +90,13 @@ namespace EGG9000.Common.Database.Entities {
                 dest.Write(bytes, 0, cnt);
             }
         }
+
+        [NotMapped]
+        public bool FinishedOrFailed {
+            get {
+                return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed;
+            }
+        }
     }
 
     public enum CoopStatusEnum {

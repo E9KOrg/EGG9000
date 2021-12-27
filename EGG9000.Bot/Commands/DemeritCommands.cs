@@ -65,7 +65,7 @@ namespace EGG9000.Bot.Commands {
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
 
-                var demerit = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).FirstOrDefaultAsync();
+                var demerit = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
                 if(demerit == null) {
                     await message.Channel.SendMessageAsync($"There are no recent demerits for {socketUser.Mention}");
                     return;

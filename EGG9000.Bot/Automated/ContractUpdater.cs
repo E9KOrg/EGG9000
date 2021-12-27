@@ -31,7 +31,7 @@ using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase {
-        public static TimeSpan _updateInterval = TimeSpan.FromMinutes(6);
+        public static TimeSpan _updateInterval = TimeSpan.FromMinutes(5);
         private IConfiguration _configuration;
         private APILink _apiLink;
         public static List<UserX> _users;
@@ -152,6 +152,10 @@ namespace EGG9000.Bot.Automated {
 
                         var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
                         if(channel == null) {
+                            if(guildContract.Created < DateTimeOffset.Now.AddDays(-45)) {
+                                guildContract.DeletedChannel = true;
+                                await _db.SaveChangesAsync();
+                            }
                             Console.WriteLine($"Missing Channel for {guildContract.ContractID}");
                             continue;
                         }
@@ -209,9 +213,9 @@ namespace EGG9000.Bot.Automated {
                             var emoji = "⛔";
                             if(guildContract.Contract.Details.MaxCoopSize <= 1) {
                                 emoji += "👤";
-                            } else if(coops.All(x => x.Finished)) {
+                            } else if(coops.All(x => x.FinishedOrFailed)) {
                                 emoji += "🏁";
-                            } else if(coopsDetails.All(x => x.Coop.Finished || x.Users.Count >= guildContract.Contract.Details.MaxCoopSize || x.Coop.CoopEnds < DateTimeOffset.Now)) {
+                            } else if(coopsDetails.All(x => x.Coop.FinishedOrFailed || x.Users.Count >= guildContract.Contract.Details.MaxCoopSize || x.Coop.CoopEnds < DateTimeOffset.Now)) {
                                 emoji += "✅";
                             } else {
                                 var count = coopsBreakdown.Coops.Sum(x => x.Users.Count);
@@ -221,7 +225,8 @@ namespace EGG9000.Bot.Automated {
                                 if(count > 0) {
                                     emoji += "🐣";
                                 }
-                                emoji += "🟩"; //Emoji green box
+                                var openSpots = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.Users.Count < guildContract.Contract.Details.MaxCoopSize).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
+                                emoji += openSpots >= count?  "🟩" : "❎"; //Emoji green box
                             }
                             channelName = emoji + channelName;
                         } else if(guildContract.Contract.Details.MaxCoopSize <= 1) {
@@ -239,12 +244,13 @@ namespace EGG9000.Bot.Automated {
                             if(validFor.TotalHours < 18) {
                                 emoji += "🔺";
                             }
-                            if(coops.All(x => x.Finished)) {
+                            if(coops.All(x => x.FinishedOrFailed)) {
                                 emoji += "🏁";
-                            } else if(coopsDetails.All(x => x.Coop.Finished || x.Users.Count >= guildContract.Contract.Details.MaxCoopSize || x.Coop.CoopEnds < DateTimeOffset.Now)) {
+                            } else if(coopsDetails.All(x => x.Coop.FinishedOrFailed || x.Users.Count >= guildContract.Contract.Details.MaxCoopSize || x.Coop.CoopEnds < DateTimeOffset.Now)) {
                                 emoji += "✅";
                             } else {
-                                emoji += "🟩"; //Emoji green box
+                                var openSpots = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.Users.Count < guildContract.Contract.Details.MaxCoopSize).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
+                                emoji += openSpots >= count ? "🟩" : "❎"; //Emoji green box
                                 if(count <= 20) {
                                     emoji += Convert.ToChar(9311 + count);
                                 } else if(count > 20 && count <= 50) {
@@ -255,9 +261,9 @@ namespace EGG9000.Bot.Automated {
                                 emoji += "🔥";
                             }
                             channelName = emoji + channelName;
-                        } else if(coopsBreakdown.Coops.Where(x => x.Users.Count > 0).Count() == 0 && coops.All(x => x.Finished)) {
+                        } else if(coopsBreakdown.Coops.Where(x => x.Users.Count > 0).Count() == 0 && coops.All(x => x.FinishedOrFailed)) {
                             channelName = "🏁" + channelName;
-                        } else if(coopsDetails.All(x => x.Coop.Finished || x.Users.Count >= guildContract.Contract.Details.MaxCoopSize || x.Coop.CoopEnds < DateTimeOffset.Now)) {
+                        } else if(coopsDetails.All(x => x.Coop.FinishedOrFailed || x.Users.Count >= guildContract.Contract.Details.MaxCoopSize || x.Coop.CoopEnds < DateTimeOffset.Now)) {
                             channelName = "✅" + channelName;
                         } else {
                             channelName = "🟩" + channelName;
@@ -386,7 +392,7 @@ namespace EGG9000.Bot.Automated {
                         //finalMsg += "**WARNING: Messages in this channel are automatically deleted**\n";
                         //finalMsg += $"The bot updates this channel every {_updateInterval.TotalMinutes} mins\n";
                         //finalMsg += "Current Status: **Prefarming**\n";
-                        //finalMsg += $"View On Website <https://egg9000.com/Contract/Coop?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()}>";
+                        //finalMsg += $"View On Website <https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()}>";
 
 
                         while(finalMsg.Length > 2000) {
@@ -397,7 +403,7 @@ namespace EGG9000.Bot.Automated {
                         newMsgs.Add(finalMsg);
 
 
-                        var description = $"[View Co-ops on egg9000.com](https://egg9000.com/Contract/Coop?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()})\n";
+                        var description = $"[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()})\n";
                         description += $"**Size** {guildContract.Contract.MaxUsers}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
                         description += $"**Length** {guildContract.Contract.ContractTime.Humanize(precision: 2).ShortenTime()}, **{(validFor > TimeSpan.Zero ? "Expires" : "Expired")}** {validFor.Humanize(precision: 2).ShortenTime()}";
 

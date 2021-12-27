@@ -10,6 +10,9 @@
 var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
 }
 
+<div class="float-left">
+    <a href="/Home/Enlightenment">Enlightenment Leaderboard</a>
+</div>
 @if(myAccounts.Count() == 1) {
     <p><a href="#@myAccounts.First().Backup.EggIncId">Jump to me</a></p>
 } else if(myAccounts.Count() > 1) {

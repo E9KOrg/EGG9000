@@ -151,24 +151,23 @@ namespace DiscordCoopCords {
                     services.AddSingleton(_words);
                     services.AddSingleton(client);
 
-                    ////services.AddSingleton<LeaderboardUpdater>();
 
-                    services.AddHostedService<StaffCoopsMessage>();
-                    services.AddHostedService<EventUpdater>();
-                    services.AddHostedService<CoopReorder>();
-                    services.AddHostedService<CoopDeleteChannel>();
-                    services.AddHostedService<CoopStatusUpdater>();
-                    services.AddHostedService<ContractUpdater>();
-                    services.AddHostedService<NewContracts>();
-                    services.AddHostedService<CreateCoopChannels>();
-                    services.AddHostedService<ShipReturnDM>();
-                    services.AddHostedService<UserSnapShots>();
-                    services.AddHostedService<LeaderboardUpdater>();
+                    //services.AddHostedService<StaffCoopsMessage>();
+                    //services.AddHostedService<EventUpdater>();
+                    //services.AddHostedService<CoopReorder>();
+                    //services.AddHostedService<CoopDeleteChannel>();
+                    //services.AddHostedService<CoopStatusUpdater>();
+                    //services.AddHostedService<ContractUpdater>();
+                    //services.AddHostedService<NewContracts>();
+                    //services.AddHostedService<CreateCoopChannels>();
+                    //services.AddHostedService<ShipReturnDM>();
+                    //services.AddHostedService<UserSnapShots>();
+                    //services.AddHostedService<LeaderboardUpdater>();
                     services.AddHostedService<ManageOverflow>();
 
-                    client.MessageReceived += MessageReceived;
-                    client.UserJoined += Client_UserJoined;
-                    client.UserLeft += Client_UserLeft;
+                    //client.MessageReceived += MessageReceived;
+                    //client.UserJoined += Client_UserJoined;
+                    //client.UserLeft += Client_UserLeft;
 
                 }).ConfigureAppConfiguration((context, config) => {
                     // configure the app here.
@@ -211,6 +210,7 @@ namespace DiscordCoopCords {
                 if(message.Channel.Id == 680431628950044676) { //CP Welcome Channel
                     var cpGeneralChannel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 656455568353132546);
                     await MeritCommands.CreateMerit(message, "Boosted the server!", db, client, message.Author, Guid.Empty, cpGeneralChannel);
+                    await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
                 }
                 return;
             }
@@ -220,12 +220,15 @@ namespace DiscordCoopCords {
                 //    await MiscCommands.TestEmoji(message, args);
                 //}
                 //return;
-
+                if(message.Content.StartsWith("!egg"))
+                {
+                    return;
+                }
 
 
                 if(message.Content.StartsWith("!")) {
                     Console.WriteLine($"Message: {message}");
-                    var command = message.Content.Substring(1).Split(' ')[0].ToLower().Replace("-", "");
+                    var command = message.Content.Substring(1).Split(' ')[0].ToLower().Replace("-", "").Replace("  ", " ").Replace("  ", " ");
                     var args = message.Content.Split(' ').Skip(1).ToArray();
 
                     if(users == null) {
@@ -289,8 +292,20 @@ namespace DiscordCoopCords {
                             case "testadmin":
                                 await message.Channel.SendMessageAsync($"You are an admin!");
                                 return;
-                            case "start":
-                                await ContractCommands.Start(message, args, db, client, _apiLink, _words);
+                            case "startuser":
+                                await ContractCommands.StartUser(message, args, db, client, _apiLink, _words, fill: false);
+                                return;
+                            case "startfill":
+                                await ContractCommands.StartUser(message, args, db, client, _apiLink, _words, fill: true);
+                                return;
+                            case "startempty":
+                                await ContractCommands.StartEmpty(message, args, db, client, _apiLink, _words);
+                                return;
+                            case "startpercent":
+                                await ContractCommands.StartPercent(message, args, db, client, _apiLink, _words);
+                                return;
+                            case "startall":
+                                await ContractCommands.StartAll(message, args, db, client, _apiLink, _words);
                                 return;
                             case "setnumber":
                                 await ContractCommands.SetNumber(message, args, db, client);
@@ -395,6 +410,8 @@ namespace DiscordCoopCords {
                                 }
                                 return;
                             }
+
+                            case "rename": await MiscCommands.RenameCoop(message, args, db); return;
                             //case "staffcoops":
                             //    await MiscCommands.StaffCoops(message, args, db, client);
                             //    return;
@@ -403,13 +420,11 @@ namespace DiscordCoopCords {
                     } else {
                         switch(command) {
                             case "testevent":
-                            case "cleanwelcome":
-                            case "cleanunpinned":
+                            case "clean":
                             case "makepublic":
                             case "testadmin":
                             case "delete":
                             case "start":
-                            case "start100":
                             case "setnumber":
                             case "missingregistrations":
                             case "newcode":
@@ -465,6 +480,9 @@ namespace DiscordCoopCords {
                         return;
                     }
                     switch(command) {
+                        case "pingonfull":
+                            await MiscCommands.PingOnFull(message, args, db);
+                            return;
                         case "userstatus":
                             await RegisterCommands.userstatus(message, args, db, client, _apiLink);
                             return;
@@ -535,7 +553,11 @@ namespace DiscordCoopCords {
                                 helpMessage += @"
 
 Admin Only Commands:
-**!start** starts the automatted coop creation (Contract Channel Only)
+**!startuser @user**
+**!startfill %percent**
+**!startempty  (is this needed now since we have the website?)**
+**!startpercent %percent**
+**!startall**
 **!move @user @channel** Moves a user from one assigned co-op to another, only works if they haven't joined
 **!setnumber {numberOfCoops}** Sets the number of coops to create (Admin Contract Channel Only)
 **!newcode** Will give a new code for starting a contract (Only as a backup when automatted fails)

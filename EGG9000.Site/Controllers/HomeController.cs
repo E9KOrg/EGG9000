@@ -27,7 +27,6 @@ using EGG9000.Common.Helpers;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using Polly;
-using EGG9000.Common.Database;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
@@ -171,11 +170,22 @@ namespace EGG9000.Site.Controllers {
         }
 
         [EnableCors("SiteCorsPolicy")]
-        public IActionResult XFinity([FromQuery] string usage) {
+        public IActionResult XFinity([FromQuery] string usage)
+        {
             Console.WriteLine(usage);
 
             var client = new HttpClient();
             client.GetStringAsync("https://nr.dev.sglade.com/endpoint/xfinity/" + usage);
+            return Content("Success");
+        }
+
+        [EnableCors("SiteCorsPolicy")]
+        public IActionResult XFinityMobile([FromQuery] string usage)
+        {
+            Console.WriteLine(usage);
+
+            var client = new HttpClient();
+            client.GetStringAsync("https://nr.dev.sglade.com/endpoint/xfinitymobile/" + usage);
             return Content("Success");
         }
 
@@ -212,6 +222,76 @@ namespace EGG9000.Site.Controllers {
                 Response.Cookies.Delete(cookie);
             }
             return View("Index");
+        }
+
+        public async Task<IActionResult> FixXref() {
+            var users = await _db.DBUsers.AsQueryable().ToListAsync();
+            var coops = (await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel).ToListAsync());
+            //var xrefs = new List<UserCoopXref>();
+            //coops.ForEach(x => {
+            //    x.Name = x.Name.Trim().ToLower();
+            //});
+            //foreach(var user in users.Where(x => x.Backups != null)) {
+            //    foreach(var backup in user.Backups) {
+            //        foreach(var farm in backup.Farms) {
+            //            CreateXref(farm.CoopId, farm.ContractId, user, backup.EggIncId, coops, farm.LastStepTime, xrefs);
+            //        }
+            //        if(backup.ArchivedFarms != null) {
+            //            foreach(var afarm in backup.ArchivedFarms) {
+            //                CreateXref(afarm.CoopName, afarm.ContractId, user, backup.EggIncId, coops, -1, xrefs);
+            //            }
+            //        }
+            //    }
+            //}
+            //var xrefgroups = xrefs.GroupBy(x => new { x.CoopId, x.UserId, x.EggIncId });
+            //var duplicates = xrefgroups.Where(x => x.Count() > 1);
+            //var i = 0;
+            //foreach(var xref in xrefgroups) {
+            //    _db.Add(xref.First());
+            //    if( i > 500) {
+            //        i = 0;
+            //        await _db.SaveChangesAsync();
+            //    }
+            //}
+            var multiplebackups = 0;
+            var xrefs = 0;
+            foreach(var coop in coops) {
+                var channel = _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).TextChannels.First(x => x.Id == coop.DiscordChannelId);
+                var pins = await channel.GetPinnedMessagesAsync();
+                foreach(var pin in pins.Where(x => x.MentionedUsers.Count > 0)) {
+                    foreach(var mention in pin.MentionedUsers) {
+                        var user = users.First(x => x.DiscordId == mention.Id);
+                        if(user.Backups.Count > 2) {
+                            multiplebackups++;
+                        }
+                        var backup = user.Backups.First();
+                        var xref = new UserCoopXref {
+                            JoinedCoop = false, AddedToChannel = true, CreatedOn = DateTimeOffset.Now,
+                            EggIncId = backup.EggIncId, CoopId = coop.Id, UserId = user.Id, WasAssigned = true,
+                        };
+                        _db.Add(xref);
+                        xrefs++;
+                    }
+                }
+            }
+            await _db.SaveChangesAsync();
+            return Content("Success");
+        }
+
+
+
+        private void CreateXref(string coopname, string contractid, DBUser user, string eggincid, List<Coop> coops, float laststeptime, List<UserCoopXref> xrefs) {
+            var coop = coops.FirstOrDefault(x => x.Name == coopname && x.ContractID == contractid);
+            if(coop != null) {
+                var xref = new UserCoopXref {
+                    JoinedCoop = true, AddedToChannel = true, CreatedOn = DateTimeOffset.Now, EggIncId = eggincid, UserId = user.Id, CoopId = coop.Id, WasAssigned = true, 
+                };
+                if(laststeptime > 0) {
+                    var timeChecked = DateTimeOffset.FromUnixTimeSeconds((long)laststeptime);
+                    xref.LastStatusTime = timeChecked;
+                }
+                    xrefs.Add(xref);
+            }
         }
 
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {

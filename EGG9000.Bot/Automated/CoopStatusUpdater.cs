@@ -502,7 +502,14 @@ namespace EGG9000.Bot.Automated {
                                             WasAssigned = false
                                         };
                                         _db.UserCoopXrefs.Add(xref);
-                                        await coopChannel.SendMessageAsync($"Looks like {userCoopStatus.UserName} might have joined without being assigned. (This could be an error)");
+                                        userCoopStatus.DiscordName = channeluser.GetCleanName();
+                                        var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserId == userCoopStatus.UserId);
+                                        if(userStatus != null) {
+                                            userStatus.Xref = xref;
+                                            userStatus.User = dbuser;
+                                            userStatus.DiscordUser = (SocketGuildUser)channeluser;
+                                        }
+                                        //await coopChannel.SendMessageAsync($"Looks like {userCoopStatus.UserName} might have joined without being assigned. (This could be an error)");
                                     }
                                 }
                             }
@@ -516,7 +523,7 @@ namespace EGG9000.Bot.Automated {
                                     xref.Status = JsonConvert.SerializeObject(userCoopStatus);
                                     xref.SleepingWarningTime = lastStatus?.SleepingWarning;
                                 } else {
-                                    var lStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+                                    var lStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status ?? "{}");
                                     if(lStatus.ContributionAmount != userCoopStatus.ContributionAmount) {
                                         xref.LastStatusTime = DateTimeOffset.UtcNow;
                                         xref.Status = JsonConvert.SerializeObject(userCoopStatus);
@@ -605,7 +612,7 @@ namespace EGG9000.Bot.Automated {
                                 await _db.SaveChangesAsync();
                                 await coopChannel.SendMessageAsync($"Coop {coop.Name} is finished!");
 
-                                var finishedCoopCategories = guild.Channels.Where(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
+                                var finishedCoopCategories = guild.Channels.Where(x => x.Name != null).Where(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
                                 foreach(var category in finishedCoopCategories) {
                                     var channelCount = guild.TextChannels.Count(x => x.CategoryId == category.Id);
                                     Console.WriteLine($"Finished Coop Category {category.Name} Count {channelCount}");
@@ -681,6 +688,9 @@ namespace EGG9000.Bot.Automated {
                                     await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                                 }
                                 await _db.SaveChangesAsync();
+                                var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
+                                var messagesToDelete = messages.Where(x => x.IsPinned == false && x.Author.IsBot && x.MentionedUserIds.Count == 1 && x.MentionedUserIds.Any(y => y == userStatus.DiscordUser.Id) && !x.Content.ToLower().Contains("demerit"));
+                                await coopChannel.DeleteMessagesAsync(messagesToDelete);
                             }
                         }
 
@@ -718,7 +728,9 @@ namespace EGG9000.Bot.Automated {
                                             xref.JoinWarning24h = true;
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
-                                            await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
+                                            //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
+                                            var dmChannel = await discordUser.GetOrCreateDMChannelAsync();
+                                            await dmChannel.SendMessageAsync($"{discordUser.Mention} reminder to join {coopChannel.Mention} - 24h since added to co-op");
                                         } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
@@ -788,7 +800,15 @@ namespace EGG9000.Bot.Automated {
                         var emojis = "";
 
 
+
+
                         var missingCount = coop.UserCoopsXrefs.Count(x => !x.JoinedCoop && users.FirstOrDefault(u => u.Id == x.GetID())?.GuildId == coop.GuildId);
+
+                        if(missingCount == 0)
+                        {
+                            await HandlePingOnFull(usersWithStatus, coopChannel);
+                        }
+
                         if(missingCount > 0) {
                             if(missingCount <= 20) {
                                 emojis += Convert.ToChar(9311 + missingCount);
@@ -1094,12 +1114,23 @@ namespace EGG9000.Bot.Automated {
             foreach(var xref in usersNotJoined) {
                 var user = users.FirstOrDefault(x => x.Id == xref.GetID());
                 if(user == null || xref.NoDemerit)
-                    return;
+                    continue;
                 var discordUser = guild.GetUser(user.DiscordId);
                 if(discordUser == null)
-                    return;
+                    continue;
 
-                
+                if(xref.CreatedOn > DateTimeOffset.Now.AddHours(-24)) {
+                    _db.Remove(xref);
+                    await _db.SaveChangesAsync();
+                    await coopChannel.SendMessageAsync($"{discordUser.GetCleanName()} returned to pre-farming pool since they were added less than 24 hours before the co-op finished.");
+                    continue;
+                }
+
+                if(user.CreateOn > DateTimeOffset.Now.AddDays(-7)) {
+                    await coopChannel.SendMessageAsync($"{discordUser.Mention}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
+                    continue;
+                }
+
 
                 var demerit = new Demerit {
                     When = DateTimeOffset.Now,
@@ -1120,6 +1151,23 @@ namespace EGG9000.Bot.Automated {
                     _demeritChannel = _client.GetGuild(coop.GuildId).GetTextChannel(dbguild.DemeritLogChannel.Value);
                 }
                 await _demeritChannel.SendMessageAsync(demeritText + $" {coopChannel.Mention}");
+
+            }
+        }
+
+        public async Task HandlePingOnFull(List<UserWithStatus> usersWithStatus, ITextChannel coopChannel)
+        {
+            foreach(var userStatus in usersWithStatus.Where(x => x.Xref.PingOnFull))
+            {
+                userStatus.Xref.PingOnFull = false;
+                var dmChannel = await userStatus.DiscordUser.GetOrCreateDMChannelAsync();
+                try
+                {
+                    await dmChannel.SendMessageAsync($"All users have joined the co-op {coopChannel.Mention}");
+                } catch(Exception)
+                {
+                    Console.WriteLine($"Unable to send DM to {userStatus.DiscordUser.GetCleanName()}");
+                }
 
             }
         }

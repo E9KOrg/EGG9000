@@ -71,20 +71,22 @@ namespace EGG9000.Bot.Automated {
 
             foreach(var e in endedEvents) {
                 e.Ended = true;
-                var embed = GetEmbed(e, eventCustomizations.First(x => x.Type == e.Type), Ended: true);
-                await UpdateMessages(e, embed);
+                var customization = eventCustomizations.First(x => x.Type == e.Type);
+                var embed = GetEmbed(e, customization, Ended: true);
+                await UpdateMessages(e, embed, customization);
             }
 
             foreach(var e in response.Events.Events) {
                 var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == e.Identifier);
+                var customization = eventCustomizations.First(x => x.Type == e.Type);
                 if(currentEvent == null) {
                     var newEvent = new Event(e);
                     _db.Add(newEvent);
                     recentEvents.Add(newEvent);
 
-                    var embed = GetEmbed(newEvent, eventCustomizations.First(x => x.Type == e.Type));
+                    var embed = GetEmbed(newEvent, customization);
 
-                    await PostMessages(newEvent, embed);
+                    await PostMessages(newEvent, embed, customization);
 
                     await _db.SaveChangesAsync();
                 } else {
@@ -116,14 +118,14 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
-                        var embed = GetEmbed(currentEvent, eventCustomizations.First(x => x.Type == e.Type));
+                        var embed = GetEmbed(currentEvent, customization);
                         if(significantChange) {
-                            var crossOutEmbed = GetEmbed(currentEvent, eventCustomizations.First(x => x.Type == e.Type), true);
-                            await UpdateMessages(currentEvent, crossOutEmbed);
-                            await PostMessages(currentEvent, embed);
+                            var crossOutEmbed = GetEmbed(currentEvent, customization , true);
+                            await UpdateMessages(currentEvent, crossOutEmbed, customization);
+                            await PostMessages(currentEvent, embed, customization);
                         } else {
 
-                            await UpdateMessages(currentEvent, embed);
+                            await UpdateMessages(currentEvent, embed, customization);
                         }
                     }
                 }
@@ -158,20 +160,31 @@ namespace EGG9000.Bot.Automated {
                 }
             }
         }
-        private async Task PostMessages(Event newEvent, Embed embed) {
+        private async Task PostMessages(Event newEvent, Embed embed, EventCustomization customization) {
             var messageIds = new List<ulong>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var channel = guild.GetEventChannel();
-                var message = await channel.SendMessageAsync(embed: embed);
+                RestUserMessage message;
+                var notification = customization.Settings.Notifications?
+                    .OrderByDescending(x => x.MinValue)
+                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue);
+                if(guild.Id == 656455567858073601 && notification != null)
+                {
+                    message = await channel.SendMessageAsync($"<@&{notification.RoleID}>", embed: embed);
+                } else
+                {
+                    message = await channel.SendMessageAsync(embed: embed);
+                }
+                    
                 messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
 
         }
 
-        private async Task UpdateMessages(Event currentEvent, Embed embed) {
+        private async Task UpdateMessages(Event currentEvent, Embed embed, EventCustomization customization) {
             var messageIds = JsonConvert.DeserializeObject<List<ulong>>(currentEvent.MessageIds);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
@@ -182,7 +195,20 @@ namespace EGG9000.Bot.Automated {
                         try {
                             var message = ((RestUserMessage)await channel.GetMessageAsync(mid));
                             if(message != null) {
-                                await message.ModifyAsync(msg => msg.Embed = embed);
+                                var notification = customization.Settings.Notifications?
+                                    .OrderByDescending(x => x.MinValue)
+                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue);
+                                if(guild.Id == 656455567858073601 && notification != null)
+                                {
+                                    await message.ModifyAsync(msg =>
+                                    {
+                                        msg.Embed = embed;
+                                        msg.Content = $"<@&{notification.RoleID}>";
+                                    });
+                                } else
+                                {
+                                    await message.ModifyAsync(msg => msg.Embed = embed);
+                                }
                             }
                         } catch(Exception) {
                             Console.WriteLine($"Error Updating Messages: ");

@@ -223,7 +223,7 @@ namespace EGG9000.Bot.Commands {
                     msg = $"{socketUser.Mention}, now run the command !moveserver";
 
                 } else {
-                    msg = $"{socketUser.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `\"!register EI#####\"`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops. The bot only reads certain parts of the info and does not make any changes. {channelText}";
+                    msg = $"{socketUser.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `!register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops. The bot only reads certain parts of the info and does not make any changes. {channelText}";
                 }
 
                 await message.Channel.SendMessageAsync(msg);
@@ -237,7 +237,7 @@ namespace EGG9000.Bot.Commands {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
 
             if(args.Length == 0) {
-                await message.Channel.SendMessageAsync($"Error: Missing ID, example \"!updateid EI#######\"");
+                await message.Channel.SendMessageAsync($"Error: Missing ID, example !updateid EI#######");
                 return;
             }
             //var Response = await ContractsAPI.FirstContact(args[0]);

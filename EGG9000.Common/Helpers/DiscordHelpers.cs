@@ -92,12 +92,12 @@ namespace EGG9000.Bot.Helpers {
         //}
 
         public static List<SocketGuildChannel> GetCoopCategories(this SocketGuild guild) {
-            var categories = guild.Channels.Where(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed")).OrderBy(x => x.Position);
+            var categories = guild.Channels.Where(x => x.Name != null).Where(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed")).OrderBy(x => x.Position);
             return categories.ToList();
         }
 
         public static SocketChannel GetCoopCategory(this SocketGuild guild) {
-            var coopCategory = guild.Channels.FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && !x.Name.Contains("2") && !x.Name.Contains("3") && !x.Name.Contains("4"));
+            var coopCategory = guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && !x.Name.Contains("2") && !x.Name.Contains("3") && !x.Name.Contains("4"));
             if (guild.TextChannels.Count(x => x.CategoryId == coopCategory.Id) >= 50) {
                 return guild.GetOverflowCoopCategory();
             }
@@ -106,27 +106,27 @@ namespace EGG9000.Bot.Helpers {
         }
 
         public static SocketChannel GetOverflowCoopCategory(this SocketGuild guild) {
-            return guild.Channels.FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && x.Name.Contains("2"));
+            return guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && x.Name.Contains("2"));
         }
 
         public static SocketChannel GetOverflowCoopCategory2(this SocketGuild guild) {
-            return guild.Channels.FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && x.Name.Contains("3"));
+            return guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && x.Name.Contains("3"));
         }
 
         public static SocketChannel GetOverflowCoopCategory3(this SocketGuild guild) {
-            return guild.Channels.FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && x.Name.Contains("4"));
+            return guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed") && x.Name.Contains("4"));
         }
 
         public static SocketChannel GetContractsCategory(this SocketGuild guild, bool Elite) {
             SocketGuildChannel channel;
             if(Elite) {
-                channel = guild.Channels.FirstOrDefault(x => x.Name.ToLower().Contains("elite-contracts"));
+                channel = guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("elite-contracts"));
                 
             } else {
-                return guild.Channels.FirstOrDefault(x => x.Name.ToLower().Contains("standard-contracts"));
+                return guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("standard-contracts"));
             }
             if(channel == null)
-                channel = guild.Channels.FirstOrDefault(x => x.Name.ToLower().Contains("contracts"));
+                channel = guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("contracts"));
             return channel;
         }
 
@@ -206,7 +206,7 @@ namespace EGG9000.Bot.Helpers {
 
         public static async Task CheckHatchlingRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             if (Guild.Roles.Any(x => x.Name.ToLower().Contains("hatchling"))) {
-                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-14);
+                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-21);
                 var role = Guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("hatchling"));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
@@ -242,7 +242,9 @@ namespace EGG9000.Bot.Helpers {
         public static async Task CheckActive(SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
             var role = Guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
             if(role != null) {
-                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-14) || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5);
+                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-14) 
+                    || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5) 
+                    || userAccounts.Any(ua => ua.Backup.Farms.Any(f => f.Started > DateTimeOffset.Now.AddDays(-7)));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {

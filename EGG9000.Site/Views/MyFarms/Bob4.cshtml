@@ -1,0 +1,44 @@
+﻿@model EGG9000.Site.Controllers.MyFarmsController.EarningsBoostCalculatorModel
+@{
+    ViewData["Title"] = "Home Page";
+
+}
+
+@foreach(var account in Model.Backups) {
+    Dictionary<string, int> needs = new Dictionary<string, int>();
+    Dictionary<string, int> have = new Dictionary<string, int>();
+
+    needs.Add("bob4", 1);
+    //have.Add("bob4", account.SpaceMissions. )
+    needs.Add("bob3", needs["bob4"] * 12);
+    needs.Add("eggendil4", needs["bob4"] * 1);
+    <div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Target</th>
+                    <th>Have</th>
+                    <th>Missing</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        Gilded Book Of Basan
+                    </td>
+                    <td>
+                        @needs["bob4"]
+                    </td>
+                    <td>
+
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+
+}

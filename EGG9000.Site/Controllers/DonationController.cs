@@ -28,16 +28,16 @@ namespace EGG9000.Site.Controllers {
             _discord = discord;
         }
 
-        public async Task<IActionResult> Index() {
+        public IActionResult Index() {
             return View();
         }
 
-        public async Task<IActionResult> ThankYou() {
+        public IActionResult ThankYou() {
             return View();
         }
 
         public async Task<IActionResult> Endpoint([FromBody] EndPointObject body) {
-            SocketGuildUser? discordUser = null;
+            SocketGuildUser discordUser = null;
             var guild = _discord.Guilds.First(x => x.Id == 656455567858073601);
 
 
@@ -59,7 +59,7 @@ namespace EGG9000.Site.Controllers {
                 discordUser = guild.Users.FirstOrDefault(x => x.Id == dbuser.DiscordId);
                 var role = guild.Roles.FirstOrDefault(x => x.Id == 785575541469085746);
                 if(role != null) {
-                    discordUser.AddRoleAsync(role).ConfigureAwait(false);
+                    _ = discordUser.AddRoleAsync(role).ConfigureAwait(false);
                 }
             }
             //656455568353132546 general
@@ -69,7 +69,7 @@ namespace EGG9000.Site.Controllers {
 
 
             //channel.SendMessageAsync($"A {(body.livemode ? "" : "**TEST** ")}{body.data.@object.amount_total / 100:C0}USD {donationType} has been donated by {(discordUser == null ? "anonymous" : discordUser.Mention)}! **Thank you!**").ConfigureAwait(false);
-            channel.SendMessageAsync($"{(discordUser == null ? "Anonymous" : discordUser.Mention)} donated {body.data.@object.amount_total / 100:C0} USD to a {donationType}. Thank you for your support! {(body.livemode ? "" : "**TEST MODE** ")}");
+            _ = channel.SendMessageAsync($"{(discordUser == null ? "Anonymous" : discordUser.Mention)} donated {body.data.@object.amount_total / 100:C0} USD to a {donationType}. Thank you for your support! {(body.livemode ? "" : "**TEST MODE** ")}");
 
             return Content("");
         }

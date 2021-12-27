@@ -170,7 +170,11 @@
                     @foreach(var userInfo in Model.UserInfos.OrderByDescending(x => x.Projected)) {
                     <tr>
                         @if(isAdmin) {
-                            <td><a href="/MyFarms/ViewUserId?eggIncId=@userInfo.Contribution.UserId">🔎</a></td>
+                            if(userInfo.Xref != null) {
+                        <td><a href="/MyFarms/ViewUser?discordId=@userInfo.Xref?.User.DiscordId">🔎</a></td>
+                            } else {
+                                <td><a href="/MyFarms/ViewUserId?eggIncId=@userInfo.Contribution.UserId" data="@JsonConvert.SerializeObject(userInfo)">🔎</a></td>
+                            }
                         }
 
                         <td>@userInfo.Contribution.UserName</td>

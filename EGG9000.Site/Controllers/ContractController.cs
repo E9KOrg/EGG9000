@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+
 using Discord.WebSocket;
 
 using EGG9000.Bot;
@@ -16,6 +17,7 @@ using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
@@ -38,18 +40,29 @@ namespace EGG9000.Site.Controllers {
             return View(contracts);
         }
 
-        public async Task<IActionResult> Coop([FromQuery]ulong GuildId, [FromQuery]String ContractID, [FromQuery]bool Elite) {
+        public IActionResult Coop([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
+            return RedirectPermanent($"/Contract/Details{Request.QueryString}");
+        }
+
+        public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
                 var stopwatch = Stopwatch.StartNew();
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
-                Console.WriteLine($"GuildContract: {stopwatch.ElapsedMilliseconds}ms"); stopwatch.Restart();
-                
+                Console.WriteLine($"GuildContract: {stopwatch.ElapsedMilliseconds}ms");
+                stopwatch.Restart();
+
                 var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
                 Console.WriteLine($"Coops: {stopwatch.ElapsedMilliseconds}ms");
                 stopwatch.Restart();
                 //var users = await _db.Users.Where(x => x.GuildId == GuildId).ToListAsync();
                 var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == GuildId).Select(x => new {
-                    x.DiscordId, x.DiscordUsername, x.GuildId, x.Id, x._CustomBackups, x._eggIncIds, x.TempDisabled
+                    x.DiscordId,
+                    x.DiscordUsername,
+                    x.GuildId,
+                    x.Id,
+                    x._CustomBackups,
+                    x._eggIncIds,
+                    x.TempDisabled
                 }).ToListAsync();
                 var dbusers = rawusers.Select(x => new DBUser { TempDisabled = x.TempDisabled, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds });
                 var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
@@ -63,6 +76,11 @@ namespace EGG9000.Site.Controllers {
                 stopwatch.Restart();
                 ViewBag.Discord = _discord;
 
+                await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
+                Console.WriteLine($"Download Discord Users: {stopwatch.ElapsedMilliseconds}ms");
+                stopwatch.Restart();
+
+
                 return View(new CoopsViewModel {
                     Coops = coops,
                     GuildContract = guildContract,
@@ -75,9 +93,16 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> StartCoop([FromBody]List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
+        public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
             var guild = _discord.GetGuild(guildContract.GuildID);
+
+
+            var eggIncIDs = Users.Select(x => x.EggIncId);
+            var existingsXrefs = await _db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.Coop.ContractID == ContractID && eggIncIDs.Contains(x.EggIncId) && x.Coop.Status != CoopStatusEnum.Failed).ToListAsync();
+            if(existingsXrefs.Count > 0) {
+                return Json(new { error = true, message = $"Un-able to create co-op, the following are already in one: {string.Join(", ", existingsXrefs.Select(x => x.User.DiscordUsername))}" });
+            }
 
             var coop = await CreateCoops.Start(Users, guildContract, guild, new Words(), _db);
             guildContract.NumberOfCoops--;
@@ -89,22 +114,29 @@ namespace EGG9000.Site.Controllers {
             }
 
 
-            return Json(coop.Name);
+            return Json(new { coopName = coop.Name });
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> MoveToCoop([FromQuery]Guid CoopId, [FromQuery] Guid UserId, [FromQuery] String EggIncId) {
+        public async Task<IActionResult> MoveToCoop([FromQuery] Guid CoopId, [FromQuery] Guid UserId, [FromQuery] String EggIncId) {
             var targetCoop = await _db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.Id == CoopId);
             var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == UserId);
+
+            var existingXref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
+            if(existingXref != null) {
+                return Json(new { error = $"{dbuser.DiscordUsername} has already been assigned a co-op." });
+            }
+
             var guild = _discord.GetGuild(targetCoop.GuildId);
             var discordUser = guild.Users.First(x => x.Id == dbuser.DiscordId);
             var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
-            var channel = _discord.GetGuild(guildId).TextChannels.First(x => x.Id == targetCoop.DiscordChannelId);
+            
+            var channel = (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
             var eggIncName = dbuser.EggIncIds.First(x => x.Id == EggIncId).Name;
             var xref = await CreateCoops.MoveUser(targetCoop, UserId, EggIncId, eggIncName, discordUser, dbuser, channel, null);
 
             if(xref == null) {
-                return Json(new { Error = $"Unable to add permissions for {dbuser.DiscordUsername}, likely not in overflow server"});
+                return Json(new { error = $"Unable to add permissions for {dbuser.DiscordUsername}, likely not in overflow server" });
             }
 
             _db.Add(xref);
@@ -113,13 +145,33 @@ namespace EGG9000.Site.Controllers {
             var guildContract = await _db.GuildContracts.AsQueryable().FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.GuildID == guild.Id && x.Elite == (targetCoop.League == 0));
 
             if(guildContract != null) {
-                var guildContractChannel = _discord.GetGuild(guildId).TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
+                var guildContractChannel = (SocketTextChannel)_discord.GetChannel(guildContract.DiscordChannelId);
                 guildContractChannel?.SendMessageAsync($"Moved {dbuser.DiscordUsername} via website");
             }
 
             return Json(new {
-                UserName = dbuser.DiscordUsername, CoopName = targetCoop.Name
+                UserName = dbuser.DiscordUsername,
+                CoopName = targetCoop.Name
             });
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        public async Task<IActionResult> RemoveXref([FromBody]RemoveXrefModel model) {
+            var xref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
+            if(xref == null) {
+                return Json(new { error = $"Unable to find xref." });
+            }
+            _db.Remove(xref);
+            await _db.SaveChangesAsync();
+            var xref2 = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
+            Console.WriteLine($"xref2 {xref2}");
+            return Json(new { Success = true });
+        }
+
+        public class RemoveXrefModel {
+            public Guid UserId { get; set; }
+            public Guid CoopId { get; set; }
+            public string EggIncId { get; set; }
         }
 
         public class CoopsViewModel {

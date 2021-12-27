@@ -15,16 +15,16 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
     public class ContractsAPI {
-        static string BaseAddress = "http://www.auxbrain.com/";
-        static string BaseAddressNew = "http://afx-2-dot-auxbrainhome.appspot.com/";
+        static string BaseAddressNew = "https://www.auxbrain.com/";
+        static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public static string UserId = "EI5223299518300160";
-        public static uint ClientVersion = 34;
+        public static uint ClientVersion = 36;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.20.8",
+                Version = "1.21.2",
                 Build = "111163",
                 Platform = "ANDROID"
             };
