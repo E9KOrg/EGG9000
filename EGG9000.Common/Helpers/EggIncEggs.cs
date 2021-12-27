@@ -97,7 +97,7 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
                 case Ei.RewardType.PiggyLevelBump:
                     return $"<:Piggy_up:812846540426838016> Level + {goal.RewardAmount}";
                 case Ei.RewardType.ArtifactCase:
-                    return $"{goal.RewardAmount} artifacts";
+                    return $"{goal.RewardAmount} <:Afx_reward:877681508607987772>";
                 default:
                     return goal.RewardType.ToString();
             }

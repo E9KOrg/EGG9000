@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Automated {
         public ManageOverflow(IConfiguration Configuration,
             DiscordSocketClient client,
             Bugsnag.IClient bugsnag
-            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(5), client, bugsnag) {
+            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), client, bugsnag) {
             _configuration = Configuration;
         }
 
@@ -42,6 +42,7 @@ namespace EGG9000.Bot.Automated {
             var guilds = await _db.Guilds.AsQueryable().ToListAsync();
 
             foreach(var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {
+                Console.Write($"Manage Overflow for {guild.Name}");
                 var mainServer = _client.Guilds.First(x => x.Id == 656455567858073601);
                 var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
                 //var overflowServer = _client.Guilds.First(x => x.Id == 763854787912794183);
@@ -61,6 +62,7 @@ namespace EGG9000.Bot.Automated {
 
                 var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == activeRoleID));
 
+                Console.Write($"Manage Overflow Roles for {guild.Name}");
                 var role = mainServer.Roles.First(x => x.Id == overflowRoleID);
                 foreach(var u in onlyMainWithoutRole) {
                     await u.AddRoleAsync(role);
@@ -80,7 +82,9 @@ namespace EGG9000.Bot.Automated {
                     await Task.Delay(750);
                 }
 
+                
                 foreach(var overflowServer in overflowServers) {
+                    Console.Write($"Manage Nicknames for {guild.Name} in {overflowServer.Name}");
                     var onlyOverflow = overflowServer.Users.Where(x => !mainServer.Users.Any(y => y.Id == x.Id) && !x.IsBot);
                     foreach(var u in onlyOverflow) {
                         await u.KickAsync("No longer in main server");
@@ -92,7 +96,8 @@ namespace EGG9000.Bot.Automated {
                         var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
                         if(mainServerUser == null)
                             continue;
-                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)) {
+                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot)
+                        { // && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)
                             try {
                                 Console.WriteLine($"Changing nickname for {mainServerUser.Nickname}, it was {overflowUser.Nickname}. Server: {overflowServer.Name}");
                                 await overflowUser.ModifyAsync(x => x.Nickname = mainServerUser.Nickname);

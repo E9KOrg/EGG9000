@@ -37,6 +37,7 @@ namespace EGG9000.Common.Database.Entities
         public DBUser User { get; set; }
 
         public bool NoDemerit { get; set; }
+        public bool PingOnFull { get; set; }
         public Guid GetID() { return UserId; }
 
         public byte[] _sleepTrackingByte { get; set; }

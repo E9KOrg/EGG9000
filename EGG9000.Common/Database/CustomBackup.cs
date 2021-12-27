@@ -76,6 +76,8 @@ namespace EGG9000.Common.Database {
             CheckForCompleteContracts(backup.Contracts.Contracts);
             CheckForCompleteContracts(backup.Contracts.Archive);
 
+            //backup.Artifacts.
+
             SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(m => new SpaceMission {
                 Ship = m.Ship,
                 Duration = m.DurationType,

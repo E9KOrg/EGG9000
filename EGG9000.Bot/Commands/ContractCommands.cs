@@ -2,32 +2,23 @@
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
-
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-
-using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
 
-
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
@@ -96,7 +87,12 @@ namespace EGG9000.Bot.Commands {
 
             var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
             var dbusers = await db.DBUsers.AsQueryable().Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
-            var backups = await _apiLink.GetUserBackups(dbusers, db);
+            //var backups = await _apiLink.GetUserBackups(dbusers, db);
+            var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser
+            {
+                User = y,
+                Backup = x
+            })).ToList();
             var allUsers = await GetPrefarmers(backups, guildContract.Contract);
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildContract.GuildID);
             var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards);
@@ -162,45 +158,38 @@ namespace EGG9000.Bot.Commands {
         [Command(Command = "addcoop", ExampleParams = "{coopName}", Description = "Adds an outside co-op so you can track it's progress")]
         public static async Task AddCoop(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink) {
             var coopName = args[0];
-            var contractResponse = await ContractsAPI.GetPeriodicalsAsync();
-            if(contractResponse != null) {
-                var users = await db.DBUsers.AsQueryable().ToListAsync();
-                foreach(var contract in contractResponse.Contracts.Contracts) {
-                    var status = await ContractsAPI.GetCoopStatus(contract.Identifier, coopName);
-                    if(status != null && status.Success && !(await db.Coops.AsQueryable().AnyAsync(x => x.Name.ToLower() == coopName.ToLower()))) {
-                        var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == message.Channel.Id));
-                        var coopCategory = guild.GetCoopCategory();
 
-                        if(status.Participants.Count == 0) {
-                            await message.Channel.SendMessageAsync($"Coop {coopName} for {contract.Name} found but showing 0 participants, could be the co-op already finished.");
-                            return;
-                        }
+            var targetChannel = message.MentionedChannels.FirstOrDefault();
+            if(targetChannel == null) {
+                await message.Channel.SendMessageAsync($"ERROR: Unable to find contract details, please tag the channel of the contract you want to skip");
+                return;
+            }
+            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == targetChannel.Id);
+            if(guildContract == null) {
+                await message.Channel.SendMessageAsync($"ERROR: Unable to find contract details, have you tagged a contract channel?");
+                return;
+            }
 
-                        var userResponse = await apiLink.GetBackup(status.Participants.First().GetID());
-                        var farm = userResponse?.Farms?.FirstOrDefault(x => x.ContractId == contract.Identifier);
+            var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopName.ToLower());
+            if(status != null && status.Success) {
 
-                        var coop = new Coop {
-                            Name = coopName,
-                            ContractID = contract.Identifier,
-                            CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining),
-                            MaxUsers = (int)contract.MaxCoopSize,
-                            Created = DateTimeOffset.Now,
-                            CurrentUsers = status.Participants.Count,
-                            GuildId = guild.Id,
-                            League = farm?.League
-                        };
-
-                        db.Coops.Add(coop);
-                        await db.SaveChangesAsync();
-
-
-                        await db.SaveChangesAsync();
-
-                        await message.Channel.SendMessageAsync($"Found coop {coop.Name} for {contract.Name}");
-                    }
-
-                }
-
+                var coop = new Coop {
+                    ContractID = guildContract.ContractID,
+                    Created = DateTimeOffset.Now,
+                    GuildId = guildContract.GuildID,
+                    Name = coopName,
+                    MaxUsers = guildContract.Contract.MaxUsers,
+                    Status = CoopStatusEnum.WaitingOnAssigned,
+                    League = (UInt32)(guildContract.Elite ? 0 : 1),
+                    CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
+                };
+                db.Coops.Add(coop);
+                await db.SaveChangesAsync();
+                await message.Channel.SendMessageAsync($"Co-op Added: {coopName} for {((SocketTextChannel)targetChannel).Mention}");
+                return;
+            } else {
+                await message.Channel.SendMessageAsync($"ERROR: Unable to find co-op details, double check co-op name ({coopName}) and correct contract channel ({((SocketTextChannel)targetChannel).Mention}).");
+                return;
             }
         }
 
@@ -418,7 +407,13 @@ namespace EGG9000.Bot.Commands {
             //var dbusers = await db.Users.Where(x => x.GuildId == guild.Id).ToListAsync();
 
             //var backups = await ContractsAPI.GetUserBackups(_cache, dbusers);
-            var backups = await _apiLink.GetUserBackups(dbusers, db);
+            //var backups = await _apiLink.GetUserBackups(dbusers, db);
+            var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser
+            {
+                User = y,
+                Backup = x
+            })).ToList();
+
             var allUsers = await GetPrefarmers(backups, guildContract.Contract);
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildContract.GuildID);
             var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards);
@@ -455,7 +450,7 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
         }
 
-        private static async Task _startUser(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words) {
+        public static async Task StartUser(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words, bool fill) {
             var coopCount = 0;
 
             var workingMessage = await message.Channel.SendMessageAsync($"Working...");
@@ -472,8 +467,13 @@ namespace EGG9000.Bot.Commands {
             //var dbusers = await db.Users.Where(x => x.GuildId == guild.Id).ToListAsync();
 
             //var backups = await ContractsAPI.GetUserBackups(_cache, dbusers);
-            var backups = await _apiLink.GetUserBackups(dbusers, db);
+            //var backups = await _apiLink.GetUserBackups(dbusers, db);
 
+            var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser
+            {
+                User = y,
+                Backup = x
+            })).ToList();
 
 
             var allUsers = await GetPrefarmers(backups, guildContract.Contract);
@@ -489,17 +489,18 @@ namespace EGG9000.Bot.Commands {
             var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
 
-            if(args.Any(x => x.ToLower() == "fill")) {
+            if(fill) {
                 if(double.TryParse(args[0], out var percent)) {
                     var usersAbovePercent = prefarms.Where(p => (p.Projected / targetAmount) * 100 >= percent).ToList();
                     usersAbovePercent.ForEach(x => prefarms.Remove(x));
+                    prefarms = prefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
                     foreach(var user in usersAbovePercent) {
                         var participants = await _startUserCreateCoop(user, guildContract, prefarms, guild, db, _words, args.Any(x => x == "empty"));
                         participants.ForEach(x => prefarms.Remove(x));
                         coopCount++;
                     }
                 } else {
-                    await message.Channel.SendMessageAsync($"ERROR: Missing percent, ex. !start 100 fill");
+                    await message.Channel.SendMessageAsync($"ERROR: Missing percent, ex. !startfill 100");
                     return;
                 }
             } else {
@@ -547,7 +548,12 @@ namespace EGG9000.Bot.Commands {
             //var dbusers = await db.Users.Where(x => x.GuildId == guild.Id).ToListAsync();
 
             //var backups = await ContractsAPI.GetUserBackups(_cache, dbusers);
-            var backups = await _apiLink.GetUserBackups(dbusers, db);
+            //var backups = await _apiLink.GetUserBackups(dbusers, db);
+            var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser
+            {
+                User = y,
+                Backup = x
+            })).ToList();
 
 
 
@@ -590,32 +596,27 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        public static async Task Start(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words) {
-            if(message.MentionedUsers.Count > 0 || args.Any(x => x.ToLower() == "fill")) {
-                await _startUser(message, args, db, _client, _apiLink, _words);
+        public static async Task StartEmpty(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words) {
+            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == message.Channel.Id);
+            if(guildContract == null) {
+                await message.Channel.SendMessageAsync($"Unable to find contract, is this run in a contract channel?");
                 return;
             }
-            if(args.Length > 0) {
-                if(decimal.TryParse(args[0], out var percent)) {
-                    await _start(message, args, db, _client, percent, _apiLink, _words);
-                    return;
-                }
-                if(args[0] == "empty") {
-                    var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == message.Channel.Id);
-                    if(guildContract == null) {
-                        await message.Channel.SendMessageAsync($"Unable to find contract, is this run in a contract channel?");
-                        return;
-                    }
-                    var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
+            var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
 
-                    var coop = await CreateCoops.Start(new List<UserPreFarm>(), guildContract, guild, _words, db);
-                    await db.SaveChangesAsync();
-                    await message.Channel.SendMessageAsync($"Empty co-op created");
-                    return;
-                }
-                await message.Channel.SendMessageAsync($"Error: Wrong invalid argument ({args[0]})");
+            var coop = await CreateCoops.Start(new List<UserPreFarm>(), guildContract, guild, _words, db);
+            await db.SaveChangesAsync();
+            await message.Channel.SendMessageAsync($"Empty co-op created");
+            return;
+        }
+        public static async Task StartPercent(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words) {
+            if(decimal.TryParse(args[0], out var percent)) {
+                await _start(message, args, db, _client, percent, _apiLink, _words);
                 return;
             }
+        }
+
+        public static async Task StartAll(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words) {
             await _start(message, args, db, _client, 0, _apiLink, _words);
         }
 

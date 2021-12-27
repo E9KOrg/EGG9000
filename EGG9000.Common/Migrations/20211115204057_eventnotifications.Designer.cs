@@ -4,14 +4,16 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20211115204057_eventnotifications")]
+    partial class eventnotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -241,9 +243,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<Guid>("AdminUserId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("Permanent")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Reason")
                         .HasColumnType("nvarchar(max)");
@@ -604,9 +603,6 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.Property<bool>("NoDemerit")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("PingOnFull")
                         .HasColumnType("bit");
 
                     b.Property<string>("RefEggIncId")

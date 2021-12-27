@@ -167,17 +167,29 @@ namespace EGG9000.Common.Helpers {
             var coopsNeedingStarter = coops.ToList();
 
 
+            if(numPerCoop >= 4) {
+                var groupedAccounts = notInCoop.GroupBy(x => x.DatabaseId);
+                foreach(var groupedAccount in groupedAccounts.Where(x => x.Count() > 1)) {
+                    var accounts = groupedAccount.ToList();
+                    int allowedAccounts = (int)numPerCoop / 4 + 1;
+                    if(groupedAccount.Count() > allowedAccounts) {
+                        accounts = groupedAccount.OrderBy(x => x.Backup.EarningsBonus).Take(allowedAccounts).ToList();
+                    }
+                    if(accounts.Count() * 4 <= numPerCoop) {
+                        var smallestCoop = coops.Where(x => x.Count < numPerCoop - accounts.Count()).OrderBy(x => x.Sum(y => y.Projected)).First();
+                        foreach(var account in accounts) {
+                            smallestCoop.Add(account);
+                            notInCoop.Remove(account);
+                        }
 
-            if(numPerCoop > 4) {
-                var twoAccounts = notInCoop.GroupBy(x => x.DatabaseId).Where(x => x.Count() == 2);
-                twoAccounts.ToList().ForEach(x => {
-                    var smallestCoop = coops.Where(x => x.Count < numPerCoop - 1).OrderBy(x => x.Sum(y => y.Projected)).First();
-                    smallestCoop.Add(x.ElementAt(0));
-                    smallestCoop.Add(x.ElementAt(1));
-                    notInCoop.Remove(x.ElementAt(0));
-                    notInCoop.Remove(x.ElementAt(1));
-                });
+                    }
+                }
             }
+            // if(numPerCoop > 4) {
+            //    var twoAccounts = notInCoop.GroupBy(x => x.DatabaseId).Where(x => x.Count() == 2);
+            //    twoAccounts.ToList().ForEach(x => {
+            //    });
+            //}
 
             var league = guildContract.Elite ? 0 : 1;
             var targetAmount = guildContract.Contract.Details.GoalSets[league].Goals.Last().TargetAmount;

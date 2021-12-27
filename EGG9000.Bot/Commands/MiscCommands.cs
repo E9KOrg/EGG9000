@@ -64,6 +64,52 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+
+        public static async Task RenameCoop(SocketMessage message, string[] args, ApplicationDbContext db)
+        {
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == message.Channel.Id);
+            if(targetCoop == null)
+            {
+                await message.Channel.SendMessageAsync($"ERROR: Command only works in co-op channels");
+                return;
+            }
+
+            if(args.Length == 0 || args[0].Length < 2)
+            {
+                await message.Channel.SendMessageAsync($"ERROR: Missing new co-op name");
+                return;
+
+            }
+            var newName = args[0];
+
+            targetCoop.Name = newName;
+            await db.SaveChangesAsync();
+            await message.Channel.SendMessageAsync($"Co-op renamed to {newName}");
+        }
+        public static async Task PingOnFull(SocketMessage message, string[] args, ApplicationDbContext db)
+        {
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == message.Channel.Id);
+            if(targetCoop == null)
+            {
+                await message.Channel.SendMessageAsync($"ERROR: Command only works in co-op channels");
+                return;
+            }
+            var discordUserId = message.MentionedUsers.FirstOrDefault()?.Id ?? message.Author.Id;
+            var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUserId);
+
+            var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.User.DiscordId == message.Author.Id && x.Coop.DiscordChannelId == message.Channel.Id);
+
+            xref.PingOnFull = !xref.PingOnFull;
+            await db.SaveChangesAsync();
+            if(xref.PingOnFull)
+            {
+                await message.Channel.SendMessageAsync($"Will receive DM ping when everyone has joined");
+            } else
+            {
+                await message.Channel.SendMessageAsync($"Will no longer receive ping");
+            }
+        }
+
         //public static async Task StaffCoops(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient discord) {
         //    try {
         //        var guild = discord.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == message.Channel.Id));

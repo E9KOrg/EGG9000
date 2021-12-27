@@ -27,7 +27,7 @@ using System.Diagnostics;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase {
-        public static TimeSpan UpdateTime = TimeSpan.FromMinutes(30);
+        public static TimeSpan UpdateTime = TimeSpan.FromMinutes(15);
         private IConfiguration _configuration;
         private APILink _apiLink;
 
@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             DiscordSocketClient client,
             APILink apilink,
             Bugsnag.IClient bugsnag
-        ) : base(UpdateTime, TimeSpan.FromMinutes(5), client, bugsnag) {
+        ) : base(UpdateTime, TimeSpan.FromMinutes(1), client, bugsnag) {
             _configuration = Configuration;
             _apiLink = apilink;
         }
@@ -75,6 +75,8 @@ namespace EGG9000.Bot.Automated {
                 Console.WriteLine("Getting User Backups for Leaderboard");
                 //var lUsers = await ContractsAPI.GetUserBackups(_cache, dbusers);
                 var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
+                //var lUsers = dbusers.SelectMany(u => u.EggIncIds.Select(e => new LeaderboardUser { User = u, Backup = u.Backups.FirstOrDefault(y => y.EggIncId == e.Id) })).Where(x => x.Backup != null);
+
 
 
                 foreach(var lUser in lUsers) {
@@ -173,7 +175,7 @@ namespace EGG9000.Bot.Automated {
 
                         if(dbUser.showEB) {
                             try {
-                                var eb = higherEB.Backup.EarningsBonus.ToEggString();
+                                var eb = higherEB.Backup.EarningsBonus.ToEggString(true);
                                 var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
                                 var ebString = $" ({eb})";
                                 var newName = discordUser.GetCleanName().Truncate(32 - ebString.Length) + ebString;
@@ -260,7 +262,7 @@ $"With great EB comes great responsibility. Congrats on hitting an EB of {eb}%, 
                                     messages.AddRange(new List<string> {
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%, {discordUser.Mention}! You really like eggs, eh? Eggciting hobby, isnt it?",
 $"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}! Wow. It seems like just yesterday you were running your first chickens. Celebrate!",
-$"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelettes. Anyone have eggs? Congrats on the impressive EB of { eb}% !",
+$"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelettes. Anyone have eggs? Congrats on the impressive EB of { eb}%!",
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
 $"Choo Choo!All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { eb}%, jump on now!",
 $"Congrats { discordUser.Mention}, you are a { role.Name} now with the EB of { eb}% !How eggciting!",

@@ -75,7 +75,7 @@ namespace EGG9000.Bot.Commands {
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
 
-                var merit = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).FirstOrDefaultAsync();
+                var merit = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderByDescending(x => x.When).FirstOrDefaultAsync();
                 if(merit == null) {
                     await message.Channel.SendMessageAsync($"There are no recent merits for {socketUser.Mention}");
                     return;

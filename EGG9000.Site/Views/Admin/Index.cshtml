@@ -12,6 +12,9 @@
 @if(User.IsInRole("Admin")) {
     <a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
 }
+<form class="form-inline" style="display: inline-block;" action="/admin/searchid">
+    <input class="form-control" style="width: 150px" placeholder="ID Search" name="id" />
+</form>
 
 <div class="clearfix">
     <div class="float-left card">

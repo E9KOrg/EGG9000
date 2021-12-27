@@ -50,7 +50,7 @@ namespace EGG9000.Bot {
                 if(number >= Math.Pow(10.0, num.Key)) {
                     var numberPortion = number / Math.Pow(10.0, num.Key);
                     if(showdecimalplaces) {
-                        var o = numberPortion.ToString("F3");
+                        var o = numberPortion.ToString("G3");
                         return o + num.Value;
                     } else {
                         if(numberPortion > 10 && numberPortion < 1000) {

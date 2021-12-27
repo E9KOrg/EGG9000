@@ -11,6 +11,7 @@ namespace EGG9000.Common.Database.Entities {
         public Guid AdminUserId { get; set; }
         public DBUser AdminUser { get; set; }
         public string Reason { get; set; }
+        public bool Permanent { get; set; }
     }
 
 }
