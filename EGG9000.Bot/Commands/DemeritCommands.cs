@@ -26,81 +26,70 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
-        public static async Task AddDemerit(SocketMessage message, string[] args, ApplicationDbContext db) {
+        [SlashCommand(Description = "Add demerit to user", AdminOnly = true)]
+        public static async Task AddDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db) {
             try {
-                var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == message.Author.Id);
-                SocketUser socketUser = message.MentionedUsers.FirstOrDefault();
-                if(socketUser == null) {
-                    await message.Channel.SendMessageAsync($"ERROR: Bot error - Missing User Mention");
-                }
-                var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
-
-                Console.WriteLine(JsonConvert.SerializeObject(args, Formatting.Indented));
+                var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+                var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
                 var demerit = new Demerit {
                     When = DateTimeOffset.Now,
                     AdminUserId = admin.Id,
-                    UserId = user.Id,
+                    UserId = dbuser.Id,
                     Id = Guid.NewGuid(),
-                    Reason = String.Join(" ", args.Where(x => !x.StartsWith("<@")))
+                    Reason = reason
                 };
                 db.Demerit.Add(demerit);
                 await db.SaveChangesAsync();
 
-                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
 
-                await message.Channel.SendMessageAsync($"Demerit added to {socketUser.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits");
+                await command.RespondAsync($"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits");
             } catch(Exception e) {
-                await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
-        public static async Task RemoveDemerit(SocketMessage message, string[] args, ApplicationDbContext db) {
+        [SlashCommand(Description = "Remove latest demerit from user", AdminOnly = true)]
+        public static async Task RemoveDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             try {
-                var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == message.Author.Id);
-                SocketUser socketUser = message.MentionedUsers.FirstOrDefault();
-                if(socketUser == null) {
-                    await message.Channel.SendMessageAsync($"ERROR: Bot error - Missing User Mention");
-                }
-                var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
+                var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+                var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
 
-                var demerit = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
+                var demerit = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
                 if(demerit == null) {
-                    await message.Channel.SendMessageAsync($"There are no recent demerits for {socketUser.Mention}");
+                    await command.RespondAsync($"There are no recent demerits for {user.Mention}");
                     return;
                 }
                 db.Remove(demerit);
                 await db.SaveChangesAsync();
 
-                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
 
-                await message.Channel.SendMessageAsync($"Demerit removed for {socketUser.Mention}, they currently have {count} demerits");
+                await command.RespondAsync($"Demerit removed for {user.Mention}, they currently have {count} demerits");
             } catch(Exception e) {
-                await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
-        public static async Task Demerits(SocketMessage message, string[] args, ApplicationDbContext db) {
+        [SlashCommand(Description = "List your demerits")]
+        public static async Task Demerits(SocketSlashCommand command, ApplicationDbContext db) {
             try {
-                SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
+                SocketUser socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
 
                 var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
                 if(demerits.Count == 0) {
                     string msg;
-                    if(socketUser == message.Author) {
-                        var msgs = new List<string> {
+                    var msgs = new List<string> {
                             "How does a demerit sound for asking me that which you should already know",
                             "I really should give you a demerit so you can know what it feels like",
                             "No demerits, maybe I'll give you one just for fun"
                         };
-                        msg = msgs.Skip(new Random().Next(0, msgs.Count)).Take(1).First();
-                    } else {
-                        msg = $"There are no recent demerits for {socketUser.Mention}";
-                    }
-                    await message.Channel.SendMessageAsync(msg);
+                    msg = msgs.Skip(new Random().Next(0, msgs.Count)).Take(1).First();
+                    await command.RespondAsync(msg);
                     return;
                 }
 
@@ -110,31 +99,51 @@ namespace EGG9000.Bot.Commands {
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
                 }));
 
-                await message.Channel.SendMessageAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}");
+                await command.RespondAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}");
             } catch(Exception e) {
-                await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+            }
+        }
+        [SlashCommand(Description = "List demerits for user", AdminOnly = true)]
+        public static async Task DemeritsForUser(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+            try {
+                var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+
+
+                var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
+                if(demerits.Count == 0) {
+                    string msg;
+                    msg = $"There are no recent demerits for {user.Mention}";
+                    await command.RespondAsync(msg);
+                    return;
+                }
+
+                var demeritDesc = String.Join("\n", demerits.Select(x => {
+                    var monthAgo = DateTimeOffset.Now.AddMonths(-1);
+                    var timeLeft = monthAgo - x.When;
+                    return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
+                }));
+
+                await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}");
+            } catch(Exception e) {
+                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
-        public static async Task NoDemerit(SocketMessage message, string[] args, ApplicationDbContext db) {
-            var user = message.MentionedUsers.FirstOrDefault();
+        [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = true)]
+        public static async Task NoDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             UserCoopXref xref;
-            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == message.Channel.Id);
-            if(user == null) {
-                xref = await db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(xref => xref.User.DiscordUsername.Contains(args[0]) && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
-            } else {
-                xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
-
-            }
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
+            xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
 
             if(xref == null) {
-                await message.Channel.SendMessageAsync($"ERROR: Unabled to find user");
+                await command.RespondAsync($"ERROR: Unabled to find user");
                 return;
             }
 
             xref.NoDemerit = true;
             await db.SaveChangesAsync();
-            await message.Channel.SendMessageAsync($"{user?.Mention ?? xref.User.DiscordUsername} will not receive automated demerits in this co-op.");
+            await command.RespondAsync($"{user?.Mention ?? xref.User.DiscordUsername} will not receive automated demerits in this co-op.");
         }
     }
 }

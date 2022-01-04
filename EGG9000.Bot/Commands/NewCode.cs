@@ -12,11 +12,12 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
     public class NewCode {
-        public static async Task ExecuteAsync(SocketMessage message, ApplicationDbContext db, DiscordSocketClient client) {
+        [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly =true, AllowFarmHand = true)]
+        public static async Task NewCoopCode(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var words = new Words();
             var code = words.GetRandomWord() + words.GetRandomWord() + words.GetRandomNumber();
 
-            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == message.Channel.Id));
+            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var coopCategory = guild.GetCoopCategory();
             //var channel = await guild.CreateTextChannelAsync(code, x => x.CategoryId = coopCategory.Id);
 
@@ -24,16 +25,18 @@ namespace EGG9000.Bot.Commands {
             db.Coops.Add(coop);
             await db.SaveChangesAsync();
 
-            await message.Channel.SendMessageAsync(code);
+            await command.RespondAsync(code);
         }
-        public static async Task DeleteCoop(SocketMessage message, ApplicationDbContext db, DiscordSocketClient client) {
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == message.Channel.Id);
+
+        [SlashCommand(Description = "Delete co-op channel from discord and database ", AdminOnly = true)]
+        public static async Task DeleteCoop(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client) {
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await message.Channel.SendMessageAsync($"Error: Unable to find co-op, is this posted in a co-op channel?");
+                await command.RespondAsync($"Error: Unable to find co-op, is this posted in a co-op channel?");
             } else {
                 db.Remove(coop);
                 await db.SaveChangesAsync();
-                await ((SocketTextChannel)message.Channel).DeleteAsync();
+                await ((SocketTextChannel)command.Channel).DeleteAsync();
             }
         }
     }

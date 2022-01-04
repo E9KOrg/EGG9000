@@ -96,7 +96,7 @@ namespace EGG9000.Common.Helpers {
             } catch(Exception) {
                 try {
                     await ((SocketTextChannel)commandChannel).SendMessageAsync($"Moved but unable to add permssions for {mention} to {targetChannel.Mention} for the contract {eggEmoji} {targetCoop.Contract.Name}. {(commandChannel.Guild.Id != targetChannel.Guild.Id ? "Might not be in overflow server." : "")}");
-                } catch(Exception e) {
+                } catch(Exception) {
                     await ((SocketTextChannel)targetChannel).SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
                     return newxref;
                 }
