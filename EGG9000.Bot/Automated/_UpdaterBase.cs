@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Discord;
 using Discord.WebSocket;
 
 using Microsoft.Extensions.Hosting;
@@ -17,7 +18,7 @@ namespace EGG9000.Bot.Automated {
 
         public TimeSpan UpdateInterval;
         private TimeSpan _delayedStart;
-        private DateTime _lastMessageSent;
+        private DateTime? _lastMessageSent;
         public DateTime LastStarted;
         public DateTime LastCompleted;
 
@@ -29,7 +30,7 @@ namespace EGG9000.Bot.Automated {
             Console.WriteLine($"Initiating {this.GetType().Name}");
             UpdateInterval = updateInterval;
             _delayedStart = delayedStart;
-            _client = client;
+            _client = (DiscordSocketClient)client;
             Instance = this;
             _bugsnag = bugsnag;
         }
@@ -52,7 +53,7 @@ namespace EGG9000.Bot.Automated {
                     LastCompleted = DateTime.Now;
                     if(Restarted) {
                         Restarted = false;
-                        var dmChannel = await _client.GetUser(248865520756064257).GetOrCreateDMChannelAsync();
+                        var dmChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
                         await dmChannel.SendMessageAsync($"{this.GetType().Name} successfully restarted.");
 
                     }
@@ -80,16 +81,21 @@ namespace EGG9000.Bot.Automated {
         public async Task StopAsync(CancellationToken cancellationToken) {
             await _timer.DisposeAsync();
             await _watchDogTimer.DisposeAsync();
+            if(_semaphoreSlim.CurrentCount > 0) {
+                Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
+            }
+            await _semaphoreSlim.WaitAsync(cancellationToken);
         }
 
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
-                if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).TotalHours > 1) {
-                    var dmChannel = await _client.GetUser(248865520756064257).GetOrCreateDMChannelAsync();
+                if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
+                    var dmChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
                     await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.");
                     _semaphoreSlim.Release();
                     Restarted = true;
                     _timer.Change(TimeSpan.Zero, UpdateInterval);
+                    _lastMessageSent = DateTime.Now;    
                 }
             }
         }

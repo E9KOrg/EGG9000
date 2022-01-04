@@ -34,7 +34,7 @@ namespace EGG9000.Bot.Automated {
                 if(discordUser == null) {
                     continue;
                 }
-                var dmChannel = await discordUser.GetOrCreateDMChannelAsync();
+                var dmChannel = await discordUser.CreateDMChannelAsync();
 
                 
                 foreach(var shipDm in user.ShipDMs.Where(x => x.DMTime <= DateTimeOffset.Now && !x.Sent)) {

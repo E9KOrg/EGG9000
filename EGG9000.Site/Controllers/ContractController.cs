@@ -71,7 +71,7 @@ namespace EGG9000.Site.Controllers {
                 })).ToList();
                 Console.WriteLine($"Backups: {stopwatch.ElapsedMilliseconds}ms");
                 stopwatch.Restart();
-                var prefarms = await GetPrefarmers(backups, guildContract.Contract);
+                var prefarms = GetPrefarmers(backups, guildContract.Contract);
                 Console.WriteLine($"Prefarmers: {stopwatch.ElapsedMilliseconds}ms");
                 stopwatch.Restart();
                 ViewBag.Discord = _discord;

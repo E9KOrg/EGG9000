@@ -65,7 +65,6 @@ namespace EGG9000.Bot.Automated {
                         continue;
                     await guild.DownloadUsersAsync();
                     Console.WriteLine($"Coops for guild: {guild.Name}");
-                    var discordUsers = guild.Users.ToList();
 
                     var tasks = new List<Task>();
 
@@ -75,7 +74,7 @@ namespace EGG9000.Bot.Automated {
                         await throttler.WaitAsync();
                         tasks.Add(Task.Run(async () => {
                             try {
-                                await SendUpdate(coop.Id, guild, users, discordUsers, dbguild);
+                                await SendUpdate(coop.Id, guild, users, dbguild);
                             } finally {
                                 throttler.Release();
                             }
@@ -178,10 +177,6 @@ namespace EGG9000.Bot.Automated {
 
             return msgs;
         }
-
-
-
-
 
         private async Task UpdateChannel(List<string> msgs, Embed embed, ITextChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
             var sw = new Stopwatch();
@@ -351,7 +346,7 @@ namespace EGG9000.Bot.Automated {
             };
         }
 
-        private async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, List<SocketGuildUser> discordUsers, Guild dbguild) {
+        public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild) {
             using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
                 var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstAsync(x => x.Id == coopid);
 
@@ -480,34 +475,40 @@ namespace EGG9000.Bot.Automated {
                                         var channeluser = coopDiscordUsers.FirstOrDefault(x => x.Id == dbuser.DiscordId); // await coopChannel.GetUserAsync(dbuser.DiscordId);
                                         if(channeluser == null) {
                                             try {
-                                                var discorduser = discordUsers.FirstOrDefault(x => x.Id == dbuser.DiscordId);
+                                                var discorduser = guild.Users.FirstOrDefault(x => x.Id == dbuser.DiscordId);
                                                 if(discorduser != null) {
                                                     await ((ITextChannel)coopChannel).AddPermissionOverwriteAsync(discorduser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                                    channeluser = discorduser;
                                                 }
                                             } catch {
                                                 Console.WriteLine($"Error Adding Permission for {dbuser.DiscordUsername}");
                                             }
                                         }
-                                        xref = new UserCoopXref {
-                                            WaitingOnStarter = false,
-                                            UserId = dbuser.Id,
-                                            EggIncId = userCoopStatus.GetID(),
-                                            AddedToChannel = true,
-                                            CoopId = coop.Id,
-                                            CreatedOn = DateTimeOffset.UtcNow,
-                                            JoinedCoop = true,
-                                            LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow,
-                                            Starter = false,
-                                            Status = JsonConvert.SerializeObject(userCoopStatus),
-                                            WasAssigned = false
-                                        };
-                                        _db.UserCoopXrefs.Add(xref);
-                                        userCoopStatus.DiscordName = channeluser.GetCleanName();
-                                        var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserId == userCoopStatus.UserId);
-                                        if(userStatus != null) {
-                                            userStatus.Xref = xref;
-                                            userStatus.User = dbuser;
-                                            userStatus.DiscordUser = (SocketGuildUser)channeluser;
+                                        if(channeluser != null)
+                                        {
+                                            xref = new UserCoopXref
+                                            {
+                                                WaitingOnStarter = false,
+                                                UserId = dbuser.Id,
+                                                EggIncId = userCoopStatus.GetID(),
+                                                AddedToChannel = true,
+                                                CoopId = coop.Id,
+                                                CreatedOn = DateTimeOffset.UtcNow,
+                                                JoinedCoop = true,
+                                                LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow,
+                                                Starter = false,
+                                                Status = JsonConvert.SerializeObject(userCoopStatus),
+                                                WasAssigned = false
+                                            };
+                                            _db.UserCoopXrefs.Add(xref);
+                                            userCoopStatus.DiscordName = channeluser.GetCleanName();
+                                            var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserId == userCoopStatus.UserId);
+                                            if(userStatus != null)
+                                            {
+                                                userStatus.Xref = xref;
+                                                userStatus.User = dbuser;
+                                                userStatus.DiscordUser = (SocketGuildUser)channeluser;
+                                            }
                                         }
                                         //await coopChannel.SendMessageAsync($"Looks like {userCoopStatus.UserName} might have joined without being assigned. (This could be an error)");
                                     }
@@ -729,7 +730,7 @@ namespace EGG9000.Bot.Automated {
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
                                             //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
-                                            var dmChannel = await discordUser.GetOrCreateDMChannelAsync();
+                                            var dmChannel = await discordUser.CreateDMChannelAsync();
                                             await dmChannel.SendMessageAsync($"{discordUser.Mention} reminder to join {coopChannel.Mention} - 24h since added to co-op");
                                         } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                             xref.JoinWarning12h = true;
@@ -1048,7 +1049,7 @@ namespace EGG9000.Bot.Automated {
 
                 if(user.DiscordUser != null) {
                     var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours]" : $" [Silos have been empty for {timeEmpty} hours]"));
-                    var dmChannel = await user.DiscordUser.GetOrCreateDMChannelAsync();
+                    var dmChannel = await user.DiscordUser.CreateDMChannelAsync();
                     try {
                         await dmChannel.SendMessageAsync(warningText);
                     } catch(Exception) {
@@ -1157,10 +1158,10 @@ namespace EGG9000.Bot.Automated {
 
         public async Task HandlePingOnFull(List<UserWithStatus> usersWithStatus, ITextChannel coopChannel)
         {
-            foreach(var userStatus in usersWithStatus.Where(x => x.Xref.PingOnFull))
+            foreach(var userStatus in usersWithStatus.Where(x => x.Xref?.PingOnFull ?? false))
             {
                 userStatus.Xref.PingOnFull = false;
-                var dmChannel = await userStatus.DiscordUser.GetOrCreateDMChannelAsync();
+                var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
                 try
                 {
                     await dmChannel.SendMessageAsync($"All users have joined the co-op {coopChannel.Mention}");

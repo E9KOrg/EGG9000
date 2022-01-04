@@ -9,6 +9,7 @@ using EGG9000.Bot.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
+
 using Newtonsoft.Json;
 
 using System;
@@ -27,7 +28,6 @@ namespace EGG9000.Bot.Automated {
             Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag) {
             _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
             _config = Configuration;
-            _client = client;
         }
 
         public override async Task Run(object state) {

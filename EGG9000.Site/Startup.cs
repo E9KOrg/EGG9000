@@ -25,6 +25,7 @@ using Microsoft.AspNetCore.Http;
 using EGG9000.Bot.Services;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
+using Discord;
 
 namespace EGG9000.Site {
     public class Startup {
@@ -106,7 +107,10 @@ namespace EGG9000.Site {
                 options.AddPolicy("SiteCorsPolicy", corsBuilder.Build());
             });
             //Console.WriteLine(Configuration["Discord:Token"]);
-            var client = new DiscordSocketClient();
+            var config = new DiscordSocketConfig() {
+                GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers
+            };
+            var client = new DiscordSocketClient(config);
             client.LoginAsync(Discord.TokenType.Bot, Configuration["ConnectionStrings:Token"]).Wait();
             client.StartAsync().Wait();
             services.AddSingleton(client);

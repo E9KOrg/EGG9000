@@ -1,8 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
-using EGG9000.Common.Database;
-
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 
@@ -20,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Bot.Services {
     public class BackupRequest {
@@ -33,17 +32,20 @@ namespace EGG9000.Bot.Services {
         public CustomBackup Backup { get; set; }
     }
 
-    public class APILink {
+    public class APILink : IHostedService {
         //private static string urlBase = "http://localhost:5014/Home/";
         //private static string urlBase = "https://localhost:44316/Home/";
         private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
 
         private IMemoryCache _cache;
         private HttpClient _httpClient;
+        private ApplicationDbContext _db;
 
-        public APILink(IMemoryCache memoryCache) {
-            _cache = memoryCache;
+        public APILink(ApplicationDbContext db) {
+            _cache = new MemoryCache(new MemoryCacheOptions { });
+            //_cache = memoryCache;
             _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
+            _db = db;
         }
 
         private string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
@@ -143,7 +145,7 @@ namespace EGG9000.Bot.Services {
                                     _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
                                 } 
                             }
-                        } catch(Exception e) {
+                        } catch(Exception) {
                             Console.WriteLine("Error getting backup from APILink");
                         } finally {
                             throttler.Release();
@@ -277,5 +279,18 @@ namespace EGG9000.Bot.Services {
             }
         }
 
+        public async Task StartAsync(CancellationToken cancellationToken) {
+            Console.WriteLine("Getting User Backups for Cache");
+            var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
+            var backups = usersTask.SelectMany(x => x.Backups ?? new List<CustomBackup>());
+            if(backups != null) {
+                AddExistingBackups(backups);
+            }
+            Console.WriteLine("Finished Getting User Backups for Cache");
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) {
+            return Task.CompletedTask;
+        }
     }
 }

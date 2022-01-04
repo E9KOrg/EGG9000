@@ -193,7 +193,8 @@ namespace EGG9000.Site.Controllers {
                     CoopChannel = x.Coop.DiscordChannelId,
                     UserName = x.User.DiscordUsername,
                     CoopId = x.CoopId,
-                    UserId = x.UserId
+                    UserId = x.UserId,
+                    CoopFinished = x.Coop.Finished
                 }).ToListAsync();
 
                 var ghosts = xrefs.Where(x => !overflowGuild.Users.Any(y => y.Id == x.DiscordId)).ToList();
@@ -237,6 +238,7 @@ namespace EGG9000.Site.Controllers {
             public bool MissingFromMain { get; set; }
             public Guid CoopId { get; set; }
             public Guid UserId { get; set; }
+            public bool CoopFinished { get; set; }
         }
 
         public async Task<IActionResult> Leechers([FromQuery] string contractid) {

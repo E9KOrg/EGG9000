@@ -63,7 +63,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        public static async Task UserLeft(SocketGuildUser user, ApplicationDbContext db) {
+        public static async Task UserLeft(SocketGuild guild, SocketUser user, ApplicationDbContext db) {
             if(user.IsBot)
                 return;
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -73,10 +73,9 @@ namespace EGG9000.Bot.Commands {
                 dbuser.GuildId = 0;
                 await db.SaveChangesAsync();
             }
-            await CleanWelcomeChannel(user.Guild, user);
+            await CleanWelcomeChannel(guild, user);
         }
 
-        [Command(Command = "moveserver")]
         public static async Task MoveServer(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
 
@@ -120,7 +119,6 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [Command(Command = "removeeggname")]
         public static async Task RemoveEggName(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
 
@@ -155,7 +153,6 @@ namespace EGG9000.Bot.Commands {
             await message.Channel.SendMessageAsync(await AccountsString(user, apiLink));
         }
 
-        [Command(Command = "kick")]
         public static async Task LeaveCoop(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client) {
             SocketUser socketUser = message.MentionedUsers.First();
 
@@ -183,7 +180,6 @@ namespace EGG9000.Bot.Commands {
         //    return;
         //}
 
-        [Command(Command = "accept")]
         public static async Task Accept(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
@@ -282,7 +278,6 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        [Command(Command = "register")]
         public static async Task Register(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
 
@@ -461,7 +456,6 @@ namespace EGG9000.Bot.Commands {
             await message.Channel.SendMessageAsync(await AccountsString(user, apiLink));
         }
 
-        [Command(Command = "userstatus", AdminOnly = true)]
         public static async Task userstatus(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
 
@@ -551,7 +545,6 @@ namespace EGG9000.Bot.Commands {
             await message.Channel.SendMessageAsync(String.Join("\n\n", userFilter.Select(user => user.DiscordUsername + "\n" + String.Join("\n", user.EggIncIds.Select(x => $"Name: {x.Name} Id: {x.Id}")))));
         }
 
-        [Command(Command = "takeabreak", Description = "Bot will not you ping you about not pre-farming, this status will stay until the next time you start pre-farming")]
         public static async Task TakeABreak(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
@@ -565,7 +558,6 @@ namespace EGG9000.Bot.Commands {
             await message.Channel.SendMessageAsync($"{socketUser.Mention} is set to take a break. This status will automatically be removed the next time you start pre-farming. If you are currently pre-farming you will still be assigned to a co-op unless you exit the contract.");
         }
 
-        [Command(Command = "disable", Description = "You will not be assigned co-ops until you run !enable")]
         public static async Task Disable(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
@@ -579,7 +571,6 @@ namespace EGG9000.Bot.Commands {
             await message.Channel.SendMessageAsync($"{socketUser.Mention} is disabled.");
         }
 
-        [Command(Command = "enable", Description = "Undo the !disable command so you can participate again")]
         public static async Task Enable(SocketMessage message, string[] args, ApplicationDbContext db, DiscordSocketClient _client) {
             SocketUser socketUser = message.MentionedUsers.Any() ? message.MentionedUsers.First() : message.Author;
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
@@ -624,7 +615,6 @@ namespace EGG9000.Bot.Commands {
 
 
 
-        [Command(Command = "clean", Description = "Removes any unpinned messages from the channel", AdminOnly = true)]
         public static async Task Clean(SocketMessage message, DiscordSocketClient _client) {
             var channel = (SocketTextChannel)message.Channel;
             if(channel.Name.ToLower().Contains("welcome")) {
@@ -649,7 +639,6 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [Command(Command = "say", AdminOnly = true)]
         public static async Task Say(SocketMessage message, string[] args) {
             var channel = (SocketTextChannel)message.MentionedChannels.First();
             await channel.SendMessageAsync(String.Join(" ", args.Skip(1)));

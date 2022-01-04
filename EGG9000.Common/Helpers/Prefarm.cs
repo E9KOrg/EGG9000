@@ -60,7 +60,7 @@ namespace EGG9000.Common.Helpers {
             public bool PotentialBoxCarry { get; set; }
         }
 
-        public static async Task<List<UserPreFarm>> GetPrefarmers(List<LeaderboardUser> backups, Contract contract) {
+        public static List<UserPreFarm> GetPrefarmers(List<LeaderboardUser> backups, Contract contract) {
             //List<LeaderboardUpdater.LeaderboardUser> backups;
             //if (ExcludePeopleInCoops) {
             //    var excludePeopleinCoops = await _db.UserCoopXrefs.Where(x => x.Coop.Contract.ID == contract.ID && x.JoinedCoop).Select(x => x.UserId).ToListAsync();

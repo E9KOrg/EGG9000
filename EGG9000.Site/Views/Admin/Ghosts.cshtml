@@ -20,7 +20,9 @@
         @foreach(var ghost in Model.Where(x => !x.Mentioned)) {
             <tr class="@(ghost.MissingFromMain ? "Missing" : "NotMentioned")">
                 <td>@ghost.UserName</td>
-                <td>@ghost.Coop</td>
+                <td>@ghost.Coop
+                @(ghost.CoopFinished ? "🏁" : "")
+                </td>
                 <td>@ghost.ServerName</td>
                 <td>
                     @if(ghost.MissingFromMain) {
@@ -32,7 +34,10 @@
         @foreach(var ghost in Model.Where(x => x.Mentioned).OrderBy(x => x.LastMention)) {
             <tr class="@(ghost.MissingFromMain ? "Missing" : "")">
                 <td>@ghost.UserName</td>
-                <td>@ghost.Coop</td>
+                <td>@ghost.Coop 
+                                    @(ghost.CoopFinished ? "🏁" : "")
+
+                </td>
                 <td>@ghost.ServerName</td>
                 <td>@Math.Round(((DateTimeOffset.Now - ghost.LastMention)?.TotalDays ?? 0), 1) days</td>
             </tr>

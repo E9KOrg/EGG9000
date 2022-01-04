@@ -22,6 +22,10 @@ namespace EGG9000.Bot.Helpers {
         }
 
         public static String GetCleanName(this IGuildUser user) {
+            //if(user == null)
+            //{
+            //    return "";
+            //}
             var name = string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
             var ebrgx = new Regex(@"\(.+?\)");
             name = ebrgx.Replace(name, "").Trim();
