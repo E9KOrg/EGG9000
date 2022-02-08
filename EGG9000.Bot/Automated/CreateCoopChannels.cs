@@ -22,11 +22,9 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase {
         private IConfiguration _config;
-        private ApplicationDbContext _db;
 
         public CreateCoopChannels(IConfiguration Configuration, DiscordSocketClient client,
             Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag) {
-            _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
             _config = Configuration;
         }
 

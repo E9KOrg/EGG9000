@@ -348,8 +348,10 @@ namespace EGG9000.Bot.Automated {
 
         public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild) {
             using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
-                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstAsync(x => x.Id == coopid);
-
+                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid);
+                if(coop == null) {
+                    return;
+                }
                 try {
                     //Console.WriteLine($"Calling update for {coop.Name}");
                     var times = new List<long>();

@@ -21,7 +21,8 @@ namespace EGG9000.Common.Database.Entities {
         public string Skip { get; set; }
         public ContractStatus Status { get; set; }
         public bool Elite { get; set; }
-        public int League { get; set; }
+        public bool HasScores { get; set; }
+        //public int League { get; set; }
 
         //[NotMapped]
         //public List<Guid> StartersList { 

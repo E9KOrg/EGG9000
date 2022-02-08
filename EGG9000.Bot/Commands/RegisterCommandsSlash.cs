@@ -30,6 +30,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
+using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -82,16 +83,23 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+        [SlashCommand(Description = "Removed registered EggInc ID from your account", AdminOnly = true, ParentCommand = "a")]
+        public static Task RemoveID(SocketSlashCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketGuildUser targetUser) {
+            return _RemoveID(command, db, apiLink, eggincid, targetUser.Id);
+        }
         [SlashCommand(Description = "Removed registered EggInc ID from your account")]
-        public static async Task RemoveID(SocketSlashCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid) {
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        public static Task RemoveID(SocketSlashCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid) {
+            return _RemoveID(command, db, apiLink, eggincid, command.User.Id);
+        }
+        public static async Task _RemoveID(SocketSlashCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, ulong userid) {
+            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == userid);
             if(user == null) {
                 await command.RespondAsync($"ERROR: Cannot find user");
                 return;
             } else if(user.EggIncIds.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
             } else {
-                await command.RespondAsync($"ERROR: Unable to find the following EggIncId {eggincid} \n {await AccountsString(user, apiLink)}");
+                await command.RespondAsync($"ERROR: Unable to find the following EggIncId {eggincid} \n {await AccountsString(db, user, apiLink, false)}");
                 return;
             }
 
@@ -99,17 +107,17 @@ namespace EGG9000.Bot.Commands {
 
             var json = JsonConvert.SerializeObject(user.EggIncIds, Formatting.Indented);
 
-            await command.RespondAsync($"ID removed\n{await AccountsString(user, apiLink)}");
+            await command.RespondAsync($"ID removed\n{await AccountsString(db, user, apiLink, false)}");
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = true)]
-        public static async Task LeaveCoop(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
+        public static async Task LeaveCoop(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser targetUser) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.RespondAsync($"ERROR: Command can only be used in a co-op channel");
                 return;
             }
-            var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
+            var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == targetUser.Id);
 
             var xrefs = await db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == dbuser.Id && x.CoopId == coop.Id).ToListAsync();
 
@@ -122,7 +130,7 @@ namespace EGG9000.Bot.Commands {
                 }, xref.EggIncId);
             }
 
-            await command.RespondAsync($"Attempted to remove {command.User.Mention} from co-op.");
+            await command.RespondAsync($"Attempted to remove {targetUser.Mention} from co-op.");
         }
 
 
@@ -162,14 +170,27 @@ namespace EGG9000.Bot.Commands {
                 }
                 string msg;
                 if(user.EggIncIds.Count > 0) {
-                    msg = $"{command.User.Mention}, now run the command /moveserver";
+                    if(user.GuildId != guild.Id) {
+                        await command.RespondAsync($"{command.User.Mention}, now run the command /moveserver");
+                    } else if(user.TempDisabled) {
+                        await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
+                    } else {
+                    
+                        await guild.SendToGeneralChannel($"Welcome back {command.User.Mention}!");
+
+
+                        var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                        if(activeRole != null) {
+                            await ((SocketGuildUser)command.User).AddRoleAsync(activeRole);
+                        }
+
+                        await CleanWelcomeChannel(guild, command.User);
+                    }
 
                 } else {
-                    msg = $"{command.User.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops. The bot only reads certain parts of the info and does not make any changes. {channelText}";
+                    await command.RespondAsync($"{command.User.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops. The bot only reads certain parts of the info and does not make any changes. {channelText}");
                 }
 
-                await command.RespondAsync(msg);
-                //await command.RespondAsync($"{socketUser.Mention} Now you need to register with your Egg, Inc account. Please use the command \"!register [Egg, Inc ID]\", look at the pinned message in this channel to see how to get your [Egg, Inc ID]. The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops, the bot only reads certain parts of the info and does not make any changes.");
             }
 
             await db.SaveChangesAsync();
@@ -213,16 +234,19 @@ namespace EGG9000.Bot.Commands {
             }
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"ID Update\n{await AccountsString(user, apiLink)}");
+            await command.RespondAsync($"ID Update\n{await AccountsString(db, user, apiLink, false)}");
 
         }
 
-        [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = true, ParentCommand = "admin")]
-        public static async Task Register(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, [SlashParam]SocketGuildUser user) {
-            await Register(command, db, _client, apiLink, eggincid, (SocketUser) user);
+        [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = true, ParentCommand = "a")]
+        public static Task Register(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
+            return _Register(command, db, _client, apiLink, eggincid, user);
         }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
-        public static async Task Register(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, SocketUser user) {
+        public static Task Register(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid) {
+            return _Register(command, db, _client, apiLink, eggincid, command.User);
+        }
+        public static async Task _Register(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, SocketUser user) {
             await command.RespondAsync("Processing...");
             var Response = await apiLink.GetBackup(eggincid);
 
@@ -352,7 +376,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
             }
-            await command.DeleteOriginalResponseAsync();
+            await command.DeleteResponseFix();
         }
 
         public static async Task CleanWelcomeChannel(SocketGuild guild, SocketUser socketUser, int chain = 0) {
@@ -376,14 +400,22 @@ namespace EGG9000.Bot.Commands {
         }
 
 
-        [SlashCommand(Description = "Get a users status", AdminOnly = true)]
-        public static async Task userstatus(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam] SocketGuildUser user) {
+        [SlashCommand(Description = "Get a users status", AdminOnly = true, ParentCommand = "a")]
+        public static Task UserStatus(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, [SlashParam] SocketGuildUser user) {
+            return _userstatus(command, db, _client, apiLink, user, true);
+        }
+
+        [SlashCommand(Description = "Get your status")]
+        public static Task UserStatus(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink) {
+            return _userstatus(command, db, _client, apiLink, command.User);
+        }
+        public static async Task _userstatus(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink apiLink, SocketUser user, bool admin = false) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
                 await command.RespondAsync($"ERROR: Bot error - User not registered");
                 return;
             }
-            var msg = await AccountsString(dbuser, apiLink);
+            var msg = await AccountsString(db, dbuser, apiLink, admin);
 
             if(command.Channel is SocketDMChannel) {
                 if(dbuser.GuildId > 0) {
@@ -392,25 +424,28 @@ namespace EGG9000.Bot.Commands {
                     msg += $"\nNot registered with a guild";
                 }
             } else {
-                if(dbuser.GuildId == ((IGuildChannel)command.Channel).GuildId && !dbuser.TempDisabled) {
+                var channelGuildId = ((IGuildChannel)command.Channel).GuildId;
+                var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == channelGuildId || x.OverflowServersJson.Contains(channelGuildId.ToString()));
+                if(dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
                     msg += $"\nProperly registered with this server";
                 }
 
-                if(dbuser.GuildId != ((IGuildChannel)command.Channel).GuildId) {
-                    msg += $"\nNot registered with this server, try the !moveserver command";
+                if(dbuser.GuildId != guild.Id) {
+                    msg += $"\nNot registered with this server, try the /moveserver command";
                 }
             }
 
             if(dbuser.TempDisabled) {
-                msg += $"\nUser is disabled, please !enable user";
+                msg += $"\nUser is disabled";
             }
 
+            msg += $"\nJoined the bot on {dbuser.CreateOn.ToString("MMM dd, yyyy")}";
 
             await command.RespondAsync(msg);
         }
 
 
-        private static async Task<string> AccountsString(DBUser user, APILink apiLink) {
+        private static async Task<string> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
             var msg = $"Egg Inc Account{(user.EggIncIds.Count > 1 ? "s" : "")}";
             foreach(var egginc in user.EggIncIds) {
                 //var backup = await ContractsAPI.FirstContact(egginc.Id);//user.LastBackup.FirstOrDefault(x => x.GetID() == egginc.Id);
@@ -424,6 +459,11 @@ namespace EGG9000.Bot.Commands {
                 } else {
                     msg += " Backup Is Empty. Double check your ID.";
                 }
+            }
+            if(admin) {
+                var coops = await db.UserCoopXrefs.Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).Select(x => x.Coop).ToListAsync();
+                msg += $"\n{string.Join("\n", coops.Select(x => $"<#{x.DiscordChannelId}>"))}";
+                msg += $"\nRecent Demerit:\n{await DemeritCommands.GetDemerits(user.Id, db)}";
             }
             return msg;
         }
@@ -493,14 +533,14 @@ namespace EGG9000.Bot.Commands {
 
                 }
             }
-            await command.DeleteOriginalResponseAsync();
+            await command.DeleteResponseFix();
         }
 
 
 
-        [SlashCommand(Description = "Removes any unpinned messages from the channel", AdminOnly = true, ParentCommand = "admin")]
+        [SlashCommand(Description = "Removes any unpinned messages from the channel", AdminOnly = true, ParentCommand = "a")]
         public static async Task Clean(SocketSlashCommand command, DiscordSocketClient _client) {
-            await command.RespondAsync("Cleaning...", ephemeral: true);
+            await command.RespondAsync("Cleaning...");
             var channel = (SocketTextChannel)command.Channel;
             if(channel.Name.ToLower().Contains("welcome")) {
                 await _cleanWelcome(command, _client);
@@ -522,7 +562,7 @@ namespace EGG9000.Bot.Commands {
                 await Task.Delay(510);
                 await msg.DeleteAsync();
             }
-            await command.DeleteOriginalResponseAsync();
+            await command.DeleteResponseFix();
         }
 
 
@@ -575,6 +615,18 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"{command.User.Mention} will no longer be updated with their EB.");
         }
 
+        [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = true)]
+        public static async Task Kick(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason) {
+            try {
+                var dmChannel = await targetUser.CreateDMChannelAsync();
+                var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+                await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
+                await targetUser.KickAsync();
+                await command.RespondAsync("Kicked with DM");
+            } catch(HttpException ex) {
+                await command.RespondAsync("Unable to send DM, user is not yet kicked");
+            }
+        }
     }
 }
 

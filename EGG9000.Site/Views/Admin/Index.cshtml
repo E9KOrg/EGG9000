@@ -9,6 +9,7 @@
 }
 <a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
 <a href="/admin/ghosts" class="btn btn-primary">Ghosts</a>
+<a href="/admin/slackers" class="btn btn-primary">Slackers</a>
 @if(User.IsInRole("Admin")) {
     <a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
 }
@@ -50,7 +51,7 @@
             </h5>
 
             @foreach(var contract in Model.Contracts) {
-                <div><a href="/admin/contract?contractid=@contract.ID">@contract.Name</a></div>
+                <div><a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> <a href="/admin/contractscores?contractid=@contract.ID">Scoring</a></div>
             }
         </div>
     </div>

@@ -121,11 +121,37 @@ namespace EGG9000.Bot.Commands {
                 var backups = await apiLink.GetUserBackups(dbusers, db);
 
                 await contractUpdater.UpdateContractChannel(db, backups, targetGuildContract, guild, dbguild, dbusers);
-                await command.DeleteOriginalResponseAsync();
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
+                //await command.DeleteOriginalResponseAsync();
                 return;
             } 
             await command.RespondAsync($"ERROR: Command only works in contract or co-op channels");
         }
+
+        [SlashCommand(Description = "Test delete response")]
+        public static async Task TestDeleteResponse1(SocketSlashCommand command) {
+            await command.RespondAsync("Test Response");
+            await Task.Delay(1000);
+            await command.ModifyOriginalResponseAsync(x => x.Content = "After Delay");
+        }
+        //[SlashCommand(Description = "Test delete response")]
+        //public static async Task TestDeleteResponse1(SocketSlashCommand command) {
+        //    await command.RespondAsync("Test Respoinse");
+        //    await Task.Delay(1000);
+        //    await command.DeleteOriginalResponseAsync();
+        //}
+        //[SlashCommand(Description = "Test delete response")]
+        //public static async Task TestDeleteResponse2(SocketSlashCommand command) {
+        //    await command.RespondAsync("Test Respoinse");
+        //    await Task.Delay(1000);
+        //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
+        //}
+        //[SlashCommand(Description = "Test delete response")]
+        //public static async Task TestDeleteResponse3(SocketSlashCommand command) {
+        //    await command.RespondAsync("Test Respoinse", ephemeral: true);
+        //    await Task.Delay(1000);
+        //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
+        //}
     }
 }
 

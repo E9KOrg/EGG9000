@@ -187,11 +187,7 @@ namespace EGG9000.Bot.Automated {
 
                 var coopsDetails = new List<CoopDetails>();
                 foreach(var coop in coops) {
-                    var coopDetails = new CoopDetails {
-                        Users = GetPrefarmsForCoop(coop, allPreFarms, alienBackups, guildContract.Contract),
-                        Coop = coop
-                    };
-                    coopDetails.Projected = coopDetails.Users.Sum(x => x.Projected) / targetAmount;
+                    var coopDetails = new CoopDetails(GetPrefarmsForCoop(coop, allPreFarms, alienBackups, guildContract.Contract), targetAmount, coop);
                     coopsDetails.Add(coopDetails);
                 }
 
@@ -211,7 +207,7 @@ namespace EGG9000.Bot.Automated {
                 ))).ToList();
 
 
-                var coopsBreakdown = GetBreakdown(prefarms, guildContract, guild);
+                var coopsBreakdown = GetBreakdown(prefarms, guildContract);
 
                 var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");// + "_" +  guildContract.ContractID;
 
@@ -312,7 +308,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 if(coopsBreakdown.ExpiredFarms.Count > 0 && guildContract.Contract.Details.CoopAllowed) {
-                    newMsgs.AddRange(ShowCoopStatus(new CoopDetails { Users = coopsBreakdown.ExpiredFarms.OrderBy(x => x.Name).ToList() }, "Expired Farms", targetAmount, guildContract.Contract.Details.MaxCoopSize));
+                    newMsgs.AddRange(ShowCoopStatus(new CoopDetails (coopsBreakdown.ExpiredFarms.OrderBy(x => x.Name).ToList(), targetAmount), "Expired Farms", targetAmount, guildContract.Contract.Details.MaxCoopSize));
                 }
 
                 if(coopsBreakdown.AlreadyInCoop.Users.Count > 0) {
@@ -323,7 +319,7 @@ namespace EGG9000.Bot.Automated {
                             u.Coop += $" Joined {(DateTimeOffset.Now - u.User.CreateOn).Humanize().ShortenTime()} ago";
                         }
                     }
-                    var alreadyInCoop = new CoopDetails { Users = coopsBreakdown.AlreadyInCoop.Users.Where(x => x.User.CreateOn < guildContract.Created).OrderBy(x => x.Completed).ToList() };
+                    var alreadyInCoop = new CoopDetails (coopsBreakdown.AlreadyInCoop.Users.Where(x => x.User.CreateOn < guildContract.Created).OrderBy(x => x.Completed).ToList(), targetAmount);
                     newMsgs.AddRange(ShowCoopStatus(alreadyInCoop, $"Already in coop", targetAmount, 0));
                 }
 
@@ -386,8 +382,9 @@ namespace EGG9000.Bot.Automated {
                 finalMsg += $"Expected Participants: {expectedCount}, Current Capacity: {coopsBreakdown.Coops.Count * guildContract.Contract.Details.MaxCoopSize}, Currently Pre-farming: {coopsBreakdown.Coops.Sum(x => x.Users.Count)}, Co-op Count: {coopsBreakdown.Coops.Count}\n";
 
                 var spotsInPotentialCoops = coopsBreakdown.Coops.Count * guildContract.Contract.Details.MaxCoopSize - coopsBreakdown.Coops.Sum(x => x.Users.Count);
-                var spotsInCurrentCoops = coopsDetails.Where(x => !x.Coop.Finished).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
-                finalMsg += $"Spots Available In Potential Co-ops: {spotsInPotentialCoops}, Spots Available In Active Co-ops: {spotsInCurrentCoops}\n\n";
+                var spotsInCurrentCoopsUnder24 = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.TimeRemaining <= TimeSpan.FromHours(24)).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
+                var spotsInCurrentCoopsOver24 = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.TimeRemaining > TimeSpan.FromHours(24)).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
+                finalMsg += $"Spots Potential: {spotsInPotentialCoops}, Spots <24h: {spotsInCurrentCoopsUnder24}, Spots >24H: {spotsInCurrentCoopsOver24}\n\n";
 
 
                 //finalMsg += "**WARNING: Messages in this channel are automatically deleted**\n";

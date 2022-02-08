@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220201203657_TrackScores")]
+    partial class TrackScores
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -481,8 +483,8 @@ namespace EGG9000.Common.Migrations
                     b.Property<decimal>("DiscordChannelId")
                         .HasColumnType("decimal(20,0)");
 
-                    b.Property<bool>("HasScores")
-                        .HasColumnType("bit");
+                    b.Property<int>("League")
+                        .HasColumnType("int");
 
                     b.Property<int>("NumberOfCoops")
                         .HasColumnType("int");
@@ -628,9 +630,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<DateTimeOffset?>("SleepingWarningTime")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<double?>("SoulPower")
-                        .HasColumnType("float");
 
                     b.Property<bool>("Starter")
                         .HasColumnType("bit");

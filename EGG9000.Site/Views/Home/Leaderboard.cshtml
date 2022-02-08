@@ -10,14 +10,12 @@
 var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
 }
 
-<div class="float-left">
-    <a href="/Home/Enlightenment">Enlightenment Leaderboard</a>
-</div>
+<a class="btn btn-secondary" href="/Home/Enlightenment">Enlightenment Leaderboard</a>
 @if(myAccounts.Count() == 1) {
-    <p><a href="#@myAccounts.First().Backup.EggIncId">Jump to me</a></p>
+    <a class="btn btn-secondary" href="#@myAccounts.First().Backup.EggIncId">Jump to me</a>
 } else if(myAccounts.Count() > 1) {
     foreach(var account in myAccounts) {
-        <p><a href="#@account.Backup.EggIncId">Jump to @account.Backup.UserName</a></p>
+        <a class="btn btn-secondary" href="#@account.Backup.EggIncId">Jump to @account.Backup.UserName</a>
     }
 }
 <style>
@@ -40,7 +38,10 @@ var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
         background-color: #adffaa !important;
     }
 </style>
-Sort by <a href="?sortby=se"><button class="btn btn-primary">Soul Eggs</button></a> <a href="?sortby=start"><button class="btn btn-primary">First Contract</button></a>
+Sort by 
+<a href="?sortby=se"><button class="btn btn-primary">Soul Eggs</button></a>
+<a href="?sortby=pe"><button class="btn btn-primary">Egg Of Prophecy</button></a>
+<a href="?sortby=start"><button class="btn btn-primary">First Contract</button></a>
 <div class="row">
     <div class="col">
         <h3>Elites</h3>

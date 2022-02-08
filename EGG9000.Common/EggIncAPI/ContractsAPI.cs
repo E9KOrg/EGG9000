@@ -16,16 +16,16 @@ namespace EGG9000.Bot.EggIncAPI {
 
     public class ContractsAPI {
         static string BaseAddressNew = "https://www.auxbrain.com/";
-        static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
+        //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public static string UserId = "EI5223299518300160";
-        public static uint ClientVersion = 36;
+        public static uint ClientVersion = 37;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.21.2",
-                Build = "111163",
+                Version = "1.21.3",
+                Build = "111164",
                 Platform = "ANDROID"
             };
             if(!noUserID) {
@@ -83,7 +83,7 @@ namespace EGG9000.Bot.EggIncAPI {
                         return false;
                     }
                 }
-            } catch(Exception e) {
+            } catch(Exception) {
                 return false;
             }
         }
@@ -163,7 +163,7 @@ namespace EGG9000.Bot.EggIncAPI {
                         return default(TResponse);// new ContractsResponse { Success = false, Error = "Error response from API" };
                     }
                 }
-            } catch(Exception e) {
+            } catch(Exception) {
                 return default(TResponse); // new ContractsResponse { Success = false, Error = "Bot Exception: " + e.Message };
             }
         }
@@ -270,7 +270,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     }
                 }
 
-            } catch(Exception e) {
+            } catch(Exception) {
                 return null;
             }
         }

@@ -1,0 +1,132 @@
+﻿@model List<EGG9000.Site.Controllers.ContractController.ScoreGraphItem>
+@{
+	ViewData["Title"] = "Contract Scores";
+	//var chartData = Model.Select(x => new {
+	//	name = x.CurrentUser ? "You" : "",
+	//	data = new object[] { new object[] { x.SoulPower, Math.Log10(x.Score.Value) } }
+	//});
+
+	var chartData = new object[] {
+		new {
+			name = "Other Scores",
+			type =  "scatter",
+			data = Model.Where(x => !x.CurrentUser && x.Score.HasValue).Select(x => new object[] {x.SoulPower, Math.Log10(x.Score.Value)})
+		},
+		new {
+			name = "Your Score",
+			type =  "scatter",
+			data = Model.Where(x => x.CurrentUser && x.Score.HasValue).Select(x => new object[] {x.SoulPower, Math.Log10(x.Score.Value)})
+		},
+	};
+
+	var contract = (Contract)ViewBag.Contract;
+}
+
+
+<h2>@contract.Name</h2>
+<h6>Opened @contract.Created.ToString("yyyy-MM-dd"), Expired @contract.GoodUntil.ToString("yyyy-MM-dd")</h6>
+
+<div id="chart"></div>
+
+<p>
+	How to read the graph:
+	<ul>
+		<li>X-Axis: Log10 of the EB, (8 = Megafarmer, 11 = Gigafarmer, 13 = Elite, 14 = Terafarmer, 17 = Petafarmer, 20 = Exafarmer, 23 = Zettafarmer, 26 = Yottafarmer)</li>
+		<li>Y-Axis: Score</li>
+		<li>Your score is how you compare to the average of the 50 people closest to your EB at the time your co-op ended. (1 = average, 0.5 = half of average, 2 = double average)</li>
+		<li>Running Score is the average score over the last 4 contracts, this is what we use to weed out people who don't particpate. We do this so if something comes up and you have a bad contract or two, it won't have a negative impact on your standing in the server.</li>
+	</ul>
+
+</p>
+@{
+	<h5>Your Score</h5>
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Log10 of EB</th>
+				<th>Score</th>
+
+				<th>Running Score</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var score in Model.Where(x => x.CurrentUser).OrderBy(x => x.SoulPower)) {
+				<tr>
+					<td>@score.SoulPower </td>
+					<td>
+						@if (score.Score.HasValue) {
+							@Math.Round(score.Score.Value, 2)
+						}
+					</td>
+
+					<td>
+						@if (score.RunningScore.HasValue) {
+							@Math.Round(score.RunningScore.Value, 2)
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+<style>
+	.StandardOnly .Elite {
+		display: none;
+	}
+
+	.Standard td {
+		color: #42a479;
+	}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script type="text/javascript">
+	var options = {
+		chart: {
+			type: 'scatter',
+			zoom: {
+				enabled: true,
+				type: 'xy'
+			},
+			animations: {
+				enabled: false
+			},
+		},
+			colors: ['#008FFB', '#FEB019'],
+		series: @Html.Raw(JsonConvert.SerializeObject(chartData)),
+		yaxis: {
+		//logarithmic: true
+		decimalsInFloat: 2,
+		labels: {
+			formatter: function(val, index) {
+				return Math.pow(10, val);
+			}
+		}
+		},
+		xaxis: {
+		//logarithmic: true,
+		//type: "numeric",
+	tickAmount: 10
+
+		//    type: 'datetime'
+		},
+		//tooltip: {
+		//    x: {
+		//        format: 'dd MMM yyyy'
+		//    }
+		//},
+		dataLabels: {
+		enabled: false
+		},
+		stroke: {
+		width: 2
+		},
+		legend: {
+		show: true
+		},
+		}
+
+		var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+		chart.render();
+</script>

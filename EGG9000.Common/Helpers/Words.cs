@@ -77,6 +77,18 @@ namespace EGG9000.Bot
                 case 107754714078117888:
                     name = "Aharit";
                     break;
+                case 861607701493448704:
+                    name = "Melina";
+                    break;
+                case 170412210076516352:
+                    name = "Ely";
+                    break;
+                case 821402019092889700:
+                    name = "Treegoat";
+                    break;
+                case 140306242995355648:
+                    name = "WAG";
+                    break;
             }
 
             return FirstCharToUpper(name.ToLower());

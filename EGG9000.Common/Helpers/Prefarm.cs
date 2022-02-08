@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Common.Helpers {
     public static class Prefarm {
@@ -61,33 +62,21 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static List<UserPreFarm> GetPrefarmers(List<LeaderboardUser> backups, Contract contract) {
-            //List<LeaderboardUpdater.LeaderboardUser> backups;
-            //if (ExcludePeopleInCoops) {
-            //    var excludePeopleinCoops = await _db.UserCoopXrefs.Where(x => x.Coop.Contract.ID == contract.ID && x.JoinedCoop).Select(x => x.UserId).ToListAsync();
+            var startedContract = backups
+                .Where(x => x.Backup != null && (x.Backup.Farms.Any(y => y.ContractId == contract.ID) || (x.Backup.ArchivedFarms?.Any(f => f.ContractId == contract.ID) ?? false)))
+                .OrderByDescending(x =>
+                    x.Backup.Farms.FirstOrDefault(y =>
+                        y.ContractId == contract.ID
+                    )?.EggsPaidFor
+                );
 
-            //    backups = await ContractsAPI.GetUserBackups(_db, guild.Id, excludePeopleinCoops);
-            //} else {
-            //    backups = await ContractsAPI.GetUserBackups(_db, guild.Id, new List<Guid> { });
-            //}
-            var stopwatch = Stopwatch.StartNew();
-
-            var startedContract = backups.Where(x => x.Backup != null && (x.Backup.Farms.Any(y => y.ContractId == contract.ID) || (x.Backup.ArchivedFarms?.Any(f => f.ContractId == contract.ID) ?? false))).OrderByDescending(x =>
-               x.Backup.Farms.FirstOrDefault(y =>
-                   y.ContractId == contract.ID
-               )?.EggsPaidFor
-            );
-
-            stopwatch.Restart();
             var users = startedContract.Select(x => {
-                //var stopwatch2 = Stopwatch.StartNew();
                 var prefarm = BackupToPreFarm(x, contract);
-                //Console.WriteLine($"BackupToPreFarm: {stopwatch2.ElapsedMilliseconds}ms");
                 return prefarm;
             }).Where(x => x != null && x.DiscordId != 0).OrderByDescending(x => x.Projected).ToList();
 
-            stopwatch.Restart();
 
-            return users; //
+            return users; 
         }
 
         public static string GetTimeRemaining(double targetAmount, double currentRate, double currentAmount) {
@@ -114,34 +103,67 @@ namespace EGG9000.Common.Helpers {
             return TimeSpan.FromSeconds(remainingSeconds);
         }
 
+        public static TimeSpan GetTimeRemainingValue(double targetAmount, List<UserPreFarm> userPreFarms) {
+            return GetTimeRemainingValue(targetAmount, userPreFarms.Sum(x => x.Rate), userPreFarms.Sum(x => x.EggsPaidFor));
+        }
+
         public class CoopsBreakdown {
             public List<CoopDetails> Coops { get; set; }
             public CoopDetails AlreadyInCoop { get; set; }
             public CoopDetails Completed { get; set; }
             public List<UserPreFarm> ExpiredFarms { get; set; }
+
+            public List<UserPreFarm> AllPreFarms { get; set; }
             //public List<SocketGuildUser> StartersNotPrefarming { get; set; }
         }
 
         public class CoopDetails {
             public SocketGuildUser Starter { get; set; }
             //public string StarterStatus { get; set; }
-            public List<UserPreFarm> Users { get; set; }
+            public List<UserPreFarm> Users { get; private set; }
             public Coop Coop { get; set; }
-            public double Projected { get; set; }
+            public  double Projected { get; private set; }
+            public TimeSpan TimeRemaining { get; init; }
+
+            private uint _maxSize = 0;
+            public bool HasSpots { get { return Users.Count < _maxSize; } }
+            public CoopDetails(List<UserPreFarm> users, double targetAmount, Coop coop = null, uint MaxSize = 0) {
+                Users = users;
+                if(targetAmount > 0) {
+                        TimeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, users);
+                        Projected = users.Sum(x => x.Projected) / targetAmount;
+                }
+                Coop = coop;
+                _maxSize = MaxSize;
+            }
         }
 
+        public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract) {
+            var dbusers = await db.DBUsers.AsQueryable().Where(x => !x.TempDisabled && x.GuildId == guildContract.GuildID).ToListAsync();
+            var backups = dbusers.Where(x => x.Backups != null && x.GuildId == guildContract.GuildID).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
+                User = y,
+                Backup = x
+            })).ToList();
 
-        public static CoopsBreakdown GetBreakdown(List<UserPreFarm> users, GuildContract guildContract, SocketGuild guild) {
+            var prefarmers = GetPrefarmers(backups, guildContract.Contract);
+            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
+            var users = prefarmers.Where(x => x.Elite == guildContract.Elite && x.NumChickens > 0).ToList();
+            users = users.Where(x => !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
+            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract);
+            return coopsBreakdown;
+        }
+
+        public static CoopsBreakdown GetBreakdown(List<UserPreFarm> users, GuildContract guildContract) {
             var completed = users.Where(x => x.Completed).OrderBy(x => x.Name).ToList();
-            users = users.Where(x => !x.Completed && !x.CancelledFarm).ToList();
+            var currentUsers = users.Where(x => !x.Completed && !x.CancelledFarm).ToList();
 
-            var alreadyInCoop = users.Where(x => !string.IsNullOrEmpty(x.CoopName)).OrderBy(x => x.Name).ToList();
-            var notInCoop = users.Where(x => string.IsNullOrEmpty(x.CoopName)).ToList();
+            var alreadyInCoop = currentUsers.Where(x => !string.IsNullOrEmpty(x.CoopName)).OrderBy(x => x.Name).ToList();
+            var notInCoop = currentUsers.Where(x => string.IsNullOrEmpty(x.CoopName)).ToList();
 
             var coopsBreakdown = new CoopsBreakdown {
                 Coops = new List<CoopDetails>(),
-                AlreadyInCoop = new CoopDetails { Users = alreadyInCoop },
-                Completed = new CoopDetails { Users = completed }
+                AlreadyInCoop = new CoopDetails (alreadyInCoop ,0),
+                Completed = new CoopDetails (completed,0)
             };
 
             coopsBreakdown.ExpiredFarms = notInCoop.Where(x => x.TimeLeft == null || x.TimeLeft.Value.TotalSeconds <= 0).ToList();
@@ -185,11 +207,6 @@ namespace EGG9000.Common.Helpers {
                     }
                 }
             }
-            // if(numPerCoop > 4) {
-            //    var twoAccounts = notInCoop.GroupBy(x => x.DatabaseId).Where(x => x.Count() == 2);
-            //    twoAccounts.ToList().ForEach(x => {
-            //    });
-            //}
 
             var league = guildContract.Elite ? 0 : 1;
             var targetAmount = guildContract.Contract.Details.GoalSets[league].Goals.Last().TargetAmount;
@@ -197,7 +214,6 @@ namespace EGG9000.Common.Helpers {
             notInCoop.ForEach(u => {
                 List<UserPreFarm> smallestCoop;
                 if(u.Projected < targetAmount / 100) {
-                    //} else  if (coops.Any(x => x.Count / numPerCoop > 0.75m) && coops.Any(x => x.Count / numPerCoop < 0.25m)) {
                     smallestCoop = coops.OrderBy(x => x.Count).ThenBy(x => x.Sum(y => y.Projected)).First();
                 } else {
                     smallestCoop = coops.Where(x => x.Count < numPerCoop).OrderBy(x => x.Sum(y => y.Projected)).FirstOrDefault();
@@ -210,15 +226,12 @@ namespace EGG9000.Common.Helpers {
             });
 
             for(int i = 1; i <= coopsNeedingStarter.Count; i++) {
-                var details = new CoopDetails {
-                    Users = coopsNeedingStarter[i - 1],
-                    Projected = (coopsNeedingStarter[i - 1].Sum(x => x.Projected) / targetAmount)
-                };
+                var details = new CoopDetails(coopsNeedingStarter[i - 1], targetAmount);
                 coopsBreakdown.Coops.Add(details);
             }
 
             coopsBreakdown.Coops = coopsBreakdown.Coops.OrderByDescending(x => x.Users.Sum(x => x.Projected)).ToList();
-
+            coopsBreakdown.AllPreFarms = users;
             return coopsBreakdown;
         }
 
@@ -305,7 +318,6 @@ namespace EGG9000.Common.Helpers {
 
         public static UserPreFarm BackupToPreFarm(LeaderboardUser user, Contract contract) {
             var farm = user.Backup.Farms?.FirstOrDefault(x => x.ContractId == contract.ID);
-            var farmStats = farm?.WithStats(user.Backup);
             if(farm == null) {
                 if(!user.Backup.EmptyBackup && (user.Backup.ArchivedFarms?.Any(f => f.ContractId == contract.ID) ?? false)) {
                     return new UserPreFarm {
@@ -320,6 +332,7 @@ namespace EGG9000.Common.Helpers {
                 }
                 return null;
             }
+            var farmStats = farm?.WithStats(user.Backup);
 
             var prefarm = new UserPreFarm {
                 EggIncId = user.Backup.EggIncId,
