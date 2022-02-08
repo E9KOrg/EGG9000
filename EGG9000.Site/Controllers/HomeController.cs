@@ -28,6 +28,9 @@ using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using Polly;
 using static EGG9000.Common.Helpers.Prefarm;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Discord.Net;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -53,6 +56,22 @@ namespace EGG9000.Site.Controllers {
             _db = db;
         }
 
+        public async Task<IActionResult> TestBlock() {
+            var kendrometest = await _discord.GetUserAsync(687001040268165128);
+            try {
+                var dm = await kendrometest.CreateDMChannelAsync();
+                await dm.SendMessageAsync("Test For Block");
+                return Content("Sent");
+            } catch(HttpException ex) {
+
+                return Content("Failed");
+            }
+        }
+
+        public async Task<IActionResult> GetMessage() {
+            var message = await _discord.Guilds.First(x => x.Id == 656455567858073601).GetTextChannel(933047117621100605).GetMessageAsync(933395126749896804);
+            return Json(message, new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.IgnoreCycles });
+        }
 
         public async Task<IActionResult> CheckBoost() {
             var channel = _discord.GetGuild(656455567858073601).GetTextChannel(680431628950044676);
@@ -356,6 +375,9 @@ namespace EGG9000.Site.Controllers {
                     switch(sortby) {
                         case "se":
                             leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+                            break;
+                        case "pe":
+                            leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
                             break;
                         case "start":
                             var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);

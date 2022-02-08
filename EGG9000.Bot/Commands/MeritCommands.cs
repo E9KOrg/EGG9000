@@ -23,6 +23,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
+using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
@@ -31,13 +32,14 @@ namespace EGG9000.Bot.Commands {
             [SlashParam(Description = "Merit Reason")] string reason,
             [SlashParam] SocketGuildUser[] users
             ) {
-
+            await command.RespondAsync("Adding Merits");
             var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
 
 
             foreach(var mention in users) {
                 await CreateMerit(reason, db, _client, mention, admin.Id, command.Channel, command);
             }
+            await command.DeleteResponseFix();
         }
         public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, ISocketMessageChannel messageChannel, SocketSlashCommand command = null) {
 
@@ -64,7 +66,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(command != null) {
-                await command.RespondAsync($"Merit Added {target.Mention}: {merit.Reason} (Merits: {count})");
+                await command.Channel.SendMessageAsync($"Merit Added {target.Mention}: {merit.Reason} (Merits: {count})");
             }
             
             await db.SaveChangesAsync();

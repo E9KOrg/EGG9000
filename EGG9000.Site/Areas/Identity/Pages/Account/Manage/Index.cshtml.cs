@@ -10,6 +10,7 @@ using EGG9000.Common.Database.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public partial class IndexModel : PageModel {

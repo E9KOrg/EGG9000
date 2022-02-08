@@ -138,6 +138,101 @@ namespace EGG9000.Site.Controllers {
             return View(dbusers.Where(x => x.Backups != null).ToList());
         }
 
+        public async Task<IActionResult> ContractScores([FromQuery] string contractid, [FromQuery] bool all = false) {
+            ViewBag.ContractID = contractid;
+            ViewBag.Guilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+
+            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.GuildId == user.GuildId && x.ContractID == contractid).ToListAsync();
+
+            var scores = ContractScoring.GetContractScores(coops);
+
+            return View(scores);
+        }
+
+        public async Task<IActionResult> Slackers() {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            var slackers = await _db.DBUsers.AsQueryable().Include(x => x.UserCoopXrefs).Where(x => x.GuildId == user.GuildId && x.UserCoopXrefs.Any(y => y.RunningScore < 1e-3)).Select(x => new Slacker {
+                DiscordUsername = x.DiscordUsername,
+                UserCoopXrefs = x.UserCoopXrefs.Select(y => new SlackerXref {
+                    Score = y.Score,
+                    ContractID = y.Coop.ContractID,
+                    RunningScore = y.RunningScore,
+                    Date = y.Coop.CoopCompleted ?? y.Coop.CoopEnds ?? y.CreatedOn
+                })
+            }).ToListAsync();
+
+            ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
+
+            return View(slackers);
+        }
+
+        public class Slacker {
+            public string DiscordUsername { get; set; }
+            public IEnumerable<SlackerXref> UserCoopXrefs { get; set; }
+        }
+
+        public class SlackerXref {
+            public float? Score { get; set; }
+            public string ContractID { get; set; }
+            public float? RunningScore { get; set; }
+            public DateTimeOffset Date { get; set; }
+        }
+
+        public async Task<IActionResult> ProcessScores() {
+            var guildContracts = await _db.GuildContracts.AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-99) && x.DeletedChannel).ToListAsync();
+            var contractIDs = guildContracts.Select(x => x.ContractID);
+            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => contractIDs.Contains(x.ContractID) && x.GuildId == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-99)).ToListAsync();
+
+            foreach(var contractid in contractIDs) {
+                var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
+                var needsScoring = guildContracts.Where(x => x.ContractID == contractid).All(x => x.DeletedChannel && !x.HasScores);
+                if(!needsScoring) {
+                    //if(guildContracts.Any(x => x.ContractID == contractid && x.HasScores == false) && contractCoops.Sum(x => x.UserCoopsXrefs.Count(y => y.Score.HasValue)) > 0) {
+                    //    //guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
+                    //    Console.WriteLine($"Marking as has scores {contractid}");
+                    //}
+                    Console.WriteLine($"Skipping {contractid}");
+                    continue;
+                }
+                Console.WriteLine($"Processing {contractid}");
+                var scores = ContractScoring.GetContractScores(contractCoops);
+                foreach(var score in scores) {
+                    score.xref.Score = score.Score;
+                    score.xref.SoulPower = score.SoulPower;
+                }
+                guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
+                await _db.SaveChangesAsync();
+            }
+
+            var userXrefs = coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
+
+            foreach(var userXref in userXrefs) {
+                var xrefs = userXref.OrderByDescending(x => x.CreatedOn).ToList();
+                foreach(var xref in xrefs) {
+                    //if(xref.RunningScore == null) {
+                    var lastThreeXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn).Take(3).ToList();
+                    if(lastThreeXrefs.Count == 3 && lastThreeXrefs.All(x => x.Score.HasValue)) {
+                        xref.RunningScore = lastThreeXrefs.Average(x => x.Score);
+                    } else {
+                        xref.RunningScore = null;
+
+                    }
+                    //}
+                }
+            }
+            await _db.SaveChangesAsync();
+
+            return Content("Success");
+        }
+
+
         public async Task<IActionResult> Sleepers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var demeritExpires = DateTimeOffset.Now.AddDays(-2);
@@ -284,7 +379,7 @@ namespace EGG9000.Site.Controllers {
             return Json(SetRole);
         }
 
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SearchID([FromQuery] string id) {
             var users = await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync();
 
@@ -293,7 +388,7 @@ namespace EGG9000.Site.Controllers {
                 var matchingUser = users.FirstOrDefault(x => x._eggIncIds?.Contains(id) ?? false);
                 if(matchingUser != null) {
                     return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser.DiscordId });
-                } 
+                }
 
                 return RedirectToAction("ViewUserId", "MyFarms", new { eggIncId = id });
             } else if(id.Trim().All(x => x >= '0' && x <= '9')) {

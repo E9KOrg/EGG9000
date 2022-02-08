@@ -7,10 +7,10 @@
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
     var targetAmount = Model.GuildContract.Contract.Details.GoalSets[Model.GuildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
-    var alienBackups = await GetBackupsForAliens(Model.Coops, Model.PreFarms, Model.GuildContract.Contract, _apiLink);
+    var alienBackups = await GetBackupsForAliens(Model.Coops, Model.UserPreFarms, Model.GuildContract.Contract, _apiLink);
 
     var currentCoops = Model.Coops.Select(coop => {
-        var prefarms = GetPrefarmsForCoop(coop, Model.PreFarms, alienBackups, Model.GuildContract.Contract);
+        var prefarms = GetPrefarmsForCoop(coop, Model.UserPreFarms, alienBackups, Model.GuildContract.Contract);
         return new {
             Coop = coop,
             Prefarms = prefarms,
@@ -21,34 +21,11 @@
 
     DiscordSocketClient discord = ViewBag.Discord;
 
-    var allPreFarms = Model.PreFarms;
+    //var allPreFarms = Model.PreFarms;
     var guildContract = Model.GuildContract;
     var guild = discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID);
     var coops = Model.Coops;
-    //var users = Model.PreFarms.Where(x => x.Elite == Model.GuildContract.Elite &&
-    //    !Model.Coops.Any(c => c.UserCoopsXrefs.Any(xr =>
-    //        (xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId)
-    //        && (
-    //            c.Status != CoopStatusEnum.Failed ||
-    //            x.CoopName == c.Name.ToLower()
-    //        )
-    //    ))
-    //).ToList();
 
-    //var coopsBreakdown = GetBreakdown(users, Model.GuildContract, discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID));
-
-    var prefarms = allPreFarms.Where(X => !X.User.TempDisabled).Where(x => x.Elite == guildContract.Elite || x.Completed).ToList();
-    prefarms = prefarms.Where(x =>
-        !coops.Any(c => c.UserCoopsXrefs.Any(xr =>
-        (xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId)
-        && (
-            c.Status != CoopStatusEnum.Failed ||
-            x.CoopName == c.Name.ToLower()
-        )
-    ))).ToList();
-
-
-    var coopsBreakdown = GetBreakdown(prefarms, guildContract, guild);
 
     var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
     var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
@@ -88,15 +65,13 @@
     var isSolo = Model.GuildContract.Contract.MaxUsers <= 1;
 
     if(isSolo) {
-        coopsBreakdown.Coops = new List<CoopDetails> {
-            new CoopDetails {
-                 Users = coopsBreakdown.Coops.SelectMany(c => c.Users).ToList()
-            }
+        Model.CoopsBreakdown.Coops = new List<CoopDetails> {
+            new CoopDetails(Model.CoopsBreakdown.Coops.SelectMany(c => c.Users).ToList(), 0)
         };
     }
 
-    coopsBreakdown.Coops.ForEach(c => c.Users.ForEach(u => u.DiscordUser = guild.GetUser(u.DiscordId)));
-    var potentialCoops = coopsBreakdown.Coops.Select(c => {
+    Model.CoopsBreakdown.Coops.ForEach(c => c.Users.ForEach(u => u.DiscordUser = guild.GetUser(u.DiscordId)));
+    var potentialCoops = Model.CoopsBreakdown.Coops.Select(c => {
         var users = c.Users.OrderByDescending(x => x.Projected).Select(u => new {
             u.EggIncId,
             u.DatabaseId,
@@ -123,7 +98,7 @@
         return model;
     });
 
-    var expiredFarms = coopsBreakdown.ExpiredFarms.Select(u => new {
+    var expiredFarms = Model.CoopsBreakdown.ExpiredFarms.Select(u => new {
         u.EggIncId,
         u.DatabaseId,
         Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
@@ -223,13 +198,13 @@
         <p><a href="#@account.EggIncId">Jump to @account.EggIncId</a></p>
                 }
             }
-        } else if(currentCoops.Any(coop => coop.Prefarms.Any(x => x.DiscordId.ToString() == discordId)) || coopsBreakdown.Coops.Any(coop => coop.Users.Any(x => x.DiscordId.ToString() == discordId))) {
+        } else if(currentCoops.Any(coop => coop.Prefarms.Any(x => x.DiscordId.ToString() == discordId)) || Model.CoopsBreakdown.Coops.Any(coop => coop.Users.Any(x => x.DiscordId.ToString() == discordId))) {
             foreach(var coop in currentCoops.Where(c => c.Prefarms.Any(x => x.DiscordId.ToString() == discordId))) {
         <p><a href="#@coop.Coop.Name">Jump to my co-op @coop.Coop.Name</a></p>
             }
 
-            foreach(var coop in coopsBreakdown.Coops.Where(c => c.Users.Any(x => x.DiscordId.ToString() == discordId))) {
-                var coopNum = coopsBreakdown.Coops.IndexOf(coop) + currentCoops.Count + 1;
+            foreach(var coop in Model.CoopsBreakdown.Coops.Where(c => c.Users.Any(x => x.DiscordId.ToString() == discordId))) {
+                var coopNum = Model.CoopsBreakdown.Coops.IndexOf(coop) + currentCoops.Count + 1;
         <p><a href="#@coopNum">Jump to my co-op @coopNum</a></p>
             }
         } else {

@@ -109,25 +109,29 @@ namespace EGG9000.Bot.Commands {
             try {
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
-
-                var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
-                if(demerits.Count == 0) {
-                    string msg;
-                    msg = $"There are no recent demerits for {user.Mention}";
-                    await command.RespondAsync(msg);
-                    return;
-                }
-
-                var demeritDesc = String.Join("\n", demerits.Select(x => {
-                    var monthAgo = DateTimeOffset.Now.AddMonths(-1);
-                    var timeLeft = monthAgo - x.When;
-                    return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
-                }));
+                var demeritDesc = await GetDemerits(dbuser.Id, db);
 
                 await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}");
             } catch(Exception e) {
                 await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
+        }
+
+        public static async Task<string> GetDemerits(Guid dbuserid, ApplicationDbContext db) {
+            var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuserid && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
+            if(demerits.Count == 0) {
+                string msg;
+                msg = $"There are no recent demerits";
+                return msg;
+            }
+
+            var demeritDesc = String.Join("\n", demerits.Select(x => {
+                var monthAgo = DateTimeOffset.Now.AddMonths(-1);
+                var timeLeft = monthAgo - x.When;
+                return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
+            }));
+
+            return demeritDesc;
         }
 
         [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = true)]

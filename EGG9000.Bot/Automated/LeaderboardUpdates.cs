@@ -265,7 +265,7 @@ $"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}! Wow
 $"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelettes. Anyone have eggs? Congrats on the impressive EB of { eb}%!",
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
 $"Choo Choo!All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { eb}%, jump on now!",
-$"Congrats { discordUser.Mention}, you are a { role.Name} now with the EB of { eb}% !How eggciting!",
+$"Congrats { discordUser.Mention}, you are a { role.Name} now with an EB of { eb}%! How eggciting!",
 });
                                     break;
                                 case "Zettafarmer":

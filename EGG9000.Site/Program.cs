@@ -15,7 +15,9 @@ namespace EGG9000.Site {
             Console.WriteLine(Process.GetCurrentProcess().Id.ToString());
 #endif
 
-            CreateHostBuilder(args).Build().Run();
+            CreateHostBuilder(args)
+                .UseDefaultServiceProvider(options => options.ValidateScopes = false)
+                .Build().Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>

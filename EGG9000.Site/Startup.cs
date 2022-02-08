@@ -26,6 +26,7 @@ using EGG9000.Bot.Services;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using Discord;
+using Bugsnag.AspNet.Core;
 
 namespace EGG9000.Site {
     public class Startup {
@@ -94,6 +95,7 @@ namespace EGG9000.Site {
             services.AddRazorPages();
             services.AddTransient<IEmailSender, EmailSenderBlank>();
             services.AddSingleton<APILink>();
+            services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
 
             services.AddCors(options =>
@@ -113,6 +115,7 @@ namespace EGG9000.Site {
             var client = new DiscordSocketClient(config);
             client.LoginAsync(Discord.TokenType.Bot, Configuration["ConnectionStrings:Token"]).Wait();
             client.StartAsync().Wait();
+            _ = client.DownloadUsersAsync(client.Guilds);
             services.AddSingleton(client);
 
             services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
@@ -120,7 +123,9 @@ namespace EGG9000.Site {
                 options.Providers.Add<GzipCompressionProvider>();
                 options.EnableForHttps = true;
             });
-
+            services.AddBugsnag(configuration => {
+                configuration.ApiKey = "7740fdc81aa4f54c5cef05983c7984fe";
+            });
         }
 
         private static void ConfigureAuthorizationCookie(CookieAuthenticationOptions options, string cookieName) {

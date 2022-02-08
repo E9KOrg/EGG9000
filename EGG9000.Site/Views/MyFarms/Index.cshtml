@@ -278,7 +278,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach(var snapshot in snapshots) {
+                                    @foreach(var snapshot in snapshots.OrderByDescending(x => x.Date)) {
                                         <tr>
                                             <td>@snapshot.Date.ToShortDateString()</td>
                                             <td>@snapshot.EggsOfProphecy</td>
@@ -309,6 +309,7 @@
                                     <th>Coop</th>
                                     <th>Started</th>
                                     <th>🏁</th>
+                                    <th colspan="2">Score</th>
                                     @*<th data-toggle="tooltip" title="Boosts used">⚡</th>*@
                                     <th data-toggle="tooltip" title="# of Chickens">🐔</th>
                                     <th data-toggle="tooltip" title="# of Eggs">🥚</th>
@@ -327,8 +328,9 @@
                                     var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
                                     var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
                                     var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
+                                    var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
                                     <tr>
-                                        <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
+                                        <td>@(contract?.Name ?? farm.ContractId)</td>
                                         <td>
                                             <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
                                                 @(farm.CoopId ?? coop?.Name)
@@ -336,6 +338,16 @@
                                         </td>
                                         <td>@farm.Started.ToString("yyyy-MM-dd")</td>
                                         <td>@(farm.Completed ? "✔️" : "")</td>
+                                        @if(contract != null && contract.MaxUsers <= 1) {
+                                            <td colspan="2">Solo</td>
+                                        }  else {
+                                        <td>
+                                        @xref?.Score?.ToString("G2")
+                                        </td>
+                                        <td>
+                                        @xref?.RunningScore?.ToString("G2")
+                                        </td>
+                                        }
                                         @*<td>@farm.BoostsUsed</td>*@
                                         <td>@farm.NumChickens.ToEggString()</td>
                                         <td>@farm.EggsPaidFor.ToEggString()</td>
@@ -366,6 +378,12 @@
                                         </td>
                                         <td>@farm.Started.ToString("yyyy-MM-dd")</td>
                                         <td>@(farm.Completed ? "✔️" : "")</td>
+                                        <td>
+                                        @xref?.Score?.ToString("G2")
+                                        </td>
+                                        <td>
+                                        @xref?.RunningScore?.ToString("G2")
+                                        </td>
                                         @if(lastUpdate != null) {
                                             var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
                                             <td></td>

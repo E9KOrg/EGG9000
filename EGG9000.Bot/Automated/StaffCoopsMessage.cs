@@ -61,7 +61,7 @@ namespace EGG9000.Bot.Automated {
 
                 var adminsWithChannels = adminUsers.OrderBy(x => x.DiscordUsername).Select(u => new {
                     Admin = u,
-                    Channels = coops.Where(c => c.UserCoopsXrefs.Any(xref => u.Id == xref.UserId)).Select(c => _client.Guilds.First(g => g.Id == c.OverflowGuildId).TextChannels.First(tc => tc.Id == c.DiscordChannelId).Mention)
+                    Channels = coops.Where(c => c.UserCoopsXrefs.Any(xref => u.Id == xref.UserId)).Select(c => $"<#{c.DiscordChannelId}>")
                 });
 
                 var channel = guild.GetTextChannel(guildInfo.ChannelID);

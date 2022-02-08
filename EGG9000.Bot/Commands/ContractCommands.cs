@@ -113,7 +113,7 @@ namespace EGG9000.Bot.Commands
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
             var users = allUsers.Where(x => x.Elite == guildContract.Elite && (x.NumChickens > 0 || !inactiveUsers.Any(y => y.DatabaseId == x.DatabaseId))).ToList();
             users = users.Where(x => !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
-            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract, guild);
+            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract);
 
             foreach(var user in coopsBreakdown.Coops.SelectMany(x => x.Users))
             {
@@ -480,7 +480,7 @@ namespace EGG9000.Bot.Commands
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
             var users = allUsers.Where(x => x.Elite == guildContract.Elite && (x.NumChickens > 0 || !inactiveUsers.Any(y => y.DatabaseId == x.DatabaseId))).ToList();
             users = users.Where(x => !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
-            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract, guild);
+            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract);
 
 
 
@@ -548,7 +548,7 @@ namespace EGG9000.Bot.Commands
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
             var users = allUsers.Where(x => x.Elite == guildContract.Elite && (x.NumChickens > 0 || !inactiveUsers.Any(y => y.DatabaseId == x.DatabaseId))).ToList();
             users = users.Where(x => !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
-            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract, guild);
+            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract);
 
             var prefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
@@ -641,7 +641,7 @@ namespace EGG9000.Bot.Commands
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
             var users = allUsers.Where(x => x.Elite == guildContract.Elite && (x.NumChickens > 0 || !inactiveUsers.Any(y => y.DatabaseId == x.DatabaseId))).ToList();
             users = users.Where(x => !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
-            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract, guild);
+            var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract);
 
             var prefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).OrderByDescending(x => x.Backup.EarningsBonus);
 

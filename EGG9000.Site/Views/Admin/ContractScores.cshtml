@@ -1,0 +1,101 @@
+﻿@model List<ContractScoring.UserContractScore>
+@{
+	ViewData["Title"] = "Contract Scores";
+	var chartData = Model.Select(x => new {
+		name = x.UserName,
+		data = new object[] { new object[] { x.SoulPower, Math.Log10(x.Score) } }
+	});
+}
+
+
+<h2>@ViewBag.ContractID</h2>
+
+<div id="chart"></div>
+
+@{
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th></th>
+				<th>Soul Power</th>
+				<th>Elite</th>
+				<th>Eggs Shipped</th>
+				<th>Tokens Spent</th>
+				<th>Joined</th>
+				<th>Score</th>
+				<th>LogScore</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var score in Model.OrderBy(x => x.SoulPower)) {
+				<tr>
+					<td><a href="/Home/ViewUser/@(score.UserId)">@score.UserName</a></td>
+					<td>@score.SoulPower </td>
+					<td>@score.Elite</td>
+					<td>@score.EggsShipped.ToEggString()</td>
+					<td>@score.TokensSpent</td>
+					<td>@score.Joined.Humanize()</td>
+					<td>@score.Score</td>
+					<td>@Math.Log10(score.Score)</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+<style>
+	.StandardOnly .Elite {
+		display: none;
+	}
+
+	.Standard td {
+		color: #42a479;
+	}
+</style>
+@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
+	<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+	<script type="text/javascript">
+		var options = {
+			chart: {
+				type: 'scatter',
+				zoom: {
+					enabled: true,
+					type: 'xy'
+				},
+				animations: {
+					enabled: false
+				}
+			},
+			series: @Html.Raw(JsonConvert.SerializeObject(chartData)),
+			yaxis: {
+			//logarithmic: true
+			decimalsInFloat: 2
+			},
+			xaxis: {
+			logarithmic: true,
+			//type: "numeric",
+			//tickAmount: 10
+
+			//    type: 'datetime'
+			},
+			//tooltip: {
+			//    x: {
+			//        format: 'dd MMM yyyy'
+			//    }
+			//},
+			dataLabels: {
+			enabled: false
+			},
+			stroke: {
+			width: 2
+			},
+			legend: {
+			show: false
+			},
+			}
+
+			var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+			chart.render();
+	</script>
+}

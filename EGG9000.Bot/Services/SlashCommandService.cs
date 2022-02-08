@@ -104,7 +104,7 @@ namespace EGG9000.Bot.Services {
                             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                                 var users = new List<SocketGuildUser>();
                                 for(var i = 1; i <= 10; i++) {
-                                    var option = arg.Data.Options.FirstOrDefault(x => x.Name == $"{name}{i}");
+                                    var option = FindOption($"{name}{i}", arg.Data.Options);
                                     if(option != null) {
                                         users.Add((SocketGuildUser)option.Value);
                                     }
@@ -113,16 +113,17 @@ namespace EGG9000.Bot.Services {
                                 continue;
                             }
 
-                            var optionResult = arg.Data.Options.FirstOrDefault(x => x.Name == name);
+                            var optionResult = FindOption(name, arg.Data.Options);
                             if(optionResult == null) {
                                 parameters.Add(null);
                                 continue;
                             }
                             if(parameterInfo.ParameterType == typeof(int)) {
-                                parameters.Add(Convert.ToInt32((Int64)arg.Data.Options.FirstOrDefault(x => x.Name == name)?.Value));
+                                parameters.Add(Convert.ToInt32((Int64)FindOption(name, arg.Data.Options)?.Value));
                             } else {
-                                parameters.Add(arg.Data.Options.FirstOrDefault(x => x.Name == name)?.Value);
+                                parameters.Add(FindOption(name, arg.Data.Options)?.Value);
                             }
+                            continue;
                         }
 
                         if(parameterInfo.ParameterType == typeof(SocketSlashCommand)) {
@@ -151,18 +152,35 @@ namespace EGG9000.Bot.Services {
                         }
                     }
 
-                    command.MethodInfo.Invoke(null, parameters.ToArray());
+                    await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
                     var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                    await arg.RespondAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                    await arg.RespondAsync($"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
                 }
             } else {
                 _bugsnag.Notify(new Exception("Slash Command Semaphore Limit Hit"));
                 await arg.RespondAsync("ERROR: Unable to run command at this time");
             }
+        }
+
+        private  SocketSlashCommandDataOption FindOption(string name, IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+            var foundOption = options.FirstOrDefault(x => x.Name == name);
+            if(foundOption != null) {
+                return foundOption;
+            }
+
+            foreach(var option in options) {
+                if(option.Options != null) {
+                    foundOption = FindOption(name, option.Options);
+                    if(foundOption != null) {
+                        return foundOption;
+                    }
+                }
+            }
+            return null;
         }
 
         private async Task CreateCommands() {
@@ -255,6 +273,7 @@ namespace EGG9000.Bot.Services {
                         {typeof(string), ApplicationCommandOptionType.String },
                         {typeof(bool), ApplicationCommandOptionType.Boolean },
                         {typeof(SocketGuildUser), ApplicationCommandOptionType.User },
+                        {typeof(SocketUser), ApplicationCommandOptionType.User },
                         {typeof(SocketChannel), ApplicationCommandOptionType.Channel },
                     };
 

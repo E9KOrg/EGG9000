@@ -46,14 +46,9 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
-                var stopwatch = Stopwatch.StartNew();
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
-                Console.WriteLine($"GuildContract: {stopwatch.ElapsedMilliseconds}ms");
-                stopwatch.Restart();
 
                 var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
-                Console.WriteLine($"Coops: {stopwatch.ElapsedMilliseconds}ms");
-                stopwatch.Restart();
                 //var users = await _db.Users.Where(x => x.GuildId == GuildId).ToListAsync();
                 var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == GuildId).Select(x => new {
                     x.DiscordId,
@@ -69,27 +64,48 @@ namespace EGG9000.Site.Controllers {
                     User = y,
                     Backup = x
                 })).ToList();
-                Console.WriteLine($"Backups: {stopwatch.ElapsedMilliseconds}ms");
-                stopwatch.Restart();
-                var prefarms = GetPrefarmers(backups, guildContract.Contract);
-                Console.WriteLine($"Prefarmers: {stopwatch.ElapsedMilliseconds}ms");
-                stopwatch.Restart();
+
+                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract);
+
                 ViewBag.Discord = _discord;
 
                 await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
-                Console.WriteLine($"Download Discord Users: {stopwatch.ElapsedMilliseconds}ms");
-                stopwatch.Restart();
 
+                var UserPreFarms = backups.Select(x => BackupToPreFarm(x, guildContract.Contract)).Where(x => x != null).ToList();
 
                 return View(new CoopsViewModel {
                     Coops = coops,
                     GuildContract = guildContract,
-                    PreFarms = prefarms
+                    CoopsBreakdown = coopsBreakdown,
+                    UserPreFarms = UserPreFarms
                 });
             } else {
                 return View("TempDisabled");
             }
 
+        }
+
+        public async Task<IActionResult> ScoreGraph([FromQuery] ulong GuildId, [FromQuery] String ContractID) {
+            var contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractID);
+            ViewBag.Contract = contract;
+            var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
+            var discordId = ulong.Parse(claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value);
+
+            var scores = await _db.UserCoopXrefs.Where(x => x.Coop.ContractID == ContractID && x.User.GuildId == GuildId && x.Score.HasValue).Select(x => new ScoreGraphItem {
+                Score = x.Score,
+                RunningScore = x.RunningScore,
+                CurrentUser = x.User.DiscordId == discordId,
+                SoulPower = x.SoulPower
+            }).ToListAsync();
+
+            return View(scores);
+        }
+
+        public class ScoreGraphItem {
+            public bool CurrentUser { get; set; }
+            public float? Score { get; set; }
+            public float? RunningScore { get; set; }
+            public double? SoulPower { get; set; }
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
@@ -99,7 +115,7 @@ namespace EGG9000.Site.Controllers {
 
 
             var eggIncIDs = Users.Select(x => x.EggIncId);
-            var existingsXrefs = await _db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.Coop.ContractID == ContractID && eggIncIDs.Contains(x.EggIncId) && x.Coop.Status != CoopStatusEnum.Failed).ToListAsync();
+            var existingsXrefs = await _db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.Coop.Created > DateTimeOffset.Now.AddMonths(-6) && x.Coop.ContractID == ContractID && eggIncIDs.Contains(x.EggIncId) && x.Coop.Status != CoopStatusEnum.Failed).ToListAsync();
             if(existingsXrefs.Count > 0) {
                 return Json(new { error = true, message = $"Un-able to create co-op, the following are already in one: {string.Join(", ", existingsXrefs.Select(x => x.User.DiscordUsername))}" });
             }
@@ -122,7 +138,7 @@ namespace EGG9000.Site.Controllers {
             var targetCoop = await _db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.Id == CoopId);
             var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == UserId);
 
-            var existingXref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
+            var existingXref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.Coop.Created > DateTimeOffset.Now.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
             if(existingXref != null) {
                 return Json(new { error = $"{dbuser.DiscordUsername} has already been assigned a co-op." });
             }
@@ -177,7 +193,8 @@ namespace EGG9000.Site.Controllers {
         public class CoopsViewModel {
             public List<Coop> Coops { get; set; }
             public GuildContract GuildContract { get; set; }
-            public List<UserPreFarm> PreFarms { get; set; }
+            public CoopsBreakdown CoopsBreakdown{ get; set; }
+            public List<UserPreFarm> UserPreFarms { get; set; }
         }
     }
 }

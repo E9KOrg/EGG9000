@@ -35,27 +35,31 @@ namespace EGG9000.Bot.Automated {
             //coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.Finished && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddHours(-12))).ToListAsync());
 
 
-            foreach (var coop in coops) {
+            foreach(var coop in coops) {
                 var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
                 if(coopChannel == null) {
                     coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId));
                 }
-                if (coopChannel != null) {
-                    await coopChannel.DeleteAsync();
+                if(coopChannel != null) {
+                    try {
+                        await coopChannel.DeleteAsync();
+                    } catch(Exception) {
+
+                    }
                     coop.DeletedChannel = true;
-                    Console.WriteLine($"Deleting co-op channel for ${coop.Name}");
+                    Console.WriteLine($"Deleting co-op channel for {coop.Name}");
                 } else {
                     coop.DeletedChannel = true;
-                    Console.WriteLine($"Unable to find co-op channel for ${coop.Name}");
+                    Console.WriteLine($"Unable to find co-op channel for {coop.Name}");
+                }
+                try {
+                    await _db.SaveChangesAsync();
+                } catch(Exception) {
+                    await _db.SaveChangesAsync();
                 }
             }
 
 
-            try {
-                await _db.SaveChangesAsync();
-            } catch (Exception) {
-                await _db.SaveChangesAsync();
-            }
         }
     }
 }

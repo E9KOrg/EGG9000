@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Automated {
             var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date);
 
             if(!hasSnapshots) {
-                var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync();
+                var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0 && x._CustomBackups != null).ToListAsync();
                 var snapshots = 0;
                 foreach(var user in users) {
                     try {

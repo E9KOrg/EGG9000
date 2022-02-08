@@ -41,7 +41,7 @@ namespace EGG9000.Common.Database.Entities {
         public List<Demerit> DemeritsGiven { get; set; }
         public List<Merit> MeritsGiven { get; set; }
 
-        public byte[] _LastBackup { get; set; }
+        //public byte[] _LastBackup { get; set; }
         public byte[] _CustomBackups { get; set; }
 
         public bool DMOnShipReturn { get; set; }
