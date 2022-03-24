@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Policy;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using Discord;
@@ -19,6 +20,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
@@ -26,29 +28,118 @@ namespace EGG9000.Site.Controllers {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly DiscordSocketClient _discord;
+        private readonly IMemoryCache _cache;
 
         public AdminController(
             UserManager<IdentityUser> userManager,
             DiscordSocketClient discord,
-            ApplicationDbContext db) {
+            ApplicationDbContext db, IMemoryCache cache) {
             _db = db;
             _userManager = userManager;
             _discord = discord;
+            _cache = cache;
+        }
+
+        public class PrestigeGain {
+            public UserSnapShot SnapShot { get; set; }
+            public DBUser User { get; set; }
+            public ulong gain { get; set; }
+        }
+
+        public async Task<IActionResult> CheckForDuplicateXrefs() {
+            var xrefs = await _db.UserCoopXrefs.Where(x => x.Coop.ContractID == "diamonds-2022").ToListAsync();
+
+            var groups = xrefs.GroupBy(x => x.EggIncId);
+
+            foreach(var group in groups.Where(x => x.Count() > 1)) {
+                var user = await _db.DBUsers.FirstAsync(x => x.Id == group.First().UserId);
+                Console.WriteLine($"Duplicate xrefs for {user.DiscordUsername}");
+            }
+            return Content("");
+        }
+
+        public async Task<IActionResult> LookForLargeJump() {
+            var snapshots = await _db.UserSnapShots.ToListAsync();
+
+            var sgroups = snapshots.GroupBy(x => x.UserId);
+
+            var gains = new List<PrestigeGain>();
+            List<DBUser> users = new List<DBUser>();
+            foreach(var sagroup in sgroups) {
+                foreach(var sgroup in sagroup.GroupBy(x => x.EggIncID)) {
+                    var osnaps = sgroup.OrderBy(x => x.Prestiges);
+                    ulong previousPrestiges = 0;
+                    foreach(var osnap in osnaps) {
+                        if(previousPrestiges > 0 && osnap.Prestiges > previousPrestiges + 100) {
+                            var user = users.FirstOrDefault(x => x.Id == sagroup.Key);
+                            if(user == null) {
+                                user = await _db.DBUsers.FirstOrDefaultAsync(x => x.Id == sagroup.Key && x.GuildId == 656455567858073601);
+                                if(user != null) {
+                                    users.Add(user);
+                                }
+                            }
+                            if(user != null) {
+                                gains.Add(new PrestigeGain { SnapShot = osnap, User = user, gain = osnap.Prestiges - previousPrestiges });
+                            }
+                            //Console.WriteLine($"{user.DiscordUsername} on {osnap.Date.ToShortDateString()} jumped by {osnap.Prestiges - previousPrestiges} prestiges");
+                        }
+                        previousPrestiges = osnap.Prestiges;
+                    }
+                }
+            }
+
+            foreach(var gain in gains.OrderByDescending(x => x.gain).Take(25)) {
+                Console.WriteLine($"{gain.User.DiscordUsername} on {gain.SnapShot.Date.ToShortDateString()} jumped by {gain.gain} prestiges, {gain.SnapShot.EggIncID}");
+            }
+
+            return Content("Success");
+        }
+
+        public async Task<IActionResult> TestSQL() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+
+            var userCoopStats = _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).GroupBy(x => x.EggIncId).Select(x => new {
+                Start = x.OrderBy(y => y.CreatedOn).First().CreatedOn,
+                End = x.OrderByDescending(y => y.CreatedOn).First().CreatedOn
+            });
+
+
+            //var test = await userCoopStats.ToListAsync();
+
+            //Console.WriteLine(test.Count);
+            return Content(userCoopStats.ToQueryString());
         }
 
         public async Task<IActionResult> Index() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
-            var coops = await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds }).ToListAsync();
 
-            var days = new Dictionary<DateTimeOffset, int>();
-            coops = coops.Where(x => x.Created != DateTimeOffset.MinValue).ToList();
-            for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.Now; start = start.AddDays(1)) {
-                var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
+            Dictionary<DateTimeOffset, int[]> days;
+            var adminDaysCacheKey = $"AdminDays{guildId}";
+            if(!_cache.TryGetValue(adminDaysCacheKey, out days)) {
 
-                days.Add(start, count);
+                var coops = await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds }).ToListAsync();
+
+                days = new Dictionary<DateTimeOffset, int[]>();
+                coops = coops.Where(x => x.Created != DateTimeOffset.MinValue).ToList();
+
+                var xrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).Select(x => new { x.EggIncId, x.CreatedOn }).OrderBy(x => x.CreatedOn).ToListAsync();
+                var eggIncIdGroups = xrefs.GroupBy(x => x.EggIncId).Select(x => new {
+                    Start = x.First().CreatedOn,
+                    End = x.Last().CreatedOn
+                });
+
+                for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.Now; start = start.AddDays(1)) {
+                    var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
+                    var accountsCount = eggIncIdGroups.Count(x => x.Start < start && x.End > start.AddDays(-14));
+                    days.Add(start, new[] { count, accountsCount });
+                }
+                _cache.Set(adminDaysCacheKey, days, TimeSpan.FromDays(1));
             }
+            var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3)).ToListAsync();
+            var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.DeletedChannel && !y.HasScores)).Select(x => x.First().Contract).ToList();
+
 
             return View(new IndexViewModel {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
@@ -58,14 +149,16 @@ namespace EGG9000.Site.Controllers {
                     ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && !c.Category.Name.Contains("finished")),
                     FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
                 }).ToList(),
-                Days = days
+                Days = days,
+                ContractsToScore = contractsToScore
             });
         }
 
         public class IndexViewModel {
             public List<Contract> Contracts { get; set; }
             public List<GuildDetails> Guilds { get; set; }
-            public Dictionary<DateTimeOffset, int> Days { get; set; }
+            public Dictionary<DateTimeOffset, int[]> Days { get; set; }
+            public List<Contract> ContractsToScore { get; set; }
         }
 
         public class GuildDetails {
@@ -185,53 +278,123 @@ namespace EGG9000.Site.Controllers {
             public DateTimeOffset Date { get; set; }
         }
 
-        public async Task<IActionResult> ProcessScores() {
-            var guildContracts = await _db.GuildContracts.AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-99) && x.DeletedChannel).ToListAsync();
-            var contractIDs = guildContracts.Select(x => x.ContractID);
-            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => contractIDs.Contains(x.ContractID) && x.GuildId == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-99)).ToListAsync();
+        public async Task<IActionResult> CalculateScore([FromQuery] string contractid) {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
 
-            foreach(var contractid in contractIDs) {
-                var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
-                var needsScoring = guildContracts.Where(x => x.ContractID == contractid).All(x => x.DeletedChannel && !x.HasScores);
-                if(!needsScoring) {
-                    //if(guildContracts.Any(x => x.ContractID == contractid && x.HasScores == false) && contractCoops.Sum(x => x.UserCoopsXrefs.Count(y => y.Score.HasValue)) > 0) {
-                    //    //guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
-                    //    Console.WriteLine($"Marking as has scores {contractid}");
-                    //}
-                    Console.WriteLine($"Skipping {contractid}");
-                    continue;
-                }
-                Console.WriteLine($"Processing {contractid}");
-                var scores = ContractScoring.GetContractScores(contractCoops);
-                foreach(var score in scores) {
-                    score.xref.Score = score.Score;
-                    score.xref.SoulPower = score.SoulPower;
-                }
-                guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
-                await _db.SaveChangesAsync();
+            var guildContracts = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.ContractID == contractid && x.GuildID == guildId).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
+
+            var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
+            Console.WriteLine($"Processing {contractid}");
+            var scores = ContractScoring.GetContractScores(contractCoops);
+            foreach(var score in scores) {
+                score.xref.Score = score.Score;
+                score.xref.SoulPower = score.SoulPower;
             }
+            guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
+            await _db.SaveChangesAsync();
 
             var userXrefs = coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
 
             foreach(var userXref in userXrefs) {
                 var xrefs = userXref.OrderByDescending(x => x.CreatedOn).ToList();
-                foreach(var xref in xrefs) {
+                foreach(var xref in xrefs.Where(x => x.Coop.ContractID == contractid)) {
                     //if(xref.RunningScore == null) {
                     var lastThreeXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn).Take(3).ToList();
                     if(lastThreeXrefs.Count == 3 && lastThreeXrefs.All(x => x.Score.HasValue)) {
                         xref.RunningScore = lastThreeXrefs.Average(x => x.Score);
                     } else {
                         xref.RunningScore = null;
-
                     }
                     //}
                 }
             }
             await _db.SaveChangesAsync();
 
-            return Content("Success");
+            var users = _db.DBUsers.Where(x => x.GuildId == guildId).Select(x => new {
+                x.Id,
+                x.DiscordId,
+                x.DiscordUsername,
+                x._eggIncIds
+            });
+            var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
+                var user = users.FirstOrDefault(u => u.Id == y.UserId);
+                if(user == null) {
+                    return null;
+                }
+
+
+                return new ScoreUser {
+                    DiscordId = user.DiscordId,
+                    DiscordUsername = user.DiscordUsername,
+                    RunningScore = y.RunningScore.Value
+                };
+            }));
+
+            var guild = _discord.GetGuild(guildId);
+            var beastModeRole = guild.GetRole(938563459812049008);
+
+            var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
+                var user = users.FirstOrDefault(u => u.Id == y.UserId && !u._eggIncIds.Contains("},{"));
+                if(user == null) {
+                    return null;
+                }
+
+                var discordUser = guild.GetUser(user.DiscordId);
+
+
+                return new ScoreUser {
+                    DiscordId = user.DiscordId,
+                    DiscordUsername = user.DiscordUsername,
+                    Score = y.Score.Value,
+                    DiscordUser = discordUser,
+                };
+            }))).Where(x => x != null).OrderByDescending(x => x.Score).Take(10);
+
+
+
+            foreach(var topxref in topXrefs) {
+                if(topxref.DiscordUser == null)
+                    topxref.DiscordUser = await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
+                var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
+                if(tempRole == null) {
+                    tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
+                    _db.Add(tempRole);
+                    await topxref.DiscordUser.AddRoleAsync(beastModeRole);
+                    Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
+                    await Task.Delay(600);
+                }
+                tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
+                tempRole.Expires = DateTimeOffset.Now.AddDays(7);
+
+            }
+
+            await _db.SaveChangesAsync();
+
+            var mentions = topXrefs.Select(x => $"<@{x.DiscordId}>");
+
+            await guild.GetTextChannel(656455568353132546).SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users {string.Join(", ", mentions)} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name}");
+
+
+            return View(new ScoreResult {
+                UsersBelowThreshold = xrefsBelowThreshold.Where(x => x != null).OrderBy(x => x.DiscordUsername).ToList(),
+                TopScore = topXrefs.ToList()
+
+            });
         }
 
+        public class ScoreResult {
+            public List<ScoreUser> UsersBelowThreshold { get; set; }
+            public List<ScoreUser> TopScore { get; set; }
+        }
+
+        public class ScoreUser {
+            public ulong DiscordId { get; set; }
+            public string DiscordUsername { get; set; }
+            public float RunningScore { get; set; }
+            public float Score { get; set; }
+            public IGuildUser DiscordUser { get; set; }
+        }
 
         public async Task<IActionResult> Sleepers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
@@ -379,7 +542,6 @@ namespace EGG9000.Site.Controllers {
             return Json(SetRole);
         }
 
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SearchID([FromQuery] string id) {
             var users = await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync();
 
@@ -401,6 +563,51 @@ namespace EGG9000.Site.Controllers {
             }
 
             return RedirectToAction("Index");
+        }
+
+        public async Task<ActionResult> DuplicateChannels() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+
+
+            var coops = await _db.Coops.AsQueryable().Where(x => x.GuildId == guildId && x.DeletedChannel == false).ToListAsync();
+
+            var coopChannels = _discord.Guilds.Where(x => x.Id == guildId || dbguild.OverflowServers.Any(y => y == x.Id)).SelectMany(x => x.TextChannels);
+
+            var coopsWithChannels = coops.Select(c => new CoopWithChannels { Coop = c, MainChannel = coopChannels.FirstOrDefault(x => x.Id == c.DiscordChannelId), ExtraChannels = coopChannels.Where(x => x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList() }).ToList();
+            return View(coopsWithChannels.Where(x => x.ExtraChannels.Any()).ToList());
+        }
+
+
+        public async Task<ActionResult> Deleteduplicate([FromQuery] ulong id) {
+            var channel = (ITextChannel)(_discord.Guilds.SelectMany(x => x.TextChannels.Where(x => x.Id == id)).First());
+            await channel.DeleteAsync();
+            return RedirectToAction("DuplicateChannels");
+        }
+        public async Task<ActionResult> DeleteAllDuplicates() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+
+
+            var coops = await _db.Coops.AsQueryable().Where(x => x.GuildId == guildId && x.DeletedChannel == false).ToListAsync();
+
+            var coopChannels = _discord.Guilds.Where(x => x.Id == guildId || dbguild.OverflowServers.Any(y => y == x.Id)).SelectMany(x => x.TextChannels);
+
+            var coopsWithChannels = coops.Select(c => new CoopWithChannels { Coop = c, MainChannel = coopChannels.FirstOrDefault(x => x.Id == c.DiscordChannelId), ExtraChannels = coopChannels.Where(x => x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList() }).ToList();
+        
+            foreach(var channel in coopsWithChannels.Where(x => x.ExtraChannels.Any()).SelectMany(x => x.ExtraChannels)) {
+                await ((ITextChannel)channel).DeleteAsync();
+            }
+            return RedirectToAction("DuplicateChannels");
+        }
+        private string StripEmoji(string text) {
+            return Regex.Replace(text, @"\p{Cs}", "");
+        }
+
+        public class CoopWithChannels {
+            public Coop Coop { get; set; }
+            public SocketTextChannel MainChannel { get; set; }
+            public List<SocketTextChannel> ExtraChannels { get; set; }
         }
     }
 }

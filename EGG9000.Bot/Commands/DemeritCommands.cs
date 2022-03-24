@@ -89,7 +89,7 @@ namespace EGG9000.Bot.Commands {
                             "No demerits, maybe I'll give you one just for fun"
                         };
                     msg = msgs.Skip(new Random().Next(0, msgs.Count)).Take(1).First();
-                    await command.RespondAsync(msg);
+                    await command.RespondAsync(msg, ephemeral: true);
                     return;
                 }
 
@@ -99,7 +99,7 @@ namespace EGG9000.Bot.Commands {
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
                 }));
 
-                await command.RespondAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}");
+                await command.RespondAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
                 await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Commands {
 
                 var demeritDesc = await GetDemerits(dbuser.Id, db);
 
-                await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}");
+                await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
                 await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }

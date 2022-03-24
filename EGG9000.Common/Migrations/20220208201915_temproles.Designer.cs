@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220208201915_temproles")]
+    partial class temproles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -241,9 +243,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<Guid>("AdminUserId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ContractID")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("Permanent")
                         .HasColumnType("bit");
@@ -547,12 +546,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<DateTimeOffset>("Expires")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<decimal>("GuildId")
-                        .HasColumnType("decimal(20,0)");
-
-                    b.Property<bool>("IsRemoved")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Reason")
                         .HasColumnType("nvarchar(max)");

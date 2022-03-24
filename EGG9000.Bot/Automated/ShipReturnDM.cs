@@ -16,6 +16,7 @@ using Discord;
 using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
+using Discord.Net;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM : _UpdaterBase {
@@ -69,7 +70,17 @@ namespace EGG9000.Bot.Automated {
                             message += $" (For {backup.UserName})";
                         }
                         shipDm.Sent = true;
-                        await dmChannel.SendMessageAsync(message);
+                        try {
+                            await dmChannel.SendMessageAsync(message);
+                        } catch (HttpException) {
+                            if (user.GuildId == 656455567858073601) {
+                                var talkChannel = _client.GetGuild(user.GuildId).GetTextChannel(799084354638446649);
+                                await talkChannel.SendMessageAsync($"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs");
+                            } else {
+                                var kendromeDMChannel = await _client.GetDMChannelAsync(248865520756064257);
+                                await kendromeDMChannel.SendMessageAsync($"<@{user.DiscordId}> has elected to receive DMs for Ship Return status, but have blocked the bot from sending DMs");
+                            }
+                        }
                         await _db.SaveChangesAsync();
                     } catch (Exception e) {
 

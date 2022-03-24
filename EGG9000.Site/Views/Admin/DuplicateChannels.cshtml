@@ -1,0 +1,28 @@
+﻿@model List<EGG9000.Site.Controllers.AdminController.CoopWithChannels>
+<a href="/admin/deleteallduplicates">Delete All Duplicates</a>
+
+<table>
+	<thead>
+		<tr>
+			<th>Coop</th>
+			<th>Channel</th>
+			<th colspan=99>Extra Channels</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach(var coop in Model) {
+			<tr>
+				<td>@coop.Coop.Name</td>
+				@if (coop.MainChannel is not null) {
+					<td>@coop.MainChannel.Name @coop.MainChannel.Id</td>
+				} else {
+					<td></td>
+				}
+				@foreach(var extra in coop.ExtraChannels) {
+					
+					<td>@extra.Name @extra.Id <a href="/admin/deleteduplicate?id=@extra.Id">Delete</a></td>
+				}
+			</tr>
+		}
+	</tbody>
+</table>

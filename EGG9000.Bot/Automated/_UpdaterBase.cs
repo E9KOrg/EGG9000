@@ -90,7 +90,8 @@ namespace EGG9000.Bot.Automated {
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
                 if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
-                    var dmChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
+                    
+                    var dmChannel = await(await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync();
                     await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.");
                     _semaphoreSlim.Release();
                     Restarted = true;

@@ -31,7 +31,7 @@ using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase {
-        public static TimeSpan _updateInterval = TimeSpan.FromMinutes(5);
+        public static TimeSpan _updateInterval = TimeSpan.FromMinutes(10);
         private IConfiguration _configuration;
         private APILink _apiLink;
         public static List<UserX> _users;
@@ -236,7 +236,10 @@ namespace EGG9000.Bot.Automated {
                     channelName = "👤" + channelName;
                 } else if(coops.Count == 0) {
                     var emoji = "🐣";
-                    if(coopsBreakdown.Coops.Any(x => x.Projected > 2)) {
+                    if(coopsBreakdown.Coops.Any(x => x.IsFire)) {
+                        emoji += "🔥";
+                    }
+                    if(coopsBreakdown.Coops.Any(x => x.IsDoubleFire)) {
                         emoji += "🔥";
                     }
                     channelName = emoji + channelName;
@@ -260,7 +263,10 @@ namespace EGG9000.Bot.Automated {
                             emoji += Convert.ToChar(12881 + (count - 21));
                         }
                     }
-                    if(coopsBreakdown.Coops.Any(x => x.Projected > 2)) {
+                    if(coopsBreakdown.Coops.Any(x => x.IsFire)) {
+                        emoji += "🔥";
+                    }
+                    if(coopsBreakdown.Coops.Any(x => x.IsDoubleFire)) {
                         emoji += "🔥";
                     }
                     channelName = emoji + channelName;
@@ -294,12 +300,12 @@ namespace EGG9000.Bot.Automated {
 
                         var name = $"Coop {i + coops.Count}";
                         if(coop.Users.Any(x => x.TimeLeft.HasValue)) {
-                            name += $" (Not Started) Farms expire: {coop.Users.Where(x => x.TimeLeft.HasValue).Min(x => x.TimeLeft).Value.Humanize(precision: 2).ShortenTime()}";
+                            name += $" PreFarming, Expire:{coop.Users.Where(x => x.TimeLeft.HasValue).Min(x => x.TimeLeft).Value.Humanize(precision: 2).ShortenTime()}";
                         }
 
                         if(coop.Users.Sum(x => x.Projected) / targetAmount > 1) {
-                            var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coop.Users.Sum(x => x.Rate), coop.Users.Sum(x => x.EggsPaidFor));
-                            name += $" Complete in: {timeRemaining.Humanize(2).ShortenTime()}";
+                            //var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coop.Users.Sum(x => x.Rate), coop.Users.Sum(x => x.EggsPaidFor + x.OfflineEggs));
+                            name += $" Completes: {coop.TimeRemaining.Humanize(2).ShortenTime()}";
                         }
                         if(coop.Users.Count > 0) {
                             newMsgs.AddRange(ShowCoopStatus(coop, name, targetAmount, guildContract.Contract.Details.MaxCoopSize));
@@ -323,9 +329,9 @@ namespace EGG9000.Bot.Automated {
                     newMsgs.AddRange(ShowCoopStatus(alreadyInCoop, $"Already in coop", targetAmount, 0));
                 }
 
-                if(coopsBreakdown.Completed.Users.Count > 0 && coopsBreakdown.Completed.Users.Count < 40) {
-                    newMsgs.Add($"\nThe following users have already completed the contract.\n{String.Join(", ", coopsBreakdown.Completed.Users.Select(x => x.Name))}\n");
-                }
+                //if(coopsBreakdown.Completed.Users.Count > 0 && coopsBreakdown.Completed.Users.Count < 40) {
+                //    newMsgs.Add($"\nThe following users have already completed the contract.\n{String.Join(", ", coopsBreakdown.Completed.Users.Select(x => x.Name))}\n");
+                //}
 
 
                 var finalMsg = "";
@@ -340,11 +346,11 @@ namespace EGG9000.Bot.Automated {
 
                 var skipList = JsonConvert.DeserializeObject<List<ulong>>(guildContract.Skip ?? "[]");
 
-                var skipping = activesNotParticipanting.Where(x => skipList.Any(y => x.DiscordId == y) && !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
+                //var skipping = activesNotParticipanting.Where(x => skipList.Any(y => x.DiscordId == y) && !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
 
-                if(skipping.Count > 0) {
-                    finalMsg += $"\nThe following people are set to skip this contract. {string.Join(", ", skipping.Select(x => x.DiscordName))}\n";
-                }
+                //if(skipping.Count > 0) {
+                //    finalMsg += $"\nThe following people are set to skip this contract. {string.Join(", ", skipping.Select(x => x.DiscordName))}\n";
+                //}
 
                 var skippingWhilePrefarming = activesNotParticipanting.Where(x => skipList.Any(y => x.DiscordId == y) && coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
                 if(skippingWhilePrefarming.Count > 0) {
@@ -379,18 +385,13 @@ namespace EGG9000.Bot.Automated {
 
                 var expectedCount = coopsBreakdown.Coops.Sum(x => x.Users.Count) + activesNotParticipanting.Count;
 
-                finalMsg += $"Expected Participants: {expectedCount}, Current Capacity: {coopsBreakdown.Coops.Count * guildContract.Contract.Details.MaxCoopSize}, Currently Pre-farming: {coopsBreakdown.Coops.Sum(x => x.Users.Count)}, Co-op Count: {coopsBreakdown.Coops.Count}\n";
+                finalMsg += $"Expected Participants: {expectedCount}, Current Capacity: {coopsBreakdown.Coops.Count * guildContract.Contract.Details.MaxCoopSize}, Currently Prefarming: {coopsBreakdown.Coops.Sum(x => x.Users.Count)}, Co-op Count: {coopsBreakdown.Coops.Count}\n";
 
                 var spotsInPotentialCoops = coopsBreakdown.Coops.Count * guildContract.Contract.Details.MaxCoopSize - coopsBreakdown.Coops.Sum(x => x.Users.Count);
-                var spotsInCurrentCoopsUnder24 = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.TimeRemaining <= TimeSpan.FromHours(24)).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
-                var spotsInCurrentCoopsOver24 = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.TimeRemaining > TimeSpan.FromHours(24)).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
-                finalMsg += $"Spots Potential: {spotsInPotentialCoops}, Spots <24h: {spotsInCurrentCoopsUnder24}, Spots >24H: {spotsInCurrentCoopsOver24}\n\n";
+                var spotsUnder24 = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.TimeRemaining <= TimeSpan.FromHours(24)).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
+                var spotsOver24 = coopsDetails.Where(x => !x.Coop.FinishedOrFailed && x.TimeRemaining > TimeSpan.FromHours(24)).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.Users.Count);
+                finalMsg += $"Spots Potential: {spotsInPotentialCoops}, {(spotsUnder24 > 0 ? "**" : "")}Spots <24h: {spotsUnder24}{(spotsUnder24 > 0 ? "**" : "")}, Spots >24H: {spotsOver24}\n\n";
 
-
-                //finalMsg += "**WARNING: Messages in this channel are automatically deleted**\n";
-                //finalMsg += $"The bot updates this channel every {_updateInterval.TotalMinutes} mins\n";
-                //finalMsg += "Current Status: **Prefarming**\n";
-                //finalMsg += $"View On Website <https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()}>";
 
 
                 while(finalMsg.Length > 2000) {
@@ -407,18 +408,6 @@ namespace EGG9000.Bot.Automated {
 
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
-                    //.AddField("Co-op Size", guildContract.Contract.MaxUsers, true)
-                    //.AddField("<:Token_boost:724397091211968604> Interval", guildContract.Contract.Details.MinutesPerToken + "mins", true)
-                    //.AddField("\u17B5", "\u17B5", true)
-
-                    //.AddField("Length", guildContract.Contract.ContractTime.Humanize(precision: 2).ShortenTime(), true)
-                    //.AddField(validFor > TimeSpan.Zero ? "Ends" : "Ended", validFor.Humanize(precision: 2).ShortenTime(), true)
-                    //.AddField("\u17B5", "\u17B5", true)
-                    //.AddField("Co-op Count", coopsBreakdown.Coops.Count, true)
-
-                    //.AddField("Capactiy", coopsBreakdown.Coops.Count * guildContract.Contract.Details.MaxCoopSize, true)
-                    //.AddField("Expected", expectedCount, true)
-                    //.AddField("Prefarming", coopsBreakdown.Coops.Sum(x => x.Users.Count), true)
                     .WithTimestamp(DateTimeOffset.Now)
                     .WithFooter($"Updates Every {_updateInterval.TotalMinutes} Minutes - Last Updated")
                     .WithAuthor(
@@ -458,10 +447,10 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                var existingMessages = (await channel.GetMessagesAsync().FlattenAsync()).ToList();
+                var existingMessages = (await channel.GetMessagesAsync(limit: 1000).FlattenAsync()).ToList();
 
 
-                var nonBotMessages = existingMessages.Where(x => !x.Author.IsBot).ToList();
+                var nonBotMessages = existingMessages.Where(x => !x.Author.IsBot || x.Interaction?.Type == InteractionType.ApplicationCommand).ToList();
                 if(nonBotMessages.Count > 0)
                     await channel.DeleteMessagesAsync(nonBotMessages);
 
@@ -498,7 +487,7 @@ namespace EGG9000.Bot.Automated {
                             } else {
                                 skipped++;
                             }
-                            if(notStarted == null && condensedMsgs[i].Contains("(Not Started)")) {
+                            if(notStarted == null && condensedMsgs[i].Contains("PreFarming")) {
                                 notStarted = existingMessages.ElementAt(i);
                                 embedBuilder.Description = GetLinkToMessage(notStarted, guild, channel, "Jump to top not started co-op (for staff)") + embedBuilder.Description;
                             }
@@ -511,7 +500,7 @@ namespace EGG9000.Bot.Automated {
                         } else {
                             var message = await channel.SendMessageAsync(condensedMsgs[i]);
                             newMessage++;
-                            if(notStarted == null && condensedMsgs[i].Contains("(Not Started)")) {
+                            if(notStarted == null && condensedMsgs[i].Contains("PreFarming")) {
                                 notStarted = message;
                                 embedBuilder.Description = GetLinkToMessage(notStarted, guild, channel, "Jump to top not started co-op (for staff)") + embedBuilder.Description;
                             }
@@ -540,7 +529,7 @@ namespace EGG9000.Bot.Automated {
             for(int i = 1; i <= coopsDetails.Count; i++) {
                 var coopDetails = coopsDetails[i - 1];
 
-                if(coopDetails.Coop.DeletedChannel)
+                if(coopDetails.Coop.DeletedChannel || !coopDetails.HasSpots || coopDetails.Coop.Finished)
                     continue;
 
                 if(coopDetails.Coop.Finished && coopDetails.Coop.Status != CoopStatusEnum.Completed) {
@@ -550,22 +539,22 @@ namespace EGG9000.Bot.Automated {
 
                 var name = coopDetails.Coop.Status switch {
                     CoopStatusEnum.WaitingOnStarter => $"Coop {i} - Waiting on bot to start",
-                    CoopStatusEnum.WaitingOnAssigned => $"Coop {i} - Waiting on the below users to join",
+                    CoopStatusEnum.WaitingOnAssigned => $"Coop {i} - Waiting on users",
                     CoopStatusEnum.AllAssignedJoined => $"Coop {i}",
-                    CoopStatusEnum.Full => $"Coop {i} - Coop is Full",
-                    CoopStatusEnum.Completed => $"Coop {i} has completed! 🎆",
+                    CoopStatusEnum.Full => $"Coop {i}",
+                    CoopStatusEnum.Completed => $"Coop {i} completed! 🎆",
                     _ => ""
                 };
 
                 if(!coopDetails.Coop.Finished) {
-                    var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coopDetails.Users.Sum(x => x.Rate), coopDetails.Users.Sum(x => x.EggsPaidFor));
-                    if(timeRemaining > TimeSpan.Zero) {
-                        name += $" Time to complete: {timeRemaining.Humanize(2).ShortenTime()}";
+                    //var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coopDetails.Users.Sum(x => x.Rate), coopDetails.Users.Sum(x => x.EggsPaidFor + x.OfflineEggs));
+                    if(coopDetails.TimeRemaining > TimeSpan.Zero) {
+                        name += $" Completes: {coopDetails.TimeRemaining.Humanize(2).ShortenTime()}";
                     }
                     if(coopDetails.Coop.CoopEnds < DateTimeOffset.Now) {
                         name += $" Expired: {(coopDetails.Coop.CoopEnds - DateTimeOffset.Now).Value.Humanize(2).ShortenTime()} ago";
-                    } else if((coopDetails.Coop.CoopEnds - DateTimeOffset.Now) < timeRemaining) {
-                        name += $" Expires In: {(coopDetails.Coop.CoopEnds - DateTimeOffset.Now).Value.Humanize(2).ShortenTime()}";
+                    } else if((coopDetails.Coop.CoopEnds - DateTimeOffset.Now) < coopDetails.TimeRemaining) {
+                        name += $" Expires: {(coopDetails.Coop.CoopEnds - DateTimeOffset.Now).Value.Humanize(2).ShortenTime()}";
                     }
                 }
 
@@ -610,7 +599,7 @@ namespace EGG9000.Bot.Automated {
                             //new FixedWidthCell("Tokens", CellAlignment.Center),
                             //new FixedWidthCell("Spent", CellAlignment.Center),
                             //new FixedWidthCell("Online", CellAlignment.Center),
-                            new FixedWidthCell(coop.Users.All(x => string.IsNullOrEmpty(x.Coop)) ? "🟡" : "Join")
+                            new FixedWidthCell(coop.Users.All(x => string.IsNullOrEmpty(x.Coop)) ? "🟡" : "")
                         });
             var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
             table.AddRange(coop.Users.OrderByDescending(x => x.Projected).Select(x => {
@@ -640,7 +629,7 @@ namespace EGG9000.Bot.Automated {
             }));
 
             if(coopName != "Expired Farms" && coopName != "Already in coop") {
-                var percent = $"{coop.Projected:P0}".Replace(",",""); //$"{coop.Users.Sum(x => x.Projected) / target:P0}";
+                var percent = $"{coop.PercentProjected / 100:P0}".Replace(",",""); //$"{coop.Users.Sum(x => x.Projected) / target:P0}";
 
                 table.Add(new List<FixedWidthCell> {
                             new FixedWidthCell($"{coop.Users.Count}/{size}"),

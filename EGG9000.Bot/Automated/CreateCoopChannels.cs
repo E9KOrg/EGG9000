@@ -29,28 +29,28 @@ namespace EGG9000.Bot.Automated {
         }
 
         public override async Task Run(object state) {
-                    ApplicationDbContext _db = new ApplicationDbContext(_config["ConnectionStrings:DefaultConnection"]);
-                    var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync();
+            ApplicationDbContext _db = new ApplicationDbContext(_config["ConnectionStrings:DefaultConnection"]);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync();
 
-                    if(coops.Count > 0) {
-                        foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
-                            var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
-                            var servers = await GetOverflowGuildsCounts(guild, _db);
-                            foreach(var coop in coopGroups) {
-                                var channel = await CreateTextChannelAsync(guild, coop, servers);
-                                if(channel != null) {
-                                    coop.DiscordChannelId = channel.Id;
-                                    coop.OverflowGuildId = channel.GuildId;
-                                }
-                            }
+            if(coops.Count > 0) {
+                foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
+                    var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
+                    var servers = await GetOverflowGuildsCounts(guild, _db);
+                    foreach(var coop in coopGroups) {
+                        var channel = await CreateTextChannelAsync(guild, coop, servers);
+                        if(channel != null) {
+                            coop.DiscordChannelId = channel.Id;
+                            coop.OverflowGuildId = channel.GuildId;
                         }
-
                         try {
                             await _db.SaveChangesAsync();
                         } catch(Exception) {
                             await _db.SaveChangesAsync();
                         }
                     }
+                }
+
+            }
         }
 
         private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers) {
@@ -61,7 +61,7 @@ namespace EGG9000.Bot.Automated {
                         category.CurrentCount++;
                         overflow.ChannelsLeft--;
                         return channel;
-                    }catch(Exception) { }
+                    } catch(Exception) { }
                 }
             }
             return null;

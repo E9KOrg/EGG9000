@@ -51,6 +51,8 @@ namespace EGG9000.Common.Database {
         public DbSet<GlobalLeaderboardUser> GlobalLeaderboardUsers { get; set; }
         public DbSet<UserSnapShot> UserSnapShots { get; set; }
 
+        public DbSet<TemporaryRole> TemporaryRoles { get; set; }
+
         public ApplicationDbContext(DbContextOptions options) : base(options) {
                 }
         //    public ApplicationDbContext() : base(GetOptions())
@@ -83,6 +85,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<UserCoopXref>().HasKey(x => new { x.UserId, x.CoopId, x.EggIncId });
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.Elite });
+            builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);
             builder.Entity<Demerit>().HasOne(x => x.AdminUser).WithMany(x => x.DemeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);

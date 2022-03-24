@@ -44,6 +44,8 @@ namespace EGG9000.Common.Helpers {
             public double NumChickens { get; set; }
             public double Rate { get; set; }
             public double Projected { get; set; }
+            public double ProjectedPercent { get; set; }
+            public double OfflineEggs { get; set; }
             public ushort Tokens { get; set; }
             public ushort BoostTokensSpent { get; set; }
             public TimeSpan TimeSinceUpdate { get; set; }
@@ -104,7 +106,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static TimeSpan GetTimeRemainingValue(double targetAmount, List<UserPreFarm> userPreFarms) {
-            return GetTimeRemainingValue(targetAmount, userPreFarms.Sum(x => x.Rate), userPreFarms.Sum(x => x.EggsPaidFor));
+            return GetTimeRemainingValue(targetAmount, userPreFarms.Sum(x => x.Rate), userPreFarms.Sum(x => x.EggsPaidFor + x.OfflineEggs));
         }
 
         public class CoopsBreakdown {
@@ -122,16 +124,26 @@ namespace EGG9000.Common.Helpers {
             //public string StarterStatus { get; set; }
             public List<UserPreFarm> Users { get; private set; }
             public Coop Coop { get; set; }
-            public  double Projected { get; private set; }
+            //public  double Projected { get; private set; }
+            public double PercentProjected { get; private set; }
             public TimeSpan TimeRemaining { get; init; }
 
             private uint _maxSize = 0;
             public bool HasSpots { get { return Users.Count < _maxSize; } }
+            public bool IsFire;
+            public bool IsDoubleFire;
             public CoopDetails(List<UserPreFarm> users, double targetAmount, Coop coop = null, uint MaxSize = 0) {
                 Users = users;
                 if(targetAmount > 0) {
                         TimeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, users);
-                        Projected = users.Sum(x => x.Projected) / targetAmount;
+                    //Projected = users.Sum(x => x.Projected) / targetAmount;
+                    PercentProjected = (users.Sum(x => x.Projected) / targetAmount) * 100;
+                    if(TimeRemaining < TimeSpan.FromHours(18)) {
+                        IsDoubleFire = true;
+                    } else if(TimeRemaining < TimeSpan.FromHours(36)) {
+                        IsFire = true;
+                    }
+
                 }
                 Coop = coop;
                 _maxSize = MaxSize;
@@ -297,7 +309,7 @@ namespace EGG9000.Common.Helpers {
 
             prefarms.ForEach(x => {
                 if(!string.IsNullOrWhiteSpace(x.Coop) && x.Coop.ToLower() != coop.Name.ToLower() && !x.CancelledFarm && !x.Coop.StartsWith("✔️") && !x.Coop.StartsWith("❌") && !x.Coop.Contains("Different")) {
-                    x.Coop += " (Different Coop)";
+                    //x.Coop += " (Different Coop)";
                 } else {
                     var joined = (coop.LastStatusUpdate?.Contributors.Any(y => y.UserId == x.EggIncId) ?? false || coop.UserCoopsXrefs.Any(y => y.JoinedCoop && y.UserId == x.DatabaseId));
                     if(coop.Status == CoopStatusEnum.Failed && string.IsNullOrEmpty(x.CoopName)) {
@@ -359,10 +371,8 @@ namespace EGG9000.Common.Helpers {
 
             var siloTimeMinutes = user.Backup != null && farm != null ? (Research.GetTotalSiloCapacity(user.Backup) * farm.SilosOwned) : 0;
             var contractLength = contract.Details.LengthSeconds;
-            var TimeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(user.Backup.LastBackupTime);
-            if(TimeSinceUpdate.TotalDays > 5) {
-                TimeSinceUpdate = TimeSpan.FromHours(0);
-            } else if(TimeSinceUpdate.TotalMinutes > siloTimeMinutes) {
+            var TimeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)farm.LastStepTime);
+            if(TimeSinceUpdate.TotalMinutes > siloTimeMinutes) {
                 TimeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
             }
             var projected = ratePerSec * contractLength + farm.EggsPaidFor + ratePerSec * TimeSinceUpdate.TotalSeconds;
@@ -399,6 +409,8 @@ namespace EGG9000.Common.Helpers {
             prefarm.BoostTokensSpent = farm.BoostTokensSpent;
             prefarm.TimeSinceUpdate = TimeSinceUpdate;
             prefarm.TimeLeft = timeleft;
+            prefarm.OfflineEggs = ratePerSec * TimeSinceUpdate.TotalSeconds;
+            prefarm.ProjectedPercent = (prefarm.Projected / goal) * 100;
 
             var current = farm.EggsPaidFor;
             var finished = current >= goal;

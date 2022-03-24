@@ -173,11 +173,14 @@ namespace EGG9000.Bot.Automated {
                             }
                         }
 
+
+                        var unnessacryBackups = dbUser.Backups.Where(x => !dbUser.EggIncIds.Any(y => y.Id == x.EggIncId)).ToList();
+                        unnessacryBackups.ForEach(x => dbUser.Backups.Remove(x));
+
                         if(dbUser.showEB) {
                             try {
-                                var eb = higherEB.Backup.EarningsBonus.ToEggString(true);
-                                var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
-                                var ebString = $" ({eb})";
+                                var ebs = dbUser.Backups.Where(x => dbUser.EggIncIds.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
+                                var ebString = $" ({string.Join(",", values: ebs)})";
                                 var newName = discordUser.GetCleanName().Truncate(32 - ebString.Length) + ebString;
                                 if(newName != discordUser.Nickname) {
                                     Console.WriteLine($"Updating {discordUser.Nickname} to {newName}");
@@ -201,7 +204,9 @@ namespace EGG9000.Bot.Automated {
                                     guildContract.Skip = JsonConvert.SerializeObject(skipList);
 
                                     var channel = guild.GetTextChannel(guildContract.DiscordChannelId);
-                                    await channel.AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                    if(channel is not null) {
+                                        await channel.AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                    }
                                 }
                                 await _db.SaveChangesAsync();
                             } finally { }
@@ -262,7 +267,7 @@ $"With great EB comes great responsibility. Congrats on hitting an EB of {eb}%, 
                                     messages.AddRange(new List<string> {
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%, {discordUser.Mention}! You really like eggs, eh? Eggciting hobby, isnt it?",
 $"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}! Wow. It seems like just yesterday you were running your first chickens. Celebrate!",
-$"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelettes. Anyone have eggs? Congrats on the impressive EB of { eb}%!",
+$"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelets. Anyone have eggs? Congrats on the impressive EB of { eb}%!",
 $"Congrats on the new rank of {role.Name} with an EB of {eb}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
 $"Choo Choo!All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { eb}%, jump on now!",
 $"Congrats { discordUser.Mention}, you are a { role.Name} now with an EB of { eb}%! How eggciting!",

@@ -255,161 +255,76 @@ namespace EGG9000.Bot.Services {
                                 //    return;
 
                         }
-                    } else {
-                        switch(command) {
-                            case "testevent":
-                            case "clean":
-                            case "makepublic":
-                            case "testadmin":
-                            case "delete":
-                            case "start":
-                            case "setnumber":
-                            case "missingregistrations":
-                            case "newcode":
-                            case "removenull":
-                            case "showduplicates":
-                            case "move":
-                            case "remove":
-                            case "update":
-                            case "removeduplicates":
-                            case "kick":
-                            case "enable":
-                            case "disable":
-                            case "removename":
-                                await message.Channel.SendMessageAsync($"{message.Author.Mention} You don't have permissions to run the command '!{command}'");
-                                return;
-                        }
-
                     }
 
 
                     //Farm Hands
-                    var isFarmHand = false;
-                    try {
-                        isFarmHand = ((SocketGuildUser)message.Author).Roles.Any(x =>
-                            x.Name.ToLower().Contains("farm hand"));
-                    } catch(Exception) {
+                    //var isFarmHand = false;
+                    //try {
+                    //    isFarmHand = ((SocketGuildUser)message.Author).Roles.Any(x =>
+                    //        x.Name.ToLower().Contains("farm hand"));
+                    //} catch(Exception) {
 
-                    }
+                    //}
 
 
                     if(!isAdmin && message.MentionedUsers.Count > 0) {
-                        await message.Channel.SendMessageAsync($"{message.Author.Mention} You don't have permissions to @mention a user when using the command !{command}");
                         return;
                     }
                     switch(command) {
-                        case "join":
-                            await ContractCommands.Join(message, db, _apiLink, _discord);
-                            return;
-                        case "pingonfull":
-                            await MiscCommands.PingOnFull(message, args, db);
-                            return;
-                        case "userstatus":
-                            await RegisterCommands.userstatus(message, args, db, _discord, _apiLink);
-                            return;
-                        case "showeb":
-                            await RegisterCommands.ShowEB(message, args, db);
-                            return;
-                        case "hideeb":
-                            await RegisterCommands.HideEB(message, args, db);
-                            return;
-                        case "takeabreak":
-                            await RegisterCommands.TakeABreak(message, args, db, _discord);
-                            return;
-                        case "skipnope":
-                            await ContractCommands.SkipNoPe(message, args, db, _discord);
-                            return;
-                        case "unskipnope":
-                            await ContractCommands.UnSkipNoPe(message, args, db, _discord);
-                            return;
-                        case "skip":
-                            await ContractCommands.Skip(message, args, db, _discord);
-                            return;
+                        //case "join":
+                        //    await ContractCommands.Join(message, db, _apiLink, _discord);
+                        //    return;
+                        //case "pingonfull":
+                        //    await MiscCommands.PingOnFull(message, args, db);
+                        //    return;
+                        //case "userstatus":
+                        //    await RegisterCommands.userstatus(message, args, db, _discord, _apiLink);
+                        //    return;
+                        //case "showeb":
+                        //    await RegisterCommands.ShowEB(message, args, db);
+                        //    return;
+                        //case "hideeb":
+                        //    await RegisterCommands.HideEB(message, args, db);
+                        //    return;
+                        //case "takeabreak":
+                        //    await RegisterCommands.TakeABreak(message, args, db, _discord);
+                        //    return;
+                        //case "skipnope":
+                        //    await ContractCommands.SkipNoPe(message, args, db, _discord);
+                        //    return;
+                        //case "unskipnope":
+                        //    await ContractCommands.UnSkipNoPe(message, args, db, _discord);
+                        //    return;
+                        //case "skip":
+                        //    await ContractCommands.Skip(message, args, db, _discord);
+                        //    return;
                         //case "starter": await _contractUpdater.Starter(message, args, db, client); break;
                         //case "removestarter": await _contractUpdater.RemoveStarter(message, args, db, client); break;
 
                         //case "opencoops": await Contracts.OpenCoops(message, db); break; //**Need to update for multiple guilds
 
-                        case "addcoop":
-                            await ContractCommands.AddCoop(message, args, db, _discord, _apiLink);
-                            break;
-                        //case "mystatus": await ContractCommands.MyStatus(message, db); break;
-                        //case "getstatus": await ContractCommands.GetStatus(message, args, db); break;
-                        case "removecoop":
-                            await ContractCommands.RemoveCoop(message, args, db, _discord);
-                            break;
+                        //case "addcoop":
+                        //    await ContractCommands.AddCoop(message, args, db, _discord, _apiLink);
+                        //    break;
+                        ////case "mystatus": await ContractCommands.MyStatus(message, db); break;
+                        ////case "getstatus": await ContractCommands.GetStatus(message, args, db); break;
+                        //case "removecoop":
+                        //    await ContractCommands.RemoveCoop(message, args, db, _discord);
+                        //    break;
 
-                        case "accept":
-                            await RegisterCommands.Accept(message, args, db, _discord);
-                            break;
-                        case "moveserver":
-                            await RegisterCommands.MoveServer(message, args, db, _discord, _apiLink);
-                            break;
-                        case "register":
-                            await RegisterCommands.Register(message, args, db, _discord, _apiLink);
-                            break;
-                        case "updateid":
-                            await RegisterCommands.UpdateID(message, args, db, _discord, _apiLink);
-                            break;
-
-                        case "help":
-                            var helpMessage = @"Available Commands:
-**!register {eggincid}** Registers your discord user with your EggInc ID, you can do this more than once for each EggInc account you have
-**!addcoop {coopname}** Allows you to add an external coop that wasn't created with !newcode
-**!demerits** List a users demerits
-**!skip #contract-channel** Allows the user to opt out of that contract
-**!skipNoPe**  Allows the user to opt out of contracts with no <:Egg_of_Prophecy_PE:669981330477547580>
-**!unSkipNoPe**  Undos the !skipnope command
-**!skip #contract-channel** Allows the user to opt out of that contract
-**!takeabreak** Bot will not ping you about not pre-farming, this status will stay until the next time you start pre-farming
-**!userstatus** Gives your status and last backup time
-";
-                            if(isAdmin) {
-                                helpMessage += @"
-
-Admin Only Commands:
-**!startuser @user**
-**!startfill %percent**
-**!startempty  (is this needed now since we have the website?)**
-**!startpercent %percent**
-**!startall**
-**!move @user @channel** Moves a user from one assigned co-op to another, only works if they haven't joined
-**!setnumber {numberOfCoops}** Sets the number of coops to create (Admin Contract Channel Only)
-**!newcode** Will give a new code for starting a contract (Only as a backup when automatted fails)
-**!delete** Deletes a co-op or contract channel and stops updating
-**!add-demerit @user reason** Adds a demerit to user for the given reason
-**!remove-demerit @user** Removes the last demerit from user
-**!makepublic** Makes a co-op public
-**!cleanwelcome** Kicks users inactive 14 days and without a role. Then cleans up welcome channel.
-**!cleanunpinned** Removes any unpinned messages from the channel
-**!userstatus @user** Shows account details
-**!disable** You will not be assigned co-ops until you run !enable
-**!enable** Undo the !disable command so you can participate again
-**!fixreference @user EggIncName** Fixes when someone shows as a alien but has been assigned a co-op
-**!staffcoops** List co-ops for staff
-**!listusers @role ... @role #channel** Will tag everyone with the combination of roles, optional tag another channel.
-";
-                            }
-
-                            while(helpMessage.Length > 2000) {
-                                var index = helpMessage.LastIndexOf('\n', 2000);
-                                await message.Channel.SendMessageAsync(helpMessage.Substring(0, index));
-                                helpMessage = helpMessage.Substring(index);
-                            }
-
-
-                            await message.Channel.SendMessageAsync(helpMessage);
-
-                            /*                      
-                            **!addname {{eggincname}}** Registers your discord user with your EggInc name, you can do this more than once for each EggInc account you have
-                            **!removename {{eggincname}}** Allows you to remove a name that is wrong
-                            **!mystatus** Will give you updates of all your coops that aren't done
-                            **!opencoops** Will show you all contracts with open spots
-                            */
-                            break;
-                        default:
-                            await message.Channel.SendMessageAsync(BotText.UnknownCommand(command) + $" {message.Author.Mention}");
-                            break;
+                        //case "accept":
+                        //    await RegisterCommands.Accept(message, args, db, _discord);
+                        //    break;
+                        //case "moveserver":
+                        //    await RegisterCommands.MoveServer(message, args, db, _discord, _apiLink);
+                        //    break;
+                        //case "register":
+                        //    await RegisterCommands.Register(message, args, db, _discord, _apiLink);
+                        //    break;
+                        //case "updateid":
+                        //    await RegisterCommands.UpdateID(message, args, db, _discord, _apiLink);
+                        //    break;
                     }
                 }
             } catch(Exception e) {

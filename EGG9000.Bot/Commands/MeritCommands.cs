@@ -140,7 +140,7 @@ namespace EGG9000.Bot.Commands {
                     return $"{i++}: {x.Reason}";
                 }));
 
-                await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}");
+                await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
             } catch(Exception e) {
                 await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
