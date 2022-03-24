@@ -726,18 +726,22 @@ namespace EGG9000.Bot.Automated {
                                         if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                             xref.JoinWarning24TillFinish = true;
                                             await _db.SaveChangesAsync();
-                                            await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours");
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours");
                                         } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                             xref.JoinWarning24h = true;
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
                                             //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
                                             var dmChannel = await discordUser.CreateDMChannelAsync();
-                                            await dmChannel.SendMessageAsync($"{discordUser.Mention} reminder to join {coopChannel.Mention} - 24h since added to co-op");
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op");
                                         } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
-                                            await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 12h since added to co-op");
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op");
+                                        }
+
+                                        if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-48) && status.ProjectedPercent(coop.Contract, (int?)coop.League ?? 0) > 100) {
+                                            await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 48 hours", user, _db, xref, discordUser, coopChannel, dbguild, coop);
                                         }
                                     }
                                 } catch(Exception) { }
@@ -770,7 +774,9 @@ namespace EGG9000.Bot.Automated {
                         else
                             Console.WriteLine($"Missing UsersAssigned for {coop.Name}");
 
-                        lastMessage += $"Contract: {coop.Contract.Name} {coop.Contract.ID}\n";
+                        //lastMessage += $"Contract: {coop.Contract.Name} {coop.Contract.ID}\n";
+
+                        lastMessage += "\nCo-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
 
                         if(status.Contributors.Count == coop.MaxUsers && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
                             coop.Status = CoopStatusEnum.Full;
@@ -1050,11 +1056,12 @@ namespace EGG9000.Bot.Automated {
                 var index = random.Next(messages.Count);
 
                 if(user.DiscordUser != null) {
-                    var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours]" : $" [Silos have been empty for {timeEmpty} hours]"));
+                    var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
                     var dmChannel = await user.DiscordUser.CreateDMChannelAsync();
                     try {
                         await dmChannel.SendMessageAsync(warningText);
                     } catch(Exception) {
+                        await coopChannel.SendMessageAsync($"{warningText} (DMs are blocked)");
                         Console.WriteLine($"Unable to send DM to {user.DiscordUser.GetCleanName()}");
                     }
 
@@ -1125,36 +1132,18 @@ namespace EGG9000.Bot.Automated {
                 if(xref.CreatedOn > DateTimeOffset.Now.AddHours(-24)) {
                     _db.Remove(xref);
                     await _db.SaveChangesAsync();
-                    await coopChannel.SendMessageAsync($"{discordUser.GetCleanName()} returned to pre-farming pool since they were added less than 24 hours before the co-op finished.");
+                    await coopChannel.SendMessageAsync($"{discordUser.GetCleanName()} returned to prefarming pool since they were added less than 24 hours before the co-op finished.");
                     continue;
                 }
 
                 if(user.CreateOn > DateTimeOffset.Now.AddDays(-7)) {
+                    _db.Remove(xref);
                     await coopChannel.SendMessageAsync($"{discordUser.Mention}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
                     continue;
                 }
 
 
-                var demerit = new Demerit {
-                    When = DateTimeOffset.Now,
-                    AdminUserId = Guid.Empty,
-                    UserId = user.Id,
-                    Id = Guid.NewGuid(),
-                    Reason = $"Failed to join {coop.Contract.Name}"
-                };
-                _db.Demerit.Add(demerit);
-                await _db.SaveChangesAsync();
-
-                var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
-                var demeritText = $"Demerit added to {discordUser.Mention} for the reason: {demerit.Reason} ({count} demerits)";
-                await coopChannel.SendMessageAsync(demeritText);
-                if(count >= 3)
-                    demeritText = $"**{demeritText}**";
-                if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
-                    _demeritChannel = _client.GetGuild(coop.GuildId).GetTextChannel(dbguild.DemeritLogChannel.Value);
-                }
-                await _demeritChannel.SendMessageAsync(demeritText + $" {coopChannel.Mention}");
-
+                await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name}", user, _db, xref, discordUser, coopChannel, dbguild, coop);
             }
         }
 
@@ -1173,6 +1162,44 @@ namespace EGG9000.Bot.Automated {
                 }
 
             }
+        }
+
+        public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message) {
+            try {
+                var dmChannel = await discordUser.CreateDMChannelAsync();
+                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention}");
+            } catch(HttpException) {
+                await coopChannel.SendMessageAsync($"{Message} (User has blocked DMs from bot)");
+            }
+        }
+
+        public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, ITextChannel coopChannel, Guild dbguild, Coop coop) {
+            var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
+            if(existingDemerit) {
+                await coopChannel.SendMessageAsync($"Removing {discordUser.Mention} due to: {reason} (They have already received a demerit for this contract)");
+                return;
+            }
+            var demerit = new Demerit {
+                When = DateTimeOffset.Now,
+                AdminUserId = Guid.Empty,
+                UserId = user.Id,
+                Id = Guid.NewGuid(),
+                Reason = reason
+            };
+            _db.Demerit.Add(demerit);
+            _db.Remove(xref);
+            await _db.SaveChangesAsync();
+
+            var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+            var demeritText = $"Demerit added to {discordUser.Mention} for the reason: {demerit.Reason} ({count} demerits)";
+            await coopChannel.SendMessageAsync(demeritText);
+            if(count >= 3)
+                demeritText = $"**{demeritText}**";
+            if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
+                _demeritChannel = _client.GetGuild(dbguild.Id).GetTextChannel(dbguild.DemeritLogChannel.Value);
+            }
+            await _demeritChannel.SendMessageAsync(demeritText + $" {coopChannel.Mention}");
+
         }
     }
 }

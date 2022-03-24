@@ -1,0 +1,26 @@
+﻿@model EGG9000.Site.Controllers.AdminController.ScoreResult
+@{
+}
+
+
+<h3>Users Below Threshold</h3>
+<table>
+	@foreach(var user in Model.UsersBelowThreshold) {
+		<tr>
+			<td>@user.DiscordUsername</td>
+			<td>@user.DiscordId</td>
+			<td>@user.RunningScore</td>
+		</tr>
+	}
+</table>
+
+<h3>Top 10 Scores</h3>
+<table>
+	@foreach(var user in Model.TopScore) {
+		<tr>
+			<td>@user.DiscordUsername</td>
+			<td>@user.DiscordId</td>
+			<td>@user.Score</td>
+		</tr>
+	}
+</table>

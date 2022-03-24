@@ -24,14 +24,14 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Services {
 
-    public class CommandFunction {
+    public class ContextCommandFunction {
         public MethodInfo MethodInfo { get; set; }
         public SlashCommandAttribute Details { get; set; }
         public ParameterInfo[] Parameters { get; set; }
         public string Name { get; set; }
         public List<CommandFunction> SubFunctions { get; set; }
     }
-    public class SlashCommandService : IHostedService {
+    public class ContextCommandService : IHostedService {
         private readonly DiscordSocketClient _discord;
         private List<CommandFunction> _commandFunctions;
         private IConfiguration _configuration;
@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Services {
         private Guild _cpGuilde;
 
 
-        public SlashCommandService(IConfiguration Configuration, DiscordSocketClient discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
+        public ContextCommandService(IConfiguration Configuration, DiscordSocketClient discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
             _discord = (DiscordSocketClient)discord;
             _configuration = Configuration;
             _apilink = apilink;
@@ -160,13 +160,7 @@ namespace EGG9000.Bot.Services {
                     _bugsnag.Notify(e);
                     var frame = (new StackTrace(e, true)).GetFrame(0);
 
-
-                    if(arg.HasResponded) {
-                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
-
-                    } else {
-                        await arg.RespondAsync($"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
-                    }
+                    await arg.RespondAsync($"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
                 }
             } else {

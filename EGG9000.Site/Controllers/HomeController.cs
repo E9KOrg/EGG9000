@@ -97,6 +97,14 @@ namespace EGG9000.Site.Controllers {
             //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
+        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
+        [Produces("application/json")]
+        public async Task<IActionResult> RawJsonOut(string ei) {
+            var backup = await ContractsAPI.FirstContact(ei);
+            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
+            //return new ObjectResult("Message me");
+            return new ObjectResult(backup);
+        }
 
         public async Task<IActionResult> CleanCoopPins() {
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel && x.Status != CoopStatusEnum.WaitingOnStarter).ToListAsync();
@@ -521,12 +529,16 @@ namespace EGG9000.Site.Controllers {
             CoopId = CoopId.ToLower();
             ContractId = ContractId.ToLower();
             var model = new CoopModel {
-                CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId),
+                CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower()),
                 DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && x.Name == CoopId),
             };
             model.Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId);
 
             model.UserInfos = new List<CoopUserInfo>();
+
+            if(model.CoopStatus == null) {
+                model.CoopStatus = model.DbCoop.LastStatusUpdate;
+            }
 
             var backupsNeeded = model.CoopStatus.Contributors.ToList();
             if(model.DbCoop != null) {

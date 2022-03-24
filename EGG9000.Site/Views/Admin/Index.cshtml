@@ -1,7 +1,8 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
 @{
     ViewData["Title"] = "Admin";
-    var days = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value });
+    var days = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
+    var days2 = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
 }
 
 @if(User.IsInRole("Admin")) {
@@ -13,9 +14,7 @@
 @if(User.IsInRole("Admin")) {
     <a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
 }
-<form class="form-inline" style="display: inline-block;" action="/admin/searchid">
-    <input class="form-control" style="width: 150px" placeholder="ID Search" name="id" />
-</form>
+<a href="/admin/duplicatechannels" class="btn btn-primary">Duplicate Channels</a>
 
 <div class="clearfix">
     <div class="float-left card">
@@ -51,10 +50,23 @@
             </h5>
 
             @foreach(var contract in Model.Contracts) {
-                <div><a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> <a href="/admin/contractscores?contractid=@contract.ID">Scoring</a></div>
+                <div>@*<a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> *@<a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
             }
         </div>
     </div>
+    @if (Model.ContractsToScore.Count > 0) {
+        <div class="float-left card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    Contracts Ready to Score
+                </h5>
+
+                @foreach (var contract in Model.ContractsToScore) {
+                    <div><a href="/admin/calculatescore?contractid=@contract.ID">@contract.Name</a></div>
+                }
+            </div>
+        </div>
+    }
 </div>
 <div>
     <div id="chart"></div>
@@ -73,12 +85,26 @@
     var options = {
         chart: {
             type: 'area',
+            stacked: false,
             zoom: {
                 autoScaleYaxis: true
             }
         },
+          dataLabels: {
+            enabled: false
+          },
         series: [{
+            name: "Number of Co-ops",
             data: @Html.Raw(JsonConvert.SerializeObject(days))
+        },{
+            name: "Number of Active Users",
+            data: @Html.Raw(JsonConvert.SerializeObject(days2))
+        }],
+        yaxis: [{
+            opposite: true,
+            title: { text: "Number of Co-ops"}
+        }, {
+            title: { text: "Number of Active Users"}
         }],
         xaxis: {
             type: 'datetime'
@@ -100,3 +126,4 @@
 
             chart.render();
 </script>
+

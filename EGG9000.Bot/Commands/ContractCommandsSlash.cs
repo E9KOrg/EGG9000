@@ -288,10 +288,10 @@ namespace EGG9000.Bot.Commands {
 
             dbUser.SkipNoPE = true;
             await db.SaveChangesAsync();
-            await command.RespondAsync($"{command.User.Mention} is set to skip contracts without <:Egg_of_Prophecy_PE:669981330477547580>, what this means is you won't get a demerit for not participating in this contract. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.");
+            await command.RespondAsync($"You are set to skip contracts without <:Egg_of_Prophecy_PE:669981330477547580>, what this means is you won't get a demerit for not participating in this contract. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
         }
 
-        [SlashCommand(Description = "Bot will notifiy you of contracts even without an Egg of Prophecy (PE)")]
+        [SlashCommand(Description = "Bot will notify you of contracts even without an Egg of Prophecy (PE)")]
         public static async Task UnSkipNoPeEggOfPhophecy(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
             var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
@@ -301,7 +301,7 @@ namespace EGG9000.Bot.Commands {
 
             dbUser.SkipNoPE = false;
             await db.SaveChangesAsync();
-            await command.RespondAsync($"{command.User.Mention} is NO longer set to skip contracts without an <:Egg_of_Prophecy_PE:669981330477547580>.");
+            await command.RespondAsync($"You are NO longer set to skip contracts without an <:Egg_of_Prophecy_PE:669981330477547580>.", ephemeral: true);
         }
 
         [SlashCommand(Description = "Stop the bot from pinging you for the tagged contract.")]
@@ -317,7 +317,7 @@ namespace EGG9000.Bot.Commands {
 
             guildContract.Skip = JsonConvert.SerializeObject(skipList);
             await db.SaveChangesAsync();
-            await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server. Did you know there is a new command !skipNoPe that will allow you to automatically skip all contracts without an <:Egg_of_Prophecy_PE:669981330477547580>?");
+            await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server. Did you know there is a new command !skipNoPe that will allow you to automatically skip all contracts without an <:Egg_of_Prophecy_PE:669981330477547580>?", ephemeral: true);
         }
 
 
@@ -374,8 +374,15 @@ namespace EGG9000.Bot.Commands {
             await _StartUser(command, db, _client, _apiLink, _words, true, percent: percenttostart);
         }
 
+        [SlashCommand(Description = "Start fire co-op and backfill with low EB users", AdminOnly = true)]
+        public static async Task StartFire(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words) {
+            await _StartUser(command, db, _client, _apiLink, _words, true, startFire: true);
+        }
 
-        public static async Task _StartUser(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words, bool fill, SocketGuildUser user = null, int? percent = null) {
+
+
+
+        public static async Task _StartUser(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words, bool fill, SocketGuildUser user = null, int? percent = null, bool startFire = false) {
             var coopCount = 0;
 
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
@@ -394,24 +401,38 @@ namespace EGG9000.Bot.Commands {
 
             var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
 
-            var prefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            var prefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).Where(x => x.ProjectedPercent < 10).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
 
             if(user == null) {
-                var usersAbovePercent = prefarms.Where(p => (p.Projected / targetAmount) * 100 >= percent).ToList();
-                usersAbovePercent.ForEach(x => prefarms.Remove(x));
-                prefarms = prefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
-                foreach(var userAbovePercent in usersAbovePercent) {
-                    var participants = await _startUserCreateCoop(userAbovePercent, guildContract, prefarms, db, guild, _words);
-                    participants.ForEach(x => prefarms.Remove(x));
+                List<CoopDetails> coopsToStart;
+                if(startFire) {
+                    coopsToStart = coopsBreakdown.Coops.Where(x => x.IsFire || x.IsDoubleFire).ToList();
+                } else {
+                    coopsToStart = coopsBreakdown.Coops.Where(x => x.PercentProjected >= percent).ToList();
+                }
+                foreach(var coop in coopsToStart) {
+                    var carry = coop.Users.OrderByDescending(x => x.Projected).First();
+                    var carryWithAlts = coop.Users.Where(x => x.DiscordId == carry.DiscordId).ToList();
+                    var participants = await _startUserCreateCoop(carryWithAlts, guildContract, prefarms, db, guild, _words);
+                    var numberRemoved = prefarms.RemoveAll(x => participants.Any(y => y == x));
                     coopCount++;
                 }
+            //} else if(user == null) {
+            //    var usersAbovePercent = prefarms.Where(p => (p.Projected / targetAmount) * 100 >= percent).ToList();
+            //    usersAbovePercent.ForEach(x => prefarms.Remove(x));
+            //    prefarms = prefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
+            //    foreach(var userAbovePercent in usersAbovePercent) {
+            //        var participants = await _startUserCreateCoop(userAbovePercent, guildContract, prefarms, db, guild, _words);
+            //        participants.ForEach(x => prefarms.Remove(x));
+            //        coopCount++;
+            //    }
             } else {
                 var prefarm = prefarms.First(x => x.DiscordId == user.Id);
                 prefarms.Remove(prefarm);
-                _ = await _startUserCreateCoop(prefarm, guildContract, prefarms, db, guild, _words, fill);
+                _ = await _startUserCreateCoop(new List<UserPreFarm> { prefarm }, guildContract, prefarms, db, guild, _words, fill);
                 coopCount++;
             }
 
@@ -425,12 +446,12 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        private static async Task<List<UserPreFarm>> _startUserCreateCoop(UserPreFarm user, GuildContract guildContract, List<UserPreFarm> prefarms, ApplicationDbContext db, SocketGuild guild, Words _words, bool empty = false) {
+        private static async Task<List<UserPreFarm>> _startUserCreateCoop(List<UserPreFarm> users, GuildContract guildContract, List<UserPreFarm> prefarms, ApplicationDbContext db, SocketGuild guild, Words _words, bool empty = false) {
             var participants = new List<UserPreFarm>();
-            if(guildContract.Contract.MaxUsers > 4) {
-                participants.AddRange(prefarms.Where(x => x.DiscordId == user.DiscordId));
-            }
-            participants.Add(user);
+            //if(guildContract.Contract.MaxUsers > 4) {
+            //    participants.AddRange(prefarms.Where(x => x.DiscordId == user.DiscordId));
+            //}
+            participants.AddRange(users);
             if(!empty) {
                 participants.AddRange(prefarms.TakeLast(guildContract.Contract.MaxUsers - participants.Count));
             }
@@ -519,8 +540,8 @@ namespace EGG9000.Bot.Commands {
                 SocketThreadChannel thread;
                 try {
                     thread = (SocketThreadChannel)command.Channel;
-                } catch(AggregateException) {
-                    await command.ModifyOriginalResponseAsync(r => r.Content = "ERROR: Unable to find onctract details, this command only works in a contract spots thread.");
+                } catch(Exception ex) when(ex is AggregateException || ex is InvalidCastException) {
+                    await command.ModifyOriginalResponseAsync(r => r.Content = "ERROR: Unable to find contract details, this command only works in a contract spots thread.");
                     return;
                 }
                 var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == thread.CategoryId);
@@ -618,7 +639,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Move prefarmers to co-ops ending >24h", AdminOnly = true)]
-        public static async Task MovePrefarmers(SocketSlashCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client) {
+        public static async Task MovePrefarmers(SocketSlashCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] bool addover5percent = false) {
             await command.RespondAsync("Please wait moving prefarmers...");
             using(await joinLock.LockAsync()) {
 
@@ -659,14 +680,25 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
-                var allPrefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).Where(p => (p.Projected / targetAmount) * 100 < 5).OrderBy(x => x.Backup.EarningsBonus).ToList();
+                var allPrefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).OrderBy(x => x.Backup.EarningsBonus).ToList();
                 var discordIds = allPrefarms.Select(p => p.DiscordId);
+
+                var coopsAbove100Percent = currentCoops.Where(x => x.PercentProjected > 100);
+
+
+                if(!addover5percent) {
+                    if(allPrefarms.Any(p => (p.Projected / targetAmount) * 100 >= 5)) {
+                        await command.Channel.SendMessageAsync($"The following users are above 5% and won't be moved: {string.Join(", ", allPrefarms.Where(p => (p.Projected / targetAmount) * 100 >= 5).Select(p => p.Name))}");
+                    }
+
+                    allPrefarms = allPrefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
+                }
 
                 foreach(var user in allPrefarms) {
                     var dbuser = dbusers.First(x => x.DiscordId == user.DiscordId);
                     var discordUser = _client.GetUser(user.DiscordId);
                     var added = false;
-                    foreach(var coop in currentCoops.Where(x => x.HasSpots && (x.Projected / targetAmount) * 100 > 100)) {
+                    foreach(var coop in currentCoops.Where(x => x.HasSpots)) {
                         var coopStatus = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coop.Coop.Name.ToLower());
                         if(coopStatus.Contributors.Count < guildContract.Contract.Details.MaxCoopSize) {
                             var targetCoop = coop.Coop;
@@ -676,24 +708,13 @@ namespace EGG9000.Bot.Commands {
                                 break;
                             }
 
-                            string EggIncId;
                             var eggIncName = "";
-                            if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
-                                if(dbuser.EggIncIds.Count > 1) {
-                                    var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
-                                    var prefarms = prefarmers.Where(x => x.DatabaseId == dbuser.Id).ToList();
-
-                                    EggIncId = prefarms.First().EggIncId;
-                                    eggIncName = $" ({prefarms.First().Backup.UserName})";
-                                } else {
-                                    EggIncId = dbuser.EggIncIds.First().Id;
-                                }
-                            } else {
-                                EggIncId = xrefs.First().EggIncId;
+                            if(dbuser.EggIncIds.Count > 1) {
+                                eggIncName = $" ({user.Backup.UserName})";
                             }
 
                             var channel = (SocketTextChannel)_client.GetChannel(targetCoop.DiscordChannelId);
-                            var newxref = await CreateCoops.MoveUser(targetCoop, dbuser.Id, EggIncId, eggIncName, discordUser, dbuser, (SocketTextChannel)channel, (SocketTextChannel)command.Channel);
+                            var newxref = await CreateCoops.MoveUser(targetCoop, dbuser.Id, user.EggIncId, eggIncName, discordUser, dbuser, (SocketTextChannel)channel, (SocketTextChannel)command.Channel);
 
                             if(newxref == null) {
                                 await command.Channel.SendMessageAsync($"ERROR: Unable to add permission for {discordUser.Mention}{(targetCoop.GuildId != targetCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
@@ -727,7 +748,11 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Ping people to add them to a spots thread", AdminOnly = true)]
         public static async Task SpotPings(SocketSlashCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client) {
             var discordUser = command.User;
-            var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUser.Id);
+            var dbuse= await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUser.Id);
+            if(command.Channel is not SocketThreadChannel) {
+                await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
+                return;
+            }
             var thread = (SocketThreadChannel)command.Channel;
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == thread.CategoryId);
             if(guildContract == null) {

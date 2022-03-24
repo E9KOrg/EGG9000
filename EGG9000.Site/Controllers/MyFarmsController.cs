@@ -63,8 +63,10 @@ namespace EGG9000.Site.Controllers {
 
                 //var response = await _apiLink.GetBackup(accounts.Id);
                 Console.WriteLine($"Getting backups for {accounts.Name}");
-                backups.Add(customBackup);
-                Console.WriteLine(customBackup.SpaceMissions.Count);
+                if(customBackup?.SpaceMissions != null) {
+                    backups.Add(customBackup);
+                }
+                //Console.WriteLine(customBackup.SpaceMissions.Count);
             }
             user.Backups = backups;
             await _db.SaveChangesAsync();

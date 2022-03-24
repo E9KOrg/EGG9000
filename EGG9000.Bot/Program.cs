@@ -68,6 +68,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<UserSnapShots>();
         services.AddHostedService<LeaderboardUpdater>();
         services.AddHostedService<ManageOverflow>();
+        services.AddHostedService<RemoveTempRoles>();
 
 
     }).ConfigureAppConfiguration((context, config) => {

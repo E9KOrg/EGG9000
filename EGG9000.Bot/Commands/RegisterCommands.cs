@@ -669,8 +669,6 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
 
 
-
-
             await message.Channel.SendMessageAsync($"{discordUser.Mention} will be updated with their EB. To stop this run the command !hideEB");
         }
 

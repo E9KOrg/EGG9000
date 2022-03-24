@@ -108,7 +108,7 @@ namespace EGG9000.Bot.Commands {
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
                 await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild);
-                await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Update");
+                await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }
 
@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
                 //await command.DeleteOriginalResponseAsync();
                 return;
-            } 
+            }
             await command.RespondAsync($"ERROR: Command only works in contract or co-op channels");
         }
 
@@ -152,6 +152,45 @@ namespace EGG9000.Bot.Commands {
         //    await Task.Delay(1000);
         //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
         //}
+        [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
+        public static async Task TempRole(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
+            DateTimeOffset expireTime;
+            try {
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+            } catch(Exception ex) {
+                await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
+                return;
+            }
+            await command.DeferAsync();
+            var userids = users.Select(x => x.Id);
+            var existingTempRoles = await db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.Now && userids.Contains(x.UserId)).ToListAsync();
+            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            foreach(var user in users) {
+                var tempRole = existingTempRoles.FirstOrDefault(x => x.RoleId == role.Id && user.Id == x.UserId);
+                if(tempRole == null) {
+                    tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.Now, UserId = user.Id, GuildId = guild.Id };
+                    db.Add(tempRole);
+                    await user.AddRoleAsync(role);
+                }
+                tempRole.Reason = reason;
+                tempRole.Expires = expireTime;
+            }
+
+            await db.SaveChangesAsync();
+
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
+        }
+
+        [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
+        public static async Task CallStaff(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+            var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
+            await channel.SendMessageAsync($"<@&708378160143794177>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
+            if(keepPrivate) {
+                await command.RespondAsync("Staff has been called.", ephemeral: true);
+            } else {
+                await command.RespondAsync($"Staff has been called ({details})");
+            }
+        }
     }
 }
 
