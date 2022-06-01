@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
 @inject SignInManager<IdentityUser> SignInManager
 @{
     ViewData["Title"] = "Home Page";
@@ -27,3 +28,6 @@
     }
 </div>
 
+@*@foreach(var claim in ((ClaimsIdentity)User.Identity).Claims) {
+    <span>@claim.Type: @claim.Value</span>
+}*@

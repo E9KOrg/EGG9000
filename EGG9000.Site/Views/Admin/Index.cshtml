@@ -1,129 +1,152 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
 @{
-    ViewData["Title"] = "Admin";
-    var days = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
-    var days2 = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
+	ViewData["Title"] = "Admin";
+	var days = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
+	var days2 = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
 }
 
-@if(User.IsInRole("Admin")) {
-    <a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
+@if (User.IsInRole("Admin")) {
+	<a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
 }
 <a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
 <a href="/admin/ghosts" class="btn btn-primary">Ghosts</a>
 <a href="/admin/slackers" class="btn btn-primary">Slackers</a>
-@if(User.IsInRole("Admin")) {
-    <a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
+@if (User.IsInRole("Admin")) {
+	<a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
 }
 <a href="/admin/duplicatechannels" class="btn btn-primary">Duplicate Channels</a>
+<a href="/admin/easteregghunt" class="btn btn-primary">Easter Egg Hunt</a>
 
 <div class="clearfix">
-    <div class="float-left card">
-        <div class="card-body">
-            <h5 class="card-title">
-                Server Stats
-            </h5>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Server</th>
-                        <th>Channels</th>
-                        <th>Active Coops</th>
-                        <th>🏁 Coops</th>
-                    </tr>
-                </thead>
-                @foreach(var guild in Model.Guilds) {
-                    <tr>
-                        <td>@guild.Name</td>
-                        <td>@guild.ChannelCount</td>
-                        <td>@guild.ActiveCoops</td>
-                        <td>@guild.FinishedCoops</td>
-                    </tr>
-                }
-            </table>
-        </div>
-    </div>
+	<div class="float-left card">
+		<div class="card-body">
+			<h5 class="card-title">
+				Server Stats
+			</h5>
+			<table class="table">
+				<thead>
+					<tr>
+						<th>Server</th>
+						<th>Channels</th>
+						<th>Active Coops</th>
+						<th>🏁 Coops</th>
+						<th>Available for Coops</th>
+					</tr>
+				</thead>
+				@{
+					var first = true;
+					var availableSum = 0;
+					foreach (var guild in Model.Guilds) {
+						int available;
+						if (first) {
+							first = false;
+							available = 450 - guild.ChannelCount;
 
-    <div class="float-left card">
-        <div class="card-body">
-            <h5 class="card-title">
-                Recent Contracts
-            </h5>
+						} else {
+							available = 500 - guild.ChannelCount;
 
-            @foreach(var contract in Model.Contracts) {
-                <div>@*<a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> *@<a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
-            }
-        </div>
-    </div>
-    @if (Model.ContractsToScore.Count > 0) {
-        <div class="float-left card">
-            <div class="card-body">
-                <h5 class="card-title">
-                    Contracts Ready to Score
-                </h5>
+						}
+						availableSum += available;
+						<tr>
+							<td>@guild.Name</td>
+							<td>@guild.ChannelCount</td>
+							<td>@guild.ActiveCoops</td>
+							<td>@guild.FinishedCoops</td>
+							<td>@(available)</td>
+						</tr>
+					}
+				}
+				<tr>
+					<th colspan="4" align="right">Total Channels Available for Co-ops</th>
+					<td>
+						@availableSum
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
 
-                @foreach (var contract in Model.ContractsToScore) {
-                    <div><a href="/admin/calculatescore?contractid=@contract.ID">@contract.Name</a></div>
-                }
-            </div>
-        </div>
-    }
+	<div class="float-left card">
+		<div class="card-body">
+			<h5 class="card-title">
+				Recent Contracts
+			</h5>
+
+			@foreach (var contract in Model.Contracts) {
+				<div>@*<a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> *@<a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
+			}
+		</div>
+	</div>
+	@if (Model.ContractsToScore.Count > 0) {
+		<div class="float-left card">
+			<div class="card-body">
+				<h5 class="card-title">
+					Contracts Ready to Score
+				</h5>
+
+				@foreach (var contract in Model.ContractsToScore.OrderBy(x => x.GoodUntil)) {
+					<div><a href="/admin/calculatescore?contractid=@contract.ID">@contract.Name</a></div>
+				}
+			</div>
+		</div>
+	}
 </div>
 <div>
-    <div id="chart"></div>
+	<div id="chart"></div>
 
 </div>
 
 <style>
-    .card {
-        margin-right: 20px;
-        margin-top: 20px;
-    }
+	.card {
+		margin-right: 20px;
+		margin-top: 20px;
+	}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-    var options = {
-        chart: {
-            type: 'area',
-            stacked: false,
-            zoom: {
-                autoScaleYaxis: true
-            }
-        },
-          dataLabels: {
-            enabled: false
-          },
-        series: [{
-            name: "Number of Co-ops",
-            data: @Html.Raw(JsonConvert.SerializeObject(days))
-        },{
-            name: "Number of Active Users",
-            data: @Html.Raw(JsonConvert.SerializeObject(days2))
-        }],
-        yaxis: [{
-            opposite: true,
-            title: { text: "Number of Co-ops"}
-        }, {
-            title: { text: "Number of Active Users"}
-        }],
-        xaxis: {
-            type: 'datetime'
-        },
-        tooltip: {
-            x: {
-                format: 'dd MMM yyyy'
-            }
-        },
-        dataLabels: {
-            enabled: false
-        },
-        stroke: {
-            width: 2
-        }
-    }
+	var options = {
+		chart: {
+			type: 'area',
+			stacked: false,
+			zoom: {
+				autoScaleYaxis: true
+			}
+		},
+		dataLabels: {
+			enabled: false
+		},
+		series: [{
+			name: "Number of Co-ops",
+			data: @Html.Raw(JsonConvert.SerializeObject(days))
+			}, {
+			name: "Number of Active Users",
+			data: @Html.Raw(JsonConvert.SerializeObject(days2))
+			}],
+		yaxis: [{
+			opposite: true,
+			title: { text: "Number of Co-ops" }
+		}, {
+			title: { text: "Number of Active Users" }
+		}],
+		xaxis: {
+			type: 'datetime'
+		},
+		tooltip: {
+			x: {
+				format: 'dd MMM yyyy'
+			}
+		},
+		dataLabels: {
+			enabled: false
+		},
+		stroke: {
+			width: 2
+		}
+	}
 
-            var chart = new ApexCharts(document.querySelector("#chart"), options);
+	var chart = new ApexCharts(document.querySelector("#chart"), options);
 
-            chart.render();
+	chart.render();
 </script>
 

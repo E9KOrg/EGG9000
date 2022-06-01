@@ -44,6 +44,8 @@ namespace EGG9000.Common.Database.Entities
         //public bool DemeritGivenForScore { get; set; }
         public Guid GetID() { return UserId; }
 
+        public bool OutsideCoop { get; set; }
+
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]
         private List<SleepTracking> _sleepTracking { get; set; }

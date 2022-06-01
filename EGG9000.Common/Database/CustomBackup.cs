@@ -48,6 +48,47 @@ namespace EGG9000.Common.Database {
         [Key(15)]
         public List<SpaceMission> SpaceMissions { get; set; }
 
+        [Key(16)]
+        public uint NumDailyGiftsCollected { get; set; }
+
+        [IgnoreMember]
+        public uint PEFromDailyGifts { get { 
+                return Math.Min(24, NumDailyGiftsCollected / 28); } }
+
+        [Key(17)]
+        public List<uint> EggMedalLevel { get; set; }
+
+        [IgnoreMember]
+        public int PEFromTrophies {
+            get {
+                if(EggMedalLevel is null)
+                    return -1;
+                if(EggMedalLevel.Count != 19)
+                    throw new Exception($"Unexpected number of trophies, should be 19 but instead got {EggMedalLevel.Count}");
+                int count = 0;
+
+                if(EggMedalLevel[(int)Ei.Egg.Edible - 1] >= (uint)TrophyLevel.Diamond) count += 5;
+                if(EggMedalLevel[(int)Ei.Egg.Superfood - 1] >= (uint)TrophyLevel.Diamond) count += 4;
+                if(EggMedalLevel[(int)Ei.Egg.Medical- 1] >= (uint)TrophyLevel.Diamond) count += 3;
+                if(EggMedalLevel[(int)Ei.Egg.RocketFuel - 1] >= (uint)TrophyLevel.Diamond) count += 2;
+
+                if(EggMedalLevel[(int)Ei.Egg.SuperMaterial - 1] >= (uint)TrophyLevel.Diamond) count += 1;
+                if(EggMedalLevel[(int)Ei.Egg.Fusion - 1] >= (uint)TrophyLevel.Diamond) count += 1;
+                if(EggMedalLevel[(int)Ei.Egg.Quantum - 1] >= (uint)TrophyLevel.Diamond) count += 1;
+                if(EggMedalLevel[(int)Ei.Egg.Immortality - 1] >= (uint)TrophyLevel.Diamond) count += 1;
+                if(EggMedalLevel[(int)Ei.Egg.Tachyon - 1] >= (uint)TrophyLevel.Diamond) count += 1;
+
+                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Diamond) count += 10;
+                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Platinum) count += 5;
+                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Gold) count += 3;
+                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Silver) count += 2;
+                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Bronze) count += 1;
+
+                return count;
+            }
+        }
+
+
         public CustomBackup() { }
         public CustomBackup(Ei.Backup backup) {
             if(backup?.Game == null) {
@@ -89,6 +130,10 @@ namespace EGG9000.Common.Database {
                     Egg = f.Egg
                 }).ToList()
             }).ToList();
+
+            NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
+
+            EggMedalLevel = backup.Game.EggMedalLevel.ToList();
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
@@ -148,9 +193,9 @@ namespace EGG9000.Common.Database {
 
         private void CheckForCompleteContracts(RepeatedField<Ei.LocalContract> contracts) {
             foreach(var contract in contracts) {
-                if(!Farms.Any(f => f.ContractId == contract.Contract.Identifier)) {
+                //if(!Farms.Any(f => f.ContractId == contract.Contract.Identifier)) {
                     ArchivedFarms.Add(new CustomArchivedFarms(contract));
-                }
+                //}
                 //RepeatedField<Ei.Contract.Types.Goal> goals = contract.Contract.GoalSets.Count == 0 ? contract.Contract.Goals : contract.Contract.GoalSets[(int)contract.League].Goals;
                 //if(contract.NumGoalsAchieved == goals.Count) {
                 //    CompleteContracts.Add(contract.Contract.Identifier);
@@ -289,6 +334,10 @@ namespace EGG9000.Common.Database {
         public bool Completed { get; set; }
         [Key(4)]
         public uint? League { get; set; }
+        [Key(5)]
+        public uint PEPossible { get; set; }
+        [Key(6)]
+        public uint PEGained { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
@@ -300,6 +349,14 @@ namespace EGG9000.Common.Database {
             TimeAccepted = (float)localContract.TimeAccepted;
             Completed = localContract.Completed;
             League = localContract.League;
+
+
+            var goals = localContract.Contract.Goals;
+            if(localContract.Contract.GoalSets is not null && localContract.Contract.GoalSets.Count > localContract.League)
+                goals = localContract.Contract.GoalSets[(int)localContract.League].Goals;
+
+            PEPossible += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
+            PEGained += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
         }
     }
 
@@ -332,5 +389,13 @@ namespace EGG9000.Common.Database {
         public Ei.Egg Egg { get; set; }
         [Key(1)]
         public double Amount { get; set; }
+    }
+
+    public enum TrophyLevel {
+        Bronze = 1,
+        Silver = 2,
+        Gold = 3,
+        Platinum = 4,
+        Diamond = 5,
     }
 }

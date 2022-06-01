@@ -86,6 +86,8 @@ namespace EGG9000.Bot.Services {
                     command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
                 }
                 _ = Task.Run(() => RunCommand(command, arg));
+                _ = Task.Run(() => CleanFailedMessages(arg));
+
             } catch(Exception e) {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
@@ -94,6 +96,21 @@ namespace EGG9000.Bot.Services {
 
             }
             _semaphoreSlim.Release();
+        }
+
+        private async Task CleanFailedMessages(SocketSlashCommand arg) {
+            var channel = arg.Channel;
+            var messages = await channel.GetMessagesAsync(100).FlattenAsync();
+            var failedMessages = messages.Where(x => x.Content.StartsWith($"/{arg.CommandName}", StringComparison.CurrentCultureIgnoreCase) && x.Author.Id == arg.User.Id).ToList();
+            foreach(var failedMessage in failedMessages) {
+                var responses = messages.Where(x => x.Reference != null && x.Reference.MessageId.IsSpecified && x.Reference.MessageId.Value == failedMessage.Id).ToList();
+                foreach(var response in responses) {
+                    await response.DeleteAsync();
+                    await Task.Delay(540);
+                }
+                await failedMessage.DeleteAsync();
+                await Task.Delay(540);
+            }
         }
 
         private async Task RunCommand(CommandFunction command, SocketSlashCommand arg) {

@@ -31,6 +31,9 @@ using static EGG9000.Common.Helpers.Prefarm;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Discord.Net;
+using System.Text.RegularExpressions;
+using Discord.Rest;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -40,6 +43,7 @@ namespace EGG9000.Site.Controllers {
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly DiscordSocketClient _discord;
         private readonly APILink _apiLink;
+        private readonly IMemoryCache _cache;
 
         public HomeController(
             ILogger<HomeController> logger,
@@ -47,13 +51,14 @@ namespace EGG9000.Site.Controllers {
             RoleManager<IdentityRole> roleManager,
             DiscordSocketClient discord,
             APILink apiLink,
-            ApplicationDbContext db) {
+            ApplicationDbContext db, IMemoryCache cache) {
             _discord = discord;
             _roleManager = roleManager;
             _userManager = userManager;
             _logger = logger;
             _apiLink = apiLink;
             _db = db;
+            _cache = cache;
         }
 
         public async Task<IActionResult> TestBlock() {
@@ -62,7 +67,7 @@ namespace EGG9000.Site.Controllers {
                 var dm = await kendrometest.CreateDMChannelAsync();
                 await dm.SendMessageAsync("Test For Block");
                 return Content("Sent");
-            } catch(HttpException ex) {
+            } catch(HttpException) {
 
                 return Content("Failed");
             }
@@ -780,6 +785,116 @@ namespace EGG9000.Site.Controllers {
 
         public IActionResult Invite() {
             return Redirect("https://discord.gg/cluckinghampalace");
+        }
+
+        [ResponseCache(Duration = 600)]
+        public async Task<ActionResult> EasterEggHunt() {
+            var links = @"1 https://discord.com/channels/656455567858073601/656455568353132546/964162211155173406
+16 https://discord.com/channels/656455567858073601/656455568353132546/963900393782411274
+17 https://discord.com/channels/656455567858073601/656455568353132546/963853170247884830
+18 https://discord.com/channels/656455567858073601/656455568353132546/963490534557638687
+19 https://discord.com/channels/656455567858073601/656455568353132546/963274839647453254
+20 https://discord.com/channels/656455567858073601/656455568353132546/963068327243178075
+46 https://discord.com/channels/656455567858073601/656455568353132546/964300075604017183
+
+💬suggestions-feedback 
+2 https://discord.com/channels/656455567858073601/708071623571538021/944682495583072286
+47 https://discord.com/channels/656455567858073601/708071623571538021/958173773624913980
+
+👥talk-to-staff 
+3 https://discord.com/channels/656455567858073601/746509501271769210/963763144306589696
+21 https://discord.com/channels/656455567858073601/746509501271769210/963102979446169630
+22 https://discord.com/channels/656455567858073601/746509501271769210/962141807846752317
+23 https://discord.com/channels/656455567858073601/746509501271769210/961930312110194708
+48 https://discord.com/channels/656455567858073601/746509501271769210/962762492839350393
+49 https://discord.com/channels/656455567858073601/746509501271769210/963467041069760512
+
+📦artifact-discussion 
+4 https://discord.com/channels/656455567858073601/798985476006084628/964060031261736980
+24 https://discord.com/channels/656455567858073601/798985476006084628/963147729813512192
+25 https://discord.com/channels/656455567858073601/798985476006084628/963007467690807316
+26 https://discord.com/channels/656455567858073601/798985476006084628/962933363117789194
+50 https://discord.com/channels/656455567858073601/798985476006084628/964198432547962880
+
+🖥egg9000-development 
+5 https://discord.com/channels/656455567858073601/801134122838786078/943172562588938270
+🎲off-topic 
+6 https://discord.com/channels/656455567858073601/664563280081059845/959903201744793690
+27 https://discord.com/channels/656455567858073601/664563280081059845/958143369756950598
+28 https://discord.com/channels/656455567858073601/664563280081059845/958005557036466206
+29 https://discord.com/channels/656455567858073601/664563280081059845/957356956677464106
+
+⌚other-idle-games 
+7 https://discord.com/channels/656455567858073601/816422628720902194/958821735086575676
+30 https://discord.com/channels/656455567858073601/816422628720902194/959308464834904084
+31 https://discord.com/channels/656455567858073601/816422628720902194/959821617163305040
+32 https://discord.com/channels/656455567858073601/816422628720902194/959967738669985892
+
+🍳food-and-snacks 
+8 https://discord.com/channels/656455567858073601/792940901777014784/954436301128609902
+33 https://discord.com/channels/656455567858073601/792940901777014784/955125561984970762
+
+🎼music 
+9 https://discord.com/channels/656455567858073601/793591029353676851/959189698830553169
+34 https://discord.com/channels/656455567858073601/793591029353676851/959186566427844658
+
+📟tech-and-games 
+10 https://discord.com/channels/656455567858073601/793576356083793971/959170212933042216
+35 https://discord.com/channels/656455567858073601/793576356083793971/960609181302411384
+36 https://discord.com/channels/656455567858073601/793576356083793971/963682458509926430
+
+📚books-and-tv 
+11 https://discord.com/channels/656455567858073601/793836057702432799/960201900337295390
+37 https://discord.com/channels/656455567858073601/793836057702432799/959497885647507606
+38 https://discord.com/channels/656455567858073601/793836057702432799/958936101517672469
+39 https://discord.com/channels/656455567858073601/793836057702432799/957544876545814538
+😻pets 
+12 https://discord.com/channels/656455567858073601/793657823379980318/958647605267685426
+40 https://discord.com/channels/656455567858073601/793657823379980318/956457860965990410
+41 https://discord.com/channels/656455567858073601/793657823379980318/955558252530253864
+42 https://discord.com/channels/656455567858073601/793657823379980318/954935783792468028
+
+🌄sports-and-outdoors 
+13 https://discord.com/channels/656455567858073601/823901567039700992/961757739846078474
+43 https://discord.com/channels/656455567858073601/823901567039700992/960752268553121823
+44 https://discord.com/channels/656455567858073601/823901567039700992/960320628777439294
+45 https://discord.com/channels/656455567858073601/823901567039700992/959510295552872538
+
+🎨arts-and-crafts 
+14 https://discord.com/channels/656455567858073601/821545853805920286/945298822811222036
+
+📰world-news 
+15 https://discord.com/channels/656455567858073601/947948999128789042/948973482681696316";
+
+            var easterCacheKey = $"EasterEggs";
+            Dictionary<RestGuildUser, int> eggsFound;
+            if(!_cache.TryGetValue(easterCacheKey, out eggsFound)) {
+
+
+                var regex = new Regex(@"(\d+)/(\d+)/(\d+)");
+                var matches = regex.Matches(links);
+                eggsFound = new Dictionary<RestGuildUser, int>();
+                foreach(Match match in matches) {
+                    var guild = await _discord.Rest.GetGuildAsync(ulong.Parse(match.Groups[1].Value));
+                    var channel = await guild.GetTextChannelAsync(ulong.Parse(match.Groups[2].Value));
+                    var message = await channel.GetMessageAsync(ulong.Parse(match.Groups[3].Value));
+                    var reactions = message.Reactions;
+                    var userReactions = await message.GetReactionUsersAsync(reactions.First(x => x.Key.Name.Contains("EASTER")).Key, 9999).FlattenAsync();
+                    foreach(var user in userReactions) {
+                        if(user.Username == "TreeGoat")
+                            continue;
+                        var existingUser = eggsFound.Any(x => x.Key.Id == user.Id);
+                        if(existingUser) {
+                            eggsFound[eggsFound.First(x => x.Key.Id == user.Id).Key]++;
+                        } else {
+                            var guildUser = await guild.GetUserAsync(user.Id);
+                            eggsFound.Add(guildUser, 1);
+                        }
+                    }
+                }
+                _cache.Set(easterCacheKey, eggsFound, TimeSpan.FromMinutes(10));
+            }
+            return View(eggsFound);
         }
     }
 }

@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Commands
                 ClientVersion = 30,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
-                Public = true,
+                Public = false,
                 RequestingUserId = ContractsAPI.UserId
             }, ContractsAPI.UserId);
 
@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Commands
                 User = y,
                 Backup = x
             })).ToList();
-            var allUsers = GetPrefarmers(backups, guildContract.Contract);
+            var allUsers = GetPrefarmers(backups, guildContract);
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildContract.GuildID);
             var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards);
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
@@ -474,7 +474,7 @@ namespace EGG9000.Bot.Commands
                 Backup = x
             })).ToList();
 
-            var allUsers = GetPrefarmers(backups, guildContract.Contract);
+            var allUsers = GetPrefarmers(backups, guildContract);
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildContract.GuildID);
             var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards);
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
@@ -542,7 +542,7 @@ namespace EGG9000.Bot.Commands
             })).ToList();
 
 
-            var allUsers = GetPrefarmers(backups, guildContract.Contract);
+            var allUsers = GetPrefarmers(backups, guildContract);
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildContract.GuildID);
             var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards);
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
@@ -635,7 +635,7 @@ namespace EGG9000.Bot.Commands
 
 
 
-            var allUsers = GetPrefarmers(backups, guildContract.Contract);
+            var allUsers = GetPrefarmers(backups, guildContract);
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildContract.GuildID);
             var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards);
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
@@ -769,7 +769,7 @@ namespace EGG9000.Bot.Commands
                 User = y,
                 Backup = x
             })).ToList();
-            var prefarmers = GetPrefarmers(backups, guildContract.Contract);
+            var prefarmers = GetPrefarmers(backups, guildContract);
 
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
             var alienBackups = await GetBackupsForAliens(coops, prefarmers, guildContract.Contract, _apiLink);

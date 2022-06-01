@@ -1,0 +1,43 @@
+﻿@using System.Globalization
+@model List<EGG9000.Site.Controllers.AdminController.BackupWithUser>
+
+@{
+}
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>
+				Name
+			</th>
+			<th>
+				ID
+			</th>
+			<th>Daily Gifts</th>
+			<th>Trophies</th>
+			<th>Contracts</th>
+			<th>Sum of those three</th>
+			<th>Backup Amount</th>
+			<th>Extra PE</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach(var backupWithUser in Model) {
+			var user = backupWithUser.User;
+			var backup = backupWithUser.Backup;
+			var fromContracts = backup.ArchivedFarms?.Sum(x => x.PEGained) ?? -1;
+			var sum = backup.PEFromDailyGifts + backup.PEFromTrophies + fromContracts;
+			<tr>
+				<td>@user.DiscordUsername</td>
+				<td>@user.DiscordId</td>
+				<td>@backup.PEFromDailyGifts of 24</td>
+				<td>@backup.PEFromTrophies of 40</td>
+				<td>@fromContracts</td>
+				<td>@sum</td>
+				<td>@backup.EggsOfProphecy</td>
+				<td>@(backup.EggsOfProphecy - sum)</td>
+			</tr>
+		}
+	</tbody>
+</table>
+

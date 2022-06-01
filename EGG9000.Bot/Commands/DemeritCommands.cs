@@ -27,7 +27,7 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         [SlashCommand(Description = "Add demerit to user", AdminOnly = true)]
-        public static async Task AddDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db) {
+        public static async Task AddDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordSocketClient discordClient) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -44,7 +44,19 @@ namespace EGG9000.Bot.Commands {
 
                 var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
 
-                await command.RespondAsync($"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits");
+                var message = $"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits";
+                await command.RespondAsync(message);
+
+                var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
+                if(dbguild is not null && dbguild.DemeritLogChannel.HasValue) {
+                    var demeritChannel = (SocketTextChannel)discordClient.GetChannel(dbguild.DemeritLogChannel.Value);
+                    if(demeritChannel is not null) {
+                        if(count >= 3) {
+                            message = $"**{message}**";
+                        }
+                        await demeritChannel.SendMessageAsync(message);
+                    }
+                }
             } catch(Exception e) {
                 await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }

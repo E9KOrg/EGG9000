@@ -36,8 +36,9 @@ namespace EGG9000.Bot.Automated {
                 foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
                     var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
                     var servers = await GetOverflowGuildsCounts(guild, _db);
+                    var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && x.Status == CoopStatusEnum.Completed).OrderBy(x => x.CoopCompleted).ToListAsync();
                     foreach(var coop in coopGroups) {
-                        var channel = await CreateTextChannelAsync(guild, coop, servers);
+                        var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops);
                         if(channel != null) {
                             coop.DiscordChannelId = channel.Id;
                             coop.OverflowGuildId = channel.GuildId;
@@ -53,7 +54,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers) {
+        private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops) {
             foreach(var overflow in servers.Where(x => x.ChannelsLeft > 0)) {
                 foreach(var category in overflow.CoopCategories.Where(x => x.CurrentCount < 50)) {
                     try {
@@ -63,6 +64,38 @@ namespace EGG9000.Bot.Automated {
                         return channel;
                     } catch(Exception) { }
                 }
+            }
+            if(completedCoops.Count() > 0) {
+                var completedCoop = completedCoops.First();
+                completedCoops.Remove(completedCoop);
+                var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
+                if(coopChannel == null) {
+                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId));
+                }
+                if(coopChannel != null) {
+                    try {
+                        await coopChannel.DeleteAsync();
+                    } catch(Exception) {
+
+                    }
+                    coop.DeletedChannel = true;
+                    Console.WriteLine($"Deleting co-op channel for {coop.Name}");
+
+                    var server = servers.Where(x => x.Guild.Id == completedCoop.GuildId).FirstOrDefault();
+                    if(server != null) {
+                        foreach(var category in server.CoopCategories.Where(x => x.CurrentCount < 50)) {
+                            try {
+                                var channel = await server.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; });
+                                category.CurrentCount++;
+                                return channel;
+                            } catch(Exception) { }
+                        }
+                    }
+                } else {
+                    coop.DeletedChannel = true;
+                    Console.WriteLine($"Unable to find co-op channel for {coop.Name}");
+                }
+
             }
             return null;
         }
@@ -78,7 +111,7 @@ namespace EGG9000.Bot.Automated {
             }
             foreach(var overflow in dbguild.OverflowServers) {
                 var overflowGuild = _client.Guilds.First(x => x.Id == overflow);
-                servers.Add(new OverflowServer(overflowGuild) { ChannelsLeft = 500 - overflowGuild.Channels.Count - 5 });
+                servers.Add(new OverflowServer(overflowGuild) { ChannelsLeft = 500 - overflowGuild.Channels.Count });
             }
             return servers;
         }

@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             DiscordSocketClient client,
             APILink apilink,
             Bugsnag.IClient bugsnag
-        ) : base(UpdateTime, TimeSpan.FromMinutes(1), client, bugsnag) {
+        ) : base(UpdateTime, TimeSpan.FromMinutes(0), client, bugsnag) {
             _configuration = Configuration;
             _apiLink = apilink;
         }
@@ -158,7 +158,7 @@ namespace EGG9000.Bot.Automated {
                         await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);
                         await DiscordHelpers.CheckFreshEggsRole(guild, discordUser, dbUser);
                         await DiscordHelpers.CheckActive(guild, discordUser, dbUser, userAccounts);
-
+                        await DiscordHelpers.CheckPermitRoles(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
 
                         if(higherEB.Backup.EggsOfProphecy > 1000) {
                             dbUser.showEB = false;

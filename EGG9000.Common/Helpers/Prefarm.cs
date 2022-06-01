@@ -63,17 +63,22 @@ namespace EGG9000.Common.Helpers {
             public bool PotentialBoxCarry { get; set; }
         }
 
-        public static List<UserPreFarm> GetPrefarmers(List<LeaderboardUser> backups, Contract contract) {
+        public static List<UserPreFarm> GetPrefarmers(List<LeaderboardUser> backups, GuildContract guildContract) {
             var startedContract = backups
-                .Where(x => x.Backup != null && (x.Backup.Farms.Any(y => y.ContractId == contract.ID) || (x.Backup.ArchivedFarms?.Any(f => f.ContractId == contract.ID) ?? false)))
+                .Where(x => x.Backup != null && 
+                    (
+                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (guildContract.Elite ? y.League == 0 : y.League == 1)) || 
+                        (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (guildContract.Elite ? f.League == 0 : f.League == 1)) ?? false)
+                    ) //&& x.Elite == guildContract.Elite
+                )
                 .OrderByDescending(x =>
                     x.Backup.Farms.FirstOrDefault(y =>
-                        y.ContractId == contract.ID
+                        y.ContractId == guildContract.ContractID
                     )?.EggsPaidFor
                 );
 
             var users = startedContract.Select(x => {
-                var prefarm = BackupToPreFarm(x, contract);
+                var prefarm = BackupToPreFarm(x, guildContract.Contract);
                 return prefarm;
             }).Where(x => x != null && x.DiscordId != 0).OrderByDescending(x => x.Projected).ToList();
 
@@ -157,10 +162,10 @@ namespace EGG9000.Common.Helpers {
                 Backup = x
             })).ToList();
 
-            var prefarmers = GetPrefarmers(backups, guildContract.Contract);
+            var prefarmers = GetPrefarmers(backups, guildContract);
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
-            var users = prefarmers.Where(x => x.Elite == guildContract.Elite && x.NumChickens > 0).ToList();
-            users = users.Where(x => !coops.Any(c => c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
+            var users = prefarmers.Where(x => x.Elite == guildContract.Elite && x.NumChickens > 0 && x.Coop == "").ToList();
+            users = users.Where(x => !coops.Any(c => c.Status != CoopStatusEnum.Failed && c.UserCoopsXrefs.Any(xr => xr.EggIncId == x.EggIncId || xr.RefEggIncId == x.EggIncId))).ToList();
             var coopsBreakdown = Prefarm.GetBreakdown(users, guildContract);
             return coopsBreakdown;
         }
@@ -170,7 +175,7 @@ namespace EGG9000.Common.Helpers {
             var currentUsers = users.Where(x => !x.Completed && !x.CancelledFarm).ToList();
 
             var alreadyInCoop = currentUsers.Where(x => !string.IsNullOrEmpty(x.CoopName)).OrderBy(x => x.Name).ToList();
-            var notInCoop = currentUsers.Where(x => string.IsNullOrEmpty(x.CoopName)).ToList();
+            var notInCoop = currentUsers.Where(x => string.IsNullOrEmpty(x.CoopName) && x.NumChickens > 500).ToList();
 
             var coopsBreakdown = new CoopsBreakdown {
                 Coops = new List<CoopDetails>(),

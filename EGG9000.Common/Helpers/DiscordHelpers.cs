@@ -184,25 +184,59 @@ namespace EGG9000.Bot.Helpers {
         }
 
         public static async Task CheckSiloResearch(SocketGuild Guild, IGuildUser DiscordUser, List<CustomBackup> backups) {
-            if (Guild.Roles.Any(x => x.Name.ToLower() == "needssiloepicresearch")) {
+            if(Guild.Roles.Any(x => x.Name.ToLower() == "needssiloepicresearch")) {
                 var needsResearch = false;
 
                 var role = Guild.Roles.FirstOrDefault(x => x.Name.ToLower() == "needssiloepicresearch");
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
-                foreach (var backup in backups) {
+                foreach(var backup in backups) {
                     var awayTime = Research.GetTotalSiloCapacity(backup);
                     var hasPermit = backup.PermitLevel > 0;
-                    if (awayTime < 72 || (!hasPermit && awayTime < 120)) {
+                    if(awayTime < 72 || (!hasPermit && awayTime < 120)) {
                         needsResearch = true;
                     }
                 }
-                if (!hasRole && needsResearch) {
+                if(!hasRole && needsResearch) {
                     await DiscordUser.AddRoleAsync(role);
 
                 }
-                if (hasRole && !needsResearch) {
+                if(hasRole && !needsResearch) {
                     await DiscordUser.RemoveRoleAsync(role);
+                }
+
+            }
+        }
+
+
+        public static ulong ProPermitRoleID = 966017147350446121;
+        public static ulong StandardPermitRoleID = 966017278078517248;
+        public static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, List<CustomBackup> backups) {
+            Console.WriteLine($"Checking Permit for {DiscordUser.GetName()}");
+            if(Guild.Roles.Any(x => x.Id == ProPermitRoleID)) {
+                var hasPro = DiscordUser.RoleIds.Any(x => x == ProPermitRoleID);
+                var hasStandard = DiscordUser.RoleIds.Any(x => x == StandardPermitRoleID); ;
+
+                var needsPro = backups.Any(x => x.PermitLevel == 1);
+                var needsStandard = backups.Any(x => x.PermitLevel == 0);
+
+
+                if(!hasPro && needsPro) {
+                    await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
+                    Console.WriteLine($"Adding ProPermit role for {DiscordUser.GetName()}");
+                }
+                if(hasPro && !needsPro) {
+                    await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
+                    Console.WriteLine($"Removing ProPermit role for {DiscordUser.GetName()}");
+                }
+                if(!hasStandard && needsStandard) {
+                    await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
+                    Console.WriteLine($"Adding StandardPermit role for {DiscordUser.GetName()}");
+
+                }
+                if(hasStandard && !needsStandard) {
+                    await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
+                    Console.WriteLine($"Removing StandardPermit role for {DiscordUser.GetName()}");
                 }
 
             }

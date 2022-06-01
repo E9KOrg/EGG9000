@@ -6,10 +6,11 @@
 
 	var contractIDs = contracts.OrderByDescending(x => x.GoodUntil).Select(x => x.ID);
 	contractIDs = contractIDs.Where(c => Model.Any(s => s.UserCoopXrefs.Any(x => c == x.ContractID && x.Score.HasValue))).ToList();
+	var threshold = EGG9000.Site.Controllers.AdminController.scoreThreshold;
 }
 <p>
 	<ul>
-		<li>Red is running score below 0.0001</li>
+		<li>Red is running score below @threshold.ToString("#.#########") (@Math.Round(Math.Log10(threshold),1))</li>
 		<li>Yellow is running score below 0.1</li>
 		<li>Gray means there haven't been enough contracts yet for running score (a running score will always be the average of 3 contracts)</li>
 		<li>The score is the small number in the bottom right</li>
@@ -29,17 +30,18 @@
 			var xrefs = slacker.UserCoopXrefs.Where(x => x.Score.HasValue || x.RunningScore.HasValue).OrderByDescending(x => x.Date);
 			var lastContractTime = DateTimeOffset.Now - xrefs.First().Date;
 			var longTime = lastContractTime.TotalDays > 35;
+			var firstXrefWithRunning = xrefs.First(x => x.RunningScore.HasValue);
 			<tr>
-					<td style="white-space: nowrap" class="@(longTime ? "bg-secondary" : "")">@slacker.DiscordUsername</td>
+					<td style="white-space: nowrap" class="@(longTime ? "bg-secondary" : (firstXrefWithRunning.RunningScore < threshold ? "bg-danger" : "" ))">@slacker.DiscordUsername</td>
 					<td  class="@(longTime ? "bg-secondary" : "")">@(lastContractTime.Humanize())</td>
 				@foreach(var xref in xrefs) {
 					if (xref?.RunningScore != null) {
-						<td style="position: relative;" class="@(xref.RunningScore > 1e-1 ? "bg-success" : xref.RunningScore > 1e-3 ? "bg-warning" : "bg-danger")">@Math.Round(Math.Log10((double)xref.RunningScore.Value),1)
-						<span style="position: absolute; right: 0; bottom: 0; font-size: 70%">@Math.Round(Math.Log10((double)xref.Score.Value),1)</span>
+						<td style="position: relative;" class="@(xref.RunningScore > 1e-1 ? "bg-success" : xref.RunningScore > threshold ? "bg-warning" : "bg-danger")">@Math.Round(Math.Log10((double)xref.RunningScore.Value),1)
+						<span style="position: absolute; right: 0; bottom: 0; left: 0; font-size: 70%" class="@(xref.Score > 1e-1 ? "bg-success" : xref.Score > threshold ? "bg-warning" : "bg-danger")">@Math.Round(Math.Log10((double)xref.Score.Value),1)</span>
 						</td>
 					} else if(xref?.Score != null) {
 						<td style="position: relative;" class="bg-secondary">
-						<span style="position: absolute; right: 0; bottom: 0; font-size: 70%">@Math.Round(Math.Log10((double)xref.Score.Value),1)</span>
+						<span style="position: absolute; right: 0; bottom: 0; left: 0; font-size: 70%" class="@(xref.Score > 1e-1 ? "bg-success" : xref.Score > threshold ? "bg-warning" : "bg-danger")">@Math.Round(Math.Log10((double)xref.Score.Value),1)</span>
 						</td>
 					} else {
 						<td></td>

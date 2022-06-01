@@ -110,7 +110,9 @@ namespace EGG9000.Bot.Services {
                         lastBackupTime = currentBackup.LastBackupTime;
                     }
                 }
-                backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = lastBackupTime });
+                if(eggIncId.StartsWith("EI")) {
+                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = lastBackupTime });
+                }
             }
 
             Console.WriteLine($"Backups from cache {backups.Count}");
