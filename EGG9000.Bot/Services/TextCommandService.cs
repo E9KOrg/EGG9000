@@ -53,7 +53,7 @@ namespace EGG9000.Bot.Services {
 
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.MessageReceived -= MessageReceived;
-            Console.WriteLine($"Stopeed listined to text commands");
+            Console.WriteLine($"Stopped listening to text commands");
             if(_semaphoreSlim.CurrentCount > 0) {
                 Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
             }
@@ -83,6 +83,10 @@ namespace EGG9000.Bot.Services {
                 //return;
                 if(message.Content.StartsWith("!egg")) {
                     return;
+                }
+
+                if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
+                    await message.Channel.SendMessageAsync($"**ERROR:** Looks like you attempted to run a command but Discord didn't recognize it. As you type the command a menu should pop up and you select the command you want from that menu. If you continue to have trouble try force closing Discord.", messageReference: new MessageReference(message.Id));
                 }
 
 

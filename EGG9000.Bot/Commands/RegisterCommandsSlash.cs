@@ -209,11 +209,11 @@ namespace EGG9000.Bot.Commands {
 
 
             if(Response == null || Response.Farms.Count == 0) {
-                await command.RespondAsync($" {command.User.Mention} Error:  Possibly wrong EggInc ID**");
+                await command.RespondAsync($" {command.User.Mention} Error:  Possibly wrong EggInc ID**", ephemeral: true);
                 return;
             }
             if(Response.EggIncId != eggincid) {
-                await command.RespondAsync($"Error matching ID {eggincid} - {Response.EggIncId}");
+                await command.RespondAsync($"Error matching ID {eggincid} - {Response.EggIncId}", ephemeral: true);
                 return;
             }
 
@@ -222,7 +222,7 @@ namespace EGG9000.Bot.Commands {
                 if(accountnumber == 0) {
                     var count = 1;
                     var accounts = String.Join("\n", user.Backups.Select(x => $"{count++} {x.UserName} EB: {x.EarningsBonus.ToEggString()}"));
-                    await command.RespondAsync($"User has multiple accounts, please specifiy which account `!updateid {{eggincid}} {{accountnumber}}`\n{accounts}");
+                    await command.RespondAsync($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}", ephemeral: true);
                     return;
                 }
                 var account = accountnumber - 1;
@@ -241,7 +241,7 @@ namespace EGG9000.Bot.Commands {
             }
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"ID Update\n{await AccountsString(db, user, apiLink, false)}");
+            await command.RespondAsync($"ID Update\n{await AccountsString(db, user, apiLink, false)}", ephemeral: true);
 
         }
 

@@ -89,6 +89,15 @@ namespace EGG9000.Bot
                 case 140306242995355648:
                     name = "WAG";
                     break;
+                case 653315151264612405:
+                    name = "Belle";
+                    break;
+                case 532068516719886385:
+                    name = "Azriale";
+                    break;
+                case 248865520756064257:
+                    name = "Kendrome";
+                    break;
             }
 
             return FirstCharToUpper(name.ToLower());

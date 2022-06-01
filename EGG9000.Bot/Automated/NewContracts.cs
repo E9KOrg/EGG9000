@@ -52,8 +52,84 @@ namespace EGG9000.Bot.Automated {
                 Console.WriteLine("Checking for new contracts");
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync();
 
+                var contracts = contractsResponse.Contracts.Contracts.ToList();
 
-                foreach(var contractResponse in contractsResponse.Contracts.Contracts) {
+                if(contracts.Any(x => x.StartTime > 1648789200)) {
+                    var lastContract = contracts.OrderBy(x => x.StartTime).Last();
+                    //var newContract = new Ei.Contract {
+                    //    Egg = Egg.DarkMatter,
+                    //    Identifier = "the-dark-side-2022",
+                    //    Name = "The Dark Side",
+                    //    Description = "With the recent confirmation of dark matter made by the Hubble telescope viewing the farthest stars, Dark Matter Eggs are needed now more than ever.",
+                    //    CoopAllowed = true,
+                    //    MaxCoopSize = 25,
+                    //    MaxBoosts = 0,
+                    //    MinutesPerToken = 30,
+                    //    StartTime = lastContract.StartTime,
+                    //    ExpirationTime = lastContract.ExpirationTime + 60 * 24 * 7,
+                    //    LengthSeconds = lastContract.ExpirationTime + 60 * 24 * 7 - lastContract.StartTime,
+                    //    MaxSoulEggs = 0,
+                    //    MinClientVersion = 37,
+                    //    Debug = false,
+                    //    //GoalSets = new Google.Protobuf.Collections.RepeatedField<Ei.Contract.Types.GoalSet>()
+                    //};
+
+                    //var eliteGoals = new Ei.Contract.Types.GoalSet();
+                    //eliteGoals.Goals.Add(new Ei.Contract.Types.Goal {
+                    //    Type = GoalType.EggsLaid,
+                    //    TargetAmount = 25000000000000000,
+                    //    RewardType = RewardType.Boost,
+                    //    RewardSubType = "jimbos_orange_big",
+                    //    RewardAmount = 4,
+                    //    TargetSoulEggs = 100000000000
+                    //});
+                    //eliteGoals.Goals.Add(new Ei.Contract.Types.Goal {
+                    //    Type = GoalType.EggsLaid,
+                    //    TargetAmount = 200000000000000000,
+                    //    RewardType = RewardType.PiggyMultiplier,
+                    //    RewardAmount = 2,
+                    //    TargetSoulEggs = 100000000000
+                    //});
+                    //eliteGoals.Goals.Add(new Ei.Contract.Types.Goal {
+                    //    Type = GoalType.EggsLaid,
+                    //    TargetAmount = 400000000000000000,
+                    //    RewardType = RewardType.EggsOfProphecy,
+                    //    RewardAmount = 1,
+                    //    TargetSoulEggs = 100000000000
+                    //});
+
+                    //var standardGoals = new Ei.Contract.Types.GoalSet();
+                    //standardGoals.Goals.Add(new Ei.Contract.Types.Goal {
+                    //    Type = GoalType.EggsLaid,
+                    //    TargetAmount = 20000000000000,
+                    //    RewardType = RewardType.Boost,
+                    //    RewardSubType = "jimbos_orange_big",
+                    //    RewardAmount = 2,
+                    //    TargetSoulEggs = 100000000000
+                    //});
+                    //standardGoals.Goals.Add(new Ei.Contract.Types.Goal {
+                    //    Type = GoalType.EggsLaid,
+                    //    TargetAmount = 150000000000000,
+                    //    RewardType = RewardType.PiggyMultiplier,
+                    //    RewardAmount = 2,
+                    //    TargetSoulEggs = 100000000000
+                    //});
+                    //standardGoals.Goals.Add(new Ei.Contract.Types.Goal {
+                    //    Type = GoalType.EggsLaid,
+                    //    TargetAmount = 750000000000000,
+                    //    RewardType = RewardType.EggsOfProphecy,
+                    //    RewardAmount = 1,
+                    //    TargetSoulEggs = 100000000000
+                    //});
+                    var smallReactors = await _db.Contracts.FirstAsync(x => x.ID == "small-reactors-2020");
+                    var newContract = JsonConvert.DeserializeObject<Ei.Contract>(smallReactors._response);
+                    newContract.ExpirationTime = lastContract.ExpirationTime + 60 * 24 * 7;
+                    newContract.StartTime = lastContract.StartTime;
+                    newContract.Identifier = "small-reactors-2022";
+                    contracts.Add(newContract);
+                }
+
+                foreach(var contractResponse in contracts) {
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 

@@ -1,0 +1,28 @@
+﻿@using System.Globalization
+@using Discord
+@using Discord.Rest
+@using Discord.WebSocket
+@model Dictionary<RestGuildUser, int>
+
+<table>
+	<thead>
+		<tr>
+			<th>Eggs Found</th>
+			<th>User</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach(var user in Model.OrderByDescending(x => x.Value)) {
+			<tr>
+				<td>
+					@user.Value
+				</td>
+				<td>
+					@(user.Key.Nickname ?? user.Key.Username)
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+

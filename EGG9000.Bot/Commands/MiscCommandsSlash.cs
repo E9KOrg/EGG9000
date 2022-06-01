@@ -83,7 +83,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task PingOnFull(SocketSlashCommand command, ApplicationDbContext db) {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync($"ERROR: Command only works in co-op channels");
+                await command.RespondAsync($"ERROR: Command only works in co-op channels", ephemeral: true);
                 return;
             }
             var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
@@ -93,9 +93,9 @@ namespace EGG9000.Bot.Commands {
             xref.PingOnFull = !xref.PingOnFull;
             await db.SaveChangesAsync();
             if(xref.PingOnFull) {
-                await command.RespondAsync($"Will receive DM ping when everyone has joined");
+                await command.RespondAsync($"Will receive DM ping when everyone has joined", ephemeral: true);
             } else {
-                await command.RespondAsync($"Will no longer receive ping");
+                await command.RespondAsync($"Will no longer receive ping", ephemeral: true);
             }
         }
 
@@ -184,8 +184,9 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
         public static async Task CallStaff(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
-            await channel.SendMessageAsync($"<@&708378160143794177>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
+            await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
             if(keepPrivate) {
+                
                 await command.RespondAsync("Staff has been called.", ephemeral: true);
             } else {
                 await command.RespondAsync($"Staff has been called ({details})");

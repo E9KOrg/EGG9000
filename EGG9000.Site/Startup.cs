@@ -27,6 +27,8 @@ using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using Discord;
 using Bugsnag.AspNet.Core;
+using Microsoft.AspNetCore.Authentication.OAuth.Claims;
+using Microsoft.AspNetCore.Authentication;
 
 namespace EGG9000.Site {
     public class Startup {
@@ -69,6 +71,12 @@ namespace EGG9000.Site {
             }).AddDiscord(options => {
                 options.ClientId = Configuration["ConnectionStrings:ClientId"];
                 options.ClientSecret = Configuration["ConnectionStrings:ClientSecret"];
+                options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
+                    OnTicketReceived = context => {
+                        Console.WriteLine("est");
+                        return Task.FromResult(0);
+                    }
+                };
                 //options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
                 //    OnTicketReceived = context => {
                 //        context.Properties.IsPersistent = true;

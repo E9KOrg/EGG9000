@@ -36,7 +36,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> Index() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var contracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => x.GuildID == guildId && x.Contract.Created > DateTimeOffset.Now.AddDays(-31)).OrderByDescending(x => x.Contract.Created).ToListAsync();
+            var contracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => x.GuildID == guildId && x.Contract.Created > DateTimeOffset.Now.AddMonths(-2)).OrderByDescending(x => x.Contract.Created).ToListAsync();
             return View(contracts);
         }
 

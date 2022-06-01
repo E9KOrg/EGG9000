@@ -158,7 +158,7 @@ namespace EGG9000.Bot.Automated {
                 //await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
 
 
-                var allPreFarms = GetPrefarmers(backups, guildContract.Contract);
+                var allPreFarms = GetPrefarmers(backups, guildContract);
 
                 allPreFarms.ForEach(x => x.DiscordUser = guild.Users.FirstOrDefault(y => y.Id == x.DiscordId));
 
@@ -187,7 +187,7 @@ namespace EGG9000.Bot.Automated {
 
                 var coopsDetails = new List<CoopDetails>();
                 foreach(var coop in coops) {
-                    var coopDetails = new CoopDetails(GetPrefarmsForCoop(coop, allPreFarms, alienBackups, guildContract.Contract), targetAmount, coop);
+                    var coopDetails = new CoopDetails(GetPrefarmsForCoop(coop, allPreFarms, alienBackups, guildContract.Contract), targetAmount, coop,guildContract.Contract.Details.MaxCoopSize);
                     coopsDetails.Add(coopDetails);
                 }
 
@@ -307,6 +307,7 @@ namespace EGG9000.Bot.Automated {
                             //var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coop.Users.Sum(x => x.Rate), coop.Users.Sum(x => x.EggsPaidFor + x.OfflineEggs));
                             name += $" Completes: {coop.TimeRemaining.Humanize(2).ShortenTime()}";
                         }
+
                         if(coop.Users.Count > 0) {
                             newMsgs.AddRange(ShowCoopStatus(coop, name, targetAmount, guildContract.Contract.Details.MaxCoopSize));
                         }
@@ -375,8 +376,8 @@ namespace EGG9000.Bot.Automated {
                         activesNotParticipanting = activesNotParticipanting.Where(x => usersNotSkip.Contains(x.DatabaseId)).ToList();
                     }
                     if(DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime)) {
-                        finalMsg += $"\nThe following people did not do the contract. {string.Join(", ", activesNotParticipanting.Select(x => x.DiscordName))}\n";
-                    } else {
+                        //finalMsg += $"\nThe following people did not do the contract. {string.Join(", ", activesNotParticipanting.Select(x => x.DiscordName))}\n";
+                    } else if(validFor.TotalDays >= 2) {
                         finalMsg += $"\nThe following people have not started prefarming yet. {string.Join(", ", activesNotParticipanting.Select(x => x.Mention))}\n";
                     }
 

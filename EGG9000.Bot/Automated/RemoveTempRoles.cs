@@ -50,10 +50,10 @@ namespace EGG9000.Bot.Automated {
                 try {
                     var user = _client.Guilds.First(g => g.Id == role.GuildId).GetUser(role.UserId);
                     await user.RemoveRoleAsync(role.RoleId);
-                    role.IsRemoved = true;
                 } catch(Exception ex) {
                     Console.WriteLine($"Error: Unable to remove role from user with id {role.UserId}, exception was {ex.Message}");
                 }
+                role.IsRemoved = true;
             }
             await _db.SaveChangesAsync();
         }

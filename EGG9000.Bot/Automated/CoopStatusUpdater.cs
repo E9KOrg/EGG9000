@@ -425,6 +425,7 @@ namespace EGG9000.Bot.Automated {
                                 coopDiscordUsers.Add(discordUser);
                             }
 
+
                         }
 
                         usersWithStatus.ForEach(userStatus => {
@@ -742,6 +743,22 @@ namespace EGG9000.Bot.Automated {
 
                                         if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-48) && status.ProjectedPercent(coop.Contract, (int?)coop.League ?? 0) > 100) {
                                             await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 48 hours", user, _db, xref, discordUser, coopChannel, dbguild, coop);
+                                        }
+                                    }
+
+                                    if(!xref.OutsideCoop && coop.GuildId == 656455567858073601 && !coop.Finished && coop.Status != CoopStatusEnum.Failed) {
+                                        var backup = user.Backups.FirstOrDefault(x => x.EggIncId == xref.EggIncId);
+                                        if(backup != null) {
+                                            var farm = backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
+                                            if(farm == null || farm.Cancelled) {
+                                                await coopChannel.SendMessageAsync($"It looks like {discordUser.Mention} has exited their farm. Please use the command `/callstaff` to see what to do next");
+                                                xref.OutsideCoop = true;
+                                                await _db.SaveChangesAsync();
+                                            } else if(!string.IsNullOrWhiteSpace(farm.CoopId) && !farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
+                                                await coopChannel.SendMessageAsync($"It looks like {discordUser.Mention} has joined another co-op named {farm.CoopId}. Please use the command  `/callstaff` to see what to do next");
+                                                xref.OutsideCoop = true;
+                                                await _db.SaveChangesAsync();
+                                            }
                                         }
                                     }
                                 } catch(Exception) { }
@@ -1137,7 +1154,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 if(user.CreateOn > DateTimeOffset.Now.AddDays(-7)) {
-                    _db.Remove(xref);
+                    //_db.Remove(xref);
                     await coopChannel.SendMessageAsync($"{discordUser.Mention}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
                     continue;
                 }

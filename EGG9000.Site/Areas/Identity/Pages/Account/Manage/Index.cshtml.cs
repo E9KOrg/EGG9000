@@ -28,7 +28,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             _db = db;
         }
 
-
+        [BindProperty]
         public string Username { get; set; }
 
         [TempData]
@@ -95,7 +95,11 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             //    }
             //}
 
-
+            if(!string.IsNullOrEmpty(Username)) {
+                Console.WriteLine("Updating username");
+                user.UserName = Username;
+                await _userManager.UpdateAsync(user);
+            }
             var logins = await _userManager.GetLoginsAsync(user);
             var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
             dbuser.DMOnShipReturn = Input.DMOnShipReturn;
