@@ -5,15 +5,22 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading.Tasks;
+
+using EGG9000.Bot.EggIncAPI;
 
 using Google.Protobuf;
 
 using Titanium.Web.Proxy;
+using Titanium.Web.Proxy.EventArguments;
 using Titanium.Web.Proxy.Models;
 
 namespace TestProxy {
     class Program {
         public static ProxyServer proxyServer;
+
+        public static int OnBeforeTunnelConnectRequest { get; private set; }
+
         static void Main(string[] args) {
             proxyServer = new ProxyServer();
             proxyServer.BeforeRequest += ProxyServer_BeforeRequest;
@@ -23,22 +30,33 @@ namespace TestProxy {
                 // Use self-issued generic certificate on all https requests
                 // Optimizes performance by not creating a certificate for each https-enabled domain
                 // Useful when certificate trust is not required by proxy clients
-                GenericCertificate = new X509Certificate2(@"d:\websites\discordcoopcodes\testproxy\proxy.pfx", "test")
+                //GenericCertificate = new X509Certificate2(@"d:\websites\discordcoopcodes\testproxy\proxy.pfx", "test")
             };
 
             // Fired when a CONNECT request is received
-            //explicitEndPoint.BeforeTunnelConnect += OnBeforeTunnelConnect;
+            explicitEndPoint.BeforeTunnelConnectRequest += ExplicitEndPoint_BeforeTunnelConnectRequest; ;
 
             // An explicit endpoint is where the client knows about the existence of a proxy
             // So client sends request in a proxy friendly manner
             proxyServer.AddEndPoint(explicitEndPoint);
             proxyServer.Start();
 
+
+            var response = ContractsAPI.FirstContact("EI5575686489636864");
+            response.Wait();
             while(true) { }
+        }
+
+        private static async Task ExplicitEndPoint_BeforeTunnelConnectRequest(object sender, TunnelConnectSessionEventArgs e) {
+            if(e.HttpClient.Request.RequestUri.Host.Contains("aux")) {
+                Console.WriteLine(e.HttpClient.Request.RequestUri.Host);
+                e.DecryptSsl = true;
+            }
         }
 
         private static async System.Threading.Tasks.Task ProxyServer_BeforeResponse(object sender, Titanium.Web.Proxy.EventArguments.SessionEventArgs e) {
             //http://afx-2-dot-auxbrainhome.appspot.com/ei/first_contact_secure
+            Console.WriteLine($"BEfore Request: {e.HttpClient.Request.Host} {e.HttpClient.Request.RequestUriString}");
             if(e.HttpClient.Request.Host.Contains("auxbrain") || e.HttpClient.Request.Host.Contains("egg")) {
                 Console.WriteLine($"Response: {e.HttpClient.Request.RequestUriString}");
                 var responseString = System.Convert.FromBase64String(await e.GetResponseBodyAsString());

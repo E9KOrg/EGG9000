@@ -1,6 +1,7 @@
 ﻿
 using Discord;
 using Discord.Net;
+using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Commands;
@@ -65,6 +66,8 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
 
+
+
         private async Task MessageReceivedTask(SocketMessage message) {
             var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription) {
@@ -86,6 +89,10 @@ namespace EGG9000.Bot.Services {
                 }
 
                 if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
+                    if(message.Content == "/join") {
+                        await ContractCommandsSlash._join(new FauxCommand(message), db, _apiLink, _discord, message.Author);
+                        return;
+                    }
                     await message.Channel.SendMessageAsync($"**ERROR:** Looks like you attempted to run a command but Discord didn't recognize it. As you type the command a menu should pop up and you select the command you want from that menu. If you continue to have trouble try force closing Discord.", messageReference: new MessageReference(message.Id));
                 }
 
@@ -339,5 +346,44 @@ namespace EGG9000.Bot.Services {
             }
         }
 
+        public class FauxCommand {
+            SocketSlashCommand _command;
+            SocketMessage _originalMessage;
+            RestUserMessage _message;
+            public async Task RespondAsync(string text = null, bool ephemeral = false) {
+                if(_command != null) {
+                    await _command.RespondAsync(text, ephemeral: ephemeral);
+                } else {
+                    _message = await _originalMessage.Channel.SendMessageAsync(text, messageReference: new MessageReference(_message.Id, _message.Channel.Id));
+                }
+            }
+
+            public async Task ModifyOriginalResponseAsync(string text) {
+                if(_command != null) {
+                    await _command.ModifyOriginalResponseAsync(x => x.Content = text);
+                } else {
+                    await _message.ModifyAsync(x => x.Content = text);
+                }
+            }
+            public FauxCommand(SocketMessage message) {
+                _originalMessage = message;
+            }
+
+            public IChannel Channel {
+                get {
+                    if(_command != null)
+                        return _command.Channel;
+                    else
+                        return _originalMessage.Channel;
+                }
+            }
+            public FauxCommand(SocketSlashCommand command) {
+                command = _command;
+            }
+
+            public static implicit operator FauxCommand(SocketSlashCommand command) {
+                return new FauxCommand(command);
+            }
+        }
     }
 }
