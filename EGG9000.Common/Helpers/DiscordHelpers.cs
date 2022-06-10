@@ -212,7 +212,7 @@ namespace EGG9000.Bot.Helpers {
         public static ulong ProPermitRoleID = 966017147350446121;
         public static ulong StandardPermitRoleID = 966017278078517248;
         public static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, List<CustomBackup> backups) {
-            Console.WriteLine($"Checking Permit for {DiscordUser.GetName()}");
+            //Console.WriteLine($"Checking Permit for {DiscordUser.GetName()}");
             if(Guild.Roles.Any(x => x.Id == ProPermitRoleID)) {
                 var hasPro = DiscordUser.RoleIds.Any(x => x == ProPermitRoleID);
                 var hasStandard = DiscordUser.RoleIds.Any(x => x == StandardPermitRoleID); ;

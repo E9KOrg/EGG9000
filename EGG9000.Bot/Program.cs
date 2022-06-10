@@ -10,15 +10,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using EGG9000.Bot.Services;
 using Bugsnag.AspNet.Core;
-
-
-
+using EGG9000.Bot.EggIncAPI;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
     .ConfigureServices((hostContext, services) => {
         Console.WriteLine("Main Start");
 
+        var response = ContractsAPI.FirstContact("EI5575686489636864");
+        response.Wait();
+        
         //_bugsnag = new Bugsnag.Client(new Bugsnag.Configuration("c924bd8a1fd56db4552e0549a76d3689"));
         //services.AddSingleton<Bugsnag.IClient>(_bugsnag);
         services.AddBugsnag(configuration => {
