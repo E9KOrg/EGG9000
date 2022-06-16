@@ -318,7 +318,7 @@
                         allFarms.AddRange(backup.ArchivedFarms?.Where(x => !farms.Any(y => y.ContractId == x.ContractId)).Select(x => ((object)x, x.Started)));
                     }
                     <div class="card" style="margin-top:15px">
-                        <h4 class="card-header">Recent Farms</h4>
+                        <h4 class="card-header">Active Farms</h4>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped">
@@ -343,7 +343,7 @@
                                     </thead>
                                     <tbody>
                                         @{
-                                            foreach (var tuple in allFarms.Where(x => x.Item1 is CustomFarm).OrderByDescending(x => x.Item2))
+                                            foreach (var tuple in allFarms.Where(x => x.Item1 is CustomFarm && ((CustomFarm)x.Item1).Completed == false).OrderByDescending(x => x.Item2))
                                             {
                                                 CustomFarm farm = (CustomFarm)tuple.Item1;
                                                 var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
@@ -377,7 +377,7 @@
                                                         <td class="text-right">@farm.BoostTokensReceived</td>
                                                         <td class="text-right">@farm.BoostTokensSpent</td>
                                                         <td class="text-right">@farm.BoostTokensGiven</td>
-                                                    </tr>
+                                                </tr>
                                             }
                                         }
                                     </tbody>
@@ -407,11 +407,49 @@
                                     </thead>
                                     <tbody>
                                         @{
-                                            foreach (var tuple in allFarms.Where(x => x.Item1 is not CustomFarm).OrderByDescending(x => x.Item2))
+                                            // Show completed farms, these could be 'active' and 'archived' farms.
+                                            foreach (var tuple in allFarms.Where(x => 
+                                                (x.Item1 is CustomFarm && ((CustomFarm)x.Item1).Completed == true) ||
+                                                (x.Item1 is CustomArchivedFarms && ((CustomArchivedFarms)x.Item1).Completed == true)
+                                            ).OrderByDescending(x => x.Item2))
                                             {
-                                                CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
-                                                var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-                                                var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
+                                                if(tuple.Item1 is CustomFarm)
+                                                {
+                                                    CustomFarm farm = (CustomFarm)tuple.Item1;
+                                                    var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
+                                                    var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
+                                                    var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
+                                                    var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+                                                    <tr>
+                                                        <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
+                                                        <td>
+                                                            <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+                                                                @(farm.CoopId ?? coop?.Name)
+                                                            </a>
+                                                        </td>
+                                                        <td>@farm.Started.ToString("yyyy-MM-dd")</td>
+                                                        <td>@(farm.Completed ? "✔️" : "")</td>
+                                                        <td class="text-right">@xref?.Score?.ToString("G2")</td>
+                                                        <td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
+                                                        @if (lastUpdate != null)
+                                                        {
+                                                        var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
+                                                            <td class="text-right">@lastUpdate.ContributionAmount.ToEggString()</td>
+                                                            <td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+                                                            <td class="text-right">@(lastUpdate.TimeCheatDetected ? "Yes" : "No")</td>
+                                                            <td class="text-right">@lastUpdate.BoostTokensSpent</td>
+                                                        }
+                                                        else
+                                                        {
+                                                                <td colspan="99"></td>
+                                                        }
+                                                    </tr>
+                                                }
+                                                else
+                                                {
+                                                    CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
+                                                    var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
+                                                    var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
                                                     <tr>
                                                         <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
                                                         <td>
@@ -424,18 +462,19 @@
                                                         <td class="text-right">@xref?.Score?.ToString("G2")</td>
                                                         <td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
                                                         @if (lastUpdate != null)
-                                                    {
+                                                        {
                                                         var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
                                                             <td class="text-right">@lastUpdate.ContributionAmount.ToEggString()</td>
                                                             <td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
                                                             <td class="text-right">@(lastUpdate.TimeCheatDetected ? "Yes" : "No")</td>
                                                             <td class="text-right">@lastUpdate.BoostTokensSpent</td>
-                                                    }
-                                                    else
-                                                    {
-                                                            <td colspan="99"></td>
-                                                    }
+                                                        }
+                                                        else
+                                                        {
+                                                                <td colspan="99"></td>
+                                                        }
                                                     </tr>
+                                                }
                                             }
                                         }
                                     </tbody>
