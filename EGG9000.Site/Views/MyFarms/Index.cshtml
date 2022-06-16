@@ -327,7 +327,6 @@
                                             <th>Contract</th>
                                             <th>Coop</th>
                                             <th>Started</th>
-                                            <th>🏁</th>
                                             <th data-toggle="tooltip" title="# of Chickens" class="text-right">🐔</th>
                                             <th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
                                             <th class="text-right">%</th>
@@ -359,7 +358,6 @@
                                                             </a>
                                                         </td>
                                                         <td>@farm.Started.ToString("yyyy-MM-dd")</td>
-                                                        <td>@(farm.Completed ? "✔️" : "")</td>
                                                         <td class="text-right">@farm.NumChickens.ToEggString()</td>
                                                         <td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
                                                         <td class="text-right">
@@ -410,7 +408,8 @@
                                             // Show completed farms, these could be 'active' and 'archived' farms.
                                             foreach (var tuple in allFarms.Where(x => 
                                                 (x.Item1 is CustomFarm && ((CustomFarm)x.Item1).Completed == true) ||
-                                                (x.Item1 is CustomArchivedFarms && ((CustomArchivedFarms)x.Item1).Completed == true)
+                                                (x.Item1 is CustomArchivedFarms && ((CustomArchivedFarms)x.Item1).Completed == true) ||
+                                                (x.Item1 is CustomArchivedFarms)
                                             ).OrderByDescending(x => x.Item2))
                                             {
                                                 if(tuple.Item1 is CustomFarm)
@@ -441,7 +440,7 @@
                                                         }
                                                         else
                                                         {
-                                                                <td colspan="99"></td>
+                                                            <td colspan="99"></td>
                                                         }
                                                     </tr>
                                                 }
@@ -471,7 +470,7 @@
                                                         }
                                                         else
                                                         {
-                                                                <td colspan="99"></td>
+                                                            <td colspan="99"></td>
                                                         }
                                                     </tr>
                                                 }
