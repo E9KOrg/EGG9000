@@ -5,6 +5,8 @@ using System.Text;
 
 using Discord.WebSocket;
 
+using EGG9000.Common.Database.Entities;
+
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot
@@ -43,64 +45,25 @@ namespace EGG9000.Bot
             }
         }
 
-        public string GetCoopName(IEnumerable<SocketGuildUser> discordUsers) {
-            var admins = discordUsers.Where(x => x != null &&  x.Roles.Any(r => r.Id == 708378160143794177 || r.Id == 759887156029423636 || r.Id == 750797304797069323)).GroupBy(x => x.Id).Select(x => x.First());
-            if(admins.Count() > 1) {
-                return String.Join("", admins.Select(x => AdminName(x))) + GetRandomNumber();
+        public string GetCoopName(List<UserPreFarm> prefarms, SocketGuild discordguild, Guild dbguild) {
+            if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
+                return $"{dbguild.CoopNamePrefix}{GetRandomWord()}{GetRandomNumber()}";
+
+            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User.CustomCoopName)).GroupBy(x => x.User.Id);
+            var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.Now);
+            foreach(var customName in customNamesExpired) {
+                customName.First().User.ExpireCustomCoopName = null;
+                customName.First().User.CustomCoopName = null;
+            }
+            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName));
+
+            if(customNames.Count() > 1) {
+                return String.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
             } 
-            if(admins.Count() == 1) {
-                return  AdminName(admins.First()) + GetRandomWord() + GetRandomNumber();
+            if(customNames.Count() == 1) {
+                return  customNames.First().First().User.CustomCoopName + GetRandomWord() + GetRandomNumber();
             }
             return GetRandomWord() + GetRandomWord() + GetRandomNumber();
-        }
-
-        public string AdminName(SocketGuildUser user) {
-            var name = string.IsNullOrWhiteSpace(user.Nickname) ? user.Username : user.Nickname;
-
-            name = name.Split(" ").First();
-            switch(user.Id) {
-                case 303445144374607882:
-                    name = "Aleks";
-                    break;
-                case 708455470788247702:
-                    name = "Binty";
-                    break;
-                case 689298717081468973:
-                    name = "Ekk";
-                    break;
-                case 137808975298035713:
-                    name = "Blake";
-                    break;
-                case 745696668661580008:
-                    name = "3N";
-                    break;
-                case 107754714078117888:
-                    name = "Aharit";
-                    break;
-                case 861607701493448704:
-                    name = "Melina";
-                    break;
-                case 170412210076516352:
-                    name = "Ely";
-                    break;
-                case 821402019092889700:
-                    name = "Treegoat";
-                    break;
-                case 140306242995355648:
-                    name = "WAG";
-                    break;
-                case 653315151264612405:
-                    name = "Belle";
-                    break;
-                case 532068516719886385:
-                    name = "Azriale";
-                    break;
-                case 248865520756064257:
-                    name = "Kendrome";
-                    break;
-            }
-
-            return FirstCharToUpper(name.ToLower());
         }
 
         private List<String> WordList {

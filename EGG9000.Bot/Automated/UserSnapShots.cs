@@ -16,13 +16,18 @@ using Discord;
 using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class UserSnapShots : _UpdaterBase {
         private IConfiguration Configuration;
 
-        public UserSnapShots(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1), client, bugsnag) {
+        public UserSnapShots(
+            IConfiguration Configuration, 
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1), client, bugsnag, configuration) {
             this.Configuration = Configuration;
         }
         public override async Task Run(object state) {

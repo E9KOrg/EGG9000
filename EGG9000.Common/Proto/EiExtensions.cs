@@ -43,7 +43,7 @@ namespace Ei {
             }
         }
 
-        public string TotalString { get { return ArgumentsHelper.NumberToString(this.TotalAmount, false); } }
+        public string TotalString { get { return ArgumentsHelper.NumberToString(this.TotalAmount, false, -1); } }
 
         private double _targetAmoun(EGG9000.Common.Database.Entities.Contract contract, int League) {
             return contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
@@ -72,12 +72,12 @@ namespace Ei {
         public partial class Types {
             public partial class ContributionInfo {
                 public string GetID() { return UserId; }
-                public string TotalString { get { return ArgumentsHelper.NumberToString(this.ContributionAmount, false); } }
+                public string TotalString { get { return ArgumentsHelper.NumberToString(this.ContributionAmount, false, -1); } }
                 public double TimeLeftSeconds { get; set; }
 
                 public TimeSpan LastActive { get; set; }
                 public string DiscordName { get; set; }
-                public string RateString { get { return ArgumentsHelper.NumberToString(this.ContributionRate, false) + "/s"; } }
+                public string RateString { get { return ArgumentsHelper.NumberToString(this.ContributionRate, false, -1) + "/s"; } }
 
                 public double AmountWithOffline(double siloTimeMinutes, TimeSpan lastActive) {
                     if(TimeLeftSeconds < 0) {

@@ -380,7 +380,7 @@ namespace EGG9000.Bot.EggIncAPI {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
-                    client.BaseAddress = new Uri("http://afx-2-dot-auxbrainhome.appspot.com/");
+                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
@@ -410,7 +410,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     HttpResponseMessage response;
 
                     //try {
-                        response = await client.PostAsync("ei/first_contact_secure", bac);
+                    response = await client.PostAsync("ei/first_contact_secure", bac);
                     //} catch(Exception) {
                     //    await Task.Delay(500);
                     //    response = await client.PostAsync("ei/first_contact", bac);
@@ -434,6 +434,58 @@ namespace EGG9000.Bot.EggIncAPI {
 
             } catch(Exception e) {
                 return new Ei.EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
+            }
+        }
+
+        public static async Task<Ei.Backup> BotFirstContact(string UserId) {
+            try {
+                var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
+                using(var client = new HttpClient(handler)) {
+                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
+
+                    var ms1 = new MemoryStream();
+                    new Ei.EggIncFirstContactRequest {
+                        EiUserId = UserId,
+                        DeviceId = "EGG9000"
+                    }.WriteTo(ms1);
+                    ms1.Position = 0;
+                    var sr = new StreamReader(ms1);
+                    var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
+                    var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
+                    client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
+                    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                    client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+                    bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+
+                    HttpResponseMessage response;
+
+                    //try {
+                    response = await client.PostAsync("ei/bot_first_contact", bac);
+                    //} catch(Exception) {
+                    //    await Task.Delay(500);
+                    //    response = await client.PostAsync("ei/first_contact", bac);
+                    //}
+
+                    string r;
+                    if(response.IsSuccessStatusCode) {
+                        r = await response.Content.ReadAsStringAsync();
+                        var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+
+
+                        var backup = GetFromAuthenticatedMessage<Ei.Backup>(responseString);
+
+
+                        //backup.Success = true;
+                        return backup;
+                    } else {
+                        //return new Ei.EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
+                        return null;
+                    }
+                }
+
+            } catch(Exception) {
+                //return new Ei.EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
+                return null;
             }
         }
 

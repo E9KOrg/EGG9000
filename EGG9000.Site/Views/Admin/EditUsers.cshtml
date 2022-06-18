@@ -10,6 +10,8 @@
     <thead>
         <tr>
             <th>Name</th>
+            <th>CustomCoopName</th>
+            <th>CustomExpires</th>
             @foreach(var role in Model.Roles) {
                 <th>
                     @role.Name
@@ -18,12 +20,14 @@
         </tr>
     </thead>
     <tbody>
-        @foreach(var user in Model.Users.OrderByDescending(x => Model.UserRoles.Any(ur => ur.UserId == x.Id))) {
+        @foreach(var user in Model.Users.OrderByDescending(x => x.IdentityUserRoles.Any())) {
             <tr>
-                <td>@user.UserName</td>
+                <td>@user.IdentityUser.UserName</td>
+                <td><input class="customName" value="@user.CustomCoopName" data-id="@user.DiscordId" /></td>
+                <td>@user.ExpireCustomCoopName?.ToString("yyyy-M-d")</td>
                 @foreach(var role in Model.Roles) {
                     <td>
-                        <input type="checkbox" checked="@Model.UserRoles.Any(ur => ur.RoleId == role.Id && ur.UserId == user.Id)" onchange="Change(this, '@user.Id', '@role.Id')" />
+                        <input type="checkbox" checked="@user.IdentityUserRoles.Any(ur => ur.RoleId == role.Id)" onchange="Change(this, '@user.IdentityUser.Id', '@role.Id')" />
                     </td>
                 }
             </tr>
@@ -39,4 +43,15 @@
             $(element).css("background-color", "green");
         });
     }
+
+
+    const input = document.querySelector(".customName");
+    input.addEventListener("keyup", (event) => {
+        if (event.key === "Enter") {
+            $(event.target).css("background-color", "yellow");
+            $.post("/admin/setcustomname", { CustomName: $(event.target).val(), DiscordID: $(event.target).data("id") }, function (data) {
+                $(event.target).css("background-color", "green");
+            });
+        }
+    });
 </script>

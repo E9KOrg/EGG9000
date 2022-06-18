@@ -18,13 +18,18 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase {
         private IConfiguration _config;
 
-        public CreateCoopChannels(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag) {
+        public CreateCoopChannels(
+            IConfiguration Configuration, 
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag, configuration) {
             _config = Configuration;
         }
 
@@ -56,7 +61,8 @@ namespace EGG9000.Bot.Automated {
 
         private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops) {
             foreach(var overflow in servers.Where(x => x.ChannelsLeft > 0)) {
-                foreach(var category in overflow.CoopCategories.Where(x => x.CurrentCount < 50)) {
+                var coopCategories = await overflow.GetCoopCategories(_client);
+                foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
                     try {
                         var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; });
                         category.CurrentCount++;
@@ -83,7 +89,8 @@ namespace EGG9000.Bot.Automated {
 
                     var server = servers.Where(x => x.Guild.Id == completedCoop.GuildId).FirstOrDefault();
                     if(server != null) {
-                        foreach(var category in server.CoopCategories.Where(x => x.CurrentCount < 50)) {
+                        var coopCategories = await server.GetCoopCategories(_client);
+                        foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
                             try {
                                 var channel = await server.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; });
                                 category.CurrentCount++;
@@ -119,11 +126,15 @@ namespace EGG9000.Bot.Automated {
         public class OverflowServer {
             public SocketGuild Guild { get; set; }
             public int ChannelsLeft { get; set; }
-            public List<CoopCategories> CoopCategories { get; set; }
+            private List<CoopCategories> CoopCategories { get; set; }
 
+            public async Task<List<CoopCategories>> GetCoopCategories(DiscordHostedService discord) {
+                if(CoopCategories == null)
+                    CoopCategories = (await discord.GetAllCoopCategories(Guild)).Select(x => new CoopCategories { DiscordCategory = x, CurrentCount = Guild.TextChannels.Count(y => y.CategoryId == x.Id) }).ToList();
+                return CoopCategories;
+            }
             public OverflowServer(SocketGuild guild) {
                 Guild = guild;
-                CoopCategories = guild.GetCoopCategories().Select(x => new CoopCategories { DiscordCategory = x, CurrentCount = guild.TextChannels.Count(y => y.CategoryId == x.Id) }).ToList();
             }
         }
 

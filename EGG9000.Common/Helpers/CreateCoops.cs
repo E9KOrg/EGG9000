@@ -13,17 +13,18 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
 
 using static EGG9000.Common.Helpers.Prefarm;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoops {
         public static async Task<Coop> Start(List<UserPreFarm> prefarms, GuildContract guildContract, SocketGuild guild, Words _words, ApplicationDbContext db) {
-            var discordUsers = prefarms.Select(x => guild.GetUser(x.DiscordId));
+            //var discordUsers = prefarms.Select(x => guild.GetUser(x.DiscordId));
             var coop = new Coop();
-
+            var dbguild = await db.Guilds.FirstAsync(x => x.Id == guildContract.GuildID);
             coop.ContractID = guildContract.ContractID;
             coop.Created = DateTimeOffset.Now;
             coop.GuildId = guild.Id;
-            coop.Name = _words.GetCoopName(discordUsers);
+            coop.Name = _words.GetCoopName(prefarms, guild, dbguild);
             coop.MaxUsers = guildContract.Contract.MaxUsers;
             coop.Status = CoopStatusEnum.WaitingOnAssigned;
             coop.League = (UInt32)(guildContract.Elite ? 0 : 1);

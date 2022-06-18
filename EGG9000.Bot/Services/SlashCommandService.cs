@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Services {
         public List<CommandFunction> SubFunctions { get; set; }
     }
     public class SlashCommandService : IHostedService {
-        private readonly DiscordSocketClient _discord;
+        private readonly DiscordHostedService _discord;
         private List<CommandFunction> _commandFunctions;
         private IConfiguration _configuration;
         private APILink _apilink;
@@ -41,11 +41,11 @@ namespace EGG9000.Bot.Services {
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
         private ContractUpdater _contractUpdater;
         private CoopStatusUpdater _coopStatusUpdater;
-        private Guild _cpGuilde;
+        private Guild _cpGuild;
 
 
-        public SlashCommandService(IConfiguration Configuration, DiscordSocketClient discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
-            _discord = (DiscordSocketClient)discord;
+        public SlashCommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
+            _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
             _words = words;
@@ -54,7 +54,8 @@ namespace EGG9000.Bot.Services {
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
             _coopStatusUpdater = coopStatusUpdater;
-            _cpGuilde = context.Guilds.First(x => x.Id == 656455567858073601);
+            ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
+            _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -153,6 +154,9 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]));
                         }
                         if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
+                            parameters.Add((DiscordSocketClient)_discord);
+                        }
+                        if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
                             parameters.Add(_discord);
                         }
                         if(parameterInfo.ParameterType == typeof(APILink)) {
@@ -219,14 +223,13 @@ namespace EGG9000.Bot.Services {
 
             foreach(var command in _commandFunctions) {
                 var guildCommand = new SlashCommandBuilder();
+                guildCommand.DefaultMemberPermissions = command.Details.AdminOnly ? GuildPermission.Administrator : GuildPermission.UseApplicationCommands;
                 guildCommand.WithName(command.Name);
                 if(command.Details.AdminOnly) {
                     command.Details.Description = $"(Admin Only) {command.Details.Description}";
                 }
                 guildCommand.WithDescription(command.Details.Description);
-
-
-                guildCommand.Description += "~";
+                //guildCommand.Description += "~";
 
                 if(command.Details.AdminOnly) {
                     guildCommand.IsDefaultPermission = false;
@@ -261,7 +264,7 @@ namespace EGG9000.Bot.Services {
                     Console.WriteLine($"Creating slash commands for {guild.Name}");
 
 
-                    var isCPGuild = guild.Id == _cpGuilde.Id || _cpGuilde.OverflowServers.Contains(guild.Id);
+                    var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
                     IDictionary<ulong, ApplicationCommandPermission[]> permissions = new Dictionary<ulong, ApplicationCommandPermission[]>();
@@ -284,7 +287,10 @@ namespace EGG9000.Bot.Services {
                         }
                     }
                     if(permissions.Count > 0) {
-                        var result = await _discord.Rest.BatchEditGuildCommandPermissions(guild.Id, permissions);
+                        //var commands = await guild.GetApplicationCommandsAsync();
+                        //var c2 = await _discord.Rest.GetGuildApplicationCommands(1);
+                        //c2.First().ModifyCommandPermissions
+                        //var result = await _discord.Rest.BatchEditGuildCommandPermissions(guild.Id, permissions);
                         //Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
                     }
                     Console.WriteLine($"Slash command permissions updated for {guild.Name}");

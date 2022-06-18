@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220617171535_AddingDetailsToGuild")]
+    partial class AddingDetailsToGuild
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -447,8 +449,8 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("ActiveStandards")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("CoopCategories")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal?>("ChannelWarningMessageForUser")
+                        .HasColumnType("decimal(20,0)");
 
                     b.Property<string>("CoopNamePrefix")
                         .HasColumnType("nvarchar(max)");
@@ -459,14 +461,26 @@ namespace EGG9000.Common.Migrations
                     b.Property<decimal>("DiscordSeverId")
                         .HasColumnType("decimal(20,0)");
 
-                    b.Property<string>("FinishedCategories")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal?>("EliteCategory")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<decimal?>("FailedCategory")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<decimal?>("GameEventsChannel")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<decimal?>("GeneralChannel")
+                        .HasColumnType("decimal(20,0)");
 
                     b.Property<string>("InactiveElites")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("InactiveStandards")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("LeaderboardChannel")
+                        .HasColumnType("decimal(20,0)");
 
                     b.Property<string>("LeaderboardImage")
                         .HasColumnType("nvarchar(max)");
@@ -477,11 +491,17 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("OverflowServersJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal?>("RulesChannel")
+                        .HasColumnType("decimal(20,0)");
+
                     b.Property<string>("StaffCoopsMessageDetails")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("_channelDetailsJson")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<decimal?>("StandardCategory")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<decimal?>("WelcomeChannel")
+                        .HasColumnType("decimal(20,0)");
 
                     b.HasKey("Id");
 

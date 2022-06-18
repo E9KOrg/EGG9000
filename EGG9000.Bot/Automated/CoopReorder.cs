@@ -14,13 +14,18 @@ using System.Threading.Tasks;
 using EGG9000.Bot.Helpers;
 using Discord;
 using EGG9000.Common.Helpers;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class CoopReorder : _UpdaterBase {
         private IConfiguration Configuration;
 
-        public CoopReorder(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, client, bugsnag) {
+        public CoopReorder(
+            IConfiguration Configuration, 
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, client, bugsnag, configuration) {
             this.Configuration = Configuration;
         }
         public override async Task Run(object state) {
@@ -34,7 +39,7 @@ namespace EGG9000.Bot.Automated {
                     if (guild == null)
                         continue;
 
-                    var categories = guild.GetCoopCategories();
+                    var categories = await _client.GetAllCoopCategories(guild);
 
                     var coops = await _db.Coops.Include(x => x.Contract).Where(x => !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && (x.OverflowGuildId == 0 || x.OverflowGuildId == guild.Id)).ToListAsync();
 
@@ -46,7 +51,7 @@ namespace EGG9000.Bot.Automated {
                             Console.WriteLine($"Missing overflow guild for {guild.Name}, overflowId = {overflowId}");
                             continue;
                         }
-                        var overflowCategories = overflowGuild.GetCoopCategories();
+                        var overflowCategories = await _client.GetAllCoopCategories(overflowGuild);
                         var overflowCoops = await _db.Coops.Include(x => x.Contract).Where(x => !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && x.OverflowGuildId == overflowId).ToListAsync();
                         await SortCoops(overflowCoops, overflowCategories, overflowGuild);
                     }
@@ -59,7 +64,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private async Task SortCoops(List<Coop> coops, List<SocketGuildChannel> categories, SocketGuild guild) {
+        private async Task SortCoops(List<Coop> coops, List<SocketCategoryChannel> categories, SocketGuild guild) {
             Console.WriteLine($"Sorting Co-ops for {guild.Name}");
             coops = coops.OrderBy(x =>
             {

@@ -134,6 +134,7 @@ namespace EGG9000.Site {
             services.AddBugsnag(configuration => {
                 configuration.ApiKey = "7740fdc81aa4f54c5cef05983c7984fe";
             });
+            services.AddDatabaseDeveloperPageExceptionFilter();
         }
 
         private static void ConfigureAuthorizationCookie(CookieAuthenticationOptions options, string cookieName) {
@@ -151,7 +152,7 @@ namespace EGG9000.Site {
 
             if (env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
+                app.UseMigrationsEndPoint();
             } else {
                 app.UseExceptionHandler("/Home/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.

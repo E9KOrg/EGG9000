@@ -17,21 +17,10 @@ await Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostContext, services) => {
         Console.WriteLine("Main Start");
 
-        var response = ContractsAPI.FirstContact("EI5575686489636864");
-        response.Wait();
-        
-        //_bugsnag = new Bugsnag.Client(new Bugsnag.Configuration("c924bd8a1fd56db4552e0549a76d3689"));
-        //services.AddSingleton<Bugsnag.IClient>(_bugsnag);
-        services.AddBugsnag(configuration => {
-            configuration.ApiKey = "c924bd8a1fd56db4552e0549a76d3689";
-        });
-
         var Configuration = new ConfigurationBuilder()
             .AddUserSecrets<Secrets>()
             .Build();
-
-
-
+        
         services.Configure<HostOptions>(options => {
             options.ShutdownTimeout = TimeSpan.FromMinutes(5);
         });
@@ -40,9 +29,45 @@ await Host.CreateDefaultBuilder(args)
             options.UseSqlServer(
                 Configuration.GetConnectionString("DefaultConnection")));
 
-        //services.AddHostedService<DatabaseQueue>();
         services.AddSingleton<Words>();
+        services.AddMemoryCache();
+#if DEBUG
+        services.AddBugsnag();
+        services.AddSingleton<DiscordHostedService>();
+        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+        services.AddSingleton<APILink>();
+        services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
+        services.AddHostedService<SlashCommandService>();
+        services.AddHostedService<TextCommandService>();
+        services.AddHostedService<DiscordUserService>();
+        services.AddHostedService<StaffCoopsMessage>();
+        services.AddHostedService<EventUpdater>();
+        services.AddHostedService<CoopReorder>();
+        services.AddHostedService<CoopDeleteChannel>();
+
+        services.AddSingleton<CoopStatusUpdater>();
+        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+
+        services.AddSingleton<ContractUpdater>();
+        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+
+        services.AddHostedService<NewContracts>();
+        services.AddHostedService<CreateCoopChannels>();
+        services.AddHostedService<ShipReturnDM>();
+        services.AddHostedService<UserSnapShots>();
+        services.AddHostedService<LeaderboardUpdater>();
+        services.AddHostedService<ManageOverflow>();
+        services.AddHostedService<RemoveTempRoles>();
+#endif
+
+
+#if !DEBUG
+        services.AddBugsnag(configuration => {
+            configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
+        });
+
+        //services.AddHostedService<DatabaseQueue>();
 
         services.AddSingleton<DiscordHostedService>();
         services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
@@ -70,6 +95,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<LeaderboardUpdater>();
         services.AddHostedService<ManageOverflow>();
         services.AddHostedService<RemoveTempRoles>();
+#endif
 
 
     }).ConfigureAppConfiguration((context, config) => {

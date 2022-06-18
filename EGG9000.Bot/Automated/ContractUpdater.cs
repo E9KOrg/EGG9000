@@ -49,11 +49,12 @@ namespace EGG9000.Bot.Automated {
         }
 
         public ContractUpdater(IConfiguration Configuration,
-            DiscordSocketClient client,
+            DiscordHostedService client,
             APILink apilink,
             Words words,
-            Bugsnag.IClient bugsnag
-        ) : base(_updateInterval, TimeSpan.Zero, client, bugsnag) {
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(_updateInterval, TimeSpan.Zero, client, bugsnag, configuration) {
             _users = new List<UserX>();
             _configuration = Configuration;
             _apiLink = apilink;
@@ -86,17 +87,18 @@ namespace EGG9000.Bot.Automated {
             sw.Restart();
 
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
-            //var leaderboardTask = _leaderboardUpdater.UpdateLeaderboard(_bugsnag);
+
+#if DEBUG
+            guildGroups = guildGroups.Where(x => x.Key == 770469712064151593);
+#endif
 
             foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {
-            //foreach(var groupGuildContracts in guildGroups.OrderByDescending(x => x.Key)) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == groupGuildContracts.Key);
                 if(guild == null)
                     continue;
 
                 Console.WriteLine($"Running Contracts for {guild.Name}");
                 var dbusers = await _db.DBUsers.AsQueryable().Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
-                //var dbusers = await _db.Users.Where(x => x.GuildId == guild.Id).ToListAsync();
 
                 if(showTimings)
                     Console.WriteLine($"DBUsers: {sw.ElapsedMilliseconds}");
@@ -113,13 +115,7 @@ namespace EGG9000.Bot.Automated {
                 var contractIds = groupGuildContracts.Select(x => x.ContractID);
 
 
-                //List<Coop> allCoops;
-                //try {
-                //    allCoops = await sqlExcpetionPolicy.ExecuteAsync(async () => await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => contractIds.Contains(x.ContractID) && x.GuildId == guild.Id).ToListAsync());
-                //} catch(Exception e) {
-                //    Console.WriteLine($"*** Error getting coops in contract updated: {e.Message}");
-                //    return;
-                //}
+
 
                 if(showTimings)
                     Console.WriteLine($"Get Coops: {sw.ElapsedMilliseconds}");
@@ -259,8 +255,12 @@ namespace EGG9000.Bot.Automated {
                         emoji += openSpots >= count ? "🟩" : "❎"; //Emoji green box
                         if(count <= 20) {
                             emoji += Convert.ToChar(9311 + count);
-                        } else if(count > 20 && count <= 50) {
+                        } else if(count <= 35) {
                             emoji += Convert.ToChar(12881 + (count - 21));
+                        } else if(count <= 50) {
+                            emoji += Convert.ToChar(12977 + (count - 36));
+                        } else {
+                            emoji += "㊿+";
                         }
                     }
                     if(coopsBreakdown.Coops.Any(x => x.IsFire)) {
@@ -620,7 +620,7 @@ namespace EGG9000.Bot.Automated {
                             new FixedWidthCell(Truncate($"{emoji}{ebrgx.Replace( x.Name, "")}", 12)),
                             //new FixedWidthCell(x.EggsPaidFor.ToEggString()),
                             new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
-                            new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false) + "/h", CellAlignment.Right),
+                            new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
                             new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
                             //new FixedWidthCell(x.Tokens.ToString()),
                             //new FixedWidthCell(x.BoostTokensSpent.ToString()),
@@ -635,7 +635,7 @@ namespace EGG9000.Bot.Automated {
                 table.Add(new List<FixedWidthCell> {
                             new FixedWidthCell($"{coop.Users.Count}/{size}"),
                             new FixedWidthCell(""),
-                            new FixedWidthCell(ArgumentsHelper.NumberToString(coop.Users.Sum(x => x.Rate) * 60 * 60, false) + "/h", CellAlignment.Right),
+                            new FixedWidthCell(ArgumentsHelper.NumberToString(coop.Users.Sum(x => x.Rate) * 60 * 60, false, -1) + "/h", CellAlignment.Right),
 //                            new FixedWidthCell(""),
                             new FixedWidthCell(coop.Users.Sum(x => x.Projected).ToEggString(), CellAlignment.Right),
                             new FixedWidthCell(percent, CellAlignment.Right),
@@ -682,7 +682,7 @@ namespace EGG9000.Bot.Automated {
                 return new List<FixedWidthCell> {
                             new FixedWidthCell(Truncate(ebrgx.Replace(x.Name, ""), 12)),
                             new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
-                            new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false) + "/h", CellAlignment.Right),
+                            new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
                             new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
                             new FixedWidthCell(String.Format("{0:0%}", x.Projected/target) , CellAlignment.Right),
                             new FixedWidthCell(x.EggsPaidFor < target ?  Prefarm.GetTimeRemainingValue(target, x.Rate, x.EggsPaidFor).Humanize(1, null, Humanizer.Localisation.TimeUnit.Year).ShortenTime() : "Finished", CellAlignment.Right)

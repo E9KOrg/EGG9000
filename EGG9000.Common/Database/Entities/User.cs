@@ -41,6 +41,9 @@ namespace EGG9000.Common.Database.Entities {
         public List<Demerit> DemeritsGiven { get; set; }
         public List<Merit> MeritsGiven { get; set; }
 
+        public string CustomCoopName { get; set; }
+        public DateTimeOffset? ExpireCustomCoopName { get; set; }
+
         //public byte[] _LastBackup { get; set; }
         public byte[] _CustomBackups { get; set; }
 

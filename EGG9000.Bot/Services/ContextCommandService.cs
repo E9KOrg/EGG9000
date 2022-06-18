@@ -41,7 +41,7 @@ namespace EGG9000.Bot.Services {
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
         private ContractUpdater _contractUpdater;
         private CoopStatusUpdater _coopStatusUpdater;
-        private Guild _cpGuilde;
+        private Guild _cpGuild;
 
 
         public ContextCommandService(IConfiguration Configuration, DiscordSocketClient discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
@@ -54,7 +54,8 @@ namespace EGG9000.Bot.Services {
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
             _coopStatusUpdater = coopStatusUpdater;
-            _cpGuilde = context.Guilds.First(x => x.Id == 656455567858073601);
+            ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
+            _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -233,12 +234,11 @@ namespace EGG9000.Bot.Services {
             }
 
             try {
-                foreach(var guild in _discord.Guilds) { //.Where(x => x.Id == 656455567858073601)
-                    //await _discord.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
+                foreach(var guild in _discord.Guilds) { 
                     Console.WriteLine($"Creating slash commands for {guild.Name}");
 
 
-                    var isCPGuild = guild.Id == _cpGuilde.Id || _cpGuilde.OverflowServers.Contains(guild.Id);
+                    var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
                     IDictionary<ulong, ApplicationCommandPermission[]> permissions = new Dictionary<ulong, ApplicationCommandPermission[]>();

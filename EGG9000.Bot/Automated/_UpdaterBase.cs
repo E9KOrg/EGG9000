@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
+using EGG9000.Bot.Services;
+
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace EGG9000.Bot.Automated {
@@ -22,17 +25,20 @@ namespace EGG9000.Bot.Automated {
         public DateTime LastStarted;
         public DateTime LastCompleted;
 
-        public DiscordSocketClient _client;
+        public DiscordHostedService _client;
 
         protected Bugsnag.IClient _bugsnag;
 
-        public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, DiscordSocketClient client, Bugsnag.IClient bugsnag) {
+        protected ulong _CPGuildId;
+
+        public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, DiscordHostedService client, Bugsnag.IClient bugsnag, IConfiguration configuration) {
             Console.WriteLine($"Initiating {this.GetType().Name}");
             UpdateInterval = updateInterval;
             _delayedStart = delayedStart;
-            _client = (DiscordSocketClient)client;
+            _client = client;
             Instance = this;
             _bugsnag = bugsnag;
+            ulong.TryParse(configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
         }
 
         public static _UpdaterBase Instance;

@@ -12,7 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Bugsnag.AspNet.Core" Version="2.2.3" />
-    <PackageReference Include="Discord.Net" Version="3.1.0" />
+    <PackageReference Include="Discord.Net" Version="3.7.2" />
     <PackageReference Include="Google.Protobuf" Version="3.15.8" />
     <PackageReference Include="Grpc.Net.Client" Version="2.37.0" />
     <PackageReference Include="Grpc.Tools" Version="2.37.1">

@@ -35,10 +35,12 @@ namespace EGG9000.Bot.Automated {
         private ApplicationDbContext _db;
 
         public RemoveTempRoles(IConfiguration Configuration,
-            DiscordSocketClient client,
+            DiscordHostedService client,
             Words words,
-            Bugsnag.IClient bugsnag, ApplicationDbContext context
-        ) : base(_updateInterval, TimeSpan.Zero, client, bugsnag) {
+            Bugsnag.IClient bugsnag, 
+            ApplicationDbContext context,
+            IConfiguration configuration
+        ) : base(_updateInterval, TimeSpan.Zero, client, bugsnag, configuration) {
             _db = context;
         }
 

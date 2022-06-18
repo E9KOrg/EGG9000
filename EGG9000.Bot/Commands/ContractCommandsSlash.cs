@@ -761,9 +761,11 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Ping people to add them to a spots thread", AdminOnly = true)]
-        public static async Task SpotPings(SocketSlashCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client) {
-            var discordUser = command.User;
-            var dbuse = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUser.Id);
+        public static async Task SpotPings(SocketSlashCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] int overridepercent = 5) {
+            if(overridepercent == 0)
+                overridepercent = 5;
+            //var discordUser = command.User;
+            //var dbuse = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUser.Id);
             if(command.Channel is not SocketThreadChannel) {
                 await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                 return;
@@ -774,7 +776,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                 return;
             }
-            await command.RespondAsync("Pinging users and removing existing pings that aren't needed");
+            await command.RespondAsync("Pinging users and removing existing pings that aren't needed", ephemeral: true);
             var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
             var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
@@ -791,7 +793,7 @@ namespace EGG9000.Bot.Commands {
 
 
 
-            var usersToPing = usersWithFarm.Where(u => (u.Projected / targetAmount) * 100 < 5 && !threadMessages.Any(m => m.MentionedUserIds.Any(mu => mu == u.DiscordId))).ToList();
+            var usersToPing = usersWithFarm.Where(u => u.ProjectedPercent < overridepercent && !threadMessages.Any(m => m.MentionedUserIds.Any(mu => mu == u.DiscordId))).ToList();
             var pingsToRemove = threadMessages.Where(m =>
              (m.MentionedUserIds.Count == 1 && !usersWithFarm.Any(u => u.DiscordId == m.MentionedUserIds.First()))
             //|| (!usersWithFarm.Any(u => m.Author.Id == u.DiscordId) && !m.Author.IsBot && !m.Author.rol)
@@ -799,10 +801,10 @@ namespace EGG9000.Bot.Commands {
             ).ToList();
 
 
-            var joinCommands = threadMessages.Where(m => m.Interaction != null && m.Interaction.Type == InteractionType.ApplicationCommand);
+            var joinCommands = threadMessages.Where(m => (m.Interaction != null && m.Interaction.Type == InteractionType.ApplicationCommand) || m.Content == "/join");
 
             foreach(var user in usersToPing) {
-                await command.Channel.SendMessageAsync($"<@{user.DiscordId}>");
+                await command.Channel.SendMessageAsync($"<@{user.DiscordId}> {Math.Round(user.ProjectedPercent)}%");
             }
 
             foreach(var ping in pingsToRemove) {
@@ -810,16 +812,33 @@ namespace EGG9000.Bot.Commands {
             }
 
             foreach(var oldPing in oldPings) {
-                await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}>");
+                var user = usersWithFarm.First(x => x.DiscordId == oldPing.MentionedUserIds.First());
+                if(user.ProjectedPercent < overridepercent) {
+                    await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}> {Math.Round(user.ProjectedPercent)}%");
+                }
                 await oldPing.DeleteAsync();
+                var discordUser = await (command.Channel as ITextChannel).Guild.GetUserAsync(user.DiscordId);
+                await (command.Channel as IThreadChannel).RemoveUserAsync(discordUser);
             }
 
             foreach(var commandMessage in joinCommands) {
+                if(commandMessage.Reference != null) {
+                    var referenceMessages = threadMessages.Where(x => x.Id == commandMessage.Reference.MessageId.Value);
+                    foreach(var referenceMessage in referenceMessages) {
+                        await referenceMessage.DeleteAsync();
+                    }
+                }
                 await commandMessage.DeleteAsync();
             }
 
-            await command.DeleteResponseFix();
-            //await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()} Ping Removed: {pingsToRemove.Count()}");
+
+            //await command.DeleteResponseFix();
+            var usersAbovePercent = usersWithFarm.Where(u => u.ProjectedPercent >= overridepercent).ToList().OrderBy(x => x.Projected);
+            if(usersAbovePercent.Count() > 0) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()}\n{string.Join("\n", usersAbovePercent.Select(x => $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}%"))}");
+            } else {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()}");
+            }
 
         }
 
