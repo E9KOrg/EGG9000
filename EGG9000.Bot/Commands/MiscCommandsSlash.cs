@@ -181,6 +181,26 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
+        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
+        public static async Task TempCustomCoopName(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
+            DateTimeOffset expireTime;
+            try {
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+            } catch(Exception ex) {
+                await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
+                return;
+            }
+            await command.DeferAsync();
+            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
+            dbuser.CustomCoopName = customName;
+            dbuser.ExpireCustomCoopName = expireTime;
+
+            await db.SaveChangesAsync();
+
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom name {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
+        }
+
         [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
         public static async Task CallStaff(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);

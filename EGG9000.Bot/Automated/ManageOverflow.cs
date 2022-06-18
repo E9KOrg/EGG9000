@@ -29,9 +29,10 @@ namespace EGG9000.Bot.Automated {
         private IConfiguration _configuration;
 
         public ManageOverflow(IConfiguration Configuration,
-            DiscordSocketClient client,
-            Bugsnag.IClient bugsnag
-            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), client, bugsnag) {
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), client, bugsnag, configuration) {
             _configuration = Configuration;
         }
 
@@ -43,7 +44,7 @@ namespace EGG9000.Bot.Automated {
 
             foreach(var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {
                 Console.Write($"Manage Overflow for {guild.Name}");
-                var mainServer = _client.Guilds.First(x => x.Id == 656455567858073601);
+                var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
                 var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
                 //var overflowServer = _client.Guilds.First(x => x.Id == 763854787912794183);
                 await mainServer.DownloadUsersAsync();

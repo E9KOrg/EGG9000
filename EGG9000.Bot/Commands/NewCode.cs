@@ -18,10 +18,8 @@ namespace EGG9000.Bot.Commands {
             var code = words.GetRandomWord() + words.GetRandomWord() + words.GetRandomNumber();
 
             var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
-            var coopCategory = guild.GetCoopCategory();
-            //var channel = await guild.CreateTextChannelAsync(code, x => x.CategoryId = coopCategory.Id);
 
-            var coop = new Coop { Name = code, Created = DateTimeOffset.Now, GuildId = guild.Id };//, DiscordChannelId = channel.Id };
+            var coop = new Coop { Name = code, Created = DateTimeOffset.Now, GuildId = guild.Id };
             db.Coops.Add(coop);
             await db.SaveChangesAsync();
 

@@ -14,13 +14,16 @@ using System.Threading.Tasks;
 using EGG9000.Bot.Helpers;
 using Discord;
 using EGG9000.Common.Helpers;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class CoopDeleteChannel : _UpdaterBase {
         private IConfiguration Configuration;
 
-        public CoopDeleteChannel(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, client, bugsnag) {
+        public CoopDeleteChannel(IConfiguration Configuration, DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, client, bugsnag, configuration) {
             this.Configuration = Configuration;
         }
 

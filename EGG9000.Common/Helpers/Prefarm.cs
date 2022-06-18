@@ -67,8 +67,8 @@ namespace EGG9000.Common.Helpers {
             var startedContract = backups
                 .Where(x => x.Backup != null && 
                     (
-                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (guildContract.Elite ? y.League == 0 : y.League == 1)) || 
-                        (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (guildContract.Elite ? f.League == 0 : f.League == 1)) ?? false)
+                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || (guildContract.Elite ? y.League == 0 : y.League == 1))) || 
+                        (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (f.Completed || (guildContract.Elite ? f.League == 0 : f.League == 1))) ?? false)
                     ) //&& x.Elite == guildContract.Elite
                 )
                 .OrderByDescending(x =>

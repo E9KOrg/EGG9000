@@ -26,15 +26,15 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Services {
 
     public class DiscordUserService : IHostedService {
-        private readonly DiscordSocketClient _discord;
+        private readonly DiscordHostedService _discord;
         private IConfiguration _configuration;
         private APILink _apiLink;
         private Words _words;
         private Bugsnag.IClient _bugsnag;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
 
-        public DiscordUserService(IConfiguration Configuration, DiscordSocketClient discord, APILink apilink, Words words, Bugsnag.IClient bugsnag) {
-            _discord = (DiscordSocketClient)discord;
+        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag) {
+            _discord = discord;
             _configuration = Configuration;
             _apiLink = apilink;
             _words = words;
@@ -81,7 +81,7 @@ namespace EGG9000.Bot.Services {
             await UserLeft(guild, user, db);
         }
 
-        public static async Task UserJoined(SocketGuildUser user, ApplicationDbContext db) {
+        public async Task UserJoined(SocketGuildUser user, ApplicationDbContext db) {
             if(user.IsBot)
                 return;
 
@@ -95,20 +95,22 @@ namespace EGG9000.Bot.Services {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
-                await user.Guild.SendToGeneralChannel($"Welcome back {user.Mention}!");
-                await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, user);
+                var generalChannel = await _discord.GetChannelAsync(GuildChannelType.General, user.Guild);
+                await generalChannel.SendMessageAsync($"Welcome back {user.Mention}!");
+                await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
             } else {
-                var welcomeChannel = user.Guild.GetWelcomeChannel();
-                var rulesChannel = user.Guild.GetRulesChannel();
+                var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
+                var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
                 var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then send the message __**/accept**__ when you are ready.";
                 var talkChannel = user.Guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
                 if(talkChannel != null)
                     msg += $" If you have any questions feel free to ask us in {talkChannel.Mention}, we are glad you are here!";
-                await user.Guild.GetWelcomeChannel().SendMessageAsync(msg);
+                
+                await welcomeChannel.SendMessageAsync(msg);
             }
         }
 
-        public static async Task UserLeft(SocketGuild guild, SocketUser user, ApplicationDbContext db) {
+        public async Task UserLeft(SocketGuild guild, SocketUser user, ApplicationDbContext db) {
             if(user.IsBot)
                 return;
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -118,7 +120,7 @@ namespace EGG9000.Bot.Services {
                 dbuser.GuildId = 0;
                 await db.SaveChangesAsync();
             }
-            await RegisterCommandsSlash.CleanWelcomeChannel(guild, user);
+            await RegisterCommandsSlash.CleanWelcomeChannel(guild, _discord, user);
         }
 
     }

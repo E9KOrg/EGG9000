@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase {
@@ -33,8 +34,9 @@ namespace EGG9000.Bot.Automated {
             public Guid DBUserId { get; set; }
         }
 
-        public CoopStatusUpdater(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(5), TimeSpan.Zero, client, bugsnag) {
+        public CoopStatusUpdater(IConfiguration Configuration, DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration) : base(TimeSpan.FromMinutes(5), TimeSpan.Zero, client, bugsnag, configuration) {
             _configuration = Configuration;
             _counter = 59;
         }
@@ -373,7 +375,7 @@ namespace EGG9000.Bot.Automated {
                         return;
                     }
 
-                    var coopDiscordUsers = (await coopChannel.GetUsersAsync().FlattenAsync()).ToList();
+                    List<IGuildUser> coopDiscordUsers = coopChannel is SocketTextChannel ? ((SocketTextChannel)coopChannel).Users.ToList().Select(x => (IGuildUser)x).ToList() : (await coopChannel.GetUsersAsync().FlattenAsync()).ToList();
 
                     var statusReponse = await GetStatus(coop, coopChannel);
                     var status = statusReponse.Status;
@@ -616,7 +618,7 @@ namespace EGG9000.Bot.Automated {
                                 await _db.SaveChangesAsync();
                                 await coopChannel.SendMessageAsync($"Coop {coop.Name} is finished!");
 
-                                var finishedCoopCategories = guild.Channels.Where(x => x.Name != null).Where(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
+                                var finishedCoopCategories = await _client.GetAllFinishedCategories(guild);
                                 foreach(var category in finishedCoopCategories) {
                                     var channelCount = guild.TextChannels.Count(x => x.CategoryId == category.Id);
                                     Console.WriteLine($"Finished Coop Category {category.Name} Count {channelCount}");
@@ -746,7 +748,7 @@ namespace EGG9000.Bot.Automated {
                                         }
                                     }
 
-                                    if(!xref.OutsideCoop && coop.GuildId == 656455567858073601 && !coop.Finished && coop.Status != CoopStatusEnum.Failed) {
+                                    if(!xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.Finished && coop.Status != CoopStatusEnum.Failed) {
                                         var backup = user.Backups.FirstOrDefault(x => x.EggIncId == xref.EggIncId);
                                         if(backup != null) {
                                             var farm = backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
@@ -792,9 +794,9 @@ namespace EGG9000.Bot.Automated {
                             Console.WriteLine($"Missing UsersAssigned for {coop.Name}");
 
                         //lastMessage += $"Contract: {coop.Contract.Name} {coop.Contract.ID}\n";
-
+                        lastMessage += "\n*Make sure and equip any Tachyon Deflectors you have!*\n";
                         lastMessage += "\nCo-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
-
+                        lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
                         if(status.Contributors.Count == coop.MaxUsers && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
                             coop.Status = CoopStatusEnum.Full;
                         }
@@ -809,7 +811,7 @@ namespace EGG9000.Bot.Automated {
                             await _db.SaveChangesAsync();
 
                             try {
-                                var coopFailedCategory = guild.GetFailedCoopCategory();
+                                var coopFailedCategory = await _client.GetCategoryAsync(GuildChannelType.FailedCategory, guild);
                                 await coopChannel.ModifyAsync(x => { x.CategoryId = coopFailedCategory.Id; });
                             } catch(Exception) {
 

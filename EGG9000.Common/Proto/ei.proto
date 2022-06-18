@@ -276,6 +276,11 @@ message EggIncFirstContactResponse {
     }
 }
 
+message EggIncBotFirstContactResponse {
+    optional string ei_user_id = 2;
+    optional Backup backup = 1;
+}
+
 message EggIncAdConfig {
     repeated aux.AdNetwork network_priority = 1;
 }

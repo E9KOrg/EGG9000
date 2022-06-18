@@ -17,38 +17,29 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Discord.Rest;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class StaffCoopsMessage : _UpdaterBase {
         private IConfiguration Configuration;
 
-        public StaffCoopsMessage(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(5), client, bugsnag) {
+        public StaffCoopsMessage(
+            IConfiguration Configuration, 
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(5), client, bugsnag, configuration) {
             this.Configuration = Configuration;
         }
 
         public override async Task Run(object state) {
-
-            var guildInfos = new List<GuildInfo> { new GuildInfo {
-                GuildID = 656455567858073601,
-                Roles = new List<ulong> { 708378160143794177 , 759887156029423636 , 750797304797069323 },
-                ChannelID = 809236825880920075,
-                MessageID = 846326801076191242
-            },
-            new GuildInfo {
-                GuildID = 847108222644650004,
-                Roles = new List<ulong> { 847971934037868554 },
-                ChannelID = 849409431791992932,
-                MessageID = 849410095069659146
-            }
-            };
-
             var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
+            var dbguilds = await _db.Guilds.ToListAsync();
 
-
-            foreach(var guildInfo in guildInfos) {
-                var guild = _client.Guilds.FirstOrDefault(x => x.Id == guildInfo.GuildID);
+            foreach(var dbguild in dbguilds.Where(x => x.StaffCoopsMessageDetails.StartsWith("{"))) {
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 await guild.DownloadUsersAsync();
+                var guildInfo = JsonConvert.DeserializeObject<GuildInfo>(dbguild.StaffCoopsMessageDetails);
                 var admins = guild.Users.Where(x => x.Roles.Any(r => guildInfo.Roles.Contains(r.Id)));
 
                 var adminDiscordIds = admins.Select(x => x.Id);
@@ -72,7 +63,6 @@ namespace EGG9000.Bot.Automated {
         }
 
         private class GuildInfo {
-            public ulong GuildID { get; set; }
             public List<ulong> Roles { get; set; }
             public ulong ChannelID { get; set; }
             public ulong MessageID { get; set; }

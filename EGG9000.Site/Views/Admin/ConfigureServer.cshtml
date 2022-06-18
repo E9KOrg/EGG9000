@@ -1,0 +1,157 @@
+﻿@using Discord.WebSocket
+@using EGG9000.Common.Helpers
+@using System.Reflection
+@using System.ComponentModel
+@model Guild
+@{
+	var channelDetails = Model.ChannelDetails;
+}
+@inject DiscordSocketClient discord
+
+<h2>Configure Server</h2>
+
+<table class="table table-striped">
+	<thead>
+		<tr>
+			<th>Type</th>
+			<th>Description</th>
+			<th>ID</th>
+			<th>Channel Name</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var val in Enum.GetValues<GuildChannelType>()) {
+			<tr>
+				<td>@val.ToString()</td>
+				<td>
+					@{
+						FieldInfo fi = val.GetType().GetField(val.ToString());
+
+						DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
+
+						if (attributes != null && attributes.Any()) {
+							@attributes.First().Description
+							;
+						} else {
+							@val.ToString()
+							;
+						}
+
+					}
+				</td>
+				<td>
+					@{
+						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
+						<input class="channelDetail" id="@val.ToString()" value="@detail.Id" />
+					}
+				</td>
+				<td>
+					@discord.GetGuild(Model.Id).GetChannel(@detail.Id)?.Name
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<p>
+	<b>Co-op Channels Category (and overflows if needed)</b>
+	@foreach (var coopCategory in (Model.CoopCategories ?? "").Split(",")) {
+		ulong.TryParse(coopCategory, out ulong id);
+		<div><input class="coopCategory" value="@coopCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
+	}
+	<button class="btn btn-primary" onclick="InsertCoopCategory(this)">Add Category</button>
+</p>
+
+<p>
+	<b>Finished Channels Category (and overflows if needed)</b>
+	@foreach (var finishedCategory in (Model.FinishedCategories ?? "").Split(",")) {
+		ulong.TryParse(finishedCategory, out ulong id);
+		<div><input class="finishedCategory" value="@finishedCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
+	}
+	<button class="btn btn-primary" onclick="InsertFinishedCategory(this)">Add Category</button>
+</p>
+
+
+<button class="btn btn-success" onclick="            SaveChannels(this)">Save Channels</button>
+
+
+
+
+<div>
+	<table>
+		@{
+			var orderedChannels = discord.GetGuild(Model.Id).Channels.OrderBy(x => x is not SocketTextChannel).ThenBy(x => x.Position);
+		}
+		@foreach (var channel in orderedChannels) {
+			@if (channel is SocketCategoryChannel || (channel is SocketTextChannel && (channel as SocketTextChannel).CategoryId is null)) {
+				<tr>
+					<td colspan="3">
+						@if (channel is SocketTextChannel) {
+							@:#
+						}
+						@channel.Name
+					</td>
+					<td>@channel.Id</td>
+@*					<td>@channel.GetType()</td>
+					<th>@channel.Position</th>
+*@				</tr>
+				@foreach (var subChannel in orderedChannels) {
+					if ((subChannel is SocketTextChannel && (subChannel as SocketTextChannel).CategoryId == channel.Id) || (subChannel is SocketThreadChannel && (subChannel as SocketThreadChannel).CategoryId == channel.Id)) {
+						<tr>
+							<td>&nbsp;&nbsp;</td>
+
+							<td colspan="2">
+								@(subChannel is SocketTextChannel ? "#" : "∟")
+								@subChannel.Name
+							</td>
+							<td>@subChannel.Id</td>
+						</tr>
+						@foreach (var threadChannel in orderedChannels) {
+							if ((threadChannel is SocketThreadChannel && (threadChannel as SocketThreadChannel).CategoryId == subChannel.Id)) {
+								<tr>
+									<td>&nbsp;&nbsp;</td>
+
+									<td colspan="2">
+										∟
+										@threadChannel.Name
+									</td>
+									<td>@threadChannel.Id</td>
+								</tr>
+							}
+						}
+					}
+				}
+			}
+		}
+	</table>
+</div>
+<script>
+	function SaveChannels(button) {
+		$(button).removeClass("btn-success");
+		$(button).attr("disabled", "disabled");
+		var details = [];
+
+		$(".channelDetail").each((index, element) => { details.push({ Id: $(element).val(), ChannelType: $(element).attr("id") }); });
+
+
+		var coopCategories = GetCategoryJoins(".coopCategory");
+		var finishedCategories = GetCategoryJoins(".finishedCategory");
+
+		$.post("/admin/savechanneldetails", { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
+			document.location = document.location;
+		});
+	}
+
+	function InsertCoopCategory(button) {
+		$('<div><input class=\"coopCategory\" /></div>').insertBefore($(button));
+	}
+	function InsertFinishedCategory(button) {
+		$('<div><input class=\"finishedCategory\" /></div>').insertBefore($(button));
+	}
+	function GetCategoryJoins(selector) {
+		var arr = Array.from($(selector).map((index, element) => $(element).val()));
+		arr = arr.filter(n => n != "" && n != 0);
+		console.log(arr);
+		return arr.join(",");
+	}
+</script>

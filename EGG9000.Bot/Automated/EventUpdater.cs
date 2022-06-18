@@ -20,14 +20,19 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
 using EGG9000.Common.Helpers;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class EventUpdater : _UpdaterBase {
         private IConfiguration _config;
         private ApplicationDbContext _db;
 
-        public EventUpdater(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag) {
+        public EventUpdater(
+            IConfiguration Configuration,
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag, configuration) {
             _config = Configuration;
             _db = new ApplicationDbContext(_config["ConnectionStrings:DefaultConnection"]);
         }
@@ -134,7 +139,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = guild.GetEventChannel();
+                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 var newName = "game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";
@@ -165,18 +170,12 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = guild.GetEventChannel();
+                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 RestUserMessage message;
                 var notification = customization.Settings.Notifications?
                     .OrderByDescending(x => x.MinValue)
-                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue);
-                if(guild.Id == 656455567858073601 && notification != null)
-                {
-                    message = await channel.SendMessageAsync($"<@&{notification.RoleID}>", embed: embed);
-                } else
-                {
-                    message = await channel.SendMessageAsync(embed: embed);
-                }
+                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                message = await channel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
                     
                 messageIds.Add(message.Id);
             }
@@ -189,7 +188,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = guild.GetEventChannel();
+                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(channel != null) {
                     foreach(var mid in messageIds) {
                         try {
@@ -197,18 +196,12 @@ namespace EGG9000.Bot.Automated {
                             if(message != null) {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
-                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue);
-                                if(guild.Id == 656455567858073601 && notification != null)
+                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                                await message.ModifyAsync(msg =>
                                 {
-                                    await message.ModifyAsync(msg =>
-                                    {
-                                        msg.Embed = embed;
-                                        msg.Content = $"<@&{notification.RoleID}>";
-                                    });
-                                } else
-                                {
-                                    await message.ModifyAsync(msg => msg.Embed = embed);
-                                }
+                                    msg.Embed = embed;
+                                    msg.Content = notification != null ? $"<@&{notification.RoleID}>" : null;
+                                });
                             }
                         } catch(Exception) {
                             Console.WriteLine($"Error Updating Messages: ");

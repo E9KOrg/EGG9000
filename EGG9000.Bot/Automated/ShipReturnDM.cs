@@ -17,13 +17,18 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Discord.Net;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM : _UpdaterBase {
         private IConfiguration Configuration;
 
-        public ShipReturnDM(IConfiguration Configuration, DiscordSocketClient client,
-            Bugsnag.IClient bugsnag) : base(TimeSpan.FromSeconds(15), TimeSpan.Zero, client, bugsnag) {
+        public ShipReturnDM(
+            IConfiguration Configuration, 
+            DiscordHostedService client,
+            Bugsnag.IClient bugsnag,
+            IConfiguration configuration
+        ) : base(TimeSpan.FromSeconds(15), TimeSpan.Zero, client, bugsnag, configuration) {
             this.Configuration = Configuration;
         }
         public override async Task Run(object state) {
@@ -73,12 +78,11 @@ namespace EGG9000.Bot.Automated {
                         try {
                             await dmChannel.SendMessageAsync(message);
                         } catch (HttpException) {
-                            if (user.GuildId == 656455567858073601) {
-                                var talkChannel = _client.GetGuild(user.GuildId).GetTextChannel(799084354638446649);
+                            var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
+                            if(dbguild.ChannelDetails.Any(y => y.ChannelType == GuildChannelType.WarningMessagesForUser)) {
+                                var talkChannel = _client.GetGuild(user.GuildId).GetTextChannel(dbguild.ChannelDetails.First(y => y.ChannelType == GuildChannelType.WarningMessagesForUser).Id);
+
                                 await talkChannel.SendMessageAsync($"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs");
-                            } else {
-                                var kendromeDMChannel = await _client.GetDMChannelAsync(248865520756064257);
-                                await kendromeDMChannel.SendMessageAsync($"<@{user.DiscordId}> has elected to receive DMs for Ship Return status, but have blocked the bot from sending DMs");
                             }
                         }
                         await _db.SaveChangesAsync();

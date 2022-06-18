@@ -34,7 +34,7 @@ namespace TestProxy {
             };
 
             // Fired when a CONNECT request is received
-            explicitEndPoint.BeforeTunnelConnectRequest += ExplicitEndPoint_BeforeTunnelConnectRequest; ;
+            explicitEndPoint.BeforeTunnelConnectRequest += ExplicitEndPoint_BeforeTunnelConnectRequest;
 
             // An explicit endpoint is where the client knows about the existence of a proxy
             // So client sends request in a proxy friendly manner
@@ -47,11 +47,12 @@ namespace TestProxy {
             while(true) { }
         }
 
-        private static async Task ExplicitEndPoint_BeforeTunnelConnectRequest(object sender, TunnelConnectSessionEventArgs e) {
+        private static Task ExplicitEndPoint_BeforeTunnelConnectRequest(object sender, TunnelConnectSessionEventArgs e) {
             if(e.HttpClient.Request.RequestUri.Host.Contains("aux")) {
                 Console.WriteLine(e.HttpClient.Request.RequestUri.Host);
                 e.DecryptSsl = true;
             }
+            return Task.CompletedTask;
         }
 
         private static async System.Threading.Tasks.Task ProxyServer_BeforeResponse(object sender, Titanium.Web.Proxy.EventArguments.SessionEventArgs e) {

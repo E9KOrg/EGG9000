@@ -70,14 +70,28 @@
 
             <h3>Notifications</h3>
             <div ng-repeat="notification in item.settings.notifications track by $index">
-                <div class="form-group">
-@*                    <label>GuildId</label>
-                    <input class="form-control" ng-model="notification.guildID" />
-*@                    <label>RoleID</label>
-                    <input class="form-control" ng-model="notification.roleID" />
-                    <label>MinValue</label>
-                    <input class="form-control" ng-model="notification.minValue" />
-                    <button class="btn btn-danger" ng-click="$parent.settings.notifications.splice($index)">X</button>
+                <div class="row">
+                    <div class="col">
+                        GuildId
+                    </div>
+                    <div class="col">
+                        <input class="form-control" ng-model="notification.guildID" />
+                    </div>
+                    <div class="col">
+                        RoleID
+                    </div>
+                    <div class="col">
+                        <input class="form-control" ng-model="notification.roleID" />
+                    </div>
+                    <div class="col">
+                        MinValue
+                    </div>
+                    <div class="col">
+                        <input class="form-control" ng-model="notification.minValue" />
+                    </div>
+                    <div class="col">
+                        <button class="btn btn-danger" ng-click="$parent.settings.notifications.splice($index)">X</button>
+                    </div>
                 </div>
             </div>
             <button class="btn btn-success" ng-click="item.settings.notifications.push({})">+ Add Notification</button>
