@@ -802,6 +802,7 @@ namespace EGG9000.Bot.Commands {
 
 
             var joinCommands = threadMessages.Where(m => (m.Interaction != null && m.Interaction.Type == InteractionType.ApplicationCommand) || m.Content == "/join");
+            var usersAbovePercent = usersWithFarm.Where(u => u.ProjectedPercent >= overridepercent).ToList().OrderBy(x => x.Projected);
 
             foreach(var user in usersToPing) {
                 await command.Channel.SendMessageAsync($"<@{user.DiscordId}> {Math.Round(user.ProjectedPercent)}%");
@@ -818,7 +819,10 @@ namespace EGG9000.Bot.Commands {
                 }
                 await oldPing.DeleteAsync();
                 var discordUser = await (command.Channel as ITextChannel).Guild.GetUserAsync(user.DiscordId);
-                await (command.Channel as IThreadChannel).RemoveUserAsync(discordUser);
+
+                if(usersAbovePercent.Any(y => y.DiscordId == oldPing.MentionedUserIds.First())) {
+                    await (command.Channel as IThreadChannel).RemoveUserAsync(discordUser);
+                }
             }
 
             foreach(var commandMessage in joinCommands) {
@@ -833,7 +837,6 @@ namespace EGG9000.Bot.Commands {
 
 
             //await command.DeleteResponseFix();
-            var usersAbovePercent = usersWithFarm.Where(u => u.ProjectedPercent >= overridepercent).ToList().OrderBy(x => x.Projected);
             if(usersAbovePercent.Count() > 0) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()}\n{string.Join("\n", usersAbovePercent.Select(x => $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}%"))}");
             } else {
