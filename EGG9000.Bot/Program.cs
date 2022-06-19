@@ -39,12 +39,12 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         services.AddHostedService<SlashCommandService>();
-        services.AddHostedService<TextCommandService>();
-        services.AddHostedService<DiscordUserService>();
-        services.AddHostedService<StaffCoopsMessage>();
-        services.AddHostedService<EventUpdater>();
-        services.AddHostedService<CoopReorder>();
-        services.AddHostedService<CoopDeleteChannel>();
+        //services.AddHostedService<TextCommandService>();
+        //services.AddHostedService<DiscordUserService>();
+        //services.AddHostedService<StaffCoopsMessage>();
+        //services.AddHostedService<EventUpdater>();
+        //services.AddHostedService<CoopReorder>();
+        //services.AddHostedService<CoopDeleteChannel>();
 
         services.AddSingleton<CoopStatusUpdater>();
         services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
@@ -52,13 +52,13 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<ContractUpdater>();
         services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
-        services.AddHostedService<NewContracts>();
-        services.AddHostedService<CreateCoopChannels>();
-        services.AddHostedService<ShipReturnDM>();
-        services.AddHostedService<UserSnapShots>();
-        services.AddHostedService<LeaderboardUpdater>();
-        services.AddHostedService<ManageOverflow>();
-        services.AddHostedService<RemoveTempRoles>();
+        //services.AddHostedService<NewContracts>();
+        //services.AddHostedService<CreateCoopChannels>();
+        //services.AddHostedService<ShipReturnDM>();
+        //services.AddHostedService<UserSnapShots>();
+        //services.AddHostedService<LeaderboardUpdater>();
+        //services.AddHostedService<ManageOverflow>();
+        //services.AddHostedService<RemoveTempRoles>();
 #endif
 
 

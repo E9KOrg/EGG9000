@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Helpers {
         //    SocketGuildChannel channel;
         //    if(Elite) {
         //        channel = guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("elite-contracts"));
-                
+
         //    } else {
         //        return guild.Channels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("standard-contracts"));
         //    }
@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Helpers {
         }
         public static async Task<CheckEliteResposne> CheckElite(SocketGuild Guild, IGuildUser DiscordUser, List<Double> EarningsBonuses) {
             var response = new CheckEliteResposne();
-            if (Guild.Roles.Any(x => x.Name.ToLower() == "elite contract")) {
+            if(Guild.Roles.Any(x => x.Name.ToLower() == "elite contract")) {
                 var elite = EarningsBonuses.Any(x => x >= 10000000000000);
                 var standard = EarningsBonuses.Any(x => x < 10000000000000);
 
@@ -140,17 +140,17 @@ namespace EGG9000.Bot.Helpers {
 
                     await DiscordUser.AddRoleAsync(eliteRole);
                 }
-                if (standard && !hasStandard) {
-                    if (response.Role == null)
+                if(standard && !hasStandard) {
+                    if(response.Role == null)
                         response.Role = standardRole;
                     await DiscordUser.AddRoleAsync(standardRole);
                 }
 
-                if (!standard && hasStandard) {
+                if(!standard && hasStandard) {
                     await DiscordUser.RemoveRoleAsync(standardRole);
                 }
 
-                if (!elite && hasElite) {
+                if(!elite && hasElite) {
                     await DiscordUser.RemoveRoleAsync(eliteRole);
                 }
             }
@@ -217,16 +217,16 @@ namespace EGG9000.Bot.Helpers {
         }
 
         public static async Task CheckHatchlingRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
-            if (Guild.Roles.Any(x => x.Name.ToLower().Contains("hatchling"))) {
+            if(Guild.Roles.Any(x => x.Name.ToLower().Contains("hatchling"))) {
                 var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-21);
                 var role = Guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("hatchling"));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
-                if (!hasRole && needsRole) {
+                if(!hasRole && needsRole) {
                     await DiscordUser.AddRoleAsync(role);
 
                 }
-                if (hasRole && !needsRole) {
+                if(hasRole && !needsRole) {
                     await DiscordUser.RemoveRoleAsync(role);
                 }
 
@@ -254,8 +254,8 @@ namespace EGG9000.Bot.Helpers {
         public static async Task CheckActive(SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
             var role = Guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
             if(role != null) {
-                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-14) 
-                    || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5) 
+                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-14)
+                    || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5)
                     || userAccounts.Any(ua => ua.Backup.Farms.Any(f => f.Started > DateTimeOffset.Now.AddDays(-7)));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
@@ -281,18 +281,20 @@ namespace EGG9000.Bot.Helpers {
             var prefix = SIPrefix.GetPrefix(EarningsBonus / 100);
             var newRoleName = (prefix.Name + "farmer").FirstCharToUpper();
 
-            var newRoleNameWithSuffix = prefix.Rank == 1 ? " I" : prefix.Rank == 2 ? " II" : " III";
+            var newRoleNameWithSuffix = newRoleName + (prefix.Rank == 1 ? " I" : prefix.Rank == 2 ? " II" : " III");
 
             var newRole = Guild.Roles.FirstOrDefault(x => x.Name.Equals(newRoleNameWithSuffix, StringComparison.OrdinalIgnoreCase));
             if(newRole is null)
                 newRole = Guild.Roles.FirstOrDefault(x => x.Name.Equals(newRoleName, StringComparison.OrdinalIgnoreCase));
+            else
+                newRoleName = newRoleNameWithSuffix;
 
             if(newRoleName != rolename) {
-                if (currentRole != null) {
+                if(currentRole != null) {
                     await DiscordUser.RemoveRoleAsync(currentRole);
                 }
-                if (newRole != null) {
-                    
+                if(newRole != null) {
+
                     await DiscordUser.AddRoleAsync(newRole);
                 }
             }
