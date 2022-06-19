@@ -3,7 +3,6 @@
 
 }
 
-
 <h2>Edit Users</h2>
 
 <table class="table table-striped">
@@ -22,7 +21,10 @@
     <tbody>
         @foreach(var user in Model.Users.OrderByDescending(x => x.IdentityUserRoles.Any())) {
             <tr>
-                <td>@user.IdentityUser.UserName</td>
+                <td>@user.IdentityUser.UserName
+                <br/>
+                @user.DiscordId
+                </td>
                 <td><input class="customName" value="@user.CustomCoopName" data-id="@user.DiscordId" /></td>
                 <td>@user.ExpireCustomCoopName?.ToString("yyyy-M-d")</td>
                 @foreach(var role in Model.Roles) {
@@ -34,6 +36,7 @@
         }
     </tbody>
 </table>
+@section Scripts {
 <script>
     function Change(element, userid, roleid) {
         var setRole = element.checked;
@@ -43,15 +46,22 @@
             $(element).css("background-color", "green");
         });
     }
-
-
     const input = document.querySelector(".customName");
     input.addEventListener("keyup", (event) => {
+        console.log(event);
+    });
+
+
+$(".customName").on("keyup", function(event) {
+    console.log(event);
         if (event.key === "Enter") {
             $(event.target).css("background-color", "yellow");
             $.post("/admin/setcustomname", { CustomName: $(event.target).val(), DiscordID: $(event.target).data("id") }, function (data) {
                 $(event.target).css("background-color", "green");
             });
         }
-    });
+
+});
+
 </script>
+}

@@ -661,11 +661,11 @@ namespace EGG9000.Site.Controllers {
 
 
             var editUserList = users.Select(x => {
-                var DiscordId = userLogins.FirstOrDefault(y => y.UserId == y.UserId)?.ProviderKey;
+                var DiscordId = userLogins.FirstOrDefault(y => y.UserId == x.Id)?.ProviderKey;
                 var customName = customNames.FirstOrDefault(y => y.DiscordId == DiscordId);
                 return new EditUserWithDetails {
                     IdentityUser = x,
-                    IdentityUserRoles = userRoles.Where(y => y.UserId == y.UserId).ToList(),
+                    IdentityUserRoles = userRoles.Where(y => y.UserId == x.Id).ToList(),
                     DiscordId = DiscordId,
                     CustomCoopName = customName?.CustomCoopName,
                     ExpireCustomCoopName = customName?.ExpireCustomCoopName

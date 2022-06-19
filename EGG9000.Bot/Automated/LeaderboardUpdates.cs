@@ -70,11 +70,18 @@ namespace EGG9000.Bot.Automated {
                 dbusersWithGuildCoops.ForEach(x => { //
                     x.DBUser.GuildCoops = (ushort)xrefs.Where(xref => xref.UserId == x.DBUser.Id).Select(xref => xref.ContractID).Distinct().Count();
                 });
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
                 var dbusers = dbusersWithGuildCoops.Select(x => x.DBUser).ToList();
+
+#if DEBUG
+                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
+                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
+#endif
+
                 Console.WriteLine("Getting User Backups for Leaderboard");
                 var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
-
+                 
 
 
                 foreach(var lUser in lUsers) {
@@ -92,7 +99,6 @@ namespace EGG9000.Bot.Automated {
                     lUser.Active = userXrefs.Any(x => x.UserId == lUser.User.Id && x.LastThreeWeeks) || lUser.User.CreateOn > DateTimeOffset.Now.AddDays(-14);
                 }
 
-                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
                 foreach(var dbguild in dbguilds) {
                     Console.WriteLine($"Working on leaderboard for {dbguild.Name}");
 

@@ -92,9 +92,10 @@
 						@channel.Name
 					</td>
 					<td>@channel.Id</td>
-@*					<td>@channel.GetType()</td>
-					<th>@channel.Position</th>
-*@				</tr>
+					@*					<td>@channel.GetType()</td>
+			<th>@channel.Position</th>
+			*@
+				</tr>
 				@foreach (var subChannel in orderedChannels) {
 					if ((subChannel is SocketTextChannel && (subChannel as SocketTextChannel).CategoryId == channel.Id) || (subChannel is SocketThreadChannel && (subChannel as SocketThreadChannel).CategoryId == channel.Id)) {
 						<tr>
@@ -125,33 +126,35 @@
 		}
 	</table>
 </div>
-<script>
-	function SaveChannels(button) {
-		$(button).removeClass("btn-success");
-		$(button).attr("disabled", "disabled");
-		var details = [];
+@section Scripts {
+	<script>
+		function SaveChannels(button) {
+			$(button).removeClass("btn-success");
+			$(button).attr("disabled", "disabled");
+			var details = [];
 
-		$(".channelDetail").each((index, element) => { details.push({ Id: $(element).val(), ChannelType: $(element).attr("id") }); });
+			$(".channelDetail").each((index, element) => { details.push({ Id: $(element).val(), ChannelType: $(element).attr("id") }); });
 
 
-		var coopCategories = GetCategoryJoins(".coopCategory");
-		var finishedCategories = GetCategoryJoins(".finishedCategory");
+			var coopCategories = GetCategoryJoins(".coopCategory");
+			var finishedCategories = GetCategoryJoins(".finishedCategory");
 
-		$.post("/admin/savechanneldetails", { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
-			document.location = document.location;
-		});
-	}
+			$.post("/admin/savechanneldetails", { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
+				document.location = document.location;
+			});
+		}
 
-	function InsertCoopCategory(button) {
-		$('<div><input class=\"coopCategory\" /></div>').insertBefore($(button));
-	}
-	function InsertFinishedCategory(button) {
-		$('<div><input class=\"finishedCategory\" /></div>').insertBefore($(button));
-	}
-	function GetCategoryJoins(selector) {
-		var arr = Array.from($(selector).map((index, element) => $(element).val()));
-		arr = arr.filter(n => n != "" && n != 0);
-		console.log(arr);
-		return arr.join(",");
-	}
-</script>
+		function InsertCoopCategory(button) {
+			$('<div><input class=\"coopCategory\" /></div>').insertBefore($(button));
+		}
+		function InsertFinishedCategory(button) {
+			$('<div><input class=\"finishedCategory\" /></div>').insertBefore($(button));
+		}
+		function GetCategoryJoins(selector) {
+			var arr = Array.from($(selector).map((index, element) => $(element).val()));
+			arr = arr.filter(n => n != "" && n != 0);
+			console.log(arr);
+			return arr.join(",");
+		}
+	</script>
+}

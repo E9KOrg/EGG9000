@@ -29,7 +29,7 @@ namespace EGG9000.Bot.Automated {
             DiscordHostedService client,
             Bugsnag.IClient bugsnag,
             IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag, configuration) {
+        ) : base(TimeSpan.FromSeconds(10), TimeSpan.Zero, client, bugsnag, configuration) {
             _config = Configuration;
         }
 

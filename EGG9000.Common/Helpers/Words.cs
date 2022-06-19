@@ -49,13 +49,13 @@ namespace EGG9000.Bot
             if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
                 return $"{dbguild.CoopNamePrefix}{GetRandomWord()}{GetRandomNumber()}";
 
-            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User.CustomCoopName)).GroupBy(x => x.User.Id);
+            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User.CustomCoopName)).GroupBy(x => x.User.Id).ToList();
             var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.Now);
             foreach(var customName in customNamesExpired) {
                 customName.First().User.ExpireCustomCoopName = null;
                 customName.First().User.CustomCoopName = null;
             }
-            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName));
+            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName)).ToList();
 
             if(customNames.Count() > 1) {
                 return String.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
