@@ -76,6 +76,7 @@ namespace EGG9000.Site.Controllers {
             ViewBag.Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             ViewBag.RawBackups = rawBackups;
             ViewBag.Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
+            ViewBag.Coops = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             return View("Index", user);
         }
 
