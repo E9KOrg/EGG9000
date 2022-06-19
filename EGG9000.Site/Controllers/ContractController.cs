@@ -120,6 +120,10 @@ namespace EGG9000.Site.Controllers {
                 return Json(new { error = true, message = $"Un-able to create co-op, the following are already in one: {string.Join(", ", existingsXrefs.Select(x => x.User.DiscordUsername))}" });
             }
 
+            var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
+            var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
+            Users.ForEach(x => x.User = dbusers.FirstOrDefault(y => y.Id == x.DatabaseId));
+
             var coop = await CreateCoops.Start(Users, guildContract, guild, new Words(), _db);
             guildContract.NumberOfCoops--;
             await _db.SaveChangesAsync();
