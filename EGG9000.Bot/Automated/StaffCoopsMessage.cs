@@ -28,7 +28,7 @@ namespace EGG9000.Bot.Automated {
             DiscordHostedService client,
             Bugsnag.IClient bugsnag,
             IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(5), client, bugsnag, configuration) {
+        ) : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(0), client, bugsnag, configuration) {
             this.Configuration = Configuration;
         }
 
@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Automated {
             var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
             var dbguilds = await _db.Guilds.ToListAsync();
 
-            foreach(var dbguild in dbguilds.Where(x => x.StaffCoopsMessageDetails.StartsWith("{"))) {
+            foreach(var dbguild in dbguilds.Where(x => x.StaffCoopsMessageDetails?.StartsWith("{") ?? false)) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 await guild.DownloadUsersAsync();
                 var guildInfo = JsonConvert.DeserializeObject<GuildInfo>(dbguild.StaffCoopsMessageDetails);

@@ -9,19 +9,21 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class ContractScoring {
-        public static List<UserContractScore>  GetContractScores(List<Coop> coops) {
+        public static List<UserContractScore>  GetContractScores(List<Coop> coops, Contract contract) {
+            
             var histories = new List<UserContractScore>();
 
             foreach(var coop in coops.Where(x => x.LastStatusUpdate != null)) {
                 foreach(var xref in coop.UserCoopsXrefs) {
                     var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
                     if(contribution != null) {
+                        var maxAmount = contract.Details.GoalSets[(int)(coop.League ?? 0)].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
                         histories.Add(new UserContractScore {
                             UserId = xref.UserId,
                             UserName = xref.User?.DiscordUsername,
                             SoulPower = contribution.SoulPower,
                             Coop = coop.Name,
-                            EggsShipped = contribution.ContributionAmount,
+                            EggsShipped = Math.Min(contribution.ContributionAmount, maxAmount),
                             TokensSpent = contribution.BoostTokensSpent,
                             Joined = DateTimeOffset.Now - (xref.User?.CreateOn ?? DateTimeOffset.Now),
                             Elite = coop.League == 0,

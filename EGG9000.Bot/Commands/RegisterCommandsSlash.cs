@@ -208,7 +208,7 @@ namespace EGG9000.Bot.Commands {
             var Response = await apiLink.GetBackup(eggincid);
 
 
-            if(Response == null || Response.Farms.Count == 0) {
+            if(Response == null || Response.Farms == null || Response.Farms.Count == 0) {
                 await command.RespondAsync($" {command.User.Mention} Error:  Possibly wrong EggInc ID**", ephemeral: true);
                 return;
             }
@@ -324,7 +324,7 @@ namespace EGG9000.Bot.Commands {
                 roleText = $"You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}.";
             }
             var faqText = "";
-            var faqChannel = await _client.GetChannelAsync(GuildChannelType.FaqCategory, guild);
+            var faqChannel = await _client.GetChannelAsync(GuildChannelType.FaqChannel, guild);
             if(faqChannel != null && existingBackups.Count == 1) {
                 faqText = $"When you have a chance, read over {faqChannel.Mention} to get an idea on how the server and bot functions";
             }

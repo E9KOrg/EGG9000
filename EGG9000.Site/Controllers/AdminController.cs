@@ -330,8 +330,9 @@ namespace EGG9000.Site.Controllers {
 
 
             var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.GuildId == user.GuildId && x.ContractID == contractid).ToListAsync();
+            var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
 
-            var scores = ContractScoring.GetContractScores(coops);
+            var scores = ContractScoring.GetContractScores(coops, contract);
 
             return View(scores);
         }
@@ -399,7 +400,8 @@ namespace EGG9000.Site.Controllers {
 
             var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
             Console.WriteLine($"Processing {contractid}");
-            var scores = ContractScoring.GetContractScores(contractCoops);
+            var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
+            var scores = ContractScoring.GetContractScores(contractCoops, contract);
             foreach(var score in scores) {
                 score.xref.Score = score.Score;
                 score.xref.SoulPower = score.SoulPower;
@@ -573,8 +575,8 @@ namespace EGG9000.Site.Controllers {
 
             var guild = _discord.Guilds.First(x => x.Id == guildId);
             await guild.DownloadUsersAsync();
-            var needToJoinChannel = guild.TextChannels.First(x => x.Id == 775558629671698442);
-            var allMessages = await needToJoinChannel.GetMessagesAsync(1000).FlattenAsync();
+            var needToJoinChannel = guild.TextChannels.FirstOrDefault(x => x.Id == 775558629671698442);
+            var allMessages = needToJoinChannel is null ? new List<IMessage>() : await needToJoinChannel.GetMessagesAsync(1000).FlattenAsync();
             var allMentions = allMessages.SelectMany(x => x.MentionedUserIds);
 
 

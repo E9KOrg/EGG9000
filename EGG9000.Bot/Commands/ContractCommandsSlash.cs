@@ -417,7 +417,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var coop in coopsToStart) {
                     var carry = coop.Users.OrderByDescending(x => x.Projected).First();
                     var carryWithAlts = coop.Users.Where(x => x.DiscordId == carry.DiscordId).ToList();
-                    var participants = await _startUserCreateCoop(carryWithAlts, guildContract, prefarms, db, guild, _words);
+                    var participants = await _startUserCreateCoop(carryWithAlts, guildContract, prefarms, db, guild, _words, true);
                     var numberRemoved = prefarms.RemoveAll(x => participants.Any(y => y == x));
                     coopCount++;
                 }
@@ -431,7 +431,7 @@ namespace EGG9000.Bot.Commands {
                 //        coopCount++;
                 //    }
             } else {
-                var prefarm = prefarms.First(x => x.DiscordId == user.Id);
+                var prefarm = coopsBreakdown.Coops.SelectMany(x => x.Users.Where(y => y.DiscordId == user.Id)).First();
                 prefarms.Remove(prefarm);
                 _ = await _startUserCreateCoop(new List<UserPreFarm> { prefarm }, guildContract, prefarms, db, guild, _words, fill);
                 coopCount++;
@@ -447,13 +447,13 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        private static async Task<List<UserPreFarm>> _startUserCreateCoop(List<UserPreFarm> users, GuildContract guildContract, List<UserPreFarm> prefarms, ApplicationDbContext db, SocketGuild guild, Words _words, bool empty = false) {
+        private static async Task<List<UserPreFarm>> _startUserCreateCoop(List<UserPreFarm> users, GuildContract guildContract, List<UserPreFarm> prefarms, ApplicationDbContext db, SocketGuild guild, Words _words, bool fill = true) {
             var participants = new List<UserPreFarm>();
             //if(guildContract.Contract.MaxUsers > 4) {
             //    participants.AddRange(prefarms.Where(x => x.DiscordId == user.DiscordId));
             //}
             participants.AddRange(users);
-            if(!empty) {
+            if(fill) {
                 participants.AddRange(prefarms.TakeLast(guildContract.Contract.MaxUsers - participants.Count));
             }
 
@@ -623,8 +623,11 @@ namespace EGG9000.Bot.Commands {
                 if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
                     if(dbuser.EggIncIds.Count > 1) {
                         var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
-                        var prefarms = prefarmers.Where(x => x.DatabaseId == dbuser.Id).ToList();
-
+                        var prefarms = prefarmers.Where(x => x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
+                        if(prefarms.Count == 0) {
+                            await command.ModifyOriginalResponseAsync($"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
+                            return;
+                        }
                         EggIncId = prefarms.First().EggIncId;
                         eggIncName = $" ({prefarms.First().Backup.UserName})";
                     } else {
