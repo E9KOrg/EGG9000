@@ -11,6 +11,9 @@ using Microsoft.Extensions.Hosting;
 using EGG9000.Bot.Services;
 using Bugsnag.AspNet.Core;
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Database.Entities;
+using System.Threading.Tasks;
+using System.Threading;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -20,7 +23,7 @@ await Host.CreateDefaultBuilder(args)
         var Configuration = new ConfigurationBuilder()
             .AddUserSecrets<Secrets>()
             .Build();
-        
+
         services.Configure<HostOptions>(options => {
             options.ShutdownTimeout = TimeSpan.FromMinutes(5);
         });
@@ -38,19 +41,19 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<SlashCommandService>();
+        //services.AddHostedService<SlashCommandService>();
         //services.AddHostedService<TextCommandService>();
         //services.AddHostedService<DiscordUserService>();
-        //services.AddHostedService<StaffCoopsMessage>();
+        services.AddHostedService<StaffCoopsMessage>();
         //services.AddHostedService<EventUpdater>();
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
 
-        services.AddSingleton<CoopStatusUpdater>();
-        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+        //services.AddSingleton<CoopStatusUpdater>();
+        //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        services.AddSingleton<ContractUpdater>();
-        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+        //services.AddSingleton<ContractUpdater>();
+        //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         //services.AddHostedService<NewContracts>();
         //services.AddHostedService<CreateCoopChannels>();
@@ -59,6 +62,8 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<LeaderboardUpdater>();
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
+
+        //services.AddHostedService<TestService>();
 #endif
 
 
@@ -99,7 +104,23 @@ await Host.CreateDefaultBuilder(args)
 
 
     }).ConfigureAppConfiguration((context, config) => {
-        // configure the app here.
         config.AddUserSecrets<Secrets>();
     }).Build().RunAsync();
 
+public class TestService : IHostedService {
+    public TestService(DiscordHostedService client) {
+        Client = client;
+    }
+
+    public DiscordHostedService Client { get; }
+
+    public async Task StartAsync(CancellationToken cancellationToken) {
+        var f = await Client.GetChannelAsync(GuildChannelType.FaqChannel, Client.GetGuild(656455567858073601));
+        var w = await Client.GetChannelAsync(GuildChannelType.Welcome, Client.GetGuild(656455567858073601));
+        var g = await Client.GetChannelAsync(GuildChannelType.General, Client.GetGuild(656455567858073601));
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) {
+        return Task.CompletedTask;
+    }
+}

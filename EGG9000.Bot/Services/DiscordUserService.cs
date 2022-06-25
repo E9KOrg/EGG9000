@@ -54,7 +54,6 @@ namespace EGG9000.Bot.Services {
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.UserJoined -= Client_UserJoined;
             _discord.UserLeft -= Client_UserLeft;
-            Console.WriteLine($"Stopeed listined to text commands");
             if(_semaphoreSlim.CurrentCount > 0) {
                 Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
             }
@@ -114,6 +113,9 @@ namespace EGG9000.Bot.Services {
             if(user.IsBot)
                 return;
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+
+            if(guild.Id != dbuser.GuildId)
+                return;
 
             if(dbuser != null) {
                 dbuser.AcceptedRules = false;

@@ -85,7 +85,7 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Shows in-game daily events")]
         GameEvents,
         [Description("Optional: FAQ Channel linked to when announcing new registered users")]
-        FaqCategory,
+        FaqChannel,
         [Description("Required: Category for elite contract Channels")]
         EliteCategory,
         [Description("Optional: Category for standard contract Channels")]
