@@ -828,6 +828,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
+
             foreach(var commandMessage in joinCommands) {
                 if(commandMessage.Reference != null) {
                     var referenceMessages = threadMessages.Where(x => x.Id == commandMessage.Reference.MessageId.Value);

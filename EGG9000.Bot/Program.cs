@@ -44,7 +44,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<SlashCommandService>();
         //services.AddHostedService<TextCommandService>();
         //services.AddHostedService<DiscordUserService>();
-        services.AddHostedService<StaffCoopsMessage>();
+        //services.AddHostedService<StaffCoopsMessage>();
         //services.AddHostedService<EventUpdater>();
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
@@ -56,7 +56,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         //services.AddHostedService<NewContracts>();
-        //services.AddHostedService<CreateCoopChannels>();
+        services.AddHostedService<CreateCoopChannels>();
         //services.AddHostedService<ShipReturnDM>();
         //services.AddHostedService<UserSnapShots>();
         //services.AddHostedService<LeaderboardUpdater>();
@@ -94,7 +94,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         services.AddHostedService<NewContracts>();
-        services.AddHostedService<CreateCoopChannels>();
+        //services.AddHostedService<CreateCoopChannels>();
         services.AddHostedService<ShipReturnDM>();
         services.AddHostedService<UserSnapShots>();
         services.AddHostedService<LeaderboardUpdater>();
