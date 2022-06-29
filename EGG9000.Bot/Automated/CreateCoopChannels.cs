@@ -42,16 +42,22 @@ namespace EGG9000.Bot.Automated {
                     var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
                     var servers = await GetOverflowGuildsCounts(guild, _db);
                     var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && x.Status == CoopStatusEnum.Completed).OrderBy(x => x.CoopCompleted).ToListAsync();
+                    Console.WriteLine($"Coop Counts {coopGroups.Count()} {coopGroups.Key}");
                     foreach(var coop in coopGroups) {
+                        Console.WriteLine($"Creating Channel for {coop.Name}");
                         var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops);
                         if(channel != null) {
                             coop.DiscordChannelId = channel.Id;
                             coop.OverflowGuildId = channel.GuildId;
-                        }
-                        try {
-                            await _db.SaveChangesAsync();
-                        } catch(Exception) {
-                            await _db.SaveChangesAsync();
+
+                            Console.WriteLine($"Channel created for {coop.Name}");
+                            try {
+                                await _db.SaveChangesAsync();
+                            } catch(Exception) {
+                                await _db.SaveChangesAsync();
+                            }
+                        } else {
+                            Console.WriteLine($"Channel NOT created for {coop.Name}");
                         }
                     }
                 }
@@ -60,9 +66,12 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops) {
+            Console.WriteLine("Checking servers");
             foreach(var overflow in servers.Where(x => x.ChannelsLeft > 0)) {
+                Console.WriteLine($"Getting categories for {overflow.Guild.Name}");
                 var coopCategories = await overflow.GetCoopCategories(_client);
                 foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
+                    Console.WriteLine($"Creating channel in category {category.DiscordCategory.Name}");
                     try {
                         var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; });
                         category.CurrentCount++;
