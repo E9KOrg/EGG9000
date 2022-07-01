@@ -17,18 +17,15 @@ using EGG9000.Common.Helpers;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class CoopDeleteChannel : _UpdaterBase {
-        private IConfiguration Configuration;
+    public class CoopDeleteChannel : _UpdaterBase<CoopDeleteChannel> {
 
-        public CoopDeleteChannel(IConfiguration Configuration, DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, client, bugsnag, configuration) {
-            this.Configuration = Configuration;
+        public CoopDeleteChannel(
+            IServiceProvider provider
+        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, provider) {
         }
 
-        public override async Task Run(object state) {
-            var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
+        public override async Task Run(object state, CancellationToken cancellationToken) {
+            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             Console.WriteLine("Checking Delete Channel...");
             var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
             //var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(1) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();

@@ -24,8 +24,7 @@ using System.Runtime.CompilerServices;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class CoopStatusUpdater : _UpdaterBase {
-        private readonly IConfiguration _configuration;
+    public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
         private int _counter;
         private SocketTextChannel _demeritChannel;
 
@@ -34,14 +33,13 @@ namespace EGG9000.Bot.Automated {
             public Guid DBUserId { get; set; }
         }
 
-        public CoopStatusUpdater(IConfiguration Configuration, DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration) : base(TimeSpan.FromMinutes(5), TimeSpan.Zero, client, bugsnag, configuration) {
-            _configuration = Configuration;
+        public CoopStatusUpdater(
+            IServiceProvider provider
+            ) : base(TimeSpan.FromMinutes(5), TimeSpan.Zero, provider) {
             _counter = 59;
         }
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             var sw = new Stopwatch();
             sw.Restart();
             using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
@@ -61,6 +59,7 @@ namespace EGG9000.Bot.Automated {
                 var throttler = new SemaphoreSlim(5);
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
                 foreach(var guildCoops in guildCoopGroups) {
+                    if(cancellationToken.IsCancellationRequested) break;
                     var dbguild = dbguilds.FirstOrDefault(x => x.DiscordSeverId == guildCoops.Key || x.OverflowServers.Any(y => y == guildCoops.Key));
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == guildCoops.Key);
                     if(guild == null)
@@ -73,10 +72,11 @@ namespace EGG9000.Bot.Automated {
                     var rng = new Random();
                     //foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
                     foreach(var coop in guildCoops) {
+                        if(cancellationToken.IsCancellationRequested) break;
                         await throttler.WaitAsync();
                         tasks.Add(Task.Run(async () => {
                             try {
-                                await SendUpdate(coop.Id, guild, users, dbguild);
+                                await SendUpdate(coop.Id, guild, users, dbguild, cancellationToken);
                             } finally {
                                 throttler.Release();
                             }
@@ -295,21 +295,21 @@ namespace EGG9000.Bot.Automated {
             public List<IMessage> DiscordMessages { get; set; }
         }
 
-        private async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop) {
+        private async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
             var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
 
             IEnumerable<IMessage> discordMessages;
             try {
 
-                discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12).FlattenAsync() : new List<IMessage>();
+                discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : new List<IMessage>();
             } catch(Exception) {
                 try {
                     await Task.Delay(100);
-                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12).FlattenAsync() : new List<IMessage>();
+                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : new List<IMessage>();
 
                 } catch(Exception) {
                     await Task.Delay(100);
-                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12).FlattenAsync() : new List<IMessage>();
+                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : new List<IMessage>();
                 }
             }
 
@@ -319,14 +319,14 @@ namespace EGG9000.Bot.Automated {
                 if(message == null) {
                     for(int i = 0; i < 10; i++) {
                         try {
-                            message = await coopChannel.GetMessageAsync(id);
+                            message = await coopChannel.GetMessageAsync(id, options: new RequestOptions { CancelToken = cancellationToken });
                             break;
                         } catch(Exception) {
                             await Task.Delay(500);
                         }
                     }
                     if(message == null) {
-                        message = await coopChannel.GetMessageAsync(id);
+                        message = await coopChannel.GetMessageAsync(id, options: new RequestOptions { CancelToken = cancellationToken });
                     }
                 }
                 if(message != null)
@@ -336,9 +336,9 @@ namespace EGG9000.Bot.Automated {
             return messages;
         }
 
-        private async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel) {
-            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-            var messageTask = GetDiscordMessages(channel, coop);
+        private async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
+            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken);
+            var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
 
             await Task.WhenAll(statusTask, messageTask);
@@ -348,7 +348,7 @@ namespace EGG9000.Bot.Automated {
             };
         }
 
-        public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild) {
+        public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild, CancellationToken cancellationToken) {
             using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
                 var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid);
                 if(coop == null) {
@@ -377,7 +377,8 @@ namespace EGG9000.Bot.Automated {
 
                     List<IGuildUser> coopDiscordUsers = coopChannel is SocketTextChannel ? ((SocketTextChannel)coopChannel).Users.ToList().Select(x => (IGuildUser)x).ToList() : (await coopChannel.GetUsersAsync().FlattenAsync()).ToList();
 
-                    var statusReponse = await GetStatus(coop, coopChannel);
+                    var statusReponse = await GetStatus(coop, coopChannel, cancellationToken);
+                    if(cancellationToken.IsCancellationRequested) return;
                     var status = statusReponse.Status;
                     if(status?.Success ?? false) {
 

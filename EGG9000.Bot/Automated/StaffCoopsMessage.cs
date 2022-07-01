@@ -20,20 +20,15 @@ using Discord.Rest;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class StaffCoopsMessage : _UpdaterBase {
-        private IConfiguration Configuration;
+    public class StaffCoopsMessage : _UpdaterBase<StaffCoopsMessage> {
 
         public StaffCoopsMessage(
-            IConfiguration Configuration, 
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(0), client, bugsnag, configuration) {
-            this.Configuration = Configuration;
+            IServiceProvider provider
+        ) : base(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(0), provider) {
         }
 
-        public override async Task Run(object state) {
-            var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
+        public override async Task Run(object state, CancellationToken cancellationToken) {
+            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             var dbguilds = await _db.Guilds.ToListAsync();
 
             foreach(var dbguild in dbguilds.Where(x => x.StaffCoopsMessageDetails?.StartsWith("{") ?? false)) {

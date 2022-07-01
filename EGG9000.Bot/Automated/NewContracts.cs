@@ -30,20 +30,14 @@ using Microsoft.Data.SqlClient;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class NewContracts : _UpdaterBase {
-        private readonly IConfiguration _configuration;
-
+    public class NewContracts : _UpdaterBase<NewContracts> {
         public NewContracts(
-            IConfiguration Configuration, 
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag, configuration) {
+            IServiceProvider provider
+        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
             Console.WriteLine("NewContracts Configured");
-            _configuration = Configuration;
         }
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             Console.WriteLine("NewContracts Run");
             var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             var needsUpdate = false;

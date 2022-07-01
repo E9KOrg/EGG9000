@@ -24,16 +24,11 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Services {
 
-    public class CommandFunction {
-        public MethodInfo MethodInfo { get; set; }
-        public SlashCommandAttribute Details { get; set; }
-        public ParameterInfo[] Parameters { get; set; }
-        public string Name { get; set; }
-        public List<CommandFunction> SubFunctions { get; set; }
-    }
-    public class SlashCommandService : IHostedService {
+
+        public class CommandService : IHostedService {
         private readonly DiscordHostedService _discord;
-        private List<CommandFunction> _commandFunctions;
+        private List<SlashCommandFunction> _slashCommandFunctions;
+        private List<UserCommandFunction> _userCommandFunctions;
         private IConfiguration _configuration;
         private APILink _apilink;
         private Words _words;
@@ -44,7 +39,7 @@ namespace EGG9000.Bot.Services {
         private Guild _cpGuild;
 
 
-        public SlashCommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
+        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
             _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
@@ -60,7 +55,7 @@ namespace EGG9000.Bot.Services {
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
             try {
-                var command = _commandFunctions.First(x => x.Name == arg.Data.Name);
+                var command = _slashCommandFunctions.First(x => x.Name == arg.Data.Name);
 
                 if(command.Details.AdminOnly) {
                     var isAdmin = false;
@@ -99,6 +94,22 @@ namespace EGG9000.Bot.Services {
             _semaphoreSlim.Release();
         }
 
+        private async Task _discord_UserCommandExecuted(SocketUserCommand arg) {
+            try {
+                var command = _userCommandFunctions.First(x => x.Name == arg.Data.Name);
+
+                _ = Task.Run(() => RunCommand(command, arg));
+
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                var frame = (new StackTrace(e, true)).GetFrame(0);
+
+                await arg.RespondAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+
+            }
+            _semaphoreSlim.Release();
+        }
+
         private async Task CleanFailedMessages(SocketSlashCommand arg) {
             var channel = arg.Channel;
             var messages = await channel.GetMessagesAsync(100).FlattenAsync();
@@ -114,7 +125,7 @@ namespace EGG9000.Bot.Services {
             }
         }
 
-        private async Task RunCommand(CommandFunction command, SocketSlashCommand arg) {
+        private async Task RunCommand(CommandFunctionBase command, SocketCommandBase arg) {
             if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(5))) {
                 try {
                     var parameters = new List<object>();
@@ -125,7 +136,7 @@ namespace EGG9000.Bot.Services {
                             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                                 var users = new List<SocketGuildUser>();
                                 for(var i = 1; i <= 10; i++) {
-                                    var option = FindOption($"{name}{i}", arg.Data.Options);
+                                    var option = FindOption($"{name}{i}", (arg as SocketSlashCommand).Data.Options);
                                     if(option != null) {
                                         users.Add((SocketGuildUser)option.Value);
                                     }
@@ -134,20 +145,23 @@ namespace EGG9000.Bot.Services {
                                 continue;
                             }
 
-                            var optionResult = FindOption(name, arg.Data.Options);
+                            var optionResult = FindOption(name, (arg as SocketSlashCommand).Data.Options);
                             if(optionResult == null) {
                                 parameters.Add(null);
                                 continue;
                             }
                             if(parameterInfo.ParameterType == typeof(int)) {
-                                parameters.Add(Convert.ToInt32((Int64)FindOption(name, arg.Data.Options)?.Value));
+                                parameters.Add(Convert.ToInt32((Int64)FindOption(name, (arg as SocketSlashCommand).Data.Options)?.Value));
                             } else {
-                                parameters.Add(FindOption(name, arg.Data.Options)?.Value);
+                                parameters.Add(FindOption(name, (arg as SocketSlashCommand).Data.Options)?.Value);
                             }
                             continue;
                         }
 
                         if(parameterInfo.ParameterType == typeof(SocketSlashCommand)) {
+                            parameters.Add(arg);
+                        }
+                        if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
                             parameters.Add(arg);
                         }
                         if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
@@ -191,12 +205,13 @@ namespace EGG9000.Bot.Services {
 
                 }
             } else {
-                _bugsnag.Notify(new Exception("Slash Command Semaphore Limit Hit"));
+                _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
                 await arg.RespondAsync("ERROR: Unable to run command at this time");
             }
         }
 
-        private  SocketSlashCommandDataOption FindOption(string name, IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+
+        private SocketSlashCommandDataOption FindOption(string name, IReadOnlyCollection<SocketSlashCommandDataOption> options) {
             var foundOption = options.FirstOrDefault(x => x.Name == name);
             if(foundOption != null) {
                 return foundOption;
@@ -216,12 +231,13 @@ namespace EGG9000.Bot.Services {
         private async Task CreateCommands() {
             //await _discord.Rest.DeleteAllGlobalCommandsAsync();
             _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
+            _discord.UserCommandExecuted += _discord_UserCommandExecuted;
 
             Console.WriteLine("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
             List<ApplicationCommandProperties> cpApplicationCommandProperties = new();
 
-            foreach(var command in _commandFunctions) {
+            foreach(var command in _slashCommandFunctions) {
                 var guildCommand = new SlashCommandBuilder();
                 guildCommand.DefaultMemberPermissions = command.Details.AdminOnly ? GuildPermission.Administrator : GuildPermission.UseApplicationCommands;
                 guildCommand.WithName(command.Name);
@@ -232,7 +248,7 @@ namespace EGG9000.Bot.Services {
                 //guildCommand.Description += "~";
 
                 if(command.Details.AdminOnly) {
-                    guildCommand.IsDefaultPermission = false;
+                    guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles; 
                 }
 
                 if(command.SubFunctions != null) {
@@ -258,42 +274,29 @@ namespace EGG9000.Bot.Services {
                 cpApplicationCommandProperties.Add(guildCommand.Build());
             }
 
+            foreach(var command in _userCommandFunctions) {
+                var guildCommand = new UserCommandBuilder();
+                guildCommand.DefaultMemberPermissions = command.Details.AdminOnly ? GuildPermission.Administrator : GuildPermission.UseApplicationCommands;
+                guildCommand.WithName(command.Details.Name ?? command.Name);
+                command.Name = command.Details.Name ?? command.Name;
+
+                if(command.Details.AdminOnly) {
+                    guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
+                }
+
+                if(!command.Details.CPOnly) {
+                    applicationCommandProperties.Add(guildCommand.Build());
+                }
+                cpApplicationCommandProperties.Add(guildCommand.Build());
+            }
+
             try {
                 foreach(var guild in _discord.Guilds) { //.Where(x => x.Id == 656455567858073601)
-                    //await _discord.BulkOverwriteGlobalApplicationCommandsAsync(applicationCommandProperties.ToArray());
                     Console.WriteLine($"Creating slash commands for {guild.Name}");
-
 
                     var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
-                    IDictionary<ulong, ApplicationCommandPermission[]> permissions = new Dictionary<ulong, ApplicationCommandPermission[]>();
-
-                    var adminRoles = guild.Roles
-                        .Where(x => x.Permissions.ManageChannels || x.Name.ToLower().Contains("admin") || x.Name.ToLower().Contains("staff"))
-                        .Select(r => new ApplicationCommandPermission(r, true));
-
-                    var roles = guild.Roles
-                        .Where(x => x.Permissions.ManageChannels || x.Name.ToLower().Contains("admin") || x.Name.ToLower().Contains("staff"));
-
-                    foreach(var discordCommand in discordCommands) {
-                        var command = _commandFunctions.First(x => x.Name == discordCommand.Name);
-                        if(command.Details.AdminOnly) {
-                            var rolesToAdd = adminRoles.ToList();
-                            if(command.Details.AllowFarmHand) {
-                                rolesToAdd.AddRange(guild.Roles.Where(x => x.Name.ToLower().Contains("farm hand")).Select(r => new ApplicationCommandPermission(r, true)));
-                            }
-                            permissions.Add(discordCommand.Id, rolesToAdd.ToArray());
-                        }
-                    }
-                    if(permissions.Count > 0) {
-                        //var commands = await guild.GetApplicationCommandsAsync();
-                        //var c2 = await _discord.Rest.GetGuildApplicationCommands(1);
-                        //c2.First().ModifyCommandPermissions
-                        //var result = await _discord.Rest.BatchEditGuildCommandPermissions(guild.Id, permissions);
-                        //Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
-                    }
-                    Console.WriteLine($"Slash command permissions updated for {guild.Name}");
                 }
             } catch(Exception exception) {
                 var json = JsonConvert.SerializeObject(exception, Formatting.Indented);
@@ -302,6 +305,8 @@ namespace EGG9000.Bot.Services {
 
             Console.WriteLine("Slash Commands Created");
         }
+
+
 
         private void AddCommandParams(ParameterInfo parameterInfo, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
             var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
@@ -330,7 +335,7 @@ namespace EGG9000.Bot.Services {
                 }
                 return;
             }
-            throw new NotImplementedException($"Paramter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
+            throw new NotImplementedException($"Parameter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
         }
 
         private void AddOption(String name, ApplicationCommandOptionType type, string description, bool isRequired, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
@@ -343,31 +348,42 @@ namespace EGG9000.Bot.Services {
         }
 
         public Task StartAsync(CancellationToken cancellationToken) {
-            var allCommands = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            var slashCommands = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(SlashCommandAttribute), false).Length > 0)
-                      .Select(x => new CommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<SlashCommandAttribute>(), Parameters = x.GetParameters() })
+                      .Select(x => new SlashCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<SlashCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
-            _commandFunctions = new List<CommandFunction>();
-            _commandFunctions.AddRange(allCommands.Where(x => string.IsNullOrWhiteSpace(x.Details.ParentCommand)));
-            _commandFunctions.AddRange(
-                allCommands
+
+            
+
+            _slashCommandFunctions = new List<SlashCommandFunction>();
+            _slashCommandFunctions.AddRange(slashCommands.Where(x => string.IsNullOrWhiteSpace(x.Details.ParentCommand)));
+            _slashCommandFunctions.AddRange(
+                slashCommands
                     .Where(x => !string.IsNullOrWhiteSpace(x.Details.ParentCommand))
                     .GroupBy(x => x.Details.ParentCommand)
-                    .Select(x => new CommandFunction {
+                    .Select(x => new SlashCommandFunction {
                         Name = x.Key,
                         SubFunctions = x.ToList(),
                         Details = new SlashCommandAttribute { Description = "", AdminOnly = x.Any(y => y.Details.AdminOnly) }
                     })
                 );
 
+            var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                      .SelectMany(t => t.GetMethods())
+                      .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0);
+            _userCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                      .SelectMany(t => t.GetMethods())
+                      .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0)
+                      .Select(x => new UserCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<UserCommandAttribute>(), Parameters = x.GetParameters() })
+                      .ToList();
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.SlashCommandExecuted -= _discord_SlashCommandExecuted;
-            Console.WriteLine($"Stopeed listined to slash commands");
+            Console.WriteLine($"Stopped listening to slash commands");
             if(_semaphoreSlim.CurrentCount > 0) {
                 Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
             }

@@ -23,18 +23,13 @@ using EGG9000.Common.Helpers;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class EventUpdater : _UpdaterBase {
-        private IConfiguration _config;
+    public class EventUpdater : _UpdaterBase<EventUpdater> {
         private ApplicationDbContext _db;
 
         public EventUpdater(
-            IConfiguration Configuration,
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, client, bugsnag, configuration) {
-            _config = Configuration;
-            _db = new ApplicationDbContext(_config["ConnectionStrings:DefaultConnection"]);
+                IServiceProvider provider
+            ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
+            _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
         }
 
         public async Task TestEvent(SocketMessage message, string[] args) {
@@ -55,9 +50,9 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
 
-            var _db = new ApplicationDbContext(_config["ConnectionStrings:DefaultConnection"]);
+            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
 
 
             var response = await ContractsAPI.GetPeriodicalsAsync();

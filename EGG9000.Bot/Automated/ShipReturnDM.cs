@@ -20,19 +20,13 @@ using Discord.Net;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class ShipReturnDM : _UpdaterBase {
-        private IConfiguration Configuration;
-
+    public class ShipReturnDM : _UpdaterBase<ShipReturnDM> {
         public ShipReturnDM(
-            IConfiguration Configuration, 
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromSeconds(15), TimeSpan.Zero, client, bugsnag, configuration) {
-            this.Configuration = Configuration;
+            IServiceProvider provider
+        ) : base(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
         }
-        public override async Task Run(object state) {
-            var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
+        public override async Task Run(object state, CancellationToken cancellationToken) {
+            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
 
             var users = await _db.DBUsers.AsQueryable().Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync();
             foreach(var user in users) {

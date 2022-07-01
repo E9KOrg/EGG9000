@@ -30,23 +30,21 @@ using Microsoft.Data.SqlClient;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class RemoveTempRoles : _UpdaterBase {
+    public class RemoveTempRoles : _UpdaterBase<RemoveTempRoles> {
         public static TimeSpan _updateInterval = TimeSpan.FromMinutes(1);
         private ApplicationDbContext _db;
 
-        public RemoveTempRoles(IConfiguration Configuration,
-            DiscordHostedService client,
+        public RemoveTempRoles(
             Words words,
-            Bugsnag.IClient bugsnag, 
-            ApplicationDbContext context,
-            IConfiguration configuration
-        ) : base(_updateInterval, TimeSpan.Zero, client, bugsnag, configuration) {
+            IServiceProvider provider, 
+            ApplicationDbContext context
+        ) : base(_updateInterval, TimeSpan.Zero, provider) {
             _db = context;
         }
 
 
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             var rolesToRemove = await _db.TemporaryRoles.Where(x => x.Expires < DateTimeOffset.Now && !x.IsRemoved).ToListAsync();
             foreach(var role in rolesToRemove) {
                 try {
