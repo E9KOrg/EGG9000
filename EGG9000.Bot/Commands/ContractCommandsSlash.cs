@@ -9,6 +9,8 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 
+using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
@@ -808,7 +810,7 @@ namespace EGG9000.Bot.Commands {
             var usersAbovePercent = usersWithFarm.Where(u => u.ProjectedPercent >= overridepercent).ToList().OrderBy(x => x.Projected);
 
             foreach(var user in usersToPing) {
-                await command.Channel.SendMessageAsync($"<@{user.DiscordId}> {Math.Round(user.ProjectedPercent)}%");
+                await command.Channel.SendMessageAsync($"<@{user.DiscordId}>");
             }
 
             foreach(var ping in pingsToRemove) {
@@ -818,7 +820,7 @@ namespace EGG9000.Bot.Commands {
             foreach(var oldPing in oldPings) {
                 var user = usersWithFarm.First(x => x.DiscordId == oldPing.MentionedUserIds.First());
                 if(user.ProjectedPercent < overridepercent) {
-                    await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}> {Math.Round(user.ProjectedPercent)}%");
+                    await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}>");
                 }
                 await oldPing.DeleteAsync();
                 var discordUser = await (command.Channel as ITextChannel).Guild.GetUserAsync(user.DiscordId);
@@ -842,7 +844,15 @@ namespace EGG9000.Bot.Commands {
 
             //await command.DeleteResponseFix();
             if(usersAbovePercent.Count() > 0) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()}\n{string.Join("\n", usersAbovePercent.Select(x => $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}%"))}");
+                await command.ModifyOriginalResponseAsync(x => x.Content = @$"Pings added: {usersToPing.Count}\n{string.Join("\n", usersAbovePercent.Select(x => {
+                    string expireMessage = "";
+                    if(x.TimeLeft.HasValue && x.TimeLeft.Value < TimeSpan.Zero) {
+                        expireMessage = $"Expired {x.TimeLeft.Value.Humanize()} ago";
+                    } else if(x.TimeLeft.HasValue && x.TimeLeft.Value < TimeSpan.FromDays(1)) {
+                        expireMessage = $"Expires in {x.TimeLeft.Value.Humanize()}";
+                    }
+                    return $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}% {expireMessage}"; 
+                }))}");
             } else {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()}");
             }

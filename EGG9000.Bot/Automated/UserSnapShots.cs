@@ -19,19 +19,15 @@ using Humanizer;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class UserSnapShots : _UpdaterBase {
-        private IConfiguration Configuration;
+    public class UserSnapShots : _UpdaterBase<UserSnapShots> {
 
         public UserSnapShots(
-            IConfiguration Configuration, 
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1), client, bugsnag, configuration) {
-            this.Configuration = Configuration;
+            IServiceProvider provider
+        ) : base(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1), provider) {
         }
-        public override async Task Run(object state) {
-            var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
+
+        public override async Task Run(object state, CancellationToken cancellationToken) {
+            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
 
             var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date);
 

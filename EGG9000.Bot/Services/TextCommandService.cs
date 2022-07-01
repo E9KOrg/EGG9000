@@ -166,18 +166,18 @@ namespace EGG9000.Bot.Services {
                             //case "startall":
                             //    await ContractCommands.StartAll(message, args, db, _discord, _apiLink, _words);
                             //    return;
-                            case "update": {
-                                    var channel = (SocketTextChannel)message.Channel;
-                                    if(channel.Category?.Name.ToLower().Contains("contracts") ?? false) {
-                                        await ContractCommands.Update(message, args, db, _discord);
-                                    } else if(channel.Name.ToLower().Contains("leaderboard")) {
-                                        await ContractCommands.Update(message, args, db, _discord);
-                                        //_leaderboardUpdater.Update();
-                                    } else {
-                                        await message.Channel.SendMessageAsync($"This command only works in a contract or leaderboard channel. {channel.Category.Name}");
-                                    }
-                                    return;
-                                }
+                            //case "update": {
+                            //        var channel = (SocketTextChannel)message.Channel;
+                            //        if(channel.Category?.Name.ToLower().Contains("contracts") ?? false) {
+                            //            await ContractCommands.Update(message, args, db, _discord);
+                            //        } else if(channel.Name.ToLower().Contains("leaderboard")) {
+                            //            await ContractCommands.Update(message, args, db, _discord);
+                            //            //_leaderboardUpdater.Update();
+                            //        } else {
+                            //            await message.Channel.SendMessageAsync($"This command only works in a contract or leaderboard channel. {channel.Category.Name}");
+                            //        }
+                            //        return;
+                            //    }
                             //case "missingregistrations":
                             //    await MissingRegistrations.Run(message, db, _discord);
                             //    return;
@@ -190,22 +190,22 @@ namespace EGG9000.Bot.Services {
                             //case "removeduplicates":
                             //    await RegisterCommands.RemoveDuplicates(message, args, db, _discord);
                             //    return;
-                            case "delete": {
-                                    var channel = (SocketTextChannel)message.Channel;
-                                    if(channel.Category.Name.ToLower().Contains("contracts")) {
-                                        await ContractCommands.Delete(message, args, db, _discord);
-                                        return;
-                                    } else {
-                                        await message.Channel.SendMessageAsync($"This command only works in a contract or co-op channel. {channel.Category.Name}");
-                                    }
-                                    return;
-                                }
-                            case "move":
-                                await ContractCommands.Move(message, args, db, _discord);
-                                return;
-                            case "remove":
-                                await ContractCommands.Remove(message, args, db, _discord);
-                                return;
+                            //case "delete": {
+                            //        var channel = (SocketTextChannel)message.Channel;
+                            //        if(channel.Category.Name.ToLower().Contains("contracts")) {
+                            //            await ContractCommands.Delete(message, args, db, _discord);
+                            //            return;
+                            //        } else {
+                            //            await message.Channel.SendMessageAsync($"This command only works in a contract or co-op channel. {channel.Category.Name}");
+                            //        }
+                            //        return;
+                            //    }
+                            //case "move":
+                            //    await ContractCommands.Move(message, args, db, _discord);
+                            //    return;
+                            //case "remove":
+                            //    await ContractCommands.Remove(message, args, db, _discord);
+                            //    return;
                             //case "removename":
                             //    await RegisterCommands.RemoveEggName(message, args, db, _discord, _apiLink);
                             //    return;

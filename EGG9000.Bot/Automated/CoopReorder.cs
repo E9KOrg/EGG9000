@@ -17,21 +17,15 @@ using EGG9000.Common.Helpers;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class CoopReorder : _UpdaterBase {
-        private IConfiguration Configuration;
-
+    public class CoopReorder : _UpdaterBase<CoopReorder> {
         public CoopReorder(
-            IConfiguration Configuration, 
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, client, bugsnag, configuration) {
-            this.Configuration = Configuration;
+            IServiceProvider provider
+        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, provider) {
         }
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             try
             {
-                var _db = new ApplicationDbContext(Configuration["ConnectionStrings:DefaultConnection"]);
+                var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
                 foreach (var dbguild in dbguilds)
                 {

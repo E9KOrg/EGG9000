@@ -21,20 +21,14 @@ using System.Threading.Tasks;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class CreateCoopChannels : _UpdaterBase {
-        private IConfiguration _config;
-
+    public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
         public CreateCoopChannels(
-            IConfiguration Configuration, 
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(TimeSpan.FromSeconds(10), TimeSpan.Zero, client, bugsnag, configuration) {
-            _config = Configuration;
+            IServiceProvider provider
+        ) : base(TimeSpan.FromSeconds(10), TimeSpan.Zero, provider) {
         }
 
-        public override async Task Run(object state) {
-            ApplicationDbContext _db = new ApplicationDbContext(_config["ConnectionStrings:DefaultConnection"]);
+        public override async Task Run(object state, CancellationToken cancellationToken) {
+            ApplicationDbContext _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync();
 
             if(coops.Count > 0) {
@@ -44,8 +38,9 @@ namespace EGG9000.Bot.Automated {
                     var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && x.Status == CoopStatusEnum.Completed).OrderBy(x => x.CoopCompleted).ToListAsync();
                     Console.WriteLine($"Coop Counts {coopGroups.Count()} {coopGroups.Key}");
                     foreach(var coop in coopGroups) {
+                        if(cancellationToken.IsCancellationRequested) return;
                         Console.WriteLine($"Creating Channel for {coop.Name}");
-                        var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops);
+                        var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);
                         if(channel != null) {
                             coop.DiscordChannelId = channel.Id;
                             coop.OverflowGuildId = channel.GuildId;
@@ -65,7 +60,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops) {
+        private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops, CancellationToken cancellationToken) {
             Console.WriteLine("Checking servers");
             foreach(var overflow in servers.Where(x => x.ChannelsLeft > 0)) {
                 Console.WriteLine($"Getting categories for {overflow.Guild.Name}");
@@ -73,7 +68,7 @@ namespace EGG9000.Bot.Automated {
                 foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
                     Console.WriteLine($"Creating channel in category {category.DiscordCategory.Name}");
                     try {
-                        var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; });
+                        var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; }, options: new RequestOptions { CancelToken = cancellationToken });
                         category.CurrentCount++;
                         overflow.ChannelsLeft--;
                         return channel;
@@ -85,7 +80,7 @@ namespace EGG9000.Bot.Automated {
                 completedCoops.Remove(completedCoop);
                 var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
                 if(coopChannel == null) {
-                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId));
+                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId, options: new RequestOptions { CancelToken = cancellationToken }));
                 }
                 if(coopChannel != null) {
                     try {
@@ -101,7 +96,7 @@ namespace EGG9000.Bot.Automated {
                         var coopCategories = await server.GetCoopCategories(_client);
                         foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
                             try {
-                                var channel = await server.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; });
+                                var channel = await server.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; }, options: new RequestOptions { CancelToken = cancellationToken });
                                 category.CurrentCount++;
                                 return channel;
                             } catch(Exception) { }

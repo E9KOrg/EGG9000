@@ -30,9 +30,8 @@ using Microsoft.Data.SqlClient;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class ContractUpdater : _UpdaterBase {
+    public class ContractUpdater : _UpdaterBase<ContractUpdater> {
         public static TimeSpan _updateInterval = TimeSpan.FromMinutes(10);
-        private IConfiguration _configuration;
         private APILink _apiLink;
         public static List<UserX> _users;
         private Words _words;
@@ -48,22 +47,19 @@ namespace EGG9000.Bot.Automated {
             public Guid DBUserId { get; set; }
         }
 
-        public ContractUpdater(IConfiguration Configuration,
-            DiscordHostedService client,
+        public ContractUpdater(
             APILink apilink,
             Words words,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(_updateInterval, TimeSpan.Zero, client, bugsnag, configuration) {
+            IServiceProvider provider
+        ) : base(_updateInterval, TimeSpan.Zero, provider) {
             _users = new List<UserX>();
-            _configuration = Configuration;
             _apiLink = apilink;
             _words = words;
         }
 
 
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             var showTimings = false;
 
             var totalStopwatch = new Stopwatch();

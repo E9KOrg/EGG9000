@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Commands {
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.GuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild);
+                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild, default);
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }

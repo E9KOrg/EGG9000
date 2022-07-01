@@ -26,9 +26,8 @@ using EGG9000.Bot.Services;
 using System.Diagnostics;
 
 namespace EGG9000.Bot.Automated {
-    public class LeaderboardUpdater : _UpdaterBase {
+    public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
         public static TimeSpan UpdateTime = TimeSpan.FromMinutes(15);
-        private IConfiguration _configuration;
         private APILink _apiLink;
 
         public static List<UserX> _users;
@@ -39,18 +38,15 @@ namespace EGG9000.Bot.Automated {
             public Guid DBUserId { get; set; }
         }
 
-        public LeaderboardUpdater(IConfiguration Configuration,
-            DiscordHostedService client,
-            APILink apilink,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-        ) : base(UpdateTime, TimeSpan.FromMinutes(0), client, bugsnag, configuration) {
-            _configuration = Configuration;
+        public LeaderboardUpdater(
+            IServiceProvider provider,
+            APILink apilink
+        ) : base(UpdateTime, TimeSpan.FromMinutes(0), provider) {
             _apiLink = apilink;
         }
 
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             Console.WriteLine("Updating Leaderboard");
             var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created < DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync();

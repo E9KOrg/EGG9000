@@ -25,20 +25,16 @@ using System.Text.RegularExpressions;
 using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
-    public class ManageOverflow : _UpdaterBase {
-        private IConfiguration _configuration;
+    public class ManageOverflow : _UpdaterBase<ManageOverflow> {
 
-        public ManageOverflow(IConfiguration Configuration,
-            DiscordHostedService client,
-            Bugsnag.IClient bugsnag,
-            IConfiguration configuration
-            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), client, bugsnag, configuration) {
-            _configuration = Configuration;
+        public ManageOverflow(
+            IServiceProvider provider
+            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), provider) {
         }
 
 
 
-        public override async Task Run(object state) {
+        public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             var guilds = await _db.Guilds.AsQueryable().ToListAsync();
 

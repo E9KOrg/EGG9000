@@ -10,6 +10,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
@@ -240,7 +241,7 @@ namespace EGG9000.Bot.EggIncAPI {
         //    }
         //}
 
-        public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName) {
+        public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, CancellationToken cancellationToken = default) {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
@@ -257,7 +258,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                     client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                     bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-                    var response = await client.PostAsync("ei/coop_status", bac);
+                    var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
 
                     if(response.IsSuccessStatusCode) {
                         var r = await response.Content.ReadAsStringAsync();
