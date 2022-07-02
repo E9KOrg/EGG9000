@@ -372,7 +372,7 @@
                                     </thead>
                                     <tbody>
                                         @{
-                                            foreach (var tuple in allFarms.Where(x => x.Item1 is CustomFarm && ((CustomFarm)x.Item1).Completed == false).OrderByDescending(x => x.Item2))
+                                            foreach (var tuple in allFarms.Where(x => x.Item1 is CustomFarm && (x.Item1 as CustomFarm).Cancelled == false && (x.Item1 as CustomFarm).Completed == false).OrderByDescending(x => x.Item2))
                                             {
                                                 CustomFarm farm = (CustomFarm)tuple.Item1;
                                                 var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
