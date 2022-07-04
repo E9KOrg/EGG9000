@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Commands {
     public static class ProfileCommand {
         //[SlashCommand(Description = "Configure your profile with the bot (work in progress")]
-        //public static async Task Profile(SocketSlashCommand command,  ApplicationDbContext db) {
+        //public static async Task Profile(FauxCommand command,  ApplicationDbContext db) {
         //    var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
         //    if(dbuser == null) {
         //        await command.RespondAsync($"ERROR: Bot error - User not registered");

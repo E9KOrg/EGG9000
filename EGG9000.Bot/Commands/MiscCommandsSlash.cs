@@ -32,7 +32,7 @@ using EGG9000.Bot.Services;
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
-        public static async Task NextRank(SocketSlashCommand command, ApplicationDbContext db) {
+        public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.RespondAsync("ERROR: Unable to find backups for this user");
@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
-        public static async Task RenameCoop(SocketSlashCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
+        public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.RespondAsync($"ERROR: Command only works in co-op channels");
@@ -74,7 +74,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Get a ping from the bot via DM and all assigned members have joined")]
-        public static async Task PingOnFull(SocketSlashCommand command, ApplicationDbContext db) {
+        public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db) {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.RespondAsync($"ERROR: Command only works in co-op channels", ephemeral: true);
@@ -94,7 +94,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
-        public static async Task UpdateChannel(SocketSlashCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
+        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
                 await command.RespondAsync("Updating coop...", ephemeral: true);
@@ -124,31 +124,31 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Test delete response")]
-        public static async Task TestDeleteResponse1(SocketSlashCommand command) {
+        public static async Task TestDeleteResponse1(FauxCommand command) {
             await command.RespondAsync("Test Response");
             await Task.Delay(1000);
             await command.ModifyOriginalResponseAsync(x => x.Content = "After Delay");
         }
         //[SlashCommand(Description = "Test delete response")]
-        //public static async Task TestDeleteResponse1(SocketSlashCommand command) {
+        //public static async Task TestDeleteResponse1(FauxCommand command) {
         //    await command.RespondAsync("Test Respoinse");
         //    await Task.Delay(1000);
         //    await command.DeleteOriginalResponseAsync();
         //}
         //[SlashCommand(Description = "Test delete response")]
-        //public static async Task TestDeleteResponse2(SocketSlashCommand command) {
+        //public static async Task TestDeleteResponse2(FauxCommand command) {
         //    await command.RespondAsync("Test Respoinse");
         //    await Task.Delay(1000);
         //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
         //}
         //[SlashCommand(Description = "Test delete response")]
-        //public static async Task TestDeleteResponse3(SocketSlashCommand command) {
+        //public static async Task TestDeleteResponse3(FauxCommand command) {
         //    await command.RespondAsync("Test Respoinse", ephemeral: true);
         //    await Task.Delay(1000);
         //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
         //}
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task TempRole(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
+        public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
@@ -177,7 +177,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
-        public static async Task TempCustomCoopName(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
+        public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
@@ -197,7 +197,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
-        public static async Task CallStaff(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
             await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
             if(keepPrivate) {

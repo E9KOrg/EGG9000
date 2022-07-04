@@ -85,7 +85,6 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         services.AddHostedService<CommandService>();
-        services.AddHostedService<TextCommandService>();
         services.AddHostedService<DiscordUserService>();
         services.AddHostedService<StaffCoopsMessage>();
         services.AddHostedService<EventUpdater>();

@@ -73,7 +73,7 @@ namespace EGG9000.Common.Helpers {
             return coop;
         }
 
-        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, String EggIncId, String eggIncName, SocketUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel) {
+        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, String EggIncId, String eggIncName, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel) {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,

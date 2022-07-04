@@ -9,11 +9,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Commands {
     public class NewCode {
         [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly =true, AllowFarmHand = true)]
-        public static async Task NewCoopCode(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client) {
+        public static async Task NewCoopCode(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var words = new Words();
             var code = words.GetRandomWord() + words.GetRandomWord() + words.GetRandomNumber();
 
@@ -27,7 +28,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Delete co-op channel from discord and database ", AdminOnly = true)]
-        public static async Task DeleteCoop(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client) {
+        public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.RespondAsync($"Error: Unable to find co-op, is this posted in a co-op channel?");

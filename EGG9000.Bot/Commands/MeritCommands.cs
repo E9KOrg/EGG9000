@@ -24,11 +24,12 @@ using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Helpers;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
         [SlashCommand(Description = "Add merit to user(s)", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task AddMerit(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient _client,
+        public static async Task AddMerit(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client,
             [SlashParam(Description = "Merit Reason")] string reason,
             [SlashParam] SocketGuildUser[] users
             ) {
@@ -41,7 +42,7 @@ namespace EGG9000.Bot.Commands {
             }
             await command.DeleteResponseFix();
         }
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, ISocketMessageChannel messageChannel, SocketSlashCommand command = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, IMessageChannel messageChannel, FauxCommand command = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -73,7 +74,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Remove merit from user", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task RemoveMerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+        public static async Task RemoveMerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -96,7 +97,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "List merits for user", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task MeritsForUser(SocketSlashCommand command, [SlashParam] SocketGuildUser targetUser, ApplicationDbContext db) {
+        public static async Task MeritsForUser(FauxCommand command, [SlashParam] SocketGuildUser targetUser, ApplicationDbContext db) {
             try {
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
 
@@ -121,9 +122,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "List your merits")]
-        public static async Task Merits(SocketSlashCommand command, ApplicationDbContext db) {
+        public static async Task Merits(FauxCommand command, ApplicationDbContext db) {
             try {
-                SocketUser socketUser = command.User;
+                IUser socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
 

@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Automated {
             Console.WriteLine($"Finished Contract Channels Update {Math.Round(totalStopwatch.ElapsedMilliseconds / 1000.0 / 60.0, 1)}mins");
         }
 
-        public async Task UpdateContractChannel(ApplicationDbContext _db, List<LeaderboardUser> backups, GuildContract guildContract, SocketGuild guild, Guild dbguild, List<DBUser> dbusers, SocketSlashCommand slashCommand = null) {
+        public async Task UpdateContractChannel(ApplicationDbContext _db, List<LeaderboardUser> backups, GuildContract guildContract, SocketGuild guild, Guild dbguild, List<DBUser> dbusers, FauxCommand slashCommand = null) {
             try {
                 List<Coop> coops;
                 try {
