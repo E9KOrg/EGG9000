@@ -54,7 +54,6 @@ namespace EGG9000.Bot.Automated {
                                     SoulEggs = backup.SoulEggs
 
                                 });
-                                Console.WriteLine($"Added snapshot {user.DiscordUsername}");
                                 if(snapshots++ >= 50) {
                                     snapshots = 0;
                                     await _db.SaveChangesAsync();

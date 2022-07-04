@@ -99,6 +99,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             } else if(user.EggIncIds.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
+                user.Backups = user.Backups.Where(x => x.EggIncId != eggincid).ToList();
             } else {
                 await command.RespondAsync($"ERROR: Unable to find the following EggIncId {eggincid} \n {await AccountsString(db, user, apiLink, false)}");
                 return;

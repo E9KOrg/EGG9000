@@ -84,7 +84,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<SlashCommandService>();
+        services.AddHostedService<CommandService>();
         services.AddHostedService<TextCommandService>();
         services.AddHostedService<DiscordUserService>();
         services.AddHostedService<StaffCoopsMessage>();

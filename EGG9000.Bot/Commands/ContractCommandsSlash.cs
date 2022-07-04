@@ -625,7 +625,7 @@ namespace EGG9000.Bot.Commands {
                 if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
                     if(dbuser.EggIncIds.Count > 1) {
                         var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
-                        var prefarms = prefarmers.Where(x => x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
+                        var prefarms = prefarmers.Where(x => x.Elite == guildContract.Elite &&  x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
                         if(prefarms.Count == 0) {
                             await command.ModifyOriginalResponseAsync($"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
                             return;

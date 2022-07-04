@@ -84,8 +84,21 @@ namespace EGG9000.Bot.Services {
             if(user.IsBot)
                 return;
 
-            var dbguild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == user.Guild.Id);
+            var guilds = await db.Guilds.ToListAsync();
+            var dbguild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
             if(dbguild == null) {
+                dbguild = guilds.FirstOrDefault(x => x.OverflowServers.Any(y => y == user.Guild.Id));
+                if(dbguild != null) {
+                    var mainServer = _discord.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                    var overflowServers = _discord.Guilds.Where(x => dbguild.OverflowServers.Contains(x.Id));
+                    const ulong overflowRoleID = 775547850134257675;
+
+                    bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
+                        inAllOverFlows = overflowServers.All(o => o.Users.Any(u => u.Id == user.Id) || o.Id == user.Guild.Id);
+                    if(inMainWithRole && inAllOverFlows) {
+                        await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
+                    }
+                }
                 return;
             }
 

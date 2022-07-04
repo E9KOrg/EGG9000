@@ -123,7 +123,6 @@ namespace EGG9000.Site {
             var client = new DiscordSocketClient(config);
             client.LoginAsync(Discord.TokenType.Bot, Configuration["ConnectionStrings:Token"]).Wait();
             client.StartAsync().Wait();
-            _ = client.DownloadUsersAsync(client.Guilds);
             services.AddSingleton(client);
 
             services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);

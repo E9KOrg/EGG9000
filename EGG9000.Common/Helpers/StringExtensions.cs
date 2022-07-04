@@ -29,6 +29,33 @@ public static class StringExtensions {
 
         return changes;
     }
+    public static int CompareChangesNew(this string input, string compareTo) {
+        var changes = 0;
+        var index1 = 0;
+        var index2 = 0;
+
+        while(index1 < input.Length && index2 < compareTo.Length) {
+            while(input[index1] == ' ' && input[index1] == '\n')
+                index1++;
+            while(compareTo[index2] == ' ' && compareTo[index2] == '\n')
+                index2++;
+            if(input[index1] != compareTo[index2])
+                changes++;
+            index1++;
+            index2++;
+        }
+
+        for(var i = index1; i < input.Length; i++) {
+            if(input[i] != ' ' && input[i] != '\n')
+                changes++;
+        }
+        for(var i = index2; i < compareTo.Length; i++) {
+            if(compareTo[i] != ' ' && compareTo[i] != '\n')
+                changes++;
+        }
+
+        return changes;
+    }
 
     public static string Truncate(this string value, int maxLength) {
         if(string.IsNullOrEmpty(value))

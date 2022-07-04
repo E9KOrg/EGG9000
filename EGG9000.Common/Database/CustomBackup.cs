@@ -21,8 +21,8 @@ namespace EGG9000.Common.Database {
         public string EggIncId { get; set; }
         [Key(2)]
         public string UserName { get; set; }
-        [Key(3)]
-        public double EarningsBonus { get; set; }
+        //[Key(3)]
+        //public double EarningsBonus { get; set; }
         [Key(4)]
         public long LastBackupTime { get; set; }
         [Key(5)]
@@ -52,11 +52,21 @@ namespace EGG9000.Common.Database {
         public uint NumDailyGiftsCollected { get; set; }
 
         [IgnoreMember]
-        public uint PEFromDailyGifts { get { 
-                return Math.Min(24, NumDailyGiftsCollected / 28); } }
+        public uint PEFromDailyGifts {
+            get {
+                return Math.Min(24, NumDailyGiftsCollected / 28);
+            }
+        }
 
         [Key(17)]
         public List<uint> EggMedalLevel { get; set; }
+
+        [Key(18)]
+        public ulong GoldenEggsEarned { get; set; }
+        [Key(19)]
+        public ulong GoldenEggsSpent { get; set; }
+        [Key(20)]
+        public ulong PiggyBank { get; set; }
 
         [IgnoreMember]
         public int PEFromTrophies {
@@ -69,7 +79,7 @@ namespace EGG9000.Common.Database {
 
                 if(EggMedalLevel[(int)Ei.Egg.Edible - 1] >= (uint)TrophyLevel.Diamond) count += 5;
                 if(EggMedalLevel[(int)Ei.Egg.Superfood - 1] >= (uint)TrophyLevel.Diamond) count += 4;
-                if(EggMedalLevel[(int)Ei.Egg.Medical- 1] >= (uint)TrophyLevel.Diamond) count += 3;
+                if(EggMedalLevel[(int)Ei.Egg.Medical - 1] >= (uint)TrophyLevel.Diamond) count += 3;
                 if(EggMedalLevel[(int)Ei.Egg.RocketFuel - 1] >= (uint)TrophyLevel.Diamond) count += 2;
 
                 if(EggMedalLevel[(int)Ei.Egg.SuperMaterial - 1] >= (uint)TrophyLevel.Diamond) count += 1;
@@ -99,13 +109,16 @@ namespace EGG9000.Common.Database {
             CurrentMultiplier = backup.Game.CurrentMultiplier;
             EggIncId = backup.GetID();
             UserName = backup.UserName;
-            EarningsBonus = backup.Game.EarningsBonus;
+            //EarningsBonus = backup.Game.EarningsBonus;
             LastBackupTime = (long)backup.Settings.LastBackupTime;
             PermitLevel = (ushort)backup.Game.PermitLevel;
             SoulEggs = backup.Game.SoulEggsTotal;
             EggsOfProphecy = (ushort)backup.Game.EggsOfProphecy;
             NumPrestiges = backup.Stats.NumPrestiges;
 
+            GoldenEggsEarned = backup.Game.GoldenEggsEarned;
+            GoldenEggsSpent = backup.Game.GoldenEggsSpent;
+            PiggyBank = backup.Game.PiggyBank;
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms) {
@@ -194,7 +207,7 @@ namespace EGG9000.Common.Database {
         private void CheckForCompleteContracts(RepeatedField<Ei.LocalContract> contracts) {
             foreach(var contract in contracts) {
                 //if(!Farms.Any(f => f.ContractId == contract.Contract.Identifier)) {
-                    ArchivedFarms.Add(new CustomArchivedFarms(contract));
+                ArchivedFarms.Add(new CustomArchivedFarms(contract));
                 //}
                 //RepeatedField<Ei.Contract.Types.Goal> goals = contract.Contract.GoalSets.Count == 0 ? contract.Contract.Goals : contract.Contract.GoalSets[(int)contract.League].Goals;
                 //if(contract.NumGoalsAchieved == goals.Count) {
@@ -202,6 +215,13 @@ namespace EGG9000.Common.Database {
                 //}
             }
         }
+
+        [IgnoreMember]
+        public double SoulEggBonus { get { return (double)(EpicResearch.FirstOrDefault(x => x.Id == "soul_eggs")?.Level ?? 0d) + 10; } }
+        [IgnoreMember]
+        public double ProphecyEggBonus { get { return ((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
+        [IgnoreMember]
+        public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy); } }
     }
 
     [MessagePackObject]

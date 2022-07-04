@@ -156,12 +156,6 @@ namespace EGG9000.Common.Database.Entities {
             EggIncIds = eggIncIds; //Force JSON Update
         }
 
-        public void RemoveName(string Name) {
-            var eggIncIds = JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]");
-            eggIncIds.RemoveAll(x => x.Name == Name);
-            EggIncIds = eggIncIds; //Force JSON Update
-        }
-
         public void RemoveID(string id) {
             var eggIncIds = JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]");
             eggIncIds.RemoveAll(x => x.Id.ToLower() == id.ToLower());

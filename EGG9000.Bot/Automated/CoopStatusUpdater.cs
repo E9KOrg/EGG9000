@@ -730,18 +730,18 @@ namespace EGG9000.Bot.Automated {
                                         if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                             xref.JoinWarning24TillFinish = true;
                                             await _db.SaveChangesAsync();
-                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours");
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                         } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                             xref.JoinWarning24h = true;
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
                                             //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
                                             var dmChannel = await discordUser.CreateDMChannelAsync();
-                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op");
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op", coop);
                                         } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                             xref.JoinWarning12h = true;
                                             await _db.SaveChangesAsync();
-                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op");
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
                                         }
 
                                         if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-48) && status.ProjectedPercent(coop.Contract, (int?)coop.League ?? 0) > 100) {
@@ -1184,10 +1184,10 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message) {
+        public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             try {
                 var dmChannel = await discordUser.CreateDMChannelAsync();
-                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention}");
+                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Image} {coop.ContractID}");
             } catch(HttpException) {
                 await coopChannel.SendMessageAsync($"{Message} (User has blocked DMs from bot)");
             }
