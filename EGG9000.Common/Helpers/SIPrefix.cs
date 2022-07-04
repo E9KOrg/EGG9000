@@ -1,10 +1,37 @@
-﻿using System;
+﻿using EGG9000.Common.Database;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace EGG9000.Bot.Helpers {
     public class SIPrefix {
+
+        public static IList<RankInfo> GetNextRankInfo(CustomBackup backup, bool withSubRank) {
+            var ranks = new List<RankInfo>();
+
+            var nextRank = GetPrefix((withSubRank ? 10 : 1000) * backup.EarningsBonus / 100);
+            var nextRankEB = Math.Pow(10, nextRank.Base + (withSubRank ? nextRank.Rank - 1 : 0)) * 100;
+
+            for(int i = 0; i <= 10; i++) {
+                var totalSEForNextRank = nextRankEB
+                    / (backup.SoulEggBonus * Math.Pow(backup.ProphecyEggBonus, backup.EggsOfProphecy + i));
+                ranks.Add(new RankInfo {
+                    Rank = nextRank.Name, 
+                    EggsOfProphecy = (ushort)i, 
+                    SoulsEggs = backup.SoulEggs - totalSEForNextRank
+                });
+            }
+
+            return ranks;
+        }
+        public class RankInfo {
+            public string Rank { get; set; }
+            public double SoulsEggs { get; set; }
+            public ushort EggsOfProphecy { get; set; }
+        }
+
         public static PrefixDetails GetPrefix(double number) {
             //var lastPrefix = new PrefixDetails { Base = 0, Name = "" };
             //foreach(var prefix in Prefixes) {

@@ -60,13 +60,14 @@
 {
     @if (isAdmin)
     {
-        <div class="alert alert-danger">@Model.DiscordUsername has not joined the following coops they've been assigned.</div>
-        <div class="font-weight-bold" style="margin-top:10px;">
+        <div class="alert alert-danger">@Model.DiscordUsername has not joined the following coops they've been assigned.
+            <div class="font-weight-bold" style="margin-top:10px;">
                 @foreach(var coop in userCoops)
                 {
-                    <div>@coop.Coop.Contract.Name - @coop.Coop.Name</div>  
+                    <div><img src="/images/Egg_@((int)coop.Coop.Contract.Details.Egg).png" />@coop.Coop.Contract.Name - @coop.Coop.Name</div>  
                 }
             </div>
+        </div>
     }
     else
     {
@@ -75,7 +76,7 @@
             <div class="font-weight-bold" style="margin-top:10px;">
                 @foreach(var coop in userCoops)
                 {
-                    <div>@coop.Coop.Contract.Name - @coop.Coop.Name</div>
+                    <div>><img src="/images/Egg_@((int)coop.Coop.Contract.Details.Egg).png" />@coop.Coop.Contract.Name - @coop.Coop.Name</div>
                 }
             </div>
         </div>
@@ -435,8 +436,7 @@
                                         @{
                                             // Show completed farms, these could be 'active' and 'archived' farms.
                                             foreach (var tuple in allFarms.Where(x => 
-                                                (x.Item1 is CustomFarm && ((CustomFarm)x.Item1).Completed == true) ||
-                                                (x.Item1 is CustomArchivedFarms && ((CustomArchivedFarms)x.Item1).Completed == true) ||
+                                                (x.Item1 is CustomFarm && ((x.Item1 as CustomFarm).Completed == true || (x.Item1 as CustomFarm).Cancelled == true)) ||
                                                 (x.Item1 is CustomArchivedFarms)
                                             ).OrderByDescending(x => x.Item2))
                                             {

@@ -379,6 +379,8 @@ namespace EGG9000.Site.Controllers {
                 ViewBag.Oldest = oldest;
                 ViewBag.SortBy = sortby;
 
+                await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
+
                 var leaderboard = await _getLeaderboard(user.GuildId);
 
 

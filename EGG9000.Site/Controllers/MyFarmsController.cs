@@ -48,7 +48,7 @@ namespace EGG9000.Site.Controllers {
             return await ViewUser(ulong.Parse(logins.First().ProviderKey));
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             var backups = new List<CustomBackup>();

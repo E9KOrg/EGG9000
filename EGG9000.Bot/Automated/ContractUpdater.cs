@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Automated {
             Console.WriteLine($"Finished Contract Channels Update {Math.Round(totalStopwatch.ElapsedMilliseconds / 1000.0 / 60.0, 1)}mins");
         }
 
-        public async Task UpdateContractChannel(ApplicationDbContext _db, List<LeaderboardUser> backups, GuildContract guildContract, SocketGuild guild, Guild dbguild, List<DBUser> dbusers) {
+        public async Task UpdateContractChannel(ApplicationDbContext _db, List<LeaderboardUser> backups, GuildContract guildContract, SocketGuild guild, Guild dbguild, List<DBUser> dbusers, SocketSlashCommand slashCommand = null) {
             try {
                 List<Coop> coops;
                 try {
@@ -284,10 +284,6 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                if(guildContract.NumberOfCoops < coopsBreakdown.Coops.Count) {
-                    guildContract.NumberOfCoops = coopsBreakdown.Coops.Count;
-                }
-
                 if(!guildContract.Contract.Details.CoopAllowed) {
                     newMsgs.AddRange(ShowSoloStatus(coopsBreakdown, guildContract.Contract.Details, targetAmount));
                 } else {
@@ -425,7 +421,8 @@ namespace EGG9000.Bot.Automated {
                 var condensedMsgs = new List<string>();
 
                 var currentMsg = "";
-                foreach(var msg in newMsgs) {
+                for(var i = 0; i < newMsgs.Count; i++) {
+                    var msg = newMsgs[i];
                     var cmsg = msg;
                     if(currentMsg.Length + cmsg.Length > 2000) {
                         condensedMsgs.Add(currentMsg);
@@ -471,15 +468,27 @@ namespace EGG9000.Bot.Automated {
 
                 IMessage notStarted = null;
 
+                var times = new List<TimeSpan>();
                 for(int i = 0; i < Math.Max(existingMessages.Count(), condensedMsgs.Count); i++) {
+                    if((i + 1) % 10 == 0 && slashCommand is not null) {
+                        await slashCommand.ModifyOriginalResponseAsync(x => x.Content = $"Updating contract message {i + 1} of {Math.Max(existingMessages.Count(), condensedMsgs.Count)} {string.Join(",", times.Select(x => x.Humanize()))}");
+                        times = new List<TimeSpan>();
+                    }
                     if(existingMessages.Count() > i && condensedMsgs.Count > i) {
-                        if(i == condensedMsgCount - 1) {
+                        var isLastMessage = i == condensedMsgCount - 1;
+
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        if(isLastMessage) {
                             await ((RestUserMessage)existingMessages.ElementAt(i)).ModifyAsync(msg => { msg.Embed = embedBuilder.Build(); msg.Content = condensedMsgs[i]; });
+                            await Task.Delay(505);
                             modified1++;
-                        } else if(!existingMessages.ElementAt(i).Content.Replace(" ", "").Equals(condensedMsgs[i].Replace(" ", "")) || existingMessages.ElementAt(i).Embeds.Count > 0) {
-                            var changes = existingMessages.ElementAt(i).Content.CompareChanges(condensedMsgs[i]);
+                        } else {
+                            var changes = existingMessages.ElementAt(i).Content.CompareChangesNew(condensedMsgs[i]);
+
                             if(existingMessages.ElementAt(i).Embeds.Count > 0 || changes > 20) {
                                 await ((RestUserMessage)existingMessages.ElementAt(i)).ModifyAsync(msg => { msg.Content = condensedMsgs[i]; msg.Embed = null; });
+                                await Task.Delay(505);
                                 modified2++;
                             } else {
                                 skipped++;
@@ -488,14 +497,16 @@ namespace EGG9000.Bot.Automated {
                                 notStarted = existingMessages.ElementAt(i);
                                 embedBuilder.Description = GetLinkToMessage(notStarted, guild, channel, "Jump to top not started co-op (for staff)") + embedBuilder.Description;
                             }
-                        } else {
-                            skipped++;
                         }
+                        sw.Stop();
+                        times.Add(sw.Elapsed);
                     } else if(existingMessages.Count() <= i) {
                         if(i == condensedMsgCount - 1) {
                             await channel.SendMessageAsync(condensedMsgs[i], embed: embedBuilder.Build());
+                            await Task.Delay(505);
                         } else {
                             var message = await channel.SendMessageAsync(condensedMsgs[i]);
+                            await Task.Delay(505);
                             newMessage++;
                             if(notStarted == null && condensedMsgs[i].Contains("PreFarming")) {
                                 notStarted = message;
@@ -506,6 +517,7 @@ namespace EGG9000.Bot.Automated {
                         //await ((RestUserMessage)existingMessages.ElementAt(i)).ModifyAsync(msg => msg.Content = "\u17B5");
                         try {
                             await ((RestUserMessage)existingMessages.ElementAt(i)).DeleteAsync();
+                            await Task.Delay(505);
                         } catch(Exception) {
                         }
                         deleted++;

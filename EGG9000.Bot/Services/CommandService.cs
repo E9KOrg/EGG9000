@@ -232,6 +232,7 @@ namespace EGG9000.Bot.Services {
             //await _discord.Rest.DeleteAllGlobalCommandsAsync();
             _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
             _discord.UserCommandExecuted += _discord_UserCommandExecuted;
+            _discord.MessageReceived += _discord_MessageReceived;
 
             Console.WriteLine("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -306,7 +307,9 @@ namespace EGG9000.Bot.Services {
             Console.WriteLine("Slash Commands Created");
         }
 
-
+        private Task _discord_MessageReceived(SocketMessage arg) {
+            throw new NotImplementedException();
+        }
 
         private void AddCommandParams(ParameterInfo parameterInfo, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
             var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
