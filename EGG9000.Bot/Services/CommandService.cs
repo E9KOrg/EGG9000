@@ -232,7 +232,7 @@ namespace EGG9000.Bot.Services {
             //await _discord.Rest.DeleteAllGlobalCommandsAsync();
             _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
             _discord.UserCommandExecuted += _discord_UserCommandExecuted;
-            _discord.MessageReceived += _discord_MessageReceived;
+            //_discord.MessageReceived += _discord_MessageReceived;
 
             Console.WriteLine("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();

@@ -18,9 +18,9 @@ namespace EGG9000.Bot.Helpers {
                 var totalSEForNextRank = nextRankEB
                     / (backup.SoulEggBonus * Math.Pow(backup.ProphecyEggBonus, backup.EggsOfProphecy + i));
                 ranks.Add(new RankInfo {
-                    Rank = nextRank.Name, 
+                    Rank = $"{nextRank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (nextRank.Rank == 1 ? " I" : nextRank.Rank == 2 ? " II" : " III") : ""), 
                     EggsOfProphecy = (ushort)i, 
-                    SoulsEggs = backup.SoulEggs - totalSEForNextRank
+                    SoulsEggs = totalSEForNextRank - backup.SoulEggs
                 });
             }
 
