@@ -283,12 +283,12 @@
                     <div class="tab-pane" id="merits@(backup.EggIncId)" role="tabpanel">
                         @{
                             foreach (var merit in merits) {
-                                                        <div>
-                                                            @merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-                                                            @if (isAdmin) {
-                                                                <a href="/myfarms/removemerit?id=@merit.Id">X</a>
+                                                                <div>
+                                                                    @merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
+                                                                    @if (isAdmin) {
+                                                                        <a href="/myfarms/removemerit?id=@merit.Id">X</a>
                                     }
-                                                        </div>
+                                                                </div>
                             }
                         }
                     </div>
@@ -297,9 +297,9 @@
                             @{
                                 List<Demerit> demerits = ViewBag.Demerits;
                                 foreach (var demerit in demerits) {
-                                                            <div>
-                                                                @demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
-                                                            </div>
+                                                                    <div>
+                                                                        @demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+                                                                    </div>
                                 }
                             }
                             <h3>Admin Only Details</h3>
@@ -381,32 +381,32 @@
                                                 var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
                                                 var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
 
-                                                                    <tr>
-                                                                        <td>@(contract?.Name ?? farm.ContractId)</td>
-                                                                        <td>
-                                                                            <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-                                                                                @(farm.CoopId ?? coop?.Name)
-                                                                            </a>
-                                                                        </td>
-                                                                        <td>@farm.Started.ToString("yyyy-MM-dd")</td>
-                                                                        <td class="text-right">@farm.NumChickens.ToEggString()</td>
-                                                                        <td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
-                                                                        <td class="text-right">
-                                                                            @if (lastUpdate != null)
+                                                                            <tr>
+                                                                                <td>@(contract?.Name ?? farm.ContractId)</td>
+                                                                                <td>
+                                                                                    <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+                                                                                        @(farm.CoopId ?? coop?.Name)
+                                                                                    </a>
+                                                                                </td>
+                                                                                <td>@farm.Started.ToString("yyyy-MM-dd")</td>
+                                                                                <td class="text-right">@farm.NumChickens.ToEggString()</td>
+                                                                                <td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
+                                                                                <td class="text-right">
+                                                                                    @if (lastUpdate != null)
                                                         {
                                                             var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-                                                                                @percent.ToString("P0")
+                                                                                        @percent.ToString("P0")
                                                         }
-                                                                        </td>
-                                                                        @if (isAdmin)
+                                                                                </td>
+                                                                                @if (isAdmin)
                                                     {
-                                                                            <td class="text-right">@farm.TimeCheatsDetected</td>
-                                                                            <td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
+                                                                                    <td class="text-right">@farm.TimeCheatsDetected</td>
+                                                                                    <td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
                                                     }
-                                                                        <td class="text-right">@farm.BoostTokensReceived</td>
-                                                                        <td class="text-right">@farm.BoostTokensSpent</td>
-                                                                        <td class="text-right">@farm.BoostTokensGiven</td>
-                                                                </tr>
+                                                                                <td class="text-right">@farm.BoostTokensReceived</td>
+                                                                                <td class="text-right">@farm.BoostTokensSpent</td>
+                                                                                <td class="text-right">@farm.BoostTokensGiven</td>
+                                                                        </tr>
                                             }
                                         }
                                     </tbody>
@@ -447,60 +447,60 @@
                                                     var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
                                                     var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
                                                     var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-                                                                    <tr>
-                                                                        <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
-                                                                        <td>
-                                                                            <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-                                                                                @(farm.CoopId ?? coop?.Name)
-                                                                            </a>
-                                                                        </td>
-                                                                        <td>@farm.Started.ToString("yyyy-MM-dd")</td>
-                                                                        <td>@(farm.Completed ? "✔️" : "")</td>
-                                                                        <td class="text-right">@xref?.Score?.ToString("G2")</td>
-                                                                        <td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-                                                                        @if (lastUpdate != null)
+                                                                            <tr>
+                                                                                <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
+                                                                                <td>
+                                                                                    <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+                                                                                        @(farm.CoopId ?? coop?.Name)
+                                                                                    </a>
+                                                                                </td>
+                                                                                <td>@farm.Started.ToString("yyyy-MM-dd")</td>
+                                                                                <td>@(farm.Completed ? "✔️" : "")</td>
+                                                                                <td class="text-right">@xref?.Score?.ToString("G2")</td>
+                                                                                <td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
+                                                                                @if (lastUpdate != null)
                                                         {
                                                         var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-                                                                            <td class="text-right">@lastUpdate.ContributionAmount.ToEggString()</td>
-                                                                            <td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-                                                                            <td class="text-right">@(lastUpdate.TimeCheatDetected ? "Yes" : "No")</td>
-                                                                            <td class="text-right">@lastUpdate.BoostTokensSpent</td>
+                                                                                    <td class="text-right">@lastUpdate.ContributionAmount.ToEggString()</td>
+                                                                                    <td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+                                                                                    <td class="text-right">@(lastUpdate.TimeCheatDetected ? "Yes" : "No")</td>
+                                                                                    <td class="text-right">@lastUpdate.BoostTokensSpent</td>
                                                         }
                                                         else
                                                         {
-                                                                            <td colspan="99"></td>
+                                                                                    <td colspan="99"></td>
                                                         }
-                                                                    </tr>
+                                                                            </tr>
                                                 }
                                                 else
                                                 {
                                                     CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
                                                     var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
                                                     var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
-                                                                    <tr>
-                                                                        <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
-                                                                        <td>
-                                                                            <a href="/coop/@farm.ContractId/@(farm.CoopName)">
-                                                                                @(farm.CoopName)
-                                                                            </a>
-                                                                        </td>
-                                                                        <td>@farm.Started.ToString("yyyy-MM-dd")</td>
-                                                                        <td>@(farm.Completed ? "✔️" : "")</td>
-                                                                        <td class="text-right">@xref?.Score?.ToString("G2")</td>
-                                                                        <td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-                                                                        @if (lastUpdate != null)
+                                                                            <tr>
+                                                                                <td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
+                                                                                <td>
+                                                                                    <a href="/coop/@farm.ContractId/@(farm.CoopName)">
+                                                                                        @(farm.CoopName)
+                                                                                    </a>
+                                                                                </td>
+                                                                                <td>@farm.Started.ToString("yyyy-MM-dd")</td>
+                                                                                <td>@(farm.Completed ? "✔️" : "")</td>
+                                                                                <td class="text-right">@xref?.Score?.ToString("G2")</td>
+                                                                                <td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
+                                                                                @if (lastUpdate != null)
                                                         {
                                                         var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-                                                                            <td class="text-right">@lastUpdate.ContributionAmount.ToEggString()</td>
-                                                                            <td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-                                                                            <td class="text-right">@(lastUpdate.TimeCheatDetected ? "Yes" : "No")</td>
-                                                                            <td class="text-right">@lastUpdate.BoostTokensSpent</td>
+                                                                                    <td class="text-right">@lastUpdate.ContributionAmount.ToEggString()</td>
+                                                                                    <td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+                                                                                    <td class="text-right">@(lastUpdate.TimeCheatDetected ? "Yes" : "No")</td>
+                                                                                    <td class="text-right">@lastUpdate.BoostTokensSpent</td>
                                                         }
                                                         else
                                                         {
-                                                                            <td colspan="99"></td>
+                                                                                    <td colspan="99"></td>
                                                         }
-                                                                    </tr>
+                                                                            </tr>
                                                 }
                                             }
                                         }
@@ -530,6 +530,54 @@
                         </tr>
 
                     </table>
+
+                    <br />
+                    @{ var nextRankInfo = SIPrefix.GetNextRankInfo(backup, false); }
+                    <h3>Needed for @nextRankInfo.First().Rank</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PE</th>
+                                <th>SE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach(var ri in nextRankInfo) {
+                                    <tr>
+                                        <td>@ri.EggsOfProphecy</td>
+                                        <td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+                                    </tr>
+                                    if(ri.SoulsEggs < 0)
+                                        break;
+                                }
+                            }
+                        </tbody>
+                    </table>
+
+                    @{ nextRankInfo = SIPrefix.GetNextRankInfo(backup, true); }
+                    <h3>Needed for @nextRankInfo.First().Rank</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PE</th>
+                                <th>SE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                foreach(var ri in nextRankInfo) {
+                                    <tr>
+                                        <td>@ri.EggsOfProphecy</td>
+                                        <td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+                                    </tr>
+                                    if(ri.SoulsEggs < 0)
+                                        break;
+                                }
+                            }
+                        </tbody>
+                    </table>
+
                 </div>
             </div>
         </div>
@@ -539,17 +587,17 @@
 @{
 	void artifactTemplate(EggIncArtifactInstance artifact) {
     <tr>
-                                    <td>@artifact.Artifact</td>
-                                    @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                                        <td>@Math.Round((artifact.Value) * 100)%</td>
+                                            <td>@artifact.Artifact</td>
+                                            @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+                                                <td>@Math.Round((artifact.Value) * 100)%</td>
 			} else if (artifact.Additive) {
-                                        <td>+@artifact.Value</td>
+                                                <td>+@artifact.Value</td>
 			} else if (+artifact.Value < 2) {
-                                        <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+                                                <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
 			} else {
-                                        <td>@(artifact.Value)x</td>
+                                                <td>@(artifact.Value)x</td>
 			}
-                                    <td>@artifact.Boost</td>
+                                            <td>@artifact.Boost</td>
     </tr>
 	}
 

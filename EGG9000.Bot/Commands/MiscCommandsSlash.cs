@@ -31,39 +31,33 @@ using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
-        //public static async Task TestEmoji(SocketMessage message, string[] args) {
-        //    try {
-        //        var channel = (SocketTextChannel)message.MentionedChannels.First();
-        //        var targetMessage = await channel.GetMessageAsync(ulong.Parse(args[2]));
+        [SlashCommand(Description = "How many SE/PE needed for next rank up")]
+        public static async Task NextRank(SocketSlashCommand command, ApplicationDbContext db) {
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.RespondAsync("ERROR: Unable to find backups for this user");
+                return;
+            }
+            var msg = "";
+            foreach(var id in user.EggIncIds) {
+                var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
+                if(backup == null)
+                    continue;
+                var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
+                if(user.EggIncIds.Count > 1) {
+                    msg += $"**{backup.UserName}**\n";
+                }
+                msg += $"To Reach Rank: {nextSubRank.First().Rank}\n";
+                msg += String.Join("", nextSubRank.Take(5).Select(x => $"PE: {x.EggsOfProphecy} SE: {x.SoulsEggs.ToEggString()}\n"));
 
-        //        var emoteId = ulong.Parse(new Regex(@":(\d+)").Match(args[3]).Groups[1].Value);
-
-        //        var firstEmote = targetMessage.Reactions.First(x => ((Emote)x.Key).Id == emoteId);
-        //        var users = await targetMessage.GetReactionUsersAsync(firstEmote.Key, 1000).FlattenAsync();
-
-        //        var otherEmotes = targetMessage.Reactions.Where(x => x.Key is Emote emote && emote.Id != emoteId);
-        //        var otherUsers = new List<IUser>();
-        //        foreach(var emote in otherEmotes) {
-        //            otherUsers.AddRange(await targetMessage.GetReactionUsersAsync(firstEmote.Key, 1000).FlattenAsync());
-        //        }
-
-        //        var voterIDs = users.Select(x => x.Id).ToList();
-        //        var otherIDs = otherUsers.Select(x => x.Id).ToList();
-        //        var dualVoterIDs = voterIDs.Intersect(otherIDs);
-        //        var dualVoters = users.Where(x => dualVoterIDs.Contains(x.Id));
-        //        var singleVoters = users.Where(x => !dualVoterIDs.Contains(x.Id));
-        //        await message.Channel.SendMessageAsync($"Users with two votes {firstEmote.Key.Name}: {String.Join(", ", dualVoters.Select(x => x.Mention))}");
-        //        //foreach(IGuildUser user in users) {
-        //        //    await user.AddRoleAsync(message.MentionedRoles.First());
-        //        //}
-
-
-        //        await message.Channel.SendMessageAsync($"Users with single vote and  <:{firstEmote.Key.Name}:{((Emote)firstEmote.Key).Id}> {String.Join(", ", singleVoters.Select(x => x.Mention))}");
-        //    } catch(Exception e) {
-        //        Console.WriteLine($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
-        //        await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
-        //    }
-        //}
+                var nextRank = SIPrefix.GetNextRankInfo(backup, false);
+                if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs) {
+                    msg += $"To Reach Rank: {nextRank.First().Rank}\n";
+                    msg += String.Join("", nextRank.Take(5).Select(x => $"PE: {x.EggsOfProphecy} SE: {x.SoulsEggs.ToEggString()}\n"));
+                }
+            }
+            await command.RespondAsync(msg);
+        }
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
         public static async Task RenameCoop(SocketSlashCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
@@ -207,7 +201,7 @@ namespace EGG9000.Bot.Commands {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
             await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
             if(keepPrivate) {
-                
+
                 await command.RespondAsync("Staff has been called.", ephemeral: true);
             } else {
                 await command.RespondAsync($"Staff has been called ({details})");
