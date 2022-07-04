@@ -23,11 +23,12 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         [SlashCommand(Description = "Add demerit to user", AdminOnly = true)]
-        public static async Task AddDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordSocketClient discordClient) {
+        public static async Task AddDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordSocketClient discordClient) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -63,7 +64,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Remove latest demerit from user", AdminOnly = true)]
-        public static async Task RemoveDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+        public static async Task RemoveDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -86,9 +87,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "List your demerits")]
-        public static async Task Demerits(SocketSlashCommand command, ApplicationDbContext db) {
+        public static async Task Demerits(FauxCommand command, ApplicationDbContext db) {
             try {
-                SocketUser socketUser = command.User;
+                IUser socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
 
@@ -117,7 +118,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
         [SlashCommand(Description = "List demerits for user", AdminOnly = true)]
-        public static async Task DemeritsForUser(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+        public static async Task DemeritsForUser(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             try {
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
@@ -147,7 +148,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = true)]
-        public static async Task NoDemerit(SocketSlashCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+        public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             UserCoopXref xref;
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();

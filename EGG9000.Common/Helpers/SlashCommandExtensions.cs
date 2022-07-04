@@ -5,10 +5,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Common.Helpers {
     public static class SlashCommandExtensions {
-        public static async Task DeleteResponseFix(this SocketSlashCommand command) {
+        public static async Task DeleteResponseFix(this FauxCommand command) {
             if(command == null)
                 return;
             var response = await command.GetOriginalResponseAsync();

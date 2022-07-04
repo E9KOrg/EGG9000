@@ -1,6 +1,7 @@
 ﻿
 using Discord;
 using Discord.Net;
+using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
@@ -19,13 +20,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 
 namespace EGG9000.Bot.Services {
 
 
-        public class CommandService : IHostedService {
+    public class CommandService : IHostedService {
         private readonly DiscordHostedService _discord;
         private List<SlashCommandFunction> _slashCommandFunctions;
         private List<UserCommandFunction> _userCommandFunctions;
@@ -82,7 +85,6 @@ namespace EGG9000.Bot.Services {
                     command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
                 }
                 _ = Task.Run(() => RunCommand(command, arg));
-                _ = Task.Run(() => CleanFailedMessages(arg));
 
             } catch(Exception e) {
                 _bugsnag.Notify(e);
@@ -110,33 +112,20 @@ namespace EGG9000.Bot.Services {
             _semaphoreSlim.Release();
         }
 
-        private async Task CleanFailedMessages(SocketSlashCommand arg) {
-            var channel = arg.Channel;
-            var messages = await channel.GetMessagesAsync(100).FlattenAsync();
-            var failedMessages = messages.Where(x => x.Content.StartsWith($"/{arg.CommandName}", StringComparison.CurrentCultureIgnoreCase) && x.Author.Id == arg.User.Id).ToList();
-            foreach(var failedMessage in failedMessages) {
-                var responses = messages.Where(x => x.Reference != null && x.Reference.MessageId.IsSpecified && x.Reference.MessageId.Value == failedMessage.Id).ToList();
-                foreach(var response in responses) {
-                    await response.DeleteAsync();
-                    await Task.Delay(540);
-                }
-                await failedMessage.DeleteAsync();
-                await Task.Delay(540);
-            }
-        }
 
-        private async Task RunCommand(CommandFunctionBase command, SocketCommandBase arg) {
+        private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
             if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(5))) {
                 try {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
+                            var fauxCommand = new FauxCommand(arg as SocketSlashCommand);
                             var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
                             var name = parameterInfo.Name.ToLower();
                             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                                 var users = new List<SocketGuildUser>();
                                 for(var i = 1; i <= 10; i++) {
-                                    var option = FindOption($"{name}{i}", (arg as SocketSlashCommand).Data.Options);
+                                    var option = FindOption($"{name}{i}", fauxCommand.Data.Options);
                                     if(option != null) {
                                         users.Add((SocketGuildUser)option.Value);
                                     }
@@ -145,24 +134,24 @@ namespace EGG9000.Bot.Services {
                                 continue;
                             }
 
-                            var optionResult = FindOption(name, (arg as SocketSlashCommand).Data.Options);
+                            var optionResult = FindOption(name, fauxCommand.Data.Options);
                             if(optionResult == null) {
                                 parameters.Add(null);
                                 continue;
                             }
                             if(parameterInfo.ParameterType == typeof(int)) {
-                                parameters.Add(Convert.ToInt32((Int64)FindOption(name, (arg as SocketSlashCommand).Data.Options)?.Value));
+                                parameters.Add(Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value));
                             } else {
-                                parameters.Add(FindOption(name, (arg as SocketSlashCommand).Data.Options)?.Value);
+                                parameters.Add(FindOption(name, fauxCommand.Data.Options)?.Value);
                             }
                             continue;
                         }
 
-                        if(parameterInfo.ParameterType == typeof(SocketSlashCommand)) {
-                            parameters.Add(arg);
-                        }
-                        if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
-                            parameters.Add(arg);
+                        if(parameterInfo.ParameterType == typeof(FauxCommand)) {
+                            if(arg is SocketSlashCommand)
+                                parameters.Add(new FauxCommand(arg as SocketSlashCommand));
+                            else
+                                parameters.Add(arg);
                         }
                         if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
                             parameters.Add(new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]));
@@ -211,7 +200,7 @@ namespace EGG9000.Bot.Services {
         }
 
 
-        private SocketSlashCommandDataOption FindOption(string name, IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+        private SocketSlashCommandDataOption FindOption(string name, IList<SocketSlashCommandDataOption> options) {
             var foundOption = options.FirstOrDefault(x => x.Name == name);
             if(foundOption != null) {
                 return foundOption;
@@ -219,7 +208,7 @@ namespace EGG9000.Bot.Services {
 
             foreach(var option in options) {
                 if(option.Options != null) {
-                    foundOption = FindOption(name, option.Options);
+                    foundOption = FindOption(name, option.Options.ToList());
                     if(foundOption != null) {
                         return foundOption;
                     }
@@ -232,7 +221,7 @@ namespace EGG9000.Bot.Services {
             //await _discord.Rest.DeleteAllGlobalCommandsAsync();
             _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
             _discord.UserCommandExecuted += _discord_UserCommandExecuted;
-            //_discord.MessageReceived += _discord_MessageReceived;
+            _discord.MessageReceived += _discord_MessageReceived;
 
             Console.WriteLine("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -249,7 +238,7 @@ namespace EGG9000.Bot.Services {
                 //guildCommand.Description += "~";
 
                 if(command.Details.AdminOnly) {
-                    guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles; 
+                    guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
                 }
 
                 if(command.SubFunctions != null) {
@@ -307,9 +296,23 @@ namespace EGG9000.Bot.Services {
             Console.WriteLine("Slash Commands Created");
         }
 
-        private Task _discord_MessageReceived(SocketMessage arg) {
-            throw new NotImplementedException();
+        private async Task _discord_MessageReceived(SocketMessage message) {
+            var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
+            if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
+                var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
+                await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty, cpGeneralChannel);
+                await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
+            }
+            if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
+                var commandText = new Regex(@"^/(\w+)").Match(message.Content).Groups[1].Value.ToLower();
+                var command = _slashCommandFunctions.FirstOrDefault(x => x.Name == commandText);
+                if(command != null) {
+                    await RunCommand(command, new FauxCommand(message, guild.Id));
+                }
+            }
         }
+
 
         private void AddCommandParams(ParameterInfo parameterInfo, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
             var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
@@ -357,7 +360,7 @@ namespace EGG9000.Bot.Services {
                       .Select(x => new SlashCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<SlashCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
 
-            
+
 
             _slashCommandFunctions = new List<SlashCommandFunction>();
             _slashCommandFunctions.AddRange(slashCommands.Where(x => string.IsNullOrWhiteSpace(x.Details.ParentCommand)));
@@ -393,4 +396,6 @@ namespace EGG9000.Bot.Services {
             await _semaphoreSlim.WaitAsync(cancellationToken);
         }
     }
+
+
 }

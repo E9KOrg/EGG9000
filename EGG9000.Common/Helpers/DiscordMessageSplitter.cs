@@ -1,4 +1,5 @@
-﻿using Discord.Rest;
+﻿using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 
 using System;
@@ -9,8 +10,8 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class DiscordMessageSplitter {
-        public static async Task<List<RestUserMessage>> SendMessageSplitAsync(ISocketMessageChannel channel, string text, string splitAt) {
-            var results = new List<RestUserMessage>();
+        public static async Task<List<IUserMessage>> SendMessageSplitAsync(IMessageChannel channel, string text, string splitAt) {
+            var results = new List<IUserMessage>();
             while(text.Length > 2000) {
                 var index = text.LastIndexOf(splitAt, 2000);
 

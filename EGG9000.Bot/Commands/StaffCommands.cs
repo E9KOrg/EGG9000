@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
 
         [SlashCommand(Description = "Log a Message", AdminOnly =true, AllowFarmHand = true)]
-        public static async Task AS(SocketSlashCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null) {
+        public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null) {
             if(channel == null) {
                 await command.Channel.SendMessageAsync(message);
             } else {
