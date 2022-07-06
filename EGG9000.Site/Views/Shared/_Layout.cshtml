@@ -4,7 +4,9 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>@ViewData["Title"] - EGG9000.Site</title>
-	<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@forevolve/bootstrap-dark@1.0.0/dist/css/toggle-bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@forevolve/bootstrap-dark@1.0.0/dist/css/toggle-bootstrap-dark.min.css" />
 	<link rel="stylesheet" href="~/css/site.css" />
 
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -14,12 +16,11 @@
 	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 	<meta name="msapplication-TileColor" content="#da532c">
 	<meta name="theme-color" content="#ffffff">
-	<style>
-	</style>
+
 </head>
-<body ng-app="egg9000">
+<body ng-app="egg9000" class="bootstrap">
 	<header>
-		<nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+		<nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3 navbar-themed">
 			<div class="container">
 				<a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index"><img src="/apple-touch-icon.png" style="height: 28px;" /> EGG9000</a>
 				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
@@ -30,22 +31,22 @@
 					<partial name="_LoginPartial" />
 					<ul class="navbar-nav flex-grow-1">
 						<li class="nav-item">
-							<a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+							<a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
 						</li>
 						@if (User.Identity.IsAuthenticated) {
 							<li class="nav-item">
-								<a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a>
+								<a class="nav-link" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a>
 							</li>
 							<li class="nav-item">
-								<a class="nav-link text-dark" asp-area="" asp-controller="MyFarms" asp-action="Index">My Farms</a>
+								<a class="nav-link" asp-area="" asp-controller="MyFarms" asp-action="Index">My Farms</a>
 							</li>
 							<li class="nav-item">
-								<a class="nav-link text-dark" asp-area="" asp-controller="Contract" asp-action="Index">Contracts</a>
+								<a class="nav-link" asp-area="" asp-controller="Contract" asp-action="Index">Contracts</a>
 							</li>
 						}
 						@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")) {
 							<li class="nav-item">
-								<a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
+								<a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
 							</li>
 							<li class="nav-item">
 								<form class="form-inline" style="display: inline-block;" action="/admin/searchid">
@@ -82,7 +83,14 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/1.2.0/angular-moment.min.js"></script>
 
-
+	<script src="~/lib/js-cookie/dist/js.cookie.js"></script>
+	<script>
+        if (Cookies.get('Egg9000Theme') == 'bootstrap-dark') {
+            $('body').addClass("bootstrap-dark");
+            $('body').removeClass("bootstrap");
+            $('#darkModeEnable').prop('checked', true);
+        };
+    </script>
 
 	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.css">
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-animate.min.js"></script>
