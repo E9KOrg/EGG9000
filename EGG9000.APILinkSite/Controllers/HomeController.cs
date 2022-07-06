@@ -21,7 +21,9 @@ namespace EGG9000.APILinkSite.Controllers {
             _logger = logger;
             _cache = memoryCache;
         }
-
+        public IActionResult Ping() {
+            return Content("Pong");
+        }
         public IActionResult Index() {
             return NotFound();
         }

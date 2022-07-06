@@ -807,7 +807,7 @@ namespace EGG9000.Bot.Commands {
             var usersAbovePercent = usersWithFarm.Where(u => u.ProjectedPercent >= overridepercent).ToList().OrderBy(x => x.Projected);
 
             foreach(var user in usersToPing) {
-                await command.Channel.SendMessageAsync($"<@{user.DiscordId}>");
+                //await command.Channel.SendMessageAsync($"<@{user.DiscordId}>");
             }
 
             var messagesToDelete = new List<IMessage>();
@@ -819,7 +819,7 @@ namespace EGG9000.Bot.Commands {
             foreach(var oldPing in oldPings) {
                 var user = usersWithFarm.First(x => x.DiscordId == oldPing.MentionedUserIds.First());
                 if(user.ProjectedPercent < overridepercent) {
-                    await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}>");
+                    //await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}>");
                 }
                 messagesToDelete.Add(oldPing);
                 var discordUser = await (command.Channel as ITextChannel).Guild.GetUserAsync(user.DiscordId);
@@ -840,7 +840,14 @@ namespace EGG9000.Bot.Commands {
                 messagesToDelete.Add(commandMessage);
             }
 
-            await thread.DeleteMessagesAsync(messagesToDelete);
+            foreach(var group in 
+                messagesToDelete.Where(x => x.Type != MessageType.RecipientRemove).Select((x, i) => new { Index = i, Value = x })
+                    .GroupBy(x => x.Index / 20)
+                    .Select(x => x.Select(v => v.Value).ToList())) 
+            {
+                await thread.DeleteMessagesAsync(group);
+            }
+            
 
             //await command.DeleteResponseFix();
             if(usersAbovePercent.Count() > 0) {

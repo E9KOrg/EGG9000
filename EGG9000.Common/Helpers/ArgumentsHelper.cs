@@ -44,29 +44,40 @@ namespace EGG9000.Bot {
         }
 
         public static string NumberToString(double number, bool showdecimalplaces, int numberOfDecimalPlaces = -1) {
+            var negative = number < 0;
+            if(negative)
+                number *= -1;
             var nums = bignums.OrderByDescending(x => x.Key).ToList();
+            var outString = "";
             for(var i = 0; i < nums.Count(); i++) {
                 var num = nums[i];
                 if(number >= Math.Pow(10.0, num.Key)) {
                     var numberPortion = number / Math.Pow(10.0, num.Key);
                     if(numberOfDecimalPlaces != -1) {
-                        return numberPortion.ToString($"F{numberOfDecimalPlaces}") + num.Value;
+                        outString = numberPortion.ToString($"F{numberOfDecimalPlaces}") + num.Value;
                     } else if(showdecimalplaces) {
-                            var o = numberPortion.ToString("G3");
-                            return o + num.Value;
+                        var o = numberPortion.ToString("G3");
+                        outString = o + num.Value;
                     } else {
                         if(numberPortion > 10 && numberPortion < 1000) {
-                            if(numberPortion.ToString("N0") == "1,000")
-                                return "1" + nums[i - 1].Value;
-                            return numberPortion.ToString("N0") + num.Value;
+                            if(numberPortion.ToString("N0") == "1,000") {
+                                outString = "1" + nums[i - 1].Value;
+                            } else {
+                                outString = numberPortion.ToString("N0") + num.Value;
+                            }
                         } else {
-                            return numberPortion.ToString("N1") + num.Value;
+                            outString = numberPortion.ToString("N1") + num.Value;
                         }
                     }
+                    break;
                 }
 
             }
-            return number.ToString("0");
+            if(outString == "")
+                outString = number.ToString("0");
+            if(negative)
+                outString = $"-{outString}";
+            return outString;
         }
         public static double GetNumberOfZeros(this double number) {
             var places = 0;

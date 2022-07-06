@@ -217,9 +217,9 @@ namespace EGG9000.Common.Database {
         }
 
         [IgnoreMember]
-        public double SoulEggBonus { get { return (double)(EpicResearch.FirstOrDefault(x => x.Id == "soul_eggs")?.Level ?? 0d) + 10; } }
+        public double SoulEggBonus { get { return EpicResearch is null ? 0 : (double)(EpicResearch.FirstOrDefault(x => x.Id == "soul_eggs")?.Level ?? 0d) + 10; } }
         [IgnoreMember]
-        public double ProphecyEggBonus { get { return ((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
+        public double ProphecyEggBonus { get { return EpicResearch is null ? 0 :((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
         [IgnoreMember]
         public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy); } }
     }

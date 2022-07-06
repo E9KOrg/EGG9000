@@ -49,6 +49,11 @@ namespace EGG9000.Common.Helpers {
                 case "months":
                     returnTime = time.AddDays(timeValue * 30);
                     break;
+                case "Y":
+                case "year":
+                case "years":
+                    returnTime = time.AddYears((int)timeValue);
+                    break;
                 default:
                     throw new ArgumentException($"Invalid timeSpanString {timeSpanString}");
 

@@ -24,6 +24,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
+using static EGG9000.Bot.Services.FauxCommand;
 
 namespace EGG9000.Bot.Services {
 
@@ -72,7 +73,8 @@ namespace EGG9000.Bot.Services {
 
                     }
                     if(!isAdmin) {
-                        if(command.Details.AllowFarmHand && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
+                        //if(command.Details.AllowFarmHand  && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
+                            if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
                             //bypass for farm hands and merits
                         } else {
                             await arg.RespondAsync($"{arg.User.Mention} You don't have permissions to run the command '/{arg.Data.Name}'");
@@ -119,7 +121,7 @@ namespace EGG9000.Bot.Services {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
-                            var fauxCommand = new FauxCommand(arg as SocketSlashCommand);
+                            var fauxCommand = arg is SocketSlashCommand ? new FauxCommand(arg as SocketSlashCommand) : arg as FauxCommand;
                             var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
                             var name = parameterInfo.Name.ToLower();
                             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
@@ -153,6 +155,10 @@ namespace EGG9000.Bot.Services {
                             else
                                 parameters.Add(arg);
                         }
+                        if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
+                            parameters.Add(arg);
+                        }
+
                         if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
                             parameters.Add(new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]));
                         }
@@ -200,7 +206,7 @@ namespace EGG9000.Bot.Services {
         }
 
 
-        private SocketSlashCommandDataOption FindOption(string name, IList<SocketSlashCommandDataOption> options) {
+        private FauxSocketSlashCommandDataOption FindOption(string name, IList<FauxSocketSlashCommandDataOption> options) {
             var foundOption = options.FirstOrDefault(x => x.Name == name);
             if(foundOption != null) {
                 return foundOption;
@@ -281,7 +287,7 @@ namespace EGG9000.Bot.Services {
             }
 
             try {
-                foreach(var guild in _discord.Guilds) { //.Where(x => x.Id == 656455567858073601)
+                foreach(var guild in _discord.Guilds) { 
                     Console.WriteLine($"Creating slash commands for {guild.Name}");
 
                     var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);

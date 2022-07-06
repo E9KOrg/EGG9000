@@ -61,7 +61,13 @@ namespace EGG9000.Bot
                 return String.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
             } 
             if(customNames.Count() == 1) {
-                return  customNames.First().First().User.CustomCoopName + GetRandomWord() + GetRandomNumber();
+                var name = customNames.First().First().User.CustomCoopName;
+
+                if(name.Count(c => Char.IsUpper(c)) > 1 && name.Length > 5) {
+                    return customNames.First().First().User.CustomCoopName + GetRandomNumber();
+                } else {
+                    return customNames.First().First().User.CustomCoopName + GetRandomWord() + GetRandomNumber();
+                }
             }
             return GetRandomWord() + GetRandomWord() + GetRandomNumber();
         }

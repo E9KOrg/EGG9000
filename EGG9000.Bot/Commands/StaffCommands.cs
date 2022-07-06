@@ -32,7 +32,7 @@ using EGG9000.Bot.Services;
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
 
-        [SlashCommand(Description = "Log a Message", AdminOnly =true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Log a Message", AdminOnly = true, AllowFarmHand = true)]
         public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null) {
             if(channel == null) {
                 await command.Channel.SendMessageAsync(message);
@@ -40,6 +40,29 @@ namespace EGG9000.Bot.Commands {
                 await ((SocketTextChannel)channel).SendMessageAsync(message);
             }
             await command.RespondAsync("Sent", ephemeral: true);
+        }
+
+        [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = true, AllowFarmHand = true)]
+        public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
+            DateTimeOffset expireTime;
+            try {
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+            } catch(Exception ex) {
+                await command.RespondAsync($"ERROR: Unable to parse the timespan `{timespan}`, {ex.Message}");
+                return;
+            }
+            await command.DeferAsync();
+
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbuser == null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find user");
+                return;
+            }
+
+            dbuser.CustomCoopName = prefix;
+            dbuser.ExpireCustomCoopName = expireTime;
+
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>" );
         }
     }
 }
