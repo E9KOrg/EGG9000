@@ -35,6 +35,26 @@ namespace EGG9000.Common.Database.Entities {
 
         public DateTimeOffset? OnBreakSince { get; set; }
         public bool SkipNoPE { get; set; }
+        public bool SkipNoArtifacts { get; set; }
+        public bool SkipNoPiggyDouble { get; set; }
+        [NotMapped]
+        public List<Ei.RewardType> PingForRewards {
+            get {
+                if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
+                    return new List<Ei.RewardType> { Ei.RewardType.UnknownReward };
+                }
+                var rewards = new List<Ei.RewardType>();
+                if(SkipNoPE)
+                    rewards.Add(Ei.RewardType.EggsOfProphecy);
+                if(SkipNoArtifacts) {
+                    rewards.Add(Ei.RewardType.Artifact);
+                    rewards.Add(Ei.RewardType.ArtifactCase);
+                }
+                if(SkipNoPiggyDouble)
+                    rewards.Add(Ei.RewardType.PiggyMultiplier);
+                return rewards;
+            }
+        }
 
         public List<Demerit> Demerits { get; set; }
         public List<Merit> Merits { get; set; }

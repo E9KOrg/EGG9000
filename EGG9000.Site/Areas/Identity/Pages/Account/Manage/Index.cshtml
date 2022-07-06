@@ -15,9 +15,21 @@
                 <label asp-for="Username"></label>
                 <input asp-for="Username" class="form-control" />
             </div>
-            <div class="form-check">
-                <input id="darkModeEnable" class="form-check-input" type="checkbox">
-                <label class="form-check-label">Enable Dark Mode (beta)</label>
+            <h5>Only ping for contracts with the following rewards: </h5>
+            <div style="margin-left: 15px;">
+            <div class="form-group">
+                <label asp-for="Input.SkipNoPE" class="form-check-label"></label>
+                <input asp-for="Input.SkipNoPE" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.SkipNoArtifacts" class="form-check-label"></label>
+                <input asp-for="Input.SkipNoArtifacts" />
+            </div>
+            <div class="form-group">
+                <label asp-for="Input.SkipNoPiggyDouble" class="form-check-label"></label>
+                <input asp-for="Input.SkipNoPiggyDouble" />
+            </div>
+            <em>(If you don't select any you'll be pinged for every contract you haven't completed)</em>
             </div>
             <hr />
             @*<div class="form-group">
@@ -42,6 +54,13 @@
             </div>
             <br />
             <button id="update-profile-button" type="submit" class="btn btn-primary">Save</button>
+            <hr />
+            <div class="form-check">
+                <label class="form-check-label">
+                    <input id="darkModeEnable" class="form-check-input" type="checkbox">
+                Enable Dark Mode (beta, setting is per-browser)</label>
+            </div>
+
         </form>
     </div>
 </div>
