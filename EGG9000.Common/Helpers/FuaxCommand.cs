@@ -48,8 +48,9 @@ namespace EGG9000.Bot.Services {
                 await _message.DeleteAsync(options);
         }
 
-        public Task DeferAsync(bool ephemeral = false, RequestOptions options = null) {
-            throw new NotImplementedException();
+        public async Task DeferAsync(bool ephemeral = false, RequestOptions options = null) {
+            if(_socketSlashCommand is not null)
+                await _socketSlashCommand.DeferAsync(ephemeral, options);
         }
 
         public Task RespondWithModalAsync(Modal modal, RequestOptions options = null) {
@@ -87,10 +88,25 @@ namespace EGG9000.Bot.Services {
                 if(_socketSlashCommand is not null)
                     return new FauxApplicationCommandData {
                         Name = _socketSlashCommand.Data.Name,
-                        Options = _socketSlashCommand.Data.Options.ToList()
+                        Options = _socketSlashCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList()
                     };
-                var commandText = new Regex(@"^/(\w+)").Matches(_originalMessage.Content)[1].Value.ToLower();
-                return new FauxApplicationCommandData { Name = commandText };
+                var commandText = new Regex(@"^/(\w+)").Match(_originalMessage.Content).Groups[1].Value.ToLower();
+
+                if(commandText == "register") {
+                    var eggincid = new Regex(@"E[I1]\d+").Match(_originalMessage.Content).Value;
+                    return new FauxApplicationCommandData {
+                        Name = commandText,
+                        Options = new List<FauxSocketSlashCommandDataOption>() {
+                            new FauxSocketSlashCommandDataOption() { 
+                                Name = "eggincid", 
+                                Type = ApplicationCommandOptionType.String, 
+                                Value = eggincid
+                            }
+                        }
+                    };
+                }
+
+                return new FauxApplicationCommandData { Name = commandText, Options = new List<FauxSocketSlashCommandDataOption>() };
             }
         }
 
@@ -103,8 +119,25 @@ namespace EGG9000.Bot.Services {
 
             public string Name { get; set; }
 
-            public IList<SocketSlashCommandDataOption> Options {
+            public IList<FauxSocketSlashCommandDataOption> Options {
                 get; set;
+            }
+        }
+
+        public class FauxSocketSlashCommandDataOption {
+            public string Name { get; set; }
+            public ApplicationCommandOptionType Type { get; set; }
+            public object Value { get; set; }
+            public List<FauxSocketSlashCommandDataOption> Options { get; set; }
+
+            public FauxSocketSlashCommandDataOption() {
+
+            }
+            public FauxSocketSlashCommandDataOption(SocketSlashCommandDataOption option) {
+                Name = option.Name;
+                Type = option.Type;
+                Value = option.Value;
+                Options = option.Options?.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList() ?? new List<FauxSocketSlashCommandDataOption>();
             }
         }
 

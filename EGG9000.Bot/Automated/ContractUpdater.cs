@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Automated {
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
 
 #if DEBUG
-            guildGroups = guildGroups.Where(x => x.Key == 770469712064151593);
+            //guildGroups = guildGroups.Where(x => x.Key == 770469712064151593);
 #endif
 
             foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {

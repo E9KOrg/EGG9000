@@ -256,10 +256,20 @@ namespace EGG9000.Bot.Commands {
         }
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, IUser user) {
             await command.RespondAsync("Processing...");
+            eggincid = eggincid.ToUpper();
             var Response = await apiLink.GetBackup(eggincid);
+            if(Response?.Farms == null || Response.Farms.Count == 0) {
+                var id = new Regex(@"\d+").Match(eggincid).Value;
+                if(eggincid.StartsWith("E1")) {
+                    id = id.Substring(1);
+                }
+                if(id.Length > 7) {
+                    Response = await apiLink.GetBackup(eggincid);
+                }
+            }
 
             if(Response?.Farms == null || Response.Farms.Count == 0) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $" {user.Mention} Error:  Possibly wrong EggInc ID ({eggincid}), make sure include any symbols and letters It should start with the capital letters EI followed by numbers. **You can also send a screenshot and someone will help you register.**");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $" {user.Mention} Error:  Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by numbers. **You can also send a screenshot and someone will help you register.**");
                 return;
             }
             var addedUser = false;
@@ -410,7 +420,7 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Get a users status", AdminOnly = true, ParentCommand = "a")]
-        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketGuildUser user, [SlashParam (Required = false)] bool ShowInChannel = false) {
+        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
             return _userstatus(command, db, _client, apiLink, user, true, ShowInChannel);
         }
 
@@ -583,7 +593,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             if(dbUser.showEB) {
-                await command.RespondAsync($"The bot is already set to update your EB automatically. It will update every {LeaderboardUpdater.UpdateTime.TotalMinutes} mins when the leaderboard does.", ephemeral:true);
+                await command.RespondAsync($"The bot is already set to update your EB automatically. It will update every {LeaderboardUpdater.UpdateTime.TotalMinutes} mins when the leaderboard does.", ephemeral: true);
                 return;
             }
 

@@ -193,7 +193,7 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom name {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
 
         [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
