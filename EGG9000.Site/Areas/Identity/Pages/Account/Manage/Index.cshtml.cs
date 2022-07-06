@@ -47,6 +47,16 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             public int ShipReturnMinutes { get; set; }
             [Display(Name = "How Many Minutes before a ship returns that you'll get a DM if fuel isn't full")]
             public int ShipReturnStillFuelingMinutes { get; set; }
+            [Display(Name = "Append your EB to your Discord Username")]
+            public bool ShowEB { get; set; }
+            [Display(Name = "Take A Break (Stops pings for new contracts until you start prefarming again, you still have to do any contracts you are prefarming)")]
+            public bool OnBreak { get; set; }
+            [Display(Name = "Egg of Prophecy")]
+            public bool SkipNoPE { get; set; }
+            [Display(Name = "Artifacts")]
+            public bool SkipNoArtifacts { get; set; }
+            [Display(Name = "Piggy doubler")]
+            public bool SkipNoPiggyDouble { get; set; }
         }
 
         private async Task LoadAsync(IdentityUser user) {
@@ -57,11 +67,17 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
             Username = userName;
 
+
             Input = new InputModel {
                 //PhoneNumber = phoneNumber,
                 DMOnShipReturn = dbuser.DMOnShipReturn,
                 ShipReturnMinutes = dbuser.ShipReturnMinutes,
-                ShipReturnStillFuelingMinutes = dbuser.ShipReturnStillFuelingMinutes
+                ShipReturnStillFuelingMinutes = dbuser.ShipReturnStillFuelingMinutes,
+                ShowEB = dbuser.showEB,
+                SkipNoPE = dbuser.SkipNoPE,
+                SkipNoPiggyDouble = dbuser.SkipNoPiggyDouble,
+                SkipNoArtifacts = dbuser.SkipNoArtifacts,
+                OnBreak = dbuser.OnBreakSince.HasValue
             };
         }
 
@@ -105,6 +121,13 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             dbuser.DMOnShipReturn = Input.DMOnShipReturn;
             dbuser.ShipReturnMinutes = Input.ShipReturnMinutes;
             dbuser.ShipReturnStillFuelingMinutes = Input.ShipReturnStillFuelingMinutes;
+            dbuser.SkipNoPE = Input.SkipNoPE;
+            dbuser.SkipNoArtifacts = Input.SkipNoArtifacts;
+            dbuser.SkipNoPiggyDouble = Input.SkipNoPiggyDouble;
+            dbuser.showEB = Input.ShowEB;
+            if(Input.OnBreak && !dbuser.OnBreakSince.HasValue) {
+                dbuser.OnBreakSince = DateTimeOffset.Now;
+            }
             await _db.SaveChangesAsync();
 
             await _signInManager.RefreshSignInAsync(user);

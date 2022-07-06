@@ -362,11 +362,17 @@ namespace EGG9000.Bot.Automated {
                 ).ToList();
 
                 if(activesNotParticipanting.Count > 0) {
-                    var PEAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.EggsOfProphecy));
-                    if(!PEAward) {
-                        var usersNotSkip = dbusers.Where(x => !x.SkipNoPE).Select(x => x.Id).ToList();
-                        activesNotParticipanting = activesNotParticipanting.Where(x => usersNotSkip.Contains(x.DatabaseId)).ToList();
-                    }
+                    var goals = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Select(x => x.RewardType);
+                    //var PEAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.EggsOfProphecy));
+                    //var ArtifactAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.Artifact || y.RewardType == RewardType.ArtifactCase));
+                    //var PiggyAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.PiggyMultiplier));
+
+                    var usersNotSkip = dbusers.Where(x => 
+                        x.PingForRewards.Any(y => y == RewardType.UnknownReward || goals.Contains(y))
+                    ).Select(x => x.Id).ToList();
+                    activesNotParticipanting = activesNotParticipanting.Where(x => usersNotSkip.Contains(x.DatabaseId)).ToList();
+
+
                     if(DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime)) {
                         //finalMsg += $"\nThe following people did not do the contract. {string.Join(", ", activesNotParticipanting.Select(x => x.DiscordName))}\n";
                     } else if(validFor.TotalDays >= 2) {
