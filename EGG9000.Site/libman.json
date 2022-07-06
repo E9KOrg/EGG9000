@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "provider": "unpkg",
+      "library": "js-cookie@3.0.1",
+      "destination": "wwwroot/lib/js-cookie/"
+    }
+  ]
+}
