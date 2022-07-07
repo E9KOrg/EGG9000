@@ -34,6 +34,7 @@ using Discord.Net;
 using System.Text.RegularExpressions;
 using Discord.Rest;
 using Microsoft.Extensions.Caching.Memory;
+using EGG9000.Bot;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -61,16 +62,17 @@ namespace EGG9000.Site.Controllers {
             _cache = cache;
         }
 
-        public async Task<IActionResult> TestBlock() {
-            var kendrometest = await _discord.GetUserAsync(687001040268165128);
-            try {
-                var dm = await kendrometest.CreateDMChannelAsync();
-                await dm.SendMessageAsync("Test For Block");
-                return Content("Sent");
-            } catch(HttpException) {
+        public async Task<IActionResult> Test() {
+            var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == 248865520756064257);
+            var backup = new CustomBackup((await ContractsAPI.FirstContact(user.EggIncIds.First().Id)).Backup);
 
-                return Content("Failed");
-            }
+            
+            return Json(new {
+                PiggyBreaks = backup.NumPiggyBreaks,
+                InPiggyBank = backup.PiggyBank,
+                TotalInBank = backup.TotalGEInPiggyBank,
+                Percent = (backup.NumPiggyBreaks + 2.0m) / 10
+            });
         }
 
         public async Task<IActionResult> GetMessage() {

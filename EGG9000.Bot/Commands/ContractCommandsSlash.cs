@@ -851,15 +851,16 @@ namespace EGG9000.Bot.Commands {
 
             //await command.DeleteResponseFix();
             if(usersAbovePercent.Count() > 0) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = @$"Pings added: {usersToPing.Count}\n{string.Join("\n", usersAbovePercent.Select(x => {
+                var usersString = string.Join("\n", usersAbovePercent.Select(x => {
                     string expireMessage = "";
                     if(x.TimeLeft.HasValue && x.TimeLeft.Value < TimeSpan.Zero) {
                         expireMessage = $"Expired {x.TimeLeft.Value.Humanize()} ago";
                     } else if(x.TimeLeft.HasValue && x.TimeLeft.Value < TimeSpan.FromDays(1)) {
                         expireMessage = $"Expires in {x.TimeLeft.Value.Humanize()}";
                     }
-                    return $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}% {expireMessage}"; 
-                }))}");
+                    return $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}% {expireMessage}";
+                }));
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"Did not add the following: \n {usersString}");
             } else {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"Pings added: {usersToPing.Count()}");
             }

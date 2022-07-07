@@ -20,7 +20,8 @@ namespace EGG9000.Bot.Helpers {
                 ranks.Add(new RankInfo {
                     Rank = $"{nextRank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (nextRank.Rank == 1 ? " I" : nextRank.Rank == 2 ? " II" : " III") : ""), 
                     EggsOfProphecy = (ushort)i, 
-                    SoulsEggs = totalSEForNextRank - backup.SoulEggs
+                    SoulsEggs = totalSEForNextRank - backup.SoulEggs,
+                    EarningsBonus = nextRankEB
                 });
             }
 
@@ -30,6 +31,7 @@ namespace EGG9000.Bot.Helpers {
             public string Rank { get; set; }
             public double SoulsEggs { get; set; }
             public ushort EggsOfProphecy { get; set; }
+            public double EarningsBonus { get; set; }
         }
 
         public static PrefixDetails GetPrefix(double number) {

@@ -67,6 +67,19 @@ namespace EGG9000.Common.Database {
         public ulong GoldenEggsSpent { get; set; }
         [Key(20)]
         public ulong PiggyBank { get; set; }
+        [Key(21)]
+        public ulong DroneTakedowns { get; set; }
+        [Key(22)]
+        public ulong DroneTakedownsElite { get; set; }
+        [Key(23)]
+        public ulong NumPiggyBreaks { get; set; }
+
+        [IgnoreMember]
+        public ulong TotalGEInPiggyBank {
+            get {
+                return (ulong)(PiggyBank * ((NumPiggyBreaks + 2.0m) / 10 + 1));
+            }
+        }
 
         [IgnoreMember]
         public int PEFromTrophies {
@@ -119,6 +132,9 @@ namespace EGG9000.Common.Database {
             GoldenEggsEarned = backup.Game.GoldenEggsEarned;
             GoldenEggsSpent = backup.Game.GoldenEggsSpent;
             PiggyBank = backup.Game.PiggyBank;
+            NumPiggyBreaks = backup.Stats.NumPiggyBreaks;
+            DroneTakedowns = backup.Stats.DroneTakedowns;
+            DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms) {
@@ -219,7 +235,7 @@ namespace EGG9000.Common.Database {
         [IgnoreMember]
         public double SoulEggBonus { get { return EpicResearch is null ? 0 : (double)(EpicResearch.FirstOrDefault(x => x.Id == "soul_eggs")?.Level ?? 0d) + 10; } }
         [IgnoreMember]
-        public double ProphecyEggBonus { get { return EpicResearch is null ? 0 :((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
+        public double ProphecyEggBonus { get { return EpicResearch is null ? 0 : ((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
         [IgnoreMember]
         public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy); } }
     }
