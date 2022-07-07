@@ -70,6 +70,12 @@
 
     <script>
       $(function() {
+        // Check darkmode checkbox if cookie is found.
+        if (Cookies.get('Egg9000Theme') == 'bootstrap-dark') {
+            $('#darkModeEnable').prop('checked', true);
+        }
+
+        // Set cookie for dark/light on checkbox changed.
         $('#darkModeEnable').change(function() {
             console.log("Trigged.")
             if ($('#darkModeEnable').is(":checked")) {
