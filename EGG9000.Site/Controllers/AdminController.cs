@@ -997,5 +997,11 @@ namespace EGG9000.Site.Controllers {
             public RestGuildUser User { get; set; }
             public bool NeedsProPermit { get; set; }
         }
+
+        //public async Task<IActionResult> StandardPermit() {
+        //    var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+        //    var users = await _db.DBUsers.Where(x => x.GuildId == guildId && !x.TempDisabled).ToListAsync();
+
+        //}
     }
 }

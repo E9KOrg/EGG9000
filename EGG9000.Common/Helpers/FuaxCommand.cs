@@ -66,7 +66,7 @@ namespace EGG9000.Bot.Services {
         }
 
         public async Task<IUserMessage> GetOriginalResponseAsync(RequestOptions options = null) {
-            return await _socketSlashCommand?.GetOriginalResponseAsync(options) ?? _message;
+            return _socketSlashCommand is null ? _message : await _socketSlashCommand?.GetOriginalResponseAsync(options);
         }
         async Task<IUserMessage> IDiscordInteraction.GetOriginalResponseAsync(RequestOptions options) {
             return await GetOriginalResponseAsync(options);

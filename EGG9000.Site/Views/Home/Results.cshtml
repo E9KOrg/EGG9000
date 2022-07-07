@@ -26,7 +26,7 @@
         .container
 
     {
-        max-width: initial;
+        max-width: initial !important;
     }
 </style>
 @foreach(var accounts in allaccounts.GroupBy(x => x.DiscordUser.Roles.First(x => x.Name.ToLower().EndsWith("farmer")))) {
