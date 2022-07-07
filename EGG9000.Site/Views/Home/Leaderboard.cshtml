@@ -33,8 +33,14 @@ var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
         width: auto !important;
     }
 
+
+
     .Me td {
         background-color: #adffaa !important;
+    }
+
+    .bootstrap-dark .Me td {
+        background-color: #2c462b !important;
     }
 
     .monospace {
@@ -134,50 +140,50 @@ Sort by
         var isMe = account.DiscordUser.Id.ToString() == discordId;
     <tr id="@account.User.DiscordId" class="@(isMe ? "Me" : "")">
 
-                                                <td align="right"> @i </td>
+                                                    <td align="right"> @i </td>
 
-                                                <td style="max-width: 150px; text-overflow: ellipsis; line-break: strict;">
-                                                    @if(isMe) {
-                                                    <div id="@account.Backup.EggIncId" style="position: relative; top: -40px;"></div>
+                                                    <td style="max-width: 150px; text-overflow: ellipsis; line-break: strict;">
+                                                        @if(isMe) {
+                                                        <div id="@account.Backup.EggIncId" style="position: relative; top: -40px;"></div>
             }
-                                                    @if(isAdmin) {
-                                                    <a href="/Home/ViewUser/@(account.User.Id)">
-                                                        @account.DiscordUser.GetCleanName()
-                                                    </a>
+                                                        @if(isAdmin) {
+                                                        <a href="/Home/ViewUser/@(account.User.Id)">
+                                                            @account.DiscordUser.GetCleanName()
+                                                        </a>
             } else if(isMe) {
-                                                    <a href="/MyFarms">
+                                                        <a href="/MyFarms">
+                                                            @account.DiscordUser.GetCleanName()
+                                                        </a>
+            } else {
                                                         @account.DiscordUser.GetCleanName()
-                                                    </a>
-            } else {
-                                                    @account.DiscordUser.GetCleanName()
             }
-                                                </td>
-                                                <td align="right" class="monospace">@{ MonoSpace(account.Backup.SoulEggs.ToEggString(true, numberOfDecimalPlaces: 2)); }  </td>
+                                                    </td>
+                                                    <td align="right" class="monospace">@{ MonoSpace(account.Backup.SoulEggs.ToEggString(true, numberOfDecimalPlaces: 2)); }  </td>
 
-                                                <td align="right"> @account.Backup.EggsOfProphecy </td>
+                                                    <td align="right"> @account.Backup.EggsOfProphecy </td>
 
-                                                <td align="right" class="monospace"> @{MonoSpace(account.Backup.EarningsBonus.ToEggString(true, numberOfDecimalPlaces: 2));} </td>
-                                                <td align="right">
-                                                    @if(account.Backup.PermitLevel == 0) {
-                                                    <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" />
+                                                    <td align="right" class="monospace"> @{MonoSpace(account.Backup.EarningsBonus.ToEggString(true, numberOfDecimalPlaces: 2));} </td>
+                                                    <td align="right">
+                                                        @if(account.Backup.PermitLevel == 0) {
+                                                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" />
             } else {
-                                                    <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" />
+                                                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" />
             }
-                                                </td>
-                                                <td align="right" class="monospace">
-                                                    @{
+                                                    </td>
+                                                    <td align="right" class="monospace">
+                                                        @{
                                                         var totalCoops = ((account.Backup.ArchivedFarms?.Count ?? 0) + (account.Backup.Farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Count()));
                                                         MonoSpace($"{account.TotalContracts}/{totalCoops}{(totalCoops < 100 ? " " : "")}");
-                                                    }
-                                                </td>
-                                                @if(ViewBag.Oldest) {
-                                                <td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>
+                                                        }
+                                                    </td>
+                                                    @if(ViewBag.Oldest) {
+                                                    <td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>
         }
-                                                @if(ViewBag.SortBy == "start") {
-                                                    <td>@(account.Started.ToString("yyyy-MM-dd"))</td>
+                                                    @if(ViewBag.SortBy == "start") {
+                                                        <td>@(account.Started.ToString("yyyy-MM-dd"))</td>
         }
 
-                                                @*<td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>*@
+                                                    @*<td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>*@
     </tr>
     }
 }
