@@ -18,8 +18,8 @@ namespace EGG9000.Bot.Helpers {
                 var totalSEForNextRank = nextRankEB
                     / (backup.SoulEggBonus * Math.Pow(backup.ProphecyEggBonus, backup.EggsOfProphecy + i));
                 ranks.Add(new RankInfo {
-                    Rank = $"{nextRank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (nextRank.Rank == 1 ? " I" : nextRank.Rank == 2 ? " II" : " III") : ""), 
-                    EggsOfProphecy = (ushort)i, 
+                    Rank = $"{nextRank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (nextRank.Rank == 1 ? " I" : nextRank.Rank == 2 ? " II" : " III") : ""),
+                    EggsOfProphecy = (ushort)i,
                     SoulsEggs = totalSEForNextRank - backup.SoulEggs,
                     EarningsBonus = nextRankEB
                 });
@@ -27,6 +27,19 @@ namespace EGG9000.Bot.Helpers {
 
             return ranks;
         }
+
+        /// <summary>
+        /// Method for converting EB to current rank.  Option to include subranks i.e Zettafarmer I, II & III.
+        /// </summary>
+        /// <param name="eb"></param>
+        /// <param name="withSubRank"></param>
+        /// <returns></returns>
+        public static string GetCurrentRankNameFromEb(double eb, bool withSubRank)
+        {
+            var rank = GetPrefix(eb / 100);
+            return $"{rank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (rank.Rank == 1 ? " I" : rank.Rank == 2 ? " II" : " III") : "");
+        }
+
         public class RankInfo {
             public string Rank { get; set; }
             public double SoulsEggs { get; set; }
@@ -74,6 +87,52 @@ namespace EGG9000.Bot.Helpers {
                     new PrefixDetails{ Name="venda", Base = 33},
                 };
             }
+        }
+
+        /// <summary>
+        /// Method for returning list of valid farmer roles from Farmer to Vendafarmer III.
+        /// </summary>
+        /// <returns></returns>
+        public static List<string> GetAllFarmerRoles()
+        {
+            return new List<string> {
+                    "Farmer I",
+                    "Farmer II",
+                    "Farmer III",
+                    "Kilofarmer I",
+                    "Kilofarmer II",
+                    "Kilofarmer III",
+                    "Megafarmer I",
+                    "Megafarmer II",
+                    "Megafarmer III",
+                    "Gigafarmer I",
+                    "Gigafarmer II",
+                    "Gigafarmer III",
+                    "Terafarmer I",
+                    "Terafarmer II",
+                    "Terafarmer III",
+                    "Petafarmer I",
+                    "Petafarmer II",
+                    "Petafarmer III",
+                    "Exafarmer I",
+                    "Exafarmer II",
+                    "Exafarmer III",
+                    "Zettafarmer I",
+                    "Zettafarmer II",
+                    "Zettafarmer III",
+                    "Yottafarmer I",
+                    "Yottafarmer II",
+                    "Yottafarmer III",
+                    "Xennafarmer I",
+                    "Xennafarmer II",
+                    "Xennafarmer III",
+                    "Weccafarmer I",
+                    "Weccafarmer II",
+                    "Weccafarmer III",
+                    "Vendafarmer I",
+                    "Vendafarmer II",
+                    "Vendafarmer III"
+                };
         }
     }
 }

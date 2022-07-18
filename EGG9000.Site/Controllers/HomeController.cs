@@ -482,6 +482,40 @@ namespace EGG9000.Site.Controllers {
             public bool ProPermit { get; set; }
         }
 
+        [Authorize]
+        public async Task<IActionResult> Comparison()
+        {
+            // Get logged in user.
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            // Get list of active users.
+            var dbguild = await _db.Guilds.AsQueryable().ToListAsync();
+            List<System.Guid> activeUsers = new List<System.Guid>();
+            foreach(var g in dbguild)
+            {
+                activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(g.ActiveElites).Select(o => o.DatabaseId));
+                activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(g.ActiveStandards).Select(o => o.DatabaseId));
+            }
+
+            // Get users eb.
+            double myEb = await _db.UserSnapShots.Where(x => x.UserId == user.Id).GroupBy(x => x.UserId).Select(g => g.Max(x => x.EarningsBonus)).FirstOrDefaultAsync();
+
+            // Get list of all eb's.
+            // Tuple, Item 1 = eb, Item 2 = role.
+            List<Tuple<double, string>> allEbData = new List<Tuple<double, string>>();
+            foreach(var eb in await _db.UserSnapShots.Where(x => x.EarningsBonus > 0 && activeUsers.Any(o => o == x.UserId)).GroupBy(x => x.UserId).Select(g => g.Max(x => x.EarningsBonus)).ToArrayAsync())
+            {
+                allEbData.Add(new Tuple<double, string>(eb, SIPrefix.GetCurrentRankNameFromEb(eb, true)));
+            }
+
+            ViewBag.ListOfEb = allEbData;
+            ViewBag.MyEb = new Tuple<double, string>(myEb, SIPrefix.GetCurrentRankNameFromEb(myEb, true));
+            ViewBag.AllRoles = SIPrefix.GetAllFarmerRoles();
+
+            return View();
+        }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ViewUser(Guid id) {
