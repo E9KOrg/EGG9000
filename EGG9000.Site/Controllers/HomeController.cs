@@ -491,13 +491,10 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
             // Get list of active users.
-            var dbguild = await _db.Guilds.AsQueryable().ToListAsync();
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             List<System.Guid> activeUsers = new List<System.Guid>();
-            foreach(var g in dbguild)
-            {
-                activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(g.ActiveElites).Select(o => o.DatabaseId));
-                activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(g.ActiveStandards).Select(o => o.DatabaseId));
-            }
+            activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveElites).Select(o => o.DatabaseId));
+            activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
 
             // Get users eb.
             double myEb = await _db.UserSnapShots.Where(x => x.UserId == user.Id).GroupBy(x => x.UserId).Select(g => g.Max(x => x.EarningsBonus)).FirstOrDefaultAsync();
