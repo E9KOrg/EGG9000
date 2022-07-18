@@ -1,0 +1,76 @@
+﻿@using EGG9000.Common.Helpers
+@model List<DBUser>
+@{
+    var xrefs = (List<UserCoopXref>)ViewBag.Xrefs;
+    var demerits = (List<Demerit>)ViewBag.Demerits;
+    var merits = (List<Merit>)ViewBag.Merits;
+
+    Model.ForEach(x => {
+        x.Backups = x.Backups.Where(b => x.EggIncIds.Any(y => y.Id == b.EggIncId)).ToList();
+    });
+
+    var users = Model.Select(x => {
+        var standardPermitIDs = x.Backups.Where(z => z.PermitLevel == 0).Select(z => z.EggIncId);
+        var userXrefs = xrefs.Where(y => y.UserId == x.Id && standardPermitIDs.Contains(y.EggIncId));
+            return new {
+            x.Id,
+            x.DiscordUsername,
+            x.Backups,
+            x.Registered,
+            Xrefs = userXrefs.Where(y => y.UserId == x.Id),
+            Demerits = demerits.Where(y => y.UserId == x.Id),
+            Merits = merits.Where(y => y.UserId == x.Id),
+            LastRunnningScore = userXrefs.Where(y => y.UserId == x.Id).OrderBy(y => y.CreatedOn).LastOrDefault()?.RunningScore ?? 0,
+            x.DiscordId
+        };
+    });
+}
+<style>
+    .container {
+        max-width: inherit !important;
+    }
+</style>
+
+<h2>Standard Permits</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Accounts</th>
+            <th>Joined</th>
+            <th>Latest Co-op</th>
+            <th>Demerits</th>
+            <th>Merits</th>
+            <th>Running Score</th>
+            <th colspan="99">Last 10 scores</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var user in users.OrderByDescending(x => x.LastRunnningScore)) {
+            <tr>
+                <td><a href="/Home/ViewUser/@(user.Id)">@user.DiscordUsername</a></td>
+                <td>@user.DiscordId</td>
+                <td>@user.Backups.Count(x => x.PermitLevel == 0) of @user.Backups.Count()</td>
+                <td>@user.Registered.Value.ToString("yyyy-M-d")</td>
+                <td>@user.Xrefs.OrderBy(x => x.CreatedOn).LastOrDefault()?.CreatedOn.ToString("yyyy-M-d")</td>
+                <td>@user.Demerits.Count()</td>
+                <td>@user.Merits.Count()</td>
+                <td>@user.Xrefs.OrderBy(x => x.CreatedOn).LastOrDefault()?.RunningScore</td>
+                @foreach(var xref in user.Xrefs.OrderByDescending(x => x.CreatedOn).Take(10)) {
+                    <td>@Math.Log10(xref.Score.Value)</td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+                <style>
+                    td {
+                        white-space: nowrap;
+                    }
+                    .container {
+                        width: auto !important;
+                    }
+                </style>

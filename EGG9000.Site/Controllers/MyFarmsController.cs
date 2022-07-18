@@ -83,6 +83,9 @@ namespace EGG9000.Site.Controllers {
 
         [AllowAnonymous]
         public async Task<IActionResult> ViewUserId(string eggIncId) {
+            if(!eggIncId.StartsWith("EI")) {
+                return Content("EggIncID doesn't start with EI");
+            }
             //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             var rawBackup = await ContractsAPI.FirstContact(eggIncId);
             var backup = new CustomBackup(rawBackup.Backup);
@@ -143,6 +146,13 @@ namespace EGG9000.Site.Controllers {
             return View(new EarningsBoostCalculatorModel {
                 Backups = user.Backups,
             });
+        }
+
+        public async Task<IActionResult> GetCustomBackup([FromQuery]string id) {
+            //EI5862923193024512
+            var rawBackup = await ContractsAPI.FirstContact(id);
+            var customBackup = new CustomBackup(rawBackup.Backup);
+            return Json(customBackup);
         }
 
         public class EarningsBoostCalculatorModel {

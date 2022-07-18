@@ -57,6 +57,7 @@ namespace EGG9000.Bot.Commands {
                 builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncIds.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
+                var currentRank = SIPrefix.GetPrefix(backup.EarningsBonus / 100);
                 if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs) {
                     nextRankText = "";
                     foreach(var subrank in nextRank.Take(5)) {
@@ -67,7 +68,8 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncIds.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
                 }
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
-                builder.AddField(new EmbedFieldBuilder { IsInline = false, Name = "Current Details", Value = @$"<:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
+                builder.AddField(new EmbedFieldBuilder { IsInline = false, Name = "Current Details", Value = @$"{currentRank.RankWithSubRank}
+<:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
 <:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
 EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
 Prestiges {backup.NumPrestiges}
@@ -122,10 +124,10 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
                 await command.RespondAsync("Updating coop...", ephemeral: true);
-                var guild = discord.Guilds.First(x => x.Id == targetCoop.GuildId);
+                var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
-                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild, default);
+                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
+                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild, default, db);
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }

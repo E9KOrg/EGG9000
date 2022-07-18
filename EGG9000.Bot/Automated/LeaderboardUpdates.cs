@@ -56,13 +56,23 @@ namespace EGG9000.Bot.Automated {
             Console.WriteLine("Getting Xrefs for Leaderboard");
             try {
                 var threeWeeksAgo = DateTimeOffset.Now.AddDays(-21);
+#if DEBUG
+                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.Coop.GuildId == 770469712064151593 && x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
+#else
                 var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
+#endif
                 var recentxrefs = xrefs.Where(x => recentContractIDs.Contains(x.ContractID)).ToList();
 
                 Console.WriteLine("Getting Users for Leaderboard");
+#if DEBUG
+                var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == 770469712064151593 && !x.TempDisabled).Select(x => new {
+                    DBUser = x,
+                }).ToListAsync();
+#else
                 var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && !x.TempDisabled).Select(x => new {
                     DBUser = x,
                 }).ToListAsync();
+#endif
                 dbusersWithGuildCoops.ForEach(x => { //
                     x.DBUser.GuildCoops = (ushort)xrefs.Where(xref => xref.UserId == x.DBUser.Id).Select(xref => xref.ContractID).Distinct().Count();
                 });
@@ -86,13 +96,13 @@ namespace EGG9000.Bot.Automated {
                     var userXrefs = xrefs.Where(x => lUser.User.Id == x.UserId).ToList();
                     lUser.TotalContracts = userXrefs.Where(x => (x.EggIncId == null || x.EggIncId == lUser.Backup.EggIncId || x.RefEggIncId == lUser.Backup.EggIncId)).GroupBy(x => x.ContractID).Count();
                     lUser.ActiveContracts = recentxrefs.Count(x => x.UserId == lUser.User.Id);
-                    lUser.RecentContracts = Math.Max(recentContracts.Count(x => x.Created > lUser.User.CreateOn), lUser.ActiveContracts);
+                    lUser.RecentContracts = Math.Max(recentContracts.Count(x => x.Created > lUser.User.Registered), lUser.ActiveContracts);
                     lUser.Last1 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[0].ID);
                     lUser.Last2 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[1].ID);
                     lUser.Last3 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[2].ID);
                     lUser.Last4 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[3].ID);
                     lUser.Last5 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[4].ID);
-                    lUser.Active = userXrefs.Any(x => x.UserId == lUser.User.Id && x.LastThreeWeeks) || lUser.User.CreateOn > DateTimeOffset.Now.AddDays(-14);
+                    lUser.Active = userXrefs.Any(x => x.UserId == lUser.User.Id && x.LastThreeWeeks) || lUser.User.Registered > DateTimeOffset.Now.AddDays(-14);
                 }
 
                 foreach(var dbguild in dbguilds) {
@@ -443,15 +453,15 @@ namespace EGG9000.Bot.Automated {
             });
             var i = 1;
             tableElite.AddRange(users.Select(x => GetRow(x, i++)));
-            var tableString = $"{name}```\n{FixedWidthTable.GetTable(tableElite)}```";
+            var stringToSplit = $"{name}```\n{FixedWidthTable.GetTable(tableElite)}```";
             var msgs = new List<string>();
-            while(tableString.Length > 2000) {
-                var index = tableString.LastIndexOf('\n', 1996);
-                msgs.Add(tableString.Substring(0, index) + "```\n");
-                tableString = "```" + tableString.Substring(index);
+            while(stringToSplit.Length > 2000) {
+                var index = stringToSplit.LastIndexOf('\n', 1996);
+                msgs.Add(stringToSplit.Substring(0, index) + "```\n");
+                stringToSplit = "```" + stringToSplit.Substring(index);
             }
-            if(tableString.Length > 0) {
-                msgs.Add(tableString);
+            if(stringToSplit.Length > 0) {
+                msgs.Add(stringToSplit);
             }
             return msgs;
         }

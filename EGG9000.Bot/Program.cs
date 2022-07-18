@@ -41,7 +41,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<CommandService>();
+        //services.AddHostedService<CommandService>();
         //services.AddHostedService<TextCommandService>();
         //services.AddHostedService<DiscordUserService>();
         //services.AddHostedService<StaffCoopsMessage>();
@@ -49,13 +49,13 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
 
-        services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         services.AddSingleton<CoopStatusUpdater>();
         services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        services.AddSingleton<ContractUpdater>();
-        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+        //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.AddSingleton<ContractUpdater>();
+        //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         //services.AddHostedService<NewContracts>();
         //services.AddHostedService<CreateCoopChannels>();
@@ -69,10 +69,12 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<TestUpdater>();
 
         //services.AddHostedService<ContextCommandService>();
+        Console.WriteLine("RUNNING IN DEBUG");
 #endif
 
 
 #if !DEBUG
+        Console.WriteLine("RUNNING IN RELEASE");
         services.AddBugsnag(configuration => {
             configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
         });

@@ -1,0 +1,4241 @@
+{
+  "Success": true,
+  "Error": null,
+  "Unchanged": false,
+  "CacheAdded": "0001-01-01T00:00:00",
+  "EiUserId": "EI6153360652894208",
+  "HasEiUserId": true,
+  "IdsTransferred": [],
+  "ErrorCode": 0,
+  "HasErrorCode": false,
+  "ErrorMessage": "",
+  "HasErrorMessage": false,
+  "Backup": {
+    "CacheAdded": "0001-01-01T00:00:00",
+    "UserId": "",
+    "HasUserId": false,
+    "EiUserId": "EI6153360652894208",
+    "HasEiUserId": true,
+    "GameServicesId": "G:10484668634",
+    "HasGameServicesId": true,
+    "DeviceId": "CE95C11A-76E5-4863-9607-355E6BCA0DA0",
+    "HasDeviceId": true,
+    "UserName": "Bhu1 :-)",
+    "HasUserName": true,
+    "ApproxTime": 1657568488.0,
+    "HasApproxTime": true,
+    "Version": 37,
+    "HasVersion": true,
+    "ForceOfferBackup": false,
+    "HasForceOfferBackup": true,
+    "ForceBackup": false,
+    "HasForceBackup": true,
+    "Settings": {
+      "Sfx": true,
+      "HasSfx": true,
+      "Music": true,
+      "HasMusic": true,
+      "LowBatteryMode": false,
+      "HasLowBatteryMode": true,
+      "LowPerformanceMode": false,
+      "HasLowPerformanceMode": true,
+      "ForceTouchChickenBtn": false,
+      "HasForceTouchChickenBtn": true,
+      "NotificationsQueried": false,
+      "HasNotificationsQueried": true,
+      "NotificationsOn": true,
+      "HasNotificationsOn": true,
+      "NotifyDailyGift": true,
+      "HasNotifyDailyGift": true,
+      "CoppaQueried": false,
+      "HasCoppaQueried": false,
+      "CoppaRestricted": false,
+      "HasCoppaRestricted": false,
+      "GdprConsentQueried": false,
+      "HasGdprConsentQueried": false,
+      "GdprAgeRestricted": false,
+      "HasGdprAgeRestricted": false,
+      "GdprConsentGiven": false,
+      "HasGdprConsentGiven": false,
+      "AgeQueried": false,
+      "HasAgeQueried": false,
+      "AgeRestricted": false,
+      "HasAgeRestricted": false,
+      "DataCollectionConsentQueried": true,
+      "HasDataCollectionConsentQueried": true,
+      "DataCollectionConsentGiven": true,
+      "HasDataCollectionConsentGiven": true,
+      "LastDayAgeQueried": 0,
+      "HasLastDayAgeQueried": false,
+      "UserAdsEnabled": true,
+      "HasUserAdsEnabled": true,
+      "UserCloudEnabled": true,
+      "HasUserCloudEnabled": true,
+      "UserAnalyticsEnabled": true,
+      "HasUserAnalyticsEnabled": true,
+      "UserPersonalizedAdsEnabled": true,
+      "HasUserPersonalizedAdsEnabled": true,
+      "LowPerformance": false,
+      "HasLowPerformance": true,
+      "AutoStopFueling": false,
+      "HasAutoStopFueling": false,
+      "LastBackupTime": 1657568488.727453,
+      "HasLastBackupTime": true
+    },
+    "Tutorial": {
+      "IntroShown": false,
+      "HasIntroShown": true,
+      "ClickTutorialShown": true,
+      "HasClickTutorialShown": true,
+      "BuyHabShown": false,
+      "HasBuyHabShown": false,
+      "HireVehicleShown": false,
+      "HasHireVehicleShown": false,
+      "QNumShown": false,
+      "HasQNumShown": true,
+      "SNumShown": false,
+      "HasSNumShown": true,
+      "ContractsTabShown": false,
+      "HasContractsTabShown": false,
+      "ContractInfoShown": false,
+      "HasContractInfoShown": false,
+      "JoinCoopShown": false,
+      "HasJoinCoopShown": false,
+      "SwitchFarmShown": false,
+      "HasSwitchFarmShown": false,
+      "TutorialShown": [
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        false,
+        true,
+        true,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    },
+    "Stats": {
+      "EggTotalsOLD": [],
+      "EggTotals": [
+        3238.0694776272785,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "UnlimitedChickensUses": 0,
+      "HasUnlimitedChickensUses": false,
+      "RefillUses": 0,
+      "HasRefillUses": false,
+      "Warp1Uses": 0,
+      "HasWarp1Uses": false,
+      "Warp8Uses": 0,
+      "HasWarp8Uses": false,
+      "BoostsUsed": 1,
+      "HasBoostsUsed": true,
+      "VideoDoublerUses": 0,
+      "HasVideoDoublerUses": true,
+      "DroneTakedowns": 3,
+      "HasDroneTakedowns": true,
+      "DroneTakedownsElite": 0,
+      "HasDroneTakedownsElite": true,
+      "NumPrestiges": 0,
+      "HasNumPrestiges": true,
+      "NumPiggyBreaks": 0,
+      "HasNumPiggyBreaks": true,
+      "IapPacksPurchased": 0,
+      "HasIapPacksPurchased": true,
+      "PiggyFull": false,
+      "HasPiggyFull": true,
+      "PiggyFoundFull": false,
+      "HasPiggyFoundFull": true,
+      "TimePiggyFilledRealtime": 1657568480.822991,
+      "HasTimePiggyFilledRealtime": true,
+      "TimePiggyFullGametime": 0.0,
+      "HasTimePiggyFullGametime": true,
+      "LostPiggyIncrements": 0,
+      "HasLostPiggyIncrements": true
+    },
+    "Game": {
+      "SoulEggsTotal": 0.0,
+      "EarningsBonus": 0.0,
+      "CurrentFarm": 0,
+      "HasCurrentFarm": true,
+      "MaxEggReached": 1,
+      "HasMaxEggReached": true,
+      "GoldenEggsEarned": 208,
+      "HasGoldenEggsEarned": true,
+      "GoldenEggsSpent": 0,
+      "HasGoldenEggsSpent": true,
+      "UncliamedGoldenEggs": 0,
+      "HasUncliamedGoldenEggs": true,
+      "SoulEggs": 0,
+      "HasSoulEggs": false,
+      "UnclaimedSoulEggs": 0,
+      "HasUnclaimedSoulEggs": false,
+      "SoulEggsD": 0.0,
+      "HasSoulEggsD": true,
+      "UnclaimedSoulEggsD": 0.0,
+      "HasUnclaimedSoulEggsD": true,
+      "EggsOfProphecy": 0,
+      "HasEggsOfProphecy": true,
+      "UnclaimedEggsOfProphecy": 0,
+      "HasUnclaimedEggsOfProphecy": true,
+      "PrestigeCashEarned": 0.0,
+      "HasPrestigeCashEarned": true,
+      "PrestigeSoulBoostCash": 0.0,
+      "HasPrestigeSoulBoostCash": true,
+      "LifetimeCashEarned": 0.0,
+      "HasLifetimeCashEarned": true,
+      "PiggyBank": 185,
+      "HasPiggyBank": true,
+      "PiggyFullAlertShown": false,
+      "HasPiggyFullAlertShown": true,
+      "PermitLevel": 0,
+      "HasPermitLevel": true,
+      "EpicResearch": [
+        {
+          "Id": "hold_to_hatch",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "epic_hatchery",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "epic_internal_incubators",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "video_doubler_time",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "epic_clucking",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "epic_multiplier",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "cheaper_contractors",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "bust_unions",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "cheaper_research",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "epic_silo_quality",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "silo_capacity",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "int_hatch_sharing",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "int_hatch_calm",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "accounting_tricks",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "hold_to_research",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "soul_eggs",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "prestige_bonus",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "drone_rewards",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "epic_egg_laying",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "transportation_lobbyist",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "warp_shift",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "prophecy_bonus",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "afx_mission_time",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        },
+        {
+          "Id": "afx_mission_capacity",
+          "HasId": true,
+          "Level": 0,
+          "HasLevel": true
+        }
+      ],
+      "HyperloopStation": false,
+      "HasHyperloopStation": true,
+      "NextDailyGiftTime": 1657583999.920487,
+      "HasNextDailyGiftTime": true,
+      "LastDailyGiftCollectedDay": 8227,
+      "HasLastDailyGiftCollectedDay": true,
+      "NumDailyGiftsCollected": 1,
+      "HasNumDailyGiftsCollected": true,
+      "News": [
+        {
+          "Id": "cosm_rad",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "chick_in_space",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "superfood_disc",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "superfood_mp",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sf_soylent",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sf_egg_rush",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sf_enough_to_eat",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_experiment",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_lead",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "medical_disc",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sf_restaurant",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sf_starbucks",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_approved",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_ccold",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rf_university",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_zika",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_gpd",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rocket_fuel_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_cancer",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "med_papercut",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rf_spacex1",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rf_proof",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rf_nasa",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rf_spacex2",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "super_material_disc",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "rf_spacex3",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sm_kife",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sm_cars",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sm_law_enforcement",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "fusion_accident",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "fusion_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "sm_houses",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "fusion_plant",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "quantum_hints",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "quantum_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "fusion_cars",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "fusion_everywhere",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "quantum_teleport",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "imortality_hints",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "imortality_disc",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "quantum_human_teleport",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "quantum_colonization",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "immortality_ethics",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "quantum_travel",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "tachyon_hints",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "tachyon_disc",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "immortality_pop",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "tachyon_possible",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "graviton_hint",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "graviton_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "tachyon_grows",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "grav_hover_cars",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "grav_hover_board",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "di_hint",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "di_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "grav_warp_speed",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "di_travelers",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "pro_hint",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "pro_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "di_trans_warp",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "pro_telepathy",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "terra_hint",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "terra_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "earth_2",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "antimatter_1",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "antimatter_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "dark_1",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        },
+        {
+          "Id": "dark_discovered",
+          "HasId": true,
+          "Read": false,
+          "HasRead": true
+        }
+      ],
+      "LastNewsTime": 1657568487.674604,
+      "HasLastNewsTime": true,
+      "CurrentMultiplier": 1.0,
+      "HasCurrentMultiplier": true,
+      "CurrentMultiplierExpiration": 0.0,
+      "HasCurrentMultiplierExpiration": true,
+      "Achievements": [
+        {
+          "Id": "farm_5000",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "big_farm",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "huge_farm",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "megafarm",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "insane_farm",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "drone_enemy",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "drone_hunter",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "5_missions",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "25_missions",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "all_missions",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "millionaire",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "billionaire",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "trillionaire",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "quadrillionaire",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "sextillionaire",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "decillionaire",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "quadrillion_second",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "prestige",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "50_soul_eggs",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        },
+        {
+          "Id": "500_research",
+          "HasId": true,
+          "Achieved": false,
+          "HasAchieved": true
+        }
+      ],
+      "MaxFarmSizeReached": [
+        348,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "EggMedalLevel": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "LongIdleNotificationSet": false,
+      "HasLongIdleNotificationSet": true,
+      "LongIdleNotificationThreshold": 0.0,
+      "HasLongIdleNotificationThreshold": true,
+      "LongIdleReward": 0.0,
+      "HasLongIdleReward": true,
+      "Boosts": [],
+      "TotalTimeCheatsDetected": 0,
+      "HasTotalTimeCheatsDetected": true,
+      "ForceEliteContracts": false,
+      "HasForceEliteContracts": true,
+      "NewPlayerEventEndTime": 0.0,
+      "HasNewPlayerEventEndTime": true
+    },
+    "Artifacts": {
+      "Infusing": false,
+      "HasInfusing": false,
+      "ItemBeingInfused": null,
+      "SpecBeingInfused": null,
+      "EggTypeInfusing": 1,
+      "HasEggTypeInfusing": false,
+      "InfusingEggsRequired": 0.0,
+      "HasInfusingEggsRequired": false,
+      "EggsInfused": 0.0,
+      "HasEggsInfused": false,
+      "FlowPercentageArtifacts": 0.1,
+      "HasFlowPercentageArtifacts": true,
+      "FuelingEnabled": true,
+      "HasFuelingEnabled": true,
+      "TankFillingEnabled": false,
+      "HasTankFillingEnabled": true,
+      "TankLevel": 0,
+      "HasTankLevel": true,
+      "TankFuels": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "LastFueledShip": 0,
+      "HasLastFueledShip": true,
+      "InventoryScore": 0.0,
+      "HasInventoryScore": true,
+      "Enabled": false,
+      "HasEnabled": true,
+      "IntroShown": false,
+      "HasIntroShown": true,
+      "InfusingEnabledDEPRECATED": true,
+      "HasInfusingEnabledDEPRECATED": false
+    },
+    "Sim": null,
+    "Farms": [
+      {
+        "EggType": 1,
+        "HasEggType": true,
+        "FarmType": 2,
+        "HasFarmType": true,
+        "ContractId": "",
+        "HasContractId": true,
+        "CashEarned": 40933.468546622025,
+        "HasCashEarned": true,
+        "CashSpent": 40202.76034670438,
+        "HasCashSpent": true,
+        "UnclaimedCash": 0.0,
+        "HasUnclaimedCash": true,
+        "LastStepTime": 1657568488.725241,
+        "HasLastStepTime": true,
+        "NumChickens": 371,
+        "HasNumChickens": true,
+        "NumChickensUnsettled": 0,
+        "HasNumChickensUnsettled": true,
+        "NumChickensRunning": 0,
+        "HasNumChickensRunning": true,
+        "EggsLaid": 3238.0694776272785,
+        "HasEggsLaid": true,
+        "EggsShipped": 3238.0694776272785,
+        "HasEggsShipped": true,
+        "EggsPaidFor": 3238.0694776272785,
+        "HasEggsPaidFor": true,
+        "SilosOwned": 1,
+        "HasSilosOwned": true,
+        "Habs": [
+          0,
+          1,
+          19,
+          19
+        ],
+        "HabPopulation": [
+          251,
+          120,
+          0,
+          0
+        ],
+        "HabPopulationIndound": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabIncubatorPopuplation": [
+          0.6907096942265829,
+          0.6907096942265829,
+          0.0,
+          0.0
+        ],
+        "HatcheryPopulation": 260.0,
+        "HasHatcheryPopulation": true,
+        "Vehicles": [
+          0
+        ],
+        "TrainLength": [
+          1
+        ],
+        "CommonResearch": [
+          {
+            "Id": "comfy_nests",
+            "HasId": true,
+            "Level": 23,
+            "HasLevel": true
+          },
+          {
+            "Id": "nutritional_sup",
+            "HasId": true,
+            "Level": 8,
+            "HasLevel": true
+          },
+          {
+            "Id": "better_incubators",
+            "HasId": true,
+            "Level": 4,
+            "HasLevel": true
+          },
+          {
+            "Id": "excitable_chickens",
+            "HasId": true,
+            "Level": 2,
+            "HasLevel": true
+          },
+          {
+            "Id": "hab_capacity1",
+            "HasId": true,
+            "Level": 5,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery1",
+            "HasId": true,
+            "Level": 2,
+            "HasLevel": true
+          },
+          {
+            "Id": "padded_packaging",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_expansion",
+            "HasId": true,
+            "Level": 1,
+            "HasLevel": true
+          },
+          {
+            "Id": "bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery2",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "leafsprings",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "vehicle_reliablity",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "rooster_booster",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "coordinated_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_rebuild1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "usde_prime",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hen_house_ac",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "superfeed",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "microlux",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "compact_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "lightweight_boxes",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excoskeletons",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery3",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "improved_genetics",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "traffic_management",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "motivational_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "driver_training",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "shell_fortification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "egg_loading_bots",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "super_alloy",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "even_bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery4",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "quantum_storage",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "genetic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery5",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "time_compress",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hover_upgrades",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "graviton_coating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "grav_plating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "chrystal_shells",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "autonomous_vehicles",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_linking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "telepathic_will",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "enlightened_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "dark_containment",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "atomic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "multi_layering",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_diversion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "wormhole_dampening",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "eggsistor",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "micro_coupling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_net_refine",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "matter_reconfig",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_splicing",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hyper_portalling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "relativity_optimization",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          }
+        ],
+        "ActiveBoosts": [
+          {
+            "BoostId": "quantum_bulb",
+            "HasBoostId": true,
+            "TimeRemaining": 514.664057970047,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          }
+        ],
+        "LastCashBoostTime": 0.0,
+        "HasLastCashBoostTime": true,
+        "TimeCheatsDetected": 0,
+        "HasTimeCheatsDetected": true,
+        "TimeCheatDebt": 0.0,
+        "HasTimeCheatDebt": true,
+        "BoostTokensReceived": 0,
+        "HasBoostTokensReceived": true,
+        "BoostTokensSpent": 0,
+        "HasBoostTokensSpent": true,
+        "BoostTokensGiven": 0,
+        "HasBoostTokensGiven": true,
+        "UnclaimedBoostTokens": 0,
+        "HasUnclaimedBoostTokens": true,
+        "GametimeUntilNextBoostToken": 3600.0,
+        "HasGametimeUntilNextBoostToken": true
+      },
+      {
+        "EggType": 1,
+        "HasEggType": true,
+        "FarmType": 1,
+        "HasFarmType": true,
+        "ContractId": "",
+        "HasContractId": true,
+        "CashEarned": 0.0,
+        "HasCashEarned": true,
+        "CashSpent": 0.0,
+        "HasCashSpent": true,
+        "UnclaimedCash": 0.0,
+        "HasUnclaimedCash": true,
+        "LastStepTime": 0.0,
+        "HasLastStepTime": true,
+        "NumChickens": 0,
+        "HasNumChickens": true,
+        "NumChickensUnsettled": 0,
+        "HasNumChickensUnsettled": true,
+        "NumChickensRunning": 0,
+        "HasNumChickensRunning": true,
+        "EggsLaid": 0.0,
+        "HasEggsLaid": true,
+        "EggsShipped": 0.0,
+        "HasEggsShipped": true,
+        "EggsPaidFor": 0.0,
+        "HasEggsPaidFor": true,
+        "SilosOwned": 1,
+        "HasSilosOwned": true,
+        "Habs": [
+          19,
+          19,
+          19,
+          19
+        ],
+        "HabPopulation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabPopulationIndound": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabIncubatorPopuplation": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "HatcheryPopulation": 0.0,
+        "HasHatcheryPopulation": true,
+        "Vehicles": [],
+        "TrainLength": [],
+        "CommonResearch": [
+          {
+            "Id": "comfy_nests",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "nutritional_sup",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "better_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excitable_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hab_capacity1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "padded_packaging",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_expansion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery2",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "leafsprings",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "vehicle_reliablity",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "rooster_booster",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "coordinated_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_rebuild1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "usde_prime",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hen_house_ac",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "superfeed",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "microlux",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "compact_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "lightweight_boxes",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excoskeletons",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery3",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "improved_genetics",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "traffic_management",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "motivational_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "driver_training",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "shell_fortification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "egg_loading_bots",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "super_alloy",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "even_bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery4",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "quantum_storage",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "genetic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery5",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "time_compress",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hover_upgrades",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "graviton_coating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "grav_plating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "chrystal_shells",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "autonomous_vehicles",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_linking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "telepathic_will",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "enlightened_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "dark_containment",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "atomic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "multi_layering",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_diversion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "wormhole_dampening",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "eggsistor",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "micro_coupling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_net_refine",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "matter_reconfig",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_splicing",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hyper_portalling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "relativity_optimization",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          }
+        ],
+        "ActiveBoosts": [
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          }
+        ],
+        "LastCashBoostTime": 0.0,
+        "HasLastCashBoostTime": true,
+        "TimeCheatsDetected": 0,
+        "HasTimeCheatsDetected": true,
+        "TimeCheatDebt": 0.0,
+        "HasTimeCheatDebt": true,
+        "BoostTokensReceived": 0,
+        "HasBoostTokensReceived": true,
+        "BoostTokensSpent": 0,
+        "HasBoostTokensSpent": true,
+        "BoostTokensGiven": 0,
+        "HasBoostTokensGiven": true,
+        "UnclaimedBoostTokens": 0,
+        "HasUnclaimedBoostTokens": true,
+        "GametimeUntilNextBoostToken": 0.0,
+        "HasGametimeUntilNextBoostToken": true
+      },
+      {
+        "EggType": 1,
+        "HasEggType": true,
+        "FarmType": 1,
+        "HasFarmType": true,
+        "ContractId": "",
+        "HasContractId": true,
+        "CashEarned": 0.0,
+        "HasCashEarned": true,
+        "CashSpent": 0.0,
+        "HasCashSpent": true,
+        "UnclaimedCash": 0.0,
+        "HasUnclaimedCash": true,
+        "LastStepTime": 0.0,
+        "HasLastStepTime": true,
+        "NumChickens": 0,
+        "HasNumChickens": true,
+        "NumChickensUnsettled": 0,
+        "HasNumChickensUnsettled": true,
+        "NumChickensRunning": 0,
+        "HasNumChickensRunning": true,
+        "EggsLaid": 0.0,
+        "HasEggsLaid": true,
+        "EggsShipped": 0.0,
+        "HasEggsShipped": true,
+        "EggsPaidFor": 0.0,
+        "HasEggsPaidFor": true,
+        "SilosOwned": 1,
+        "HasSilosOwned": true,
+        "Habs": [
+          19,
+          19,
+          19,
+          19
+        ],
+        "HabPopulation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabPopulationIndound": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabIncubatorPopuplation": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "HatcheryPopulation": 0.0,
+        "HasHatcheryPopulation": true,
+        "Vehicles": [],
+        "TrainLength": [],
+        "CommonResearch": [
+          {
+            "Id": "comfy_nests",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "nutritional_sup",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "better_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excitable_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hab_capacity1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "padded_packaging",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_expansion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery2",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "leafsprings",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "vehicle_reliablity",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "rooster_booster",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "coordinated_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_rebuild1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "usde_prime",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hen_house_ac",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "superfeed",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "microlux",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "compact_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "lightweight_boxes",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excoskeletons",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery3",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "improved_genetics",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "traffic_management",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "motivational_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "driver_training",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "shell_fortification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "egg_loading_bots",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "super_alloy",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "even_bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery4",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "quantum_storage",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "genetic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery5",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "time_compress",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hover_upgrades",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "graviton_coating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "grav_plating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "chrystal_shells",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "autonomous_vehicles",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_linking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "telepathic_will",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "enlightened_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "dark_containment",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "atomic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "multi_layering",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_diversion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "wormhole_dampening",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "eggsistor",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "micro_coupling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_net_refine",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "matter_reconfig",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_splicing",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hyper_portalling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "relativity_optimization",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          }
+        ],
+        "ActiveBoosts": [
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          }
+        ],
+        "LastCashBoostTime": 0.0,
+        "HasLastCashBoostTime": true,
+        "TimeCheatsDetected": 0,
+        "HasTimeCheatsDetected": true,
+        "TimeCheatDebt": 0.0,
+        "HasTimeCheatDebt": true,
+        "BoostTokensReceived": 0,
+        "HasBoostTokensReceived": true,
+        "BoostTokensSpent": 0,
+        "HasBoostTokensSpent": true,
+        "BoostTokensGiven": 0,
+        "HasBoostTokensGiven": true,
+        "UnclaimedBoostTokens": 0,
+        "HasUnclaimedBoostTokens": true,
+        "GametimeUntilNextBoostToken": 0.0,
+        "HasGametimeUntilNextBoostToken": true
+      },
+      {
+        "EggType": 1,
+        "HasEggType": true,
+        "FarmType": 1,
+        "HasFarmType": true,
+        "ContractId": "",
+        "HasContractId": true,
+        "CashEarned": 0.0,
+        "HasCashEarned": true,
+        "CashSpent": 0.0,
+        "HasCashSpent": true,
+        "UnclaimedCash": 0.0,
+        "HasUnclaimedCash": true,
+        "LastStepTime": 0.0,
+        "HasLastStepTime": true,
+        "NumChickens": 0,
+        "HasNumChickens": true,
+        "NumChickensUnsettled": 0,
+        "HasNumChickensUnsettled": true,
+        "NumChickensRunning": 0,
+        "HasNumChickensRunning": true,
+        "EggsLaid": 0.0,
+        "HasEggsLaid": true,
+        "EggsShipped": 0.0,
+        "HasEggsShipped": true,
+        "EggsPaidFor": 0.0,
+        "HasEggsPaidFor": true,
+        "SilosOwned": 1,
+        "HasSilosOwned": true,
+        "Habs": [
+          19,
+          19,
+          19,
+          19
+        ],
+        "HabPopulation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabPopulationIndound": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabIncubatorPopuplation": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "HatcheryPopulation": 0.0,
+        "HasHatcheryPopulation": true,
+        "Vehicles": [],
+        "TrainLength": [],
+        "CommonResearch": [
+          {
+            "Id": "comfy_nests",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "nutritional_sup",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "better_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excitable_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hab_capacity1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "padded_packaging",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_expansion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery2",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "leafsprings",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "vehicle_reliablity",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "rooster_booster",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "coordinated_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_rebuild1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "usde_prime",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hen_house_ac",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "superfeed",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "microlux",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "compact_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "lightweight_boxes",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excoskeletons",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery3",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "improved_genetics",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "traffic_management",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "motivational_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "driver_training",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "shell_fortification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "egg_loading_bots",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "super_alloy",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "even_bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery4",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "quantum_storage",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "genetic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery5",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "time_compress",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hover_upgrades",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "graviton_coating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "grav_plating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "chrystal_shells",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "autonomous_vehicles",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_linking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "telepathic_will",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "enlightened_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "dark_containment",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "atomic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "multi_layering",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_diversion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "wormhole_dampening",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "eggsistor",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "micro_coupling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_net_refine",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "matter_reconfig",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_splicing",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hyper_portalling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "relativity_optimization",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          }
+        ],
+        "ActiveBoosts": [
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          }
+        ],
+        "LastCashBoostTime": 0.0,
+        "HasLastCashBoostTime": true,
+        "TimeCheatsDetected": 0,
+        "HasTimeCheatsDetected": true,
+        "TimeCheatDebt": 0.0,
+        "HasTimeCheatDebt": true,
+        "BoostTokensReceived": 0,
+        "HasBoostTokensReceived": true,
+        "BoostTokensSpent": 0,
+        "HasBoostTokensSpent": true,
+        "BoostTokensGiven": 0,
+        "HasBoostTokensGiven": true,
+        "UnclaimedBoostTokens": 0,
+        "HasUnclaimedBoostTokens": true,
+        "GametimeUntilNextBoostToken": 0.0,
+        "HasGametimeUntilNextBoostToken": true
+      },
+      {
+        "EggType": 1,
+        "HasEggType": true,
+        "FarmType": 1,
+        "HasFarmType": true,
+        "ContractId": "",
+        "HasContractId": true,
+        "CashEarned": 0.0,
+        "HasCashEarned": true,
+        "CashSpent": 0.0,
+        "HasCashSpent": true,
+        "UnclaimedCash": 0.0,
+        "HasUnclaimedCash": true,
+        "LastStepTime": 0.0,
+        "HasLastStepTime": true,
+        "NumChickens": 0,
+        "HasNumChickens": true,
+        "NumChickensUnsettled": 0,
+        "HasNumChickensUnsettled": true,
+        "NumChickensRunning": 0,
+        "HasNumChickensRunning": true,
+        "EggsLaid": 0.0,
+        "HasEggsLaid": true,
+        "EggsShipped": 0.0,
+        "HasEggsShipped": true,
+        "EggsPaidFor": 0.0,
+        "HasEggsPaidFor": true,
+        "SilosOwned": 1,
+        "HasSilosOwned": true,
+        "Habs": [
+          19,
+          19,
+          19,
+          19
+        ],
+        "HabPopulation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabPopulationIndound": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "HabIncubatorPopuplation": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "HatcheryPopulation": 0.0,
+        "HasHatcheryPopulation": true,
+        "Vehicles": [],
+        "TrainLength": [],
+        "CommonResearch": [
+          {
+            "Id": "comfy_nests",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "nutritional_sup",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "better_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excitable_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hab_capacity1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "padded_packaging",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_expansion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery2",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "leafsprings",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "vehicle_reliablity",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "rooster_booster",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "coordinated_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hatchery_rebuild1",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "usde_prime",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hen_house_ac",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "superfeed",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "microlux",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "compact_incubators",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "lightweight_boxes",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "excoskeletons",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery3",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "improved_genetics",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "traffic_management",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "motivational_clucking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "driver_training",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "shell_fortification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "egg_loading_bots",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "super_alloy",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "even_bigger_eggs",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery4",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "quantum_storage",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "genetic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "internal_hatchery5",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "time_compress",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hover_upgrades",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "graviton_coating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "grav_plating",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "chrystal_shells",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "autonomous_vehicles",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_linking",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "telepathic_will",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "enlightened_chickens",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "dark_containment",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "atomic_purification",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "multi_layering",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_diversion",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "wormhole_dampening",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "eggsistor",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "micro_coupling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "neural_net_refine",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "matter_reconfig",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "timeline_splicing",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "hyper_portalling",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          },
+          {
+            "Id": "relativity_optimization",
+            "HasId": true,
+            "Level": 0,
+            "HasLevel": true
+          }
+        ],
+        "ActiveBoosts": [
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          },
+          {
+            "BoostId": "",
+            "HasBoostId": true,
+            "TimeRemaining": 0.0,
+            "HasTimeRemaining": true,
+            "ReferenceValue": 0.0,
+            "HasReferenceValue": true
+          }
+        ],
+        "LastCashBoostTime": 0.0,
+        "HasLastCashBoostTime": true,
+        "TimeCheatsDetected": 0,
+        "HasTimeCheatsDetected": true,
+        "TimeCheatDebt": 0.0,
+        "HasTimeCheatDebt": true,
+        "BoostTokensReceived": 0,
+        "HasBoostTokensReceived": true,
+        "BoostTokensSpent": 0,
+        "HasBoostTokensSpent": true,
+        "BoostTokensGiven": 0,
+        "HasBoostTokensGiven": true,
+        "UnclaimedBoostTokens": 0,
+        "HasUnclaimedBoostTokens": true,
+        "GametimeUntilNextBoostToken": 0.0,
+        "HasGametimeUntilNextBoostToken": true
+      }
+    ],
+    "Mission": {
+      "CurrentMission": "",
+      "HasCurrentMission": false,
+      "ReferenceValue": 0.0,
+      "HasReferenceValue": false,
+      "CurrentMissions": [
+        "growing_family",
+        "upgrade_egg",
+        "earn_500s"
+      ],
+      "Missions": [
+        {
+          "Id": "two_hundred",
+          "HasId": true,
+          "Completed": true,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "early_tech",
+          "HasId": true,
+          "Completed": true,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "earn_500s",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "growing_family",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "upgrade_egg",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "drone_takedown_five",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "grow_farm1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "hatch1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "boost_refill",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "expand2",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "shipping250k",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "grow_farm2",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "1Bs",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_tier1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_expand2",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_tier2",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "avg_capacity_fleet1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "pricy_eggs1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "epic_research",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "hatch_2",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "big_farm1",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "lifetime_10q",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "drone_takedown_30",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "10Ts",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "supply_chain_50m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "big_farm2",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_high_tech",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_expand_250k",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_grow_10k",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "1b_in_bank",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "avg_hab_75k",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "hatch3",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "egg_value_10b",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "lifetime_1Q",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_400",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "drone_takedown_200",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "1qs",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_grow_50k",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_tier5",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "supply_chain_10m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_size_1m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_cap_2m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "lifetime_10s",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "egg_value_1q",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "1s_in_bank",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "fleet_avg_cap_1m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_size_5m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_800",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "drone_takedown_500",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "tachyon_1m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_cap_25m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_size_50m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_all",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "soul_1000",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_size_150m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "graviton_10T",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "research_1000",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "farm_size_300m",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "soul_50k",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        },
+        {
+          "Id": "dilithium 50T",
+          "HasId": true,
+          "Completed": false,
+          "HasCompleted": true,
+          "ReferenceValue": 0.0,
+          "HasReferenceValue": true
+        }
+      ]
+    },
+    "Misc": {
+      "ChickenBtnPrefBig": false,
+      "HasChickenBtnPrefBig": true,
+      "FreeHatcheryRefillGiven": false,
+      "HasFreeHatcheryRefillGiven": true,
+      "LastShareFarmValue": 10000000.0,
+      "HasLastShareFarmValue": true,
+      "LastShareSwarmFarmValue": 10000000.0,
+      "HasLastShareSwarmFarmValue": true,
+      "LastShareSwarmSize": 140.0,
+      "HasLastShareSwarmSize": true,
+      "LastPrestigeAlertSoulEggsDEPRECATED": 45,
+      "HasLastPrestigeAlertSoulEggsDEPRECATED": false,
+      "FriendRank": 0,
+      "HasFriendRank": true,
+      "FriendRankPop": 0,
+      "HasFriendRankPop": true,
+      "GlobalRank": 0,
+      "HasGlobalRank": true,
+      "GlobalRankPop": 0,
+      "HasGlobalRankPop": true,
+      "ChallengesAlert": true,
+      "HasChallengesAlert": true,
+      "TrophyAlert": false,
+      "HasTrophyAlert": true,
+      "ArAlert": false,
+      "HasArAlert": true,
+      "ContractsAlert": false,
+      "HasContractsAlert": true,
+      "CoopAlert": false,
+      "HasCoopAlert": true,
+      "SwitchAlert": false,
+      "HasSwitchAlert": true,
+      "EggOfProphecyAlert": false,
+      "HasEggOfProphecyAlert": true,
+      "BoostTokenAlert": false,
+      "HasBoostTokenAlert": true,
+      "SoulEggAlert": false,
+      "HasSoulEggAlert": true,
+      "BackupReminderAlert": false,
+      "HasBackupReminderAlert": true
+    },
+    "Contracts": {
+      "ContractIdsSeen": [],
+      "Contracts": [],
+      "Archive": [],
+      "CurrentCoopStatuses": []
+    },
+    "ArtifactsDb": {
+      "InventoryItems": [],
+      "ItemSequence": 0,
+      "HasItemSequence": true,
+      "InventorySlots": [],
+      "ActiveArtifacts": [],
+      "ActiveArtifactSets": [
+        {
+          "Slots": [
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            }
+          ]
+        },
+        {
+          "Slots": [
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            }
+          ]
+        },
+        {
+          "Slots": [
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            }
+          ]
+        },
+        {
+          "Slots": [
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            }
+          ]
+        },
+        {
+          "Slots": [
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            },
+            {
+              "Occupied": false,
+              "HasOccupied": true,
+              "ItemId": 0,
+              "HasItemId": true
+            }
+          ]
+        }
+      ],
+      "DiscoveredArtifacts": [],
+      "CraftableArtifacts": [],
+      "CraftingCounts": [],
+      "MissionInfos": [],
+      "MissionArchive": []
+    },
+    "ShellDb": null,
+    "ReadMailIds": [
+      "coop-kicks",
+      "shells-teaser-3"
+    ],
+    "Checksum": 640,
+    "HasChecksum": true,
+    "Signature": "",
+    "HasSignature": false
+  }
+}

@@ -11,6 +11,7 @@ using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using static Ei.ContractCoopStatusResponse.Types;
 
 namespace EGG9000.Common.Helpers {
     public static class Prefarm {
@@ -44,7 +45,12 @@ namespace EGG9000.Common.Helpers {
             public double NumChickens { get; set; }
             public double Rate { get; set; }
             public double Projected { get; set; }
-            public double ProjectedPercent { get; set; }
+            public double ProjectedPercent {
+                get {
+                    return Projected / Goal * 100;
+                }
+            }
+            public double Goal { get; set; }
             public double OfflineEggs { get; set; }
             public ushort Tokens { get; set; }
             public ushort BoostTokensSpent { get; set; }
@@ -61,13 +67,15 @@ namespace EGG9000.Common.Helpers {
             public CustomBackup Backup { get; set; }
 
             public bool PotentialBoxCarry { get; set; }
+            public UserCoopXref Xref { get; set; }
+            public ContributionInfo ContributionInfo { get; set; }
         }
 
         public static List<UserPreFarm> GetPrefarmers(List<LeaderboardUser> backups, GuildContract guildContract) {
             var startedContract = backups
-                .Where(x => x.Backup != null && 
+                .Where(x => x.Backup != null &&
                     (
-                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || (guildContract.Elite ? y.League == 0 : y.League == 1))) || 
+                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || (guildContract.Elite ? y.League == 0 : y.League == 1))) ||
                         (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (f.Completed || (guildContract.Elite ? f.League == 0 : f.League == 1))) ?? false)
                     ) //&& x.Elite == guildContract.Elite
                 )
@@ -83,7 +91,7 @@ namespace EGG9000.Common.Helpers {
             }).Where(x => x != null && x.DiscordId != 0).OrderByDescending(x => x.Projected).ToList();
 
 
-            return users; 
+            return users;
         }
 
         public static string GetTimeRemaining(double targetAmount, double currentRate, double currentAmount) {
@@ -140,7 +148,7 @@ namespace EGG9000.Common.Helpers {
             public CoopDetails(List<UserPreFarm> users, double targetAmount, Coop coop = null, uint MaxSize = 0) {
                 Users = users;
                 if(targetAmount > 0) {
-                        TimeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, users);
+                    TimeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, users);
                     //Projected = users.Sum(x => x.Projected) / targetAmount;
                     PercentProjected = (users.Sum(x => x.Projected) / targetAmount) * 100;
                     if(TimeRemaining < TimeSpan.FromHours(18)) {
@@ -179,8 +187,8 @@ namespace EGG9000.Common.Helpers {
 
             var coopsBreakdown = new CoopsBreakdown {
                 Coops = new List<CoopDetails>(),
-                AlreadyInCoop = new CoopDetails (alreadyInCoop ,0),
-                Completed = new CoopDetails (completed,0)
+                AlreadyInCoop = new CoopDetails(alreadyInCoop, 0),
+                Completed = new CoopDetails(completed, 0)
             };
 
             coopsBreakdown.ExpiredFarms = notInCoop.Where(x => x.TimeLeft == null || x.TimeLeft.Value.TotalSeconds <= 0).ToList();
@@ -207,14 +215,14 @@ namespace EGG9000.Common.Helpers {
 
 
             if(numPerCoop >= 4) {
-                var groupedAccounts = notInCoop.GroupBy(x => x.DatabaseId);
-                foreach(var groupedAccount in groupedAccounts.Where(x => x.Count() > 1)) {
+                var groupedAccounts = notInCoop.GroupBy(x => x.DatabaseId).Where(x => x.Count() > 1);
+                foreach(var groupedAccount in groupedAccounts) {
                     var accounts = groupedAccount.ToList();
-                    int allowedAccounts = (int)numPerCoop / 4 + 1;
+                    var allowedAccounts = numPerCoop / 4 + 1;
                     if(groupedAccount.Count() > allowedAccounts) {
-                        accounts = groupedAccount.OrderBy(x => x.Backup.EarningsBonus).Take(allowedAccounts).ToList();
+                        accounts = groupedAccount.OrderBy(x => x.Backup.EarningsBonus).Take((int)allowedAccounts).ToList();
                     }
-                    if(accounts.Count() * 4 <= numPerCoop) {
+                    if(accounts.Count() > 1) {
                         var smallestCoop = coops.Where(x => x.Count < numPerCoop - accounts.Count()).OrderBy(x => x.Sum(y => y.Projected)).First();
                         foreach(var account in accounts) {
                             smallestCoop.Add(account);
@@ -295,6 +303,12 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
+            foreach(var prefarm in allPrefarms) {
+                var xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.EggIncId == prefarm.EggIncId);
+                if(xref is not null)
+                    prefarm.Xref = xref;
+            }
+
             foreach(var xref in coop.UserCoopsXrefs) {
                 if(!prefarms.Any(x => x.EggIncId == xref.EggIncId || x.EggIncId == xref.RefEggIncId)) {
                     var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == xref.EggIncId || x.EggIncId == xref.RefEggIncId);
@@ -312,18 +326,34 @@ namespace EGG9000.Common.Helpers {
             }
 
 
-            prefarms.ForEach(x => {
-                if(!string.IsNullOrWhiteSpace(x.Coop) && x.Coop.ToLower() != coop.Name.ToLower() && !x.CancelledFarm && !x.Coop.StartsWith("✔️") && !x.Coop.StartsWith("❌") && !x.Coop.Contains("Different")) {
+            prefarms.ForEach(prefarm => {
+                if(!string.IsNullOrWhiteSpace(prefarm.Coop) && prefarm.Coop.ToLower() != coop.Name.ToLower() && !prefarm.CancelledFarm && !prefarm.Coop.StartsWith("✔️") && !prefarm.Coop.StartsWith("❌") && !prefarm.Coop.Contains("Different")) {
                     //x.Coop += " (Different Coop)";
                 } else {
-                    var joined = (coop.LastStatusUpdate?.Contributors.Any(y => y.UserId == x.EggIncId) ?? false || coop.UserCoopsXrefs.Any(y => y.JoinedCoop && y.UserId == x.DatabaseId));
-                    if(coop.Status == CoopStatusEnum.Failed && string.IsNullOrEmpty(x.CoopName)) {
-                        x.Coop = "";
+                    ContributionInfo contribution = null;
+                    if(coop.LastStatusUpdate is not null) {
+                        var contributors = coop.LastStatusUpdate.Contributors;
+                        contribution = contributors.FirstOrDefault(x => x.UserId == prefarm.EggIncId);
+                        if(contribution is null && prefarm.Xref is not null) {
+                            contribution = contributors.FirstOrDefault(x => x.UserName == prefarm?.Xref.FixedUserName);
+                        }
+                    }
+
+                    if(contribution is not null) {
+                        prefarm.Rate = contribution.ContributionRate;
+                        prefarm.Projected = contribution.Projected;
+                    }
+
+                    var joined = contribution is not null;
+
+
+                    if(coop.Status == CoopStatusEnum.Failed && string.IsNullOrEmpty(prefarm.CoopName)) {
+                        prefarm.Coop = "";
                     } else {
-                        x.Coop = joined ? "✔️" : $"❌{x.TimeLeft?.Humanize(precision: 2).ShortenTime().Replace(" ", "").Replace(",", "")}";
-                        if(x.Name.StartsWith("*")) {
-                            x.Coop = "👽";
-                            x.Name = x.Name.Substring(1);
+                        prefarm.Coop = joined ? "✔️" : $"❌{prefarm.TimeLeft?.Humanize(precision: 2).ShortenTime().Replace(" ", "").Replace(",", "")}";
+                        if(prefarm.Name.StartsWith("*")) {
+                            prefarm.Coop = "👽";
+                            prefarm.Name = prefarm.Name.Substring(1);
                         }
                     }
                 }
@@ -410,12 +440,14 @@ namespace EGG9000.Common.Helpers {
             prefarm.NumChickens = farm.NumChickens;
             prefarm.Rate = ratePerSec;
             prefarm.Projected = Math.Max(projected, 0);
+            prefarm.Goal = goal;
             prefarm.Tokens = (ushort)(farm.BoostTokensReceived - farm.BoostTokensGiven - farm.BoostTokensSpent);
             prefarm.BoostTokensSpent = farm.BoostTokensSpent;
             prefarm.TimeSinceUpdate = TimeSinceUpdate;
             prefarm.TimeLeft = timeleft;
             prefarm.OfflineEggs = ratePerSec * TimeSinceUpdate.TotalSeconds;
-            prefarm.ProjectedPercent = (prefarm.Projected / goal) * 100;
+            //prefarm.ProjectedPercent = (prefarm.Projected / goal) * 100;
+
 
             var current = farm.EggsPaidFor;
             var finished = current >= goal;

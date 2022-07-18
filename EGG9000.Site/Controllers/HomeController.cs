@@ -63,16 +63,94 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Test() {
-            var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == 248865520756064257);
-            var backup = new CustomBackup((await ContractsAPI.FirstContact(user.EggIncIds.First().Id)).Backup);
+            //var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == 727727224471420968);
+            //var backup = await ContractsAPI.FirstContact(user.EggIncIds.First().Id);
+            //var coop = await GetCoopStatus("epic-fireworks-2022", "aginggrant4 ", user.EggIncIds.First().Id);
 
-            
-            return Json(new {
-                PiggyBreaks = backup.NumPiggyBreaks,
-                InPiggyBank = backup.PiggyBank,
-                TotalInBank = backup.TotalGEInPiggyBank,
-                Percent = (backup.NumPiggyBreaks + 2.0m) / 10
-            });
+            //return Json(new {
+            //    backup,
+            //    coop
+            //});
+
+            //var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+            //    ClientVersion = ContractsAPI.ClientVersion,
+            //    ContractIdentifier = "preparations-2022",
+            //    CoopIdentifier = "WECPogo96".ToLower(),
+            //    PlayerIdentifier = ContractsAPI.UserId,
+            //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+            //    RequestingUserId = ContractsAPI.UserId
+            //}, ContractsAPI.UserId);
+
+
+
+            var backup = await ContractsAPI.FirstContact("EI5223299518300160");
+            backup.Backup.UserName = "EGG9K";
+            backup.Backup.ApproxTime = DateTimeOffset.Now.ToUnixTimeSeconds();
+            backup.Backup.Game.SoulEggsD *= 1.01;
+            backup.Backup.ForceOfferBackup = true;
+            //using(StreamWriter outputFile = new StreamWriter("EI5612314717323264.bak")) {
+            //    outputFile.WriteLine(JsonConvert.SerializeObject(backup, Formatting.Indented));
+            //}
+            //var backup2 = await ContractsAPI.FirstContact("EI6153360652894208");
+            //using(StreamWriter outputFile2 = new StreamWriter("EI6153360652894208.bak")) {
+            //    outputFile2.WriteLine(JsonConvert.SerializeObject(backup2, Formatting.Indented));
+            //}
+
+            //using(StreamReader inFile = new StreamReader("EI5612314717323264.bak")) {
+            //    var str = inFile.ReadToEnd();
+                //var backup = JsonConvert.DeserializeObject<Ei.EggIncFirstContactResponse>(str);
+
+                var r = await SubmitBackup(backup.Backup);
+                return Json(r);
+            //}
+
+        }
+
+        private static async Task<Ei.SaveBackupResponse> SubmitBackup(Ei.Backup backup) {
+            var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
+            using(var client = new HttpClient(handler)) {
+                client.BaseAddress = new Uri("https://www.auxbrain.com/");
+
+                var ms1 = new MemoryStream();
+                backup.WriteTo(ms1);
+                //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
+                ms1.Position = 0;
+                var messageData = ms1.ToArray();
+                var ms2 = new MemoryStream();
+                new Ei.AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = ContractsAPI.GetHash(messageData) }.WriteTo(ms2);
+
+                ms2.Position = 0;
+                var sr = new StreamReader(ms2);
+                var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
+                var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
+                client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+
+                HttpResponseMessage response;
+
+                //try {
+                response = await client.PostAsync("ei/save_backup_secure ", bac);
+                //} catch(Exception) {
+                //    await Task.Delay(500);
+                //    response = await client.PostAsync("ei/first_contact", bac);
+                //}
+
+                string r;
+                if(response.IsSuccessStatusCode) {
+                    r = await response.Content.ReadAsStringAsync();
+                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+
+
+                    var backupR = ContractsAPI.GetFromAuthenticatedMessage<Ei.SaveBackupResponse>(responseString);
+
+
+                    //backup.Success = true;
+                    return backupR;
+                }
+            }
+            return null;
         }
 
         public async Task<IActionResult> GetMessage() {
@@ -204,8 +282,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [EnableCors("SiteCorsPolicy")]
-        public IActionResult XFinity([FromQuery] string usage)
-        {
+        public IActionResult XFinity([FromQuery] string usage) {
             Console.WriteLine(usage);
 
             var client = new HttpClient();
@@ -214,8 +291,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [EnableCors("SiteCorsPolicy")]
-        public IActionResult XFinityMobile([FromQuery] string usage)
-        {
+        public IActionResult XFinityMobile([FromQuery] string usage) {
             Console.WriteLine(usage);
 
             var client = new HttpClient();
@@ -239,7 +315,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> UpdateDiscord() {
             var Model = await _db.DBUsers.AsQueryable().ToListAsync();
-            foreach(var user in Model.Where(x => x.CreateOn < DateTimeOffset.Now.AddDays(-14))) {
+            foreach(var user in Model.Where(x => x.Registered < DateTimeOffset.Now.AddDays(-14))) {
                 var guilds = _discord.Guilds.Where(x => x.Users.Any(y => y.Id == user.DiscordId));
                 if(user.GuildId == 0 && guilds.Count() == 1) {
                     user.GuildId = guilds.First().Id;
@@ -318,13 +394,13 @@ namespace EGG9000.Site.Controllers {
             var coop = coops.FirstOrDefault(x => x.Name == coopname && x.ContractID == contractid);
             if(coop != null) {
                 var xref = new UserCoopXref {
-                    JoinedCoop = true, AddedToChannel = true, CreatedOn = DateTimeOffset.Now, EggIncId = eggincid, UserId = user.Id, CoopId = coop.Id, WasAssigned = true, 
+                    JoinedCoop = true, AddedToChannel = true, CreatedOn = DateTimeOffset.Now, EggIncId = eggincid, UserId = user.Id, CoopId = coop.Id, WasAssigned = true,
                 };
                 if(laststeptime > 0) {
                     var timeChecked = DateTimeOffset.FromUnixTimeSeconds((long)laststeptime);
                     xref.LastStatusTime = timeChecked;
                 }
-                    xrefs.Add(xref);
+                xrefs.Add(xref);
             }
         }
 
@@ -341,7 +417,7 @@ namespace EGG9000.Site.Controllers {
                 x.Id,
                 x._CustomBackups,
                 x._eggIncIds,
-                x.CreateOn,
+                x.Registered,
                 //                    Contracts = x.UserCoopXrefs.Select(y => y.Coop.ContractID),
                 DBUser = x
             }).ToListAsync();
@@ -387,7 +463,7 @@ namespace EGG9000.Site.Controllers {
 
 
                 if(oldest) {
-                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncIds.Count == 1).OrderBy(x => x.User.CreateOn).ToList());
+                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncIds.Count == 1).OrderBy(x => x.User.Registered).ToList());
                 } else {
                     switch(sortby) {
                         case "se":
@@ -424,7 +500,7 @@ namespace EGG9000.Site.Controllers {
 
 
                 if(oldest) {
-                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncIds.Count == 1).OrderBy(x => x.User.CreateOn).ToList());
+                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncIds.Count == 1).OrderBy(x => x.User.Registered).ToList());
                 } else {
                     switch(sortby) {
                         case "se":
@@ -552,8 +628,9 @@ namespace EGG9000.Site.Controllers {
             var backupsNeeded = model.CoopStatus.Contributors.ToList();
             if(model.DbCoop != null) {
                 var existingBackups = model.DbCoop.UserCoopsXrefs.SelectMany(xref => xref.User.Backups.Where(b => b.EggIncId == xref.EggIncId || b.EggIncId == xref.RefEggIncId)
+                //var existingBackups = model.DbCoop.UserCoopsXrefs.SelectMany(xref => xref.User.Backups.Where(b => b.EggIncId == xref.EggIncId || b.EggIncId == xref.RefEggIncId)
                 .Select(b => new CoopUserInfo {
-                    Contribution = model.CoopStatus.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId || c.UserId == xref.RefEggIncId),
+                    Contribution = model.CoopStatus.Contributors.FirstOrDefault(c => c.UserName == b.UserName),
                     Backup = b,
                     Farm = b.Farms.FirstOrDefault(f => f.CoopId == CoopId),
                     Xref = xref
@@ -613,16 +690,16 @@ namespace EGG9000.Site.Controllers {
         }
 
         private uint GetLeague(List<CoopUserInfo> userInfos, string CoopId, string ContractId) {
-            var farms = userInfos.SelectMany(x => x.Backup.Farms.Where(y => y.CoopId == CoopId));
+            var farms = userInfos.SelectMany(x => x.Backup?.Farms.Where(y => y.CoopId == CoopId) ?? new List<CustomFarm>());
             if(farms.Count() > 0 && farms.Any(f => f.League == 1))
                 return 1;
-            var archivedFarms = userInfos.SelectMany(x => x.Backup.ArchivedFarms.Where(y => y.CoopName == CoopId));
+            var archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.CoopName == CoopId) ?? new List<CustomArchivedFarms>());
             if(archivedFarms.Count() > 0 && farms.Any(f => f.League == 1))
                 return 1;
-            archivedFarms = userInfos.SelectMany(x => x.Backup.ArchivedFarms.Where(y => y.ContractId == ContractId));
+            archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.ContractId == ContractId) ?? new List<CustomArchivedFarms>());
             if(archivedFarms.Count() > 0 && farms.Any(f => f.League == 1))
                 return 1;
-            if(userInfos.All(ui => ui.Backup.Farms.Any(f => f.League == 1 && f.ContractId == ContractId))) {
+            if(userInfos.All(ui => ui.Backup?.Farms.Any(f => f.League == 1 && f.ContractId == ContractId) ?? false)) {
                 return 1;
             }
             return 0;

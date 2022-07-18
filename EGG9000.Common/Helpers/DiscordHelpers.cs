@@ -218,7 +218,7 @@ namespace EGG9000.Bot.Helpers {
 
         public static async Task CheckHatchlingRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             if(Guild.Roles.Any(x => x.Name.ToLower().Contains("hatchling"))) {
-                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-21);
+                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-21);
                 var role = Guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("hatchling"));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
@@ -236,7 +236,7 @@ namespace EGG9000.Bot.Helpers {
         public static async Task CheckFreshEggsRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var role = Guild.Roles.FirstOrDefault(x => x.Id == 761005564615983152);
             if(role != null) {
-                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-7);
+                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-7);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {
@@ -254,7 +254,7 @@ namespace EGG9000.Bot.Helpers {
         public static async Task CheckActive(SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
             var role = Guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
             if(role != null) {
-                var needsRole = user.CreateOn > DateTimeOffset.Now.AddDays(-14)
+                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-14)
                     || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5)
                     || userAccounts.Any(ua => ua.Backup.Farms.Any(f => f.Started > DateTimeOffset.Now.AddDays(-7)));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
@@ -279,9 +279,8 @@ namespace EGG9000.Bot.Helpers {
             var currentRole = DiscordUser.RoleIds.Select(y => Guild.Roles.First(z => z.Id == y)).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefix(EarningsBonus / 100);
-            var newRoleName = (prefix.Name + "farmer").FirstCharToUpper();
-
-            var newRoleNameWithSuffix = newRoleName + (prefix.Rank == 1 ? " I" : prefix.Rank == 2 ? " II" : " III");
+            var newRoleName = prefix.Rank;
+            var newRoleNameWithSuffix = prefix.RankWithSubRank;
 
             var newRole = Guild.Roles.FirstOrDefault(x => x.Name.Equals(newRoleNameWithSuffix, StringComparison.OrdinalIgnoreCase));
             if(newRole is null)

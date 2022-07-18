@@ -40,4 +40,12 @@
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <Content Update="Views\Admin\StandardPermit.cshtml">
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

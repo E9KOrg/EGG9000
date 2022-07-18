@@ -139,6 +139,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public DateTimeOffset CreateOn { get; set; }
+        public DateTimeOffset? Registered { get; set; }
 
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 

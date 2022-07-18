@@ -57,6 +57,11 @@ namespace EGG9000.Bot.Automated {
                 Console.WriteLine($"Users and Coops: {sw.ElapsedMilliseconds}ms");
 
                 var throttler = new SemaphoreSlim(5);
+
+//#if DEBUG
+//                coops = coops.Where(x => x.Name == "BunchCase28").ToList();
+//#endif
+
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
                 foreach(var guildCoops in guildCoopGroups) {
                     if(cancellationToken.IsCancellationRequested) break;
@@ -76,7 +81,7 @@ namespace EGG9000.Bot.Automated {
                         await throttler.WaitAsync();
                         tasks.Add(Task.Run(async () => {
                             try {
-                                await SendUpdate(coop.Id, guild, users, dbguild, cancellationToken);
+                                await SendUpdate(coop.Id, guild, users, dbguild, cancellationToken, _db);
                             } finally {
                                 throttler.Release();
                             }
@@ -102,6 +107,7 @@ namespace EGG9000.Bot.Automated {
             public UserCoopXref Xref { get; set; }
             public SocketGuildUser DiscordUser { get; set; }
             public double SiloTime { get; set; }
+            public CustomFarmStats FarmStats { get; set; }
         }
 
         public static string Truncate(string value, int maxLength) {
@@ -137,16 +143,19 @@ namespace EGG9000.Bot.Automated {
                 var sleeping = (!x.Status.Active ? "💤" : "");
 
                 if(siloTime > -1 && x.Sleeping.HasValue && x.Sleeping.Value.TotalMinutes > siloTime) {
-                    sleeping = $"💤 {x.Sleeping.Value.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()} - Empty Silos { x.Sleeping.Value.Add(TimeSpan.FromMinutes(-siloTime)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime() }";
+                    sleeping = $"💤 {x.Sleeping.Value.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()} - Empty Silos {x.Sleeping.Value.Add(TimeSpan.FromMinutes(-siloTime)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()}";
                 }
 
                 if(x.Status.TimeCheatDetected)
                     sleeping += " ⏱️";
 
+                var eb = Math.Pow(10, x.Status.SoulPower) * 100;
+
                 return new List<FixedWidthCell> {
                     new FixedWidthCell(Truncate((x.User == null ? "👽" : "") + Regex.Replace(x.Status.UserName, @"\p{Cs}", ""), 11)),
                     new FixedWidthCell(Truncate(Regex.Replace(ebrgx.Replace(x.Status.DiscordName ?? "", "") , @"\p{Cs}", ""), 11)),
-                    new FixedWidthCell(x.Backup?.EarningsBonus.ToEggString(), CellAlignment.Right),
+                    //new FixedWidthCell(x.Backup?.EarningsBonus.ToEggString(), CellAlignment.Right),
+                    new FixedWidthCell((Math.Pow(10,x.Status.SoulPower) * 100).ToEggString(), CellAlignment.Right),
                     new FixedWidthCell(x.Status.TotalString, CellAlignment.Right),
                     new FixedWidthCell(x.Status.RateString, CellAlignment.Right),
                     new FixedWidthCell(x.Status.Projected.ToEggString(), CellAlignment.Right),
@@ -348,7 +357,7 @@ namespace EGG9000.Bot.Automated {
             };
         }
 
-        public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild, CancellationToken cancellationToken) {
+        public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild, CancellationToken cancellationToken, ApplicationDbContext db) {
             using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
                 var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid);
                 if(coop == null) {
@@ -389,14 +398,70 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                        var usersWithStatus = status.Participants.Select(x => {
+                        var usersWithStatus = status.Participants.Select(participant => {
+                            var xref = coop.UserCoopsXrefs.FirstOrDefault(xref => xref.EggIncId == participant.GetID());
+                            //First try for FixedUserName
+                            if(xref == null) {
+                                xref = coop.UserCoopsXrefs.FirstOrDefault(x => !string.IsNullOrEmpty(x.FixedUserName) && x.FixedUserName == participant.UserName);
+                            }
+                            if(xref == null) {
+                                //Now try to match a backup username
+                                var coopBackups = users.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y =>
+                                    coop.UserCoopsXrefs.Any(z => z.EggIncId == y.EggIncId || (!z.EggIncId.StartsWith("EI") && z.UserId == x.Id && x.Backups.Count == 1))
+                                ));
+                                var backup = coopBackups.FirstOrDefault(x => x.UserName == participant.UserName);
+                                if(backup is null) {
+                                    //Try to match to EB
+                                    backup = coopBackups.FirstOrDefault(x => Math.Log10(x.EarningsBonus / 100) == participant.SoulPower);
+                                }
+                                if(backup is not null) {
+                                    xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.EggIncId == backup.EggIncId);
+                                    if(xref is null) {
+                                        xref = coop.UserCoopsXrefs.FirstOrDefault(x => users.Where(x => x.Backups is not null).First(x => x.Backups.Any(y => y.EggIncId == backup.EggIncId)).Id == x.UserId);
+                                    }
+                                    if(xref is not null) {
+                                        var isNameUnique = !users.Where(x => x.Backups is not null).Any(x => x.Backups.Any(b => b.UserName == participant.UserName && b.EggIncId != xref.EggIncId));
+                                        if(isNameUnique && !string.IsNullOrEmpty(participant.UserName));
+                                            xref.FixedUserName = participant.UserName;
+                                    }
+                                }
+                            }
+
                             var userWithStatus = new UserWithStatus {
-                                Status = x,
-                                Xref = coop.UserCoopsXrefs.FirstOrDefault(xref => xref.EggIncId == x.GetID())
+                                Status = participant,
+                                Xref = xref
                             };
                             userWithStatus.User = users.FirstOrDefault(x => x.Id == userWithStatus.Xref?.GetID());
                             return userWithStatus;
                         }).ToList();
+
+                        var usersNotJoined = coop.UserCoopsXrefs.Where(x => !usersWithStatus.Any(y => y.Xref?.EggIncId == x.EggIncId)).ToList();  // !status.Contributors.Any(y => y.GetID() == x.EggIncId)).ToList();
+
+                        if(usersWithStatus.Any(y => y.Xref is null) && usersNotJoined.Any()) {
+                            for(var i = 0; i < usersNotJoined.Count; i++) {
+                                var user = usersNotJoined[i];
+                                //var last5Coops = await _db.UserCoopXrefs.Where(x => x.EggIncId == user.EggIncId && x.JoinedCoop).Select(x => new { Xref = x, Coop = x.Coop }).Take(5).ToListAsync();
+                                var lastCoopBeforeChange = await _db.UserCoopXrefs
+                                    .Where(x => x.EggIncId == user.EggIncId && x.JoinedCoop && x.CreatedOn < new DateTimeOffset(2022, 07, 10, 0, 0, 0, TimeSpan.Zero))
+                                    .Select(x => new { Xref = x, Coop = x.Coop })
+                                    .FirstOrDefaultAsync();
+                                if(lastCoopBeforeChange is not null) {
+                                    var username = lastCoopBeforeChange.Coop.LastStatusUpdate.Participants.FirstOrDefault(x => x.UserId == user.EggIncId)?.UserName;
+                                    if(!string.IsNullOrWhiteSpace(username)) {
+                                        var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserName == username);
+                                        if(userStatus != null) {
+                                            userStatus.Xref = user;
+                                            user.FixedUserName = username;
+                                            await _db.SaveChangesAsync();
+                                            usersNotJoined.Remove(user);
+                                            i--;
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+
 
                         foreach(var x in usersWithStatus) {
                             x.Backup = x.User?.Backups?.FirstOrDefault(y => y.EggIncId == x.Xref?.EggIncId);
@@ -404,6 +469,7 @@ namespace EGG9000.Bot.Automated {
                                 var awayTime = Research.GetTotalSiloCapacity(x.Backup);
                                 var farm = x.Backup?.Farms?.FirstOrDefault(x => x.ContractId == status.ContractIdentifier);
                                 if(farm != null) {
+                                    x.FarmStats = farm.WithStats(x.Backup);
                                     x.SiloTime = awayTime * farm.SilosOwned;
                                     var siloTimeHours = x.SiloTime / 60;
                                     if(x.Xref.SiloTimeHours != siloTimeHours) {
@@ -449,9 +515,18 @@ namespace EGG9000.Bot.Automated {
 
                             UserCoopStatus lastStatus = null;
 
+                            if(xref == null) {
+                                var coopBackups = users.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => coop.UserCoopsXrefs.Any(z => z.EggIncId == y.EggIncId)));
+                                var backup = coopBackups.FirstOrDefault(x => x.UserName == userCoopStatus.UserName);
+                                if(backup is not null) {
+                                    xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.EggIncId == backup.EggIncId);
+                                }
+                            }
+
                             if(xref == null || !xref.LastStatusTime.HasValue) {
                                 lastStatus = await _db.UserCoopStatuses.AsQueryable().OrderByDescending(x => x.CreatedOn).FirstOrDefaultAsync(x => x.CoopId == coop.Id && x.EggIncId == userCoopStatus.GetID());
                             }
+
 
                             if(xref == null) {
                                 var dbuser = users.FirstOrDefault(x => x.EggIncIds.Any(y => y.Id == userCoopStatus.GetID()));
@@ -490,10 +565,8 @@ namespace EGG9000.Bot.Automated {
                                                 Console.WriteLine($"Error Adding Permission for {dbuser.DiscordUsername}");
                                             }
                                         }
-                                        if(channeluser != null)
-                                        {
-                                            xref = new UserCoopXref
-                                            {
+                                        if(channeluser != null) {
+                                            xref = new UserCoopXref {
                                                 WaitingOnStarter = false,
                                                 UserId = dbuser.Id,
                                                 EggIncId = userCoopStatus.GetID(),
@@ -508,9 +581,8 @@ namespace EGG9000.Bot.Automated {
                                             };
                                             _db.UserCoopXrefs.Add(xref);
                                             userCoopStatus.DiscordName = channeluser.GetCleanName();
-                                            var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserId == userCoopStatus.UserId);
-                                            if(userStatus != null)
-                                            {
+                                            var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.SoulPower == userCoopStatus.SoulPower && x.Status.UserName == userCoopStatus.UserName);
+                                            if(userStatus != null) {
                                                 userStatus.Xref = xref;
                                                 userStatus.User = dbuser;
                                                 userStatus.DiscordUser = (SocketGuildUser)channeluser;
@@ -566,7 +638,6 @@ namespace EGG9000.Bot.Automated {
 
                         var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline);
 
-                        var usersNotJoined = coop.UserCoopsXrefs.Where(x => !status.Contributors.Any(y => y.GetID() == x.EggIncId)).ToList();
 
 
                         var hasDuplicate = status.Contributors.Count > coop.Contract.MaxUsers;
@@ -754,11 +825,11 @@ namespace EGG9000.Bot.Automated {
                                         if(backup != null) {
                                             var farm = backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
                                             if(farm == null || farm.Cancelled) {
-                                                await coopChannel.SendMessageAsync($"It looks like {discordUser.Mention} has exited their farm. Please use the command `/callstaff` to see what to do next");
+                                                await coopChannel.SendMessageAsync($"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm. Please use the command `/callstaff` to see what to do next");
                                                 xref.OutsideCoop = true;
                                                 await _db.SaveChangesAsync();
                                             } else if(!string.IsNullOrWhiteSpace(farm.CoopId) && !farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
-                                                await coopChannel.SendMessageAsync($"It looks like {discordUser.Mention} has joined another co-op named {farm.CoopId}. Please use the command  `/callstaff` to see what to do next");
+                                                await coopChannel.SendMessageAsync($"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}. Please use the command  `/callstaff` to see what to do next");
                                                 xref.OutsideCoop = true;
                                                 await _db.SaveChangesAsync();
                                             }
@@ -796,8 +867,55 @@ namespace EGG9000.Bot.Automated {
 
                         //lastMessage += $"Contract: {coop.Contract.Name} {coop.Contract.ID}\n";
                         lastMessage += "\n*Make sure and equip any Tachyon Deflectors you have!*\n";
+
+                        var giftInfos = usersWithStatus.Where(x => x.Status.FarmInfo is not null && x.FarmStats is not null).Select(x => new {
+                            Shipping = x.Status.ContributionRate / x.FarmStats.MaxShippingRate * 100,
+                            Habs = x.Status.ProductionParams.FarmPopulation / x.Status.ProductionParams.FarmCapacity * 100,
+                            x.Status.UserName,
+                            x.Status.ProductionParams.FarmPopulation
+                        });
+
+                        var personToGiftTo = giftInfos
+                            .Where(x =>
+                                x.Shipping < 99.5 &&
+                                x.Habs < 99.5
+                            )
+                            .OrderByDescending(x => x.FarmPopulation).Take(10);
+                        if(personToGiftTo.Count() > 0) {
+                            var table = personToGiftTo.Select(x => new List<FixedWidthCell> {
+                                new FixedWidthCell(Truncate(x.UserName, 11)),
+                                new FixedWidthCell($"{x.FarmPopulation.ToEggString()}🐔", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Habs, x.Habs > 97 ? 1 : 0)}%🏠", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Shipping, x.Shipping > 97 ? 1 : 0)}%🚚", CellAlignment.Right),
+                            }).ToList();
+                            lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{String.Join("\n", FixedWidthTable.GetTable(table))}```\n";
+                        } else {
+                            lastMessage += "\nLooks like everyone's shipping and/or habs are full so gifting chickens isn't useful.";
+                        }
+
                         lastMessage += "\nCo-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
                         lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
+
+                        var usersToCheckDeflector = usersWithStatus.Where(x => x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Max(y => y.Status.Projected) / 2);
+                        var usersNeedToAddDeflector = new List<UserWithStatus>();
+                        foreach(var user in usersToCheckDeflector) {
+                            var farm = user.Backup.Farms.First(x => x.ContractId == coop.ContractID);
+                            if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.ArtifactHall.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
+                                usersNeedToAddDeflector.Add(user);
+                            }
+                        }
+
+                        var usersWithHall = usersWithStatus.Where(x => x.Backup is not null && x.Backup.ArtifactHall is not null);
+
+                        if(usersWithHall.Any()) {
+
+                        }
+
+                        if(usersNeedToAddDeflector.Any()) {
+                            lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip: {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser.Mention))}";
+                        }
+
+
                         if(status.Contributors.Count == coop.MaxUsers && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
                             coop.Status = CoopStatusEnum.Full;
                         }
@@ -833,8 +951,7 @@ namespace EGG9000.Bot.Automated {
 
                         var missingCount = coop.UserCoopsXrefs.Count(x => !x.JoinedCoop && users.FirstOrDefault(u => u.Id == x.GetID())?.GuildId == coop.GuildId);
 
-                        if(missingCount == 0)
-                        {
+                        if(missingCount == 0) {
                             await HandlePingOnFull(usersWithStatus, coopChannel);
                         }
 
@@ -921,7 +1038,7 @@ namespace EGG9000.Bot.Automated {
 
 
                         if(lastMessage != "")
-                            msgs.Add(lastMessage);
+                            msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
 
                         times.Add(sw.ElapsedMilliseconds);
@@ -977,7 +1094,7 @@ namespace EGG9000.Bot.Automated {
                                 } else if(status.Projected > goal.TargetAmount) {
                                     title += "☑";
                                 }
-                                embedBuilder.AddField(title, $"Target: { goal.TargetAmount.ToEggString() }\nReward: {EggIncEggs.GetReward(goal)}{time}", true);
+                                embedBuilder.AddField(title, $"Target: {goal.TargetAmount.ToEggString()}\nReward: {EggIncEggs.GetReward(goal)}{time}", true);
                             } else {
                                 embedBuilder.AddField("\u17B5", "\u17B5", true);
                             }
@@ -1146,19 +1263,19 @@ namespace EGG9000.Bot.Automated {
                 if(user == null || xref.NoDemerit)
                     continue;
                 var discordUser = guild.GetUser(user.DiscordId);
-                if(discordUser == null)
-                    continue;
+                //if(discordUser == null)
+                    //continue;
 
                 if(xref.CreatedOn > DateTimeOffset.Now.AddHours(-24)) {
                     _db.Remove(xref);
                     await _db.SaveChangesAsync();
-                    await coopChannel.SendMessageAsync($"{discordUser.GetCleanName()} returned to prefarming pool since they were added less than 24 hours before the co-op finished.");
+                    await coopChannel.SendMessageAsync($"{discordUser?.GetCleanName() ?? user.DiscordUsername} returned to prefarming pool since they were added less than 24 hours before the co-op finished.");
                     continue;
                 }
 
-                if(user.CreateOn > DateTimeOffset.Now.AddDays(-7)) {
+                if(user.Registered > DateTimeOffset.Now.AddDays(-7)) {
                     //_db.Remove(xref);
-                    await coopChannel.SendMessageAsync($"{discordUser.Mention}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
+                    await coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
                     continue;
                 }
 
@@ -1167,17 +1284,13 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public async Task HandlePingOnFull(List<UserWithStatus> usersWithStatus, ITextChannel coopChannel)
-        {
-            foreach(var userStatus in usersWithStatus.Where(x => x.Xref?.PingOnFull ?? false))
-            {
+        public async Task HandlePingOnFull(List<UserWithStatus> usersWithStatus, ITextChannel coopChannel) {
+            foreach(var userStatus in usersWithStatus.Where(x => x.Xref?.PingOnFull ?? false)) {
                 userStatus.Xref.PingOnFull = false;
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try
-                {
+                try {
                     await dmChannel.SendMessageAsync($"All users have joined the co-op {coopChannel.Mention}");
-                } catch(Exception)
-                {
+                } catch(Exception) {
                     Console.WriteLine($"Unable to send DM to {userStatus.DiscordUser.GetCleanName()}");
                 }
 
@@ -1196,7 +1309,7 @@ namespace EGG9000.Bot.Automated {
         public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, ITextChannel coopChannel, Guild dbguild, Coop coop) {
             var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
             if(existingDemerit) {
-                await coopChannel.SendMessageAsync($"Removing {discordUser.Mention} due to: {reason} (They have already received a demerit for this contract)");
+                await coopChannel.SendMessageAsync($"Removing {discordUser?.Mention ?? user.DiscordUsername} due to: {reason} (They have already received a demerit for this contract)");
                 return;
             }
             var demerit = new Demerit {
@@ -1211,7 +1324,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsync();
 
             var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
-            var demeritText = $"Demerit added to {discordUser.Mention} for the reason: {demerit.Reason} ({count} demerits)";
+            var demeritText = $"Demerit added to {discordUser?.Mention ?? user.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
             await coopChannel.SendMessageAsync(demeritText);
             if(count >= 3)
                 demeritText = $"**{demeritText}**";

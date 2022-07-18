@@ -73,6 +73,8 @@ namespace EGG9000.Common.Database {
         public ulong DroneTakedownsElite { get; set; }
         [Key(23)]
         public ulong NumPiggyBreaks { get; set; }
+        [Key(24)] 
+        public List<ArtifactCount> ArtifactHall { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -111,6 +113,13 @@ namespace EGG9000.Common.Database {
             }
         }
 
+        //[IgnoreMember]
+        //public List<ArtifactCount> GetAvailableArtifacts {  get {
+        //        var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact }).ToList();
+        //        Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact == a).Count--));
+        //        return artifacts.Where(x => x.Count > 0).ToList();
+        //    } 
+        //}
 
         public CustomBackup() { }
         public CustomBackup(Ei.Backup backup) {
@@ -146,7 +155,6 @@ namespace EGG9000.Common.Database {
             CheckForCompleteContracts(backup.Contracts.Contracts);
             CheckForCompleteContracts(backup.Contracts.Archive);
 
-            //backup.Artifacts.
 
             SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(m => new SpaceMission {
                 Ship = m.Ship,
@@ -163,6 +171,8 @@ namespace EGG9000.Common.Database {
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 
             EggMedalLevel = backup.Game.EggMedalLevel.ToList();
+
+            ArtifactHall = backup.ArtifactsDb.InventoryItems.Select(x => new ArtifactCount { Count = (int)x.Quantity, Artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec) }).ToList();
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {

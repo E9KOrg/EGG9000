@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Fix a users reference in a co-op when they are showing as an alien", AdminOnly = true)]
-        public static async Task FixReference(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser targetuser, [SlashParam(Description = "Egg Inc Name, will match partial name")] string eggincname) {
+        public static async Task FixReference(FauxCommand command, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ApplicationDbContext db, [SlashParam] SocketGuildUser targetuser, [SlashParam(Description = "Egg Inc Name, will match partial name")] string eggincname) {
             //var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id && !x.JoinedCoop);
             if(xref == null) {
@@ -154,24 +154,32 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var newxref = new UserCoopXref {
-                AddedToChannel = true,
-                CoopId = xref.CoopId,
-                CreatedOn = xref.CreatedOn,
-                JoinedCoop = false,
-                Starter = false,
-                UserId = xref.GetID(),
-                WaitingOnStarter = false,
-                EggIncId = t.GetID(),
-                RefEggIncId = xref.EggIncId,
-                WasAssigned = true
-            };
+            //var newxref = new UserCoopXref {
+            //    AddedToChannel = true,
+            //    CoopId = xref.CoopId,
+            //    CreatedOn = xref.CreatedOn,
+            //    JoinedCoop = false,
+            //    Starter = false,
+            //    UserId = xref.GetID(),
+            //    WaitingOnStarter = false,
+            //    EggIncId = t.GetID(),
+            //    RefEggIncId = xref.EggIncId,
+            //    WasAssigned = true
+            //};
 
-            db.Remove(xref);
-            db.Add(newxref);
+            //db.Remove(xref);
+            //db.Add(newxref);
 
-            await command.RespondAsync($"Fixed {targetuser.Mention} reference");
+            xref.FixedUserName = t.UserName;
             await db.SaveChangesAsync();
+
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
+            var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
+            var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
+            await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild, default, db);
+
+            await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
         }
 
         [SlashCommand(Description = "Move a user to a co-op. Tag channel or type co-op name", AdminOnly = true)]
@@ -624,7 +632,7 @@ namespace EGG9000.Bot.Commands {
                 if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
                     if(dbuser.EggIncIds.Count > 1) {
                         var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
-                        var prefarms = prefarmers.Where(x => x.Elite == guildContract.Elite &&  x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
+                        var prefarms = prefarmers.Where(x => x.Elite == guildContract.Elite && x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
                         if(prefarms.Count == 0) {
                             await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
                             return;
@@ -641,7 +649,7 @@ namespace EGG9000.Bot.Commands {
                 var newxref = await CreateCoops.MoveUser(targetCoop, dbuser.Id, EggIncId, eggIncName, targetUser, dbuser, (SocketTextChannel)targetChannel, (SocketTextChannel)command.Channel);
 
                 if(newxref == null) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to add permission for {targetUser.Mention}{(targetCoop.GuildId != targetCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{command.User.Mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**.");
                     return;
                 }
 
@@ -654,7 +662,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Move prefarmers to co-ops ending >24h", AdminOnly = true)]
-        public static async Task MovePrefarmers(FauxCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] bool addover5percent = false) {
+        public static async Task MovePrefarmers(FauxCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] int overrideperecent = 5) {
+            if(overrideperecent == 0)
+                overrideperecent = 5;
             await command.RespondAsync("Please wait moving prefarmers...");
             using(await joinLock.LockAsync()) {
 
@@ -701,17 +711,17 @@ namespace EGG9000.Bot.Commands {
                 var coopsAbove100Percent = currentCoops.Where(x => x.PercentProjected > 100);
 
 
-                if(!addover5percent) {
-                    if(allPrefarms.Any(p => (p.Projected / targetAmount) * 100 >= 5)) {
-                        await DiscordMessageSplitter.SendMessageSplitAsync(
-                            command.Channel,
-                            $"The following users are above 5% and won't be moved: {string.Join(", ", allPrefarms.Where(p => (p.Projected / targetAmount) * 100 >= 5).Select(p => p.Name))}",
-                            ", "
-                            );
-                    }
+                var prefarmsAbovePercent = allPrefarms.Where(p => p.ProjectedPercent >= overrideperecent);
 
-                    allPrefarms = allPrefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
+                if(prefarmsAbovePercent.Any()) {
+                    await DiscordMessageSplitter.SendMessageSplitAsync(
+                        command.Channel,
+                        $"The following users are above {overrideperecent}% and won't be moved: \n{string.Join("\n", prefarmsAbovePercent.OrderBy(x => x.Projected).Select(p => $"{p.Name} {Math.Round(p.ProjectedPercent)}%"))}",
+                        "\n"
+                        );
                 }
+
+                allPrefarms = allPrefarms.Where(p => p.ProjectedPercent < overrideperecent).ToList();
 
                 foreach(var user in allPrefarms) {
                     var dbuser = dbusers.First(x => x.DiscordId == user.DiscordId);
@@ -840,14 +850,14 @@ namespace EGG9000.Bot.Commands {
                 messagesToDelete.Add(commandMessage);
             }
 
-            foreach(var group in 
+            messagesToDelete = messagesToDelete.Distinct().ToList();
+            foreach(var group in
                 messagesToDelete.Where(x => x.Type != MessageType.RecipientRemove).Select((x, i) => new { Index = i, Value = x })
                     .GroupBy(x => x.Index / 20)
-                    .Select(x => x.Select(v => v.Value).ToList())) 
-            {
+                    .Select(x => x.Select(v => v.Value).ToList())) {
                 await thread.DeleteMessagesAsync(group);
             }
-            
+
 
             //await command.DeleteResponseFix();
             if(usersAbovePercent.Count() > 0) {
@@ -909,9 +919,9 @@ namespace EGG9000.Bot.Commands {
 
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == DiscordUserID);
 
-            var egginids = user.EggIncIds.Select(x => x.Id).ToList();
+            //var egginids = user.EggIncIds.Select(x => x.Id).ToList();
 
-            var participant = coopStatus.Participants.FirstOrDefault(x => egginids.Contains(x.UserId));
+            var participant = coopStatus.Participants.FirstOrDefault(x => user.Backups.Any(y => y.UserName == x.UserName));
             if(participant is null) {
                 await command.ModifyOriginalResponseAsync(m => m.Content = $"Unable to find an assigned user in co-op {wrongcoopcode}. {(coopStatus.Participants.Count > 0 ? $"Users found: \n{string.Join("\n", coopStatus.Participants.Select(x => x.UserName))}" : "")}");
                 return;

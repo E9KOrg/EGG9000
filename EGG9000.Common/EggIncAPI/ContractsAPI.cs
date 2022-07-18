@@ -18,7 +18,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
     public class ContractsAPI {
-        static string BaseAddressNew = "https://www.auxbrain.com/";
+        public static string BaseAddressNew = "https://www.auxbrain.com/";
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public static string UserId = "EI5223299518300160";
@@ -248,7 +248,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
-                    new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower(), Rinfo = GetInfo(ContractsAPI.UserId) }.WriteTo(ms1);
+                    new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower(), Rinfo = GetInfo(ContractsAPI.UserId), UserId = ContractsAPI.UserId, ClientVersion = ContractsAPI.ClientVersion }.WriteTo(ms1);
                     //Serializer.Serialize<Ei.ContractCoopStatusRequest>(ms1, new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower() });
                     ms1.Position = 0;
                     var sr = new StreamReader(ms1);
