@@ -45,8 +45,14 @@
 							<a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
 						</li>
 						@if (User.Identity.IsAuthenticated) {
-							<li class="nav-item">
-								<a class="nav-link" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a>
+							<li class="nav-item dropdown">
+								<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+								  Leaderboard
+								</a>
+								<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+									<a class="dropdown-item nav-link" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a>
+									<a class="dropdown-item nav-link" asp-area="" asp-controller="Home" asp-action="Comparison">Server EB Stats</a>
+								</div>
 							</li>
 							<li class="nav-item">
 								<a class="nav-link" asp-area="" asp-controller="MyFarms" asp-action="Index">My Farms</a>
