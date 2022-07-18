@@ -313,9 +313,9 @@ namespace EGG9000.Site.Controllers {
                 x.Id,
                 x._CustomBackups,
                 x._eggIncIds,
-                x.CreateOn
+                x.Registered
             }).ToListAsync();
-            var dbusers = rawusers.Select(x => new DBUser { DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds, CreateOn = x.CreateOn });
+            var dbusers = rawusers.Select(x => new DBUser { DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds, Registered = x.Registered });
 
             //await _db.Users.AsQueryable().Where(x => (x.GuildId == user.GuildId || all) && x._LastBackup != null).ToListAsync()
             return View(dbusers.Where(x => x.Backups != null).ToList());
@@ -549,7 +549,7 @@ namespace EGG9000.Site.Controllers {
                 DiscordChannelId = x.Coop.DiscordChannelId,
                 GuildId = guildId,
                 Demerits = x.User.Demerits.Where(y => y.When > demeritExpires).ToList(),
-                FreshEgg = x.User.CreateOn > DateTimeOffset.Now.AddDays(-7)
+                FreshEgg = x.User.Registered > DateTimeOffset.Now.AddDays(-7)
             }).Where(x => x.CurrentSleep > 17 || x.TotalCoopSleep >= 24).ToListAsync();
 
 
@@ -998,10 +998,17 @@ namespace EGG9000.Site.Controllers {
             public bool NeedsProPermit { get; set; }
         }
 
-        //public async Task<IActionResult> StandardPermit() {
-        //    var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-        //    var users = await _db.DBUsers.Where(x => x.GuildId == guildId && !x.TempDisabled).ToListAsync();
+        public async Task<IActionResult> StandardPermit() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var users = await _db.DBUsers.Where(x => x.GuildId == guildId && !x.TempDisabled).ToListAsync();
+            users = users.Where(x => x.Backups?.Any(y => y.PermitLevel == 0) ?? false).ToList();
 
-        //}
+            var userids = users.Select(x => x.Id).ToArray();
+            ViewBag.Demerits = await _db.Demerit.Where(x => userids.Contains(x.UserId)).ToListAsync();
+            ViewBag.Merits = await _db.Merit.Where(x => userids.Contains(x.UserId)).ToListAsync();
+            ViewBag.Xrefs = await _db.UserCoopXrefs.Where(x => x.Score.HasValue && userids.Contains(x.UserId)).ToListAsync();
+
+            return View(users);
+        }
     }
 }

@@ -3,7 +3,7 @@
     Discord.WebSocket.DiscordSocketClient discord = ViewBag.Discord;
 }
 
-@foreach (var user in Model.Where( x=> x.CreateOn < DateTimeOffset.Now.AddDays(-14))) {
+@foreach (var user in Model.Where( x=> x.Registered < DateTimeOffset.Now.AddDays(-14))) {
     var guilds = discord.Guilds.Where(x => x.Users.Any(y => y.Id == user.DiscordId));
     if (user.GuildId == 0 && guilds.Count() > 0) {
         <div>

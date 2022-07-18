@@ -177,7 +177,7 @@ Sort by
                                                         }
                                                     </td>
                                                     @if(ViewBag.Oldest) {
-                                                    <td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>
+                                                    <td>@account.User.Registered.Value.ToString("yyyy-MM-dd")</td>
         }
                                                     @if(ViewBag.SortBy == "start") {
                                                         <td>@(account.Started.ToString("yyyy-MM-dd"))</td>

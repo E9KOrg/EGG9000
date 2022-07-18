@@ -70,7 +70,7 @@
                         }
                 </td>
                 @*<td>@guilds.FirstOrDefault(x => x.Id == farmer.User.GuildId)?.Name</td>*@
-                <td>@((DateTimeOffset.Now - farmer.User.CreateOn).Humanize())</td>
+                <td>@((DateTimeOffset.Now - farmer.User.Registered.Value).Humanize())</td>
                 <td>@(GetScore(farmer.Farm.EggsPaidFor))</td>
             </tr>
             }

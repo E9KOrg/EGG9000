@@ -12,13 +12,13 @@ namespace EGG9000.Bot.Helpers {
             var ranks = new List<RankInfo>();
 
             var nextRank = GetPrefix((withSubRank ? 10 : 1000) * backup.EarningsBonus / 100);
-            var nextRankEB = Math.Pow(10, nextRank.Base + (withSubRank ? nextRank.Rank - 1 : 0)) * 100;
+            var nextRankEB = Math.Pow(10, nextRank.Base + (withSubRank ? nextRank.SubRank - 1 : 0)) * 100;
 
             for(int i = 0; i <= 10; i++) {
                 var totalSEForNextRank = nextRankEB
                     / (backup.SoulEggBonus * Math.Pow(backup.ProphecyEggBonus, backup.EggsOfProphecy + i));
                 ranks.Add(new RankInfo {
-                    Rank = $"{nextRank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (nextRank.Rank == 1 ? " I" : nextRank.Rank == 2 ? " II" : " III") : ""), 
+                    Rank = withSubRank ? nextRank.RankWithSubRank : nextRank.Rank, 
                     EggsOfProphecy = (ushort)i, 
                     SoulsEggs = totalSEForNextRank - backup.SoulEggs,
                     EarningsBonus = nextRankEB
@@ -32,6 +32,7 @@ namespace EGG9000.Bot.Helpers {
             public double SoulsEggs { get; set; }
             public ushort EggsOfProphecy { get; set; }
             public double EarningsBonus { get; set; }
+
         }
 
         public static PrefixDetails GetPrefix(double number) {
@@ -48,14 +49,24 @@ namespace EGG9000.Bot.Helpers {
             var prefix = Prefixes.FirstOrDefault(x => exponent < x.Base + 3);
             if(prefix == null)
                 prefix = Prefixes.Last();
-            prefix.Rank = exponent - prefix.Base + 1;
+            prefix.SubRank = exponent - prefix.Base + 1;
             return prefix;
         }
 
         public class PrefixDetails {
             public string Name { get; set; }
             public int Base { get; set; }
-            public int Rank { get; set; }
+            public int SubRank { get; set; }
+            public string RankWithSubRank {
+                get {
+                    return Name.FirstCharToUpper() + "farmer " + (SubRank == 1 ? "I" : SubRank == 2 ? "II" : "III");
+                }
+            }
+            public string Rank {
+                get {
+                    return Name.FirstCharToUpper() + "farmer";
+                }
+            }
         }
 
         public static List<PrefixDetails> Prefixes {

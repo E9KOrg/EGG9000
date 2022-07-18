@@ -25,7 +25,7 @@ namespace EGG9000.Common.Helpers {
                             Coop = coop.Name,
                             EggsShipped = Math.Min(contribution.ContributionAmount, maxAmount),
                             TokensSpent = contribution.BoostTokensSpent,
-                            Joined = DateTimeOffset.Now - (xref.User?.CreateOn ?? DateTimeOffset.Now),
+                            Joined = DateTimeOffset.Now - (xref.User?.Registered ?? DateTimeOffset.Now),
                             Elite = coop.League == 0,
                             xref = xref,
                         });

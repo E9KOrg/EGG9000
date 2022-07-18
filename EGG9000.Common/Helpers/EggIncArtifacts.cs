@@ -17,13 +17,13 @@ namespace EGG9000.Common.Helpers {
             farm.Artifacts.ToList().ForEach(x => {
                 if(x.Stones == null)
                     x.Stones = new List<EggIncArtifactInstance>();
-                double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue)  ? 0 : 1;
+                double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue) ? 0 : 1;
                 farmMultiple += x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Sum(s => s.Value);
                 debug.Add("EStones: " + string.Join(" ", x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Select(s => s.Value)));
                 if(x.Boost == boostType) {
                     rate *= GetEnlightenmentRate(x, farmMultiple);
                     debug.Add($"{x.Artifact} {GetEnlightenmentRate(x, farmMultiple)}  {farmMultiple}");
-                } 
+                }
                 foreach(var stone in x.Stones.Where(x => x.Boost == boostType)) {
                     rate *= GetEnlightenmentRate(stone, farmMultiple); //stone.Value * (x.Boost == EggIncBoostTypeEnum.EnlightenmentEggValue ? 1 : farmMutiple);
                     debug.Add($"{stone.Artifact} {GetEnlightenmentRate(stone, farmMultiple)} {farmMultiple}");
@@ -88,7 +88,7 @@ namespace EGG9000.Common.Helpers {
             var response = new EggIncArtifactInstance {
                 Additive = artifact.Additive,
                 Artifact = artifact.Artifact,
-                Boost = artifact.Boost, 
+                Boost = artifact.Boost,
                 //Spec = artifactSpec
             };
             switch((int)artifactSpec.Level) {
@@ -325,12 +325,42 @@ namespace EGG9000.Common.Helpers {
                     L2R0 = 100,             L2R2 = 150,
                     L3R0 = 200, L3R1 = 300,             L3R3 = 500
                 },
+                new EggIncArtifact { Name = 13, Artifact = "Extraterrestrial Aluminum" },
+                new EggIncArtifact { Name = 14, Artifact = "Ancient Tungsten" },
+                new EggIncArtifact { Name = 15, Artifact = "Space Rocks" },
+                new EggIncArtifact { Name = 16, Artifact = "Alien Wood" },
+                new EggIncArtifact { Name = 17, Artifact = "Gold Meteorite" },
+                new EggIncArtifact { Name = 18, Artifact = "Tau Ceti Geode" },
+                new EggIncArtifact { Name = 19, Artifact = "Centaurian Steel" },
+                new EggIncArtifact { Name = 20, Artifact = "Eridant Feather" },
+                new EggIncArtifact { Name = 35, Artifact = "Drone Parts" },
+                new EggIncArtifact { Name = 41, Artifact = "Celestial Bronze" },
+                new EggIncArtifact { Name = 42, Artifact = "Lalande Hide" },
+                new EggIncArtifact { Name = 43, Artifact = "Solar Titanium" },
+                new EggIncArtifact { Name = 2, Artifact = "Tachyon Stone Fragment" },
+                new EggIncArtifact { Name = 44, Artifact = "Dilithium Stone Fragment" },
+                new EggIncArtifact { Name = 45, Artifact = "Shell Stone Fragment" },
+                new EggIncArtifact { Name = 46, Artifact = "Lunar Stone Fragment" },
+                new EggIncArtifact { Name = 47, Artifact = "Soul Stone Fragment" },
+                new EggIncArtifact { Name = 48, Artifact = "Prophecy Stone Fragment" },
+                new EggIncArtifact { Name = 49, Artifact = "Quantum Stone Fragment" },
+                new EggIncArtifact { Name = 50, Artifact = "Terra Stone Fragment" },
+                new EggIncArtifact { Name = 51, Artifact = "Life Stone Fragment" },
+                new EggIncArtifact { Name = 52, Artifact = "Clarity Stone Fragment" },
             };
         }
     }
 
     [MessagePackObject]
-    public class EggIncArtifactInstance {
+    public class ArtifactCount {
+        [Key(0)]
+        public int Count { get; set; }
+        [Key(1)]
+        public EggIncArtifactInstance Artifact { get; set; }
+    }
+
+    [MessagePackObject]
+    public class EggIncArtifactInstance : IEquatable<EggIncArtifactInstance> {
         [Key(0)]
         public string Artifact { get; set; }
         [Key(1)]
@@ -342,6 +372,36 @@ namespace EGG9000.Common.Helpers {
         //public Ei.ArtifactSpec Spec { get; set; }
         [Key(4)]
         public List<EggIncArtifactInstance> Stones { get; set; }
+
+        public override bool Equals(Object obj) {
+            var other = obj as EggIncArtifactInstance;
+            if(other == null) return false;
+
+            return Equals(other);
+        }
+
+        public bool Equals(EggIncArtifactInstance other) {
+            if(other == null) {
+                return false;
+            }
+
+            if(ReferenceEquals(this, other)) {
+                return true;
+            }
+
+            var stonesAreEqual = Stones.Count == other.Stones.Count;
+            if(stonesAreEqual) {
+                for(var i = 0; i < Stones.Count; i++) {
+                    if(other.Stones[i] != Stones[i]) {
+                        stonesAreEqual = false;
+                        break;
+                    }
+                }
+            }
+
+
+            return Artifact == other.Artifact && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+        }
     }
 
     public class EggIncArtifact {

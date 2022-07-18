@@ -295,7 +295,9 @@ namespace EGG9000.Bot.Commands {
                 }
                 dbuser.AddName(Response.UserName, Response.EggIncId);
             }
-
+            if(!dbuser.Registered.HasValue) {
+                dbuser.Registered = DateTimeOffset.Now;
+            }
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
 
 
@@ -458,7 +460,7 @@ namespace EGG9000.Bot.Commands {
                 msg += $"\nUser is disabled";
             }
 
-            msg += $"\nJoined the bot on {dbuser.CreateOn.ToString("MMM dd, yyyy")}";
+            msg += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
             await command.RespondAsync(msg, ephemeral: showInChannel);
         }

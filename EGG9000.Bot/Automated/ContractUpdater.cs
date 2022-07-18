@@ -88,8 +88,9 @@ namespace EGG9000.Bot.Automated {
             //guildGroups = guildGroups.Where(x => x.Key == 770469712064151593);
 #endif
 
-            foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {
-                var guild = _client.Guilds.FirstOrDefault(x => x.Id == groupGuildContracts.Key);
+            foreach(var dbguild in dbguilds) { 
+            //foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild == null)
                     continue;
 
@@ -107,8 +108,8 @@ namespace EGG9000.Bot.Automated {
                     Console.WriteLine($"Backups: {sw.ElapsedMilliseconds}");
                 sw.Restart();
 
-
-                var contractIds = groupGuildContracts.Select(x => x.ContractID);
+                var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);
+                //var contractIds = groupGuildContracts.Select(x => x.ContractID);
 
 
 
@@ -116,9 +117,11 @@ namespace EGG9000.Bot.Automated {
                 if(showTimings)
                     Console.WriteLine($"Get Coops: {sw.ElapsedMilliseconds}");
                 sw.Restart();
-                var dbguild = dbguilds.First(x => x.Id == guild.Id);
-                foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
-                    await UpdateContractChannel(_db, backups, guildContract, guild, dbguild, dbusers);
+                //var dbguild = dbguilds.First(x => x.Id == guild.Id);
+                if(groupGuildContracts is not null) {
+                    foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
+                        await UpdateContractChannel(_db, backups, guildContract, guild, dbguild, dbusers);
+                    }
                 }
                 await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
             }
@@ -315,10 +318,10 @@ namespace EGG9000.Bot.Automated {
                         if(u.Completed) {
                             u.Coop = "Completed";
                         } else {
-                            u.Coop += $" Joined {(DateTimeOffset.Now - u.User.CreateOn).Humanize().ShortenTime()} ago";
+                            u.Coop += $" Joined {(DateTimeOffset.Now - u.User.Registered.Value).Humanize().ShortenTime()} ago";
                         }
                     }
-                    var alreadyInCoop = new CoopDetails (coopsBreakdown.AlreadyInCoop.Users.Where(x => x.User.CreateOn < guildContract.Created).OrderBy(x => x.Completed).ToList(), targetAmount);
+                    var alreadyInCoop = new CoopDetails (coopsBreakdown.AlreadyInCoop.Users.Where(x => x.User.Registered < guildContract.Created).OrderBy(x => x.Completed).ToList(), targetAmount);
                     newMsgs.AddRange(ShowCoopStatus(alreadyInCoop, $"Already in coop", targetAmount, 0));
                 }
 
@@ -582,7 +585,7 @@ namespace EGG9000.Bot.Automated {
                         x.NumChickens = details.ProductionParams.FarmPopulation;
                         x.EggsPaidFor = details.ContributionAmount;
                         x.Rate = details.ContributionRate;
-                        x.Projected = details.ContributionAmount;
+                        //x.Projected = details.ContributionAmount;
                     });
                 }
 

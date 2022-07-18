@@ -13,6 +13,7 @@ namespace EGG9000.Common.Database.Entities
         public Guid CoopId { get; set; }
         public string EggIncId { get; set; }
         public string RefEggIncId { get; set; }
+        public string FixedUserName { get; set; }
         public DateTimeOffset CreatedOn { get; set; }
         public bool JoinedCoop { get; set; }
         public bool WaitingOnStarter { get; set; }

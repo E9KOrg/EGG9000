@@ -95,7 +95,6 @@ namespace EGG9000.Bot.Services {
                 await arg.RespondAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
             }
-            _semaphoreSlim.Release();
         }
 
         private async Task _discord_UserCommandExecuted(SocketUserCommand arg) {
@@ -111,7 +110,6 @@ namespace EGG9000.Bot.Services {
                 await arg.RespondAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
             }
-            _semaphoreSlim.Release();
         }
 
 
@@ -197,11 +195,12 @@ namespace EGG9000.Bot.Services {
                     } else {
                         await arg.RespondAsync($"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
                     }
-
+                } finally {
+                    _semaphoreSlim.Release();
                 }
             } else {
                 _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
-                await arg.RespondAsync("ERROR: Unable to run command at this time");
+                await arg.RespondAsync("ERROR: Unable to run command at this time, please try again in a minute");
             }
         }
 
