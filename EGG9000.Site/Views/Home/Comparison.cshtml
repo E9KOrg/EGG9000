@@ -67,12 +67,12 @@ var ebOptions = {
         data: [
             @foreach (var r in allRoles)
             {
-            if (listOfEb.Count(o => o.Item2 == r) != 0)
-            {
-            @Html.Raw($"{listOfEb.Count(o => o.Item2 == r)},")
+                if (listOfEb.Count(o => o.Item2 == r) != 0)
+                {
+                    @Html.Raw($"{listOfEb.Count(o => o.Item2 == r)},")
+                }
             }
-            }
-            ]
+        ]
     }],
     theme: {
         mode: getCookie('Egg9000Theme') == 'bootstrap-dark' ? 'dark' : 'light'
