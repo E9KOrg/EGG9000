@@ -5,7 +5,7 @@
 @inject Discord.WebSocket.DiscordSocketClient discord
 @{
     ViewData["Title"] = "Comparison";
-    Tuple<double, string> myEb = ViewBag.MyEb;
+    List<Tuple<double, string>> myEb = ViewBag.MyEbs;
     List<Tuple<double, string>> listOfEb = ViewBag.ListOfEb;
     List<string> allRoles = ViewBag.AllRoles;
 }
@@ -18,7 +18,10 @@
         <div class="card">
             <div class="card-header"><b>Your Eb</b></div>
             <div class="card-body">
-                @ArgumentsHelper.NumberToString(ViewBag.MyEb.Item1,true,2) - @ViewBag.MyEb.Item2
+                @foreach (var eb in myEb)
+                {
+                    @ArgumentsHelper.NumberToString(eb.Item1,true,2) @:- @eb.Item2<br>
+                }
             </div>
         </div>
     </div>
@@ -59,35 +62,40 @@
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-    var ebOptions = {
-        series: [{
-            data: [
-                @foreach (var r in allRoles)
-                {
-                    if (listOfEb.Count(o => o.Item2 == r) != 0)
-                    {
-                        @Html.Raw($"{listOfEb.Count(o => o.Item2 == r)},")
-                    }
-                }
+var ebOptions = {
+    series: [{
+        data: [
+            @foreach (var r in allRoles)
+            {
+            if (listOfEb.Count(o => o.Item2 == r) != 0)
+            {
+            @Html.Raw($"{listOfEb.Count(o => o.Item2 == r)},")
+            }
+            }
             ]
-        }],
-        theme: {
-            mode: getCookie('Egg9000Theme') == 'bootstrap-dark' ? 'dark' : 'light'
-        },
-        annotations: {
-            points: [{
-                x: '@myEb.Item2',
-                seriesIndex: 0,
-                label: {
-                    borderColor: '#775DD0',
-                    offsetY: 0,
-                    style: {
-                        color: '#fff',
-                        background: '#775DD0',
-                    },
-                    text: 'You are @("aeiouAEIOU".IndexOf(myEb.Item2.Substring(0,1)) >= 0 ? "an" : "a") @myEb.Item2',
-                }
-            }]
+    }],
+    theme: {
+        mode: getCookie('Egg9000Theme') == 'bootstrap-dark' ? 'dark' : 'light'
+    },
+    annotations: {
+        points: [
+            @foreach (var eb in myEb)
+            {
+            @:{
+            @:  x: '@eb.Item2',
+            @:  seriesIndex: 0,
+            @:  label: {
+            @:      borderColor: '#775DD0',
+            @:      offsetY: 0,
+            @:      style: {
+            @:          color: '#fff',
+            @:          background: '#775DD0',
+            @:      },
+            @:      text: 'You are @("aeiouAEIOU".IndexOf(eb.Item2.Substring(0,1)) >= 0 ? "an" : "a") @eb.Item2',
+            @:  }
+            @:},
+            }
+            ]
         },
         chart: {
             height: 350,

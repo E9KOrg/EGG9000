@@ -496,24 +496,29 @@ namespace EGG9000.Site.Controllers {
             activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveElites).Select(o => o.DatabaseId));
             activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
 
-            // Get users eb.
-            double myEb = await _db.UserSnapShots.Where(x => x.UserId == user.Id).GroupBy(x => x.UserId).Select(g => g.Max(x => x.EarningsBonus)).FirstOrDefaultAsync();
-
+            // Get users ebs - could be multiple.
+            List<double> myEbs = await _db.UserSnapShots.Where(x => x.UserId == user.Id).GroupBy(x => new { x.UserId, x.EggIncID }).Select(g => g.Max(x => x.EarningsBonus)).ToListAsync();
+            List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
+            foreach (var eb in myEbs)
+            {
+                myEbsWithRole.Add(new Tuple<double, string>(eb, SIPrefix.GetCurrentRankNameFromEb(eb, true)));
+            }
 
             // Get active EggInc Accounts
             var activeAccounts = await _db.DBUsers.Where(x => x.GuildId == user.GuildId && !x.TempDisabled && activeUsers.Any(y => y == x.Id)).Select(x => new DBUser { Id = x.Id, _eggIncIds = x._eggIncIds}).ToListAsync();
             var activeIDs = activeAccounts.SelectMany(x => x.EggIncIds.Select(y => new Tuple<Guid, string>(x.Id, y.Id)));
 
             // Get top snapshot for each group of userid, eggincid
+            // This accounts for users with multiple egginc accounts registred
             var snapShots = await _db.UserSnapShots.Where(x => x.EarningsBonus > 0 && activeUsers.Any(o => o == x.UserId)).GroupBy(x => new { x.UserId, x.EggIncID}).Select(y => y.OrderByDescending(o => o.Date).First()).ToArrayAsync();
 
             List<Tuple<double, string>> allEbData = new List<Tuple<double, string>>();
-            foreach(var snapShot in snapShots.Where(s => activeIDs.Any(a => s.UserId == a.Item1 && s.EggIncID == a.Item2))) { //Limit to activeIDs, some IDs might have changed or been unregistered
+            foreach(var snapShot in snapShots.Where(s => activeIDs.Any())) { //Limit to activeIDs, some IDs might have changed or been unregistered
                 allEbData.Add(new Tuple<double, string>(snapShot.EarningsBonus, SIPrefix.GetCurrentRankNameFromEb(snapShot.EarningsBonus, true)));
             }
 
             ViewBag.ListOfEb = allEbData;
-            ViewBag.MyEb = new Tuple<double, string>(myEb, SIPrefix.GetCurrentRankNameFromEb(myEb, true));
+            ViewBag.MyEbs = myEbsWithRole;
             ViewBag.AllRoles = SIPrefix.GetAllFarmerRoles();
 
             return View();
