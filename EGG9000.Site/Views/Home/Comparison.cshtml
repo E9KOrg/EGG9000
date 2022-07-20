@@ -18,10 +18,17 @@
         <div class="card">
             <div class="card-header"><b>Your Eb</b></div>
             <div class="card-body">
-                @foreach (var eb in myEb)
-                {
-                    @ArgumentsHelper.NumberToString(eb.Item1,true,2) @:- @eb.Item2<br>
-                }
+                <table class="table table-sm">
+                    <tbody>
+                        @foreach (var eb in myEb)
+                        {
+                            <tr>
+                                <td>@ArgumentsHelper.NumberToString(eb.Item1,true,2)</td>
+                                <td>@eb.Item2</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
