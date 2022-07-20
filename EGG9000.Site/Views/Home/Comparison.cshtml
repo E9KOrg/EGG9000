@@ -14,7 +14,7 @@
 <hr />
 
 <div class="row">
-    <div class="col-md-3 mt-3">
+    <div class="col-md-4 mt-3">
         <div class="card">
             <div class="card-header"><b>Your Eb</b></div>
             <div class="card-body">
@@ -25,30 +25,40 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 mt-3">
+    <div class="col-md-8 mt-3">
         <div class="card">
-            <div class="card-header"><b>Servers Highest Eb</b></div>
+            <div class="card-header"><b>Server Stats</b></div>
             <div class="card-body">
-                @ArgumentsHelper.NumberToString((listOfEb.Select(o => o.Item1).Max()),true,2) - @SIPrefix.GetCurrentRankNameFromEb(listOfEb.Select(o => o.Item1).Max(),true)
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mt-3">
-        <div class="card">
-            <div class="card-header"><b>Average Eb</b></div>
-            <div class="card-body">
-                @ArgumentsHelper.NumberToString(listOfEb.Select(o => o.Item1).Average(),true,2) - @SIPrefix.GetCurrentRankNameFromEb(listOfEb.Select(o => o.Item1).Average(),true)
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mt-3">
-        <div class="card">
-            <div class="card-header"><b>Median Eb</b></div>
-            <div class="card-body">
-                @{
-                    var medianEb = listOfEb.Select(o => o.Item1).ToList()[listOfEb.Select(o => o.Item1).ToList().Count() / 2];
-                }
-                @ArgumentsHelper.NumberToString(medianEb,true,2) - @SIPrefix.GetCurrentRankNameFromEb(medianEb,true)
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td>Highest Eb:</td>
+                            <td>@ArgumentsHelper.NumberToString((listOfEb.Select(o => o.Item1).Max()),true,2)</td>
+                            <td>@SIPrefix.GetCurrentRankNameFromEb(listOfEb.Select(o => o.Item1).Max(),true)</td>
+                        </tr>
+                        <tr>
+                            <td>Average Eb:</td>
+                            <td>@ArgumentsHelper.NumberToString(listOfEb.Select(o => o.Item1).Average(),true,2)</td>
+                            <td>@SIPrefix.GetCurrentRankNameFromEb(listOfEb.Select(o => o.Item1).Average(),true)</td>
+                        </tr>
+                        <tr>
+                            <td>Median Eb:</td>
+                            <td>
+                                @{
+                                    var medianEb = listOfEb.Select(o => o.Item1).ToList()[listOfEb.Select(o => o.Item1).ToList().Count() / 2];
+                                }
+                                @ArgumentsHelper.NumberToString(medianEb,true,2)
+                            </td>
+                            <td>@SIPrefix.GetCurrentRankNameFromEb(medianEb,true)</td>
+                        </tr>
+                        <tr>
+                            <td>Combined Server Eb:</td>
+                            <td>@ArgumentsHelper.NumberToString(listOfEb.Select(o => o.Item1).Sum(),true,2)</td>
+                            <td>@SIPrefix.GetCurrentRankNameFromEb(listOfEb.Select(o => o.Item1).Sum(),true)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                 
             </div>
         </div>
     </div>
