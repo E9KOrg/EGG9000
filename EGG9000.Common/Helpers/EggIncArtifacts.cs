@@ -373,11 +373,11 @@ namespace EGG9000.Common.Helpers {
         [Key(4)]
         public List<EggIncArtifactInstance> Stones { get; set; }
 
-        public override bool Equals(Object obj) {
-            var other = obj as EggIncArtifactInstance;
-            if(other == null) return false;
-
-            return Equals(other);
+        public override bool Equals(Object other) {
+            if(other is EggIncArtifactInstance)
+                return this.Equals((EggIncArtifactInstance)other);
+            else
+                return false;
         }
 
         public bool Equals(EggIncArtifactInstance other) {
@@ -389,18 +389,32 @@ namespace EGG9000.Common.Helpers {
                 return true;
             }
 
-            var stonesAreEqual = Stones.Count == other.Stones.Count;
+            var stonesAreEqual = (Stones?.Count ?? 0) == (other.Stones?.Count ?? 0);
             if(stonesAreEqual) {
-                for(var i = 0; i < Stones.Count; i++) {
-                    if(other.Stones[i] != Stones[i]) {
+                for(var i = 0; i < (Stones?.Count ?? 0); i++) {
+                    if(!other.Stones[i].Equals(Stones[i])) {
                         stonesAreEqual = false;
                         break;
                     }
                 }
             }
 
+            var match = Artifact == other.Artifact && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+            return match;
+        }
 
-            return Artifact == other.Artifact && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+        public override int GetHashCode() {
+            unchecked {
+                int hash = 17;
+                hash = hash * 23 + Artifact.GetHashCode();
+                hash = hash * 23 + Boost.GetHashCode();
+                hash = hash * 23 + Value.GetHashCode();
+                hash = hash * 23 + Additive.GetHashCode();
+                foreach(var stone in Stones ?? new List<EggIncArtifactInstance>()) {
+                    hash = hash * 23 + stone.GetHashCode();
+                }
+                return hash;
+            }
         }
     }
 

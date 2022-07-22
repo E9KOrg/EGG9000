@@ -610,8 +610,8 @@ namespace EGG9000.Site.Controllers {
 
             foreach(var message in allMessages.Where(x => x.MentionedUserIds.Count == 1)) {
                 if(!allGhosts.Any(g => g.DiscordId == message.MentionedUserIds.First())) {
-                    var discorduser = guild.Users.First(x => x.Id == message.MentionedUserIds.First());
-                    if(!discorduser.Roles.Any(x => x.Id == 775547850134257675)) {
+                    var discorduser = guild.Users.FirstOrDefault(x => x.Id == message.MentionedUserIds.First());
+                    if(discorduser is not null && !discorduser.Roles.Any(x => x.Id == 775547850134257675)) {
                         await message.DeleteAsync();
                     }
                 }

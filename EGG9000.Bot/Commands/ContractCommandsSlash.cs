@@ -623,7 +623,8 @@ namespace EGG9000.Bot.Commands {
 
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == dbuser.DiscordId && x.CreatedOn > DateTimeOffset.Now.AddMonths(-2)).ToListAsync();
                 if(xrefs.Count == dbuser.EggIncIds.Count) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: <@{dbuser.DiscordId}> has already joined {xrefs.First().Coop.Name}");
+                    var coopLinks = string.Join(", ", xrefs.Select(x => $"https://discord.com/channels/{x.Coop.OverflowGuildId}/{x.Coop.DiscordChannelId}"));
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: <@{dbuser.DiscordId}> has already be assigned {(xrefs.Count > 1 ? "the co-ops" : "a co-op")} {coopLinks}, if {(xrefs.Count > 1 ? "these co-ops" : "this co-op")} has already finished contact staff and we can get it fixed.");
                     return;
                 }
 
@@ -634,7 +635,7 @@ namespace EGG9000.Bot.Commands {
                         var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
                         var prefarms = prefarmers.Where(x => x.Elite == guildContract.Elite && x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
                         if(prefarms.Count == 0) {
-                            await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
+                            await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned. Keep prefarming and wait for staff to start more co-ops.");
                             return;
                         }
                         EggIncId = prefarms.First().EggIncId;
@@ -649,7 +650,7 @@ namespace EGG9000.Bot.Commands {
                 var newxref = await CreateCoops.MoveUser(targetCoop, dbuser.Id, EggIncId, eggIncName, targetUser, dbuser, (SocketTextChannel)targetChannel, (SocketTextChannel)command.Channel);
 
                 if(newxref == null) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{command.User.Mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{command.User.Mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**. Once you've joined the overflows use this link to get to your co-op https://discord.com/channels/{targetCoop.OverflowGuildId}/{targetCoop.DiscordChannelId}");
                     return;
                 }
 

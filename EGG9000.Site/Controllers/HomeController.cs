@@ -63,47 +63,8 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Test() {
-            //var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == 727727224471420968);
-            //var backup = await ContractsAPI.FirstContact(user.EggIncIds.First().Id);
-            //var coop = await GetCoopStatus("epic-fireworks-2022", "aginggrant4 ", user.EggIncIds.First().Id);
-
-            //return Json(new {
-            //    backup,
-            //    coop
-            //});
-
-            //var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-            //    ClientVersion = ContractsAPI.ClientVersion,
-            //    ContractIdentifier = "preparations-2022",
-            //    CoopIdentifier = "WECPogo96".ToLower(),
-            //    PlayerIdentifier = ContractsAPI.UserId,
-            //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-            //    RequestingUserId = ContractsAPI.UserId
-            //}, ContractsAPI.UserId);
-
-
-
-            var backup = await ContractsAPI.FirstContact("EI5223299518300160");
-            backup.Backup.UserName = "EGG9K";
-            backup.Backup.ApproxTime = DateTimeOffset.Now.ToUnixTimeSeconds();
-            backup.Backup.Game.SoulEggsD *= 1.01;
-            backup.Backup.ForceOfferBackup = true;
-            //using(StreamWriter outputFile = new StreamWriter("EI5612314717323264.bak")) {
-            //    outputFile.WriteLine(JsonConvert.SerializeObject(backup, Formatting.Indented));
-            //}
-            //var backup2 = await ContractsAPI.FirstContact("EI6153360652894208");
-            //using(StreamWriter outputFile2 = new StreamWriter("EI6153360652894208.bak")) {
-            //    outputFile2.WriteLine(JsonConvert.SerializeObject(backup2, Formatting.Indented));
-            //}
-
-            //using(StreamReader inFile = new StreamReader("EI5612314717323264.bak")) {
-            //    var str = inFile.ReadToEnd();
-                //var backup = JsonConvert.DeserializeObject<Ei.EggIncFirstContactResponse>(str);
-
-                var r = await SubmitBackup(backup.Backup);
-                return Json(r);
-            //}
-
+            var response = await _apiLink.GetBackup("EI5482080379338752");
+            return Json(response);
         }
 
         private static async Task<Ei.SaveBackupResponse> SubmitBackup(Ei.Backup backup) {

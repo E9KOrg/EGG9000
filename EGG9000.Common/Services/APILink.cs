@@ -34,8 +34,15 @@ namespace EGG9000.Bot.Services {
 
     public class APILink : IHostedService {
         //private static string urlBase = "http://localhost:5014/Home/";
+
+#if DEBUG
         //private static string urlBase = "https://localhost:44316/Home/";
         private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+#else
+        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+#endif
+
+
 
         private IMemoryCache _cache;
         private HttpClient _httpClient;
@@ -86,7 +93,7 @@ namespace EGG9000.Bot.Services {
                     }
                 }
             }
-
+            Console.WriteLine($"Saving {db.ChangeTracker.Entries().Count()} changes to db");
             await db.SaveChangesAsync();
             return lUsers;
         }

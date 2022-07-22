@@ -56,23 +56,23 @@ namespace EGG9000.Bot.Automated {
             Console.WriteLine("Getting Xrefs for Leaderboard");
             try {
                 var threeWeeksAgo = DateTimeOffset.Now.AddDays(-21);
-#if DEBUG
-                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.Coop.GuildId == 770469712064151593 && x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
-#else
+//#if DEBUG
+//                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.Coop.GuildId == 770469712064151593 && x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
+//#else
                 var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
-#endif
+//#endif
                 var recentxrefs = xrefs.Where(x => recentContractIDs.Contains(x.ContractID)).ToList();
 
                 Console.WriteLine("Getting Users for Leaderboard");
-#if DEBUG
-                var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == 770469712064151593 && !x.TempDisabled).Select(x => new {
-                    DBUser = x,
-                }).ToListAsync();
-#else
+                //#if DEBUG
+                //var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == 770469712064151593 && !x.TempDisabled).Select(x => new {
+                //    DBUser = x,
+                //}).ToListAsync();
+                //#else
                 var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && !x.TempDisabled).Select(x => new {
                     DBUser = x,
                 }).ToListAsync();
-#endif
+                //#endif
                 dbusersWithGuildCoops.ForEach(x => { //
                     x.DBUser.GuildCoops = (ushort)xrefs.Where(xref => xref.UserId == x.DBUser.Id).Select(xref => xref.ContractID).Distinct().Count();
                 });
@@ -80,10 +80,10 @@ namespace EGG9000.Bot.Automated {
 
                 var dbusers = dbusersWithGuildCoops.Select(x => x.DBUser).ToList();
 
-#if DEBUG
-                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
-                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
-#endif
+//#if DEBUG
+//                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
+//                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
+//#endif
 
                 Console.WriteLine("Getting User Backups for Leaderboard");
                 var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
