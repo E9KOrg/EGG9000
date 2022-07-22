@@ -58,9 +58,9 @@ namespace EGG9000.Bot.Automated {
 
                 var throttler = new SemaphoreSlim(5);
 
-//#if DEBUG
-//                coops = coops.Where(x => x.Name == "BunchCase28").ToList();
-//#endif
+#if DEBUG
+                coops = coops.Where(x => x.Name == "BunchWafer2").ToList();
+#endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
                 foreach(var guildCoops in guildCoopGroups) {
@@ -445,7 +445,7 @@ namespace EGG9000.Bot.Automated {
                                     .Where(x => x.EggIncId == user.EggIncId && x.JoinedCoop && x.CreatedOn < new DateTimeOffset(2022, 07, 10, 0, 0, 0, TimeSpan.Zero))
                                     .Select(x => new { Xref = x, Coop = x.Coop })
                                     .FirstOrDefaultAsync();
-                                if(lastCoopBeforeChange is not null) {
+                                if(lastCoopBeforeChange?.Coop.LastStatusUpdate is not null) {
                                     var username = lastCoopBeforeChange.Coop.LastStatusUpdate.Participants.FirstOrDefault(x => x.UserId == user.EggIncId)?.UserName;
                                     if(!string.IsNullOrWhiteSpace(username)) {
                                         var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserName == username);
@@ -896,11 +896,11 @@ namespace EGG9000.Bot.Automated {
                         lastMessage += "\nCo-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
                         lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
 
-                        var usersToCheckDeflector = usersWithStatus.Where(x => x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Max(y => y.Status.Projected) / 2);
+                        var usersToCheckDeflector = usersWithStatus.Where(x => !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Max(y => y.Status.Projected) / 2);
                         var usersNeedToAddDeflector = new List<UserWithStatus>();
                         foreach(var user in usersToCheckDeflector) {
                             var farm = user.Backup.Farms.First(x => x.ContractId == coop.ContractID);
-                            if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.ArtifactHall.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
+                            if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
                                 usersNeedToAddDeflector.Add(user);
                             }
                         }
@@ -912,7 +912,7 @@ namespace EGG9000.Bot.Automated {
                         }
 
                         if(usersNeedToAddDeflector.Any()) {
-                            lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip: {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser.Mention))}";
+                            lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip:** {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser.Mention))}";
                         }
 
 

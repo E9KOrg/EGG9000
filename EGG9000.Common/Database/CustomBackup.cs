@@ -73,13 +73,17 @@ namespace EGG9000.Common.Database {
         public ulong DroneTakedownsElite { get; set; }
         [Key(23)]
         public ulong NumPiggyBreaks { get; set; }
-        [Key(24)] 
+        [Key(24)]
         public List<ArtifactCount> ArtifactHall { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
             get {
-                return (ulong)(PiggyBank * ((NumPiggyBreaks + 2.0m) / 10 + 1));
+                try {
+                    return (ulong)(PiggyBank * ((NumPiggyBreaks + 2.0m) / 10 + 1));
+                } catch (OverflowException) {
+                    return UInt64.MaxValue;
+                }
             }
         }
 
@@ -113,18 +117,25 @@ namespace EGG9000.Common.Database {
             }
         }
 
-        //[IgnoreMember]
-        //public List<ArtifactCount> GetAvailableArtifacts {  get {
-        //        var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact }).ToList();
-        //        Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact == a).Count--));
-        //        return artifacts.Where(x => x.Count > 0).ToList();
-        //    } 
-        //}
+        [IgnoreMember]
+        public List<ArtifactCount> GetAvailableArtifacts {
+            get {
+                if(ArtifactHall is null || ArtifactHall.Count == 0) {
+                    return new List<ArtifactCount>();
+                }
+                if(ArtifactHall.First().Artifact.Stones is null) {
+                    return ArtifactHall;
+                }
+                var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact }).ToList();
+                Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
+                return artifacts.Where(x => x.Count > 0).ToList();
+            }
+        }
 
         public CustomBackup() { }
         public CustomBackup(Ei.Backup backup) {
             if(backup?.Game == null) {
-                EmptyBackup = true;
+                EmptyBackup = true; 
                 return;
             }
             EpicResearch = backup.Game.EpicResearch.Select(x => new CustomResearch(x)).ToList();
@@ -172,7 +183,13 @@ namespace EGG9000.Common.Database {
 
             EggMedalLevel = backup.Game.EggMedalLevel.ToList();
 
-            ArtifactHall = backup.ArtifactsDb.InventoryItems.Select(x => new ArtifactCount { Count = (int)x.Quantity, Artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec) }).ToList();
+            ArtifactHall = backup.ArtifactsDb.InventoryItems.Select(x => {
+                var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                if(artifact is not null) {
+                    artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
+                }
+                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact };
+            }).ToList();
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {

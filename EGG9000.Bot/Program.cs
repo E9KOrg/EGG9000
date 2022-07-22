@@ -70,6 +70,8 @@ await Host.CreateDefaultBuilder(args)
 
         //services.AddHostedService<ContextCommandService>();
         Console.WriteLine("RUNNING IN DEBUG");
+
+
 #endif
 
 
