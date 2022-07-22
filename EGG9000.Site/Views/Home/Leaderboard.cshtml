@@ -10,7 +10,7 @@
 var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
 }
 
-<a class="btn btn-secondary" href="/Home/Enlightenment">Enlightenment Leaderboard</a>
+
 @if(myAccounts.Count() == 1) {
     <a class="btn btn-secondary" href="#@myAccounts.First().Backup.EggIncId">Jump to me</a>
 } else if(myAccounts.Count() > 1) {
