@@ -37,7 +37,7 @@ namespace EGG9000.Bot.Helpers {
         public static string GetCurrentRankNameFromEb(double eb, bool withSubRank)
         {
             var rank = GetPrefix(eb / 100);
-            return $"{rank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (rank.Rank == 1 ? " I" : rank.Rank == 2 ? " II" : " III") : "");
+            return $"{rank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (rank.SubRank == 1 ? " I" : rank.SubRank == 2 ? " II" : " III") : "");
         }
 
         public class RankInfo {
