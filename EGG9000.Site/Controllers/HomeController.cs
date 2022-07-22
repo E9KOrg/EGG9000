@@ -519,38 +519,52 @@ namespace EGG9000.Site.Controllers {
             public bool ProPermit { get; set; }
         }
 
+        [Authorize]
+        public async Task<IActionResult> Comparison()
+        {
+            // Get logged in user.
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            // Get list of active users.
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == user.GuildId);
+            List<System.Guid> activeUsers = new List<System.Guid>();
+            activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveElites).Select(o => o.DatabaseId));
+            activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
+
+            // Get users ebs - could be multiple.
+            List<double> myEbs = await _db.UserSnapShots.Where(x => x.UserId == user.Id).GroupBy(x => new { x.UserId, x.EggIncID }).Select(g => g.Max(x => x.EarningsBonus)).ToListAsync();
+            List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
+            foreach (var eb in myEbs)
+            {
+                myEbsWithRole.Add(new Tuple<double, string>(eb, SIPrefix.GetCurrentRankNameFromEb(eb, true)));
+            }
+
+            // Get active EggInc Accounts
+            var activeAccounts = await _db.DBUsers.Where(x => x.GuildId == user.GuildId && !x.TempDisabled && activeUsers.Any(y => y == x.Id)).Select(x => new DBUser { Id = x.Id, _eggIncIds = x._eggIncIds}).ToListAsync();
+            var activeIDs = activeAccounts.SelectMany(x => x.EggIncIds.Select(y => new Tuple<Guid, string>(x.Id, y.Id)));
+
+            // Get top snapshot for each group of userid, eggincid
+            // This accounts for users with multiple egginc accounts registred
+            var snapShots = await _db.UserSnapShots.Where(x => x.EarningsBonus > 0 && activeUsers.Any(o => o == x.UserId)).GroupBy(x => new { x.UserId, x.EggIncID}).Select(y => y.OrderByDescending(o => o.Date).First()).ToArrayAsync();
+
+            List<Tuple<double, string>> allEbData = new List<Tuple<double, string>>();
+            foreach(var snapShot in snapShots.Where(s => activeIDs.Any())) { //Limit to activeIDs, some IDs might have changed or been unregistered
+                allEbData.Add(new Tuple<double, string>(snapShot.EarningsBonus, SIPrefix.GetCurrentRankNameFromEb(snapShot.EarningsBonus, true)));
+            }
+
+            ViewBag.ListOfEb = allEbData;
+            ViewBag.MyEbs = myEbsWithRole;
+            ViewBag.AllRoles = SIPrefix.GetAllFarmerRoles();
+
+            return View();
+        }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ViewUser(Guid id) {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.Id == id);
             return RedirectToAction("ViewUser", "MyFarms", new { discordId = user.DiscordId });
-
-            //var backups = new List<CustomBackup>();
-            //foreach(var accounts in user.EggIncIds) {
-            //    //var response = await _apiLink.GetBackup(accounts.Id);
-            //    var response = await ContractsAPI.FirstContact(accounts.Id);
-            //    if(response != null) {
-            //        Console.WriteLine($"Got backup for: {accounts.Id}");
-            //        var backup = new CustomBackup(response.Backup);
-            //        backup.Farms.AddRange(response.Backup.Contracts.Archive.Select(y => new CustomFarm {
-            //            CoopId = y.CoopIdentifier,
-            //            TimeAccepted = (long)y.TimeAccepted,
-            //            ContractId = y.Contract.Identifier
-            //        }));
-            //        backups.Add(backup);
-
-            //    } else if(user.Backups.Any(x => x?.EggIncId == accounts.Id)) {
-            //        Console.WriteLine($"Unable to get backup: {accounts.Id}");
-
-            //        backups.Add(user.Backups.First(x => x.EggIncId == accounts.Id));
-            //    } else {
-            //        Console.WriteLine(JsonConvert.SerializeObject(response, Formatting.Indented));
-            //    }
-            //}
-            //Console.WriteLine(JsonConvert.SerializeObject(user.EggIncIds, Formatting.Indented));
-            //user.Backups = backups;
-            ////await _db.SaveChangesAsync();
-            //return View("~/Views/MyFarms/Index.cshtml", user);
         }
 
         public async Task<IActionResult> ViewUserId(string id) {
