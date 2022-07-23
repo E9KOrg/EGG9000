@@ -534,7 +534,7 @@ namespace EGG9000.Site.Controllers {
             activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
 
             // Get users ebs - could be multiple.
-            List<double> myEbs = await _db.UserSnapShots.Where(x => x.UserId == user.Id).GroupBy(x => new { x.UserId, x.EggIncID }).Select(g => g.Max(x => x.EarningsBonus)).ToListAsync();
+            IEnumerable<double> myEbs = user.Backups.Where(b => user.EggIncIds.Any(i => i.Id == b.EggIncId)).Select(x => x.EarningsBonus);
             List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
             foreach (var eb in myEbs)
             {
