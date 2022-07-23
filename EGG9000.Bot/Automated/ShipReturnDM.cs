@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Automated {
                         } else if(needsFuel && nextShipDue <= DateTimeOffset.Now) {
                             message = $"Your {nextShipName} has returned and your current ship needs fueling. Last backup {lastBackupTime}.";
                         } else if(!needsFuel && nextShipDue > DateTimeOffset.Now) {
-                            message = $"Your {nextShipName} returns in {minutesUntilShipReturns} and your current ship ready.";
+                            message = $"Your {nextShipName} returns in {minutesUntilShipReturns} and your current ship is ready.";
                         } else {
                             message = $"Your {nextShipName} has returned and your current ship is ready.";
                         }

@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Commands {
                 builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncIds.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
-                var currentRank = SIPrefix.GetPrefix(backup.EarningsBonus / 100);
+                var currentRank = SIPrefix.GetPrefixFromEB(backup.EarningsBonus);
                 if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs) {
                     nextRankText = "";
                     foreach(var subrank in nextRank.Take(5)) {

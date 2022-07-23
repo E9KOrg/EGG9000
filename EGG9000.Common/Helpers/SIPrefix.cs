@@ -11,15 +11,15 @@ namespace EGG9000.Bot.Helpers {
         public static IList<RankInfo> GetNextRankInfo(CustomBackup backup, bool withSubRank) {
             var ranks = new List<RankInfo>();
 
-            var nextRank = GetPrefix((withSubRank ? 10 : 1000) * backup.EarningsBonus / 100);
+            var nextRank = GetPrefixFromEB((withSubRank ? 10 : 1000) * backup.EarningsBonus);
             var nextRankEB = Math.Pow(10, nextRank.Base + (withSubRank ? nextRank.SubRank - 1 : 0)) * 100;
 
             for(int i = 0; i <= 10; i++) {
                 var totalSEForNextRank = nextRankEB
                     / (backup.SoulEggBonus * Math.Pow(backup.ProphecyEggBonus, backup.EggsOfProphecy + i));
                 ranks.Add(new RankInfo {
-                    Rank = withSubRank ? nextRank.RankWithSubRank : nextRank.Rank, 
-                    EggsOfProphecy = (ushort)i, 
+                    Rank = withSubRank ? nextRank.RankWithSubRank : nextRank.Rank,
+                    EggsOfProphecy = (ushort)i,
                     SoulsEggs = totalSEForNextRank - backup.SoulEggs,
                     EarningsBonus = nextRankEB
                 });
@@ -28,17 +28,6 @@ namespace EGG9000.Bot.Helpers {
             return ranks;
         }
 
-        /// <summary>
-        /// Method for converting EB to current rank.  Option to include subranks i.e Zettafarmer I, II & III.
-        /// </summary>
-        /// <param name="eb"></param>
-        /// <param name="withSubRank"></param>
-        /// <returns></returns>
-        public static string GetCurrentRankNameFromEb(double eb, bool withSubRank)
-        {
-            var rank = GetPrefix(eb / 100);
-            return $"{rank.Name.FirstCharToUpper()}farmer" + (withSubRank ? (rank.Rank == 1 ? " I" : rank.Rank == 2 ? " II" : " III") : "");
-        }
 
         public class RankInfo {
             public string Rank { get; set; }
@@ -47,7 +36,9 @@ namespace EGG9000.Bot.Helpers {
             public double EarningsBonus { get; set; }
 
         }
-
+        public static PrefixDetails GetPrefixFromEB(double number) {
+            return GetPrefix(number / 100);
+        }
         public static PrefixDetails GetPrefix(double number) {
             //var lastPrefix = new PrefixDetails { Base = 0, Name = "" };
             //foreach(var prefix in Prefixes) {
@@ -104,8 +95,7 @@ namespace EGG9000.Bot.Helpers {
         /// Method for returning list of valid farmer roles from Farmer to Vendafarmer III.
         /// </summary>
         /// <returns></returns>
-        public static List<string> GetAllFarmerRoles()
-        {
+        public static List<string> GetAllFarmerRoles() {
             return new List<string> {
                     "Farmer I",
                     "Farmer II",
