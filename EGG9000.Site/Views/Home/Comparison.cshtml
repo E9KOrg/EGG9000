@@ -52,7 +52,7 @@
                             <td>Median Eb:</td>
                             <td>
                                 @{
-                                    var medianEb = listOfEb.Select(o => o.Item1).ToList()[listOfEb.Select(o => o.Item1).ToList().Count() / 2];
+                                    var medianEb = listOfEb.Select(o => o.Item1).OrderByDescending(o => o).ToList()[listOfEb.Select(o => o.Item1).ToList().Count() / 2];
                                 }
                                 @ArgumentsHelper.NumberToString(medianEb,true,2)
                             </td>
