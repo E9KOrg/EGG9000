@@ -77,7 +77,7 @@ namespace EGG9000.Bot.Services {
 
                     if(backup != null && backup.LastBackupTime !=  dbBackup?.LastBackupTime) {
                         var userBackups = user.Backups?.ToList() ?? new List<CustomBackup>();
-                        userBackups = userBackups.Where(x => x != null && x.EggIncId != eggInc.Id).ToList();
+                        userBackups = userBackups.Where(x => x != null && x.EggIncId != eggInc.Id && user.EggIncIds.Any(y => y.Id == x.EggIncId)).ToList();
                         userBackups.Add(backup);
                         user.Backups = userBackups;
                     }

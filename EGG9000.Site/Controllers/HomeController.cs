@@ -538,7 +538,7 @@ namespace EGG9000.Site.Controllers {
             List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
             foreach (var eb in myEbs)
             {
-                myEbsWithRole.Add(new Tuple<double, string>(eb, SIPrefix.GetCurrentRankNameFromEb(eb, true)));
+                myEbsWithRole.Add(new Tuple<double, string>(eb, SIPrefix.GetPrefixFromEB(eb).RankWithSubRank));
             }
 
             // Get active EggInc Accounts
@@ -551,7 +551,7 @@ namespace EGG9000.Site.Controllers {
 
             List<Tuple<double, string>> allEbData = new List<Tuple<double, string>>();
             foreach(var snapShot in snapShots.Where(s => activeIDs.Any())) { //Limit to activeIDs, some IDs might have changed or been unregistered
-                allEbData.Add(new Tuple<double, string>(snapShot.EarningsBonus, SIPrefix.GetCurrentRankNameFromEb(snapShot.EarningsBonus, true)));
+                allEbData.Add(new Tuple<double, string>(snapShot.EarningsBonus, SIPrefix.GetPrefixFromEB(snapShot.EarningsBonus).RankWithSubRank));
             }
 
             ViewBag.ListOfEb = allEbData;

@@ -278,7 +278,7 @@ namespace EGG9000.Bot.Helpers {
         public static async Task<SocketRole> SetRole(SocketGuild Guild, IGuildUser DiscordUser, Double EarningsBonus) {
             var currentRole = DiscordUser.RoleIds.Select(y => Guild.Roles.First(z => z.Id == y)).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
             var rolename = currentRole?.Name;
-            var prefix = SIPrefix.GetPrefix(EarningsBonus / 100);
+            var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);
             var newRoleName = prefix.Rank;
             var newRoleNameWithSuffix = prefix.RankWithSubRank;
 
