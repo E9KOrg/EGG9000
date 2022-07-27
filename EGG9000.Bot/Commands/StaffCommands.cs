@@ -63,7 +63,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.ExpireCustomCoopName = expireTime;
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>" );
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time." );
         }
     }
 }

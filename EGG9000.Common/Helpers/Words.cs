@@ -6,6 +6,7 @@ using System.Text;
 using Discord.WebSocket;
 
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 
 using static EGG9000.Common.Helpers.Prefarm;
 
@@ -45,28 +46,28 @@ namespace EGG9000.Bot
             }
         }
 
-        public string GetCoopName(List<UserPreFarm> prefarms, SocketGuild discordguild, Guild dbguild) {
+        public string GetCoopName(List<UserFarmDetails> prefarms, SocketGuild discordguild, Guild dbguild) {
             if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
                 return $"{dbguild.CoopNamePrefix}{GetRandomWord()}{GetRandomNumber()}";
 
-            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User.CustomCoopName)).GroupBy(x => x.User.Id).ToList();
-            var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.Now);
+            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.DBUser?.CustomCoopName)).GroupBy(x => x.DBUser.Id).ToList();
+            var customNamesExpired = customNames.Where(x => x.First().DBUser.ExpireCustomCoopName.HasValue && x.First().DBUser.ExpireCustomCoopName.Value < DateTimeOffset.Now);
             foreach(var customName in customNamesExpired) {
-                customName.First().User.ExpireCustomCoopName = null;
-                customName.First().User.CustomCoopName = null;
+                customName.First().DBUser.ExpireCustomCoopName = null;
+                customName.First().DBUser.CustomCoopName = null;
             }
-            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName)).ToList();
+            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().DBUser.CustomCoopName)).ToList();
 
             if(customNames.Count() > 1) {
-                return String.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
+                return String.Join("", customNames.Select(x => x.First().DBUser.CustomCoopName)) + GetRandomNumber();
             } 
             if(customNames.Count() == 1) {
-                var name = customNames.First().First().User.CustomCoopName;
+                var name = customNames.First().First().DBUser.CustomCoopName;
 
                 if(name.Count(c => Char.IsUpper(c)) > 1 && name.Length > 5) {
-                    return customNames.First().First().User.CustomCoopName + GetRandomNumber();
+                    return customNames.First().First().DBUser.CustomCoopName + GetRandomNumber();
                 } else {
-                    return customNames.First().First().User.CustomCoopName + GetRandomWord() + GetRandomNumber();
+                    return customNames.First().First().DBUser.CustomCoopName + GetRandomWord() + GetRandomNumber();
                 }
             }
             return GetRandomWord() + GetRandomWord() + GetRandomNumber();

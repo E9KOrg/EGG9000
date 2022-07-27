@@ -83,6 +83,10 @@ namespace EGG9000.Bot.Services {
             return await ModifyOriginalResponseAsync(func, options);
         }
 
+        public async Task<IUserMessage> ModifyOriginalResponseAsync(string content) {
+            return await ModifyOriginalResponseAsync(x => x.Content = content);
+        }
+
         public FauxApplicationCommandData Data {
             get {
                 if(_socketSlashCommand is not null)

@@ -45,6 +45,7 @@ namespace EGG9000.Bot.Commands {
             } else if(user.GuildId == guild.Id) {
                 await command.RespondAsync($"Already configured for the current server.");
             } else {
+                await command.RespondAsync($"Please wait...");
                 if(user.GuildId == 428181243474214942) {
                     await ((SocketGuildUser)command.User).AddRoleAsync(guild.Roles.FirstOrDefault(x => x.Name == "Prophet"));
                 }
@@ -73,13 +74,13 @@ namespace EGG9000.Bot.Commands {
 
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel.Id == command.Channel.Id) {
-                    await command.RespondAsync("");
+                    await command.DeleteOriginalResponseAsync();
                     var text = $"Welcome {command.User.Mention}, you have been moved to this server. You have the rank of {role?.Name} with an EB of {earningsBonus.ToEggString()}";
                     var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
                     await generalChannel.SendMessageAsync(text);
                     await CleanWelcomeChannel(guild, _client, command.User);
                 } else {
-                    await command.RespondAsync("Registration has been moved");
+                    await command.ModifyOriginalResponseAsync("Registration has been moved");
                 }
             }
         }
@@ -482,8 +483,8 @@ namespace EGG9000.Bot.Commands {
                 }
             }
             if(admin) {
-                var coops = await db.UserCoopXrefs.Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).Select(x => x.Coop).ToListAsync();
-                msg += $"\n{string.Join("\n", coops.Select(x => $"<#{x.DiscordChannelId}>"))}";
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
+                msg += $"\n{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncIds.Count > 1 ? $"({user.EggIncIds.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
                 msg += $"\nRecent Demerit:\n{await DemeritCommands.GetDemerits(user.Id, db)}";
             }
             return msg;
@@ -611,7 +612,7 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
 
 
-            await command.RespondAsync($"{command.User.Mention} will be updated with their EB. To stop this run the command !hideEB", ephemeral: true);
+            await command.RespondAsync($"{command.User.Mention} will be updated with their EB. To stop this run the command /hideEB", ephemeral: true);
         }
 
         [SlashCommand(Description = "Remove the EB from your nickname")]

@@ -54,8 +54,8 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
         //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        //services.AddSingleton<ContractUpdater>();
-        //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+        services.AddSingleton<ContractUpdater>();
+        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         //services.AddHostedService<NewContracts>();
         //services.AddHostedService<CreateCoopChannels>();
