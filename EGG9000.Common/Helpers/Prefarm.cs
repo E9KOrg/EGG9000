@@ -203,7 +203,7 @@ namespace EGG9000.Common.Helpers {
                 .Where(x => 
                     !coopsBreakdown.ExistingCoops.Any(c => c.CoopParticipants.Any(p => (p.Xref?.UserId ?? Guid.Empty) == x.User.Id))
                 )
-                .Select(x => new UserFarmDetails(guildContract.Contract, x, discord, x.User));
+                .Select(x => new UserFarmDetails(guildContract.Contract, x, discord));
 
             notAssignedCoop = notAssignedCoop.Where(x => (x.Elite == guildContract.Elite || x.Completed) && (x.Farm is not null || x.ArchivedFarm is not null));
 
@@ -385,32 +385,38 @@ namespace EGG9000.Common.Helpers {
 
 
             //Add joined participants
-            foreach(var participant in status.Participants) {
-                var xref = coop.UserCoopsXrefs.FirstOrDefault(xref => xref.EggIncId == participant.GetID());
-                bool saveFixedUserName = false;
-                //First try for FixedUserName
-                if(xref == null) {
-                    xref = coop.UserCoopsXrefs.FirstOrDefault(x => !string.IsNullOrEmpty(x.FixedUserName) && x.FixedUserName == participant.UserName);
-                }
-                if(xref == null) {
-                    //Now try to match a backup username
-                    xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.Backups.Any(b => b.UserName == participant.UserName));
-                    if(xref is not null) saveFixedUserName = true;
-                }
+            if(status is not null) {
+                foreach(var participant in status.Participants) {
+                    var xref = coop.UserCoopsXrefs.FirstOrDefault(xref => xref.EggIncId == participant.GetID());
+                    bool saveFixedUserName = false;
+                    //First try for FixedUserName
+                    if(xref == null) {
+                        xref = coop.UserCoopsXrefs.FirstOrDefault(x => !string.IsNullOrEmpty(x.FixedUserName) && x.FixedUserName == participant.UserName);
+                    }
 
-                if(xref == null) {
-                    //Try matching to EB
-                    xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.Backups.Any(b => Math.Log10(b.EarningsBonus / 100) == participant.SoulPower));
-                    if(xref is not null) saveFixedUserName = true;
-                }
+                    if(xref == null) {
+                        //Try matching to EB
+                        var matchbackup = backups.FirstOrDefault(x => Math.Log10(x.Backup.EarningsBonus / 100) == participant.SoulPower);
+                        xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
+                        if(xref is not null) saveFixedUserName = true;
+                    }
 
-                if(saveFixedUserName) {
-                    var isNameUnique = !coop.UserCoopsXrefs.Where(x => x.User.Backups is not null).Any(x => x.User.Backups.Any(b => b.UserName == participant.UserName && b.EggIncId != xref.EggIncId));
-                    if(isNameUnique && !string.IsNullOrEmpty(participant.UserName))
-                        xref.FixedUserName = participant.UserName;
+                    if(xref == null && !string.IsNullOrWhiteSpace(participant.UserName)) {
+                        //Now try to match a backup username
+                        var matchbackup = backups.FirstOrDefault(x => x.Backup.UserName == participant.UserName);
+                        xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
+                        if(xref is not null) saveFixedUserName = true;
+                    }
+
+
+                    if(saveFixedUserName) {
+                        var isNameUnique = !backups.Any(b => b.Backup.UserName == participant.UserName && b.Backup.EggIncId != xref.EggIncId);
+                        if(isNameUnique && !string.IsNullOrEmpty(participant.UserName))
+                            xref.FixedUserName = participant.UserName;
+                    }
+                    var backup = xref is not null ? backups.FirstOrDefault(b => b.Backup.EggIncId == xref.EggIncId) : null;
+                    coopParticipants.Add(new UserFarmDetails(xref, participant, contract, backup, discord));
                 }
-                var backup = xref is not null ? backups.FirstOrDefault(b => b.Backup.EggIncId == xref.EggIncId) : null;
-                coopParticipants.Add(new UserFarmDetails(xref, participant, contract, backup, discord));
             }
 
             //Add missing participants

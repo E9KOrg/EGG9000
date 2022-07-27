@@ -110,7 +110,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> StartCoop([FromBody] List<UserFarmDetails> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
+        public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
             var guild = _discord.GetGuild(guildContract.GuildID);
 
@@ -121,11 +121,12 @@ namespace EGG9000.Site.Controllers {
                 return Json(new { error = true, message = $"Un-able to create co-op, the following are already in one: {string.Join(", ", existingsXrefs.Select(x => x.User.DiscordUsername))}" });
             }
 
-            var dbUserIds = Users.Select(x => x.DBUser.Id).ToList();
+            var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
             var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
-            Users.ForEach(x => x.DBUser = dbusers.FirstOrDefault(y => y.Id == x.DBUser.Id));
+            var userswithbackups = dbusers.SelectMany(x => x.Backups.Select(y => new UserWithBackup { User = x, Backup = y }));
+            var userdetails = Users.Select(x => new UserFarmDetails(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord)).ToList();
 
-            var coop = await CreateCoops.Start(Users, guildContract, guild, new Words(), _db);
+            var coop = await CreateCoops.Start(userdetails, guildContract, guild, new Words(), _db);
             guildContract.NumberOfCoops--;
             await _db.SaveChangesAsync();
 

@@ -75,7 +75,7 @@
     var potentialCoops = Model.CoopsBreakdown.PotentialCoops.Select(c => {
         var users = c.CoopParticipants.OrderByDescending(x => x.Projected).Select(u => new {
             u.EggIncId,
-            u.DBUser.Id,
+            DatabaseId = u.DBUser.Id,
             DiscordID = u.DiscordUser.Id,
             Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
             NumChickens = u.NumChickens.ToEggString(),

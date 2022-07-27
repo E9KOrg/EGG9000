@@ -26,6 +26,8 @@ namespace EGG9000.Common.Helpers {
         public DBUser DBUser { get; set; }
 
         public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
+            if(coopStatus is null)
+                throw new ArgumentException(null, "coopStatus");
             Xref = xref;
             CoopStatus = coopStatus;
             Contract = contract;
@@ -42,6 +44,8 @@ namespace EGG9000.Common.Helpers {
         }
 
         public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
+            if(xref is null)
+                throw new ArgumentException(null, "xref");
             Xref = xref;
             Contract = contract;
             Joined = false;
@@ -56,7 +60,11 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, DBUser dBUser) {
+        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
+            if(userWithbackup is null)
+                throw new ArgumentException(null, "userWithBackup");
+            if(userWithbackup.Backup is null)
+                throw new ArgumentException(null, "userWithBackup.Backup");
             Contract = contract;
             Joined = false;
             if(userWithbackup is not null) {
@@ -72,7 +80,7 @@ namespace EGG9000.Common.Helpers {
 
         public TimeSpan FarmExpires {
             get {
-                return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(Farm.TimeAccepted);
+                return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long)ArchivedFarm.TimeAccepted);
             }
         }
 
@@ -178,7 +186,7 @@ namespace EGG9000.Common.Helpers {
         public string EggIncId {
             get {
                 return Backup is not null ?
-                    Backup.EggIncId : CoopStatus.GetID();
+                    Backup.EggIncId : CoopStatus?.GetID() ?? Xref.EggIncId;
             }
         }
 
