@@ -421,7 +421,7 @@ namespace EGG9000.Bot.Automated {
                                     }
                                     if(xref is not null) {
                                         var isNameUnique = !users.Where(x => x.Backups is not null).Any(x => x.Backups.Any(b => b.UserName == participant.UserName && b.EggIncId != xref.EggIncId));
-                                        if(isNameUnique && !string.IsNullOrEmpty(participant.UserName));
+                                        if(isNameUnique && !string.IsNullOrEmpty(participant.UserName))
                                             xref.FixedUserName = participant.UserName;
                                     }
                                 }
@@ -877,16 +877,16 @@ namespace EGG9000.Bot.Automated {
 
                         var personToGiftTo = giftInfos
                             .Where(x =>
-                                x.Shipping < 99.5 &&
-                                x.Habs < 99.5
+                                x.Shipping < 97 &&
+                                x.Habs < 97
                             )
                             .OrderByDescending(x => x.FarmPopulation).Take(10);
                         if(personToGiftTo.Count() > 0) {
                             var table = personToGiftTo.Select(x => new List<FixedWidthCell> {
                                 new FixedWidthCell(Truncate(x.UserName, 11)),
                                 new FixedWidthCell($"{x.FarmPopulation.ToEggString()}🐔", CellAlignment.Right),
-                                new FixedWidthCell($"{Math.Round(x.Habs, x.Habs > 97 ? 1 : 0)}%🏠", CellAlignment.Right),
-                                new FixedWidthCell($"{Math.Round(x.Shipping, x.Shipping > 97 ? 1 : 0)}%🚚", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Habs)}%🏠", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Shipping)}%🚚", CellAlignment.Right),
                             }).ToList();
                             lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{String.Join("\n", FixedWidthTable.GetTable(table))}```\n";
                         } else {

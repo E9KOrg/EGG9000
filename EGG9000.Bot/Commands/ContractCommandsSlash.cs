@@ -86,19 +86,17 @@ namespace EGG9000.Bot.Commands {
 
             var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
 
-            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
+            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-            foreach(var user in coopsBreakdown.Coops.SelectMany(x => x.Users)) {
-                var discordUser = guild.GetUser(user.DiscordId);
-                await ((ITextChannel)command.Channel).AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+            foreach(var user in coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants)) {
+                await ((ITextChannel)command.Channel).AddPermissionOverwriteAsync(user.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
             }
 
             foreach(var user in coopsBreakdown.ExpiredFarms) {
-                var discordUser = guild.GetUser(user.DiscordId);
-                await ((ITextChannel)command.Channel).AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                await ((ITextChannel)command.Channel).AddPermissionOverwriteAsync(user.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
             }
 
-            await command.Channel.SendMessageAsync($"{coopsBreakdown.Coops.SelectMany(x => x.Users).Count()} prefarmers added");
+            await command.Channel.SendMessageAsync($"{coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Count()} prefarmers added");
         }
 
 
@@ -341,22 +339,22 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
+            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-            foreach(var coopDetail in coopsBreakdown.Coops) {
+            foreach(var coopDetail in coopsBreakdown.PotentialCoops) {
                 var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
-                var cooppercent = (decimal)(coopDetail.Users.Sum(x => x.Projected) / targetAmount) * 100m;
+                var cooppercent = (decimal)(coopDetail.CoopParticipants.Sum(x => x.Projected) / targetAmount) * 100m;
                 if(cooppercent < percent) {
                     continue;
                 }
 
                 var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
-                var coop = await CreateCoops.Start(coopDetail.Users, guildContract, guild, _words, db);
+                var coop = await CreateCoops.Start(coopDetail.CoopParticipants, guildContract, guild, _words, db);
 
                 coopCount++;
             }
 
-            if(percent == 0 || coopCount == coopsBreakdown.Coops.Count) {
+            if(percent == 0 || coopCount == coopsBreakdown.PotentialCoops.Count) {
                 guildContract.Status = ContractStatus.Creating;
                 //await ((SocketGuildChannel)command.Channel).ModifyAsync(x => x.Name = "📥" + guildContract.ContractID);
             } else {
@@ -409,9 +407,9 @@ namespace EGG9000.Bot.Commands {
 
 
 
-            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
+            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-            var prefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).Where(x => x.ProjectedPercent < 10).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            var prefarms = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Where(x => x.ProjectedPercent < 10).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
@@ -419,13 +417,13 @@ namespace EGG9000.Bot.Commands {
             if(user == null) {
                 List<CoopDetails> coopsToStart;
                 if(startFire) {
-                    coopsToStart = coopsBreakdown.Coops.Where(x => x.IsFire || x.IsDoubleFire).ToList();
+                    coopsToStart = coopsBreakdown.PotentialCoops.Where(x => x.IsFire || x.IsDoubleFire).ToList();
                 } else {
-                    coopsToStart = coopsBreakdown.Coops.Where(x => x.PercentProjected >= percent).ToList();
+                    coopsToStart = coopsBreakdown.PotentialCoops.Where(x => x.PercentProjected >= percent).ToList();
                 }
                 foreach(var coop in coopsToStart) {
-                    var carry = coop.Users.OrderByDescending(x => x.Projected).First();
-                    var carryWithAlts = coop.Users.Where(x => x.DiscordId == carry.DiscordId).ToList();
+                    var carry = coop.CoopParticipants.OrderByDescending(x => x.Projected).First();
+                    var carryWithAlts = coop.CoopParticipants.Where(x => x.DiscordUser.Id == carry.DiscordUser.Id).ToList();
                     var participants = await _startUserCreateCoop(carryWithAlts, guildContract, prefarms, db, guild, _words, true);
                     var numberRemoved = prefarms.RemoveAll(x => participants.Any(y => y == x));
                     coopCount++;
@@ -440,9 +438,9 @@ namespace EGG9000.Bot.Commands {
                 //        coopCount++;
                 //    }
             } else {
-                var prefarm = coopsBreakdown.Coops.SelectMany(x => x.Users.Where(y => y.DiscordId == user.Id)).First();
+                var prefarm = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants.Where(y => y.DiscordUser.Id == user.Id)).First();
                 prefarms.Remove(prefarm);
-                _ = await _startUserCreateCoop(new List<UserPreFarm> { prefarm }, guildContract, prefarms, db, guild, _words, fill);
+                _ = await _startUserCreateCoop(new List<UserFarmDetails> { prefarm }, guildContract, prefarms, db, guild, _words, fill);
                 coopCount++;
             }
 
@@ -456,14 +454,14 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        private static async Task<List<UserPreFarm>> _startUserCreateCoop(List<UserPreFarm> users, GuildContract guildContract, List<UserPreFarm> prefarms, ApplicationDbContext db, SocketGuild guild, Words _words, bool fill = true) {
-            var participants = new List<UserPreFarm>();
+        private static async Task<List<UserFarmDetails>> _startUserCreateCoop(List<UserFarmDetails> existingUsers, GuildContract guildContract, List<UserFarmDetails> otherUsers, ApplicationDbContext db, SocketGuild guild, Words _words, bool fill = true) {
+            var participants = new List<UserFarmDetails>();
             //if(guildContract.Contract.MaxUsers > 4) {
             //    participants.AddRange(prefarms.Where(x => x.DiscordId == user.DiscordId));
             //}
-            participants.AddRange(users);
+            participants.AddRange(existingUsers);
             if(fill) {
-                participants.AddRange(prefarms.TakeLast(guildContract.Contract.MaxUsers - participants.Count));
+                participants.AddRange(otherUsers.TakeLast(guildContract.Contract.MaxUsers - participants.Count));
             }
 
             var coop = await CreateCoops.Start(participants, guildContract, guild, _words, db);
@@ -480,7 +478,7 @@ namespace EGG9000.Bot.Commands {
             }
             var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
 
-            var coop = await CreateCoops.Start(new List<UserPreFarm>(), guildContract, guild, _words, db);
+            var coop = await CreateCoops.Start(new List<UserFarmDetails>(), guildContract, guild, _words, db);
             await db.SaveChangesAsync();
             await command.RespondAsync($"Empty co-op created");
             return;
@@ -584,7 +582,8 @@ namespace EGG9000.Bot.Commands {
                 var prefarmers = GetPrefarmers(backups, guildContract);
 
                 var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
-                var alienBackups = await GetBackupsForAliens(coops, prefarmers, guildContract.Contract, _apiLink);
+                //var alienBackups = await GetBackupsForAliens(coops, prefarmers, guildContract.Contract, _apiLink);
+                var alienBackups = new List<UserPreFarm>();
                 var currentCoops = coops.Select(coop => {
                     var prefarms = GetPrefarmsForCoop(coop, prefarmers, alienBackups, guildContract.Contract);
                     return new {
@@ -623,9 +622,15 @@ namespace EGG9000.Bot.Commands {
 
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == dbuser.DiscordId && x.CreatedOn > DateTimeOffset.Now.AddMonths(-2)).ToListAsync();
                 if(xrefs.Count == dbuser.EggIncIds.Count) {
-                    var coopLinks = string.Join(", ", xrefs.Select(x => $"https://discord.com/channels/{x.Coop.OverflowGuildId}/{x.Coop.DiscordChannelId}"));
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: <@{dbuser.DiscordId}> has already be assigned {(xrefs.Count > 1 ? "the co-ops" : "a co-op")} {coopLinks}, if {(xrefs.Count > 1 ? "these co-ops" : "this co-op")} has already finished contact staff and we can get it fixed.");
-                    return;
+                    if(xrefs.Count == 1 && (xrefs.First().Coop.DeletedChannel || xrefs.First().Coop.FinishedOrFailed)) {
+                        db.UserCoopXrefs.Remove(xrefs.First());
+                        await db.SaveChangesAsync();
+                        xrefs = new List<UserCoopXref>();
+                    } else {
+                        var coopLinks = string.Join(", ", xrefs.Select(x => $"<https://discord.com/channels/{x.Coop.OverflowGuildId}/{x.Coop.DiscordChannelId}>"));
+                        await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: <@{dbuser.DiscordId}> has already been assigned {(xrefs.Count > 1 ? "the co-ops" : "a co-op")}. You can get to the co-op by clicking the following link {coopLinks}, if this co-op has already finished contact staff and we can get it fixed.");
+                        return;
+                    }
                 }
 
                 string EggIncId;
@@ -635,7 +640,7 @@ namespace EGG9000.Bot.Commands {
                         var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
                         var prefarms = prefarmers.Where(x => x.Elite == guildContract.Elite && x.DatabaseId == dbuser.Id && !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
                         if(prefarms.Count == 0) {
-                            await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned. Keep prefarming and wait for staff to start more co-ops.");
+                            await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
                             return;
                         }
                         EggIncId = prefarms.First().EggIncId;
@@ -650,7 +655,7 @@ namespace EGG9000.Bot.Commands {
                 var newxref = await CreateCoops.MoveUser(targetCoop, dbuser.Id, EggIncId, eggIncName, targetUser, dbuser, (SocketTextChannel)targetChannel, (SocketTextChannel)command.Channel);
 
                 if(newxref == null) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{command.User.Mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**. Once you've joined the overflows use this link to get to your co-op https://discord.com/channels/{targetCoop.OverflowGuildId}/{targetCoop.DiscordChannelId}");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{command.User.Mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**. Once you've joined the overflows use this link to get to your co-op 👉 https://discord.com/channels/{targetCoop.OverflowGuildId}/{targetCoop.DiscordChannelId}");
                     return;
                 }
 
@@ -658,7 +663,7 @@ namespace EGG9000.Bot.Commands {
                 db.Add(newxref);
 
                 await db.SaveChangesAsync();
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"Moved you to a co-op, https://discord.com/channels/{targetCoop.OverflowGuildId}/{targetCoop.DiscordChannelId}");
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"Moved you to a co-op, link to the co-op 👉 https://discord.com/channels/{targetCoop.OverflowGuildId}/{targetCoop.DiscordChannelId}");
             }
         }
 
@@ -687,27 +692,25 @@ namespace EGG9000.Bot.Commands {
                     x.TempDisabled
                 }).ToListAsync();
                 var dbusers = rawusers.Select(x => new DBUser { TempDisabled = x.TempDisabled, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds });
-                var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
+                var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new UserWithBackup {
                     User = y,
                     Backup = x
                 })).ToList();
-                var prefarmers = GetPrefarmers(backups, guildContract);
 
-                var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
-                var alienBackups = await GetBackupsForAliens(coops, prefarmers, guildContract.Contract, _apiLink);
-                var currentCoops = coops.Select(coop => {
-                    var prefarms = GetPrefarmsForCoop(coop, prefarmers, alienBackups, guildContract.Contract);
-                    return new CoopDetails(prefarms, targetAmount, coop, guildContract.Contract.Details.MaxCoopSize);
-                }).Where(x => x.TimeRemaining > TimeSpan.FromHours(24) && !x.Coop.Finished && x.HasSpots).OrderByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
+
+                var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
+                var coopsBreakdown = Prefarm.GetBreakdown(coops, backups, guildContract, _client);
+
+                var currentCoops = coopsBreakdown.ExistingCoops.Where(x => x.TimeRemaining > TimeSpan.FromHours(24) && !x.Coop.FinishedOrFailed && x.HasSpots).OrderBy(x => x.TimeRemaining).ToList();
+
 
                 if(currentCoops.Count == 0) {
                     await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find open co-op, all spots may have been filled.");
                     return;
                 }
 
-                var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
-                var allPrefarms = coopsBreakdown.Coops.SelectMany(x => x.Users).OrderBy(x => x.Backup.EarningsBonus).ToList();
-                var discordIds = allPrefarms.Select(p => p.DiscordId);
+                var allPrefarms = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).OrderBy(x => x.Backup.EarningsBonus).ToList();
+                var discordIds = allPrefarms.Select(p => p.DiscordUser.Id);
 
                 var coopsAbove100Percent = currentCoops.Where(x => x.PercentProjected > 100);
 
@@ -725,15 +728,15 @@ namespace EGG9000.Bot.Commands {
                 allPrefarms = allPrefarms.Where(p => p.ProjectedPercent < overrideperecent).ToList();
 
                 foreach(var user in allPrefarms) {
-                    var dbuser = dbusers.First(x => x.DiscordId == user.DiscordId);
-                    var discordUser = _client.GetUser(user.DiscordId);
+                    var dbuser = dbusers.First(x => x.DiscordId == user.DiscordUser.Id);
+                    var discordUser = _client.GetUser(user.DiscordUser.Id);
                     var added = false;
                     foreach(var coop in currentCoops.Where(x => x.HasSpots)) {
                         var coopStatus = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coop.Coop.Name.ToLower());
                         if(coopStatus.Contributors.Count < guildContract.Contract.Details.MaxCoopSize) {
                             var targetCoop = coop.Coop;
                             var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == dbuser.DiscordId).ToListAsync();
-                            if(xrefs.Count == dbuser.EggIncIds.Count && xrefs.First().JoinedCoop) {
+                            if(xrefs.Count() == dbuser.EggIncIds.Count && xrefs.First().JoinedCoop) {
                                 await command.Channel.SendMessageAsync($"ERROR: Unable to add {user.Name}, they are already assigned a co-op");
                                 break;
                             }
@@ -758,7 +761,7 @@ namespace EGG9000.Bot.Commands {
                             await db.SaveChangesAsync();
                             await command.Channel.SendMessageAsync($"Moved {user.Name} to a co-op");
                             added = true;
-                            coop.Users.Add(user);
+                            coop.CoopParticipants.Add(user);
                             break;
                         }
 
@@ -792,23 +795,23 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Pinging users and removing existing pings that aren't needed", ephemeral: true);
             var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
-            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract);
+            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
             var threadMessages = await command.Channel.GetMessagesAsync(limit: 500).FlattenAsync();
 
 
 
-            var usersWithFarm = new List<UserPreFarm>();
-            usersWithFarm.AddRange(coopsBreakdown.Coops.SelectMany(x => x.Users));
+            var usersWithFarm = new List<UserFarmDetails>();
+            usersWithFarm.AddRange(coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants));
             usersWithFarm.AddRange(coopsBreakdown.ExpiredFarms);
 
-            var oldPings = threadMessages.Where(m => m.MentionedUserIds.Count == 1 && usersWithFarm.Any(u => u.DiscordId == m.MentionedUserIds.First()) && m.CreatedAt.AddHours(12) < DateTimeOffset.Now);
+            var oldPings = threadMessages.Where(m => m.MentionedUserIds.Count == 1 && usersWithFarm.Any(u => u.DiscordUser.Id == m.MentionedUserIds.First()) && m.CreatedAt.AddHours(12) < DateTimeOffset.Now);
 
 
 
-            var usersToPing = usersWithFarm.Where(u => u.ProjectedPercent < overridepercent && !threadMessages.Any(m => m.MentionedUserIds.Any(mu => mu == u.DiscordId))).ToList();
+            var usersToPing = usersWithFarm.Where(u => u.ProjectedPercent < overridepercent && !threadMessages.Any(m => m.MentionedUserIds.Any(mu => mu == u.DiscordUser.Id))).ToList();
             var pingsToRemove = threadMessages.Where(m =>
-             (m.MentionedUserIds.Count == 1 && !usersWithFarm.Any(u => u.DiscordId == m.MentionedUserIds.First()))
+             (m.MentionedUserIds.Count == 1 && !usersWithFarm.Any(u => u.DiscordUser.Id == m.MentionedUserIds.First()))
             //|| (!usersWithFarm.Any(u => m.Author.Id == u.DiscordId) && !m.Author.IsBot && !m.Author.rol)
 
             ).ToList();
@@ -818,7 +821,7 @@ namespace EGG9000.Bot.Commands {
             var usersAbovePercent = usersWithFarm.Where(u => u.ProjectedPercent >= overridepercent).ToList().OrderBy(x => x.Projected);
 
             foreach(var user in usersToPing) {
-                await command.Channel.SendMessageAsync($"<@{user.DiscordId}>");
+                await command.Channel.SendMessageAsync($"<@{user.DiscordUser.Id}>");
             }
 
             var messagesToDelete = new List<IMessage>();
@@ -828,14 +831,14 @@ namespace EGG9000.Bot.Commands {
             }
 
             foreach(var oldPing in oldPings) {
-                var user = usersWithFarm.First(x => x.DiscordId == oldPing.MentionedUserIds.First());
+                var user = usersWithFarm.First(x => x.DiscordUser.Id == oldPing.MentionedUserIds.First());
                 if(user.ProjectedPercent < overridepercent) {
                     await command.Channel.SendMessageAsync($"<@{oldPing.MentionedUserIds.First()}>");
                 }
                 messagesToDelete.Add(oldPing);
-                var discordUser = await (command.Channel as ITextChannel).Guild.GetUserAsync(user.DiscordId);
+                var discordUser = await (command.Channel as ITextChannel).Guild.GetUserAsync(user.DiscordUser.Id);
 
-                if(usersAbovePercent.Any(y => y.DiscordId == oldPing.MentionedUserIds.First())) {
+                if(usersAbovePercent.Any(y => y.DiscordUser.Id == oldPing.MentionedUserIds.First())) {
                     await (command.Channel as IThreadChannel).RemoveUserAsync(discordUser);
                 }
             }
@@ -864,12 +867,12 @@ namespace EGG9000.Bot.Commands {
             if(usersAbovePercent.Count() > 0) {
                 var usersString = string.Join("\n", usersAbovePercent.Select(x => {
                     string expireMessage = "";
-                    if(x.TimeLeft.HasValue && x.TimeLeft.Value < TimeSpan.Zero) {
-                        expireMessage = $"Expired {x.TimeLeft.Value.Humanize()} ago";
-                    } else if(x.TimeLeft.HasValue && x.TimeLeft.Value < TimeSpan.FromDays(1)) {
-                        expireMessage = $"Expires in {x.TimeLeft.Value.Humanize()}";
+                    if(x.TimeLeft < TimeSpan.Zero) {
+                        expireMessage = $"Expired {x.TimeLeft.Humanize()} ago";
+                    } else if(x.TimeLeft < TimeSpan.FromDays(1)) {
+                        expireMessage = $"Expires in {x.TimeLeft.Humanize()}";
                     }
-                    return $"{x.User.DiscordUsername} {Math.Round(x.ProjectedPercent)}% {expireMessage}";
+                    return $"{x.DBUser.DiscordUsername} {Math.Round(x.ProjectedPercent)}% {expireMessage}";
                 }));
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"Did not add the following: \n {usersString}");
             } else {
@@ -891,7 +894,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(wrongcoopcode.Equals(targetCoop.Name, StringComparison.OrdinalIgnoreCase)) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Unable to leave currently assigned co-op");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Please enter the wrong code you joined so we know which co-op to remove you from so you can join this one.");
                 return;
             }
 

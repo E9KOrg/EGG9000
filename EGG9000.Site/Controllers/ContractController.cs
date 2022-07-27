@@ -46,6 +46,8 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
+                await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
+
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
 
                 var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
@@ -65,11 +67,10 @@ namespace EGG9000.Site.Controllers {
                     Backup = x
                 })).ToList();
 
-                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract);
+                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord );
 
                 ViewBag.Discord = _discord;
 
-                await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
 
                 var UserPreFarms = backups.Select(x => BackupToPreFarm(x, guildContract.Contract)).Where(x => x != null).ToList();
 
@@ -109,7 +110,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
+        public async Task<IActionResult> StartCoop([FromBody] List<UserFarmDetails> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
             var guild = _discord.GetGuild(guildContract.GuildID);
 
@@ -120,9 +121,9 @@ namespace EGG9000.Site.Controllers {
                 return Json(new { error = true, message = $"Un-able to create co-op, the following are already in one: {string.Join(", ", existingsXrefs.Select(x => x.User.DiscordUsername))}" });
             }
 
-            var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
+            var dbUserIds = Users.Select(x => x.DBUser.Id).ToList();
             var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
-            Users.ForEach(x => x.User = dbusers.FirstOrDefault(y => y.Id == x.DatabaseId));
+            Users.ForEach(x => x.DBUser = dbusers.FirstOrDefault(y => y.Id == x.DBUser.Id));
 
             var coop = await CreateCoops.Start(Users, guildContract, guild, new Words(), _db);
             guildContract.NumberOfCoops--;

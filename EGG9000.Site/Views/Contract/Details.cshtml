@@ -7,19 +7,21 @@
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
     var targetAmount = Model.GuildContract.Contract.Details.GoalSets[Model.GuildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
 
-    var alienBackups = await GetBackupsForAliens(Model.Coops, Model.UserPreFarms, Model.GuildContract.Contract, _apiLink);
+    DiscordSocketClient discord = ViewBag.Discord;
 
+    //var alienBackups = await GetBackupsForAliens(Model.Coops, Model.UserPreFarms, Model.GuildContract.Contract, _apiLink);
+    var alienBackups = new List<UserPreFarm>();
     var currentCoops = Model.Coops.Select(coop => {
-        var prefarms = GetPrefarmsForCoop(coop, Model.UserPreFarms, alienBackups, Model.GuildContract.Contract);
+        //var prefarms = GetPrefarmsForCoop(coop, Model.UserPreFarms, alienBackups, Model.GuildContract.Contract);
+        var coopParticipants = Prefarm.GetCoopParticipants(coop, Model.GuildContract.Contract, coop.LastStatusUpdate, Model.UserPreFarms.Select(y => new UserWithBackup{ Backup =  y.Backup, User = y.User}), discord);
         return new {
             Coop = coop,
-            Prefarms = prefarms,
-            TimeRemaining = GetTimeRemainingValue(targetAmount, prefarms.Sum(x => x.Rate), prefarms.Sum(x => x.EggsPaidFor + x.Rate * x.TimeSinceUpdate.TotalSeconds)),
-            HasSpots = Model.GuildContract.Contract.Details.MaxCoopSize > prefarms.Count
+            CoopParticipants = coopParticipants,
+            TimeRemaining = GetTimeRemainingValue(targetAmount, coopParticipants.Sum(x => x.Rate), coopParticipants.Sum(x => x.EggsShipped + x.Rate * x.TimeSinceUpdate.TotalSeconds)),
+            HasSpots = Model.GuildContract.Contract.Details.MaxCoopSize > coopParticipants.Count
         };
     }).OrderBy(x => x.Coop.Finished).ThenByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
 
-    DiscordSocketClient discord = ViewBag.Discord;
 
     //var allPreFarms = Model.PreFarms;
     var guildContract = Model.GuildContract;
@@ -38,26 +40,26 @@
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     //isAdmin = false;
 
-    currentCoops.ForEach(c => c.Prefarms.ForEach(p => p.DiscordUser = guild.GetUser(p.DiscordId)));
+    //currentCoops.ForEach(c => c.Prefarms.ForEach(p => p.DiscordUser = guild.GetUser(p.DiscordId)));
     var activeCoops = currentCoops.Select(c => new {
         c.Coop.Name,
         c.Coop.ContractID,
-        CurrentCoop = c.Prefarms.Any(x => x.DiscordId.ToString() == discordId),
+        CurrentCoop = c.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId),
         Status = c.Coop.Finished ? "Finished" : c.TimeRemaining < TimeSpan.Zero ? "Complete once everyone checks in" : $"Time to complete {c.TimeRemaining.Humanize(precision: 2).ShortenTime()}",
-        Users = c.Prefarms.OrderByDescending(x => x.Projected).Select(u => new {
+        Users = c.CoopParticipants.OrderByDescending(x => x.Projected).Select(u => new {
             Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
             NumChickens = u.NumChickens.ToEggString(),
             Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
             Projected = u.Projected.ToEggString(),
-            Status = u.Coop,
+            //Status = u.Coop,
             Locked = true,
             EggIncId = u.EggIncId,
-            UserId = u.User?.Id,
-            DiscordID = u.User?.DiscordId
+            UserId = u.DBUser?.Id,
+            DiscordID = u.DiscordUser?.Id
         }),
         MaxSize = Model.GuildContract.Contract.Details.MaxCoopSize,
-        Rate = $"{ArgumentsHelper.NumberToString(c.Prefarms.Sum(x => x.Rate) * 60 * 60, false)}/h",
-        Percent = (c.Prefarms.Sum(x => x.Projected) / targetAmount).ToString("P0"),
+        Rate = $"{ArgumentsHelper.NumberToString(c.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false)}/h",
+        Percent = (c.CoopParticipants.Sum(x => x.Projected) / targetAmount).ToString("P0"),
         CoopId = c.Coop.Id,
         HoursToFinish = c.TimeRemaining.TotalHours
     });
@@ -65,50 +67,49 @@
     var isSolo = Model.GuildContract.Contract.MaxUsers <= 1;
 
     if(isSolo) {
-        Model.CoopsBreakdown.Coops = new List<CoopDetails> {
-            new CoopDetails(Model.CoopsBreakdown.Coops.SelectMany(c => c.Users).ToList(), 0)
+        Model.CoopsBreakdown.PotentialCoops = new List<CoopDetails> {
+            new CoopDetails(Model.CoopsBreakdown.PotentialCoops.SelectMany(c => c.CoopParticipants).ToList(), guildContract)
         };
     }
 
-    Model.CoopsBreakdown.Coops.ForEach(c => c.Users.ForEach(u => u.DiscordUser = guild.GetUser(u.DiscordId)));
-    var potentialCoops = Model.CoopsBreakdown.Coops.Select(c => {
-        var users = c.Users.OrderByDescending(x => x.Projected).Select(u => new {
+    var potentialCoops = Model.CoopsBreakdown.PotentialCoops.Select(c => {
+        var users = c.CoopParticipants.OrderByDescending(x => x.Projected).Select(u => new {
             u.EggIncId,
-            u.DatabaseId,
-            DiscordID = u.User?.DiscordId,
+            u.DBUser.Id,
+            DiscordID = u.DiscordUser.Id,
             Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
             NumChickens = u.NumChickens.ToEggString(),
             Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
             ProjectedPercent = u.Projected / targetAmount,
             Status = isSolo
-                ? (u.Projected < targetAmount ? $"{ArgumentsHelper.NumberToString((targetAmount - u.EggsPaidFor) / u.TimeLeft?.TotalHours ?? 0, false)}/h" : "")
-                : u.TimeLeft?.Humanize(precision: 2).ShortenTime(),
-            TimeLeft = u.TimeLeft.Value.TotalSeconds,
+                ? (u.Projected < targetAmount ? $"{ArgumentsHelper.NumberToString((targetAmount - u.EggsShipped) / u.TimeLeft.TotalHours, false)}/h" : "")
+                : u.TimeLeft.Humanize(precision: 2).ShortenTime(),
+            TimeLeft = u.TimeLeft.TotalSeconds,
             EB = u.Backup.EarningsBonus.ToEggString(),
             EBValue = u.Backup.EarningsBonus,
             Locked = !isAdmin
         });
         dynamic model = new {
             Count = ++count,
-            CurrentCoop = c.Users.Any(x => x.DiscordId.ToString() == discordId),
+            CurrentCoop = c.CoopParticipants.Any(x => (x.DiscordUser?.Id ?? 0).ToString() == discordId),
             Users = isSolo ? users.OrderBy(u => u.Name) : users.OrderByDescending(u => u.ProjectedPercent),
             MaxSize = Model.GuildContract.Contract.Details.MaxCoopSize,
-            Rate = $"{ArgumentsHelper.NumberToString(c.Users.Sum(x => x.Rate) * 60 * 60, false)}/h",
+            Rate = $"{ArgumentsHelper.NumberToString(c.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false)}/h",
         };
         return model;
     });
 
     var expiredFarms = Model.CoopsBreakdown.ExpiredFarms.Select(u => new {
         u.EggIncId,
-        u.DatabaseId,
+        u.DBUser.Id,
         Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
         NumChickens = u.NumChickens.ToEggString(),
         Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
         ProjectedPercent = u.Projected / targetAmount,
         Status = isSolo
-                ? (u.Projected < targetAmount ? $"{ArgumentsHelper.NumberToString((targetAmount - u.EggsPaidFor) / u.TimeLeft?.TotalHours ?? 0, false)}/h" : "")
-                : u.TimeLeft?.Humanize(precision: 2).ShortenTime(),
-        TimeLeft = u.TimeLeft.Value.TotalSeconds,
+                ? (u.Projected < targetAmount ? $"{ArgumentsHelper.NumberToString((targetAmount - u.EggsShipped) / u.TimeLeft.TotalHours, false)}/h" : "")
+                : u.TimeLeft.Humanize(precision: 2).ShortenTime(),
+        TimeLeft = u.TimeLeft.TotalSeconds,
         EB = u.Backup.EarningsBonus.ToEggString(),
         EBValue = u.Backup.EarningsBonus,
         Locked = !isAdmin
@@ -190,17 +191,17 @@
     .card-header {
         padding: .4rem 1.25rem !important;
     }
-        @if(isSolo) {<text>
-        .col-sm {
-        flex-grow: 0 !important;
-    }
+        @if (isSolo) {<text>
+            .col-sm {
+                flex-grow: 0 !important;
+            }
     </text>}
 </style>
 <div class="container" ng-controller="Page">
     <div style="float: left;">
         <h3>@Model.GuildContract.Contract.Name - @(Model.GuildContract.Elite ? "Elite" : "Standard") </h3>
         @if(isSolo) {
-            var accounts = currentCoops.SelectMany(x => x.Prefarms.Where(x => x.DiscordId.ToString() == discordId)).ToList();
+            var accounts = currentCoops.SelectMany(x => x.CoopParticipants.Where(x => x.DiscordUser?.Id.ToString() == discordId)).ToList();
             if(accounts.Count == 0) {
         <p>You are not currently in this contract</p>
             } else if(accounts.Count == 1) {
@@ -210,13 +211,13 @@
         <p><a href="#@account.EggIncId">Jump to @account.EggIncId</a></p>
                 }
             }
-        } else if(currentCoops.Any(coop => coop.Prefarms.Any(x => x.DiscordId.ToString() == discordId)) || Model.CoopsBreakdown.Coops.Any(coop => coop.Users.Any(x => x.DiscordId.ToString() == discordId))) {
-            foreach(var coop in currentCoops.Where(c => c.Prefarms.Any(x => x.DiscordId.ToString() == discordId))) {
+        } else if(currentCoops.Any(coop => coop.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId)) || Model.CoopsBreakdown.PotentialCoops.Any(coop => coop.CoopParticipants.Any(x => (x.DiscordUser?.Id ?? 0).ToString() == discordId))) {
+            foreach(var coop in currentCoops.Where(c => c.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId))) {
         <p><a href="#@coop.Coop.Name">Jump to my co-op @coop.Coop.Name</a></p>
             }
 
-            foreach(var coop in Model.CoopsBreakdown.Coops.Where(c => c.Users.Any(x => x.DiscordId.ToString() == discordId))) {
-                var coopNum = Model.CoopsBreakdown.Coops.IndexOf(coop) + currentCoops.Count + 1;
+            foreach(var coop in Model.CoopsBreakdown.PotentialCoops.Where(c => c.CoopParticipants.Any(x => (x.DiscordUser?.Id ?? 0).ToString() == discordId))) {
+                var coopNum = Model.CoopsBreakdown.PotentialCoops.IndexOf(coop) + currentCoops.Count + 1;
         <p><a href="#@coopNum">Jump to my co-op @coopNum</a></p>
             }
         } else {

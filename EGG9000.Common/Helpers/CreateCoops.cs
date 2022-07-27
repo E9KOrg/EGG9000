@@ -17,7 +17,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoops {
-        public static async Task<Coop> Start(List<UserPreFarm> prefarms, GuildContract guildContract, SocketGuild guild, Words _words, ApplicationDbContext db) {
+        public static async Task<Coop> Start(List<UserFarmDetails> prefarms, GuildContract guildContract, SocketGuild guild, Words _words, ApplicationDbContext db) {
             //var discordUsers = prefarms.Select(x => guild.GetUser(x.DiscordId));
             var coop = new Coop();
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == guildContract.GuildID);
@@ -41,7 +41,7 @@ namespace EGG9000.Common.Helpers {
                     CoopId = coop.Id,
                     JoinedCoop = false,
                     WaitingOnStarter = false,
-                    UserId = user.DatabaseId.Value,
+                    UserId = user.DBUser.Id,
                     EggIncId = user.EggIncId,
                     WasAssigned = true
                 });
