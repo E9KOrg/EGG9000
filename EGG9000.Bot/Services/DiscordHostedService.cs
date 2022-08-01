@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Services {
     public class DiscordHostedService : DiscordSocketClient {
+        public bool IsReady { get; private set; }
         private IConfiguration _configuration;
         private ApplicationDbContext _db;
         private readonly IMemoryCache _cache;
@@ -26,12 +27,10 @@ namespace EGG9000.Bot.Services {
         };
         public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache) : base(config) {
             _configuration = Configuration;
-            Console.WriteLine("Downloading all guild user");
-            foreach(var guild in this.Guilds) {
-                guild.DownloadUsersAsync().Wait();
-            }
+            
 
             this.Log += PrintLog;
+            this.Ready += DiscordHostedService_Ready;
 
 
             this.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
@@ -40,12 +39,26 @@ namespace EGG9000.Bot.Services {
             Console.WriteLine("Waiting on Discord Connect");
 
             while(this.ConnectionState != ConnectionState.Connected) { }
+            
+            Console.WriteLine("Waiting on Discord Ready");
 
-            this.SetGameAsync("").Wait();
             _db = db;
             _cache = cache;
         }
 
+        private Task DiscordHostedService_Ready() {
+            IsReady = true;
+            this.SetGameAsync("").Wait();
+
+            foreach(var guild in this.Guilds) {
+                Console.WriteLine($"Downloading guild users for {guild.Name}");
+                guild.DownloadUsersAsync().Wait();
+            }
+
+            Console.WriteLine("Discord Ready");
+
+            return Task.CompletedTask;
+        }
 
         private Task PrintLog(LogMessage msg) {
             if(!msg.ToString().Contains("Rate limit triggered")) {

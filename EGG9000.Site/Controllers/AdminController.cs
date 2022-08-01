@@ -446,6 +446,8 @@ namespace EGG9000.Site.Controllers {
                 };
             }));
 
+
+
             var guild = _discord.GetGuild(guildId);
             var beastModeRole = guild.GetRole(938563459812049008);
 
@@ -465,6 +467,7 @@ namespace EGG9000.Site.Controllers {
                     DiscordUser = discordUser,
                 };
             }))).Where(x => x != null).OrderByDescending(x => x.Score).Take(10);
+
 
 
 

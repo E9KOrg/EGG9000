@@ -93,7 +93,7 @@ namespace EGG9000.Bot.Automated {
                         var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
                         if(mainServerUser == null)
                             continue;
-                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot)
+                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id)
                         { // && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)
                             try {
                                 Console.WriteLine($"Changing nickname for {mainServerUser.Nickname}, it was {overflowUser.Nickname}. Server: {overflowServer.Name}");

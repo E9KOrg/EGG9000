@@ -50,35 +50,16 @@ namespace EGG9000.Site.Controllers {
 
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
 
-                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
-                //var users = await _db.Users.Where(x => x.GuildId == GuildId).ToListAsync();
-                var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == GuildId).Select(x => new {
-                    x.DiscordId,
-                    x.DiscordUsername,
-                    x.GuildId,
-                    x.Id,
-                    x._CustomBackups,
-                    x._eggIncIds,
-                    x.TempDisabled
-                }).ToListAsync();
-                var dbusers = rawusers.Select(x => new DBUser { TempDisabled = x.TempDisabled, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds });
-                var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
-                    User = y,
-                    Backup = x
-                })).ToList();
 
                 var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord );
 
                 ViewBag.Discord = _discord;
 
 
-                var UserPreFarms = backups.Select(x => BackupToPreFarm(x, guildContract.Contract)).Where(x => x != null).ToList();
 
                 return View(new CoopsViewModel {
-                    Coops = coops,
                     GuildContract = guildContract,
-                    CoopsBreakdown = coopsBreakdown,
-                    UserPreFarms = UserPreFarms
+                    CoopsBreakdown = coopsBreakdown
                 });
             } else {
                 return View("TempDisabled");
