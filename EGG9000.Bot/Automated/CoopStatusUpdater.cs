@@ -43,7 +43,11 @@ namespace EGG9000.Bot.Automated {
             var sw = new Stopwatch();
             sw.Restart();
             using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
+#if DEBUG
+                var checkFinished = true;
+#else
                 var checkFinished = _counter == 0;
+#endif
                 if(++_counter >= 60) {
                     _counter = 0;
                 }
@@ -58,9 +62,9 @@ namespace EGG9000.Bot.Automated {
 
                 var throttler = new SemaphoreSlim(5);
 
-#if DEBUG
-                coops = coops.Where(x => x.Name == "BunchWafer2").ToList();
-#endif
+//#if DEBUG
+//                coops = coops.Where(x => x.Name == "BunchWafer2").ToList();
+//#endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
                 foreach(var guildCoops in guildCoopGroups) {
@@ -269,6 +273,7 @@ namespace EGG9000.Bot.Automated {
                                 }
                             } catch(Exception e) {
                                 Console.WriteLine($"Error updating messages: {e.Message}");
+                                _bugsnag.Notify(e);
                             }
                         } else {
                             if(msgs[i] == "@@@EMBED") {
@@ -801,7 +806,7 @@ namespace EGG9000.Bot.Automated {
                                         if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                             xref.JoinWarning24TillFinish = true;
                                             await _db.SaveChangesAsync();
-                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop, );
                                         } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                             xref.JoinWarning24h = true;
                                             xref.JoinWarning12h = true;
@@ -884,10 +889,16 @@ namespace EGG9000.Bot.Automated {
                         if(personToGiftTo.Count() > 0) {
                             var table = personToGiftTo.Select(x => new List<FixedWidthCell> {
                                 new FixedWidthCell(Truncate(x.UserName, 11)),
-                                new FixedWidthCell($"{x.FarmPopulation.ToEggString()}🐔", CellAlignment.Right),
-                                new FixedWidthCell($"{Math.Round(x.Habs)}%🏠", CellAlignment.Right),
-                                new FixedWidthCell($"{Math.Round(x.Shipping)}%🚚", CellAlignment.Right),
+                                new FixedWidthCell($"{x.FarmPopulation.ToEggString()}", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Habs)}%", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Shipping)}%", CellAlignment.Right),
                             }).ToList();
+                            table.Prepend(new List<FixedWidthCell> {
+                                new FixedWidthCell(""),
+                                new FixedWidthCell($"🐔", CellAlignment.Center),
+                                new FixedWidthCell($"🏠", CellAlignment.Center),
+                                new FixedWidthCell($"🚚", CellAlignment.Center),
+                            });
                             lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{String.Join("\n", FixedWidthTable.GetTable(table))}```\n";
                         } else {
                             lastMessage += "\nLooks like everyone's shipping and/or habs are full so gifting chickens isn't useful.";
@@ -898,18 +909,16 @@ namespace EGG9000.Bot.Automated {
 
                         var usersToCheckDeflector = usersWithStatus.Where(x => !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Max(y => y.Status.Projected) / 2);
                         var usersNeedToAddDeflector = new List<UserWithStatus>();
-                        foreach(var user in usersToCheckDeflector) {
-                            var farm = user.Backup.Farms.First(x => x.ContractId == coop.ContractID);
-                            if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
-                                usersNeedToAddDeflector.Add(user);
+                        if(!coop.FinishedOrFailed) {
+                            foreach(var user in usersToCheckDeflector) {
+                                var farm = user.Backup.Farms.First(x => x.ContractId == coop.ContractID);
+                                if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
+                                    usersNeedToAddDeflector.Add(user);
+                                }
                             }
                         }
 
-                        var usersWithHall = usersWithStatus.Where(x => x.Backup is not null && x.Backup.ArtifactHall is not null);
 
-                        if(usersWithHall.Any()) {
-
-                        }
 
                         if(usersNeedToAddDeflector.Any()) {
                             lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip:** {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser.Mention))}";
@@ -1161,6 +1170,7 @@ namespace EGG9000.Bot.Automated {
 
                 } catch(Exception e) {
                     Console.WriteLine($"Error in co-op {coop.Name}: {e.Message}");
+                    _bugsnag.Notify(e);
                 }
             }
 
@@ -1300,7 +1310,7 @@ namespace EGG9000.Bot.Automated {
         public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             try {
                 var dmChannel = await discordUser.CreateDMChannelAsync();
-                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Image} {coop.ContractID}");
+                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention} for {coopChannel.Mention} {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name}");
             } catch(HttpException) {
                 await coopChannel.SendMessageAsync($"{Message} (User has blocked DMs from bot)");
             }

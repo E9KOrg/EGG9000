@@ -1,5 +1,7 @@
 ﻿using EGG9000.Common.Database.Entities;
 
+using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,29 +9,32 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
+using static EGG9000.Common.Helpers.Prefarm;
+
 namespace EGG9000.Common.Helpers {
     public class ContractScoring {
-        public static List<UserContractScore>  GetContractScores(List<Coop> coops, Contract contract) {
-            
+        public static List<UserContractScore> GetContractScores(List<Coop> coops, Contract contract) {
+
             var histories = new List<UserContractScore>();
 
             foreach(var coop in coops.Where(x => x.LastStatusUpdate != null)) {
-                foreach(var xref in coop.UserCoopsXrefs) {
-                    var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
-                    if(contribution != null) {
-                        var maxAmount = contract.Details.GoalSets[(int)(coop.League ?? 0)].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
-                        histories.Add(new UserContractScore {
-                            UserId = xref.UserId,
-                            UserName = xref.User?.DiscordUsername,
-                            SoulPower = contribution.SoulPower,
-                            Coop = coop.Name,
-                            EggsShipped = Math.Min(contribution.ContributionAmount, maxAmount),
-                            TokensSpent = contribution.BoostTokensSpent,
-                            Joined = DateTimeOffset.Now - (xref.User?.Registered ?? DateTimeOffset.Now),
-                            Elite = coop.League == 0,
-                            xref = xref,
-                        });
-                    }
+                foreach(var xref in coop.UserCoopsXrefs.Where(x => x.Status is not null)) {
+                    //var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
+                    //if(contribution != null) {
+                    var maxAmount = contract.Details.GoalSets[(int)(coop.League ?? 0)].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
+                    var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+                    histories.Add(new UserContractScore {
+                        UserId = xref.UserId,
+                        UserName = xref.User?.DiscordUsername,
+                        SoulPower = lastStatus.SoulPower,
+                        Coop = coop.Name,
+                        EggsShipped = Math.Min(lastStatus.ContributionAmount, maxAmount),
+                        TokensSpent = lastStatus.BoostTokensSpent,
+                        Joined = DateTimeOffset.Now - (xref.User?.Registered ?? DateTimeOffset.Now),
+                        Elite = coop.League == 0,
+                        xref = xref,
+                    });
+                    //}
                 }
             }
 

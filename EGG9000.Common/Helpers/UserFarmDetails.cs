@@ -27,25 +27,29 @@ namespace EGG9000.Common.Helpers {
 
         public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
             if(coopStatus is null)
-                throw new ArgumentException(null, "coopStatus");
+                throw new ArgumentNullException(null, "coopStatus");
             Xref = xref;
             CoopStatus = coopStatus;
             Contract = contract;
             Joined = true;
             if(userWithbackup is not null) {
                 Backup = userWithbackup.Backup;
-                Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
+                Farm = Backup?.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
                 FarmStats = Farm?.WithStats(Backup);
                 if(Farm is null)
-                    ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
+                    ArchivedFarm = Backup?.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
-                DiscordUser = discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId);
+                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId) : null;
             }
         }
 
         public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
             if(xref is null)
-                throw new ArgumentException(null, "xref");
+                throw new ArgumentNullException(null, "xref");
+            if(userWithbackup is null)
+                throw new ArgumentNullException(null, "userWithBackup");
+            if(userWithbackup.Backup is null)
+                throw new ArgumentNullException(null, "userWithBackup.Backup");
             Xref = xref;
             Contract = contract;
             Joined = false;
@@ -56,15 +60,15 @@ namespace EGG9000.Common.Helpers {
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
-                DiscordUser = discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId);
+                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId) : null;
             }
         }
 
         public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
             if(userWithbackup is null)
-                throw new ArgumentException(null, "userWithBackup");
+                throw new ArgumentNullException(null, "userWithBackup");
             if(userWithbackup.Backup is null)
-                throw new ArgumentException(null, "userWithBackup.Backup");
+                throw new ArgumentNullException(null, "userWithBackup.Backup");
             Contract = contract;
             Joined = false;
             if(userWithbackup is not null) {
@@ -74,7 +78,7 @@ namespace EGG9000.Common.Helpers {
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
-                DiscordUser = discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId);
+                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId) : null;
             }
         }
 
@@ -170,7 +174,7 @@ namespace EGG9000.Common.Helpers {
 
         public double ProjectedPercent {
             get {
-                var target = Contract.Details.GoalSets[(int)Farm.League.Value].Goals.Max(x => x.RewardAmount);
+                var target = Contract.Details.GoalSets[(int)Farm.League.Value].Goals.Max(x => x.TargetAmount);
                 return Projected / target * 100;
             }
         }

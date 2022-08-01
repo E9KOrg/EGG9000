@@ -83,7 +83,7 @@ namespace EGG9000.Common.Database.Entities {
                 if(_backups != null)
                     return _backups;
                 if(_CustomBackups == null)
-                    return null;
+                    return new List<CustomBackup>();
                 var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
                 _backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
                 return _backups;

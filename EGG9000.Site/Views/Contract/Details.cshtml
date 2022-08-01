@@ -11,22 +11,12 @@
 
     //var alienBackups = await GetBackupsForAliens(Model.Coops, Model.UserPreFarms, Model.GuildContract.Contract, _apiLink);
     var alienBackups = new List<UserPreFarm>();
-    var currentCoops = Model.Coops.Select(coop => {
-        //var prefarms = GetPrefarmsForCoop(coop, Model.UserPreFarms, alienBackups, Model.GuildContract.Contract);
-        var coopParticipants = Prefarm.GetCoopParticipants(coop, Model.GuildContract.Contract, coop.LastStatusUpdate, Model.UserPreFarms.Select(y => new UserWithBackup{ Backup =  y.Backup, User = y.User}), discord);
-        return new {
-            Coop = coop,
-            CoopParticipants = coopParticipants,
-            TimeRemaining = GetTimeRemainingValue(targetAmount, coopParticipants.Sum(x => x.Rate), coopParticipants.Sum(x => x.EggsShipped + x.Rate * x.TimeSinceUpdate.TotalSeconds)),
-            HasSpots = Model.GuildContract.Contract.Details.MaxCoopSize > coopParticipants.Count
-        };
-    }).OrderBy(x => x.Coop.Finished).ThenByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
+    var currentCoops = Model.CoopsBreakdown.ExistingCoops.OrderBy(x => x.Coop.Finished).ThenByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
 
 
     //var allPreFarms = Model.PreFarms;
     var guildContract = Model.GuildContract;
     var guild = discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID);
-    var coops = Model.Coops;
 
 
     var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
@@ -52,6 +42,7 @@
             Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
             Projected = u.Projected.ToEggString(),
             //Status = u.Coop,
+            Status = u.DBUser is null ? "👽" : u.InCoop ? "✔️" : "❌",
             Locked = true,
             EggIncId = u.EggIncId,
             UserId = u.DBUser?.Id,
@@ -101,7 +92,7 @@
 
     var expiredFarms = Model.CoopsBreakdown.ExpiredFarms.Select(u => new {
         u.EggIncId,
-        u.DBUser.Id,
+        DatabaseId = u.DBUser.Id,
         Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
         NumChickens = u.NumChickens.ToEggString(),
         Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",

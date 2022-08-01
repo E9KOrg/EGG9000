@@ -43,8 +43,8 @@ namespace EGG9000.Bot.Automated {
                 if(coopChannel != null) {
                     try {
                         await coopChannel.DeleteAsync();
-                    } catch(Exception) {
-
+                    } catch(Exception e) {
+                        _bugsnag.Notify(e);
                     }
                     coop.DeletedChannel = true;
                     Console.WriteLine($"Deleting co-op channel for {coop.Name}");

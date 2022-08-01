@@ -173,7 +173,7 @@ namespace EGG9000.Bot.Automated {
                         if(higherEB.Backup.EggsOfProphecy > 1000) {
                             dbUser.showEB = false;
                         }
-                        if(!dbUser.showEB && !string.IsNullOrEmpty(discordUser.Nickname) && discordUser.GetCleanName() != discordUser.Nickname) {
+                        if(!dbUser.showEB && !string.IsNullOrEmpty(discordUser.Nickname) && discordUser.GetCleanName() != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
                             try {
                                 Console.WriteLine($"Updating {discordUser.Nickname} to {discordUser.GetCleanName()}");
                                 await discordUser.ModifyAsync(x => x.Nickname = discordUser.GetCleanName());
@@ -192,7 +192,7 @@ namespace EGG9000.Bot.Automated {
                                 var ebs = dbUser.Backups.Where(x => dbUser.EggIncIds.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
                                 var ebString = $" ({string.Join(",", values: ebs)})";
                                 var newName = discordUser.GetCleanName().Truncate(32 - ebString.Length) + ebString;
-                                if(newName != discordUser.Nickname) {
+                                if(newName != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
                                     Console.WriteLine($"Updating {discordUser.Nickname} to {newName}");
                                     await discordUser.ModifyAsync(x => x.Nickname = newName);
                                     await Task.Delay(250);

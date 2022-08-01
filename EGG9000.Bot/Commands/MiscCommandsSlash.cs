@@ -83,6 +83,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
             await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
             await command.DeleteResponseFix();
+            //await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
         }
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]

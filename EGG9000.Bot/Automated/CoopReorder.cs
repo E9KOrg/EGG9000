@@ -55,6 +55,7 @@ namespace EGG9000.Bot.Automated {
             catch (Exception e)
             {
                 Console.WriteLine($"Failed to sort co-ops {e.Message}");
+                _bugsnag.Notify(e);
             }
         }
 
