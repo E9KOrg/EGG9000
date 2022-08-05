@@ -908,6 +908,13 @@ namespace EGG9000.Bot.Automated {
                         lastMessage += "\nCo-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
                         lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
 
+
+                        foreach(var u in usersWithStatus.Where(x => x.Xref is not null)) {
+                            u.Xref.HasTachyonDeflector = u.Xref.HasTachyonDeflector || u.Backup.GetAvailableArtifacts.Any(a => a.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+                            var farm = u.Backup.Farms.First(x => x.ContractId == coop.ContractID);
+                            u.Xref.EquipedTachyonDeflector = u.Xref.EquipedTachyonDeflector || farm.Artifacts.Any(a => a.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+                        }
+
                         var usersToCheckDeflector = usersWithStatus.Where(x => !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Max(y => y.Status.Projected) / 2);
                         var usersNeedToAddDeflector = new List<UserWithStatus>();
                         if(!coop.FinishedOrFailed && coop.CoopEnds > DateTimeOffset.Now) {

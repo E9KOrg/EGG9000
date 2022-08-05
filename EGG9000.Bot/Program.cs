@@ -44,14 +44,14 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CommandService>();
         //services.AddHostedService<TextCommandService>();
         //services.AddHostedService<DiscordUserService>();
-        //services.AddHostedService<StaffCoopsMessage>();
+        services.AddHostedService<StaffCoopsMessage>();
         //services.AddHostedService<EventUpdater>();
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
 
         //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        services.AddSingleton<CoopStatusUpdater>();
-        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+        //services.AddSingleton<CoopStatusUpdater>();
+        //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
         //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         //services.AddSingleton<ContractUpdater>();
