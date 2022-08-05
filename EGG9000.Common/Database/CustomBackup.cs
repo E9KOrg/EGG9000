@@ -194,7 +194,6 @@ namespace EGG9000.Common.Database {
                 if(artifact is not null) {
                     artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
                 }
-                backup.ArtifactsDb.ArtifactStatus.First(x => true).
                 return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact };
             }).ToList();
         }
