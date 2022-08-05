@@ -92,7 +92,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
             }
         }
@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
             }
         }
@@ -166,17 +166,17 @@ namespace EGG9000.Bot.Services {
 
 
                     if(arg.HasResponded) {
-                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
                     } else {
-                        await arg.RespondAsync($"ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                        await arg.RespondAsync($"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
                     }
                 } finally {
                     _semaphoreSlim.Release();
                 }
             } else {
                 _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
-                await arg.RespondAsync("ERROR: Unable to run command at this time, please try again in a minute");
+                await arg.RespondAsync("⚠️ERROR: Unable to run command at this time, please try again in a minute");
             }
         }
 

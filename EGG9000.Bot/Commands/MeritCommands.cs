@@ -92,7 +92,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit removed for {user.Mention}, they currently have {count} merits");
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit info for {targetUser.Mention}\n{meritDesc}");
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
@@ -143,7 +143,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 

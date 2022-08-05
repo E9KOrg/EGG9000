@@ -72,18 +72,18 @@ namespace EGG9000.Site.Controllers {
             var db = _db;
             //var targetCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsQueryable().FirstAsync(x => x.DiscordChannelId == 962019257309335652);
             //if(targetCoop == null) {
-            //    return Content($"ERROR: Command only works in co-op channels");
+            //    return Content($"⚠️ERROR: Command only works in co-op channels");
             //}
 
             //if(wrongcoopcode.Equals(targetCoop.Name, StringComparison.OrdinalIgnoreCase)) {
-            //    return Content($"ERROR: Unable to leave currently assigned co-op");
+            //    return Content($"⚠️ERROR: Unable to leave currently assigned co-op");
             //}
 
 
 
             var coopStatus = await ContractsAPI.GetCoopStatus(contractID, wrongcoopcode.ToLower().Trim());
             if(coopStatus is null) {
-                //await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Unable to find co-op {wrongcoopcode}");
+                //await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to find co-op {wrongcoopcode}");
                 //return;
                 return Content("1");
             }
@@ -128,7 +128,7 @@ namespace EGG9000.Site.Controllers {
                 }, coopStatus.CreatorId);
 
             if(!r) {
-                //await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Unable to remove user from co-op {wrongcoopcode}");
+                //await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to remove user from co-op {wrongcoopcode}");
                 //return;
                 return Content(coopStatus.Public ? "4" : "3");
             }

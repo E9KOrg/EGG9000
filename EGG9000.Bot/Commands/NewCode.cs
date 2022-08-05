@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync($"Error: Unable to find co-op, is this posted in a co-op channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find co-op, is this posted in a co-op channel?");
             } else {
                 db.Remove(coop);
                 await db.SaveChangesAsync();

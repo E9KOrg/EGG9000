@@ -337,7 +337,7 @@
 //                _bugsnag.Notify(e);
 //                var frame = (new StackTrace(e, true)).GetFrame(0);
 
-//                await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {message.Author.Mention}");
+//                await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {message.Author.Mention}");
 //            }
 //        }
 

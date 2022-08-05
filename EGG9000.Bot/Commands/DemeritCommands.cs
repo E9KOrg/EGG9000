@@ -59,7 +59,7 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
@@ -82,7 +82,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit removed for {user.Mention}, they currently have {count} demerits");
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
@@ -114,7 +114,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
         [SlashCommand(Description = "List demerits for user", AdminOnly = true)]
@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
@@ -154,7 +154,7 @@ namespace EGG9000.Bot.Commands {
             xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
 
             if(xref == null) {
-                await command.RespondAsync($"ERROR: Unabled to find user");
+                await command.RespondAsync($"⚠️ERROR: Unabled to find user");
                 return;
             }
 

@@ -48,14 +48,14 @@ namespace EGG9000.Bot.Commands {
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
             } catch(Exception ex) {
-                await command.RespondAsync($"ERROR: Unable to parse the timespan `{timespan}`, {ex.Message}");
+                await command.RespondAsync($"⚠️ERROR: Unable to parse the timespan `{timespan}`, {ex.Message}");
                 return;
             }
             await command.DeferAsync();
 
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find user");
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find user");
                 return;
             }
 

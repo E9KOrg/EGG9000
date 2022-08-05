@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task MakePublic(FauxCommand command, ApplicationDbContext db) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync($"ERROR: Unable to find coop for this channel {command.Channel.Name}");
+                await command.RespondAsync($"⚠️ERROR: Unable to find coop for this channel {command.Channel.Name}");
                 return;
             }
 
@@ -47,7 +47,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"{coop.Name} is now public.");
             } else {
                 await command.RespondAsync($"{coop.Name} should now be public.");
-                //await command.RespondAsync($"ERROR: {response.Message}");
+                //await command.RespondAsync($"⚠️ERROR: {response.Message}");
             }
         }
 
@@ -56,7 +56,7 @@ namespace EGG9000.Bot.Commands {
             var name = new Regex(@"\w+").Match(command.Channel.Name.ToLower()).Value;
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync($"ERROR: Unable to find coop for this channel {command.Channel.Name}");
+                await command.RespondAsync($"⚠️ERROR: Unable to find coop for this channel {command.Channel.Name}");
                 return;
             }
 
@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task AddPrefarmers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketChannel contractchannel) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, have you tagged a contract channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
                 return;
             }
             await command.RespondAsync($"Please wait...adding prefarmers");
@@ -104,7 +104,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, have you tagged a contract channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
                 return;
             }
 
@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"Co-op Added: {coopname} for {((SocketTextChannel)contractchannel).Mention}");
                 return;
             } else {
-                await command.RespondAsync($"ERROR: Unable to find co-op details, double check co-op name ({coopname}) and correct contract channel ({((SocketTextChannel)contractchannel).Mention}).");
+                await command.RespondAsync($"⚠️ERROR: Unable to find co-op details, double check co-op name ({coopname}) and correct contract channel ({((SocketTextChannel)contractchannel).Mention}).");
                 return;
             }
         }
@@ -141,14 +141,14 @@ namespace EGG9000.Bot.Commands {
                 xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id);
             }
             if(xref == null) {
-                await command.RespondAsync($"ERROR: Bot error - Unable to find user assignment to co-op");
+                await command.RespondAsync($"⚠️ERROR: Bot error - Unable to find user assignment to co-op");
                 return;
             }
 
 
             var t = xref.Coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserName.ToLower().Contains(eggincname.ToLower()));
             if(t == null) {
-                await command.RespondAsync($"ERROR: Bot error - Unable to find user in co-op. You can use a partial in-game name.");
+                await command.RespondAsync($"⚠️ERROR: Bot error - Unable to find user in co-op. You can use a partial in-game name.");
                 return;
             }
 
@@ -186,7 +186,7 @@ namespace EGG9000.Bot.Commands {
             if(coop == null) {
                 targetCoop = await db.Coops.AsQueryable().Include(x => x.Contract).FirstAsync(x => x.Name.ToLower() == coopname.ToLower());
                 if(targetCoop == null) {
-                    await command.RespondAsync($"ERROR: Unable to find co-op name {coopname}");
+                    await command.RespondAsync($"⚠️ERROR: Unable to find co-op name {coopname}");
                     return;
                 }
                 var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
@@ -202,7 +202,7 @@ namespace EGG9000.Bot.Commands {
 
             var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == user.Id).ToListAsync();
             if(xrefs.Count == dbuser.EggIncIds.Count && xrefs.First().JoinedCoop) {
-                await command.RespondAsync($"ERROR: {user.Mention} has already joined {xrefs.First().Coop.Name}");
+                await command.RespondAsync($"⚠️ERROR: {user.Mention} has already joined {xrefs.First().Coop.Name}");
                 return;
             }
 
@@ -239,7 +239,7 @@ namespace EGG9000.Bot.Commands {
             var newxref = await CreateCoops.MoveUser(targetCoop, dbuserid, EggIncId, eggIncName, user, dbuser, (SocketTextChannel)coop, (SocketTextChannel)command.Channel);
 
             if(newxref == null) {
-                await command.RespondAsync($"ERROR: Unable to add permission for {user.Mention}{(targetCoop.GuildId != targetCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
+                await command.RespondAsync($"⚠️ERROR: Unable to add permission for {user.Mention}{(targetCoop.GuildId != targetCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
                 return;
             }
 
@@ -255,14 +255,14 @@ namespace EGG9000.Bot.Commands {
             UserCoopXref xref;
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync($"ERROR: Please use in a co-op channel");
+                await command.RespondAsync($"⚠️ERROR: Please use in a co-op channel");
                 return;
             }
 
             xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
 
             if(xref == null) {
-                await command.RespondAsync($"ERROR: Unabled to find user in co-op");
+                await command.RespondAsync($"⚠️ERROR: Unabled to find user in co-op");
                 return;
             }
 
@@ -277,7 +277,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract, use only in contract channels.");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract, use only in contract channels.");
                 return;
             }
             guildContract.DeletedChannel = true;
@@ -290,7 +290,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task SkipNoEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
             var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
-                await command.RespondAsync($"ERROR: Unable to find user");
+                await command.RespondAsync($"⚠️ERROR: Unable to find user");
                 return;
             }
 
@@ -303,7 +303,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task UnSkipNoPeEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
             var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
-                await command.RespondAsync($"ERROR: Unable to find user");
+                await command.RespondAsync($"⚠️ERROR: Unable to find user");
                 return;
             }
 
@@ -316,7 +316,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task Skip(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketChannel contractchannel) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, have you tagged a contract channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
                 return;
             }
 
@@ -325,7 +325,7 @@ namespace EGG9000.Bot.Commands {
 
             guildContract.Skip = JsonConvert.SerializeObject(skipList);
             await db.SaveChangesAsync();
-            await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server. Did you know there is a new command !skipNoPe that will allow you to automatically skip all contracts without an <:Egg_of_Prophecy_PE:669981330477547580>?", ephemeral: true);
+            await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
         }
 
 
@@ -335,7 +335,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"Working...");
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
                 return;
             }
 
@@ -395,7 +395,7 @@ namespace EGG9000.Bot.Commands {
 
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
                 return;
             }
 
@@ -503,13 +503,13 @@ namespace EGG9000.Bot.Commands {
         //public static async Task SetNumber(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
         //    var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
         //    if(guildContract == null) {
-        //        await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract channel?");
+        //        await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
         //        return;
 
         //    }
 
         //    if(args.Length == 0) {
-        //        await command.RespondAsync($"ERROR: Please include the number of coops you would like the bot to create");
+        //        await command.RespondAsync($"⚠️ERROR: Please include the number of coops you would like the bot to create");
         //        return;
         //    }
 
@@ -524,7 +524,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task SetNumber(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(Description = "Number of potental co-ops (excludes ones already created)")] int numberofcoops) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract channel?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
                 return;
 
             }
@@ -561,12 +561,12 @@ namespace EGG9000.Bot.Commands {
                 try {
                     thread = (SocketThreadChannel)command.Channel;
                 } catch(Exception ex) when(ex is AggregateException || ex is InvalidCastException) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = "ERROR: Unable to find contract details, this command only works in a contract spots thread.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = "⚠️ERROR: Unable to find contract details, this command only works in a contract spots thread.");
                     return;
                 }
                 var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == thread.CategoryId);
                 if(guildContract == null) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                     return;
                 }
                 var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
@@ -576,7 +576,7 @@ namespace EGG9000.Bot.Commands {
                 var currentCoops = contractBreakdown.ExistingCoops.Where(x => !x.Coop.Finished && x.HasSpots).OrderByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
 
                 if(currentCoops.Count == 0) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find open co-op, all spots may have been filled.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find open co-op, all spots may have been filled.");
                     return;
                 }
 
@@ -596,7 +596,7 @@ namespace EGG9000.Bot.Commands {
 
                 }
                 if(targetCoop == null) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find open co-op, all spots may have been filled.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find open co-op, all spots may have been filled.");
                     return;
 
                 }
@@ -609,7 +609,7 @@ namespace EGG9000.Bot.Commands {
                         xrefs = new List<UserCoopXref>();
                     } else {
                         var coopLinks = string.Join(", ", xrefs.Select(x => $"<https://discord.com/channels/{x.Coop.OverflowGuildId}/{x.Coop.DiscordChannelId}>"));
-                        await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: <@{dbuser.DiscordId}> has already been assigned {(xrefs.Count > 1 ? "the co-ops" : "a co-op")}. You can get to the co-op by clicking the following link {coopLinks}, if this co-op has already finished contact staff and we can get it fixed.");
+                        await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: <@{dbuser.DiscordId}> has already been assigned {(xrefs.Count > 1 ? "the co-ops" : "a co-op")}. You can get to the co-op by clicking the following link {coopLinks}, if this co-op has already finished contact staff and we can get it fixed.");
                         return;
                     }
                 }
@@ -621,7 +621,7 @@ namespace EGG9000.Bot.Commands {
                         var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
                         var prefarms = contractBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants);
                         if(prefarms.Count() == 0) {
-                            await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
+                            await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
                             return;
                         }
                         EggIncId = prefarms.First().EggIncId;
@@ -659,7 +659,7 @@ namespace EGG9000.Bot.Commands {
                 //var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUser.Id);
                 var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
                 if(guildContract == null) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find contract details, is this command posted in a contract channel?");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
                     return;
                 }
                 var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
@@ -670,7 +670,7 @@ namespace EGG9000.Bot.Commands {
 
 
                 if(currentCoops.Count == 0) {
-                    await command.ModifyOriginalResponseAsync(x => x.Content = $"ERROR: Unable to find open co-op, all spots may have been filled.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find open co-op, all spots may have been filled.");
                     return;
                 }
 
@@ -701,7 +701,7 @@ namespace EGG9000.Bot.Commands {
                             var targetCoop = coop.Coop;
                             var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == user.DBUser.DiscordId).ToListAsync();
                             if(xrefs.Count() == user.DBUser.EggIncIds.Count && xrefs.First().JoinedCoop) {
-                                await command.Channel.SendMessageAsync($"ERROR: Unable to add {user.Name}, they are already assigned a co-op");
+                                await command.Channel.SendMessageAsync($"⚠️ERROR: Unable to add {user.Name}, they are already assigned a co-op");
                                 break;
                             }
 
@@ -714,7 +714,7 @@ namespace EGG9000.Bot.Commands {
                             var newxref = await CreateCoops.MoveUser(targetCoop, user.DBUser.Id, user.EggIncId, eggIncName, discordUser, user.DBUser, (SocketTextChannel)channel, (SocketTextChannel)command.Channel);
 
                             if(newxref == null) {
-                                await command.Channel.SendMessageAsync($"ERROR: Unable to add permission for {discordUser.Mention}{(targetCoop.GuildId != targetCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
+                                await command.Channel.SendMessageAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(targetCoop.GuildId != targetCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
                                 continue;
                             }
 
@@ -731,7 +731,7 @@ namespace EGG9000.Bot.Commands {
 
                     }
                     if(!added) {
-                        await command.Channel.SendMessageAsync($"ERROR: Unable to find open co-op, all spots may have been filled.");
+                        await command.Channel.SendMessageAsync($"⚠️ERROR: Unable to find open co-op, all spots may have been filled.");
                         break;
 
                     }
@@ -747,13 +747,13 @@ namespace EGG9000.Bot.Commands {
             if(overridepercent == 0)
                 overridepercent = 5;
             if(command.Channel is not SocketThreadChannel) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                 return;
             }
             var thread = (SocketThreadChannel)command.Channel;
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == thread.CategoryId);
             if(guildContract == null) {
-                await command.RespondAsync($"ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
+                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                 return;
             }
             await command.RespondAsync("Pinging users and removing existing pings that aren't needed", ephemeral: true);
@@ -853,12 +853,12 @@ namespace EGG9000.Bot.Commands {
 
             var targetCoop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Command only works in co-op channels");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Command only works in co-op channels");
                 return;
             }
 
             if(wrongcoopcode.Equals(targetCoop.Name, StringComparison.OrdinalIgnoreCase)) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Please enter the wrong code you joined so we know which co-op to remove you from so you can join this one.");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Please enter the wrong code you joined so we know which co-op to remove you from so you can join this one.");
                 return;
             }
 
@@ -871,7 +871,7 @@ namespace EGG9000.Bot.Commands {
 
             var contract = await db.GuildContracts.Where(x => x.DiscordChannelId == contractChannel.Id).Select(x => x.Contract).FirstOrDefaultAsync();
             if(contract is null) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Unable to find contract, is <#{contractChannel}> a contract channel?");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to find contract, is <#{contractChannel}> a contract channel?");
                 return;
             }
 
@@ -881,7 +881,7 @@ namespace EGG9000.Bot.Commands {
         private static async Task FixJoinedWrongCoopFinal(FauxCommand command, ApplicationDbContext db, string contractID, string wrongcoopcode, ulong DiscordUserID) {
             var coopStatus = await ContractsAPI.GetCoopStatus(contractID, wrongcoopcode.ToLower().Trim());
             if(coopStatus is null) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Unable to find co-op {wrongcoopcode}");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to find co-op {wrongcoopcode}");
                 return;
             }
 
@@ -905,7 +905,7 @@ namespace EGG9000.Bot.Commands {
             }, participant.UserId);
 
             if(!r) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"ERROR: Unable to remove user from co-op {wrongcoopcode}");
+                await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to remove user from co-op {wrongcoopcode}");
                 return;
             }
             await command.ModifyOriginalResponseAsync(m => m.Content = $"<@{user.DiscordId}> should now be able to re-join co-op. Don't use this as an excuse to be lazy next time, double check your co-op codes and make sure it says **Join**");
