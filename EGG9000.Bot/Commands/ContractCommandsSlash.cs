@@ -356,15 +356,15 @@ namespace EGG9000.Bot.Commands {
 
             if(percent == 0 || coopCount == coopsBreakdown.PotentialCoops.Count) {
                 guildContract.Status = ContractStatus.Creating;
-                //await ((SocketGuildChannel)command.Channel).ModifyAsync(x => x.Name = "📥" + guildContract.ContractID);
-            } else {
-                //await ((SocketGuildChannel)command.Channel).ModifyAsync(x => x.Name = "🐣📥" + guildContract.ContractID);
             }
 
 
             guildContract.NumberOfCoops = Math.Max(0, guildContract.NumberOfCoops - coopCount);
             await db.SaveChangesAsync();
             await command.Channel.SendMessageAsync($"Started {coopCount} co-ops");
+            coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
+
+            await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
         }
 
         [SlashCommand(Description = "Start a user's co-op", AdminOnly = true)]
@@ -447,11 +447,16 @@ namespace EGG9000.Bot.Commands {
             guildContract.NumberOfCoops = Math.Max(1, guildContract.NumberOfCoops - coopCount);
             await db.SaveChangesAsync();
 
+
             try {
                 await command.Channel.SendMessageAsync($"Finished Starting {coopCount} coop{(coopCount > 1 ? "s" : "")}");
             } catch(Exception) {
                 //Possible message was deleted in the meantime
             }
+
+            coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
+
+            await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
         }
 
         private static async Task<List<UserFarmDetails>> _startUserCreateCoop(List<UserFarmDetails> existingUsers, GuildContract guildContract, List<UserFarmDetails> otherUsers, ApplicationDbContext db, SocketGuild guild, Words _words, bool fill = true) {

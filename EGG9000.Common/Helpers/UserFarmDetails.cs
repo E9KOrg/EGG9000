@@ -122,16 +122,35 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public TimeSpan TimeSinceUpdate {
+        public double SiloTime {
             get {
-                if(Farm is not null) {
-                    var siloTimeMinutes = Research.GetTotalSiloCapacity(Backup) * Farm.SilosOwned;
-                    var TimeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);
-                    if(TimeSinceUpdate.TotalMinutes > siloTimeMinutes) {
-                        TimeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
-                    }
-
+                if(CoopStatus?.FarmInfo is not null) {
+                    return Research.GetFarmSiloTime(CoopStatus.FarmInfo);
+                } else if(Farm is not null) {
+                    return Research.GetTotalSiloCapacity(Backup) * Farm.SilosOwned;
+                } else {
+                    return 6 * 60;
                 }
+            }
+        }
+
+        public TimeSpan OfflineTime {
+            get {
+                if(CoopStatus?.FarmInfo is not null) {
+                    var siloTimeMinutes = Research.GetFarmSiloTime(CoopStatus.FarmInfo);
+                    var timeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)CoopStatus.FarmInfo.Timestamp);
+                    if(timeSinceUpdate.TotalMinutes > siloTimeMinutes) {
+                        timeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
+                    }
+                    return timeSinceUpdate;
+                } else if(Farm is not null) {
+                    var siloTimeMinutes = Research.GetTotalSiloCapacity(Backup) * Farm.SilosOwned;
+                    var timeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);
+                    if(timeSinceUpdate.TotalMinutes > siloTimeMinutes) {
+                        timeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
+                    }
+                    return timeSinceUpdate;
+                } 
                 return TimeSpan.Zero;
             }
         }
@@ -160,10 +179,13 @@ namespace EGG9000.Common.Helpers {
             get {
                 if(_projected is null) {
                     if(FarmingEnds > DateTimeOffset.Now) {
+                        var siloTimeHours = SiloTime / 60;
+                        var percentToCount = Math.Min(siloTimeHours / 24, 1);
+
                         var contractLeft = (FarmingEnds - DateTimeOffset.Now).TotalSeconds;
-                        _projected = Rate * contractLeft + EggsShipped + Rate * TimeSinceUpdate.TotalSeconds;
+                        _projected = percentToCount * Rate * contractLeft + EggsShipped + Rate * OfflineTime.TotalSeconds;
                     } else {
-                        var sleepTime = Math.Max(TimeSinceUpdate.TotalSeconds - (FarmingEnds - DateTimeOffset.Now).TotalSeconds, 0);
+                        var sleepTime = Math.Max(OfflineTime.TotalSeconds - (FarmingEnds - DateTimeOffset.Now).TotalSeconds, 0);
                         _projected = EggsShipped + Rate * sleepTime;
                     }
 
@@ -209,7 +231,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public double OfflineEggs { get { return Rate * TimeSinceUpdate.TotalSeconds; } }
+        public double OfflineEggs { get { return Rate * OfflineTime.TotalSeconds; } }
 
         public bool Completed { get { return Farm?.Completed ?? ArchivedFarm?.Completed ?? false; } }
 

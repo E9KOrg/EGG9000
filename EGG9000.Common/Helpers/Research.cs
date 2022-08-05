@@ -155,6 +155,15 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseAwayTime;
         }
 
+        public static Double GetFarmSiloTime(Ei.PlayerFarmInfo farmInfo) {
+            var baseAwayTime = 60;
+            var epicSilo = farmInfo.EpicResearch.FirstOrDefault(x => x.Id == "silo_capacity");
+            if(epicSilo != null) {
+                baseAwayTime += (int)epicSilo.Level * 6;
+            }
+            return baseAwayTime * farmInfo.SilosOwned;
+        }
+
         public static double GetEggShippedRatePerSec(CustomFarm farm, List<CustomResearch> epic) {
             var laying = GetEggLayingRatePerSec(farm, epic);
             var shipping = GetShippingCapacityPerSec(farm, epic);

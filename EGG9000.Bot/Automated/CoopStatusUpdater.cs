@@ -806,7 +806,7 @@ namespace EGG9000.Bot.Automated {
                                         if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                             xref.JoinWarning24TillFinish = true;
                                             await _db.SaveChangesAsync();
-                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop, );
+                                            await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                         } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                             xref.JoinWarning24h = true;
                                             xref.JoinWarning12h = true;
@@ -887,18 +887,19 @@ namespace EGG9000.Bot.Automated {
                             )
                             .OrderByDescending(x => x.FarmPopulation).Take(10);
                         if(personToGiftTo.Count() > 0) {
-                            var table = personToGiftTo.Select(x => new List<FixedWidthCell> {
-                                new FixedWidthCell(Truncate(x.UserName, 11)),
-                                new FixedWidthCell($"{x.FarmPopulation.ToEggString()}", CellAlignment.Right),
-                                new FixedWidthCell($"{Math.Round(x.Habs)}%", CellAlignment.Right),
-                                new FixedWidthCell($"{Math.Round(x.Shipping)}%", CellAlignment.Right),
-                            }).ToList();
-                            table.Prepend(new List<FixedWidthCell> {
+                            var table = new List<List<FixedWidthCell>>();
+                            table.Add(new List<FixedWidthCell> {
                                 new FixedWidthCell(""),
                                 new FixedWidthCell($"🐔", CellAlignment.Center),
                                 new FixedWidthCell($"🏠", CellAlignment.Center),
                                 new FixedWidthCell($"🚚", CellAlignment.Center),
                             });
+                            table.AddRange(personToGiftTo.Select(x => new List<FixedWidthCell> {
+                                new FixedWidthCell(Truncate(x.UserName, 11)),
+                                new FixedWidthCell($"{x.FarmPopulation.ToEggString()}", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Habs)}%", CellAlignment.Right),
+                                new FixedWidthCell($"{Math.Round(x.Shipping)}%", CellAlignment.Right),
+                            }).ToList());
                             lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{String.Join("\n", FixedWidthTable.GetTable(table))}```\n";
                         } else {
                             lastMessage += "\nLooks like everyone's shipping and/or habs are full so gifting chickens isn't useful.";
@@ -909,7 +910,7 @@ namespace EGG9000.Bot.Automated {
 
                         var usersToCheckDeflector = usersWithStatus.Where(x => !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Max(y => y.Status.Projected) / 2);
                         var usersNeedToAddDeflector = new List<UserWithStatus>();
-                        if(!coop.FinishedOrFailed) {
+                        if(!coop.FinishedOrFailed && coop.CoopEnds > DateTimeOffset.Now) {
                             foreach(var user in usersToCheckDeflector) {
                                 var farm = user.Backup.Farms.First(x => x.ContractId == coop.ContractID);
                                 if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {

@@ -119,31 +119,7 @@ namespace EGG9000.Bot.Services {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
-                            var fauxCommand = arg is SocketSlashCommand ? new FauxCommand(arg as SocketSlashCommand) : arg as FauxCommand;
-                            var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
-                            var name = parameterInfo.Name.ToLower();
-                            if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
-                                var users = new List<SocketGuildUser>();
-                                for(var i = 1; i <= 10; i++) {
-                                    var option = FindOption($"{name}{i}", fauxCommand.Data.Options);
-                                    if(option != null) {
-                                        users.Add((SocketGuildUser)option.Value);
-                                    }
-                                }
-                                parameters.Add(users.ToArray());
-                                continue;
-                            }
-
-                            var optionResult = FindOption(name, fauxCommand.Data.Options);
-                            if(optionResult == null) {
-                                parameters.Add(null);
-                                continue;
-                            }
-                            if(parameterInfo.ParameterType == typeof(int)) {
-                                parameters.Add(Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value));
-                            } else {
-                                parameters.Add(FindOption(name, fauxCommand.Data.Options)?.Value);
-                            }
+                            parameters.Add(GetParam(parameterInfo, command, arg));
                             continue;
                         }
 
@@ -301,6 +277,35 @@ namespace EGG9000.Bot.Services {
             Console.WriteLine("Slash Commands Created");
         }
 
+        private object GetParam(ParameterInfo parameterInfo, CommandFunctionBase command, IDiscordInteraction arg) {
+            if(arg is FauxCommand) {
+                return null;
+            } else {
+                var fauxCommand = arg is SocketSlashCommand ? new FauxCommand(arg as SocketSlashCommand) : arg as FauxCommand;
+                var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
+                var name = parameterInfo.Name.ToLower();
+                if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
+                    var users = new List<SocketGuildUser>();
+                    for(var i = 1; i <= 10; i++) {
+                        var option = FindOption($"{name}{i}", fauxCommand.Data.Options);
+                        if(option != null) {
+                            users.Add((SocketGuildUser)option.Value);
+                        }
+                    }
+                    return users.ToArray();
+                }
+
+                var optionResult = FindOption(name, fauxCommand.Data.Options);
+                if(optionResult == null) {
+                    return null;
+                }
+                if(parameterInfo.ParameterType == typeof(int)) {
+                    return Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
+                } else {
+                    return FindOption(name, fauxCommand.Data.Options)?.Value;
+                }
+            }
+        }
         private async Task _discord_MessageReceived(SocketMessage message) {
             var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;

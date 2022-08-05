@@ -110,6 +110,8 @@ namespace EGG9000.Bot.Services {
                     };
                 }
 
+                
+
                 return new FauxApplicationCommandData { Name = commandText, Options = new List<FauxSocketSlashCommandDataOption>() };
             }
         }
