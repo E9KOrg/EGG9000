@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync("ERROR: Unable to find backups for this user");
+                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
             var builder = new EmbedBuilder();
@@ -90,7 +90,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync($"ERROR: Command only works in co-op channels");
+                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels");
                 return;
             }
 
@@ -104,7 +104,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db) {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync($"ERROR: Command only works in co-op channels", ephemeral: true);
+                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
                 return;
             }
             var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
@@ -147,7 +147,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 //await command.DeleteOriginalResponseAsync();
                 return;
             }
-            await command.RespondAsync($"ERROR: Command only works in contract or co-op channels");
+            await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
         }
 
         [SlashCommand(Description = "Test delete response")]

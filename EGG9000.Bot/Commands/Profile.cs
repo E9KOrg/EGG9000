@@ -17,7 +17,7 @@ namespace EGG9000.Bot.Commands {
         //public static async Task Profile(FauxCommand command,  ApplicationDbContext db) {
         //    var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
         //    if(dbuser == null) {
-        //        await command.RespondAsync($"ERROR: Bot error - User not registered");
+        //        await command.RespondAsync($"⚠️ERROR: Bot error - User not registered");
         //        return;
         //    }
 

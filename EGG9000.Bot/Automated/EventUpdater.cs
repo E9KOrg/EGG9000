@@ -37,7 +37,7 @@ namespace EGG9000.Bot.Automated {
                 var eventC = _db.EventCustomizations.FirstOrDefault(x => x.Type == args[0]);
 
                 if(eventC == null) {
-                    await message.Channel.SendMessageAsync($"ERROR: Unable to find event type - {args[0]}");
+                    await message.Channel.SendMessageAsync($"⚠️ERROR: Unable to find event type - {args[0]}");
                     return;
                 }
 
@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated {
 
                 await message.Channel.SendMessageAsync(embed: GetEmbed(e, eventC));
             } catch(Exception e) {
-                await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message}");
+                await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.Message}");
             }
         }
 

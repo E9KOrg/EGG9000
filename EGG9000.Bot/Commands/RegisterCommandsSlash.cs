@@ -96,13 +96,13 @@ namespace EGG9000.Bot.Commands {
         public static async Task _RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, ulong userid) {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == userid);
             if(user == null) {
-                await command.RespondAsync($"ERROR: Cannot find user");
+                await command.RespondAsync($"⚠️ERROR: Cannot find user");
                 return;
             } else if(user.EggIncIds.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
                 user.Backups = user.Backups.Where(x => x.EggIncId != eggincid).ToList();
             } else {
-                await command.RespondAsync($"ERROR: Unable to find the following EggIncId {eggincid} \n {await AccountsString(db, user, apiLink, false)}");
+                await command.RespondAsync($"⚠️ERROR: Unable to find the following EggIncId {eggincid} \n {await AccountsString(db, user, apiLink, false)}");
                 return;
             }
 
@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync($"ERROR: Command can only be used in a co-op channel");
+                await command.RespondAsync($"⚠️ERROR: Command can only be used in a co-op channel");
                 return;
             }
             var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == targetUser.Id);
@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Commands {
                 db.DBUsers.Add(user);
             } else {
                 if(user.AcceptedRules) {
-                    await command.RespondAsync($"ERROR: {targetUser.Mention} you have already accepted rules");
+                    await command.RespondAsync($"⚠️ERROR: {targetUser.Mention} you have already accepted rules");
                     return;
                 }
                 user.AcceptedRules = true;
@@ -434,7 +434,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = true) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"ERROR: Bot error - User not registered", ephemeral: showInChannel);
+                await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: showInChannel);
                 return;
             }
             var msg = await AccountsString(db, dbuser, apiLink, admin);
@@ -494,20 +494,20 @@ namespace EGG9000.Bot.Commands {
         public static async Task TakeABreak(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client) {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync($"ERROR: Cannot find database user");
+                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
             }
 
             user.OnBreakSince = DateTimeOffset.Now;
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"{command.User.Mention} is set to take a break. This status will automatically be removed the next time you start pre-farming. If you are currently pre-farming you will still be assigned to a co-op unless you exit the contract.", ephemeral: true);
+            await command.RespondAsync($"{command.User.Mention} is set to take a break. This status will automatically be removed the next time you start pre-farming. If you are currently pre-farming you will still be assigned to a co-op unless you exit the contract. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
         }
 
         [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = true)]
         public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"ERROR: Cannot find database user");
+                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
             }
 
             dbuser.TempDisabled = true;
@@ -520,7 +520,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"ERROR: Cannot find database user");
+                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
             }
 
             dbuser.TempDisabled = false;
@@ -592,7 +592,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task ShowEB(FauxCommand command, ApplicationDbContext db) {
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
-                await command.RespondAsync($"ERROR: Cannot find database user");
+                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
                 return;
             }
             if(dbUser.showEB) {
@@ -619,7 +619,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task HideEB(FauxCommand command, ApplicationDbContext db) {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync($"ERROR: Cannot find database user");
+                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
             }
 
             user.showEB = false;

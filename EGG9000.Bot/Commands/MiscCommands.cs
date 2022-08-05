@@ -59,8 +59,8 @@ namespace EGG9000.Bot.Commands {
 
                 await message.Channel.SendMessageAsync($"Users with single vote and  <:{firstEmote.Key.Name}:{((Emote)firstEmote.Key).Id}> {String.Join(", ", singleVoters.Select(x => x.Mention))}");
             } catch(Exception e) {
-                Console.WriteLine($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
-                await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                Console.WriteLine($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
 
@@ -70,13 +70,13 @@ namespace EGG9000.Bot.Commands {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == message.Channel.Id);
             if(targetCoop == null)
             {
-                await message.Channel.SendMessageAsync($"ERROR: Command only works in co-op channels");
+                await message.Channel.SendMessageAsync($"⚠️ERROR: Command only works in co-op channels");
                 return;
             }
 
             if(args.Length == 0 || args[0].Length < 2)
             {
-                await message.Channel.SendMessageAsync($"ERROR: Missing new co-op name");
+                await message.Channel.SendMessageAsync($"⚠️ERROR: Missing new co-op name");
                 return;
 
             }
@@ -91,7 +91,7 @@ namespace EGG9000.Bot.Commands {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == message.Channel.Id);
             if(targetCoop == null)
             {
-                await message.Channel.SendMessageAsync($"ERROR: Command only works in co-op channels");
+                await message.Channel.SendMessageAsync($"⚠️ERROR: Command only works in co-op channels");
                 return;
             }
             var discordUserId = message.MentionedUsers.FirstOrDefault()?.Id ?? message.Author.Id;
@@ -131,8 +131,8 @@ namespace EGG9000.Bot.Commands {
 
         //        await message.Channel.SendMessageAsync(string.Join("\n", adminsWithChannels.Select(x => $"{x.Admin.DiscordUsername}: {string.Join(", ", x.Channels)}")));
         //    } catch(Exception e) {
-        //        Console.WriteLine($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
-        //        await message.Channel.SendMessageAsync($"ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+        //        Console.WriteLine($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+        //        await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
         //    }
         //}
     }

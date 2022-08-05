@@ -827,7 +827,7 @@ namespace EGG9000.Bot.Automated {
 
                                     if(!xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.Finished && coop.Status != CoopStatusEnum.Failed) {
                                         var backup = user.Backups.FirstOrDefault(x => x.EggIncId == xref.EggIncId);
-                                        if(backup != null) {
+                                        if(backup != null && coop.CoopEnds > DateTimeOffset.Now && !coop.FinishedOrFailed) {
                                             var farm = backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
                                             if(farm == null || farm.Cancelled) {
                                                 await coopChannel.SendMessageAsync($"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm. Please use the command `/callstaff` to see what to do next");

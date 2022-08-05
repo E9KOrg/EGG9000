@@ -45,7 +45,7 @@ namespace EGG9000.Bot.Automated {
             var contractsResponse = await ContractsAPI.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
-                Console.WriteLine("ERROR: Invalid Contract Response");
+                Console.WriteLine("⚠️ERROR: Invalid Contract Response");
             } else {
                 Console.WriteLine("Checking for new contracts");
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync();
