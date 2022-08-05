@@ -46,6 +46,8 @@ namespace EGG9000.Common.Database.Entities
         public Guid GetID() { return UserId; }
 
         public bool OutsideCoop { get; set; }
+        public bool HasTachyonDeflector { get; set; }
+        public bool EquipedTachyonDeflector { get; set; }
 
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]
