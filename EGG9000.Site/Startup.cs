@@ -39,6 +39,7 @@ namespace EGG9000.Site {
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
             Console.WriteLine(Configuration.GetConnectionString("DefaultConnection"));
+            Console.WriteLine(Configuration.GetChildren().Count());
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
@@ -67,36 +68,25 @@ namespace EGG9000.Site {
                 .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
 
 
+            Console.WriteLine(Configuration.GetConnectionString("ClientId"));
+            Console.WriteLine(Configuration.GetConnectionString("ClientSecret"));
+
             services.AddAuthentication(options => {
             }).AddDiscord(options => {
-                options.ClientId = Configuration["ConnectionStrings:ClientId"];
-                options.ClientSecret = Configuration["ConnectionStrings:ClientSecret"];
+                options.ClientId = Configuration.GetConnectionString("ClientId");
+                options.ClientSecret = Configuration.GetConnectionString("ClientSecret");
                 options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
                     OnTicketReceived = context => {
                         Console.WriteLine("est");
                         return Task.FromResult(0);
                     }
                 };
-                //options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
-                //    OnTicketReceived = context => {
-                //        context.Properties.IsPersistent = true;
-                //        context.Properties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30);
-                //        context.Properties.AllowRefresh = true;
-                //        return Task.FromResult(0);
-                //    }
-                //};
             });
 
 
 
 
 
-            services.Configure<ForwardedHeadersOptions>(options =>
-            {
-                options.ForwardedHeaders =
-                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
-            });
 
             services.AddResponseCaching();
             services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
@@ -105,23 +95,18 @@ namespace EGG9000.Site {
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-
-            services.AddCors(options =>
-            {
-                var corsBuilder = new CorsPolicyBuilder();
-                corsBuilder.AllowAnyHeader();
-                corsBuilder.AllowAnyMethod();
-                corsBuilder.WithOrigins("https://customer.xfinity.com"); // For anyone access.
-                                                                         //corsBuilder.WithOrigins("http://localhost:56573"); // for a specific url. Don't add a forward slash on the end!
-
-                options.AddPolicy("SiteCorsPolicy", corsBuilder.Build());
+            services.Configure<ForwardedHeadersOptions>(options => {
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
             });
-            //Console.WriteLine(Configuration["Discord:Token"]);
+
+
             var config = new DiscordSocketConfig() {
                 GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers
             };
             var client = new DiscordSocketClient(config);
-            client.LoginAsync(Discord.TokenType.Bot, Configuration["ConnectionStrings:Token"]).Wait();
+            client.LoginAsync(Discord.TokenType.Bot, Configuration.GetConnectionString("Token")).Wait();
             client.StartAsync().Wait();
             services.AddSingleton(client);
 
@@ -131,7 +116,7 @@ namespace EGG9000.Site {
                 options.EnableForHttps = true;
             });
             services.AddBugsnag(configuration => {
-                configuration.ApiKey = "7740fdc81aa4f54c5cef05983c7984fe";
+                configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
             });
             services.AddDatabaseDeveloperPageExceptionFilter();
         }

@@ -226,6 +226,9 @@
 									<div id="@backup.EggIncId">
 										Internal Hatchery: @farmStats.InternalHatchery/m
 									</div>
+									<div>
+										Silo Time: @(Research.GetTotalSiloCapacity(backup) * farm.SilosOwned / 60)
+									</div>
 								</div>
 								<div class="card-body" style="padding-bottom: 0;">
 									<h6>Artifacts</h6>
@@ -291,70 +294,19 @@
 				</div>
 
 				<div class="tab-pane" id="epicresearch@(backup.EggIncId)" role="tabpanel">
-					@{
-						foreach (var research in epicResearchConfig) {
-							research.MappedBackupResearch = backup.EpicResearch.FirstOrDefault(o => o.Id == research.Id);
-						}
-
-						int totalCostToUpgrade = 0;
-					}
-					<div class="card" style="margin-top:15px">
-						<h4 class="card-header">Epic Research GE Calculator</h4>
-						<div class="card-body">
-							<table class="table table-striped">
-								<thead>
-									<tr>
-										<th>Research</th>
-										<th>Description</th>
-										<th>Level/Total</th>
-										<th>Next Upgrade Cost</th>
-										<th>GE to Complete</th>
-									</tr>
-								</thead>
-								<tbody>
-									@foreach (var epicResearch in epicResearchConfig.OrderBy(o => o.Order)) {
-										if (epicResearch.MappedBackupResearch != null) {
-											string badgeColour = (epicResearch.MappedBackupResearch.Level == 0) ? "danger" :
-											(epicResearch.MappedBackupResearch.Level > 0 && epicResearch.MappedBackupResearch.Level < epicResearch.Costs.Count()) ? "warning" :
-											(epicResearch.MappedBackupResearch.Level == epicResearch.Costs.Count()) ? "success" : "";
-											var outstandingResearch = epicResearch.Costs.Skip(Convert.ToInt32(epicResearch.MappedBackupResearch.Level)).ToArray();
-											<tr>
-												<td>@epicResearch.Title</td>
-												<td>@epicResearch.Desc</td>
-												<td>
-													<span class="badge badge-@badgeColour">@epicResearch.MappedBackupResearch.Level / @epicResearch.Costs.Count()</span>
-												</td>
-												@if (outstandingResearch.Count() > 0) {
-													<td class="text-right">@String.Format("{0:n0}",outstandingResearch.FirstOrDefault())</td>
-													<td class="text-right">@String.Format("{0:n0}",outstandingResearch.Sum())</td>
-													totalCostToUpgrade += outstandingResearch.Sum(); // Add to total cost of upgrades.
-												} else {
-													<td colspan="2">&nbsp;</td>
-												}
-											</tr>
-										} else {
-											<tr><td colspan="99">Error finding research for @epicResearch.Id</td></tr>
-										}
-									}
-									<tr>
-										<td colspan="99" class="text-right"><b>Total GE required: @String.Format("{0:n0}",totalCostToUpgrade)</b></td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
+					@{ await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup)); }
 				</div>
 
 				@if (inDB) {
 					<div class="tab-pane" id="merits@(backup.EggIncId)" role="tabpanel">
 						@{
 							foreach (var merit in merits) {
-								<div>
-									@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-									@if (isAdmin) {
-										<a href="/myfarms/removemerit?id=@merit.Id">X</a>
+									<div>
+										@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
+										@if (isAdmin) {
+											<a href="/myfarms/removemerit?id=@merit.Id">X</a>
 									}
-								</div>
+									</div>
 							}
 						}
 					</div>
@@ -363,211 +315,19 @@
 							@{
 								List<Demerit> demerits = ViewBag.Demerits;
 								foreach (var demerit in demerits) {
-									<div>
-										@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
-									</div>
+										<div>
+											@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+										</div>
 								}
 							}
 						</div>
 					}
 					@if (snapshots != null) {
-						<div class="tab-pane" id="ebhistory@(backup.EggIncId)" role="tabpanel">
-							<table class="table table-striped">
-								<thead>
-									<tr>
-										<th>Date</th>
-										<th>Eggs of Prophecy</th>
-										<th style="text-align: right !important;">Soul Eggs</th>
-										<th style="text-align: right !important;">EB</th>
-										<th>Prestiges</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr>
-										<td>Latest</td>
-										<td>@backup.EggsOfProphecy</td>
-										<td align="right">@backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
-										<td align="right">@backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
-										<td>@backup.NumPrestiges</td>
-									</tr>
-									@foreach (var snapshot in snapshots.OrderByDescending(x => x.Date)) {
-										<tr>
-											<td>@snapshot.Date.ToShortDateString()</td>
-											<td>@snapshot.EggsOfProphecy</td>
-											<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
-											<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
-											<td>@snapshot.Prestiges</td>
-										</tr>
-									}
-								</tbody>
-							</table>
-						</div>
+						await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin));
 					}
 				}
 				<div class="tab-pane show active" id="contracthistory@(backup.EggIncId)" role="tabpanel">
-					@{
-						var farms = backup.Farms;
-						List<(object, DateTimeOffset)> allFarms = new List<(object, DateTimeOffset)>();
-						allFarms.AddRange(farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Select(x => ((object)x, x.Started)));
-						allFarms.AddRange(backup.ArchivedFarms?.Where(x => !farms.Any(y => y.ContractId == x.ContractId)).Select(x => ((object)x, x.Started)));
-					}
-					<div class="card" style="margin-top:15px">
-						<h4 class="card-header">Active Farms</h4>
-						<div class="table-responsive">
-							<table class="table table-striped">
-								<thead>
-									<tr>
-										<th>Contract</th>
-										<th>Coop</th>
-										<th>Started</th>
-										<th data-toggle="tooltip" title="# of Chickens" class="text-right">🐔</th>
-										<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
-										<th class="text-right">%</th>
-										@if (isAdmin) {
-											<th data-toggle="tooltip" title="Time Cheat" class="text-right">🕵</th>
-											<th data-toggle="tooltip" title="Cheat Time Debt" class="text-right">⏲️</th>
-										}
-										<th data-toggle="tooltip" title="Tokens Received" class="text-right tight-emojis">🟡 📥</th>
-										<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡 💲</th>
-										<th data-toggle="tooltip" title="Tokens Given" class="text-right tight-emojis">🟡 📤</th>
-									</tr>
-								</thead>
-								<tbody>
-									@{
-										foreach (var tuple in allFarms.Where(x => x.Item1 is CustomFarm && (x.Item1 as CustomFarm).Cancelled == false && (x.Item1 as CustomFarm).Completed == false).OrderByDescending(x => x.Item2)) {
-											CustomFarm farm = (CustomFarm)tuple.Item1;
-											var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
-											var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-											var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
-											var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-
-											<tr>
-												<td>@(contract?.Name ?? farm.ContractId)</td>
-												<td>
-													<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-														@(farm.CoopId ?? coop?.Name)
-													</a>
-												</td>
-												<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-												<td class="text-right">@farm.NumChickens.ToEggString()</td>
-												<td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
-												<td class="text-right">
-													@if (lastUpdate != null) {
-														var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-														@percent.ToString("P0")
-													}
-												</td>
-												@if (isAdmin) {
-													<td class="text-right">@farm.TimeCheatsDetected</td>
-													<td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
-												}
-												<td class="text-right">@farm.BoostTokensReceived</td>
-												<td class="text-right">@farm.BoostTokensSpent</td>
-												<td class="text-right">@farm.BoostTokensGiven</td>
-											</tr>
-										}
-									}
-								</tbody>
-							</table>
-						</div>
-					</div>
-
-					<div class="card" style="margin-top:15px">
-						<h4 class="card-header">Archived Farms</h4>
-						<div class="table-responsive">
-							<table class="table table-striped">
-								<thead>
-									<tr>
-										<th>Contract</th>
-										<th>Coop</th>
-										<th>Started</th>
-										<th>🏁</th>
-										<th class="text-right">Score</th>
-										<th class="text-right">Running Score</th>
-										<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
-										<th class="text-right">%</th>
-										<th data-toggle="tooltip" title="Suspected Time Cheat" class="text-right">🕵</th>
-										<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡💲</th>
-									</tr>
-								</thead>
-								<tbody>
-									@{
-										// Show completed farms, these could be 'active' and 'archived' farms.
-										foreach (var tuple in allFarms.Where(x =>
-										(x.Item1 is CustomFarm && ((x.Item1 as CustomFarm).Completed == true || (x.Item1 as CustomFarm).Cancelled == true)) ||
-										(x.Item1 is CustomArchivedFarms)
-										).OrderByDescending(x => x.Item2)) {
-											if (tuple.Item1 is CustomFarm) {
-												CustomFarm farm = (CustomFarm)tuple.Item1;
-												var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
-												var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-
-												UserFarmDetails userFarmDetails = null;
-												if (coop is not null) {
-													userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.LastStatusUpdate, Model.Backups.Select(x => new UserWithBackup { Backup = x, User = Model }), discordClient).FirstOrDefault(x => x.Backup == backup);
-												}
-												var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-												<tr>
-													<td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
-													<td>
-														<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-															@(farm.CoopId ?? coop?.Name)
-														</a>
-													</td>
-													<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-													<td>@(farm.Completed ? "✔️" : "")</td>
-													<td class="text-right">@xref?.Score?.ToString("G2")</td>
-													<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-													@if (userFarmDetails != null) {
-														var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
-														<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
-														<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-														<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
-														<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
-													} else {
-														<td colspan="99"></td>
-													}
-												</tr>
-											} else {
-												CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
-												var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-												UserFarmDetails userFarmDetails = null;
-												if (xref is not null) {
-													userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.LastStatusUpdate, Model.Backups.Select(x => new UserWithBackup { Backup = x, User = Model }), discordClient).FirstOrDefault(x => x.Backup == backup);
-												}
-												var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-												<tr>
-													<td>@(contract?.Name ?? farm.ContractId)</td>
-													<td>
-														@if (!string.IsNullOrEmpty(farm.CoopName) || (contract?.MaxUsers ?? 0) > 1) {
-															<a href="/coop/@farm.ContractId/@(farm.CoopName)">
-																@(farm.CoopName)
-															</a>
-														} else {
-															<em>Solo</em>
-														}
-													</td>
-													<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-													<td>@(farm.Completed ? "✔️" : "")</td>
-													<td class="text-right">@xref?.Score?.ToString("G2")</td>
-													<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-													@if (userFarmDetails?.CoopStatus != null) {
-														var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
-														<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
-														<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-														<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
-														<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
-													} else {
-														<td colspan="99"></td>
-													}
-												</tr>
-											}
-										}
-									}
-								</tbody>
-							</table>
-						</div>
-					</div>
+					@{ await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model)); }
 				</div>
 
 				<div class="tab-pane" id="pe@(backup.EggIncId)" role="tabpanel">
@@ -606,10 +366,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-									<tr>
-										<td>@ri.EggsOfProphecy</td>
-										<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-									</tr>
+										<tr>
+											<td>@ri.EggsOfProphecy</td>
+											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+										</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -631,10 +391,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-									<tr>
-										<td>@ri.EggsOfProphecy</td>
-										<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-									</tr>
+										<tr>
+											<td>@ri.EggsOfProphecy</td>
+											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+										</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -650,19 +410,19 @@
 
 @{
 	void artifactTemplate(EggIncArtifactInstance artifact) {
-		<tr>
-			<td>@artifact.Artifact</td>
-			@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-				<td>@Math.Round((artifact.Value) * 100)%</td>
+	<tr>
+				<td>@artifact.Artifact</td>
+				@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+					<td>@Math.Round((artifact.Value) * 100)%</td>
 			} else if (artifact.Additive) {
-				<td>+@artifact.Value</td>
+					<td>+@artifact.Value</td>
 			} else if (+artifact.Value < 2) {
-				<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+					<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
 			} else {
-				<td>@(artifact.Value)x</td>
+					<td>@(artifact.Value)x</td>
 			}
-			<td>@artifact.Boost</td>
-		</tr>
+				<td>@artifact.Boost</td>
+	</tr>
 	}
 
 	//(IHtmlContent, DateTimeOffset) GetActiveFarm(CustomFarm farm) {
@@ -751,3 +511,4 @@
 	//	return (html, farm.Started);
 	//}
 }
+

@@ -75,6 +75,10 @@ namespace EGG9000.Common.Database {
         public ulong NumPiggyBreaks { get; set; }
         [Key(24)]
         public List<ArtifactCount> ArtifactHall { get; set; }
+        [Key(25)]
+        public bool HyperloopPurchased { get; set; }
+        [Key(26)]
+        public uint TankLevel { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -155,6 +159,8 @@ namespace EGG9000.Common.Database {
             NumPiggyBreaks = backup.Stats.NumPiggyBreaks;
             DroneTakedowns = backup.Stats.DroneTakedowns;
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
+            HyperloopPurchased = backup.Game.HyperloopStation;
+            TankLevel = backup.Artifacts.TankLevel;
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms) {
@@ -188,6 +194,7 @@ namespace EGG9000.Common.Database {
                 if(artifact is not null) {
                     artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
                 }
+                backup.ArtifactsDb.ArtifactStatus.First(x => true).
                 return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact };
             }).ToList();
         }
