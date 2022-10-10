@@ -297,6 +297,38 @@ namespace EGG9000.Site.Controllers {
             public List<DBUser> DbUsers { get; set; }
         }
 
+        //public async Task<IActionResult> Tokens([FromQuery] string contractid) {
+        //    ViewBag.ContractID = contractid;
+        //    ViewBag.Guilds = await _db.Guilds.AsQueryable().ToListAsync();
+        //    var loginuser = (await _userManager.GetUserAsync(User));
+        //    var logins = await _userManager.GetLoginsAsync(loginuser);
+        //    var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+
+        //    var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == user.GuildId).Select(x => new {
+        //        x.DiscordId,
+        //        x.DiscordUsername,
+        //        x.GuildId,
+        //        x.Id,
+        //        x._CustomBackups,
+        //        x._eggIncIds,
+        //        x.Registered
+        //    }).ToListAsync();
+        //    var dbusers = rawusers.Select(x => new DBUser { DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds, Registered = x.Registered });
+
+
+        //    var guildContracts = await _db.GuildContracts.Where(x => x.GuildID == user.GuildId && x.ContractID == contractid).ToListAsync();
+
+        //    var coops = await _db.Coops.Where(x => x.GuildId == user.GuildId && x.ContractID == contractid).ToListAsync();
+
+        //    var coopBreakdowns = guildContracts.Select(z => Prefarm.GetBreakdown(coops.Where(x => x.League == (z.Elite ? 0 : 1)).ToList(), dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Select(y => new Prefarm.UserWithBackup { Backup = y, User = x })).ToList(), z, _discord);
+
+        //    var coopBreakdown = new Prefarm.CoopsBreakdown { }
+
+        //    //await _db.Users.AsQueryable().Where(x => (x.GuildId == user.GuildId || all) && x._LastBackup != null).ToListAsync()
+        //    return View(dbusers.Where(x => x.Backups != null).ToList());
+        //}
+
         public async Task<IActionResult> Contract([FromQuery] string contractid, [FromQuery] bool all = false) {
             ViewBag.ContractID = contractid;
             ViewBag.Guilds = await _db.Guilds.AsQueryable().ToListAsync();
@@ -333,6 +365,7 @@ namespace EGG9000.Site.Controllers {
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
 
             var scores = ContractScoring.GetContractScores(coops, contract);
+
 
             return View(scores);
         }
@@ -655,10 +688,10 @@ namespace EGG9000.Site.Controllers {
             var users = await _db.Users.AsQueryable().ToListAsync();
             var customNames = await _db.DBUsers.AsQueryable().Where(x => !string.IsNullOrWhiteSpace(x.CustomCoopName))
                 .Select(x => new EditUserWithDetails {
-                    CustomCoopName = x.CustomCoopName, 
-                    ExpireCustomCoopName =  x.ExpireCustomCoopName, 
-                    DBUserId = x.Id, 
-                    DiscordId = x.DiscordId.ToString() 
+                    CustomCoopName = x.CustomCoopName,
+                    ExpireCustomCoopName = x.ExpireCustomCoopName,
+                    DBUserId = x.Id,
+                    DiscordId = x.DiscordId.ToString()
                 }).ToListAsync();
             var userRoles = await _db.UserRoles.AsQueryable().ToListAsync();
             var roles = await _db.Roles.AsQueryable().ToListAsync();
@@ -726,7 +759,8 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> SearchID([FromQuery] string id) {
-            var users = await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync();
+            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync())
+                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds });
 
             if(id.StartsWith("EI")) {
 
@@ -740,12 +774,18 @@ namespace EGG9000.Site.Controllers {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
             }
 
-            var matchingUser2 = users.FirstOrDefault(x => x.DiscordUsername?.Contains(id) ?? false);
-            if(matchingUser2 != null) {
-                return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
+            //var matchingUser2 = users.FirstOrDefault(x => x.DiscordUsername?.Contains(id) ?? false);
+            //if(matchingUser2 != null) {
+            //    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
+            //}
+
+            id = id.ToLower();
+            var matchingUsers = users.Where(x => (x.DiscordUsername ?? "").ToLower().Contains(id) || x.EggIncIds.Any(y => y.Name.ToLower().Contains(id))).ToList();
+            if(matchingUsers.Count == 1) {
+                return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUsers.First().DiscordId });
             }
 
-            return RedirectToAction("Index");
+            return View(matchingUsers.ToList());
         }
 
         public async Task<ActionResult> DuplicateChannels() {
@@ -956,7 +996,7 @@ namespace EGG9000.Site.Controllers {
             return View(dbGuild);
         }
 
-        public async Task<IActionResult> SaveChannelDetails([FromForm]string json) {
+        public async Task<IActionResult> SaveChannelDetails([FromForm] string json) {
             Console.WriteLine(json);
             var model = JsonConvert.DeserializeObject<SaveChannelDetailsObject>(json);
             var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == GetGuildID());

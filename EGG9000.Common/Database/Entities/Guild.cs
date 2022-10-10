@@ -93,6 +93,10 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Category for failed co-ops")]
         FailedCategory,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
-        WarningMessagesForUser
+        WarningMessagesForUser,
+        [Description("Optional: Shows limited time shells")]
+        LimitedTimeShells,
+        [Description("Optional: Limited time shells notification role")]
+        LimitedTimeShellsRole,
     }
 }

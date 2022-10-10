@@ -42,7 +42,6 @@ namespace EGG9000.Bot.Services {
         private CoopStatusUpdater _coopStatusUpdater;
         private Guild _cpGuild;
 
-
         public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
             _discord = discord;
             _configuration = Configuration;
@@ -74,7 +73,7 @@ namespace EGG9000.Bot.Services {
                     }
                     if(!isAdmin) {
                         //if(command.Details.AllowFarmHand  && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                            if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
+                        if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
                             //bypass for farm hands and merits
                         } else {
                             await arg.RespondAsync($"{arg.User.Mention} You don't have permissions to run the command '/{arg.Data.Name}'");
@@ -114,7 +113,7 @@ namespace EGG9000.Bot.Services {
 
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
-            if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(5))) {
+            if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(4.5))) {
                 try {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
@@ -161,24 +160,30 @@ namespace EGG9000.Bot.Services {
 
                     await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
                 } catch(Exception e) {
-                    _bugsnag.Notify(e);
-                    var frame = (new StackTrace(e, true)).GetFrame(0);
+                    try {
+                        _bugsnag.Notify(e);
+                        var frame = (new StackTrace(e, true)).GetFrame(0);
 
 
-                    if(arg.HasResponded) {
-                        await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                        if(arg.HasResponded) {
+                            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
 
-                    } else {
-                        await arg.RespondAsync($"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                        } else {
+                            await arg.RespondAsync($"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                        }
+                    } catch(Exception) {
+
                     }
                 } finally {
                     _semaphoreSlim.Release();
                 }
+
             } else {
                 _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
                 await arg.RespondAsync("⚠️ERROR: Unable to run command at this time, please try again in a minute");
             }
         }
+
 
 
         private FauxSocketSlashCommandDataOption FindOption(string name, IList<FauxSocketSlashCommandDataOption> options) {
@@ -262,7 +267,7 @@ namespace EGG9000.Bot.Services {
             }
 
             try {
-                foreach(var guild in _discord.Guilds) { 
+                foreach(var guild in _discord.Guilds) {
                     Console.WriteLine($"Creating slash commands for {guild.Name}");
 
                     var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
@@ -318,7 +323,14 @@ namespace EGG9000.Bot.Services {
                 var commandText = new Regex(@"^/(\w+)").Match(message.Content).Groups[1].Value.ToLower();
                 var command = _slashCommandFunctions.FirstOrDefault(x => x.Name == commandText);
                 if(command != null) {
-                    await RunCommand(command, new FauxCommand(message, guild.Id));
+                    if(command.Parameters.Any(x => x.GetCustomAttributes<SlashParamAttribute>().Any())) {
+                        await message.Channel.SendMessageAsync(
+                            $"⚠️{message.Author.Mention}, looks like you attempted to run the command `/{command.Name}` but Discord sent it as a normal message instead of a command. Make sure a popup comes up when you start typing a command, if the popup doesn't show up then try force closing Discord and trying again."
+                            , messageReference: new MessageReference(message.Id)
+                        );
+                    } else {
+                        await RunCommand(command, new FauxCommand(message, guild.Id));
+                    }
                 }
             }
         }

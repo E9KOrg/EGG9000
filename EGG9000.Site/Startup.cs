@@ -144,7 +144,9 @@ namespace EGG9000.Site {
             }
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            app.UseStaticFiles(new StaticFileOptions {
+                ServeUnknownFileTypes = true
+            });
 
             app.UseRouting();
             app.UseCors("SiteCorsPolicy");

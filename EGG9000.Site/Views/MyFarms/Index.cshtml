@@ -101,8 +101,9 @@
 @if (Model.Backups.Count > 1) {
 	<ul class="nav nav-tabs" role="tablist">
 		@foreach (var backup in Model.Backups) {
+			var index = Model.Backups.IndexOf(backup);
 			<li class="nav-item">
-				<a class="nav-link @(backup == Model.Backups.First() ? "active" : "")" id="tab@(backup.EggIncId)" data-toggle="tab" href="#user@(backup.EggIncId)" role="tab" aria-selected="@(backup == Model.Backups.First())">@backup.UserName</a>
+				<a class="nav-link @(backup == Model.Backups.First() ? "active" : "")" id="tab@(backup.EggIncId)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(backup == Model.Backups.First())">@backup.UserName</a>
 			</li>
 		}
 	</ul>
@@ -110,8 +111,9 @@
 }
 <div class="tab-content">
 	@foreach (var backup in Model.Backups) {
+		var index = Model.Backups.IndexOf(backup);
 		var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
-		<div class="tab-pane @(backup == Model.Backups.First() ? "show active" : "")" id="user@(backup.EggIncId)" role="tabpanel">
+		<div class="tab-pane @(backup == Model.Backups.First() ? "show active" : "")" id="user@(index)" role="tabpanel">
 			<div style="padding-bottom: 10px;">
 				@if (backup.PermitLevel == 0) {
 					<img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 30px;" />
@@ -132,40 +134,43 @@
 
 			<ul class="nav nav-tabs" role="tablist">
 				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#contracthistory@(backup.EggIncId)" role="tab" aria-selected="true">Contract History</a>
+					<a class="nav-link active" data-toggle="tab" href="#contracthistory@(index)" role="tab" aria-selected="true">Contract History</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#farms@(backup.EggIncId)" role="tab" aria-selected="false">Farms</a>
+					<a class="nav-link" data-toggle="tab" href="#farms@(index)" role="tab" aria-selected="false">Farms</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#spacemissions@(backup.EggIncId)" role="tab" aria-selected="false">Space Missions</a>
+					<a class="nav-link" data-toggle="tab" href="#spacemissions@(index)" role="tab" aria-selected="false">Space Missions</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#epicresearch@(backup.EggIncId)" role="tab" aria-selected="false">Epic Research</a>
+					<a class="nav-link" data-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
 				</li>
 				@if (inDB) {
 					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#merits@(backup.EggIncId)" role="tab" aria-selected="false">Merits (@merits.Count)</a>
+						<a class="nav-link" data-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">Merits (@merits.Count)</a>
 					</li>
 					@if (isAdmin) {
 						<li class="nav-item">
-							<a class="nav-link" data-toggle="tab" href="#demerits@(backup.EggIncId)" role="tab" aria-selected="false">Demerits</a>
+							<a class="nav-link" data-toggle="tab" href="#demerits@(index)" role="tab" aria-selected="false">Demerits</a>
 						</li>
 
 					}
 					@if (snapshots != null) {
 						<li class="nav-item">
-							<a class="nav-link" data-toggle="tab" href="#ebhistory@(backup.EggIncId)" role="tab" aria-selected="false">EB History</a>
+							<a class="nav-link" data-toggle="tab" href="#ebhistory@(index)" role="tab" aria-selected="false">EB History</a>
 						</li>
 					}
 				}
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#pe@(backup.EggIncId)" role="tab" aria-selected="false">Eggs Of Prophecy</a>
+					<a class="nav-link" data-toggle="tab" href="#pe@(index)" role="tab" aria-selected="false">Eggs Of Prophecy</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
 				</li>
 			</ul>
 
 			<div class="tab-content">
-				<div class="tab-pane" id="farms@(backup.EggIncId)" role="tabpanel">
+				<div class="tab-pane" id="farms@(index)" role="tabpanel">
 					@for (var i = 0; i < backup.Farms.Count; i++) {
 						var farm = backup.Farms[i];
 
@@ -255,7 +260,7 @@
 					}
 				</div>
 
-				<div class="tab-pane" id="spacemissions@(backup.EggIncId)" role="tabpanel">
+				<div class="tab-pane" id="spacemissions@(index)" role="tabpanel">
 					@foreach (var mission in backup.SpaceMissions ?? new List<SpaceMission>()) {
 						var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
 
@@ -293,44 +298,50 @@
 					}
 				</div>
 
-				<div class="tab-pane" id="epicresearch@(backup.EggIncId)" role="tabpanel">
-					@{ await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup)); }
+				<div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
+					@{
+						await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup));
+					}
 				</div>
 
 				@if (inDB) {
-					<div class="tab-pane" id="merits@(backup.EggIncId)" role="tabpanel">
+					<div class="tab-pane" id="merits@(index)" role="tabpanel">
 						@{
 							foreach (var merit in merits) {
-									<div>
-										@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-										@if (isAdmin) {
-											<a href="/myfarms/removemerit?id=@merit.Id">X</a>
+														<div>
+															@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
+															@if (isAdmin) {
+																<a href="/myfarms/removemerit?id=@merit.Id">X</a>
 									}
-									</div>
+														</div>
 							}
 						}
 					</div>
 					@if (isAdmin) {
-						<div class="tab-pane" id="demerits@(backup.EggIncId)" role="tabpanel">
+						<div class="tab-pane" id="demerits@(index)" role="tabpanel">
 							@{
 								List<Demerit> demerits = ViewBag.Demerits;
 								foreach (var demerit in demerits) {
-										<div>
-											@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
-										</div>
+															<div>
+																@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+															</div>
 								}
 							}
 						</div>
 					}
 					@if (snapshots != null) {
-						await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin));
+						<div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
+						@{await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin));}
+						</div>
 					}
 				}
-				<div class="tab-pane show active" id="contracthistory@(backup.EggIncId)" role="tabpanel">
-					@{ await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model)); }
+				<div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
+					@{
+						await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model));
+					}
 				</div>
 
-				<div class="tab-pane" id="pe@(backup.EggIncId)" role="tabpanel">
+				<div class="tab-pane" id="pe@(index)" role="tabpanel">
 					<table class="table" style="width: auto;">
 						<tr>
 							<th>From Contracts</th>
@@ -366,10 +377,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-										<tr>
-											<td>@ri.EggsOfProphecy</td>
-											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-										</tr>
+															<tr>
+																<td>@ri.EggsOfProphecy</td>
+																<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+															</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -391,10 +402,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-										<tr>
-											<td>@ri.EggsOfProphecy</td>
-											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-										</tr>
+															<tr>
+																<td>@ri.EggsOfProphecy</td>
+																<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+															</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -403,6 +414,13 @@
 					</table>
 
 				</div>
+
+				<div class="tab-pane" id="externaltools@(index)" role="tabpanel">
+					@{
+						await Html.RenderPartialAsync("-ExternalTools", (backup, Model));
+					}
+				</div>
+
 			</div>
 		</div>
 	}
@@ -411,17 +429,17 @@
 @{
 	void artifactTemplate(EggIncArtifactInstance artifact) {
 	<tr>
-				<td>@artifact.Artifact</td>
-				@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-					<td>@Math.Round((artifact.Value) * 100)%</td>
+									<td>@artifact.Artifact</td>
+									@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+										<td>@Math.Round((artifact.Value) * 100)%</td>
 			} else if (artifact.Additive) {
-					<td>+@artifact.Value</td>
+										<td>+@artifact.Value</td>
 			} else if (+artifact.Value < 2) {
-					<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+										<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
 			} else {
-					<td>@(artifact.Value)x</td>
+										<td>@(artifact.Value)x</td>
 			}
-				<td>@artifact.Boost</td>
+									<td>@artifact.Boost</td>
 	</tr>
 	}
 
@@ -512,3 +530,38 @@
 	//}
 }
 
+@section Scripts {
+	<script>
+		$(document).ready(() => {
+			let url = location.href.replace(/\/$/, "");
+
+			if (location.hash) {
+				const hash = url.split("#");
+                var backupNum = hash[1].slice(-1);
+				if(backupNum != "0") {
+					$('a[href="#user' + backupNum + '"]').tab("show");
+				}
+				
+				$('a[href="#' + hash[1] + '"]').tab("show");
+				url = location.href.replace(/\/#/, "#");
+				history.replaceState(null, null, url);
+				setTimeout(() => {
+					$(window).scrollTop(0);
+				}, 400);
+
+			}
+
+			$('a[data-toggle="tab"]').on("click", function() {
+				let newUrl;
+				const hash = $(this).attr("href");
+
+                console.log(hash.substring(1, 5));
+                if (hash.substring(1, 5) == "user")
+						return;
+				newUrl = url.split("#")[0] + hash;
+				//newUrl += "/";
+				history.replaceState(null, null, newUrl);
+			});
+		});
+	</script>
+	}

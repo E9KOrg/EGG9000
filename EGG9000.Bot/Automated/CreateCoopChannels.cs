@@ -19,6 +19,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using EGG9000.Bot.Services;
+using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
@@ -39,6 +40,10 @@ namespace EGG9000.Bot.Automated {
                     Console.WriteLine($"Coop Counts {coopGroups.Count()} {coopGroups.Key}");
                     foreach(var coop in coopGroups) {
                         if(cancellationToken.IsCancellationRequested) return;
+                        
+                        //await CreateCoops.CreateCoopViaApi(guildContract.ContractID, (uint)(guildContract.Elite ? 0 : 1), coop, secondsRemaining, );
+
+
                         Console.WriteLine($"Creating Channel for {coop.Name}");
                         var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);
                         if(channel != null) {

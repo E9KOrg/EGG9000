@@ -22,6 +22,12 @@ namespace Ei {
         public string Error { get; set; }
 
 
+        public uint League { 
+            get {
+                return (uint)(this.Contributors.Any(y => Math.Pow(10, y.SoulPower) * 100 < 10_000_000_000_000) ? 1 : 0);
+            } 
+        }
+
         private List<Types.ContributionInfo> _participants { get; set; }
         public List<Types.ContributionInfo> Participants {
             get {
@@ -37,28 +43,28 @@ namespace Ei {
             }
         }
 
-        public double Projected {
-            get {
-                return Contributors.Sum(x => x.Projected);
-            }
-        }
+        //public double Projected {
+        //    get {
+        //        return Contributors.Sum(x => x.Projected);
+        //    }
+        //}
 
-        public string TotalString { get { return ArgumentsHelper.NumberToString(this.TotalAmount, false, -1); } }
+        //public string TotalString { get { return ArgumentsHelper.NumberToString(this.TotalAmount, false, -1); } }
 
         private double _targetAmoun(EGG9000.Common.Database.Entities.Contract contract, int League) {
             return contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
             ;
         }
 
-        public double ProjectedPercent(EGG9000.Common.Database.Entities.Contract contract, int League) {
-            return Projected / _targetAmoun(contract, League);
-        }
+        //public double ProjectedPercent(EGG9000.Common.Database.Entities.Contract contract, int League) {
+        //    return Projected / _targetAmoun(contract, League);
+        //}
 
-        public bool ProjectedToFinish(EGG9000.Common.Database.Entities.Contract contract, int League) {
-            //var targetAmount = contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
-            //var target = contract.GoalsDetail.Last().TargetAmount;
-            return Projected > _targetAmoun(contract, League);
-        }
+        //public bool ProjectedToFinish(EGG9000.Common.Database.Entities.Contract contract, int League) {
+        //    //var targetAmount = contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
+        //    //var target = contract.GoalsDetail.Last().TargetAmount;
+        //    return Projected > _targetAmoun(contract, League);
+        //}
         public bool Finished(EGG9000.Common.Database.Entities.Contract contract, int League) {
             var targetAmount = contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
             //var target = contract.GoalsDetail.Last().TargetAmount;

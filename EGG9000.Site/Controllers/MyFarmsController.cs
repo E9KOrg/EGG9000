@@ -18,6 +18,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Helpers;
+using Discord.WebSocket;
+using Newtonsoft.Json;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -27,10 +29,12 @@ namespace EGG9000.Site.Controllers {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly APILink _apiLink;
+        private readonly DiscordSocketClient _discord;
 
         public MyFarmsController(
             ILogger<MyFarmsController> logger,
             UserManager<IdentityUser> userManager,
+            DiscordSocketClient discord,
             RoleManager<IdentityRole> roleManager,
             APILink apiLink,
             ApplicationDbContext db) {
@@ -39,6 +43,7 @@ namespace EGG9000.Site.Controllers {
             _logger = logger;
             _apiLink = apiLink;
             _db = db;
+            _discord = discord;
         }
 
         public async Task<IActionResult> Index() {
@@ -179,6 +184,21 @@ namespace EGG9000.Site.Controllers {
             _db.Remove(merit);
             await _db.SaveChangesAsync();
             return Redirect(Request.Headers["Referer"].ToString());
+        }
+
+        public async Task<IActionResult> SendTestDM([FromQuery]string target, [FromQuery]ulong discorduserid) {
+            switch(target) {
+                case "dm":
+                    var discordUser = await _discord.GetUserAsync(discorduserid);
+                    var dmChannel = await discordUser.CreateDMChannelAsync();
+                    await dmChannel.SendMessageAsync("Testing DM Ping");
+                    return Ok();
+                case "talktoegg9000":
+                    var channel = (SocketTextChannel)_discord.GetChannel(1012791664831639613);
+                    await channel.SendMessageAsync($"Testing Ping for <@{discorduserid}>");
+                    return Ok();
+            } 
+            return BadRequest();
         }
     }
 }

@@ -1,59 +1,58 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.Rest;
+using Discord.WebSocket;
+
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Helpers;
+
+using Ei;
+
+using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+
 using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Bot.Commands;
-using Discord.Rest;
-using System.Numerics;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using Humanizer;
-using Microsoft.Extensions.Caching.Memory;
-using EGG9000.Common.Helpers;
-using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated {
     public class EventUpdater : _UpdaterBase<EventUpdater> {
-        private ApplicationDbContext _db;
+        //private ApplicationDbContext _db;
 
         public EventUpdater(
                 IServiceProvider provider
             ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
-            _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            //_db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
         }
 
-        public async Task TestEvent(SocketMessage message, string[] args) {
-            try {
-                var eventC = _db.EventCustomizations.FirstOrDefault(x => x.Type == args[0]);
+        //public async Task TestEvent(SocketMessage message, string[] args) {
+        //    try {
+        //        var eventC = _db.EventCustomizations.FirstOrDefault(x => x.Type == args[0]);
 
-                if(eventC == null) {
-                    await message.Channel.SendMessageAsync($"⚠️ERROR: Unable to find event type - {args[0]}");
-                    return;
-                }
+        //        if(eventC == null) {
+        //            await message.Channel.SendMessageAsync($"⚠️ERROR: Unable to find event type - {args[0]}");
+        //            return;
+        //        }
 
 
-                var e = await _db.Events.AsQueryable().OrderByDescending(x => x.Ends).FirstOrDefaultAsync(x => x.Type == eventC.Type);
+        //        var e = await _db.Events.AsQueryable().OrderByDescending(x => x.Ends).FirstOrDefaultAsync(x => x.Type == eventC.Type);
 
-                await message.Channel.SendMessageAsync(embed: GetEmbed(e, eventC));
-            } catch(Exception e) {
-                await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.Message}");
-            }
-        }
+        //        await message.Channel.SendMessageAsync(embed: GetEmbed(e, eventC));
+        //    } catch(Exception e) {
+        //        await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.Message}");
+        //    }
+        //}
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-
             var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
 
+            await CheckShells(_db);
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
 
@@ -73,7 +72,7 @@ namespace EGG9000.Bot.Automated {
                 e.Ended = true;
                 var customization = eventCustomizations.First(x => x.Type == e.Type);
                 var embed = GetEmbed(e, customization, Ended: true);
-                await UpdateMessages(e, embed, customization);
+                await UpdateMessages(e, embed, customization, _db);
             }
 
             foreach(var e in response.Events.Events) {
@@ -86,7 +85,7 @@ namespace EGG9000.Bot.Automated {
 
                     var embed = GetEmbed(newEvent, customization);
 
-                    await PostMessages(newEvent, embed, customization);
+                    await PostMessages(newEvent, embed, customization, _db);
 
                     await _db.SaveChangesAsync();
                 } else {
@@ -118,14 +117,14 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
-                        var embed = GetEmbed(currentEvent, customization);
+                        var embed = GetEmbed(currentEvent, customization, false);
                         if(significantChange) {
-                            var crossOutEmbed = GetEmbed(currentEvent, customization , true);
-                            await UpdateMessages(currentEvent, crossOutEmbed, customization);
-                            await PostMessages(currentEvent, embed, customization);
+                            var crossOutEmbed = GetEmbed(currentEvent, customization, true);
+                            await UpdateMessages(currentEvent, crossOutEmbed, customization, _db);
+                            await PostMessages(currentEvent, embed, customization, _db);
                         } else {
 
-                            await UpdateMessages(currentEvent, embed, customization);
+                            await UpdateMessages(currentEvent, embed, customization, _db);
                         }
                     }
                 }
@@ -160,7 +159,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
         }
-        private async Task PostMessages(Event newEvent, Embed embed, EventCustomization customization) {
+        private async Task PostMessages(Event newEvent, Embed embed, EventCustomization customization, ApplicationDbContext _db) {
             var messageIds = new List<ulong>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
@@ -171,14 +170,14 @@ namespace EGG9000.Bot.Automated {
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
                 message = await channel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
-                    
+
                 messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
 
         }
 
-        private async Task UpdateMessages(Event currentEvent, Embed embed, EventCustomization customization) {
+        private async Task UpdateMessages(Event currentEvent, Embed embed, EventCustomization customization, ApplicationDbContext _db) {
             var messageIds = JsonConvert.DeserializeObject<List<ulong>>(currentEvent.MessageIds);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
@@ -192,8 +191,7 @@ namespace EGG9000.Bot.Automated {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
                                     .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
-                                await message.ModifyAsync(msg =>
-                                {
+                                await message.ModifyAsync(msg => {
                                     msg.Embed = embed;
                                     msg.Content = notification != null ? $"<@&{notification.RoleID}>" : null;
                                 });
@@ -254,6 +252,94 @@ namespace EGG9000.Bot.Automated {
             return embed.Build();
         }
 
+        public async Task CheckShells(ApplicationDbContext db) {
+            var config = await ContractsAPI.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsEnabled = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, ContractsAPI.UserId, true);
+
+
+            var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
+
+            var expiringShells = db.ExpiringShells.Where(x => !x.Archived);
+
+
+            var shellsToUpdate = new List<ExpiringShell>();
+            foreach(var shell in shells) {
+                var expiringShell = expiringShells.FirstOrDefault(x => x.Identifier == shell.Identifier);
+                if(expiringShell is null) {
+                    expiringShell = new ExpiringShell(shell);
+                    if(shell.SecondsRemaining > 0) {
+                        shellsToUpdate.Add(expiringShell);
+                    }
+
+                    db.ExpiringShells.Add(expiringShell);
+                    await db.SaveChangesAsync();
+                } else {
+                    if(expiringShell.Name != shell.Name ||
+                        (expiringShell.Expires - DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining)) > TimeSpan.FromMinutes(1) ||
+                        expiringShell.Price != shell.Price ||
+                        expiringShell.AssetType != shell.AssetType ||
+                        shell.SecondsRemaining < 0
+                    ) {
+                        expiringShell.Name = shell.Name;
+                        expiringShell.Expires = DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining);
+                        expiringShell.Price = shell.Price;
+                        expiringShell.AssetType = shell.AssetType;
+                        expiringShell.Json = JsonConvert.SerializeObject(shell);
+
+                        if(shell.SecondsRemaining < 0) {
+                            expiringShell.Archived = true;
+                        }
+                        if(shell.SecondsRemaining > 0)
+                            shellsToUpdate.Add(expiringShell);
+                        await db.SaveChangesAsync();
+                    }
+                }
+            }
+            await PostOrUpdateShellMessages(shellsToUpdate, db);
+            await db.SaveChangesAsync();
+        }
+
+        public Embed GetShellEmbed(ExpiringShell expiringShell) {
+            var shell = JsonConvert.DeserializeObject<ShellObjectSpec>(expiringShell.Json);
+            var embed = new EmbedBuilder()
+                .WithColor(shell.SecondsRemaining > 0 ? Color.Blue : Color.DarkGrey)
+                .WithAuthor("Egg, Inc Limited Time Shell", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
+                .WithDescription($"New {expiringShell.AssetType.ToString()}: {expiringShell.Name} for {expiringShell.Price}<:tickets:998630687831769189>\nExpires <t:{DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining).ToUnixTimeSeconds()}:R>")
+                ;
+            return embed.Build();
+
+        }
+
+        public async Task PostOrUpdateShellMessages(List<ExpiringShell> expiringShells, ApplicationDbContext db) {
+            var dbguilds = await db.Guilds.AsQueryable().ToListAsync();
+            foreach(var shell in expiringShells) {
+                var embed = GetShellEmbed(shell);
+                if(string.IsNullOrEmpty(shell.MessageIds)) {
+                    var messageIDs = new List<(ulong, ulong)>();
+                    foreach(var dbguild in dbguilds) {
+                        var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                        var channel = await _client.GetChannelAsync(GuildChannelType.LimitedTimeShells, guild);
+                        if(channel is not null) {
+                            ulong? ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
+
+                            var message = await channel.SendMessageAsync(ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null, embed: embed);
+
+                            messageIDs.Add((channel.Id, message.Id));
+                        }
+                    }
+                    shell.MessageIds = JsonConvert.SerializeObject(messageIDs);
+                } else {
+                    var messageIDs = JsonConvert.DeserializeObject<List<(ulong, ulong)>>(shell.MessageIds);
+                    foreach(var message in messageIDs) {
+                        var channel = _client.GetChannel(message.Item1);
+                        var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel.Id));
+                        ulong? ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
+                        if(channel is not null) {
+                            await (channel as SocketTextChannel).ModifyMessageAsync(message.Item2, msg => { msg.Embed = embed; msg.Content = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null; });
+                        }
+                    }
+                }
+            }
+        }
         //public static Embed GetEmbed(Ei.EggIncEvent e) {
         //    string msg = "";
         //    var timeRemaining = TimeSpan.FromSeconds(e.SecondsRemaining).Humanize(precision: 2).ShortenTime();

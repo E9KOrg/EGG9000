@@ -22,11 +22,13 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using EGG9000.Bot.Services;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
         private int _counter;
         private SocketTextChannel _demeritChannel;
+
 
         public class UserX {
             public SocketGuildUser SocketGuildUser { get; set; }
@@ -52,7 +54,7 @@ namespace EGG9000.Bot.Automated {
                     _counter = 0;
                 }
                 Console.WriteLine("Getting Users For CoopStatusUpdater");
-                var users = await _db.DBUsers.AsQueryable().ToListAsync();
+                var users = await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync();
                 Console.WriteLine("Getting Coops For CoopStatusUpdater");
                 var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel && ((!x.Finished && x.Status != CoopStatusEnum.Failed) || checkFinished) && x.Status != CoopStatusEnum.WaitingOnStarter).ToListAsync();
 
@@ -62,9 +64,9 @@ namespace EGG9000.Bot.Automated {
 
                 var throttler = new SemaphoreSlim(5);
 
-//#if DEBUG
-//                coops = coops.Where(x => x.Name == "BunchWafer2").ToList();
-//#endif
+#if DEBUG
+                coops = coops.Where(x => x.Name == "EarthSedan22").ToList();
+#endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
                 foreach(var guildCoops in guildCoopGroups) {
@@ -121,52 +123,59 @@ namespace EGG9000.Bot.Automated {
         }
 
 
-        public static List<string> GetStatusStringAsync(Ei.ContractCoopStatusResponse status, List<UserWithStatus> usersWithStatus, int League, Contract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Contract contract) {
             var table = new List<List<FixedWidthCell>> {
                 new List<FixedWidthCell> {
-                new FixedWidthCell($"{status.Contributors.Count}/{contract.MaxUsers}"),
+                new FixedWidthCell($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new FixedWidthCell("Discord", CellAlignment.Center),
                 new FixedWidthCell("EB", CellAlignment.Center),
                 new FixedWidthCell("Total", CellAlignment.Center),
                 new FixedWidthCell("Rate", CellAlignment.Center),
                 new FixedWidthCell("📈", CellAlignment.Center),
                 new FixedWidthCell("%", CellAlignment.Center),
-                new FixedWidthCell("🟡", CellAlignment.Center, false, 1),
-                new FixedWidthCell("⏲️", CellAlignment.Center, false, 1),
+                new FixedWidthCell("🟡", CellAlignment.Center, true),
+                new FixedWidthCell("⏲️", CellAlignment.Center, true),
                 new FixedWidthCell("Silo"),
                 new FixedWidthCell(""),
             }
             };
             var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
-            table.AddRange(usersWithStatus.OrderByDescending(x => x.Status.Projected).Select(x => {
-                var siloTime = -1.0;
-                if(x.SiloTime > 0) {
-                    siloTime = x.SiloTime;
+            var everyoneJoined = coopDetails.CoopParticipants.All(x => x.CoopStatus is not null);
+            var targetAmount = contract.GoalsDetail.Last().TargetAmount;
+
+            table.AddRange(coopDetails.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
+                var sleeping = (x.OfflineTime.TotalMinutes > x.SiloTimeMinutes ? "💤" : "");
+
+                if(x.OfflineTime.TotalMinutes > x.SiloTimeMinutes) {
+                    sleeping = $"💤 Empty Silos {x.OfflineTime.Add(TimeSpan.FromMinutes(0 - x.SiloTimeMinutes)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()}";
                 }
 
-                var sleeping = (!x.Status.Active ? "💤" : "");
+                if(coopDetails.Coop.FinishedOrFailed)
+                    sleeping = "";
 
-                if(siloTime > -1 && x.Sleeping.HasValue && x.Sleeping.Value.TotalMinutes > siloTime) {
-                    sleeping = $"💤 {x.Sleeping.Value.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()} - Empty Silos {x.Sleeping.Value.Add(TimeSpan.FromMinutes(-siloTime)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()}";
-                }
-
-                if(x.Status.TimeCheatDetected)
+                if(x.CoopStatus?.TimeCheatDetected ?? false)
                     sleeping += " ⏱️";
 
-                var eb = Math.Pow(10, x.Status.SoulPower) * 100;
+
+                //var eb = Math.Pow(10, x.Status.SoulPower) * 100;
+                var percent = coopDetails.GetProjectedShare(x);
+
+                if(x.DBUser is null) {
+
+                }
 
                 return new List<FixedWidthCell> {
-                    new FixedWidthCell(Truncate((x.User == null ? "👽" : "") + Regex.Replace(x.Status.UserName, @"\p{Cs}", ""), 11)),
-                    new FixedWidthCell(Truncate(Regex.Replace(ebrgx.Replace(x.Status.DiscordName ?? "", "") , @"\p{Cs}", ""), 11)),
+                    new FixedWidthCell(Truncate((everyoneJoined || x.DBUser is null ? "" : x.CoopStatus is not null ? "✅" : "❌") + (x.DBUser is null ? "👽" : "") + Regex.Replace(x.CoopStatus?.UserName ?? x.Backup?.UserName, @"\p{Cs}", ""), 11)),
+                    new FixedWidthCell(Truncate(Regex.Replace(x.DiscordUser?.GetCleanName() ?? "", @"\p{Cs}", ""), 11)),
                     //new FixedWidthCell(x.Backup?.EarningsBonus.ToEggString(), CellAlignment.Right),
-                    new FixedWidthCell((Math.Pow(10,x.Status.SoulPower) * 100).ToEggString(), CellAlignment.Right),
-                    new FixedWidthCell(x.Status.TotalString, CellAlignment.Right),
-                    new FixedWidthCell(x.Status.RateString, CellAlignment.Right),
-                    new FixedWidthCell(x.Status.Projected.ToEggString(), CellAlignment.Right),
-                    new FixedWidthCell((x.Status.Projected / status.Projected).ToString("P0").Replace(" ",""), CellAlignment.Right),
-                    new FixedWidthCell(x.Status.BoostTokens.ToString()),
-                    new FixedWidthCell(x.Status.LastActive.TotalSeconds < 1 ? "Now" : x.Status.LastActive.Humanize().ShortenTime()),
-                    new FixedWidthCell(siloTime > -1 ? TimeSpan.FromMinutes((double)siloTime).Humanize(2, maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime() : ""),
+                    new FixedWidthCell(x.EarningsBonus.ToEggString(), CellAlignment.Right),
+                    new FixedWidthCell(x.EggsShipped.ToEggString(), CellAlignment.Right),
+                    new FixedWidthCell($"{(x.Rate * 3600).ToEggString()}/h", CellAlignment.Right),
+                    new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
+                    new FixedWidthCell($"{Math.Round(percent)}%", CellAlignment.Right),
+                    new FixedWidthCell(x.BoostTokens.ToString()),
+                    new FixedWidthCell(x.OfflineTime.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
+                    new FixedWidthCell(TimeSpan.FromMinutes((double)x.SiloTimeMinutes).Humanize(2, maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
                     new FixedWidthCell(sleeping),
                 };
             }));
@@ -363,12 +372,12 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild, CancellationToken cancellationToken, ApplicationDbContext db) {
-            using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
-                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid);
-                if(coop == null) {
-                    return;
-                }
-                try {
+            try {
+                using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
+                    var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid);
+                    if(coop == null) {
+                        return;
+                    }
                     //Console.WriteLine($"Calling update for {coop.Name}");
                     var times = new List<long>();
                     var sw = new Stopwatch();
@@ -392,7 +401,45 @@ namespace EGG9000.Bot.Automated {
                     List<IGuildUser> coopDiscordUsers = coopChannel is SocketTextChannel ? ((SocketTextChannel)coopChannel).Users.ToList().Select(x => (IGuildUser)x).ToList() : (await coopChannel.GetUsersAsync().FlattenAsync()).ToList();
 
                     var statusReponse = await GetStatus(coop, coopChannel, cancellationToken);
+
+
+
+                    if(statusReponse.Status.LocalTimestamp == 0 && statusReponse.Status.SecondsRemaining == 0) {
+                        var details = new CoopDetails(coop, coop.Contract, (int)coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
+                        var response = await CreateCoops.CreateCoopViaApi(coop.ContractID, (uint)coop.League, coop, (coop.CoopEnds.Value - DateTimeOffset.Now).TotalSeconds, details.CoopParticipants.FirstOrDefault()?.Backup?.EggIncId);
+                        statusReponse = await GetStatus(coop, coopChannel, cancellationToken);
+                        if(statusReponse.Status.LocalTimestamp == 0 && statusReponse.Status.SecondsRemaining == 0) {
+                            var kendromeDMChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
+                            await kendromeDMChannel.SendMessageAsync($"Unable to start co-op for {coopChannel.Mention}, attempted to start with userid {details.CoopParticipants.FirstOrDefault()?.Backup?.EggIncId}");
+                        }
+                    }
+
                     if(cancellationToken.IsCancellationRequested) return;
+
+                    var coopDetails = new CoopDetails(coop, coop.Contract, (int)coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
+
+
+                    var participantsInCoopButWithoutXref = coopDetails.CoopParticipants.Where(x =>
+                        x.DBUser is not null &&
+                        x.Xref is null &&
+                        x.CoopStatus is not null &&
+                        x.Backup.Farms.Any(f => f.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase))
+                    );
+                    foreach(var participant in participantsInCoopButWithoutXref) {
+                        var xref = new UserCoopXref {
+                            EggIncId = participant.Backup.EggIncId,
+                            CreatedOn = DateTimeOffset.Now,
+                            JoinedCoop = true,
+                            UserId = participant.DBUser.Id,
+                            WasAssigned = false,
+                            CoopId = coop.Id
+                        };
+                        _db.Add(xref);
+                        participant.AddXref(xref);
+                        await _db.SaveChangesAsync();
+                        await coopChannel.SendMessageAsync($"<@{participant.DBUser.DiscordId}> has joined the co-op");
+                    }
+
                     var status = statusReponse.Status;
                     if(status?.Success ?? false) {
 
@@ -440,33 +487,7 @@ namespace EGG9000.Bot.Automated {
                             return userWithStatus;
                         }).ToList();
 
-                        var usersNotJoined = coop.UserCoopsXrefs.Where(x => !usersWithStatus.Any(y => y.Xref?.EggIncId == x.EggIncId)).ToList();  // !status.Contributors.Any(y => y.GetID() == x.EggIncId)).ToList();
-
-                        if(usersWithStatus.Any(y => y.Xref is null) && usersNotJoined.Any()) {
-                            for(var i = 0; i < usersNotJoined.Count; i++) {
-                                var user = usersNotJoined[i];
-                                //var last5Coops = await _db.UserCoopXrefs.Where(x => x.EggIncId == user.EggIncId && x.JoinedCoop).Select(x => new { Xref = x, Coop = x.Coop }).Take(5).ToListAsync();
-                                var lastCoopBeforeChange = await _db.UserCoopXrefs
-                                    .Where(x => x.EggIncId == user.EggIncId && x.JoinedCoop && x.CreatedOn < new DateTimeOffset(2022, 07, 10, 0, 0, 0, TimeSpan.Zero))
-                                    .Select(x => new { Xref = x, Coop = x.Coop })
-                                    .FirstOrDefaultAsync();
-                                if(lastCoopBeforeChange?.Coop.LastStatusUpdate is not null) {
-                                    var username = lastCoopBeforeChange.Coop.LastStatusUpdate.Participants.FirstOrDefault(x => x.UserId == user.EggIncId)?.UserName;
-                                    if(!string.IsNullOrWhiteSpace(username)) {
-                                        var userStatus = usersWithStatus.FirstOrDefault(x => x.Status.UserName == username);
-                                        if(userStatus != null) {
-                                            userStatus.Xref = user;
-                                            user.FixedUserName = username;
-                                            await _db.SaveChangesAsync();
-                                            usersNotJoined.Remove(user);
-                                            i--;
-                                        }
-                                    }
-                                }
-
-                            }
-                        }
-
+                        var usersNotJoined = coopDetails.CoopParticipants.Where(x => x.CoopStatus is null).ToList();
 
                         foreach(var x in usersWithStatus) {
                             x.Backup = x.User?.Backups?.FirstOrDefault(y => y.EggIncId == x.Xref?.EggIncId);
@@ -488,7 +509,9 @@ namespace EGG9000.Bot.Automated {
 
                         foreach(var xref in coop.UserCoopsXrefs) {
 
-                            var user = users.First(x => x.Id == xref.GetID());
+                            var user = users.FirstOrDefault(x => x.Id == xref.GetID());
+                            if(user is null)
+                                continue;
                             var discordUser = guild.GetUser(user.DiscordId);
                             if(discordUser == null) {
                                 await _client.Rest.GetGuildUserAsync(guild.Id, user.DiscordId);
@@ -502,11 +525,6 @@ namespace EGG9000.Bot.Automated {
 
                         }
 
-                        usersWithStatus.ForEach(userStatus => {
-                            if(userStatus.User != null) {
-                                userStatus.DiscordUser = guild.GetUser(userStatus.User.DiscordId);
-                            }
-                        });
 
                         times.Add(sw.ElapsedMilliseconds);
                         sw.Restart();
@@ -528,9 +546,9 @@ namespace EGG9000.Bot.Automated {
                                 }
                             }
 
-                            if(xref == null || !xref.LastStatusTime.HasValue) {
-                                lastStatus = await _db.UserCoopStatuses.AsQueryable().OrderByDescending(x => x.CreatedOn).FirstOrDefaultAsync(x => x.CoopId == coop.Id && x.EggIncId == userCoopStatus.GetID());
-                            }
+                            //if(xref == null || !xref.LastStatusTime.HasValue) {
+                            //    lastStatus = await _db.UserCoopStatuses.AsQueryable().OrderByDescending(x => x.CreatedOn).FirstOrDefaultAsync(x => x.CoopId == coop.Id && x.EggIncId == userCoopStatus.GetID());
+                            //}
 
 
                             if(xref == null) {
@@ -546,7 +564,7 @@ namespace EGG9000.Bot.Automated {
                                             AddedToChannel = xref.AddedToChannel,
                                             CoopId = xref.CoopId,
                                             JoinedCoop = true,
-                                            LastStatusTime = xref.LastStatusTime,
+                                            //LastStatusTime = xref.LastStatusTime,
                                             SleepingWarningTime = xref.SleepingWarningTime,
                                             Starter = xref.Starter,
                                             UserId = xref.GetID(),
@@ -579,7 +597,7 @@ namespace EGG9000.Bot.Automated {
                                                 CoopId = coop.Id,
                                                 CreatedOn = DateTimeOffset.UtcNow,
                                                 JoinedCoop = true,
-                                                LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow,
+                                                //LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow,
                                                 Starter = false,
                                                 Status = JsonConvert.SerializeObject(userCoopStatus),
                                                 WasAssigned = false
@@ -601,43 +619,45 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                            if(xref != null) {
-                                if(!xref.LastStatusTime.HasValue) {
-                                    xref.LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow;
-                                    xref.Status = JsonConvert.SerializeObject(userCoopStatus);
-                                    xref.SleepingWarningTime = lastStatus?.SleepingWarning;
-                                } else {
-                                    var lStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status ?? "{}");
-                                    if(lStatus.ContributionAmount != userCoopStatus.ContributionAmount) {
-                                        xref.LastStatusTime = DateTimeOffset.UtcNow;
-                                        xref.Status = JsonConvert.SerializeObject(userCoopStatus);
-                                        var newStatus = new UserCoopStatus {
-                                            CoopId = coop.Id,
-                                            CreatedOn = DateTimeOffset.UtcNow,
-                                            EggIncId = userCoopStatus.GetID(),
-                                            EggIncName = userCoopStatus.UserName,
-                                            Rate = userCoopStatus.ContributionRate,
-                                            Total = userCoopStatus.ContributionAmount,
-                                            UserId = xref.GetID()
-                                        };
+                            //if(xref != null) {
+                            //    xref.Status = JsonConvert.SerializeObject(userCoopStatus);
 
-                                        _db.UserCoopStatuses.Add(newStatus);
-                                    }
-                                }
+                            //    if(!xref.LastStatusTime.HasValue) {
+                            //        xref.LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow;
+                            //        xref.SleepingWarningTime = lastStatus?.SleepingWarning;
+                            //    } else {
+                            //        var lStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status ?? "{}");
+                            //        if(lStatus.ContributionAmount != userCoopStatus.ContributionAmount) {
+                            //            xref.LastStatusTime = DateTimeOffset.UtcNow;
+                            //            xref.Status = JsonConvert.SerializeObject(userCoopStatus);
+                            //            var newStatus = new UserCoopStatus {
+                            //                CoopId = coop.Id,
+                            //                CreatedOn = DateTimeOffset.UtcNow,
+                            //                EggIncId = userCoopStatus.GetID(),
+                            //                EggIncName = userCoopStatus.UserName,
+                            //                Rate = userCoopStatus.ContributionRate,
+                            //                Total = userCoopStatus.ContributionAmount,
+                            //                UserId = xref.GetID()
+                            //            };
 
-                                //Handle sleeping
-                                var user = usersWithStatus.FirstOrDefault(x => x.Backup != null && x.Backup.EggIncId == userCoopStatus.GetID());
-                                await HandleSleeping(user, status, xref, coopChannel, coop, userCoopStatus, _db, dbguild, guild);
-                            }
+                            //            _db.UserCoopStatuses.Add(newStatus);
+                            //        }
+                            //    }
+
+                            //    //Handle sleeping
+                            //    var user = usersWithStatus.FirstOrDefault(x => x.Backup != null && x.Backup.EggIncId == userCoopStatus.GetID());
+                            //    await HandleSleeping(user, status, xref, coopChannel, coop, userCoopStatus, _db, dbguild, guild);
+                            //}
                         }
 
 
+                        foreach(var participant in coopDetails.CoopParticipants) {
+                            await HandleSleeping(participant, coopChannel, coop, _db, dbguild, guild);
+                        }
+
                         var league = (int?)coop.League ?? 0;
                         var targetAmount = coop.Contract.Details.GoalSets.Count > 0 ? coop.Contract.Details.GoalSets[league].Goals.Last().TargetAmount : coop.Contract.Details.Goals.Last().TargetAmount;
-                        var amountWithOffline = status.Participants.Sum(x => {
-                            var userWithStatus = usersWithStatus.FirstOrDefault(y => y.Status.GetID() == x.GetID());
-                            return x.AmountWithOffline((userWithStatus.Xref?.SiloTimeHours * 60) ?? 0, DateTimeOffset.UtcNow - (userWithStatus.Xref?.LastStatusTime ?? DateTimeOffset.Now));
-                        });
+                        var amountWithOffline = coopDetails.CoopParticipants.Where(x => x.CoopStatus is not null).Sum(x => x.EggsShipped + x.OfflineEggs);
                         var remainingAmount = targetAmount - amountWithOffline;
                         var totalRate = status.Participants.Sum(x => x.ContributionRate);
 
@@ -645,9 +665,9 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                        var hasDuplicate = status.Contributors.Count > coop.Contract.MaxUsers;
-                        if(!hasDuplicate && !coop.Finished) {
-                            if(!coop.ProjectedToFinish && status.ProjectedToFinish(coop.Contract, (int?)coop.League ?? 0)) {
+                        //var hasDuplicate = status.Contributors.Count > coop.Contract.MaxUsers;
+                        if(!coop.FinishedOrFailed) {
+                            if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
                                 coop.ProjectedToFinish = true;
                                 await coopChannel.SendMessageAsync($"Coop {coop.Name} is now projected to finish!");
                                 try {
@@ -660,7 +680,7 @@ namespace EGG9000.Bot.Automated {
                                 }
                             }
 
-                            if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && !status.ProjectedToFinish(coop.Contract, (int?)coop.League ?? 0)) {
+                            if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.Now) {
                                 coop.ProjectedToFinish = false;
                                 await coopChannel.SendMessageAsync($"Coop {coop.Name} is **no longer** projected to finish.");
                                 try {
@@ -673,19 +693,6 @@ namespace EGG9000.Bot.Automated {
                                 }
                             }
 
-                            if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
-                                coop.Finished = true;
-                                coop.Status = CoopStatusEnum.Completed;
-                                Debug.WriteLine("*** Not Showing as completed");
-                                try {
-                                    await _db.SaveChangesAsync();
-                                } catch(Exception) {
-                                    await Task.Delay(100);
-                                    try {
-                                        await _db.SaveChangesAsync();
-                                    } catch(Exception) { }
-                                }
-                            }
 
                             if(!coop.Finished && status.Finished(coop.Contract, (int?)coop.League ?? 0) && coop.Status != CoopStatusEnum.Failed) {
                                 coop.Finished = true;
@@ -712,6 +719,20 @@ namespace EGG9000.Bot.Automated {
                                 }
 
                                 await HandleUnjoins(usersNotJoined, guild, users, dbguild, coop, _db, coopChannel);
+                            }
+
+                            if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
+                                coop.Finished = true;
+                                coop.Status = CoopStatusEnum.Completed;
+                                Debug.WriteLine("*** Not Showing as completed");
+                                try {
+                                    await _db.SaveChangesAsync();
+                                } catch(Exception) {
+                                    await Task.Delay(100);
+                                    try {
+                                        await _db.SaveChangesAsync();
+                                    } catch(Exception) { }
+                                }
                             }
                         }
 
@@ -750,15 +771,17 @@ namespace EGG9000.Bot.Automated {
                         times.Add(sw.ElapsedMilliseconds);
                         sw.Restart();
 
-                        var msgs = GetStatusStringAsync(status, usersWithStatus, (int?)coop.League ?? 0, coop.Contract);
+                        var msgs = GetStatusStringAsync(coopDetails, coop.Contract);
                         var lastMessage = "";
                         times.Add(sw.ElapsedMilliseconds);
                         sw.Restart();
 
 
-                        foreach(var userStatus in usersWithStatus.Where(x => x.Xref != null)) {
+                        foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
                             if(!userStatus.Xref.AddedToChannel && userStatus.DiscordUser != null) {
-                                await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                if(!(coopChannel as SocketTextChannel).Users.Any(x => x.Id == userStatus.DiscordUser.Id) && guild.Users.Any(x => x.Id == userStatus.DiscordUser.Id)) {
+                                    await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                }
                                 userStatus.Xref.AddedToChannel = true;
                                 Console.WriteLine("Adding user to channel");
                             }
@@ -772,7 +795,7 @@ namespace EGG9000.Bot.Automated {
                                 }
                                 await _db.SaveChangesAsync();
                                 var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                                var messagesToDelete = messages.Where(x => x.IsPinned == false && x.Author.IsBot && x.MentionedUserIds.Count == 1 && x.MentionedUserIds.Any(y => y == userStatus.DiscordUser.Id) && !x.Content.ToLower().Contains("demerit"));
+                                var messagesToDelete = messages.Where(x => x.IsPinned == false && x.Author.IsBot && x.MentionedUserIds.Count == 1 && x.MentionedUserIds.Any(y => y == userStatus.DiscordUser?.Id) && !x.Content.ToLower().Contains("demerit"));
                                 await coopChannel.DeleteMessagesAsync(messagesToDelete);
                             }
                         }
@@ -786,7 +809,8 @@ namespace EGG9000.Bot.Automated {
                             coop.Status = CoopStatusEnum.AllAssignedJoined;
                         } else {
                             var userList = new List<String>();
-                            foreach(var xref in usersNotJoined) {
+                            foreach(var userFarmDetails in usersNotJoined) {
+                                var xref = userFarmDetails.Xref;
                                 try {
                                     var user = users.First(x => x.Id == xref.GetID());
 
@@ -820,21 +844,31 @@ namespace EGG9000.Bot.Automated {
                                             await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
                                         }
 
-                                        if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-48) && status.ProjectedPercent(coop.Contract, (int?)coop.League ?? 0) > 100) {
-                                            await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 48 hours", user, _db, xref, discordUser, coopChannel, dbguild, coop);
+                                        if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-48) && coopDetails.PercentProjectedForJoined > 100) {
+                                            await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 48 hours, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop);
                                         }
                                     }
 
                                     if(!xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.Finished && coop.Status != CoopStatusEnum.Failed) {
-                                        var backup = user.Backups.FirstOrDefault(x => x.EggIncId == xref.EggIncId);
-                                        if(backup != null && coop.CoopEnds > DateTimeOffset.Now && !coop.FinishedOrFailed) {
-                                            var farm = backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
+                                        if(userFarmDetails.Backup is not null && coop.CoopEnds > DateTimeOffset.Now && !coop.FinishedOrFailed) {
+                                            var farm = userFarmDetails.Farm;
                                             if(farm == null || farm.Cancelled) {
-                                                await coopChannel.SendMessageAsync($"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm. Please use the command `/callstaff` to see what to do next");
+                                                string message;
+                                                if(userFarmDetails.Farm?.Completed ?? userFarmDetails.ArchivedFarm?.Completed ?? false) {
+                                                    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has completed the contract before joining the co-op.";
+                                                } else {
+                                                    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm.";
+                                                }
+                                                await coopChannel.SendMessageAsync(message);
+                                                if(dbguild.DemeritLogChannel.HasValue)
+                                                    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
                                                 xref.OutsideCoop = true;
                                                 await _db.SaveChangesAsync();
                                             } else if(!string.IsNullOrWhiteSpace(farm.CoopId) && !farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
-                                                await coopChannel.SendMessageAsync($"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}. Please use the command  `/callstaff` to see what to do next");
+                                                var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
+                                                await coopChannel.SendMessageAsync(message);
+                                                if(dbguild.DemeritLogChannel.HasValue)
+                                                    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
                                                 xref.OutsideCoop = true;
                                                 await _db.SaveChangesAsync();
                                             }
@@ -852,26 +886,22 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                        var usersAssigned = coop.UserCoopsXrefs.Select(x => {
-                            var User = users.FirstOrDefault(y => y.Id == x.GetID());
-                            if(User == null)
-                                return null;
-                            var backup = User.Backups?.FirstOrDefault(y => y?.EggIncId == x.EggIncId);
-                            if(backup == null)
-                                return null;
-                            return new {
-                                User = User,
-                                Backup = User.Backups?.First(y => y.EggIncId == x.EggIncId)
-                            };
-                        }).Where(x => x != null);
-                        var highestEB = usersAssigned.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault();
+                        //var usersAssigned = coop.UserCoopsXrefs.Select(x => {
+                        //    var User = users.FirstOrDefault(y => y.Id == x.GetID());
+                        //    if(User == null)
+                        //        return null;
+                        //    var backup = User.Backups?.FirstOrDefault(y => y?.EggIncId == x.EggIncId);
+                        //    if(backup == null)
+                        //        return null;
+                        //    return new {
+                        //        User = User,
+                        //        Backup = User.Backups?.First(y => y.EggIncId == x.EggIncId)
+                        //    };
+                        //}).Where(x => x != null);
+                        var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                         if(highestEB != null)
-                            lastMessage += $"Highest EB: {highestEB.User.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "has joined!")}\n";
-                        else
-                            Console.WriteLine($"Missing UsersAssigned for {coop.Name}");
+                            lastMessage += $"Highest EB: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}\n";
 
-                        //lastMessage += $"Contract: {coop.Contract.Name} {coop.Contract.ID}\n";
-                        lastMessage += "\n*Make sure and equip any Tachyon Deflectors you have!*\n";
 
                         var giftInfos = usersWithStatus.Where(x => x.Status.FarmInfo is not null && x.FarmStats is not null).Select(x => new {
                             Shipping = x.Status.ContributionRate / x.FarmStats.MaxShippingRate * 100,
@@ -901,17 +931,19 @@ namespace EGG9000.Bot.Automated {
                                 new FixedWidthCell($"{Math.Round(x.Shipping)}%", CellAlignment.Right),
                             }).ToList());
                             lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{String.Join("\n", FixedWidthTable.GetTable(table))}```\n";
-                        } else {
-                            lastMessage += "\nLooks like everyone's shipping and/or habs are full so gifting chickens isn't useful.";
+                        } else if(coopDetails.CoopParticipants.Any(y => y.CoopStatus is not null)) {
+                            lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n";
                         }
 
-                        lastMessage += "\nCo-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
+                        lastMessage += "Co-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
                         lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
 
 
                         foreach(var u in usersWithStatus.Where(x => x.Xref is not null)) {
-                            u.Xref.HasTachyonDeflector = u.Xref.HasTachyonDeflector || u.Backup.GetAvailableArtifacts.Any(a => a.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
-                            var farm = u.Backup.Farms.First(x => x.ContractId == coop.ContractID);
+                            u.Xref.HasTachyonDeflector = u.Xref.HasTachyonDeflector || (u.Backup?.GetAvailableArtifacts.Any(a => a.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) ?? false);
+                            var farm = u.Backup?.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
+                            if(farm == null)
+                                continue;
                             u.Xref.EquipedTachyonDeflector = u.Xref.EquipedTachyonDeflector || farm.Artifacts.Any(a => a.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
                         }
 
@@ -919,8 +951,8 @@ namespace EGG9000.Bot.Automated {
                         var usersNeedToAddDeflector = new List<UserWithStatus>();
                         if(!coop.FinishedOrFailed && coop.CoopEnds > DateTimeOffset.Now) {
                             foreach(var user in usersToCheckDeflector) {
-                                var farm = user.Backup.Farms.First(x => x.ContractId == coop.ContractID);
-                                if(!farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
+                                var farm = user.Backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
+                                if(farm is not null && !farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
                                     usersNeedToAddDeflector.Add(user);
                                 }
                             }
@@ -929,7 +961,7 @@ namespace EGG9000.Bot.Automated {
 
 
                         if(usersNeedToAddDeflector.Any()) {
-                            lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip:** {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser.Mention))}";
+                            lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip:** {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser?.Mention ?? $"<@{y.User?.DiscordId}>"))}";
                         }
 
 
@@ -948,6 +980,8 @@ namespace EGG9000.Bot.Automated {
 
                             try {
                                 var coopFailedCategory = await _client.GetCategoryAsync(GuildChannelType.FailedCategory, guild);
+                                if(coopFailedCategory is null)
+                                    coopFailedCategory = guild.CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("failed") && x.Name.ToLower().Contains("coops"));
                                 await coopChannel.ModifyAsync(x => { x.CategoryId = coopFailedCategory.Id; });
                             } catch(Exception) {
 
@@ -966,10 +1000,10 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                        var missingCount = coop.UserCoopsXrefs.Count(x => !x.JoinedCoop && users.FirstOrDefault(u => u.Id == x.GetID())?.GuildId == coop.GuildId);
+                        var missingCount = coopDetails.CoopParticipants.Count(x => x.Xref is not null && x.CoopStatus is null);
 
                         if(missingCount == 0) {
-                            await HandlePingOnFull(usersWithStatus, coopChannel);
+                            await HandlePingOnFull(coopDetails.CoopParticipants, coopChannel);
                         }
 
                         if(missingCount > 0) {
@@ -993,7 +1027,7 @@ namespace EGG9000.Bot.Automated {
                                 emojis += "🔺";
                             }
                         } else if(
-                                !coop.Finished && (
+                                !coop.FinishedOrFailed && (
                                     (timeRemaining.TotalHours < 3)
                                     || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
                                 ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
@@ -1008,23 +1042,27 @@ namespace EGG9000.Bot.Automated {
                             emojis += "🏁";
                         } else {
 
-                            var percent = status.ProjectedPercent(coop.Contract, (int?)coop.League ?? 0);
+                            var percent = coopDetails.PercentProjectedForJoined;
 
-                            if(percent < .6) {
+                            if(percent < 60) {
                                 color = Color.Red;
                                 emojis += "🔴";
-                            } else if(percent < .9) {
+                            } else if(percent < 90) {
                                 color = new Color(139, 69, 19);
                                 emojis += "🤎";
-                            } else if(percent < 1) {
+                            } else if(percent < 100) {
                                 color = Color.Orange;
                                 emojis += "🧡";
-                            } else if(percent < 1.05) {
+                            } else if(percent < 105) {
                                 color = new Color(255, 255, 0);
                                 emojis += "💛";
                             } else {
                                 color = Color.Green;
                                 emojis += "💚";
+                            }
+
+                            if(percent < 100 && coopDetails.PercentProjected >= 100) {
+                                emojis += "💹";
                             }
                         }
 
@@ -1032,11 +1070,11 @@ namespace EGG9000.Bot.Automated {
                             emojis += "👻";
                         }
 
-                        if(usersWithStatus.Any(x => x.User == null) && !status.Public && !coop.Finished) {
+                        if(coopDetails.CoopParticipants.Any(x => x.Xref is null) && !status.Public && !coop.Finished) {
                             emojis += "👽";
                         }
 
-                        if(coop.UserCoopsXrefs.Count(x => users.Any(y => y.Id == x.GetID() && y.GuildId != 0)) + usersWithStatus.Count(u => u.Xref == null) > coop.Contract.MaxUsers) {
+                        if(coopDetails.CoopParticipants.Count > coop.Contract.MaxUsers) {
                             emojis += "🤢";
                         }
 
@@ -1069,7 +1107,7 @@ namespace EGG9000.Bot.Automated {
                             .WithDescription(
                                 (status.Finished(coop.Contract, league)
                                 ? "This co-op is finished!"
-                                : status.ProjectedToFinish(coop.Contract, league)
+                                : coopDetails.PercentProjectedForJoined >= 100
                                 ? "This co-op is projected to succeed without growth as long as there are no sleepers!"
                                 : "") + $"\n[View on egg9000.com](https://egg9000.com/coop/{coop.ContractID}/{coop.Name})"
                             )
@@ -1108,7 +1146,7 @@ namespace EGG9000.Bot.Automated {
                                 } else if(coop.Status == CoopStatusEnum.Failed) {
                                     title += "❌";
                                     time = "";
-                                } else if(status.Projected > goal.TargetAmount) {
+                                } else if(coopDetails.PercentProjectedForJoined > goal.TargetAmount) {
                                     title += "☑";
                                 }
                                 embedBuilder.AddField(title, $"Target: {goal.TargetAmount.ToEggString()}\nReward: {EggIncEggs.GetReward(goal)}{time}", true);
@@ -1144,10 +1182,13 @@ namespace EGG9000.Bot.Automated {
                                 embedBuilder.AddField("Time To Complete", "Once everyone checks in", inline: true);
                             }
 
-                            embedBuilder.AddField("Projected Amount", $"{status.Projected.ToEggString()} of {targetAmount.ToEggString()} {Math.Round(100 * status.Projected / targetAmount)}%", inline: true);
+                            embedBuilder.AddField("Projected Amount", $"{coopDetails.Projected.ToEggString()} of {targetAmount.ToEggString()} {Math.Round(coopDetails.PercentProjectedForJoined)}%", inline: true);
                             embedBuilder.AddField("Current Amount", status.TotalAmount.ToEggString(), inline: true);
                             embedBuilder.AddField("Current With Offline", amountWithOffline.ToEggString(), inline: true);
-                            embedBuilder.AddField("Egg Laying Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
+                            //embedBuilder.AddField("Egg Laying Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
+                            if(coopDetails.CoopParticipants.Any(x => x.CoopStatus is null)) {
+                                embedBuilder.AddField("Everyone Joins", $"Projected {Math.Round(coopDetails.PercentProjected)}%", inline: true);
+                            }
                         } else if(coop.Status == CoopStatusEnum.Completed) {
                             embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
                             embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
@@ -1176,12 +1217,11 @@ namespace EGG9000.Bot.Automated {
                     sw.Stop();
 
 
-                } catch(Exception e) {
-                    Console.WriteLine($"Error in co-op {coop.Name}: {e.Message}");
-                    _bugsnag.Notify(e);
                 }
+            } catch(Exception e) {
+                Console.WriteLine($"Error in co-op {coopid}: {e.Message}");
+                _bugsnag.Notify(e);
             }
-
         }
 
         public static int GetDigit(int number, int digit) {
@@ -1190,21 +1230,23 @@ namespace EGG9000.Bot.Automated {
             return number % 10;
         }
 
-        public async Task HandleSleeping(UserWithStatus user, Ei.ContractCoopStatusResponse status, UserCoopXref xref, ITextChannel coopChannel, Coop coop, Ei.ContractCoopStatusResponse.Types.ContributionInfo userCoopStatus, ApplicationDbContext _db, Guild dbguild, SocketGuild guild) {
-            userCoopStatus.LastActive = DateTimeOffset.UtcNow - xref.LastStatusTime.Value;
-            if(user == null || status.SecondsRemaining <= 0 || !xref.LastStatusTime.HasValue || coop.Finished || coop.Status == CoopStatusEnum.Failed)
+        public async Task HandleSleeping(UserFarmDetails user, ITextChannel coopChannel, Coop coop, ApplicationDbContext _db, Guild dbguild, SocketGuild guild) {
+            if(user.Xref is null || coop.CoopEnds < DateTimeOffset.Now || coop.FinishedOrFailed || user.CoopStatus is null)
                 return;
 
-            user.Sleeping = DateTimeOffset.UtcNow - xref.LastStatusTime.Value;
-            float hoursSleeping = (float)user.Sleeping.Value.TotalHours;
-            float siloTimeHours = (float)(user.SiloTime / 60.0);
+            var currentSleepStart = user.Joined ? DateTimeOffset.Now.Subtract(user.OfflineTime) : coop.Created;
+            double hoursSleeping = (double)user.OfflineTime.TotalMinutes / 60.0;
+            float siloTimeHours = (float)(user.SiloTimeMinutes / 60.0);
             var alertTime = (30.0 - siloTimeHours) / 2 + siloTimeHours;
             bool needsAlert = hoursSleeping >= alertTime;
             var timeEmpty = Math.Round(hoursSleeping - siloTimeHours, 2);
-            var currentSleep = xref.SleepTracking.FirstOrDefault(x => !x.WokeUp);
+
+            var sleepTracking = user.Xref.SleepTracking.ToList();
+
+            var currentSleep = sleepTracking.FirstOrDefault(x => !x.WokeUp);
 
             if(currentSleep == null && needsAlert) {
-                currentSleep = new SleepTracking { SleepStart = xref.LastStatusTime.Value, LastChecked = DateTimeOffset.Now };
+                currentSleep = new SleepTracking { SleepStart = currentSleepStart, LastChecked = DateTimeOffset.Now };
 
                 var messages = BotText.SleepingMessages;
                 var random = new Random();
@@ -1214,47 +1256,41 @@ namespace EGG9000.Bot.Automated {
                     var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
                     var dmChannel = await user.DiscordUser.CreateDMChannelAsync();
                     try {
-                        await dmChannel.SendMessageAsync(warningText);
+                        var message = await dmChannel.SendMessageAsync(warningText);
                     } catch(Exception) {
                         await coopChannel.SendMessageAsync($"{warningText} (DMs are blocked)");
                         Console.WriteLine($"Unable to send DM to {user.DiscordUser.GetCleanName()}");
                     }
 
                 }
-                if(dbguild.DemeritLogChannel.HasValue) {
-                    //if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
-                    //    _demeritChannel = _client.GetGuild(coop.GuildId).GetTextChannel(dbguild.DemeritLogChannel.Value);
-                    //}
-                    //await _demeritChannel.SendMessageAsync(warningText + $" {coopChannel.Mention}");
-                }
-                xref.SleepTracking.Add(currentSleep);
+                sleepTracking.Add(currentSleep);
             }
 
             if(currentSleep != null) {
-                if(xref.LastStatusTime > currentSleep.SleepStart) {
+                if(currentSleepStart > currentSleep.SleepStart.AddMinutes(10)) { //Adding 10 mins to account for weird time stuff
                     //No longer sleeping
                     currentSleep.WokeUp = true;
                     currentSleep.TotalHoursEmpty = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours - siloTimeHours;
-                    xref.TotalHoursSleeping = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours;
-                    xref.HoursSleeping = 0;
+                    user.Xref.TotalHoursSleeping = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours;
+                    user.Xref.HoursSleeping = 0;
                 } else {
                     var nextDemeritAt = (currentSleep.DemeritsGiven + 1) * 24;
-                    bool needsDemerit = timeEmpty > nextDemeritAt && dbguild.DemeritLogChannel.HasValue && !xref.NoDemerit;
-                    if(needsDemerit) {
+                    bool needsDemerit = timeEmpty > nextDemeritAt && dbguild.DemeritLogChannel.HasValue && !user.Xref.NoDemerit;
+                    if(needsDemerit && user.DBUser is not null) {
                         currentSleep.DemeritsGiven++;
 
                         var demerit = new Demerit {
                             When = DateTimeOffset.Now,
                             AdminUserId = Guid.Empty,
-                            UserId = user.User.Id,
+                            UserId = user.DBUser.Id,
                             Id = Guid.NewGuid(),
                             Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}"
                         };
                         _db.Demerit.Add(demerit);
                         await _db.SaveChangesAsync();
 
-                        var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.User.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
-                        var demeritText = $"Demerit added to {user.DiscordUser?.Mention ?? user.User.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
+                        var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.DBUser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+                        var demeritText = $"Demerit added to {user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
                         await coopChannel.SendMessageAsync(demeritText);
                         if(count >= 3)
                             demeritText = $"**{demeritText}**";
@@ -1263,47 +1299,43 @@ namespace EGG9000.Bot.Automated {
                         }
                         await _demeritChannel.SendMessageAsync($"{demeritText} {coopChannel.Mention}");
                     }
-                    xref.HoursSleeping = (int)Math.Floor((DateTimeOffset.Now - currentSleep.SleepStart).TotalHours);
+                    user.Xref.HoursSleeping = (int)Math.Floor((DateTimeOffset.Now - currentSleep.SleepStart).TotalHours);
                 }
 
                 if(!currentSleep.WokeUp) {
                     currentSleep.LastChecked = DateTimeOffset.Now;
                 }
-                xref.SleepTracking = xref.SleepTracking;
             }
+            user.Xref.SleepTracking = sleepTracking;
         }
 
-        public async Task HandleUnjoins(List<UserCoopXref> usersNotJoined, SocketGuild guild, List<DBUser> users, Guild dbguild, Coop coop, ApplicationDbContext _db, ITextChannel coopChannel) {
+        public async Task HandleUnjoins(List<UserFarmDetails> usersNotJoined, SocketGuild guild, List<DBUser> users, Guild dbguild, Coop coop, ApplicationDbContext _db, ITextChannel coopChannel) {
             if(!dbguild.DemeritLogChannel.HasValue)
                 return;
-            foreach(var xref in usersNotJoined) {
-                var user = users.FirstOrDefault(x => x.Id == xref.GetID());
-                if(user == null || xref.NoDemerit)
+            foreach(var userFarmDetail in usersNotJoined) {
+                var user = users.FirstOrDefault(x => x.Id == userFarmDetail.Xref.GetID());
+                if(user == null || userFarmDetail.Xref.NoDemerit)
                     continue;
-                var discordUser = guild.GetUser(user.DiscordId);
-                //if(discordUser == null)
-                    //continue;
 
-                if(xref.CreatedOn > DateTimeOffset.Now.AddHours(-24)) {
-                    _db.Remove(xref);
+                if(userFarmDetail.Xref.CreatedOn > DateTimeOffset.Now.AddHours(-24)) {
+                    _db.Remove(userFarmDetail.Xref);
                     await _db.SaveChangesAsync();
-                    await coopChannel.SendMessageAsync($"{discordUser?.GetCleanName() ?? user.DiscordUsername} returned to prefarming pool since they were added less than 24 hours before the co-op finished.");
+                    await coopChannel.SendMessageAsync($"{userFarmDetail.DiscordUser?.GetCleanName() ?? user.DiscordUsername} returned to prefarming pool since they were added less than 24 hours before the co-op finished.");
                     continue;
                 }
 
                 if(user.Registered > DateTimeOffset.Now.AddDays(-7)) {
-                    //_db.Remove(xref);
-                    await coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
+                    await coopChannel.SendMessageAsync($"{userFarmDetail.DiscordUser?.Mention ?? user.DiscordUsername}, you failed to join this co-op. After your first week in this server you will get a demerit for failing to join an assigned co-op. Ask staff if you have any questions.");
                     continue;
                 }
 
 
-                await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name}", user, _db, xref, discordUser, coopChannel, dbguild, coop);
+                await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name}", user, _db, userFarmDetail.Xref, userFarmDetail.DiscordUser, coopChannel, dbguild, coop);
             }
         }
 
-        public async Task HandlePingOnFull(List<UserWithStatus> usersWithStatus, ITextChannel coopChannel) {
-            foreach(var userStatus in usersWithStatus.Where(x => x.Xref?.PingOnFull ?? false)) {
+        public async Task HandlePingOnFull(List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
+            foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.PingOnFull ?? false)) {
                 userStatus.Xref.PingOnFull = false;
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
                 try {
