@@ -85,7 +85,7 @@ namespace EGG9000.Common.Database {
             get {
                 try {
                     return (ulong)(PiggyBank * ((NumPiggyBreaks + 2.0m) / 10 + 1));
-                } catch (OverflowException) {
+                } catch(OverflowException) {
                     return UInt64.MaxValue;
                 }
             }
@@ -127,10 +127,8 @@ namespace EGG9000.Common.Database {
                 if(ArtifactHall is null || ArtifactHall.Count == 0) {
                     return new List<ArtifactCount>();
                 }
-                if(ArtifactHall.First().Artifact.Stones is null) {
-                    return ArtifactHall;
-                }
-                var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact }).ToList();
+
+                var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
                 Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
                 return artifacts.Where(x => x.Count > 0).ToList();
             }
@@ -139,7 +137,7 @@ namespace EGG9000.Common.Database {
         public CustomBackup() { }
         public CustomBackup(Ei.Backup backup) {
             if(backup?.Game == null) {
-                EmptyBackup = true; 
+                EmptyBackup = true;
                 return;
             }
             EpicResearch = backup.Game.EpicResearch.Select(x => new CustomResearch(x)).ToList();
@@ -194,8 +192,20 @@ namespace EGG9000.Common.Database {
                 if(artifact is not null) {
                     artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
                 }
-                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact };
+                var artifactStatus = backup.ArtifactsDb.ArtifactStatus.FirstOrDefault(a =>
+                    a.Spec.Name == x.Artifact.Spec.Name &&
+                    a.Spec.Level == x.Artifact.Spec.Level &&
+                    a.Spec.Rarity == x.Artifact.Spec.Rarity
+                );
+                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
             }).ToList();
+
+            ArtifactHall.AddRange(backup.ArtifactsDb.ArtifactStatus.Where(a => 
+                !backup.ArtifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&
+                    a.Spec.Level == x.Artifact.Spec.Level &&
+                    a.Spec.Rarity == x.Artifact.Spec.Rarity
+                )
+            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count }));
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {

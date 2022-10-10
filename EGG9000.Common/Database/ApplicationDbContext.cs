@@ -52,6 +52,7 @@ namespace EGG9000.Common.Database {
         public DbSet<UserSnapShot> UserSnapShots { get; set; }
 
         public DbSet<TemporaryRole> TemporaryRoles { get; set; }
+        public DbSet<ExpiringShell> ExpiringShells { get; set; }
 
         public ApplicationDbContext(DbContextOptions options) : base(options) {
                 }

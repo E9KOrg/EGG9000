@@ -207,6 +207,13 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Update your EggIncID if it has changed")]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(command, db, _client, apiLink, eggincid, (SocketGuildUser)command.User, accountnumber);
+        }
+        [SlashCommand(Description = "EggIncID someones ID", AdminOnly = true, ParentCommand = "a")]
+        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid,[SlashParam]SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(command, db, _client, apiLink, eggincid, targetUser, accountnumber);
+        }
+        public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             var Response = await apiLink.GetBackup(eggincid);
 
 
@@ -219,7 +226,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
             if(user.EggIncIds.Count > 1) {
                 if(accountnumber == 0) {
                     var count = 1;

@@ -7,6 +7,7 @@ using System.Text;
 namespace EGG9000.Bot {
     public static class ArgumentsHelper {
         public static List<KeyValuePair<int, string>> bignums = new List<KeyValuePair<int, string>> {
+            new KeyValuePair<int, string>(0, ""),
             new KeyValuePair<int, string>(3, "K"),
             new KeyValuePair<int, string>(6, "M"),
             new KeyValuePair<int, string>(9, "B"),
@@ -43,7 +44,38 @@ namespace EGG9000.Bot {
             return NumberToString(number, showdecimalplaces, numberOfDecimalPlaces);
         }
 
-        public static string NumberToString(double number, bool showdecimalplaces, int numberOfDecimalPlaces = -1) {
+        public static string NumberToString(double number, bool showdecimalplaces = false, int numberOfDecimalPlaces = -1) {
+            var negative = number < 0;
+            if(negative)
+                number *= -1;
+            var oom = number == 0 ? 0 : Math.Floor(Math.Log10(number)) - Math.Floor(Math.Log10(number)) % 3;
+            var remainder = Math.Floor(Math.Log10(number)) % 3;
+
+            var suffix = bignums.Any(x => x.Key == oom) ? bignums.First(x => x.Key == oom) : bignums.Last();
+
+            number /= Math.Pow(10.0, oom);
+
+            var outString = new StringBuilder();
+            if(numberOfDecimalPlaces != -1)
+                outString.Append(number.ToString($"F{numberOfDecimalPlaces}"));
+            else if(showdecimalplaces)
+                outString.Append(number.ToString("G3"));
+            else if(remainder == 0)
+                outString.Append(number.ToString("N1"));
+            else if(suffix.Key != bignums.Last().Key && number.ToString("N0") == "1,000") {
+                outString.Append("1");
+                suffix = bignums.First(x => x.Key == oom + 3);
+            } else
+                outString.Append(number.ToString("N0"));
+
+            if(negative)
+                outString.Insert(0,"-");
+            outString.Append(suffix.Value);
+            return outString.ToString();
+
+        }
+
+        public static string NumberToStringOld(double number, bool showdecimalplaces = false, int numberOfDecimalPlaces = -1) {
             var negative = number < 0;
             if(negative)
                 number *= -1;

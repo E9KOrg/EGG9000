@@ -88,7 +88,9 @@ namespace EGG9000.Common.Helpers {
             var response = new EggIncArtifactInstance {
                 Additive = artifact.Additive,
                 Artifact = artifact.Artifact,
-                Boost = artifact.Boost,
+                Boost = artifact.Boost, 
+                Tier = (byte)(artifactSpec.Level + 1),
+                Rarity = (byte)(artifactSpec.Rarity + 1),
                 //Spec = artifactSpec
             };
             switch((int)artifactSpec.Level) {
@@ -299,7 +301,7 @@ namespace EGG9000.Common.Helpers {
                 new EggIncArtifact { Name = 37, Artifact = "Terra Stone", Boost = EggIncBoostTypeEnum.RunningChickenBonus, Additive = true, //done
                     L0R0 = 10,
                     L1R0 = 50,
-                    L1R1 = 100
+                    L2R0 = 100
                 },
                 new EggIncArtifact { Name = 9, Artifact = "The Chalice", Boost = EggIncBoostTypeEnum.InternalHatchery, //done
                     L0R0 = 1.05,
@@ -357,6 +359,8 @@ namespace EGG9000.Common.Helpers {
         public int Count { get; set; }
         [Key(1)]
         public EggIncArtifactInstance Artifact { get; set; }
+        [Key(2)]
+        public uint NumberCrafted { get; set; }
     }
 
     [MessagePackObject]
@@ -372,6 +376,11 @@ namespace EGG9000.Common.Helpers {
         //public Ei.ArtifactSpec Spec { get; set; }
         [Key(4)]
         public List<EggIncArtifactInstance> Stones { get; set; }
+        [Key(5)]
+        public byte Tier { get; set; }
+        [Key(6)]
+        public byte Rarity { get; set; }
+
 
         public override bool Equals(Object other) {
             if(other is EggIncArtifactInstance)

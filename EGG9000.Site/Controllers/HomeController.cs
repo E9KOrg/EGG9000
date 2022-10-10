@@ -63,8 +63,29 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Test() {
-            var response = await _apiLink.GetBackup("EI5482080379338752");
-            return Json(response);
+            var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
+            _db.RemoveRange(demerits);
+            await _db.SaveChangesAsync();
+            var coops = await _db.Coops.Where(x => !x.DeletedChannel).ToListAsync();
+
+            var messagesDeleted = 0;
+            foreach(var coop in coops) {
+                var channel = (SocketTextChannel)await _discord.GetChannelAsync(coop.DiscordChannelId);
+
+                if(channel is not null) {
+                    var messages = await channel.GetMessagesAsync().FlattenAsync();
+
+                    var messagesToDeleted = messages.Where(x => x.CreatedAt > DateTimeOffset.Now.AddHours(-10) && x.Author.IsBot && x.Content.Contains("Demerit added to"));
+                    if(messagesToDeleted.Any()) {
+                        Console.WriteLine($"Deleting {messages.Count()} messages from {coop.Name}");
+                        messagesDeleted += messagesToDeleted.Count();
+                        await channel.DeleteMessagesAsync(messagesToDeleted);
+                    }
+
+                }
+            }
+            
+            return Json(messagesDeleted);
         }
 
         private static async Task<Ei.SaveBackupResponse> SubmitBackup(Ei.Backup backup) {
@@ -129,6 +150,8 @@ namespace EGG9000.Site.Controllers {
 
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
+            //var rawBackup = await ContractsAPI.FirstContact(ei);
+            //var backup = new CustomBackup(rawBackup.Backup);
             var backup = await _apiLink.GetBackup(ei);
             //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
             //return new ObjectResult("Message me");
@@ -358,8 +381,8 @@ namespace EGG9000.Site.Controllers {
                     JoinedCoop = true, AddedToChannel = true, CreatedOn = DateTimeOffset.Now, EggIncId = eggincid, UserId = user.Id, CoopId = coop.Id, WasAssigned = true,
                 };
                 if(laststeptime > 0) {
-                    var timeChecked = DateTimeOffset.FromUnixTimeSeconds((long)laststeptime);
-                    xref.LastStatusTime = timeChecked;
+                    //var timeChecked = DateTimeOffset.FromUnixTimeSeconds((long)laststeptime);
+                    //xref.LastStatusTime = timeChecked;
                 }
                 xrefs.Add(xref);
             }
@@ -661,6 +684,9 @@ namespace EGG9000.Site.Controllers {
             model.UserInfos.ForEach(x => x.ProjectedAbsolute = x.Contribution.ContributionAmount + x.Contribution.ContributionRate * model.CoopStatus.SecondsRemaining);
             var projected = model.UserInfos.Sum(x => x.Projected);
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
+
+            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (int)(model.DbCoop?.League ?? model.CoopStatus.League), model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.Backups.Select(b => new UserWithBackup { Backup = b, User = y.User})).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+
             return View(model);
         }
 
@@ -688,6 +714,7 @@ namespace EGG9000.Site.Controllers {
             public uint League { get; set; }
             public List<GoalDetails> GoalDetails { get; set; }
             public double Progress { get; set; }
+            public CoopDetails CoopDetails { get; set; }
         }
 
         public class CoopUserInfo {

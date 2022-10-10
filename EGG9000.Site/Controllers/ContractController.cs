@@ -51,7 +51,7 @@ namespace EGG9000.Site.Controllers {
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
 
 
-                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord );
+                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord);
 
                 ViewBag.Discord = _discord;
 
@@ -97,7 +97,7 @@ namespace EGG9000.Site.Controllers {
 
 
             var eggIncIDs = Users.Select(x => x.EggIncId);
-            var existingsXrefs = await _db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.Coop.Created > DateTimeOffset.Now.AddMonths(-6) && x.Coop.ContractID == ContractID && eggIncIDs.Contains(x.EggIncId) && x.Coop.Status != CoopStatusEnum.Failed).ToListAsync();
+            var existingsXrefs = await _db.UserCoopXrefs.Include(x => x.User).Include(x => x.Coop).AsQueryable().Where(x => x.Coop.Created > DateTimeOffset.Now.AddMonths(-6) && x.Coop.ContractID == ContractID && eggIncIDs.Contains(x.EggIncId) && x.Coop.Status != CoopStatusEnum.Failed).ToListAsync();
             if(existingsXrefs.Count > 0) {
                 return Json(new { error = true, message = $"Un-able to create co-op, the following are already in one: {string.Join(", ", existingsXrefs.Select(x => x.User.DiscordUsername))}" });
             }
@@ -105,7 +105,7 @@ namespace EGG9000.Site.Controllers {
             var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
             var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
             var userswithbackups = dbusers.SelectMany(x => x.Backups.Select(y => new UserWithBackup { User = x, Backup = y }));
-            var userdetails = Users.Select(x => new UserFarmDetails(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord)).ToList();
+            var userdetails = Users.Select(x => new UserFarmDetails(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord, Elite ? 0 : 1)).ToList();
 
             var coop = await CreateCoops.Start(userdetails, guildContract, guild, new Words(), _db);
             guildContract.NumberOfCoops--;
@@ -133,7 +133,7 @@ namespace EGG9000.Site.Controllers {
             var guild = _discord.GetGuild(targetCoop.GuildId);
             var discordUser = guild.Users.First(x => x.Id == dbuser.DiscordId);
             var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
-            
+
             var channel = (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
             var eggIncName = dbuser.EggIncIds.First(x => x.Id == EggIncId).Name;
             var xref = await CreateCoops.MoveUser(targetCoop, UserId, EggIncId, eggIncName, discordUser, dbuser, channel, null);
@@ -159,7 +159,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> RemoveXref([FromBody]RemoveXrefModel model) {
+        public async Task<IActionResult> RemoveXref([FromBody] RemoveXrefModel model) {
             var xref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
             if(xref == null) {
                 return Json(new { error = $"Unable to find xref." });
@@ -180,7 +180,7 @@ namespace EGG9000.Site.Controllers {
         public class CoopsViewModel {
             public List<Coop> Coops { get; set; }
             public GuildContract GuildContract { get; set; }
-            public CoopsBreakdown CoopsBreakdown{ get; set; }
+            public CoopsBreakdown CoopsBreakdown { get; set; }
             public List<UserPreFarm> UserPreFarms { get; set; }
         }
     }

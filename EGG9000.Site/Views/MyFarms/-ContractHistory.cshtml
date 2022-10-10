@@ -104,7 +104,7 @@
 
 							UserFarmDetails userFarmDetails = null;
 							if (coop is not null) {
-								userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
+								userFarmDetails = GetCoopParticipants(coop, coop.Contract, (int)coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
 							<tr>
@@ -122,8 +122,8 @@
 									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
 									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
 									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-									<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
-									<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
+									<td class="text-right">@(userFarmDetails.CoopStatus?.TimeCheatDetected ?? false ? "Yes" : "No")</td>
+									<td class="text-right">@userFarmDetails.CoopStatus?.BoostTokensSpent</td>
 								} else {
 									<td colspan="99"></td>
 								}
@@ -133,7 +133,7 @@
 							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
 							UserFarmDetails userFarmDetails = null;
 							if (xref is not null) {
-								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
+								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, (int)(xref.Coop.League ?? 0), xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
 							<tr>

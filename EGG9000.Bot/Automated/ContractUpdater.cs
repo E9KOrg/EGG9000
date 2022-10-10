@@ -203,12 +203,14 @@ namespace EGG9000.Bot.Automated {
                         var coop = coopsBreakdown.PotentialCoops[i - 1];
 
                         var name = $"Coop {i + coops.Count}";
-                        name += $" PreFarming, Expire:{coop.CoopParticipants.Min(x => x.TimeLeft).Humanize(precision: 2).ShortenTime()}";
-
-                        if(coop.CoopParticipants.Sum(x => x.Projected) / targetAmount > 1) {
-                            //var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coop.Users.Sum(x => x.Rate), coop.Users.Sum(x => x.EggsPaidFor + x.OfflineEggs));
-                            name += $" Completes: {coop.TimeRemaining.Humanize(2).ShortenTime()}";
+                        if(coop.CoopParticipants.Any()) {
+                            name += $" PreFarming, Expire:{coop.CoopParticipants.Min(x => x.TimeLeft).Humanize(precision: 2).ShortenTime()}";
+                            if(coop.CoopParticipants.Sum(x => x.Projected) / targetAmount > 1) {
+                                //var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, coop.Users.Sum(x => x.Rate), coop.Users.Sum(x => x.EggsPaidFor + x.OfflineEggs));
+                                name += $" Completes: {coop.TimeRemaining.Humanize(2).ShortenTime()}";
+                            }
                         }
+
 
                         if(coop.CoopParticipants.Count > 0) {
                             newMsgs.AddRange(ShowCoopStatus(coop, name, targetAmount, guildContract.Contract.Details.MaxCoopSize));
@@ -315,10 +317,10 @@ namespace EGG9000.Bot.Automated {
                 newMsgs.Add(finalMsg);
 
 
-                var description = $"[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()})\n";
+                var description = "";
                 description += $"**Size** {guildContract.Contract.MaxUsers}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
                 description += $"**Length** {guildContract.Contract.ContractTime.Humanize(precision: 2).ShortenTime()}, **{(validFor > TimeSpan.Zero ? "Expires" : "Expired")}** {validFor.Humanize(precision: 2).ShortenTime()}";
-
+                description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()})";
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
                     .WithTimestamp(DateTimeOffset.Now)
@@ -385,7 +387,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 IMessage notStarted = null;
-
+                var messagesToDelete = new List<IMessage>();
                 var times = new List<TimeSpan>();
                 for(int i = 0; i < Math.Max(existingMessages.Count(), condensedMsgs.Count); i++) {
                     if((i + 1) % 10 == 0 && slashCommand is not null) {
@@ -438,12 +440,15 @@ namespace EGG9000.Bot.Automated {
                         }
                     } else {
                         try {
-                            await ((RestUserMessage)existingMessages.ElementAt(i)).DeleteAsync();
-                            await Task.Delay(505);
+                            messagesToDelete.Add(existingMessages.ElementAt(i));
+                            //await ((RestUserMessage)existingMessages.ElementAt(i)).DeleteAsync();
+                            //await Task.Delay(505);
                         } catch(Exception) {
                         }
                     }
                 }
+
+                await channel.DeleteMessagesAsync(messagesToDelete);
             } catch(Exception e) {
                 Console.WriteLine($"Error Updating Contracts Channel {e.Message}");
                 _bugsnag.Notify(e);
@@ -633,53 +638,32 @@ namespace EGG9000.Bot.Automated {
             var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");// + "_" +  guildContract.ContractID;
             var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
 
+            string emoji = "";
 
             if(DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime)) {
-                var emoji = "⛔";
-                if(guildContract.Contract.Details.MaxCoopSize <= 1) {
-                    emoji += "👤";
-                } else if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed)) {
-                    emoji += "🏁";
-                } else if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed || !x.HasSpots || x.Coop.CoopEnds < DateTimeOffset.Now)) {
-                    emoji += "✅";
-                } else {
-                    var count = coopsBreakdown.PotentialCoops.Sum(x => x.CoopParticipants.Count);
-                    if(count > 0 && count <= 20) {
-                        emoji += Convert.ToChar(9311 + count);
-                    }
-                    if(count > 0) {
-                        emoji += "🐣";
-                    }
-                    var openSpots = coopsBreakdown.ExistingCoops.Where(x => !x.Coop.FinishedOrFailed && x.HasSpots).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.CoopParticipants.Count);
-                    emoji += openSpots >= count ? "🟩" : "❎"; //Emoji green box
-                }
-                channelName = emoji + channelName;
-            } else if(guildContract.Contract.Details.MaxCoopSize <= 1) {
-                channelName = "👤" + channelName;
-            } else if(coopsBreakdown.ExistingCoops.Count == 0) {
-                var emoji = "🐣";
-                if(coopsBreakdown.PotentialCoops.Any(x => x.IsFire)) {
-                    emoji += "🔥";
-                }
-                if(coopsBreakdown.PotentialCoops.Any(x => x.IsDoubleFire)) {
-                    emoji += "🔥";
-                }
-                channelName = emoji + channelName;
-            } else if(coopsBreakdown.PotentialCoops.Where(x => x.CoopParticipants.Count > 0).Count() > 0) {
+                emoji += "⛔";
+            }
+            if(guildContract.Contract.Details.MaxCoopSize <= 1) {
+                emoji += "👤";
+            } else {
                 var count = coopsBreakdown.PotentialCoops.Sum(x => x.CoopParticipants.Count);
-                var emoji = "";
-                emoji += "🐣";
-                if(validFor.TotalHours < 18) {
-                    emoji += "🔺";
+                if(count > 0) {
+                    emoji += "🐣";
                 }
-                if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed)) {
+                
+                if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed) && coopsBreakdown.ExistingCoops.Count > 0) {
                     emoji += "🏁";
-                } else if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed || !x.HasSpots || x.Coop.CoopEnds < DateTimeOffset.Now)) {
+                } else if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed || !x.HasSpots) && coopsBreakdown.ExistingCoops.Count > 0) {
                     emoji += "✅";
-                } else {
+                } else if(coopsBreakdown.ExistingCoops.Any()) {
                     var openSpots = coopsBreakdown.ExistingCoops.Where(x => !x.Coop.FinishedOrFailed && x.HasSpots).Sum(x => guildContract.Contract.Details.MaxCoopSize - x.CoopParticipants.Count);
-                    emoji += openSpots >= count ? "🟩" : "❎"; //Emoji green box
-                    if(count <= 20) {
+
+                    if(openSpots > 0) {
+                        emoji += openSpots >= count ? "🟩" : "❎"; //Emoji green box
+                    }
+                    if(openSpots == 0 || count == 0) {
+
+                    } else if(count <= 20) {
                         emoji += Convert.ToChar(9311 + count);
                     } else if(count <= 35) {
                         emoji += Convert.ToChar(12881 + (count - 21));
@@ -689,22 +673,16 @@ namespace EGG9000.Bot.Automated {
                         emoji += "㊿+";
                     }
                 }
+
                 if(coopsBreakdown.PotentialCoops.Any(x => x.IsFire)) {
                     emoji += "🔥";
                 }
                 if(coopsBreakdown.PotentialCoops.Any(x => x.IsDoubleFire)) {
                     emoji += "🔥";
                 }
-                channelName = emoji + channelName;
-            } else if(coopsBreakdown.PotentialCoops.Where(x => x.CoopParticipants.Count > 0).Count() == 0 && coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed)) {
-                channelName = "🏁" + channelName;
-            } else if(coopsBreakdown.ExistingCoops.All(x => x.Coop.FinishedOrFailed || !x.HasSpots || x.Coop.CoopEnds < DateTimeOffset.Now)) {
-                channelName = "✅" + channelName;
-            } else {
-                channelName = "🟩" + channelName;
             }
 
-            channelName += "-" + (guildContract.Elite ? "elite" : "standard");
+            channelName = emoji + channelName + "-" + (guildContract.Elite ? "elite" : "standard");
 
             if(channelName != channel.Name) {
                 try {

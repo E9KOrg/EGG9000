@@ -12,23 +12,26 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO.Compression;
+using ComponentAce.Compression.Libs.zlib;
+
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
 namespace EGG9000.Bot.EggIncAPI {
 
 
     public class ContractsAPI {
-        public static string BaseAddressNew = "https://www.auxbrain.com/";
+        public const string BaseAddressNew = "https://www.auxbrain.com/";
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
-        public static string UserId = "EI5223299518300160";
-        public static uint ClientVersion = 39;
+        public const string UserId = "EI5223299518300160";
+        public const uint ClientVersion = 43;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.22.6",
-                Build = "111164",
+                Version = "1.25",
+                Build = "111213",
                 Platform = "ANDROID"
             };
             if(!noUserID) {
@@ -91,7 +94,7 @@ namespace EGG9000.Bot.EggIncAPI {
             }
         }
 
-        public static async Task<TResponse> Post<TResponse, T2>(T2 data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where T2 : Google.Protobuf.IMessage {
+        public static async Task<TResponse> Post<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : Google.Protobuf.IMessage {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
@@ -132,13 +135,18 @@ namespace EGG9000.Bot.EggIncAPI {
                             e.Rinfo = GetInfo(UserId);
                             e.WriteTo(ms1);
                             break;
+                        case Ei.ConfigRequest e:
+                            url = "ei/get_config";
+                            e.Rinfo = GetInfo(UserId);
+                            e.WriteTo(ms1);
+                            break;
                         //case Ei.EggIncFirstContactResponse e:
                         //    url = "ei/first_contact";
                         //    e.Rinfo = GetInfo(UserId);
                         //    e.WriteTo(ms1);
                         //    break;
                         default:
-                            throw new Exception($"Missing Info for {typeof(T2).Name}");
+                            throw new Exception($"Missing Info for {typeof(TRequest).Name}");
                     }
 
                     ms1.Position = 0;
@@ -163,11 +171,11 @@ namespace EGG9000.Bot.EggIncAPI {
                             return parse.ParseFrom(responseString);
                         }
                     } else {
-                        return default(TResponse);// new ContractsResponse { Success = false, Error = "Error response from API" };
+                        return default(TResponse);
                     }
                 }
             } catch(Exception) {
-                return default(TResponse); // new ContractsResponse { Success = false, Error = "Bot Exception: " + e.Message };
+                return default(TResponse);
             }
         }
 
@@ -248,7 +256,12 @@ namespace EGG9000.Bot.EggIncAPI {
                     client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
-                    new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower(), Rinfo = GetInfo(ContractsAPI.UserId), UserId = ContractsAPI.UserId, ClientVersion = ContractsAPI.ClientVersion }.WriteTo(ms1);
+                    new Ei.ContractCoopStatusRequest { 
+                        ContractIdentifier = ContractName, 
+                        CoopIdentifier = CoopName.ToLower(), 
+                        Rinfo = GetInfo(ContractsAPI.UserId), 
+                        UserId = ContractsAPI.UserId, 
+                        ClientVersion = ContractsAPI.ClientVersion }.WriteTo(ms1);
                     //Serializer.Serialize<Ei.ContractCoopStatusRequest>(ms1, new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower() });
                     ms1.Position = 0;
                     var sr = new StreamReader(ms1);
@@ -282,12 +295,29 @@ namespace EGG9000.Bot.EggIncAPI {
             var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(authenticatedMessage);
 
             T message = new T();
-            message.MergeFrom(authMessageDecoded.Message);
+            if(authMessageDecoded.Compressed) {
+                using(MemoryStream outMemoryStream = new MemoryStream())
+                using(ZOutputStream outZStream = new ZOutputStream(outMemoryStream))
+                using(Stream inMemoryStream = new MemoryStream(authMessageDecoded.Message.ToArray())) {
+                    CopyStream(inMemoryStream, outZStream);
+                    outZStream.finish();
+                    message.MergeFrom(outMemoryStream.ToArray());
+                }
+            } else {
+                message.MergeFrom(authMessageDecoded.Message);
+            }
             return message;
         }
 
 
-
+        private static void CopyStream(System.IO.Stream input, System.IO.Stream output) {
+            byte[] buffer = new byte[2000];
+            int len;
+            while((len = input.Read(buffer, 0, 2000)) > 0) {
+                output.Write(buffer, 0, len);
+            }
+            output.Flush();
+        }
 
         public static string GetHash(byte[] byteArray) {
             SHA256 sha256Hash = SHA256.Create();

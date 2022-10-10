@@ -1,0 +1,24 @@
+﻿@model List<DBUser>
+@{
+	ViewData["Title"] = "Search";
+}
+
+<table>
+	<thead>
+		<tr>
+			<th>Discord User</th>
+			<th colspan="99">EggInc Accounts</th>
+		</tr>
+	</thead>
+	@foreach (var user in Model) {
+		<tr>
+			<td>
+				<a href="/MyFarms/ViewUser?discordId=@(user.DiscordId)"> @user.DiscordUsername </a>
+			</td>
+			@foreach (var ei in user.EggIncIds) {
+				<td>@ei.Name</td>
+			}
+		</tr>
+	}
+
+</table>

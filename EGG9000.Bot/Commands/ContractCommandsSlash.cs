@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
@@ -219,7 +220,7 @@ namespace EGG9000.Bot.Commands {
                     if(prefarms.Count == 1) {
                         EggIncId = prefarms.First().EggIncId;
                         eggIncName = $" ({prefarms.First().Backup.UserName})";
-                    } else if(accountnumber <= 1) {
+                    } else if(accountnumber < 1) {
                         var count = 1;
                         await command.RespondAsync($"User has multiple accounts, please specifiy which account \n{String.Join("\n", prefarms.Select(x => $"{count++} {x.Backup.UserName} Projected: {x.Projected.ToEggString()}"))}");
                         return;
@@ -328,43 +329,64 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
         }
 
+        private static Dictionary<ulong, SemaphoreSlim> startSemapohores = new Dictionary<ulong, SemaphoreSlim>();
+        private static SemaphoreSlim dictionarySemaphore = new SemaphoreSlim(1);
+
+        private static async Task<SemaphoreSlim> AwaitStartSemaphore(FauxCommand command) {
+            await dictionarySemaphore.WaitAsync();
+            SemaphoreSlim semaphore;
+            if(startSemapohores.ContainsKey(command.ChannelId.Value)) {
+                semaphore = startSemapohores[command.ChannelId.Value];
+            } else {
+                semaphore = new SemaphoreSlim(1);
+                startSemapohores.Add(command.ChannelId.Value, semaphore);
+            }
+            dictionarySemaphore.Release();
+            await semaphore.WaitAsync();
+            return semaphore;
+        }
 
         private static async Task _start(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, int percent, APILink _apiLink, Words _words) {
-            var coopCount = 0;
+            var semapohre = await AwaitStartSemaphore(command);
+            try {
+                var coopCount = 0;
 
-            await command.RespondAsync($"Working...");
-            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
-            if(guildContract == null) {
-                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
-                return;
-            }
-
-            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
-
-            foreach(var coopDetail in coopsBreakdown.PotentialCoops) {
-                var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
-                var cooppercent = (decimal)(coopDetail.CoopParticipants.Sum(x => x.Projected) / targetAmount) * 100m;
-                if(cooppercent < percent) {
-                    continue;
+                await command.RespondAsync($"Working...");
+                var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
+                if(guildContract == null) {
+                    await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
+                    return;
                 }
 
-                var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
-                var coop = await CreateCoops.Start(coopDetail.CoopParticipants, guildContract, guild, _words, db);
+                var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-                coopCount++;
+                foreach(var coopDetail in coopsBreakdown.PotentialCoops) {
+                    var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+                    var cooppercent = (decimal)(coopDetail.CoopParticipants.Sum(x => x.Projected) / targetAmount) * 100m;
+                    if(cooppercent < percent) {
+                        continue;
+                    }
+
+                    var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
+                    var coop = await CreateCoops.Start(coopDetail.CoopParticipants, guildContract, guild, _words, db);
+
+                    coopCount++;
+                }
+
+                if(percent == 0 || coopCount == coopsBreakdown.PotentialCoops.Count) {
+                    guildContract.Status = ContractStatus.Creating;
+                }
+
+
+                guildContract.NumberOfCoops = Math.Max(0, guildContract.NumberOfCoops - coopCount);
+                await db.SaveChangesAsync();
+                await command.Channel.SendMessageAsync($"Started {coopCount} co-ops");
+                coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
+
+                await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
+            } finally {
+                semapohre.Release();
             }
-
-            if(percent == 0 || coopCount == coopsBreakdown.PotentialCoops.Count) {
-                guildContract.Status = ContractStatus.Creating;
-            }
-
-
-            guildContract.NumberOfCoops = Math.Max(0, guildContract.NumberOfCoops - coopCount);
-            await db.SaveChangesAsync();
-            await command.Channel.SendMessageAsync($"Started {coopCount} co-ops");
-            coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
-
-            await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
         }
 
         [SlashCommand(Description = "Start a user's co-op", AdminOnly = true)]
@@ -391,72 +413,82 @@ namespace EGG9000.Bot.Commands {
 
 
         public static async Task _StartUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words, bool fill, SocketGuildUser user = null, int? percent = null, bool startFire = false) {
-            var coopCount = 0;
+            var semapohre = await AwaitStartSemaphore(command);
+            try {
 
-            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
-            if(guildContract == null) {
-                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
-                return;
-            }
+                var coopCount = 0;
 
-            await command.RespondAsync($"Working...");
-
-
-            var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
-
-
-
-
-            var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
-
-            var prefarms = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Where(x => x.ProjectedPercent < 10).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
-
-            var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
-
-
-            if(user == null) {
-                List<CoopDetails> coopsToStart;
-                if(startFire) {
-                    coopsToStart = coopsBreakdown.PotentialCoops.Where(x => x.IsFire || x.IsDoubleFire).ToList();
-                } else {
-                    coopsToStart = coopsBreakdown.PotentialCoops.Where(x => x.PercentProjected >= percent).ToList();
+                var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
+                if(guildContract == null) {
+                    await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
+                    return;
                 }
-                foreach(var coop in coopsToStart) {
-                    var carry = coop.CoopParticipants.OrderByDescending(x => x.Projected).First();
-                    var carryWithAlts = coop.CoopParticipants.Where(x => x.DiscordUser.Id == carry.DiscordUser.Id).ToList();
-                    var participants = await _startUserCreateCoop(carryWithAlts, guildContract, prefarms, db, guild, _words, true);
-                    var numberRemoved = prefarms.RemoveAll(x => participants.Any(y => y == x));
+
+                await command.RespondAsync($"Working...");
+
+
+                var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
+
+
+
+
+                var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
+
+                var prefarms = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Where(x => x.ProjectedPercent < 10).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+
+                var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+
+
+                if(user == null) {
+                    List<CoopDetails> coopsToStart;
+                    var onlyCarries = coopsBreakdown.PotentialCoops.Select(c => {
+                        var carry = c.CoopParticipants.OrderByDescending(x => x.Projected).First();
+                        return new CoopDetails(c.CoopParticipants.Where(x => x.DBUser.Id == carry.DBUser.Id).ToList(), guildContract);
+                    });
+                    if(startFire) {
+                        coopsToStart = onlyCarries.Where(x => x.IsFire || x.IsDoubleFire).ToList();
+                    } else {
+                        coopsToStart = onlyCarries.Where(x => x.PercentProjected >= percent).ToList();
+                    }
+                    foreach(var coop in coopsToStart) {
+                        //var carry = coop.CoopParticipants.OrderByDescending(x => x.Projected).First();
+                        //var carryWithAlts = coop.CoopParticipants.Where(x => x.DiscordUser.Id == carry.DiscordUser.Id).ToList();
+                        var participants = await _startUserCreateCoop(coop.CoopParticipants, guildContract, prefarms, db, guild, _words, true);
+                        var numberRemoved = prefarms.RemoveAll(x => participants.Any(y => y == x));
+                        coopCount++;
+                    }
+                    //} else if(user == null) {
+                    //    var usersAbovePercent = prefarms.Where(p => (p.Projected / targetAmount) * 100 >= percent).ToList();
+                    //    usersAbovePercent.ForEach(x => prefarms.Remove(x));
+                    //    prefarms = prefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
+                    //    foreach(var userAbovePercent in usersAbovePercent) {
+                    //        var participants = await _startUserCreateCoop(userAbovePercent, guildContract, prefarms, db, guild, _words);
+                    //        participants.ForEach(x => prefarms.Remove(x));
+                    //        coopCount++;
+                    //    }
+                } else {
+                    var prefarm = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants.Where(y => y.DiscordUser.Id == user.Id)).First();
+                    prefarms.Remove(prefarm);
+                    _ = await _startUserCreateCoop(new List<UserFarmDetails> { prefarm }, guildContract, prefarms, db, guild, _words, fill);
                     coopCount++;
                 }
-                //} else if(user == null) {
-                //    var usersAbovePercent = prefarms.Where(p => (p.Projected / targetAmount) * 100 >= percent).ToList();
-                //    usersAbovePercent.ForEach(x => prefarms.Remove(x));
-                //    prefarms = prefarms.Where(p => (p.Projected / targetAmount) * 100 < 5).ToList();
-                //    foreach(var userAbovePercent in usersAbovePercent) {
-                //        var participants = await _startUserCreateCoop(userAbovePercent, guildContract, prefarms, db, guild, _words);
-                //        participants.ForEach(x => prefarms.Remove(x));
-                //        coopCount++;
-                //    }
-            } else {
-                var prefarm = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants.Where(y => y.DiscordUser.Id == user.Id)).First();
-                prefarms.Remove(prefarm);
-                _ = await _startUserCreateCoop(new List<UserFarmDetails> { prefarm }, guildContract, prefarms, db, guild, _words, fill);
-                coopCount++;
+
+                guildContract.NumberOfCoops = Math.Max(1, guildContract.NumberOfCoops - coopCount);
+                await db.SaveChangesAsync();
+
+
+                try {
+                    await command.Channel.SendMessageAsync($"Finished Starting {coopCount} coop{(coopCount > 1 ? "s" : "")}");
+                } catch(Exception) {
+                    //Possible message was deleted in the meantime
+                }
+
+                coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
+
+                await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
+            } finally {
+                semapohre.Release();
             }
-
-            guildContract.NumberOfCoops = Math.Max(1, guildContract.NumberOfCoops - coopCount);
-            await db.SaveChangesAsync();
-
-
-            try {
-                await command.Channel.SendMessageAsync($"Finished Starting {coopCount} coop{(coopCount > 1 ? "s" : "")}");
-            } catch(Exception) {
-                //Possible message was deleted in the meantime
-            }
-
-            coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
-
-            await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
         }
 
         private static async Task<List<UserFarmDetails>> _startUserCreateCoop(List<UserFarmDetails> existingUsers, GuildContract guildContract, List<UserFarmDetails> otherUsers, ApplicationDbContext db, SocketGuild guild, Words _words, bool fill = true) {
@@ -618,8 +650,7 @@ namespace EGG9000.Bot.Commands {
                 var eggIncName = "";
                 if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
                     if(dbuser.EggIncIds.Count > 1) {
-                        var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
-                        var prefarms = contractBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants);
+                        var prefarms = contractBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Where(x => x.DBUser.Id == dbuser.Id);
                         if(prefarms.Count() == 0) {
                             await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
                             return;
@@ -649,21 +680,18 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Move prefarmers to co-ops ending >24h", AdminOnly = true)]
-        public static async Task MovePrefarmers(FauxCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] int overrideperecent = 5) {
+        public static async Task MovePrefarmers(FauxCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] int overrideperecent = 10, [SlashParam(Required = false, Description = "Fill co-ops regardless of %")] bool fillSmallest = false) {
             if(overrideperecent == 0)
-                overrideperecent = 5;
+                overrideperecent = 10;
             await command.RespondAsync("Please wait moving prefarmers...");
             using(await joinLock.LockAsync()) {
-
-                //var discordUser = command.User;
-                //var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == discordUser.Id);
                 var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
                 if(guildContract == null) {
                     await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
                     return;
                 }
                 var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
- 
+
                 var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
                 var currentCoops = coopsBreakdown.ExistingCoops.Where(x => x.TimeRemaining > TimeSpan.FromHours(24) && !x.Coop.FinishedOrFailed && x.HasSpots).OrderBy(x => x.TimeRemaining).ToList();
@@ -677,7 +705,8 @@ namespace EGG9000.Bot.Commands {
                 var allPrefarms = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).OrderBy(x => x.Backup.EarningsBonus).ToList();
                 var discordIds = allPrefarms.Select(p => p.DiscordUser.Id);
 
-                var coopsAbove100Percent = currentCoops.Where(x => x.PercentProjected > 100);
+                if(!fillSmallest)
+                    currentCoops = currentCoops.Where(x => x.PercentProjected > 100).ToList();
 
 
                 var prefarmsAbovePercent = allPrefarms.Where(p => p.ProjectedPercent >= overrideperecent);
@@ -695,18 +724,20 @@ namespace EGG9000.Bot.Commands {
                 foreach(var user in allPrefarms) {
                     var discordUser = _client.GetUser(user.DBUser.DiscordId);
                     var added = false;
+                    if(fillSmallest)
+                        currentCoops = currentCoops.OrderBy(x => x.CoopParticipants.Count).ToList();
                     foreach(var coop in currentCoops.Where(x => x.HasSpots)) {
                         var coopStatus = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coop.Coop.Name.ToLower());
                         if(coopStatus.Contributors.Count < guildContract.Contract.Details.MaxCoopSize) {
                             var targetCoop = coop.Coop;
-                            var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == user.DBUser.DiscordId).ToListAsync();
-                            if(xrefs.Count() == user.DBUser.EggIncIds.Count && xrefs.First().JoinedCoop) {
-                                await command.Channel.SendMessageAsync($"⚠️ERROR: Unable to add {user.Name}, they are already assigned a co-op");
+                            var xref = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.EggIncId == user.EggIncId && x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == user.DBUser.DiscordId).FirstOrDefaultAsync();
+                            if(xref?.JoinedCoop ?? false) {
+                                await command.Channel.SendMessageAsync($"⚠️ERROR: Unable to add {user.Name}, they are already assigned and joined a co-op");
                                 break;
                             }
 
                             var eggIncName = "";
-                            if(user.DBUser.EggIncIds.Count > 1) {
+                            if(user.DBUser.EggIncIds.Count > 1 && !string.IsNullOrEmpty(user.Backup.UserName)) {
                                 eggIncName = $" ({user.Backup.UserName})";
                             }
 
@@ -719,7 +750,9 @@ namespace EGG9000.Bot.Commands {
                             }
 
 
-                            db.RemoveRange(xrefs);
+                            if(xref is not null) {
+                                db.Remove(xref);
+                            }
                             db.Add(newxref);
 
                             await db.SaveChangesAsync();
@@ -738,14 +771,19 @@ namespace EGG9000.Bot.Commands {
 
                 }
                 await command.DeleteResponseFix();
+
+                coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
+
+                await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
+
             }
         }
 
 
         [SlashCommand(Description = "Ping people to add them to a spots thread", AdminOnly = true)]
-        public static async Task SpotPings(FauxCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] int overridepercent = 5) {
+        public static async Task SpotPings(FauxCommand command, ApplicationDbContext db, APILink _apiLink, DiscordSocketClient _client, [SlashParam(Required = false)] int overridepercent = 10) {
             if(overridepercent == 0)
-                overridepercent = 5;
+                overridepercent = 10;
             if(command.Channel is not SocketThreadChannel) {
                 await command.RespondAsync($"⚠️ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                 return;

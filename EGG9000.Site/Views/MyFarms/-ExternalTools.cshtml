@@ -1,0 +1,86 @@
+﻿@using Discord.WebSocket
+@model (CustomBackup, DBUser)
+
+@{
+	var EggIncId = Model.Item1.EggIncId;
+}
+
+<div  ng-controller="ExternalTools@(EggIncId)">
+<div class="card externaltools" style="margin-top:15px">
+	<h4 class="card-header">External Tools</h4>
+	<table class="table table-striped">
+		<tr><th>Link</th><th>Creator</th><th>Description</th></tr>
+		<tr>
+			<th><a href="https://docs.google.com/spreadsheets/d/1T2oAmznYKRnOOHzCQORFQWLK0CyWVsmIjAof0vJRP14/edit#gid=593150970" target="_blank">Best Craft For XP</a></th>
+			<td>@@paramu12</td>
+			<td>Find the best item to craft for XP Gained per Golden Egg (To use you need to make a copy of the spreadsheet [File - Make a Copy], then paste in your ID @EggIncId)</td>
+		</tr>
+		<tr>
+			<th><a href="https://wasmegg.netlify.app/shell-company/?playerId=@(EggIncId)" target="_blank">Shell Company</a></th>
+			<td>@@mk2</td>
+			<td>Personal and always-up-to-date catalog of all cosmetic items (shell sets, shells, chickens and hats) with ownership and pricing info</td>
+		</tr>
+		<tr>
+			<th><a href="https://wasmegg.netlify.app/smart-assistant/?playerId=@(EggIncId)" target="_blank">Prestige Assistant</a></th>
+			<td>@@mk2</td>
+			<td>Smart, personalized artifact loadout generator — effortlessly optimize your prestige loadout; full-fledged earning bonus planner</td>
+		</tr>
+		<tr>
+			<th><a href="https://wasmegg.netlify.app/enlightenment/?playerId=@(EggIncId)" target="_blank">Enlightenment Companion</a></th>
+			<td>@@mk2</td>
+			<td>Informational companion on your journey to the Enlightenment Diamond Trophy</td>
+		</tr>
+		<tr>
+			<th><a href="https://wasmegg.netlify.app/inventory-visualizer/?playerId=@(EggIncId)" target="_blank">Inventory Visualizer</a></th>
+			<td>@@mk2</td>
+			<td>The easiest way to share your entire Egg, Inc. artifact inventory</td>
+		</tr>
+		<tr>
+			<th><a href="https://wasmegg.netlify.app/artifact-sandbox/?playerId=@(EggIncId)" target="_blank">Artifact Sandbox</a></th>
+			<td>@@mk2</td>
+			<td>Sandbox for experimenting, optimizing, and sharing artifact builds</td>
+		</tr>
+		<tr>
+			<th><a href="https://saladfork.github.io/egg-inc-tools/" target="_blank">Solo Contract Calculator</a></th>
+			<td>saladfork</td>
+			<td>Find out the egg laying rate and/or number of chickens you need. Can also calculate boosts you need</td>
+		</tr>
+	</table>
+</div>
+
+<div class="card" style="margin-top:15px">
+	<h4 class="card-header">Debug Tools</h4>
+	<div class="card-body">
+		<button class="btn btn-primary" ng-click="SendTestDM('dm')">Test notification in DM</button>
+		<button class="btn btn-primary" ng-click="SendTestDM('talktoegg9000')">Test notification in server channel</button>
+	</div>
+</div>
+</div>
+<style>
+	.externaltools a {
+		text-decoration: underline;
+	}
+</style>
+
+
+<script type="text/javascript">
+
+	function scriptToExecute() {
+		window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
+
+		window.egg9000module.controller('ExternalTools@(EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+            $scope.SendTestDM = function(target) {
+                $http.post("/myfarms/sendtestdm?target=" + target + "&discorduserid=@(Model.Item2.DiscordId)", {}).then(function Success(response) {
+                    alert("Sent");
+                }, function Error(response) {
+                    alert("Error");
+                    console.log(response);
+                });
+            };
+		}]);
+	}
+
+
+	window.ScriptsToExecute = window.ScriptsToExecute || [];
+	window.ScriptsToExecute.push(scriptToExecute);
+</script>

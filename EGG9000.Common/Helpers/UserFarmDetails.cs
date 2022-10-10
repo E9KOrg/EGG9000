@@ -1,5 +1,6 @@
 ﻿using Discord.WebSocket;
 
+using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -14,7 +15,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Helpers {
     public class UserFarmDetails {
-        public UserCoopXref Xref { get; init; }
+        public UserCoopXref Xref { get; private set; }
         public Ei.ContractCoopStatusResponse.Types.ContributionInfo CoopStatus { get; init; }
         public bool Joined { get; init; }
         public CustomBackup Backup { get; set; }
@@ -24,14 +25,17 @@ namespace EGG9000.Common.Helpers {
         public SocketGuildUser DiscordUser { get; set; }
         public CustomArchivedFarms ArchivedFarm { get; set; }
         public DBUser DBUser { get; set; }
+        public int League { get; set; }
 
-        public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
+        public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, int league) {
             if(coopStatus is null)
                 throw new ArgumentNullException(null, "coopStatus");
             Xref = xref;
             CoopStatus = coopStatus;
             Contract = contract;
+            League = league;
             Joined = true;
+
             if(userWithbackup is not null) {
                 Backup = userWithbackup.Backup;
                 Farm = Backup?.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
@@ -43,7 +47,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
+        public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, int league) {
             if(xref is null)
                 throw new ArgumentNullException(null, "xref");
             if(userWithbackup is null)
@@ -52,6 +56,7 @@ namespace EGG9000.Common.Helpers {
                 throw new ArgumentNullException(null, "userWithBackup.Backup");
             Xref = xref;
             Contract = contract;
+            League = league;
             Joined = false;
             if(userWithbackup is not null) {
                 Backup = userWithbackup.Backup;
@@ -64,12 +69,13 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord) {
+        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, int league) {
             if(userWithbackup is null)
                 throw new ArgumentNullException(null, "userWithBackup");
             if(userWithbackup.Backup is null)
                 throw new ArgumentNullException(null, "userWithBackup.Backup");
             Contract = contract;
+            League = league;
             Joined = false;
             if(userWithbackup is not null) {
                 Backup = userWithbackup.Backup;
@@ -82,22 +88,32 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
+        public void AddXref(UserCoopXref xref) {
+            if(this.Xref is not null)
+                throw new Exception("UserCoopXref already exists, unable to change it");
+            this.Xref = xref;
+        }
+
         public TimeSpan FarmExpires {
             get {
-                return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long)ArchivedFarm.TimeAccepted);
+                return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long?)ArchivedFarm?.TimeAccepted ?? DateTimeOffset.Now.ToUnixTimeSeconds());
             }
         }
 
-        public bool Elite { 
+        public bool Elite {
             get {
-                return (Farm?.League ?? ArchivedFarm?.League ?? 0) == 0;
-            } 
+                return League == 0;
+            }
         }
 
         public double Rate {
             get {
-                if(CoopStatus is not null)
-                    return CoopStatus.ContributionRate;
+                if(CancelledFarm)
+                    return 0;
+                if(CoopStatus is not null && CoopStatus.ContributionRate == 0)
+                    return CoopStatus.ContributionAmount / Contract.length_seconds;
+                    if(CoopStatus is not null)
+                        return CoopStatus.ContributionRate;
                 if(Farm is not null)
                     return Math.Min(FarmStats.EggLayingRate, FarmStats.CurrentShippingRate);
                 return 0;
@@ -106,6 +122,8 @@ namespace EGG9000.Common.Helpers {
 
         public double EggsShipped {
             get {
+                if(CancelledFarm)
+                    return 0;
                 if(CoopStatus is not null)
                     return CoopStatus.ContributionAmount;
                 if(Farm is not null)
@@ -122,7 +140,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public double SiloTime {
+        public double SiloTimeMinutes {
             get {
                 if(CoopStatus?.FarmInfo is not null) {
                     return Research.GetFarmSiloTime(CoopStatus.FarmInfo);
@@ -137,20 +155,28 @@ namespace EGG9000.Common.Helpers {
         public TimeSpan OfflineTime {
             get {
                 if(CoopStatus?.FarmInfo is not null) {
+                    return TimeSpan.FromSeconds(0 - CoopStatus.FarmInfo.Timestamp);
+                } else if(Farm is not null) {
+                    return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);
+                }
+                return TimeSpan.Zero;
+            }
+        }
+        public TimeSpan OfflineWithSiloTime {
+            get {
+                if(CoopStatus?.FarmInfo is not null) {
                     var siloTimeMinutes = Research.GetFarmSiloTime(CoopStatus.FarmInfo);
-                    var timeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)CoopStatus.FarmInfo.Timestamp);
-                    if(timeSinceUpdate.TotalMinutes > siloTimeMinutes) {
-                        timeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
+                    if(OfflineTime.TotalMinutes > siloTimeMinutes) {
+                        return TimeSpan.FromMinutes(siloTimeMinutes);
                     }
-                    return timeSinceUpdate;
+                    return OfflineTime;
                 } else if(Farm is not null) {
                     var siloTimeMinutes = Research.GetTotalSiloCapacity(Backup) * Farm.SilosOwned;
-                    var timeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);
-                    if(timeSinceUpdate.TotalMinutes > siloTimeMinutes) {
-                        timeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
+                    if(OfflineTime.TotalMinutes > siloTimeMinutes) {
+                        return TimeSpan.FromMinutes(siloTimeMinutes);
                     }
-                    return timeSinceUpdate;
-                } 
+                    return OfflineTime;
+                }
                 return TimeSpan.Zero;
             }
         }
@@ -177,15 +203,17 @@ namespace EGG9000.Common.Helpers {
         private double? _projected;
         public double Projected {
             get {
+                if(CancelledFarm)
+                    return 0;
                 if(_projected is null) {
                     if(FarmingEnds > DateTimeOffset.Now) {
-                        var siloTimeHours = SiloTime / 60;
-                        var percentToCount = Math.Min(siloTimeHours / 24, 1);
+                        var siloTimeHours = SiloTimeMinutes / 60;
+                        var percentToCount = Math.Min(siloTimeHours / 12, 1);
 
                         var contractLeft = (FarmingEnds - DateTimeOffset.Now).TotalSeconds;
-                        _projected = percentToCount * Rate * contractLeft + EggsShipped + Rate * OfflineTime.TotalSeconds;
+                        _projected = percentToCount * Rate * contractLeft + EggsShipped + Rate * OfflineWithSiloTime.TotalSeconds;
                     } else {
-                        var sleepTime = Math.Max(OfflineTime.TotalSeconds - (FarmingEnds - DateTimeOffset.Now).TotalSeconds, 0);
+                        var sleepTime = Math.Max(OfflineWithSiloTime.TotalSeconds - (FarmingEnds - DateTimeOffset.Now).TotalSeconds, 0);
                         _projected = EggsShipped + Rate * sleepTime;
                     }
 
@@ -196,7 +224,7 @@ namespace EGG9000.Common.Helpers {
 
         public double ProjectedPercent {
             get {
-                var target = Contract.Details.GoalSets[(int)Farm.League.Value].Goals.Max(x => x.TargetAmount);
+                var target = Contract.Details.GoalSets[League].Goals.Max(x => x.TargetAmount);
                 return Projected / target * 100;
             }
         }
@@ -231,7 +259,58 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public double OfflineEggs { get { return Rate * OfflineTime.TotalSeconds; } }
+        public double EarningsBonus {
+            get {
+                if((FarmingEnds < DateTimeOffset.Now || Backup is null) && CoopStatus is not null) {
+                    return Math.Pow(10, CoopStatus.SoulPower) * 100;
+                }
+
+                return Backup.EarningsBonus;
+            }
+        }
+
+        public double? BoostTokens {
+            get {
+                if(CoopStatus is not null)
+                    return CoopStatus.BoostTokens;
+                if(Farm is not null)
+                    return Farm.BoostTokensReceived - Farm.BoostTokensSpent - Farm.BoostTokensGiven;
+                return null;
+            }
+        }
+
+        public double? BoostTokensSpent {
+            get {
+                if(CoopStatus is not null)
+                    return CoopStatus.BoostTokensSpent;
+                if(Farm is not null)
+                    return Farm.BoostTokensSpent;
+                return null;
+            }
+        }
+
+        public double? ShippingPercent {
+            get {
+                if(FarmStats is not null) {
+                    if(CoopStatus is not null)
+                        return CoopStatus.ContributionRate / FarmStats.MaxShippingRate * 100;
+                    return FarmStats.EggLayingRate / FarmStats.MaxShippingRate * 100;
+                }
+                return null;
+            }
+        }
+
+        public double? HousingPercent {
+            get {
+                if(CoopStatus?.ProductionParams is not null)
+                    return CoopStatus.ProductionParams.FarmPopulation / CoopStatus.ProductionParams.FarmCapacity * 100;
+                if(FarmStats is not null)
+                    return Farm.NumChickens / FarmStats.HabSpace * 100;
+                return null;
+            }
+        }
+
+        public double OfflineEggs { get { return Rate * OfflineWithSiloTime.TotalSeconds; } }
 
         public bool Completed { get { return Farm?.Completed ?? ArchivedFarm?.Completed ?? false; } }
 

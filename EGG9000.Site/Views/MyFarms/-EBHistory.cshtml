@@ -1,9 +1,10 @@
 ﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin)
 
-<div class="tab-pane" id="ebhistory@(Model.backup.EggIncId)" role="tabpanel">
+
 	<table class="table table-striped">
 		<thead>
 			<tr>
+				@if(Model.isAdmin){<th>EggIncID</th>}
 				<th>Date</th>
 				<th>Eggs of Prophecy</th>
 				<th style="text-align: right !important;">Soul Eggs</th>
@@ -13,6 +14,7 @@
 		</thead>
 		<tbody>
 			<tr>
+				@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}
 				<td>Latest</td>
 				<td>@Model.backup.EggsOfProphecy</td>
 				<td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
@@ -21,6 +23,7 @@
 			</tr>
 			@foreach (var snapshot in Model.snapshots.Where(x => Model.isAdmin || x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
 				<tr>
+					@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}
 					<td>@snapshot.Date.ToShortDateString()</td>
 					<td>@snapshot.EggsOfProphecy</td>
 					<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
@@ -30,4 +33,4 @@
 			}
 		</tbody>
 	</table>
-</div>
+
