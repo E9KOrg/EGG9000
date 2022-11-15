@@ -5,21 +5,27 @@
 		research.MappedBackupResearch = Model.backup.EpicResearch.FirstOrDefault(o => o.Id == research.Id) ?? new CustomResearch { Level = 0};
 	}
 
-
-	Model.epicResearchConfig.Add(new EpicResearchDetail {
+	// Only add once, this partial view is called multiple times on MyFarms render for Multiple EI accounts.
+	if(!Model.epicResearchConfig.Any(o => o.Title == "Hyperloop"))  
+	{
+		Model.epicResearchConfig.Add(new EpicResearchDetail {
 				Costs = new int[] { 50_000 },
 				Desc = "One time purchase to allow use of hyperloop trains",
 				Title = "Hyperloop",
 				Order = 99,
 				MappedBackupResearch = new CustomResearch { Level = Model.backup.HyperloopPurchased ? (uint)1 : (uint)0 }
 			});
-	Model.epicResearchConfig.Add(new EpicResearchDetail {
+	}
+	if(!Model.epicResearchConfig.Any(o => o.Title == "Fuel Tank"))
+	{
+		Model.epicResearchConfig.Add(new EpicResearchDetail {
 				Costs = new int[] { 50_000, 250_000, 1_000_000 },
 				Desc = "Store extra eggs to be used as fuel for rockets",
 				Title = "Fuel Tank",
 				Order = 99,
 				MappedBackupResearch = new CustomResearch { Level = Model.backup.TankLevel }
 			});
+	}
 }
 <div class="card" style="margin-top:15px" ng-controller="EpicResearch@(Model.backup.EggIncId)">
 	<h4 class="card-header">
