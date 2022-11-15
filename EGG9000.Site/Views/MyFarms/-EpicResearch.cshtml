@@ -2,7 +2,7 @@
 @model (List<EpicResearchDetail> epicResearchConfig, CustomBackup backup);
 @{
 	foreach (var research in Model.epicResearchConfig) {
-		research.MappedBackupResearch = Model.backup.EpicResearch.FirstOrDefault(o => o.Id == research.Id);
+		research.MappedBackupResearch = Model.backup.EpicResearch.FirstOrDefault(o => o.Id == research.Id) ?? new CustomResearch { Level = 0};
 	}
 
 

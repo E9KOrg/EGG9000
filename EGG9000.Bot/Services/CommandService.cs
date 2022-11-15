@@ -60,27 +60,27 @@ namespace EGG9000.Bot.Services {
             try {
                 var command = _slashCommandFunctions.First(x => x.Name == arg.Data.Name);
 
-                if(command.Details.AdminOnly) {
-                    var isAdmin = false;
+                //if(command.Details.AdminOnly) {
+                //    var isAdmin = false;
 
-                    try {
-                        isAdmin = ((SocketGuildUser)arg.User).Roles.Any(x => x.Permissions.ManageChannels ||
-                            x.Name.ToLower().Contains("admin") || x.Name.ToLower().Contains("staff")) ||
-                            arg.User.Username == "kendrome" ||
-                            ((SocketGuildUser)arg.User).GuildPermissions.ManageChannels;
-                    } catch(Exception) {
+                //    try {
+                //        isAdmin = ((SocketGuildUser)arg.User).Roles.Any(x => x.Permissions.ManageChannels ||
+                //            x.Name.ToLower().Contains("admin") || x.Name.ToLower().Contains("staff")) ||
+                //            arg.User.Username == "kendrome" ||
+                //            ((SocketGuildUser)arg.User).GuildPermissions.ManageChannels;
+                //    } catch(Exception) {
 
-                    }
-                    if(!isAdmin) {
-                        //if(command.Details.AllowFarmHand  && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                        if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                            //bypass for farm hands and merits
-                        } else {
-                            await arg.RespondAsync($"{arg.User.Mention} You don't have permissions to run the command '/{arg.Data.Name}'");
-                            return;
-                        }
-                    }
-                }
+                //    }
+                //    if(!isAdmin) {
+                //        //if(command.Details.AllowFarmHand  && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
+                //        if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
+                //            //bypass for farm hands and merits
+                //        } else {
+                //            await arg.RespondAsync($"{arg.User.Mention} You don't have permissions to run the command '/{arg.Data.Name}'");
+                //            return;
+                //        }
+                //    }
+                //}
 
                 if(command.SubFunctions != null) {
                     command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
