@@ -73,6 +73,10 @@
     <partial name="_ValidationScriptsPartial" />
 
     <script>
+        function setCookie(n, v) {
+            document.cookie = n + "=" + v + "; samesite=none; secure; max-age=31536000; path=/";
+        }
+
       $(function() {
         // Check darkmode checkbox if cookie is found.
         if (Cookies.get('Egg9000Theme') == 'bootstrap-dark') {
@@ -85,12 +89,12 @@
             if ($('#darkModeEnable').is(":checked")) {
                 $('body').addClass("bootstrap-dark");
                 $('body').removeClass("bootstrap");
-                Cookies.set('Egg9000Theme', 'bootstrap-dark');
+                setCookie('Egg9000Theme', 'bootstrap-dark');
             }
             else {
                 $('body').addClass("bootstrap");
                 $('body').removeClass("bootstrap-dark");
-                Cookies.set('Egg9000Theme', 'bootstrap');
+                setCookie('Egg9000Theme', 'bootstrap');
             }
         })
       })
