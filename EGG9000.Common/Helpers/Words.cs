@@ -1298,7 +1298,6 @@ namespace EGG9000.Bot
     "wispy",
     "wok",
     "wolf",
-    "womb",
     "wool",
     "woozy",
     "word",
