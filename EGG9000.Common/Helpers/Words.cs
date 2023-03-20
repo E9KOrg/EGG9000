@@ -1030,7 +1030,6 @@ namespace EGG9000.Bot
     "sky",
     "slab",
     "slack",
-    "slain",
     "slam",
     "slang",
     "slash",
