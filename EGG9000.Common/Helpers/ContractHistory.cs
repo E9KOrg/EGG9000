@@ -16,13 +16,34 @@ namespace EGG9000.Common.Helpers {
         public static List<UserContractScore> GetContractScores(List<Coop> coops, Contract contract) {
 
             var histories = new List<UserContractScore>();
-
+            var skipped = 0;
+            var xrefcount = 0;
             foreach(var coop in coops.Where(x => x.LastStatusUpdate != null)) {
-                foreach(var xref in coop.UserCoopsXrefs.Where(x => x.Status is not null)) {
+                var coopStatus = coop.LastStatusUpdate;
+                foreach(var xref in coop.UserCoopsXrefs.Where(x => x.JoinedCoop)) {
                     //var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
                     //if(contribution != null) {
                     var maxAmount = contract.Details.GoalSets[(int)(coop.League ?? 0)].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
-                    var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+                    //var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+                    var archiveFarm = xref.User.Backups.FirstOrDefault(x => x.EggIncId == xref.EggIncId)?.ArchivedFarms.FirstOrDefault(x => x.CoopName == xref.Coop.Name.ToLower());
+
+
+                    Ei.ContractCoopStatusResponse.Types.ContributionInfo lastStatus = null;
+
+                    if(xref.Status is not null)
+                        lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+
+                    if(lastStatus is null)
+                        lastStatus = coopStatus.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
+
+                    if(lastStatus is null)
+                        lastStatus = coopStatus.Contributors.FirstOrDefault(x => x.ContributionAmount == archiveFarm?.ContributionAmount);
+                    xrefcount++;
+                    if(lastStatus is null) {
+                        skipped++;
+                        continue; 
+                    }
+                    
                     histories.Add(new UserContractScore {
                         UserId = xref.UserId,
                         UserName = xref.User?.DiscordUsername,

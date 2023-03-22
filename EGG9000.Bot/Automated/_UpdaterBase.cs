@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Automated {
 
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
-                //Console.WriteLine($"Watchdog run for {GetType().Name}");
+                Console.WriteLine($"Watchdog run for {GetType().Name}");
                 if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
                     var success = await AttemptCancel();
                     if(success) {

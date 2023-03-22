@@ -32,7 +32,6 @@ namespace EGG9000.Bot.Services {
             this.Log += PrintLog;
             this.Ready += DiscordHostedService_Ready;
 
-
             this.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
             this.StartAsync().Wait();
 

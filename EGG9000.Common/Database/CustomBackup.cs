@@ -242,7 +242,7 @@ namespace EGG9000.Common.Database {
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
             var farmIndex = backup.Farms.IndexOf(farm);
             if(backup.ArtifactsDb != null) {
-                var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
+                var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? new List<Ei.ArtifactsDB.Types.ActiveArtifactSlot>() : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
                 var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
 
                 customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
@@ -417,6 +417,8 @@ namespace EGG9000.Common.Database {
         public uint PEPossible { get; set; }
         [Key(6)]
         public uint PEGained { get; set; }
+        [Key(7)]
+        public double ContributionAmount { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
@@ -428,6 +430,7 @@ namespace EGG9000.Common.Database {
             TimeAccepted = (float)localContract.TimeAccepted;
             Completed = localContract.Completed;
             League = localContract.League;
+            ContributionAmount = localContract.CoopLastUploadedContribution;
 
 
             var goals = localContract.Contract.Goals;

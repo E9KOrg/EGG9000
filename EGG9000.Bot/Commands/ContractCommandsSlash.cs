@@ -861,7 +861,7 @@ namespace EGG9000.Bot.Commands {
                 messagesToDelete.Where(x => x.Type != MessageType.RecipientRemove).Select((x, i) => new { Index = i, Value = x })
                     .GroupBy(x => x.Index / 20)
                     .Select(x => x.Select(v => v.Value).ToList())) {
-                await thread.DeleteMessagesAsync(group);
+                await thread.DeleteMessagesBatchAsync(group);
             }
 
 

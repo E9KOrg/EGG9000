@@ -50,11 +50,11 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
 
-        //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        ////services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         //services.AddSingleton<CoopStatusUpdater>();
         //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        ////services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         //services.AddSingleton<ContractUpdater>();
         //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
@@ -62,7 +62,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CreateCoopChannels>();
         //services.AddHostedService<ShipReturnDM>();
         //services.AddHostedService<UserSnapShots>();
-        services.AddHostedService<LeaderboardUpdater>();
+        //services.AddHostedService<LeaderboardUpdater>();
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
 
@@ -158,15 +158,15 @@ public class TestService : IHostedService {
         //var r = await ContractsAPI.Post<Ei.QueryCoopResponse, Ei.QueryCoopRequest>(new Ei.QueryCoopRequest {
         //    ClientVersion = ContractsAPI.ClientVersion, League = 0, ContractIdentifier = "eggutate-2022", CoopIdentifier = "pocket575", Rinfo = ContractsAPI.GetInfo(ContractsAPI.UserId)
         //}, ContractsAPI.UserId);
-        //var coopStatus = await ContractsAPI.GetCoopStatus("quantum-voting-2020", "wecutter48".ToLower().Trim());
-        //var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-        //    ClientVersion = ContractsAPI.ClientVersion,
-        //    ContractIdentifier = coopStatus.ContractIdentifier,
-        //    CoopIdentifier = coopStatus.CoopIdentifier,
-        //    PlayerIdentifier = "EI4885395808714752",
-        //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-        //    RequestingUserId = coopStatus.CreatorId
-        //}, ContractsAPI.UserId);
+        var coopStatus = await ContractsAPI.GetCoopStatus("toy-builders-2020", "joygains41".ToLower().Trim());
+        var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+            ClientVersion = ContractsAPI.ClientVersion,
+            ContractIdentifier = coopStatus.ContractIdentifier,
+            CoopIdentifier = coopStatus.CoopIdentifier,
+            PlayerIdentifier = "EI4599706528776192",
+            Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+            RequestingUserId = coopStatus.CreatorId
+        }, ContractsAPI.UserId);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) {

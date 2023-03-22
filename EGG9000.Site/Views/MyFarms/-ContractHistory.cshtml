@@ -100,7 +100,7 @@
 						if (tuple.Item1 is CustomFarm) {
 							CustomFarm farm = (CustomFarm)tuple.Item1;
 							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
-							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
+							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.EggIncId == backup.EggIncId);
 
 							UserFarmDetails userFarmDetails = null;
 							if (coop is not null) {
@@ -130,7 +130,7 @@
 							</tr>
 						} else {
 							CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
-							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
+							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.EggIncId == backup.EggIncId);
 							UserFarmDetails userFarmDetails = null;
 							if (xref is not null) {
 								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, (int)(xref.Coop.League ?? 0), xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
