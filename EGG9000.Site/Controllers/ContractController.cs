@@ -4,11 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Discord.WebSocket;
 
 using EGG9000.Bot;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -42,6 +44,12 @@ namespace EGG9000.Site.Controllers {
 
         public IActionResult Coop([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
             return RedirectPermanent($"/Contract/Details{Request.QueryString}");
+        }
+
+        [Produces("application/json")]
+        public async Task<IActionResult>CoopStatusJson(string coopid, string contractid) {
+            var status = await ContractsAPI.GetCoopStatus(contractid, coopid);
+            return new ObjectResult(status);
         }
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {

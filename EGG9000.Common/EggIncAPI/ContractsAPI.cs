@@ -25,13 +25,13 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
-        public const uint ClientVersion = 44;
+        public const uint ClientVersion = 45;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.25.1",
-                Build = "111222",
+                Version = "1.25.4",
+                Build = "111225",
                 Platform = "ANDROID"
             };
             if(!noUserID) {

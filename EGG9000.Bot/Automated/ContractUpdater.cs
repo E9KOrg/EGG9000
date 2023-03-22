@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Automated {
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
 
 #if DEBUG
-            //guildGroups = guildGroups.Where(x => x.Key == 770469712064151593);
+            guildGroups = guildGroups.Where(x => x.Key == dbguilds.First(x => x.Name.Contains("ingham")).DiscordSeverId);
 #endif
 
             foreach(var dbguild in dbguilds) {
@@ -367,8 +367,9 @@ namespace EGG9000.Bot.Automated {
 
 
                 var nonBotMessages = existingMessages.Where(x => !x.Author.IsBot || x.Interaction?.Type == InteractionType.ApplicationCommand).ToList();
-                if(nonBotMessages.Count > 0)
-                    await channel.DeleteMessagesAsync(nonBotMessages);
+                if(nonBotMessages.Count > 0) {
+                    await channel.DeleteMessagesBatchAsync(nonBotMessages);
+                }
 
 
                 existingMessages = existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt).ToList();
@@ -405,8 +406,7 @@ namespace EGG9000.Bot.Automated {
 
                             if(existingMessages.ElementAt(i).Embeds.Count > 0 || changes > 20 || isLastMessage) {
                                 try {
-                                    await ((RestUserMessage)existingMessages.ElementAt(i)).ModifyAsync(msg => { msg.Content = condensedMsgs[i]; msg.Embed = isLastMessage ? embedBuilder.Build() : null; });
-                                    await Task.Delay(505);
+                                    await ((RestUserMessage)existingMessages.ElementAt(i)).ModifyWithTimeoutAsync(msg => { msg.Content = condensedMsgs[i]; msg.Embed = isLastMessage ? embedBuilder.Build() : null; });
                                     success = true;
                                 } catch(Discord.Net.HttpException e) {
                                     if(e.DiscordCode == DiscordErrorCode.UnknownMessage) {
@@ -448,7 +448,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                await channel.DeleteMessagesAsync(messagesToDelete);
+                await channel.DeleteMessagesBatchAsync(messagesToDelete);
             } catch(Exception e) {
                 Console.WriteLine($"Error Updating Contracts Channel {e.Message}");
                 _bugsnag.Notify(e);

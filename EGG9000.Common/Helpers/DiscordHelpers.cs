@@ -14,6 +14,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
+using Discord.Rest;
+using System.Threading;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpers {
@@ -299,6 +301,40 @@ namespace EGG9000.Bot.Helpers {
             }
 
             return newRole;
+        }
+
+        public static async Task DeleteMessagesBatchAsync(this ITextChannel channel, IEnumerable<IMessage> messages) {
+            if(messages.Count() == 0) return;
+            var timeSplit = DateTimeOffset.Now.AddDays(-14).AddHours(1);
+            var oldMessages = messages.Where(x => x.Timestamp <= timeSplit);
+            var recentMessages = messages.Where((x) => x.Timestamp > timeSplit);
+            await channel.DeleteMessagesAsync(recentMessages);
+            foreach(var message in oldMessages) {
+                await message.DeleteAsync();
+            }
+        }
+
+        public static async Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
+            CancellationTokenSource tokenSource2 = new CancellationTokenSource();
+            CancellationToken token2 = tokenSource2.Token;
+            if(options is null)
+                options = new RequestOptions();
+            options.CancelToken = token2;
+
+            var thread = message.ModifyAsync(msgProperties, options);
+            tokenSource2.CancelAfter(9000);
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            CancellationToken token = tokenSource.Token;
+            var timer = Task.Delay(10000, token);
+            Task.WaitAny(thread, timer);
+            if(timer.IsCompleted) {
+                Console.WriteLine($"Timer Expired");
+            } else {
+                tokenSource.Cancel();
+                if(thread.IsCanceled) {
+                    Console.WriteLine($"Modify Task CANCELLED!");
+                }
+            }
         }
     }
 }

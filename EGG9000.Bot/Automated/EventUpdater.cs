@@ -266,7 +266,7 @@ namespace EGG9000.Bot.Automated {
                 var expiringShell = expiringShells.FirstOrDefault(x => x.Identifier == shell.Identifier);
                 if(expiringShell is null) {
                     expiringShell = new ExpiringShell(shell);
-                    if(shell.SecondsRemaining > 0) {
+                    if(shell.SecondsRemaining > 240) {
                         shellsToUpdate.Add(expiringShell);
                     }
 

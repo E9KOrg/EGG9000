@@ -214,20 +214,28 @@ namespace EGG9000.Site.Controllers {
                 days = new Dictionary<DateTimeOffset, int[]>();
                 coops = coops.Where(x => x.Created != DateTimeOffset.MinValue).ToList();
 
-                var xrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).Select(x => new { x.EggIncId, x.CreatedOn }).OrderBy(x => x.CreatedOn).ToListAsync();
-                var eggIncIdGroups = xrefs.GroupBy(x => x.EggIncId).Select(x => new {
-                    Start = x.First().CreatedOn,
-                    End = x.Last().CreatedOn
+                //var xrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).Select(x => new { x.EggIncId, x.CreatedOn }).OrderBy(x => x.CreatedOn).ToListAsync();
+                //var eggIncIdGroups = xrefs.GroupBy(x => x.EggIncId).Select(x => new {
+                //    Start = x.First().CreatedOn,
+                //    End = x.Last().CreatedOn
+                //});
+
+                var query = _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).GroupBy(x => x.EggIncId).Select(x => new {
+                    Start = x.OrderBy(y => y.CreatedOn).First(),
+                    End = x.OrderByDescending(y => y.CreatedOn).First(),
                 });
+                var sql = query.ToQueryString();
+                //var eggIncIdGroups = await query.ToListAsync();
 
                 for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.Now; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
-                    var accountsCount = eggIncIdGroups.Count(x => x.Start < start && x.End > start.AddDays(-14));
-                    days.Add(start, new[] { count, accountsCount });
+                    //var accountsCount = eggIncIdGroups.Count(x => x.Start.CreatedOn < start && x.End.CreatedOn > start.AddDays(-14));
+                    //days.Add(start, new[] { count, accountsCount });
+                    days.Add(start, new[] { count, 0 });
                 }
                 _cache.Set(adminDaysCacheKey, days, TimeSpan.FromDays(1));
             }
-            var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3)).ToListAsync();
+            var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3)).OrderBy(x => x.Created).ToListAsync();
             var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.DeletedChannel && !y.HasScores)).Select(x => x.First().Contract).ToList();
 
 
@@ -429,35 +437,44 @@ namespace EGG9000.Site.Controllers {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
 
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.ContractID == contractid && x.GuildID == guildId).ToListAsync();
-            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
+            //            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
 
-            var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
+            //var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
+
+
+            var contractCoops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == contractid && x.GuildId == guildId).ToListAsync();
             Console.WriteLine($"Processing {contractid}");
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
             var scores = ContractScoring.GetContractScores(contractCoops, contract);
+            var userXrefs = await _db.UserCoopXrefs.Where(x => x.Score != null && x.Coop.ContractID != contractid && x.CreatedOn < contract.GoodUntil).GroupBy(x => x.UserId).Select(x => new { Key = x.Key, Last3Score = x.OrderByDescending(y => y.CreatedOn).Take(3) }).ToListAsync();
             foreach(var score in scores) {
                 score.xref.Score = score.Score;
                 score.xref.SoulPower = score.SoulPower;
+                var xrefs = userXrefs.FirstOrDefault(x => x.Key == score.UserId)?.Last3Score.ToList() ?? new List<UserCoopXref>();
+                xrefs.Add(score.xref);
+                if(xrefs.Count == 4) {
+                    score.xref.RunningScore = xrefs.Average(x => x.Score);
+                } else if(xrefs.Count > 4) {
+                    Console.WriteLine($"{xrefs.Count} xrefs found for {score.UserName}");
+                }
             }
             guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
             await _db.SaveChangesAsync();
 
-            var userXrefs = coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
-
-            foreach(var userXref in userXrefs) {
-                var xrefs = userXref.OrderByDescending(x => x.CreatedOn).ToList();
-                foreach(var xref in xrefs.Where(x => x.Coop.ContractID == contractid)) {
-                    //if(xref.RunningScore == null) {
-                    var lastFourXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn && x.Score.HasValue).Take(4).ToList();
-                    if(lastFourXrefs.Count == 4 && lastFourXrefs.All(x => x.Score.HasValue)) {
-                        xref.RunningScore = lastFourXrefs.Average(x => x.Score);
-                    } else {
-                        xref.RunningScore = null;
-                    }
-                    //}
-                }
-            }
-            await _db.SaveChangesAsync();
+            //var userXrefs =    coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
+            //foreach(var score) {
+            //    foreach(var xref in xrefs.Where(x => x.Coop.ContractID == contractid)) {
+            //        //if(xref.RunningScore == null) {
+            //        var lastFourXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn && x.Score.HasValue).Take(4).ToList();
+            //        if(lastFourXrefs.Count == 4 && lastFourXrefs.All(x => x.Score.HasValue)) {
+            //            xref.RunningScore = lastFourXrefs.Average(x => x.Score);
+            //        } else {
+            //            xref.RunningScore = null;
+            //        }
+            //        //}
+            //    }
+            //}
+            //await _db.SaveChangesAsync();
 
             var users = _db.DBUsers.Where(x => x.GuildId == guildId).Select(x => new {
                 x.Id,
@@ -465,7 +482,8 @@ namespace EGG9000.Site.Controllers {
                 x.DiscordUsername,
                 x._eggIncIds
             });
-            var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
+            //var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
+            var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < 1e-3).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
                 if(user == null) {
                     return null;
@@ -475,16 +493,17 @@ namespace EGG9000.Site.Controllers {
                 return new ScoreUser {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
-                    RunningScore = y.RunningScore.Value
+                    RunningScore = y.xref.RunningScore.Value
                 };
-            }));
+            });
 
 
 
             var guild = _discord.GetGuild(guildId);
             var beastModeRole = guild.GetRole(938563459812049008);
 
-            var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
+            //var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
+            var topXrefs = scores.Select((y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId && !u._eggIncIds.Contains("},{"));
                 if(user == null) {
                     return null;
@@ -496,10 +515,10 @@ namespace EGG9000.Site.Controllers {
                 return new ScoreUser {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
-                    Score = y.Score.Value,
+                    Score = y.Score,
                     DiscordUser = discordUser,
                 };
-            }))).Where(x => x != null).OrderByDescending(x => x.Score).Take(10);
+            })).Where(x => x != null).OrderByDescending(x => x.Score).Take(10);
 
 
 
@@ -511,9 +530,11 @@ namespace EGG9000.Site.Controllers {
                 if(tempRole == null) {
                     tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
                     _db.Add(tempRole);
-                    await topxref.DiscordUser.AddRoleAsync(beastModeRole);
-                    Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
-                    await Task.Delay(600);
+                    try {
+                        await topxref.DiscordUser.AddRoleAsync(beastModeRole);
+                        Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
+                        await Task.Delay(600);
+                    } finally { }
                 }
                 tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
                 tempRole.Expires = DateTimeOffset.Now.AddDays(7);

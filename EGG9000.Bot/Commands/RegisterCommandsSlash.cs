@@ -416,10 +416,7 @@ namespace EGG9000.Bot.Commands {
 
                     var userMessage = messages.Where(x => x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id);
 
-                    foreach(var message in userMessage.Where(x => x.CreatedAt <= DateTimeOffset.Now.AddDays(-13))) {
-                        await message.DeleteAsync();
-                    }
-                    await welcomeChannel.DeleteMessagesAsync(userMessage.Where(x => x.CreatedAt > DateTimeOffset.Now.AddDays(-13)));
+                    await welcomeChannel.DeleteMessagesBatchAsync(userMessage);
                 }
             } catch(Exception) {
                 if(chain < 3) {
@@ -544,24 +541,8 @@ namespace EGG9000.Bot.Commands {
 
             var messages = await welcomeChannel.GetMessagesAsync(500).FlattenAsync();
 
-            var toDeleteRecent = messages.Where(x => !x.IsPinned && x.CreatedAt < DateTime.Now.AddDays(-5) && x.CreatedAt > DateTime.Now.AddDays(-13)).ToList();
-            var toDeleteOld = messages.Where(x => !x.IsPinned && x.CreatedAt <= DateTime.Now.AddDays(-13)).ToList();
+            await (welcomeChannel).DeleteMessagesBatchAsync(messages);
 
-            await (welcomeChannel).DeleteMessagesAsync(toDeleteRecent);
-
-            foreach(var msg in toDeleteOld) {
-                await Task.Delay(510);
-                try {
-                    await msg.DeleteAsync();
-                } catch(HttpException) {
-                    try {
-                        await msg.DeleteAsync();
-                    } catch(HttpException) {
-                        Console.WriteLine("** Error deleting from welcome");
-                    }
-
-                }
-            }
             await command.DeleteResponseFix();
         }
 
@@ -582,15 +563,8 @@ namespace EGG9000.Bot.Commands {
             var messages = await command.Channel.GetMessagesAsync(500).FlattenAsync();
             messages = messages.Where(x => !x.IsPinned);
 
-            var recent = messages.Where(x => x.CreatedAt > DateTime.Now.AddDays(-13) && !x.IsPinned).ToList();
-            var older = messages.Where(x => x.CreatedAt <= DateTime.Now.AddDays(-13) && !x.IsPinned).ToList();
+            await ((SocketTextChannel)command.Channel).DeleteMessagesBatchAsync(messages);
 
-            await ((SocketTextChannel)command.Channel).DeleteMessagesAsync(recent);
-
-            foreach(var msg in older) {
-                await Task.Delay(510);
-                await msg.DeleteAsync();
-            }
             await command.DeleteResponseFix();
         }
 

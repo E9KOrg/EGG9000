@@ -216,7 +216,7 @@ namespace EGG9000.Bot.Automated {
 
                                     var channel = guild.GetTextChannel(guildContract.DiscordChannelId);
                                     if(channel is not null) {
-                                        await channel.AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                        //await channel.AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
                                     }
                                 }
                                 await _db.SaveChangesAsync();

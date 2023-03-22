@@ -35,6 +35,7 @@ using System.Text.RegularExpressions;
 using Discord.Rest;
 using Microsoft.Extensions.Caching.Memory;
 using EGG9000.Bot;
+using Stripe;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -62,6 +63,7 @@ namespace EGG9000.Site.Controllers {
             _cache = cache;
         }
 
+        
         public async Task<IActionResult> Test() {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
             _db.RemoveRange(demerits);
@@ -79,7 +81,7 @@ namespace EGG9000.Site.Controllers {
                     if(messagesToDeleted.Any()) {
                         Console.WriteLine($"Deleting {messages.Count()} messages from {coop.Name}");
                         messagesDeleted += messagesToDeleted.Count();
-                        await channel.DeleteMessagesAsync(messagesToDeleted);
+                        await channel.DeleteMessagesBatchAsync(messagesToDeleted);
                     }
 
                 }
@@ -176,7 +178,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> CleanCoopPins() {
-            var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel && x.Status != CoopStatusEnum.WaitingOnStarter).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
 
             var retryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync(new[]{
                     TimeSpan.FromSeconds(1),
@@ -198,7 +200,8 @@ namespace EGG9000.Site.Controllers {
                         continue;
                     }
                     try {
-                        var pinned = await channel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.Before, 1000).FlattenAsync(); //await retryPolicy.ExecuteAsync(async () => );
+                        var pinned = await channel.GetMessagesAsync(1000).FlattenAsync(); //await retryPolicy.ExecuteAsync(async () => );
+                        Console.WriteLine(pinned.Count(x => x.IsPinned));
                         foreach(var msg in pinned) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
                                 if(!UpdateMessageIDs.Contains(msg.Id)) {
@@ -978,6 +981,34 @@ namespace EGG9000.Site.Controllers {
                 _cache.Set(easterCacheKey, eggsFound, TimeSpan.FromMinutes(10));
             }
             return View(eggsFound);
+        }
+
+        public async Task<ActionResult> UpdateAllBackups() {
+            var users = await _db.DBUsers.ToListAsync();
+            var i = 1;
+            var done = 0;
+            users = users.Where(x => x.Backups.Any(y => y.ArchivedFarms.All(z => z.ContributionAmount == 0))).ToList();
+            foreach(var user in users) {
+                Console.WriteLine($"Processing {i++} of {users.Count}");
+                var backups = new List<CustomBackup>();
+                foreach(var eiid in user.EggIncIds.Where(x => x.Id?.StartsWith("EI") ?? false)) {
+                    var rawBackup = await ContractsAPI.FirstContact(eiid.Id);
+                    var customBackup = new CustomBackup(rawBackup.Backup);
+                    if(customBackup?.SpaceMissions != null) {
+                        backups.Add(customBackup);
+                    }
+                }
+                if(backups.Count > 0) {
+                    user.Backups = backups;
+                    done++;
+                }
+                if(done % 100 == 0) {
+                    await _db.SaveChangesAsync();
+                    Console.WriteLine("Saving Changes");
+                }
+            }
+            await _db.SaveChangesAsync();
+            return Content($"Updated {done}");
         }
     }
 }
