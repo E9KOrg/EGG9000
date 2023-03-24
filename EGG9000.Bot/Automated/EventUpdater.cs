@@ -23,31 +23,11 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
     public class EventUpdater : _UpdaterBase<EventUpdater> {
-        //private ApplicationDbContext _db;
 
         public EventUpdater(
                 IServiceProvider provider
             ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
-            //_db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
         }
-
-        //public async Task TestEvent(SocketMessage message, string[] args) {
-        //    try {
-        //        var eventC = _db.EventCustomizations.FirstOrDefault(x => x.Type == args[0]);
-
-        //        if(eventC == null) {
-        //            await message.Channel.SendMessageAsync($"⚠️ERROR: Unable to find event type - {args[0]}");
-        //            return;
-        //        }
-
-
-        //        var e = await _db.Events.AsQueryable().OrderByDescending(x => x.Ends).FirstOrDefaultAsync(x => x.Type == eventC.Type);
-
-        //        await message.Channel.SendMessageAsync(embed: GetEmbed(e, eventC));
-        //    } catch(Exception e) {
-        //        await message.Channel.SendMessageAsync($"⚠️ERROR: Bot error - {e.Message}");
-        //    }
-        //}
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
@@ -59,7 +39,6 @@ namespace EGG9000.Bot.Automated {
             var eventCustomizations = await _db.EventCustomizations.AsQueryable().ToListAsync();
 
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync();
-            //var currentEvents = new List<Event>();
 
             if(response?.Events?.Events == null) {
                 Console.WriteLine("Response is null for Event Updater");
@@ -89,13 +68,15 @@ namespace EGG9000.Bot.Automated {
 
                     await _db.SaveChangesAsync();
                 } else {
-                    var difference = Math.Abs((DateTimeOffset.Now.AddSeconds(e.SecondsRemaining) - currentEvent.Ends).TotalSeconds);
-                    //Console.WriteLine($"Difference in seconds {difference}");
 
                     var significantChange = false;
+                    var timeChange = false;
 
                     if(currentEvent.Ended) {
                         currentEvent.Ended = false;
+                    }
+                    else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining)).Seconds) > 60) {
+                        timeChange = true;
                     }
 
                     if(currentEvent.Type != e.Type) {
@@ -111,19 +92,13 @@ namespace EGG9000.Bot.Automated {
                         significantChange = true;
                     }
 
-                    if(difference > 30) {
-                        Console.WriteLine($"Updating event by add {difference} seconds");
-                        currentEvent.Ends = DateTimeOffset.Now.AddSeconds(e.SecondsRemaining);
-                    }
-
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
                         var embed = GetEmbed(currentEvent, customization, false);
                         if(significantChange) {
                             var crossOutEmbed = GetEmbed(currentEvent, customization, true);
                             await UpdateMessages(currentEvent, crossOutEmbed, customization, _db);
                             await PostMessages(currentEvent, embed, customization, _db);
-                        } else {
-
+                        } else if (timeChange) {
                             await UpdateMessages(currentEvent, embed, customization, _db);
                         }
                     }
@@ -151,9 +126,8 @@ namespace EGG9000.Bot.Automated {
                     newName = stackedEmoji + newName;
                 } else if(singleEmoji.Length > 0) {
                     newName = singleEmoji + newName;
-                } else {
-                    //newName = newName;
-                }
+                } 
+
                 if(channel.Name != newName && channel != null) {
                     await channel.ModifyAsync(x => x.Name = newName);
                 }
@@ -219,7 +193,11 @@ namespace EGG9000.Bot.Automated {
                     title = $"{multiplier}x <:Piggy_bank:724396277676113955> Piggy Bank Growth";
                     break;
             }
-            title += (Ended ? "\nEnded" : $"\nAvailable for {(e.Ends - DateTimeOffset.Now).Humanize(precision: 2).ShortenTime()}");
+            if(Ended) {
+                title += $"\nEnded <t:{e.Ends.ToUnixTimeMilliseconds()}:R>";
+            } else {
+                title += $"\nEnds <t:{e.Ends.ToUnixTimeMilliseconds()}:R>, ( <t:{e.Ends.ToUnixTimeMilliseconds()}> )";
+            }
             Color color = Color.Blue;
             if(CrossOut) {
                 color = Color.Red;
@@ -230,9 +208,9 @@ namespace EGG9000.Bot.Automated {
                 .WithTitle(CrossOut ? $"~~{title}~~" : title)
                 .WithColor(color)
                 .WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
-                .WithDescription(CrossOut ? $"~~{description}~~" : description)
-                .WithFooter("Last Updated")
-                .WithTimestamp(DateTimeOffset.Now);
+                .WithDescription(CrossOut ? $"~~{description}~~" : description);
+                /*.WithFooter("Last Updated")
+                .WithTimestamp(DateTimeOffset.Now);*/
 
             if(!string.IsNullOrWhiteSpace(eventC.ThumbnailURL)) {
                 embed.WithThumbnailUrl(eventC.ThumbnailURL);
@@ -340,57 +318,5 @@ namespace EGG9000.Bot.Automated {
                 }
             }
         }
-        //public static Embed GetEmbed(Ei.EggIncEvent e) {
-        //    string msg = "";
-        //    var timeRemaining = TimeSpan.FromSeconds(e.SecondsRemaining).Humanize(precision: 2).ShortenTime();
-        //    var embed = new EmbedBuilder()
-        //        .WithTitle($"{e.Subtitle} Available for {timeRemaining}")
-        //        .WithColor(Color.Blue)
-        //        .WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
-        //        .WithCurrentTimestamp();
-
-        //    switch (e.Type) {
-        //        case "piggy-boost":
-        //            break;
-        //        case "prestige-boost":
-        //            break;
-        //        case "earnings-boost":
-        //            embed.WithDescription("*Sun is shining and birds are singing. Your truck driver is a happy camper. When the delivery man comes to pick up your eggs he's feeling extra generous and gives you four times as many bocks for your eggs.*");
-        //            embed.AddField("Prestige Event Comparison", $"This would be equivalent to a { Math.Round(Math.Pow(e.Multiplier, 0.21), 2)}x prestige event, except you don't lose anything at the end of the event.");
-        //            embed.WithThumbnailUrl("http://files.fms.sglade.com/Z6ZjSq05/dollars.png");
-        //            break;
-        //        case "gift-boost":
-        //            break;
-        //        case "drone-boost":
-        //            break;
-        //        case "epic-research-sale":
-        //            msg += "Applies to Epic Research";
-        //            break;
-        //        case "research-sale":
-        //            msg += "Applies to Common Research";
-        //            break;
-        //        case "vehicle-sale":
-        //            break;
-        //        case "hab-sale":
-        //            embed.WithDescription("*In the process of upgrading your old chicken houses you decide to hire a cheeky contractor on the black market... Their agreement was simple: new houses, 70% off, and unlimited fresh eggs for the contractor's crew every morning.*");
-        //            break;
-        //        case "boost-sale":
-        //            break;
-        //        case "piggy-cap-boost":
-        //            msg += "No cap on the piggy bank. Gains are retained when event ends.";
-        //            embed.AddField(new EmbedFieldBuilder().WithName("TIP - Buy Warming Bulb Boosts").WithValue("If you plan on breaking your piggy bank soon, buy as many Warming Bulb boosts as you can afford. You will get more GEs back than you spent. Buy them one at a time."));
-        //            embed.AddField(new EmbedFieldBuilder().WithName("TIP - Prestige and buy Research").WithValue("To take advantage of this event, prestige as many times as possible buying research for each egg. Don't skip eggs."));
-        //            embed.AddField(new EmbedFieldBuilder().WithName("TIP - Epic Research HOLD TO RESEARCH is very useful").WithValue("It is a lot quicker to buy science with this research. In addition, you can hold down on multiple research at a time to buy more quickly."));
-        //            break;
-        //        case "boost-duration":
-        //            break;
-        //    }
-
-        //    if (msg != "")
-        //        embed.WithDescription(msg);
-
-
-        //    return embed.Build();
-        //}
     }
 }
