@@ -96,6 +96,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<CoopReorder>();
         services.AddHostedService<CoopDeleteChannel>();
 
+        services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
         services.AddSingleton<CoopStatusUpdater>();
         services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
@@ -106,6 +107,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<CreateCoopChannels>();
         services.AddHostedService<ShipReturnDM>();
         services.AddHostedService<UserSnapShots>();
+        services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
         services.AddHostedService<LeaderboardUpdater>();
         services.AddHostedService<ManageOverflow>();
         services.AddHostedService<RemoveTempRoles>();

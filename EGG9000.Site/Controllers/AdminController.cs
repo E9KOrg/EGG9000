@@ -883,6 +883,10 @@ namespace EGG9000.Site.Controllers {
             return View(tooManyPEBackups);
         }
 
+        public async Task<ActionResult> AutomatedTasks() {
+            return View(await _db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1)).OrderBy(x => x.StartTime).ToListAsync());
+        }
+
         public class BackupWithUser {
             public DBUser User { get; set; }
             public CustomBackup Backup { get; set; }
