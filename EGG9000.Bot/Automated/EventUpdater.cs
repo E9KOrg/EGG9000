@@ -75,7 +75,7 @@ namespace EGG9000.Bot.Automated {
                     if(currentEvent.Ended) {
                         currentEvent.Ended = false;
                     }
-                    else if(currentEvent.Ends != DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining)) {
+                    else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining)).Seconds) > 60) {
                         timeChange = true;
                     }
 
@@ -193,8 +193,11 @@ namespace EGG9000.Bot.Automated {
                     title = $"{multiplier}x <:Piggy_bank:724396277676113955> Piggy Bank Growth";
                     break;
             }
-            //Old, "available for" title += (Ended ? "\nEnded" : $"\nAvailable for {(e.Ends - DateTimeOffset.Now).Humanize(precision: 2).ShortenTime()}");
-            title += (Ended ? "\nEnded " : "\nAvailable until ") + $"<t:{e.Ends.ToUnixTimeMilliseconds()}:R";
+            if(Ended) {
+                title += $"\nEnded <t:{e.Ends.ToUnixTimeMilliseconds()}:R>";
+            } else {
+                title += $"\nEnds <t:{e.Ends.ToUnixTimeMilliseconds()}:R>, ( <t:{e.Ends.ToUnixTimeMilliseconds()}> )";
+            }
             Color color = Color.Blue;
             if(CrossOut) {
                 color = Color.Red;
