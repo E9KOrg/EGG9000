@@ -1,0 +1,36 @@
+﻿@using EGG9000.Common.Helpers
+@model List<AutomationLog>
+@{
+
+}
+
+
+<h2>Automated Tasks (Last 24h)</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Is Running</th>
+            <th>Last Finished</th>
+            <th>Never Finished</th>
+            <th>Skips</th>
+            <th>Avg Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var loggroup in Model.GroupBy(x => x.Type)) {
+            var lastComplete = loggroup.Last(x => x.EndTime.HasValue);
+            var lastNotSkipped = loggroup.LastOrDefault(x => !x.Skipped && x.StartTime > lastComplete.StartTime);
+            var avg = TimeSpan.FromMilliseconds(loggroup.Where(x => x.EndTime.HasValue).Average(x => (x.StartTime - x.EndTime.Value).TotalMilliseconds)).Humanize(2).ShortenTime();
+            <tr>
+                <td>@loggroup.Key</td>
+                <td>@(lastNotSkipped != null ? (DateTimeOffset.Now - lastNotSkipped.StartTime).Humanize(2).ShortenTime() : "")</td>
+                <td>@((DateTimeOffset.Now - lastComplete.EndTime.Value).Humanize(2).ShortenTime())</td>
+                <td>@loggroup.Count(x => !x.EndTime.HasValue && !x.Skipped)</td>
+                <td>@loggroup.Count(x => x.Skipped)</td>
+                <td>@avg </td>
+            </tr>
+        }
+    </tbody>
+</table>

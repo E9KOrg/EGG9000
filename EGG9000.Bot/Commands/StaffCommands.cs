@@ -65,6 +65,25 @@ namespace EGG9000.Bot.Commands {
 
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time." );
         }
+
+        [SlashCommand(Description = "Get the bot's status", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        public static async Task Status(FauxCommand command, ApplicationDbContext db) {
+            var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
+            var message = new StringBuilder();
+            foreach(var log in lastComplete.OrderBy(x => x.Type)) {
+                var incompletes = await db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
+                message.Append($"**{log.Type}** Last finished {(DateTimeOffset.Now -  log.EndTime.Value).Humanize()}");
+                if(incompletes.Any(x => x.Skipped)) {
+                    message.Append($" attempted to run {incompletes.Count} more times");
+                }
+                if(incompletes.Any(x => !x.Skipped)) {
+                    message.Append($" latest run has been going for {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize()}");
+                }
+                message.Append("\n");
+            }
+
+            await command.RespondAsync(message.ToString());
+        }
     }
 }
 

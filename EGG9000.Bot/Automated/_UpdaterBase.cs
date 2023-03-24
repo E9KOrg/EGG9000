@@ -8,6 +8,7 @@ using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Services;
+using EGG9000.Common.Database;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,10 +64,17 @@ namespace EGG9000.Bot.Automated {
 
         private async void _run(object state) {
             Console.WriteLine($"Running {this.GetType().Name}");
+            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
                 try {
                     LastStarted = DateTime.Now;
+                    var log = new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now };
+                    _db.AutomationLogs.Add(log);
+                    await _db.SaveChangesAsync();
                     await Run(state, _cts.Token);
+                    log.EndTime = DateTimeOffset.Now;
+                    await _db.SaveChangesAsync();
+
                     LastCompleted = DateTime.Now;
                     if(Restarted) {
                         Restarted = false;
@@ -82,6 +90,8 @@ namespace EGG9000.Bot.Automated {
                     _semaphoreSlim.Release();
                 }
             } else {
+                _db.AutomationLogs.Add(new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now, Skipped = true });
+                await _db.SaveChangesAsync();
                 Console.WriteLine($"Unable to run {this.GetType().Name} because it is already running");
             }
         }
