@@ -194,7 +194,7 @@ namespace EGG9000.Bot.Automated {
                     break;
             }
             //Old, "available for" title += (Ended ? "\nEnded" : $"\nAvailable for {(e.Ends - DateTimeOffset.Now).Humanize(precision: 2).ShortenTime()}");
-            title += (Ended ? "\nEnded " : "\nAvailable until ") + $"<t:{e.Ends.ToUnixTimeMilliseconds()}:R";
+            title += (Ended ? "\nEnded " : "\nAvailable until ") + $"<t:{e.Ends.ToUnixTimeMilliseconds()}:R>";
             Color color = Color.Blue;
             if(CrossOut) {
                 color = Color.Red;
