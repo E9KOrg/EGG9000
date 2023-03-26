@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Commands
                 foreach(var id in user.EggIncIds) {
                     var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
                     if(sb.ToString() != "") sb.Append("\n\n");
-                    sb.Append(backup.UserName + ": " + $"<https://wasmegg.netlify.app/inventory-visualizer/?playerId={id}>");
+                    sb.Append(backup.UserName + ": " + $"<https://wasmegg.netlify.app/inventory-visualizer/?playerId={id.Id}>");
                 }
 
                 await command.RespondAsync(sb.ToString(), ephemeral: true);
