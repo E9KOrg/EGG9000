@@ -89,10 +89,11 @@ namespace EGG9000.Bot.Commands {
         public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketGuildUser targetUser) {
             return _RemoveID(command, db, apiLink, eggincid, targetUser.Id);
         }
-        [SlashCommand(Description = "Removed registered EggInc ID from your account")]
+        /* Moving to a staff-only command, leaving commented out in case of re-activation in future
+         * [SlashCommand(Description = "Removed registered EggInc ID from your account")]
         public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid) {
             return _RemoveID(command, db, apiLink, eggincid, command.User.Id);
-        }
+        }*/
         public static async Task _RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, ulong userid) {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == userid);
             if(user == null) {
