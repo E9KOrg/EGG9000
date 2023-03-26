@@ -74,10 +74,9 @@ namespace EGG9000.Bot.Automated {
 
                     if(currentEvent.Ended) {
                         currentEvent.Ended = false;
-                    }
-                    else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining)).Seconds) > 60) {
+                    } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining)).Seconds) > 60) {
                         timeChange = true;
-                    }
+                    } 
 
                     if(currentEvent.Type != e.Type) {
                         currentEvent.Type = e.Type;
@@ -93,12 +92,13 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
-                        var embed = GetEmbed(currentEvent, customization, false);
                         if(significantChange) {
+                            var embed = GetEmbed(currentEvent, customization, false);
                             var crossOutEmbed = GetEmbed(currentEvent, customization, true);
                             await UpdateMessages(currentEvent, crossOutEmbed, customization, _db);
                             await PostMessages(currentEvent, embed, customization, _db);
                         } else if (timeChange) {
+                            var embed = GetEmbed(currentEvent, customization, false);
                             await UpdateMessages(currentEvent, embed, customization, _db);
                         }
                     }
@@ -194,9 +194,9 @@ namespace EGG9000.Bot.Automated {
                     break;
             }
             if(Ended) {
-                title += $"\nEnded <t:{e.Ends.ToUnixTimeMilliseconds()}:R>";
+                title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
             } else {
-                title += $"\nEnds <t:{e.Ends.ToUnixTimeMilliseconds()}:R>, ( <t:{e.Ends.ToUnixTimeMilliseconds()}> )";
+                title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R>, ( <t:{e.Ends.ToUnixTimeSeconds()}> )";
             }
             Color color = Color.Blue;
             if(CrossOut) {
@@ -236,7 +236,7 @@ namespace EGG9000.Bot.Automated {
 
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
 
-            var expiringShells = db.ExpiringShells.Where(x => !x.Archived);
+            var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.Now.AddHours(-1));
 
 
             var shellsToUpdate = new List<ExpiringShell>();
@@ -246,13 +246,13 @@ namespace EGG9000.Bot.Automated {
                     expiringShell = new ExpiringShell(shell);
                     if(shell.SecondsRemaining > 240) {
                         shellsToUpdate.Add(expiringShell);
+                        db.ExpiringShells.Add(expiringShell);
+                        await db.SaveChangesAsync();
                     }
 
-                    db.ExpiringShells.Add(expiringShell);
-                    await db.SaveChangesAsync();
                 } else {
                     if(expiringShell.Name != shell.Name ||
-                        (expiringShell.Expires - DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining)) > TimeSpan.FromMinutes(1) ||
+                        (expiringShell.Expires - DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining)).Duration() > TimeSpan.FromMinutes(1) ||
                         expiringShell.Price != shell.Price ||
                         expiringShell.AssetType != shell.AssetType ||
                         shell.SecondsRemaining < 0
