@@ -43,7 +43,8 @@ namespace EGG9000.Bot.Commands
                 StringBuilder sb = new StringBuilder();
                 foreach(var id in user.EggIncIds) {
                     var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
-                    sb.Append(backup.UserName + ": " + $"<https://wasmegg.netlify.app/inventory-visualizer/?playerId={id}>\n\n");
+                    if(sb.ToString() != "") sb.Append("\n\n");
+                    sb.Append(backup.UserName + ": " + $"<https://wasmegg.netlify.app/inventory-visualizer/?playerId={id}>");
                 }
 
                 await command.RespondAsync(sb.ToString(), ephemeral: true);
