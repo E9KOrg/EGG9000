@@ -28,6 +28,10 @@ using System.Threading.Tasks;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Bot.Services;
+using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Diagnostics;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -63,7 +67,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.ExpireCustomCoopName = expireTime;
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time." );
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time.");
         }
 
         [SlashCommand(Description = "Get the bot's status", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
@@ -72,7 +76,7 @@ namespace EGG9000.Bot.Commands {
             var message = new StringBuilder();
             foreach(var log in lastComplete.OrderBy(x => x.Type)) {
                 var incompletes = await db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
-                message.Append($"**{log.Type}** Last finished {(DateTimeOffset.Now -  log.EndTime.Value).Humanize()}");
+                message.Append($"**{log.Type}** Last finished {(DateTimeOffset.Now - log.EndTime.Value).Humanize()}");
                 if(incompletes.Any(x => x.Skipped)) {
                     message.Append($" attempted to run {incompletes.Count} more times");
                 }
@@ -83,6 +87,25 @@ namespace EGG9000.Bot.Commands {
             }
 
             await command.RespondAsync(message.ToString());
+        }
+
+        [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+
+            if(service == null) {
+                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
+                return;
+            }
+            await command.RespondAsync($"Attempting to restart {serviceName}");
+            try {
+                await (service as IUpdaterBase).ForceStopAsync();
+            } catch(Exception e) {
+                var frame = (new StackTrace(e, true)).GetFrame(0);
+
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+            }
+            await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
         }
     }
 }

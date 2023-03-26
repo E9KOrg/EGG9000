@@ -19,7 +19,12 @@ namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {
         public TimeSpan? DelayStart { get; set; }
     }
-    public abstract class _UpdaterBase<T> : IHostedService where T : _UpdaterBase<T> {
+
+    public interface IUpdaterBase : IHostedService {
+        public Task ForceStopAsync();
+    }
+
+    public abstract class _UpdaterBase<T> : IUpdaterBase where T : _UpdaterBase<T> {
         private Timer _timer;
         private Timer _watchDogTimer;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
@@ -117,6 +122,18 @@ namespace EGG9000.Bot.Automated {
             }
             await _semaphoreSlim.WaitAsync(cancellationToken);
             Console.WriteLine($"{this.GetType().Name} has successfully stopped.");
+        }
+
+        public async Task ForceStopAsync() {
+            _cts.Cancel();
+            _cts.Dispose();
+
+            _cts = new CancellationTokenSource();
+            await _timer.DisposeAsync();
+            await _watchDogTimer.DisposeAsync();
+            while(_semaphoreSlim.CurrentCount > 0)
+                _semaphoreSlim.Release();
+            await StartAsync(new CancellationToken());
         }
 
         private async Task _WatchDog(object state) {

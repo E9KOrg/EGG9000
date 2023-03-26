@@ -15,6 +15,7 @@ using EGG9000.Common.Database.Entities;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Linq;
+using System.Collections.Generic;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -66,7 +67,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
 
-        //services.AddHostedService<TestService>();
+        services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
         //services.AddHostedService<ContextCommandService>();
@@ -160,15 +161,44 @@ public class TestService : IHostedService {
         //var r = await ContractsAPI.Post<Ei.QueryCoopResponse, Ei.QueryCoopRequest>(new Ei.QueryCoopRequest {
         //    ClientVersion = ContractsAPI.ClientVersion, League = 0, ContractIdentifier = "eggutate-2022", CoopIdentifier = "pocket575", Rinfo = ContractsAPI.GetInfo(ContractsAPI.UserId)
         //}, ContractsAPI.UserId);
-        var coopStatus = await ContractsAPI.GetCoopStatus("toy-builders-2020", "joygains41".ToLower().Trim());
-        var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-            ClientVersion = ContractsAPI.ClientVersion,
-            ContractIdentifier = coopStatus.ContractIdentifier,
-            CoopIdentifier = coopStatus.CoopIdentifier,
-            PlayerIdentifier = "EI4599706528776192",
-            Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-            RequestingUserId = coopStatus.CreatorId
-        }, ContractsAPI.UserId);
+        //var coopStatus = await ContractsAPI.GetCoopStatus("toy-builders-2020", "joygains41".ToLower().Trim());
+        //var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+        //    ClientVersion = ContractsAPI.ClientVersion,
+        //    ContractIdentifier = coopStatus.ContractIdentifier,
+        //    CoopIdentifier = coopStatus.CoopIdentifier,
+        //    PlayerIdentifier = "EI4599706528776192",
+        //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+        //    RequestingUserId = coopStatus.CreatorId
+        //}, ContractsAPI.UserId);
+
+        var shellTypes = await db.ExpiringShells.GroupBy(x => x.Identifier).Select(x => x.Key).ToListAsync();
+        foreach(var shellType in shellTypes) {
+            var shells = await db.ExpiringShells.Where(x => x.Identifier == shellType).ToListAsync();
+            var groupedShells = shells.GroupBy(x => new { x.Identifier, Expires = RoundToNearest(x.Expires.DateTime, TimeSpan.FromHours(1)) });
+            foreach(var group in groupedShells) {
+                var toDelete = ChunkBy(group.Skip(1).ToList(), 1000);
+                foreach(var chunk in toDelete) {
+                    db.RemoveRange(chunk);
+                    Console.WriteLine($"Deleting {chunk.Count()} entries for {shellType}");
+                    await db.SaveChangesAsync();
+                }
+            }
+        }
+    }
+
+    public DateTime RoundToNearest(DateTime dt, TimeSpan d) {
+        var delta = dt.Ticks % d.Ticks;
+        bool roundUp = delta > d.Ticks / 2;
+        var offset = roundUp ? d.Ticks : 0;
+
+        return new DateTime(dt.Ticks + offset - delta, dt.Kind);
+    }
+    public List<List<T>> ChunkBy<T>(List<T> source, int chunkSize) {
+        return source
+            .Select((x, i) => new { Index = i, Value = x })
+            .GroupBy(x => x.Index / chunkSize)
+            .Select(x => x.Select(v => v.Value).ToList())
+            .ToList();
     }
 
     public Task StopAsync(CancellationToken cancellationToken) {
