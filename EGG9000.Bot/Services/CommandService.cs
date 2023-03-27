@@ -41,8 +41,9 @@ namespace EGG9000.Bot.Services {
         private ContractUpdater _contractUpdater;
         private CoopStatusUpdater _coopStatusUpdater;
         private Guild _cpGuild;
+        private IServiceProvider _serviceProvider;
 
-        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context) {
+        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context, IServiceProvider serviceProvider) {
             _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
@@ -54,6 +55,7 @@ namespace EGG9000.Bot.Services {
             _coopStatusUpdater = coopStatusUpdater;
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
+            _serviceProvider = serviceProvider;
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -127,34 +129,28 @@ namespace EGG9000.Bot.Services {
                                 parameters.Add(new FauxCommand(arg as SocketSlashCommand));
                             else
                                 parameters.Add(arg);
-                        }
-                        if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
+                        } else if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
                             parameters.Add(arg);
-                        }
-
-                        if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
+                        } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
                             parameters.Add(new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]));
-                        }
-                        if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
+                        } else if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
                             parameters.Add((DiscordSocketClient)_discord);
-                        }
-                        if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
+                        } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
                             parameters.Add(_discord);
-                        }
-                        if(parameterInfo.ParameterType == typeof(APILink)) {
+                        } else if(parameterInfo.ParameterType == typeof(APILink)) {
                             parameters.Add(_apilink);
-                        }
-                        if(parameterInfo.ParameterType == typeof(Words)) {
+                        } else if(parameterInfo.ParameterType == typeof(Words)) {
                             parameters.Add(_words);
-                        }
-                        if(parameterInfo.ParameterType == typeof(SocketUser)) {
+                        } else if(parameterInfo.ParameterType == typeof(SocketUser)) {
                             parameters.Add(arg.User);
-                        }
-                        if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
+                        } else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
                             parameters.Add(_coopStatusUpdater);
-                        }
-                        if(parameterInfo.ParameterType == typeof(ContractUpdater)) {
+                        } else if(parameterInfo.ParameterType == typeof(ContractUpdater)) {
                             parameters.Add(_contractUpdater);
+                        } else if(parameterInfo.ParameterType == typeof(IServiceProvider)) {
+                            parameters.Add(_serviceProvider);
+                        } else {
+                            throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
                         }
                     }
 
