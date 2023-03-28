@@ -471,7 +471,7 @@ namespace EGG9000.Bot.Commands {
 
             msg += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            await command.RespondAsync(msg, ephemeral: showInChannel);
+            await command.RespondAsync(msg, ephemeral: !showInChannel);
         }
 
 
