@@ -442,7 +442,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = true) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: showInChannel);
+                await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: !showInChannel);
                 return;
             }
             var msg = await AccountsString(db, dbuser, apiLink, admin);
