@@ -28,6 +28,12 @@ namespace EGG9000.Bot
             return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
         }
 
+        public string GetRandomSecondWord(string firstWord)
+        {
+            var FilteredWordList = WordList.FindAll(e => !e.StartsWith(firstWord.Last()));
+            return FirstCharToUpper(FilteredWordList[_rnd.Next(FilteredWordList.Count)]);
+        }
+
         public string GetRandomNumber()
         {
             int number;
@@ -48,7 +54,7 @@ namespace EGG9000.Bot
 
         public string GetCoopName(List<UserFarmDetails> prefarms, SocketGuild discordguild, Guild dbguild) {
             if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
-                return $"{dbguild.CoopNamePrefix}{GetRandomWord()}{GetRandomNumber()}";
+                return $"{dbguild.CoopNamePrefix}{GetRandomSecondWord(dbguild.CoopNamePrefix)}{GetRandomNumber()}";
 
             var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.DBUser?.CustomCoopName)).GroupBy(x => x.DBUser.Id).ToList();
             var customNamesExpired = customNames.Where(x => x.First().DBUser.ExpireCustomCoopName.HasValue && x.First().DBUser.ExpireCustomCoopName.Value < DateTimeOffset.Now);
@@ -65,12 +71,16 @@ namespace EGG9000.Bot
                 var name = customNames.First().First().DBUser.CustomCoopName;
 
                 if(name.Count(c => Char.IsUpper(c)) > 1 && name.Length > 5) {
-                    return customNames.First().First().DBUser.CustomCoopName + GetRandomNumber();
+                    return name + GetRandomNumber();
                 } else {
-                    return customNames.First().First().DBUser.CustomCoopName + GetRandomWord() + GetRandomNumber();
+                    return name + GetRandomSecondWord(name) + GetRandomNumber();
                 }
+            } else {
+                var wordOne = GetRandomWord();
+                var wordTwo = GetRandomSecondWord(wordOne);
+                return wordOne + wordTwo + GetRandomNumber();
             }
-            return GetRandomWord() + GetRandomWord() + GetRandomNumber();
+            
         }
 
         private List<String> WordList {
