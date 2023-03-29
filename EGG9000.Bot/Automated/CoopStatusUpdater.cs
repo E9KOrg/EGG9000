@@ -23,6 +23,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using EGG9000.Bot.Services;
 using static EGG9000.Common.Helpers.Prefarm;
+using static EGG9000.Bot.Automated.CoopStatusUpdater;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -501,6 +502,9 @@ namespace EGG9000.Bot.Automated {
                                 Xref = xref
                             };
                             userWithStatus.User = users.FirstOrDefault(x => x.Id == userWithStatus.Xref?.GetID());
+                            if(userWithStatus.User is not null) {
+                                userWithStatus.DiscordUser = guild.GetUser(userWithStatus.User.DiscordId);
+                            }
                             return userWithStatus;
                         }).ToList();
 
@@ -626,7 +630,7 @@ namespace EGG9000.Bot.Automated {
                                     }
                                 }
                             }
-                             
+
 
                             if(xref != null) {
                                 xref.Status = JsonConvert.SerializeObject(userCoopStatus);
@@ -650,6 +654,8 @@ namespace EGG9000.Bot.Automated {
 
                         //var hasDuplicate = status.Contributors.Count > coop.Contract.MaxUsers;
                         if(!coop.FinishedOrFailed) {
+                            await CheckHighestEBJoined(coop, usersWithStatus, coopDetails, coopChannel, _db, usersNotJoined);
+
                             if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
                                 coop.ProjectedToFinish = true;
                                 await coopChannel.SendMessageAsync($"Coop {coop.Name} is now projected to finish!");
@@ -707,7 +713,7 @@ namespace EGG9000.Bot.Automated {
                             if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
                                 coop.Finished = true;
                                 coop.Status = CoopStatusEnum.Completed;
-                                Debug.WriteLine("*** Not Showing as completed");
+                                Debug.WriteLine(" * **Not Showing as completed");
                                 try {
                                     await _db.SaveChangesAsync();
                                 } catch(Exception) {
@@ -918,7 +924,7 @@ namespace EGG9000.Bot.Automated {
                             lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n";
                         }
 
-                        lastMessage += "Co-op Commands:\n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
+                        lastMessage += "Co-op Commands:\n`/pingonhighesteb` **NEW!** Receive DM ping when the highest EB has joined \n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
                         lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
 
 
@@ -1333,7 +1339,7 @@ namespace EGG9000.Bot.Automated {
         public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             try {
                 var dmChannel = await discordUser.CreateDMChannelAsync();
-                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention} for {coopChannel.Mention} {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name}");
+                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name}");
             } catch(HttpException) {
                 await coopChannel.SendMessageAsync($"{Message} (User has blocked DMs from bot)");
             }
@@ -1366,6 +1372,19 @@ namespace EGG9000.Bot.Automated {
             }
             await _demeritChannel.SendMessageAsync(demeritText + $" {coopChannel.Mention}");
 
+        }
+
+        public async Task CheckHighestEBJoined(Coop coop, List<UserWithStatus> usersWithStatus, CoopDetails coopDetails, ITextChannel coopChannel, ApplicationDbContext _db, List<UserFarmDetails> usersNotJoined) {
+            if(usersWithStatus.Any(x => x.Xref?.PingOnHighestEB ?? false)) {
+                var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
+                if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup.EggIncId)) {
+                    foreach(var user in usersWithStatus.Where(x => x.Xref?.PingOnHighestEB ?? false)) {
+                        user.Xref.PingOnHighestEB = false;
+                        await _db.SaveChangesAsync();
+                        await SendDMWarning(user.DiscordUser, coopChannel, $"Highest EB ({highestEB2.DiscordUser?.GetCleanName()} at {highestEB2.Backup.EarningsBonus.ToEggString()}) has joined", coop);
+                    }
+                }
+            }
         }
     }
 }

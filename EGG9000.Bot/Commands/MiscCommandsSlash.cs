@@ -120,6 +120,26 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
         }
 
+        [SlashCommand(Description = "Get a ping from the bot via DM on Highest EB Joined")]
+        public static async Task PingOnHighestEB(FauxCommand command, ApplicationDbContext db) {
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(targetCoop == null) {
+                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
+                return;
+            }
+            var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
+
+            var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
+
+            xref.PingOnHighestEB = !xref.PingOnHighestEB;
+            await db.SaveChangesAsync();
+            if(xref.PingOnHighestEB) {
+                await command.RespondAsync($"Will receive DM ping when the highest EB has joined", ephemeral: true);
+            } else {
+                await command.RespondAsync($"Will no longer receive a ping when the highest EB has joined", ephemeral: true);
+            }
+        }
+
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);

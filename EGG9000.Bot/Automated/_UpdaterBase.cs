@@ -20,11 +20,11 @@ namespace EGG9000.Bot.Automated {
         public TimeSpan? DelayStart { get; set; }
     }
 
-    public interface IUpdaterBase : IHostedService {
-        public Task ForceStopAsync();
+    public interface IUpdaterService : IHostedService {
+        public bool Running();
     }
 
-    public abstract class _UpdaterBase<T> : IUpdaterBase where T : _UpdaterBase<T> {
+    public abstract class _UpdaterBase<T> : IUpdaterService where T : _UpdaterBase<T> {
         private Timer _timer;
         private Timer _watchDogTimer;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
@@ -103,6 +103,9 @@ namespace EGG9000.Bot.Automated {
 
         public abstract Task Run(object state, CancellationToken cancellationToken);
 
+        public bool Running() {
+            return _timer is not null;
+        }
         public Task StartAsync(CancellationToken cancellationToken) {
             _timer = new Timer(_run, null, _delayedStart, UpdateInterval);
             _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
@@ -116,24 +119,13 @@ namespace EGG9000.Bot.Automated {
             _cts.Dispose();
             Console.WriteLine("CTS Disposed");
             await _timer.DisposeAsync();
+            _timer = null;
             await _watchDogTimer.DisposeAsync();
             if(_semaphoreSlim.CurrentCount > 0) {
                 Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
             }
             await _semaphoreSlim.WaitAsync(cancellationToken);
             Console.WriteLine($"{this.GetType().Name} has successfully stopped.");
-        }
-
-        public async Task ForceStopAsync() {
-            _cts.Cancel();
-            _cts.Dispose();
-
-            _cts = new CancellationTokenSource();
-            await _timer.DisposeAsync();
-            await _watchDogTimer.DisposeAsync();
-            while(_semaphoreSlim.CurrentCount > 0)
-                _semaphoreSlim.Release();
-            await StartAsync(new CancellationToken());
         }
 
         private async Task _WatchDog(object state) {

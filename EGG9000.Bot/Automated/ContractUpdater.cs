@@ -89,6 +89,8 @@ namespace EGG9000.Bot.Automated {
 #endif
 
             foreach(var dbguild in dbguilds) {
+                if(cancellationToken.IsCancellationRequested)
+                    break;
                 //foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild == null)
@@ -127,6 +129,8 @@ namespace EGG9000.Bot.Automated {
                 //var dbguild = dbguilds.First(x => x.Id == guild.Id);
                 if(groupGuildContracts is not null) {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
+                        if(cancellationToken.IsCancellationRequested)
+                            break;
                         await UpdateContractChannel(_db, backups, guildContract, guild, dbguild, dbusers);
                     }
                 }

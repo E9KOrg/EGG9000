@@ -106,6 +106,9 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 foreach(var dbguild in dbguilds) {
+                    if(cancellationToken.IsCancellationRequested)
+                        break;
+
                     Console.WriteLine($"Working on leaderboard for {dbguild.Name}");
 
                     var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
@@ -124,6 +127,9 @@ namespace EGG9000.Bot.Automated {
                     Console.WriteLine($"Handling promotions for {guild.Name}");
 
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {
+                        if(cancellationToken.IsCancellationRequested)
+                            break;
+
                         //Console.WriteLine($"Handling {userAccounts.First().User.DiscordUsername}");
                         var dbUser = userAccounts.First().User;
                         var discordUser = guild.GetUser(dbUser.DiscordId);

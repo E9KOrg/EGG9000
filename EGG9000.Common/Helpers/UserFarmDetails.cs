@@ -2,6 +2,7 @@
 
 using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -246,7 +247,7 @@ namespace EGG9000.Common.Helpers {
 
         public string Name {
             get {
-                return DiscordUser?.DisplayName ?? CoopStatus?.UserName ?? DBUser?.DiscordUsername ?? "[error getting name]";
+                return DiscordUser?.GetCleanName() ?? CoopStatus?.UserName ?? DBUser?.DiscordUsername ?? "[error getting name]";
             }
         }
 

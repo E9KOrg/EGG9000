@@ -32,6 +32,8 @@ using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Diagnostics;
+using System.ServiceProcess;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -71,22 +73,42 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Get the bot's status", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
-        public static async Task Status(FauxCommand command, ApplicationDbContext db) {
+        public static async Task Status(FauxCommand command, ApplicationDbContext db, IServiceProvider serviceProvider) {
             var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
-            var message = new StringBuilder();
+            var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
+            var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
+            var table = new List<List<FixedWidthCell>> {
+                new List<FixedWidthCell> {
+                    new FixedWidthCell ("Name"),
+                    new FixedWidthCell ("Avg"),
+                    new FixedWidthCell ("Last🏁"),
+                    new FixedWidthCell("Attempts"),
+                    new FixedWidthCell("Status")
+                }
+            };
             foreach(var log in lastComplete.OrderBy(x => x.Type)) {
                 var incompletes = await db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
-                message.Append($"**{log.Type}** Last finished {(DateTimeOffset.Now - log.EndTime.Value).Humanize()}");
-                if(incompletes.Any(x => x.Skipped)) {
-                    message.Append($" attempted to run {incompletes.Count} more times");
-                }
-                if(incompletes.Any(x => !x.Skipped)) {
-                    message.Append($" latest run has been going for {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize()}");
-                }
-                message.Append("\n");
+                var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
+                table.Add(new List<FixedWidthCell> {
+                    new FixedWidthCell (log.Type),
+                    new FixedWidthCell (
+                        averages.Any(x => x.Type == log.Type) ?
+                        TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime() 
+                        : ""),
+                    new FixedWidthCell ((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
+                    new FixedWidthCell (incompletes.Count.ToString()),
+                    new FixedWidthCell (
+                        (service as IUpdaterService).Running() ? 
+                            (incompletes.Any(x => !x.Skipped) ?
+                            $"Current run {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
+                            : "Started"
+                            )
+                        : "Stopped"
+                        )
+                }) ;
             }
 
-            await command.RespondAsync(message.ToString());
+            await command.RespondAsync($"```\n{FixedWidthTable.GetTable(table)}```");
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
@@ -99,13 +121,60 @@ namespace EGG9000.Bot.Commands {
             }
             await command.RespondAsync($"Attempting to restart {serviceName}");
             try {
-                await (service as IUpdaterBase).ForceStopAsync();
+                await service.StopAsync(new System.Threading.CancellationToken());
+                await service.StartAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
             }
             await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
+        }
+
+        [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+
+            if(service == null) {
+                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
+                return;
+            }
+            if(!(service as IUpdaterService).Running()) {
+                await command.RespondAsync($"The service {serviceName} is already stopped.");
+                return;
+            }
+            await command.RespondAsync($"Attempting to stop {serviceName}");
+            try {
+                await service.StopAsync(new System.Threading.CancellationToken());
+            } catch(Exception e) {
+                var frame = (new StackTrace(e, true)).GetFrame(0);
+
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+            }
+            await command.ModifyOriginalResponseAsync($"Stopped {serviceName}");
+        }
+
+        [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+
+            if(service == null) {
+                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
+                return;
+            }
+            if((service as IUpdaterService).Running()) {
+                await command.RespondAsync($"The service {serviceName} is already running.");
+                return;
+            }
+            await command.RespondAsync($"Attempting to start {serviceName}");
+            try {
+                await service.StartAsync(new System.Threading.CancellationToken());
+            } catch(Exception e) {
+                var frame = (new StackTrace(e, true)).GetFrame(0);
+
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+            }
+            await command.ModifyOriginalResponseAsync($"Started {serviceName}");
         }
     }
 }
