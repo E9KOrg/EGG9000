@@ -16,7 +16,9 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly =true, AllowFarmHand = true)]
         public static async Task NewCoopCode(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var words = new Words();
-            var code = words.GetRandomWord() + words.GetRandomWord() + words.GetRandomNumber();
+            var wordOne = words.GetRandomWord();
+            var wordTwo = words.GetRandomSecondWord(wordOne);
+            var code = wordOne + wordTwo + words.GetRandomNumber();
 
             var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
 
