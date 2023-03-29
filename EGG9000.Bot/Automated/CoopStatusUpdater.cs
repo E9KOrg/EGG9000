@@ -865,7 +865,7 @@ namespace EGG9000.Bot.Automated {
                                     }
                                 } catch(Exception) { }
                             }
-                            lastMessage += $"Ready for the following to join the coop **{coop.Name}**: {string.Join(", ", userList)}\n";
+                            lastMessage += $"Coop **{coop.Name}** is ready for the following to join: {string.Join(", ", userList)}\n";
                         }
 
                         if(status.Public) {

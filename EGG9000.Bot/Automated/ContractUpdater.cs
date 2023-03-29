@@ -526,7 +526,7 @@ namespace EGG9000.Bot.Automated {
                             new FixedWidthCell("📈", CellAlignment.Center, true),
                             new FixedWidthCell(coop.CoopParticipants.All(x => string.IsNullOrEmpty(x.Farm?.CoopId)) ? "🟡" : "")
                         });
-            var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
+            var ebrgx = new Regex(@"\([\d+.?\d*\w,]+[\d+.?\d*\w?]?\)");
             table.AddRange(coop.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
                 var timeleft = "";
                 if(x.TimeLeft.TotalSeconds > 0) {
