@@ -395,9 +395,8 @@ namespace EGG9000.Bot.Commands {
             await CleanWelcomeChannel(guild, _client, user);
             if(addedUser) {
                 try {
-                    var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
                     var ebString = $" ({earningsBonus.ToEggString()})";
-                    var newName = ebrgx.Replace(((IGuildUser)user).GetName(), "").Trim().Truncate(32 - ebString.Length) + ebString;
+                    var newName = ((IGuildUser)user).GetCleanName().Trim().Truncate(32 - ebString.Length) + ebString;
 
                     await ((IGuildUser)user).ModifyAsync(x => x.Nickname = newName);
 
@@ -610,7 +609,7 @@ namespace EGG9000.Bot.Commands {
 
 
             var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
-            var newName = ebrgx.Replace(((IGuildUser)command.User).GetName(), "");
+            var newName = ((IGuildUser)command.User).GetCleanName();
 
             await ((SocketGuildUser)command.User).ModifyAsync(x => x.Nickname = newName);
 

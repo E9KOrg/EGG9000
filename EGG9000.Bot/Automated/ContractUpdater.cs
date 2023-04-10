@@ -234,6 +234,22 @@ namespace EGG9000.Bot.Automated {
                     //        u.Farm.CoopId += $" Joined {(DateTimeOffset.Now - u.DBUser.Registered.Value).Humanize().ShortenTime()} ago";
                     //    }
                     //}
+
+                    var alreadyTrackedOutsideCoop = guildContract.OutsideCoops is null ? new List<string>() : guildContract.OutsideCoops.Split(",").ToList();
+                    var notTracked = coopsBreakdown.AlreadyInCoop.Where(x => x.DBUser.Registered < guildContract.Created && !alreadyTrackedOutsideCoop.Any(y => y == x.DBUser.Id.ToString()));
+                    if(notTracked.Count() > 0) {
+                        var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
+                        if(outsideCoopLog != null) {
+                            foreach(var userNotTracked in notTracked) {
+                                await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {userNotTracked.DiscordUser.Mention} in <#{channel.Id}>, they joined `{userNotTracked.Farm?.CoopId ?? userNotTracked.ArchivedFarm?.CoopName}` (No co-op assigned)");
+                                alreadyTrackedOutsideCoop.Add(userNotTracked.DBUser.Id.ToString());
+                            }
+                            guildContract.OutsideCoops = String.Join(",", alreadyTrackedOutsideCoop);
+                            await _db.SaveChangesAsync();
+                        }
+                    }
+
+
                     var alreadyInCoop = new CoopDetails(coopsBreakdown.AlreadyInCoop.Where(x => x.DBUser.Registered < guildContract.Created).OrderBy(x => x.Completed).ToList(), guildContract);
                     newMsgs.AddRange(ShowCoopStatus(alreadyInCoop, $"Already in coop", targetAmount, 0, true));
                 }
@@ -526,7 +542,6 @@ namespace EGG9000.Bot.Automated {
                             new FixedWidthCell("📈", CellAlignment.Center, true),
                             new FixedWidthCell(coop.CoopParticipants.All(x => string.IsNullOrEmpty(x.Farm?.CoopId)) ? "🟡" : "")
                         });
-            var ebrgx = new Regex(@"\([\d+.?\d*\w,]+[\d+.?\d*\w?]?\)");
             table.AddRange(coop.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
                 var timeleft = "";
                 if(x.TimeLeft.TotalSeconds > 0) {
@@ -539,7 +554,7 @@ namespace EGG9000.Bot.Automated {
                     emoji = "🆕";
                 }
                 return new List<FixedWidthCell> {
-                            new FixedWidthCell(Truncate($"{emoji}{ebrgx.Replace( x.Name, "")}", 12)),
+                            new FixedWidthCell(Truncate($"{emoji}{x.Name}", 12)),
                             //new FixedWidthCell(x.EggsPaidFor.ToEggString()),
                             new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
                             new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
@@ -613,11 +628,10 @@ namespace EGG9000.Bot.Automated {
             var participants = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).ToList();
             participants.AddRange(coopsBreakdown.ExpiredFarms);
 
-            var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
 
             table.AddRange(participants.Where(x => x.NumChickens > 0).OrderBy(x => x.Name).Select(x => {
                 return new List<FixedWidthCell> {
-                            new FixedWidthCell(Truncate(ebrgx.Replace(x.Name, ""), 12)),
+                            new FixedWidthCell(Truncate(x.Name, 12)),
                             new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
                             new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
                             new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),

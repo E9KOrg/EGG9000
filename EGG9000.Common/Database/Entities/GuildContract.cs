@@ -22,6 +22,8 @@ namespace EGG9000.Common.Database.Entities {
         public ContractStatus Status { get; set; }
         public bool Elite { get; set; }
         public bool HasScores { get; set; }
+
+        public string OutsideCoops { get; set; }
         //public int League { get; set; }
 
         //[NotMapped]

@@ -139,7 +139,7 @@
 			var coopCategories = GetCategoryJoins(".coopCategory");
 			var finishedCategories = GetCategoryJoins(".finishedCategory");
 
-			$.post("/admin/savechanneldetails", { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
+			$.post("/admin/savechanneldetails/@(Model.Id)" , { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
 				document.location = document.location;
 			});
 		}

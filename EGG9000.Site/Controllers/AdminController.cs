@@ -442,7 +442,12 @@ namespace EGG9000.Site.Controllers {
             //var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
 
 
-            var contractCoops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == contractid && x.GuildId == guildId).ToListAsync();
+            var contractCoops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User)
+                .Where(x => 
+                    x.ContractID == contractid && 
+                    x.GuildId == guildId && 
+                    x.Created > DateTimeOffset.Now.AddMonths(-6)
+                ).ToListAsync();
             Console.WriteLine($"Processing {contractid}");
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
             var scores = ContractScoring.GetContractScores(contractCoops, contract);
@@ -1015,16 +1020,19 @@ namespace EGG9000.Site.Controllers {
             return View(eggsFound);
         }
 
-        public async Task<IActionResult> ConfigureServer() {
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == GetGuildID());
+        public async Task<IActionResult> ConfigureServer(ulong? id) {
+            id = id ?? GetGuildID();
+            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
 
             return View(dbGuild);
         }
 
-        public async Task<IActionResult> SaveChannelDetails([FromForm] string json) {
-            Console.WriteLine(json);
+        public async Task<IActionResult> SaveChannelDetails(ulong id, [FromForm] string json) {
+            if(!VerifyId(id)) {
+                return NotFound();
+            }
             var model = JsonConvert.DeserializeObject<SaveChannelDetailsObject>(json);
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == GetGuildID());
+            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
             dbGuild.ChannelDetails = model.channelDetails;
             dbGuild.CoopCategories = model.coopCategories;
             dbGuild.FinishedCategories = model.finishedCategories;
@@ -1037,29 +1045,39 @@ namespace EGG9000.Site.Controllers {
             return ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
         }
 
+        public bool VerifyId(ulong guildid) {
+            if(User.IsInRole("Admin"))
+                return true;
+            return ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value) == guildid;
+        }
+
         public class SaveChannelDetailsObject {
             public List<ChannelDetail> channelDetails { get; set; }
             public string coopCategories { get; set; }
             public string finishedCategories { get; set; }
         }
 
-        public async Task<IActionResult> SaveCoopCategories(List<ulong> coopCategories) {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
-            dbGuild.CoopCategories = string.Join(",", coopCategories);
-            await _db.SaveChangesAsync();
+        //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
+        //    if(!VerifyId(id)) {
+        //        return NotFound();
+        //    }
+        //    var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+        //    dbGuild.CoopCategories = string.Join(",", coopCategories);
+        //    await _db.SaveChangesAsync();
 
-            return Ok();
-        }
+        //    return Ok();
+        //}
 
-        public async Task<IActionResult> FinishedCategories(List<ulong> finishedCategories) {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
-            dbGuild.FinishedCategories = string.Join(",", finishedCategories);
-            await _db.SaveChangesAsync();
+        //public async Task<IActionResult> FinishedCategories(ulong id, List<ulong> finishedCategories) {
+        //    if(!VerifyId(id)) {
+        //        return NotFound();
+        //    }
+        //    var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+        //    dbGuild.FinishedCategories = string.Join(",", finishedCategories);
+        //    await _db.SaveChangesAsync();
 
-            return Ok();
-        }
+        //    return Ok();
+        //}
 
         public class EasterUser {
             public RestGuildUser User { get; set; }
