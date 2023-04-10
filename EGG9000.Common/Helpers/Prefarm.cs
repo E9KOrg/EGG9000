@@ -67,7 +67,7 @@ namespace EGG9000.Common.Helpers {
             public bool CancelledFarm { get; set; }
 
             public DBUser User { get; set; }
-            public bool Elite { get; set; }
+            public UInt32 League { get; set; }
             public bool Completed { get; set; } = false;
 
             public CustomBackup Backup { get; set; }
@@ -131,18 +131,17 @@ namespace EGG9000.Common.Helpers {
             public bool IsFire;
             public bool IsDoubleFire;
             public double TargetAmount { get; set; }
-            public CoopDetails(Coop coop, Contract contract, int league, IList<UserWithBackup> backups, DiscordSocketClient discord, Ei.ContractCoopStatusResponse status = null) {
+            public CoopDetails(Coop coop, Contract contract, UInt32 league, IList<UserWithBackup> backups, DiscordSocketClient discord, Ei.ContractCoopStatusResponse status = null) {
                 var coopParticipants = GetCoopParticipants(coop, contract, league, status ?? coop.LastStatusUpdate, backups, discord);
                 Coop = coop;
-                SetCoopDetails(coopParticipants, contract, league == 0);
+                SetCoopDetails(coopParticipants, contract, league);
             }
             public CoopDetails(List<UserFarmDetails> coopParticipants, GuildContract guildContract) {
-                SetCoopDetails(coopParticipants, guildContract.Contract, guildContract.Elite);
+                SetCoopDetails(coopParticipants, guildContract.Contract, guildContract.League);
             }
-            public void SetCoopDetails(List<UserFarmDetails> coopParticipants, Contract contract, bool elite) {
+            public void SetCoopDetails(List<UserFarmDetails> coopParticipants, Contract contract, UInt32 league) {
                 CoopParticipants = coopParticipants.Where(x => x.DBUser is not null || x.CoopStatus is not null).ToList();
-                var league = elite ? 0 : 1;
-                TargetAmount = contract.Details.GoalSets[league].Goals.Last().TargetAmount;
+                TargetAmount = contract.Details.GoalSets[(int)league].Goals.Last().TargetAmount;
                 if(TargetAmount > 0) {
                     TimeRemaining = Prefarm.GetTimeRemainingValue(TargetAmount, CoopParticipants);
                     Projected = CoopParticipants.Sum(x => x.Projected);
@@ -174,7 +173,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = x
             })).ToList();
 
-            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
+            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == guildContract.League).ToListAsync();
 
 
             var missingXrefUsers = coops.SelectMany(c => c.UserCoopsXrefs.Where(x => !backups.Any(b => b.User.Id == x.UserId))).Select(x => x.UserId);
@@ -190,24 +189,24 @@ namespace EGG9000.Common.Helpers {
             coops = coops.Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6)).ToList();
 
             var coopsBreakdown = new CoopsBreakdown {
-                ExistingCoops = coops.Select(c => new CoopDetails(c, guildContract.Contract, guildContract.Elite ? 0 : 1, usersWithBackups, discord, c.LastStatusUpdate)).ToList()
+                ExistingCoops = coops.Select(c => new CoopDetails(c, guildContract.Contract, guildContract.League, usersWithBackups, discord, c.LastStatusUpdate)).ToList()
             };
 
             var notAssignedCoop = usersWithBackups
                 .Where(x =>
                     !coopsBreakdown.ExistingCoops.Any(c => c.CoopParticipants.Any(p => (p.Xref?.EggIncId) == x.Backup.EggIncId))
                 )
-                .Select(x => new UserFarmDetails(guildContract.Contract, x, discord, guildContract.Elite ? 0 : 1));
+                .Select(x => new UserFarmDetails(guildContract.Contract, x, discord, guildContract.League));
 
             notAssignedCoop = notAssignedCoop.Where(x => x.Backup != null && !x.DBUser.TempDisabled && x.DBUser.GuildId == guildContract.GuildID &&
                     (
-                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || (guildContract.Elite ? y.League == 0 : y.League == 1))) ||
-                        (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (f.Completed || (guildContract.Elite ? f.League == 0 : f.League == 1))) ?? false)
+                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || guildContract.League == y.League )) ||
+                        (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (f.Completed || guildContract.League == f.League)) ?? false)
                     )
                 )
                 .OrderByDescending(x => x.Projected);
 
-            notAssignedCoop = notAssignedCoop.Where(x => (x.Elite == guildContract.Elite || x.Completed) && (x.Farm is not null || x.ArchivedFarm is not null));
+            notAssignedCoop = notAssignedCoop.Where(x => (x.League == guildContract.League || x.Completed) && (x.Farm is not null || x.ArchivedFarm is not null));
 
             var completed = notAssignedCoop.Where(x => x.Completed).OrderBy(x => x.Name).ToList();
             var currentUsers = notAssignedCoop.Where(x => !x.Completed && !x.CancelledFarm).ToList();
@@ -257,8 +256,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var league = guildContract.Elite ? 0 : 1;
-            var targetAmount = guildContract.Contract.Details.GoalSets[league].Goals.Last().TargetAmount;
+            var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
 
 
 
@@ -393,7 +391,7 @@ namespace EGG9000.Common.Helpers {
             return prefarms;
         }
 
-        public static List<UserFarmDetails> GetCoopParticipants(Coop coop, Contract contract, int league, Ei.ContractCoopStatusResponse status, IEnumerable<UserWithBackup> backups, DiscordSocketClient discord) {
+        public static List<UserFarmDetails> GetCoopParticipants(Coop coop, Contract contract, UInt32 league, Ei.ContractCoopStatusResponse status, IEnumerable<UserWithBackup> backups, DiscordSocketClient discord) {
             var coopParticipants = new List<UserFarmDetails>();
 
 
@@ -499,7 +497,7 @@ namespace EGG9000.Common.Helpers {
                 DatabaseId = user.User?.Id,
                 DiscordId = user.User?.DiscordId ?? 0,
                 Name = user.User?.DiscordUsername ?? "*" + user.Backup.UserName,
-                Elite = farm.League == 0,
+                League = farm.League ?? 0,
                 User = user.User,
                 Coop = farm.CoopId,
                 CoopName = farm.CoopId,

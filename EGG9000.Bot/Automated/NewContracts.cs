@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Automated {
 
                     foreach(var dbguild in dbguilds) {
                         var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                        var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.Elite);
+                        var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 0);
 
                         if(guildContract == null) {
                             var contractCategory = await _client.GetCategoryAsync(GuildChannelType.EliteCategory, guild);
@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Automated {
                                 Status = ContractStatus.Prefarming,
                                 NumberOfCoops = 1,
                                 DiscordChannelId = eliteChannel.Id,
-                                Elite = true,
+                                League = 0,
                                 Created = DateTimeOffset.Now
                             };
 
@@ -127,7 +127,7 @@ namespace EGG9000.Bot.Automated {
 
                         var standardContractCategory = await _client.GetCategoryAsync(GuildChannelType.StandardCategory, guild);
                         if(standardContractCategory != null) {
-                            var standardGuildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && !x.Elite);
+                            var standardGuildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 1);
                             if(standardGuildContract == null) {
                                 var standardChannel = await guild.CreateTextChannelAsync((contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier, x => { x.CategoryId = standardContractCategory.Id; x.Topic = ""; });
 
@@ -138,7 +138,7 @@ namespace EGG9000.Bot.Automated {
                                     Status = ContractStatus.Prefarming,
                                     NumberOfCoops = 1,
                                     DiscordChannelId = standardChannel.Id,
-                                    Elite = false,
+                                    League = 0,
                                     Created = DateTimeOffset.Now
                                 };
 

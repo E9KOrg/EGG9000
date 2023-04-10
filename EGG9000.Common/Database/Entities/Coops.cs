@@ -24,7 +24,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public bool ProjectedToFinish { get; set; }
         public bool Finished { get; set; }
-        public UInt32? League { get; set; }
+        public UInt32 League { get; set; }
 
         public ulong DiscordChannelId { get; set; }
         public ulong GuildId { get; set; }

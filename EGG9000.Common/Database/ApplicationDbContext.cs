@@ -86,7 +86,7 @@ namespace EGG9000.Common.Database {
             base.OnModelCreating(builder);
             builder.Entity<UserCoopXref>().HasKey(x => new { x.UserId, x.CoopId, x.EggIncId });
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
-            builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.Elite });
+            builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League});
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);

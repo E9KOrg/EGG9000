@@ -37,7 +37,7 @@ namespace EGG9000.Common.Helpers {
             coop.Name = _words.GetCoopName(prefarms, guild, dbguild);
             coop.MaxUsers = guildContract.Contract.MaxUsers;
             coop.Status = CoopStatusEnum.WaitingOnAssigned;
-            coop.League = (UInt32)(guildContract.Elite ? 0 : 1);
+            coop.League = guildContract.League;
             coop.CoopEnds = coopEnds;
 
 
@@ -66,7 +66,7 @@ namespace EGG9000.Common.Helpers {
 
             var id = prefarms.FirstOrDefault(x => x.Backup is not null)?.Backup.EggIncId;
 
-            await CreateCoops.CreateCoopViaApi(guildContract.ContractID, (uint)(guildContract.Elite ? 0 : 1), coop, secondsRemaining, id);
+            await CreateCoops.CreateCoopViaApi(guildContract.ContractID, guildContract.League, coop, secondsRemaining, id);
 
 
             return coop;

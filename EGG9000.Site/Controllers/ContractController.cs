@@ -52,11 +52,11 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(status);
         }
 
-        public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
+        public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] UInt32 League) {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
                 await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
 
-                var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
+                var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.League == League);
 
 
                 var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord);
@@ -99,8 +99,8 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] bool Elite) {
-            var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.Elite == Elite);
+        public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] UInt32 League) {
+            var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.League == League);
             var guild = _discord.GetGuild(guildContract.GuildID);
 
 
@@ -113,7 +113,7 @@ namespace EGG9000.Site.Controllers {
             var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
             var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
             var userswithbackups = dbusers.SelectMany(x => x.Backups.Select(y => new UserWithBackup { User = x, Backup = y }));
-            var userdetails = Users.Select(x => new UserFarmDetails(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord, Elite ? 0 : 1)).ToList();
+            var userdetails = Users.Select(x => new UserFarmDetails(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord, League)).ToList();
 
             var coop = await CreateCoops.Start(userdetails, guildContract, guild, new Words(), _db);
             guildContract.NumberOfCoops--;
@@ -153,7 +153,7 @@ namespace EGG9000.Site.Controllers {
             _db.Add(xref);
             await _db.SaveChangesAsync();
 
-            var guildContract = await _db.GuildContracts.AsQueryable().FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.GuildID == guild.Id && x.Elite == (targetCoop.League == 0));
+            var guildContract = await _db.GuildContracts.AsQueryable().FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.GuildID == guild.Id && x.League == targetCoop.League);
 
             if(guildContract != null) {
                 var guildContractChannel = (SocketTextChannel)_discord.GetChannel(guildContract.DiscordChannelId);

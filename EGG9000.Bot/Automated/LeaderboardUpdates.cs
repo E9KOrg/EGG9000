@@ -168,7 +168,7 @@ namespace EGG9000.Bot.Automated {
 
                         var higherEB = userAccounts.Where(x => x.Backup?.Farms.Count != 0).OrderByDescending(x => x.Backup.EarningsBonus).First();
                         var role = await DiscordHelpers.SetRole(guild, discordUser, higherEB.Backup.EarningsBonus);
-                        var checkElite = await DiscordHelpers.CheckElite(guild, discordUser, userAccounts.Select(y => y.Backup.EarningsBonus).ToList());
+                        var checkElite = await DiscordHelpers.CheckLeague(guild, discordUser, userAccounts.Select(y => y.Backup.EarningsBonus).ToList());
 
                         await DiscordHelpers.CheckSiloResearch(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
                         await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);

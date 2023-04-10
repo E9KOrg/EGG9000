@@ -688,7 +688,7 @@ namespace EGG9000.Site.Controllers {
             var projected = model.UserInfos.Sum(x => x.Projected);
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
 
-            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (int)(model.DbCoop?.League ?? model.CoopStatus.League), model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.Backups.Select(b => new UserWithBackup { Backup = b, User = y.User})).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (model.DbCoop?.League ?? model.CoopStatus.League), model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.Backups.Select(b => new UserWithBackup { Backup = b, User = y.User})).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
 
             return View(model);
         }

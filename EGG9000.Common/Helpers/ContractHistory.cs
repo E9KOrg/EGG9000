@@ -23,7 +23,7 @@ namespace EGG9000.Common.Helpers {
                 foreach(var xref in coop.UserCoopsXrefs.Where(x => x.JoinedCoop)) {
                     //var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
                     //if(contribution != null) {
-                    var maxAmount = contract.Details.GoalSets[(int)(coop.League ?? 0)].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
+                    var maxAmount = contract.Details.GoalSets[(int)coop.League].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
                     //var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
                     var archiveFarm = xref.User.Backups.FirstOrDefault(x => x.EggIncId == xref.EggIncId)?.ArchivedFarms.FirstOrDefault(x => x.CoopName == xref.Coop.Name.ToLower());
 

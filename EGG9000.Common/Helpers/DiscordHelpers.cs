@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Helpers {
             public bool Promoted { get; set; }
             public SocketRole Role { get; set; }
         }
-        public static async Task<CheckEliteResposne> CheckElite(SocketGuild Guild, IGuildUser DiscordUser, List<Double> EarningsBonuses) {
+        public static async Task<CheckEliteResposne> CheckLeague(SocketGuild Guild, IGuildUser DiscordUser, List<Double> EarningsBonuses) {
             var response = new CheckEliteResposne();
             if(Guild.Roles.Any(x => x.Name.ToLower() == "elite contract")) {
                 var elite = EarningsBonuses.Any(x => x >= 10000000000000);
@@ -314,7 +314,7 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        public static async Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
+        public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             CancellationTokenSource tokenSource2 = new CancellationTokenSource();
             CancellationToken token2 = tokenSource2.Token;
             if(options is null)
@@ -335,6 +335,8 @@ namespace EGG9000.Bot.Helpers {
                     Console.WriteLine($"Modify Task CANCELLED!");
                 }
             }
+
+            return Task.CompletedTask;
         }
     }
 }
