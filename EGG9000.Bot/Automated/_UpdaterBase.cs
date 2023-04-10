@@ -25,6 +25,7 @@ namespace EGG9000.Bot.Automated {
     }
 
     public abstract class _UpdaterBase<T> : IUpdaterService where T : _UpdaterBase<T> {
+        private bool initialStart;
         private Timer _timer;
         private Timer _watchDogTimer;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
@@ -55,7 +56,7 @@ namespace EGG9000.Bot.Automated {
             _bugsnag = provider.GetService<Bugsnag.IClient>();
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 
-
+            initialStart = true;
         }
 
         public static _UpdaterBase<T> Instance;
@@ -107,8 +108,9 @@ namespace EGG9000.Bot.Automated {
             return _timer is not null;
         }
         public Task StartAsync(CancellationToken cancellationToken) {
-            _timer = new Timer(_run, null, _delayedStart, UpdateInterval);
+            _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
             _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
+            initialStart = false;
             return Task.CompletedTask;
         }
 
@@ -133,11 +135,12 @@ namespace EGG9000.Bot.Automated {
                 Console.WriteLine($"Watchdog run for {GetType().Name}");
                 if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
                     var success = await AttemptCancel();
+                    var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
                     if(success) {
+                        await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Restart Succeeded.", options: new RequestOptions { CancelToken = _cts.Token });
                         Console.WriteLine($"Successfully canceled task for {GetType().Name}");
                         return;
                     }
-                    var dmChannel = await(await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
                     await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.", options: new RequestOptions { CancelToken = _cts.Token });
                     _semaphoreSlim.Release();
                     Restarted = true;

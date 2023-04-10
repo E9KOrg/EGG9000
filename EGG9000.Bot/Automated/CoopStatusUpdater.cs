@@ -24,6 +24,7 @@ using System.Runtime.CompilerServices;
 using EGG9000.Bot.Services;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Bot.Automated.CoopStatusUpdater;
+using System.Threading.Channels;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -144,7 +145,6 @@ namespace EGG9000.Bot.Automated {
                 new FixedWidthCell(""),
             }
             };
-            var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
             var everyoneJoined = coopDetails.CoopParticipants.All(x => x.CoopStatus is not null);
             var targetAmount = contract.GoalsDetail.Last().TargetAmount;
 
@@ -859,6 +859,10 @@ namespace EGG9000.Bot.Automated {
                                                 if(dbguild.DemeritLogChannel.HasValue)
                                                     await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
                                                 xref.OutsideCoop = true;
+                                                var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
+                                                if(outsideCoopLog != null) {
+                                                    await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername}, they are assigned to co-op <#{coopChannel.Id}>");
+                                                }
                                                 await _db.SaveChangesAsync();
                                             }
                                         }

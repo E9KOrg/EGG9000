@@ -98,5 +98,7 @@ namespace EGG9000.Common.Database.Entities {
         LimitedTimeShells,
         [Description("Optional: Limited time shells notification role")]
         LimitedTimeShellsRole,
+        [Description("Optional")]
+        OutsideCoopLog,
     }
 }

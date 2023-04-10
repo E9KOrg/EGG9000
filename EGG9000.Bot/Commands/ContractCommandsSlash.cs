@@ -65,7 +65,7 @@ namespace EGG9000.Bot.Commands {
                 ClientVersion = 30,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
-                Public = true,
+                Public = false,
                 RequestingUserId = ContractsAPI.UserId
             }, ContractsAPI.UserId);
 
@@ -929,24 +929,33 @@ namespace EGG9000.Bot.Commands {
 
             var participant = coopStatus.Participants.FirstOrDefault(x => user.Backups.Any(y => y.UserName == x.UserName));
             if(participant is null) {
+                participant = coopStatus.Participants.FirstOrDefault(x => user.Backups.Any(y => y.EggIncId == x.UserId));
+            }
+            string userid;
+
+            if(participant is null && user.Backups.Count() > 1) {
                 await command.ModifyOriginalResponseAsync(m => m.Content = $"Unable to find an assigned user in co-op {wrongcoopcode}. {(coopStatus.Participants.Count > 0 ? $"Users found: \n{string.Join("\n", coopStatus.Participants.Select(x => x.UserName))}" : "")}");
                 return;
+            } else if(participant is null) {
+                userid = user.Backups.First().EggIncId;
+            } else {
+                userid = participant.UserId;
             }
 
             var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
                 ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = contractID,
                 CoopIdentifier = wrongcoopcode,
-                PlayerIdentifier = participant.UserId,
+                PlayerIdentifier = userid,
                 Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
                 RequestingUserId = coopStatus.CreatorId
-            }, participant.UserId);
+            }, coopStatus.CreatorId);
 
             if(!r) {
                 await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to remove user from co-op {wrongcoopcode}");
                 return;
             }
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"<@{user.DiscordId}> should now be able to re-join co-op. Don't use this as an excuse to be lazy next time, double check your co-op codes and make sure it says **Join**");
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"<@{user.DiscordId}> should now be able to re-join co-op. Double check your co-op codes and make sure it says **Join** in the future.");
 
         }
     }
