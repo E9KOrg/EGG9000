@@ -154,16 +154,12 @@ namespace EGG9000.Bot.Automated {
             try {
                 List<Coop> coops;
                 try {
-                    coops = await sqlExcpetionPolicy.ExecuteAsync(async () => await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guild.Id && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync());
+                    coops = await sqlExcpetionPolicy.ExecuteAsync(async () => await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guild.Id && x.League == guildContract.League).ToListAsync());
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
                     Console.WriteLine($"*** Error getting coops in contract updated: {e.Message}");
                     return;
                 }
-                //var coops = allCoops.Where(x => x.ContractID == guildContract.ContractID && x.League == (guildContract.Elite ? 0 : 1)).ToList();
-                //await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == (guildContract.Elite ? 0 : 1)).ToListAsync();
-
-
 
 
 
@@ -181,8 +177,8 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
-                var league = guildContract.Elite ? 0 : 1;
-                var targetAmount = guildContract.Contract.Details.GoalSets[league].Goals.Last().TargetAmount;
+                var league = guildContract.League;
+                var targetAmount = guildContract.Contract.Details.GoalSets[(int)league].Goals.Last().TargetAmount;
 
                 var newMsgs = new List<string>();
 
@@ -195,8 +191,8 @@ namespace EGG9000.Bot.Automated {
                 ShowCurrentCoops(guildContract, coopsBreakdown.ExistingCoops, channel, newMsgs, targetAmount, false);
 
 
-                var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>((guildContract.Elite ? dbguild.InactiveElites : dbguild.InactiveStandards) ?? "[]");
-                var activeUsers = JsonConvert.DeserializeObject<List<GuildUser>>((guildContract.Elite ? dbguild.ActiveElites : dbguild.ActiveStandards) ?? "[]");
+                var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>((guildContract.League == 0 ? dbguild.InactiveElites : dbguild.InactiveStandards) ?? "[]");
+                var activeUsers = JsonConvert.DeserializeObject<List<GuildUser>>((guildContract.League == 0 ? dbguild.ActiveElites : dbguild.ActiveStandards) ?? "[]");
 
                 await UpdateContractChannelName(guildContract, coopsBreakdown, channel);
 
@@ -298,7 +294,7 @@ namespace EGG9000.Bot.Automated {
                 }).ToList();
 
                 if(activesNotParticipanting.Count > 0) {
-                    var goals = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Select(x => x.RewardType);
+                    var goals = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Select(x => x.RewardType);
                     //var PEAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.EggsOfProphecy));
                     //var ArtifactAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.Artifact || y.RewardType == RewardType.ArtifactCase));
                     //var PiggyAward = guildContract.Contract.Details.GoalSets.Any(x => x.Goals.Any(y => y.RewardType == RewardType.PiggyMultiplier));
@@ -340,7 +336,7 @@ namespace EGG9000.Bot.Automated {
                 var description = "";
                 description += $"**Size** {guildContract.Contract.MaxUsers}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
                 description += $"**Length** {guildContract.Contract.ContractTime.Humanize(precision: 2).ShortenTime()}, **{(validFor > TimeSpan.Zero ? "Expires" : "Expired")}** {validFor.Humanize(precision: 2).ShortenTime()}";
-                description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&Elite={guildContract.Elite.ToString()})";
+                description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&League={guildContract.League})";
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
                     .WithTimestamp(DateTimeOffset.Now)
@@ -351,8 +347,8 @@ namespace EGG9000.Bot.Automated {
 
 
                 for(int i = 0; i < 3; i++) {
-                    if(guildContract.Contract.Details.GoalSets[league].Goals.Count > i) {
-                        var goal = guildContract.Contract.Details.GoalSets[league].Goals[i];
+                    if(guildContract.Contract.Details.GoalSets[(int)league].Goals.Count > i) {
+                        var goal = guildContract.Contract.Details.GoalSets[(int)league].Goals[i];
                         var title = $"Goal {i + 1} - {goal.TargetAmount.ToEggString()}";
                         embedBuilder.AddField(title, $"{EggIncEggs.GetReward(goal)}", true);
                     } else {
@@ -700,7 +696,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
-            channelName = emoji + channelName + "-" + (guildContract.Elite ? "elite" : "standard");
+            channelName = emoji + channelName + "-" + (guildContract.League == 0 ? "elite" : "standard");
 
             if(channelName != channel.Name) {
                 try {

@@ -119,7 +119,7 @@ namespace EGG9000.Bot.Commands {
                     Name = coopname,
                     MaxUsers = guildContract.Contract.MaxUsers,
                     Status = CoopStatusEnum.WaitingOnAssigned,
-                    League = (UInt32)(guildContract.Elite ? 0 : 1),
+                    League = (UInt32)guildContract.League,
                     CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
                 };
                 db.Coops.Add(coop);
@@ -214,7 +214,7 @@ namespace EGG9000.Bot.Commands {
                 dbuserid = dbuser.Id;
                 if(dbuser.EggIncIds.Count > 1) {
                     var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
-                    var prefarms = dbuser.Backups.Select(b => Prefarm.BackupToPreFarm(new LeaderboardUser { Backup = b, User = dbuser }, contract)).Where(x => x.Elite ? targetCoop.League == 0 : targetCoop.League == 1).ToList();
+                    var prefarms = dbuser.Backups.Select(b => Prefarm.BackupToPreFarm(new LeaderboardUser { Backup = b, User = dbuser }, contract)).Where(x => x.League == targetCoop.League).ToList();
 
                     prefarms = prefarms.Where(x => !xrefs.Any(y => y.EggIncId == x.EggIncId)).ToList();
                     if(prefarms.Count == 1) {
@@ -361,7 +361,7 @@ namespace EGG9000.Bot.Commands {
                 var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
                 foreach(var coopDetail in coopsBreakdown.PotentialCoops) {
-                    var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+                    var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
                     var cooppercent = (decimal)(coopDetail.CoopParticipants.Sum(x => x.Projected) / targetAmount) * 100m;
                     if(cooppercent < percent) {
                         continue;
@@ -436,7 +436,7 @@ namespace EGG9000.Bot.Commands {
 
                 var prefarms = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Where(x => x.ProjectedPercent < 10).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
-                var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+                var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
 
 
                 if(user == null) {
@@ -601,7 +601,7 @@ namespace EGG9000.Bot.Commands {
                     await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find contract details, is this command posted in a contract spots thread?");
                     return;
                 }
-                var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+                var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
 
                 var contractBreakdown = await GetBreakdown(db, guildContract, _client);
 
@@ -690,7 +690,7 @@ namespace EGG9000.Bot.Commands {
                     await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find contract details, is this command posted in a contract channel?");
                     return;
                 }
-                var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+                var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
 
                 var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
@@ -795,7 +795,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             await command.RespondAsync("Pinging users and removing existing pings that aren't needed", ephemeral: true);
-            var targetAmount = guildContract.Contract.Details.GoalSets[guildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+            var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
 
             var coopsBreakdown = await GetBreakdown(db, guildContract, _client);
 

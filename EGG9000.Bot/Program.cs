@@ -44,33 +44,31 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         services.AddHostedService<CommandService>();
-        //services.AddHostedService<TextCommandService>();
-        //services.AddHostedService<DiscordUserService>();
-        //services.AddHostedService<StaffCoopsMessage>();
-        //services.AddHostedService<EventUpdater>();
-        //services.AddHostedService<CoopReorder>();
-        //services.AddHostedService<CoopDeleteChannel>();
+        services.AddHostedService<DiscordUserService>();
+        services.AddHostedService<StaffCoopsMessage>();
+        services.AddHostedService<EventUpdater>();
+        services.AddHostedService<CoopReorder>();
+        services.AddHostedService<CoopDeleteChannel>();
 
-        services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         services.AddSingleton<CoopStatusUpdater>();
         services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         services.AddSingleton<ContractUpdater>();
         services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
-        //services.AddHostedService<NewContracts>();
-        //services.AddHostedService<CreateCoopChannels>();
-        //services.AddHostedService<ShipReturnDM>();
-        //services.AddHostedService<UserSnapShots>();
-        //services.AddHostedService<LeaderboardUpdater>();
-        //services.AddHostedService<ManageOverflow>();
-        //services.AddHostedService<RemoveTempRoles>();
+        services.AddHostedService<NewContracts>();
+        services.AddHostedService<CreateCoopChannels>();
+        services.AddHostedService<ShipReturnDM>();
+        services.AddHostedService<UserSnapShots>();
+        services.AddHostedService<LeaderboardUpdater>();
+        services.AddHostedService<ManageOverflow>();
+        services.AddHostedService<RemoveTempRoles>();
 
-        //services.AddHostedService<TestService>();
-        //services.AddHostedService<TestUpdater>();
+        services.AddHostedService<TestService>();
+        services.AddHostedService<TestUpdater>();
 
-        //services.AddHostedService<ContextCommandService>();
         Console.WriteLine("RUNNING IN DEBUG");
 
 
@@ -146,7 +144,7 @@ public class TestService : IHostedService {
         //}, status.CreatorId);
 
 
-        //var guildContract = await db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == "arteggmis-2022" && x.GuildID == 656455567858073601 && x.Elite);
+        //var guildContract = await db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == "arteggmis-2022" && x.GuildID == 656455567858073601 && x.League == 0);
         //var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
         //await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)_client.GetChannel(1011288737600258049));

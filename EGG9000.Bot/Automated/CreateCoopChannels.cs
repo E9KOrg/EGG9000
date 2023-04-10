@@ -41,8 +41,6 @@ namespace EGG9000.Bot.Automated {
                     foreach(var coop in coopGroups) {
                         if(cancellationToken.IsCancellationRequested) return;
                         
-                        //await CreateCoops.CreateCoopViaApi(guildContract.ContractID, (uint)(guildContract.Elite ? 0 : 1), coop, secondsRemaining, );
-
 
                         Console.WriteLine($"Creating Channel for {coop.Name}");
                         var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);

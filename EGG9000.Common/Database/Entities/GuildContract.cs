@@ -20,11 +20,13 @@ namespace EGG9000.Common.Database.Entities {
         public string Starters { get; set; }
         public string Skip { get; set; }
         public ContractStatus Status { get; set; }
-        public bool Elite { get; set; }
+
+        [Column] 
+        private bool Elite { get; set; }
         public bool HasScores { get; set; }
 
         public string OutsideCoops { get; set; }
-        //public int League { get; set; }
+        public UInt32 League { get; set; }
 
         //[NotMapped]
         //public List<Guid> StartersList { 

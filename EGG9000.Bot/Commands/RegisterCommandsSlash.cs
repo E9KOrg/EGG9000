@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Commands {
 
                 var role = await DiscordHelpers.SetRole(guild, guildUser, earningsBonus);
 
-                var checkElite = await DiscordHelpers.CheckElite(guild, guildUser, new List<double> { earningsBonus });
+                _ = await DiscordHelpers.CheckLeague(guild, guildUser, new List<double> { earningsBonus });
 
 
 
@@ -337,7 +337,7 @@ namespace EGG9000.Bot.Commands {
 
 
             var role = await DiscordHelpers.SetRole(guild, socketGuildUser, earningsBonus);
-            var checkElite = await DiscordHelpers.CheckElite(guild, socketGuildUser, existingBackups.Select(x => x.EarningsBonus).ToList());
+            var checkLeague = await DiscordHelpers.CheckLeague(guild, socketGuildUser, existingBackups.Select(x => x.EarningsBonus).ToList());
 
             var roleText = "";
             if(existingBackups.Count > 1) {
@@ -351,8 +351,8 @@ namespace EGG9000.Bot.Commands {
                 faqText = $"When you have a chance, read over {faqChannel.Mention} to get an idea on how the server and bot functions";
             }
 
-            if(checkElite.Role != null) {
-                roleText += $" You are eligible for {checkElite.Role.Name}s";
+            if(checkLeague.Role != null) {
+                roleText += $" Your Grade is {checkLeague.Role.Name}";
             }
             var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
             await generalChannel.SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}");

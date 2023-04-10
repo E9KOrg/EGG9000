@@ -26,9 +26,9 @@ namespace EGG9000.Common.Helpers {
         public SocketGuildUser DiscordUser { get; set; }
         public CustomArchivedFarms ArchivedFarm { get; set; }
         public DBUser DBUser { get; set; }
-        public int League { get; set; }
+        public UInt32 League { get; set; }
 
-        public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, int league) {
+        public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
             if(coopStatus is null)
                 throw new ArgumentNullException(null, "coopStatus");
             Xref = xref;
@@ -48,7 +48,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, int league) {
+        public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
             if(xref is null)
                 throw new ArgumentNullException(null, "xref");
             if(userWithbackup is null)
@@ -70,7 +70,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, int league) {
+        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
             if(userWithbackup is null)
                 throw new ArgumentNullException(null, "userWithBackup");
             if(userWithbackup.Backup is null)
@@ -225,7 +225,7 @@ namespace EGG9000.Common.Helpers {
 
         public double ProjectedPercent {
             get {
-                var target = Contract.Details.GoalSets[League].Goals.Max(x => x.TargetAmount);
+                var target = Contract.Details.GoalSets[(int)League].Goals.Max(x => x.TargetAmount);
                 return Projected / target * 100;
             }
         }

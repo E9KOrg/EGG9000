@@ -16,7 +16,7 @@
         </h5>
         <div class="card-body">
             @foreach(var guildContract in contractGroup) {
-                <a href="/Contract/Details?GuildId=@guildContract.GuildID&ContractId=@guildContract.ContractID&Elite=@guildContract.Elite" class="btn btn-primary">@(guildContract.Elite ? "Elite" : "Standard") Co-ops</a>
+                <a href="/Contract/Details?GuildId=@guildContract.GuildID&ContractId=@guildContract.ContractID&League=@guildContract.League" class="btn btn-primary">@(guildContract.League == 0 ? "Elite" : "Standard") Co-ops</a>
             }
             @if(contractGroup.Any(x => x.HasScores)) {
                 <a href="/Contract/ScoreGraph?GuildId=@contractGroup.First().GuildID&ContractId=@contractGroup.First().ContractID" class="btn btn-primary">Scores Graph</a>

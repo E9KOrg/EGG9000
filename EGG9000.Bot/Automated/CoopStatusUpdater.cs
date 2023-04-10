@@ -423,7 +423,7 @@ namespace EGG9000.Bot.Automated {
 
 
                     if(statusReponse.Status.LocalTimestamp == 0 && statusReponse.Status.SecondsRemaining == 0) {
-                        var details = new CoopDetails(coop, coop.Contract, (int)coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
+                        var details = new CoopDetails(coop, coop.Contract, coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
                         var response = await CreateCoops.CreateCoopViaApi(coop.ContractID, (uint)coop.League, coop, (coop.CoopEnds.Value - DateTimeOffset.Now).TotalSeconds, details.CoopParticipants.FirstOrDefault()?.Backup?.EggIncId);
                         statusReponse = await GetStatus(coop, coopChannel, cancellationToken);
                         if(statusReponse.Status.LocalTimestamp == 0 && statusReponse.Status.SecondsRemaining == 0) {
@@ -434,7 +434,7 @@ namespace EGG9000.Bot.Automated {
 
                     if(cancellationToken.IsCancellationRequested) return;
 
-                    var coopDetails = new CoopDetails(coop, coop.Contract, (int)coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
+                    var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
 
 
                     var participantsInCoopButWithoutXref = coopDetails.CoopParticipants.Where(x =>

@@ -5,7 +5,7 @@
 @model EGG9000.Site.Controllers.ContractController.CoopsViewModel
 @{
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
-    var targetAmount = Model.GuildContract.Contract.Details.GoalSets[Model.GuildContract.Elite ? 0 : 1].Goals.Last().TargetAmount;
+    var targetAmount = Model.GuildContract.Contract.Details.GoalSets[(int)Model.GuildContract.League].Goals.Last().TargetAmount;
 
     DiscordSocketClient discord = ViewBag.Discord;
 
@@ -198,7 +198,7 @@
 </style>
 <div ng-controller="Page">
     <div style="float: left;">
-        <h3>@Model.GuildContract.Contract.Name - @(Model.GuildContract.Elite ? "Elite" : "Standard") </h3>
+        <h3>@Model.GuildContract.Contract.Name - @(Model.GuildContract.League == 0 ? "Elite" : "Standard") </h3>
         @if(isSolo) {
             var accounts = currentCoops.SelectMany(x => x.CoopParticipants.Where(x => x.DiscordUser?.Id.ToString() == discordId)).ToList();
             if(accounts.Count == 0) {
@@ -532,7 +532,7 @@
                         angular.forEach(coop.Users, function (user) {
                             prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
                         });
-                        $http.post("/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&Elite=@Model.GuildContract.Elite", prefarms).then(function Success(response) {
+                        $http.post("/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&League=@Model.GuildContract.League", prefarms).then(function Success(response) {
                             if (response.data.error) {
                                 alert(response.data.message);
                                 return;
