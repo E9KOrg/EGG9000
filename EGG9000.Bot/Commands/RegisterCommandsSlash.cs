@@ -436,7 +436,7 @@ namespace EGG9000.Bot.Commands {
         public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
             return _userstatus(command, db, _client, apiLink, command.User, false, false);
         }
-        public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = true) {
+        public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = false) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
                 await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: !showInChannel);
