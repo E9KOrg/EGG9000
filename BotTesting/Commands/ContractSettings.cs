@@ -69,7 +69,7 @@ BG1 <t:1681138800:t>, BG2 <t:1681167600:t>, BG3 <t:1681196400:t>. BG1 is when ne
                     builder.WithButton("Take a Break From Co-ops", "TakeABreak");
                 } else {
                     //Else show some options (add 1 day, add 1 week, stop early)
-                    props.Content += $"\nOn Break until <t:{reg.OnBreakUntil.ToUnixTimeSeconds}:R>\n";
+                    props.Content += $"\nOn Break until <t:{reg.OnBreakUntil.ToUnixTimeSeconds()}:f>\n";
                     builder.WithButton("Add 1 Day to Break", "BreakAddDay");
                     builder.WithButton("Add 1 Week to Break", "BreakAddWeek");
                     builder.WithButton("Stop Break Early", "StopBreakEarly");
@@ -123,7 +123,7 @@ You are not configured to automatically be assigned co-ops.
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var reg = dbuser.ContractRegistration;
             //Add 1 day to the DTO
-            reg.OnBreakUntil.AddDays(1);
+            reg.OnBreakUntil = reg.OnBreakUntil.AddDays(1);
             dbuser.ContractRegistration = reg;
             await db.SaveChangesAsync();
             var props = GetMyContractSettingsMessage(dbuser);
@@ -136,7 +136,7 @@ You are not configured to automatically be assigned co-ops.
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var reg = dbuser.ContractRegistration;
             //Add 7 days to the DTO
-            reg.OnBreakUntil.AddDays(7);
+            reg.OnBreakUntil = reg.OnBreakUntil.AddDays(7);
             dbuser.ContractRegistration = reg;
             await db.SaveChangesAsync();
             var props = GetMyContractSettingsMessage(dbuser);
