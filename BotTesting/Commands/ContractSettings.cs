@@ -27,9 +27,10 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
                 await command.RespondAsync("ERROR: Unable to find user");
+            } else {
+                var props = GetMyContractSettingsMessage(dbuser);
+                await command.RespondAsync(props.Content.Value, components: props.Components.Value, ephemeral: true);
             }
-            var props = GetMyContractSettingsMessage(dbuser);
-            await command.RespondAsync(props.Content.Value, components: props.Components.Value, ephemeral: true);
         }
 
         public static MessageProperties GetMyContractSettingsMessage(DBUser dbuser) {
@@ -62,6 +63,16 @@ BG1 <t:1681138800:t>, BG2 <t:1681167600:t>, BG3 <t:1681196400:t>. BG1 is when ne
                     builder.WithSelectMenu(select2);
                 } else {
                     builder.WithButton("Filter Contract By Reward", "EnableFilter");
+                }
+                //Only show "take a break" if the user isn't already on one
+                if(reg.OnBreakUntil == default) {
+                    builder.WithButton("Take a Break From Co-ops", "TakeABreak");
+                } else {
+                    //Else show some options (add 1 day, add 1 week, stop early)
+                    props.Content += $"\nOn Break until <t:{reg.OnBreakUntil.ToUnixTimeSeconds}:R>\n";
+                    builder.WithButton("Add 1 Day to Break", "BreakAddDay");
+                    builder.WithButton("Add 1 Week to Break", "BreakAddWeek");
+                    builder.WithButton("Stop Break Early", "StopBreakEarly");
                 }
                 builder.WithButton("Disable Auto Assigned Co-ops", "DisableAutoAssign");
                 props.Components = builder.Build();
@@ -101,6 +112,56 @@ You are not configured to automatically be assigned co-ops.
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var reg = dbuser.ContractRegistration;
             reg.EnableFilter = true;
+            dbuser.ContractRegistration = reg;
+            await db.SaveChangesAsync();
+            var props = GetMyContractSettingsMessage(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content; x.Components = props.Components; });
+        }
+
+        [ComponentCommand]
+        public static async Task BreakAddDay(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var reg = dbuser.ContractRegistration;
+            //Add 1 day to the DTO
+            reg.OnBreakUntil.AddDays(1);
+            dbuser.ContractRegistration = reg;
+            await db.SaveChangesAsync();
+            var props = GetMyContractSettingsMessage(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content; x.Components = props.Components; });
+        }
+
+        [ComponentCommand]
+        public static async Task BreakAddWeek(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db)
+        {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var reg = dbuser.ContractRegistration;
+            //Add 7 days to the DTO
+            reg.OnBreakUntil.AddDays(7);
+            dbuser.ContractRegistration = reg;
+            await db.SaveChangesAsync();
+            var props = GetMyContractSettingsMessage(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content; x.Components = props.Components; });
+        }
+
+        [ComponentCommand]
+        public static async Task TakeABreak(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db)
+        {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var reg = dbuser.ContractRegistration;
+            //Initialize with a single day
+            reg.OnBreakUntil = new DateTimeOffset(DateTime.UtcNow.AddDays(1));
+            dbuser.ContractRegistration = reg;
+            await db.SaveChangesAsync();
+            var props = GetMyContractSettingsMessage(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content; x.Components = props.Components; });
+        }
+
+        [ComponentCommand]
+        public static async Task StopBreakEarly(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var reg = dbuser.ContractRegistration;
+            //default OnBreakUntil
+            reg.OnBreakUntil = default;
             dbuser.ContractRegistration = reg;
             await db.SaveChangesAsync();
             var props = GetMyContractSettingsMessage(dbuser);
