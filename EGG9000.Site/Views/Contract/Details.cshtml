@@ -1,7 +1,7 @@
 ﻿ @using static EGG9000.Common.Helpers.Prefarm
 @using Discord.WebSocket
 @using EGG9000.Bot.EggIncAPI
-@inject EGG9000.Bot.Services.APILink _apiLink
+@inject EGG9000.Common.Services.APILink _apiLink
 @model EGG9000.Site.Controllers.ContractController.CoopsViewModel
 @{
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;

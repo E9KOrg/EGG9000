@@ -16,7 +16,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Services {
+namespace EGG9000.Common.Services {
     public class DiscordHostedService : DiscordSocketClient {
         public bool IsReady { get; private set; }
         private IConfiguration _configuration;

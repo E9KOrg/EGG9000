@@ -21,7 +21,7 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Bot.Automated.CoopStatusUpdater;
 using System.Threading.Channels;

@@ -5,6 +5,7 @@ using EGG9000.Common.Helpers;
 using MessagePack;
 
 using Microsoft.AspNetCore.Identity;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -96,7 +97,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         [NotMapped]
-        private List<ShipDM> _shipDMs{ get; set; }
+        private List<ShipDM> _shipDMs { get; set; }
 
         [NotMapped]
         public List<ShipDM> ShipDMs {
@@ -117,6 +118,31 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
+        public byte[] _contractRegistrationByte { get; set; }
+        [NotMapped]
+        private ContractRegistration _contractRegistration { get; set; }
+
+        [NotMapped]
+        public ContractRegistration ContractRegistration {
+            get {
+                if(_contractRegistration != null)
+                    return _contractRegistration;
+                if(_contractRegistrationByte == null)
+                    return new ContractRegistration {
+                        AutoRegister = false,
+                        Group = 1, AutoRegisterRewards = new List<Ei.RewardType>()
+                    };
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _contractRegistration = MessagePackSerializer.Deserialize<ContractRegistration>(_contractRegistrationByte, lz4Options);
+                return _contractRegistration;
+            }
+            set {
+                _contractRegistration = value;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _contractRegistrationByte = MessagePackSerializer.Serialize(value, lz4Options);
+            }
+        }
+
 
 
 
@@ -133,7 +159,7 @@ namespace EGG9000.Common.Database.Entities {
 
         [NotMapped]
         public List<EggIncNameAndId> EggIncIds {
-            get => JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]"); 
+            get => JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]");
             set { _eggIncIds = JsonConvert.SerializeObject(value); Console.WriteLine("Updating _eggIncIds"); }
 
         }
@@ -153,18 +179,18 @@ namespace EGG9000.Common.Database.Entities {
             var nameId = eggIncIds.First(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
 
             var update = false;
-            if (string.IsNullOrEmpty(nameId.Id)) {
+            if(string.IsNullOrEmpty(nameId.Id)) {
                 nameId.Id = proto.UserId;
                 update = true;
                 Console.WriteLine("Updating ID");
             }
-            if (nameId.Name != proto.UserName) {
+            if(nameId.Name != proto.UserName) {
                 nameId
                     .Name = proto.UserName;
                 update = true;
                 Console.WriteLine("Updating Name");
             }
-            if (update) {
+            if(update) {
                 EggIncIds = eggIncIds;//Force JSON Update
             }
         }
@@ -182,22 +208,46 @@ namespace EGG9000.Common.Database.Entities {
             eggIncIds.RemoveAll(x => x.Id.ToLower() == id.ToLower());
             EggIncIds = eggIncIds; //Force JSON Update
         }
-    }
 
-    public class EggIncNameAndId {
-        public string Name { get; set; }
-        public string Id { get; set; }
-    }
+        //[Column]
+        //private byte[] _ContractRegistration { get; set; }
+        //public ContractRegistration ContractRegistration {
+        //    get {
+        //    }
+        //    set {
 
+        //    }
+        //}
+
+        public class EggIncNameAndId {
+            public string Name { get; set; }
+            public string Id { get; set; }
+        }
+
+        [MessagePackObject]
+        public class ShipDM {
+            [Key(0)]
+            public string EggIncID { get; set; }
+            [Key(1)]
+            public DateTimeOffset DMTime { get; set; }
+            [Key(2)]
+            public bool Sent { get; set; }
+            [Key(3)]
+            public long ShipReturnTime { get; set; }
+        }
+    }
     [MessagePackObject]
-    public class ShipDM {
+    public class ContractRegistration {
         [Key(0)]
-        public string EggIncID { get; set; }
+        public DateTimeOffset OnBreakUntil { get; set; }
         [Key(1)]
-        public DateTimeOffset DMTime { get; set; }
+        public List<Ei.RewardType> AutoRegisterRewards { get; set; }
         [Key(2)]
-        public bool Sent { get; set; }
+        public bool AutoRegister { get; set; }
         [Key(3)]
-        public long ShipReturnTime { get; set; }
+        public byte Group { get; set; }
+        [Key(4)]
+        public bool EnableFilter { get; set; }
+
     }
 }

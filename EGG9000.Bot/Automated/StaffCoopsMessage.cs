@@ -17,7 +17,7 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Discord.Rest;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 
 namespace EGG9000.Bot.Automated {
     public class StaffCoopsMessage : _UpdaterBase<StaffCoopsMessage> {

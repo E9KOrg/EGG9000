@@ -18,7 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Automated {

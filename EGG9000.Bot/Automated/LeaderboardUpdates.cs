@@ -22,7 +22,7 @@ using Microsoft.Extensions.Caching.Memory;
 using static EGG9000.Common.Helpers.Prefarm;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using System.Diagnostics;
 
 namespace EGG9000.Bot.Automated {

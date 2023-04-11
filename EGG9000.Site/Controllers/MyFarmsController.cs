@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 
 
 using MessagePack;

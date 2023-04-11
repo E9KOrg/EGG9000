@@ -25,7 +25,7 @@ using Newtonsoft.Json.Serialization;
 using System.Reflection;
 using EGG9000.Common.Helpers;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using Polly;
 using static EGG9000.Common.Helpers.Prefarm;
 using System.Text.Json;

@@ -9,7 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public class NewCode {

@@ -27,13 +27,14 @@ using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Diagnostics;
 using System.ServiceProcess;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {

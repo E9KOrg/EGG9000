@@ -27,7 +27,7 @@ using Ei;
 using EGG9000.Common.Migrations;
 using Polly;
 using Microsoft.Data.SqlClient;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {

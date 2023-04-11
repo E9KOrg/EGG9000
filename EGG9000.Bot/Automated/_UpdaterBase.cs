@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using EGG9000.Common.Database;
 
 using Microsoft.Extensions.Configuration;
