@@ -4,7 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -21,6 +21,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
+using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands
 {

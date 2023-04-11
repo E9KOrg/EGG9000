@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Services {
+namespace EGG9000.Common.Services {
     public class FauxCommand : IDiscordInteraction {
         SocketMessage _originalMessage;
         SocketSlashCommand _socketSlashCommand;

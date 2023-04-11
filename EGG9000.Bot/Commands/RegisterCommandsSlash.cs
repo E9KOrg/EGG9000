@@ -8,7 +8,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 
 
 using Humanizer;
@@ -31,6 +31,8 @@ using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Commands;
+using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {

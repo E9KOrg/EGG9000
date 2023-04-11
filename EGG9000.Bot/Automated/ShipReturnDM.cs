@@ -17,7 +17,8 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Discord.Net;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM : _UpdaterBase<ShipReturnDM> {

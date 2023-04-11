@@ -22,7 +22,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 using Microsoft.AspNetCore.Http;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.IO.Compression;
 using Discord;

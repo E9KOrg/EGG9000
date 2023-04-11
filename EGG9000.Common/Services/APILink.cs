@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 using Microsoft.EntityFrameworkCore;
 
-namespace EGG9000.Bot.Services {
+namespace EGG9000.Common.Services {
     public class BackupRequest {
         public string UserId { get; set; }
         public float LastBackupTime { get; set; }

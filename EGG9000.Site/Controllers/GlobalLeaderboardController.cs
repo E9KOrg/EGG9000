@@ -19,7 +19,7 @@
 //using Discord.WebSocket;
 //using Discord;
 //using Newtonsoft.Json;
-//using EGG9000.Bot.Services;
+//using EGG9000.Common.Services;
 //using EGG9000.Common.Database;
 
 //namespace EGG9000.Site.Controllers {

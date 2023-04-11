@@ -3,6 +3,7 @@ using Discord;
 using Discord.Net;
 using Discord.WebSocket;
 
+using EGG9000.Bot;
 using EGG9000.Bot.Commands;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
@@ -23,7 +24,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Services {
+namespace EGG9000.Common.Services {
 
     public class DiscordUserService : IHostedService {
         private readonly DiscordHostedService _discord;

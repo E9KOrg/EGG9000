@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using Bugsnag.AspNet.Core;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
+using EGG9000.Bot.Services;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -43,31 +44,31 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<CommandService>();
-        services.AddHostedService<DiscordUserService>();
-        services.AddHostedService<StaffCoopsMessage>();
-        services.AddHostedService<EventUpdater>();
-        services.AddHostedService<CoopReorder>();
-        services.AddHostedService<CoopDeleteChannel>();
+        //services.AddHostedService<CommandService>();
+        //services.AddHostedService<DiscordUserService>();
+        //services.AddHostedService<StaffCoopsMessage>();
+        //services.AddHostedService<EventUpdater>();
+        //services.AddHostedService<CoopReorder>();
+        //services.AddHostedService<CoopDeleteChannel>();
 
-        //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        services.AddSingleton<CoopStatusUpdater>();
-        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+        ////services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.AddSingleton<CoopStatusUpdater>();
+        //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        services.AddSingleton<ContractUpdater>();
-        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+        ////services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.AddSingleton<ContractUpdater>();
+        //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
-        services.AddHostedService<NewContracts>();
-        services.AddHostedService<CreateCoopChannels>();
-        services.AddHostedService<ShipReturnDM>();
-        services.AddHostedService<UserSnapShots>();
-        services.AddHostedService<LeaderboardUpdater>();
-        services.AddHostedService<ManageOverflow>();
-        services.AddHostedService<RemoveTempRoles>();
+        //services.AddHostedService<NewContracts>();
+        //services.AddHostedService<CreateCoopChannels>();
+        //services.AddHostedService<ShipReturnDM>();
+        //services.AddHostedService<UserSnapShots>();
+        //services.AddHostedService<LeaderboardUpdater>();
+        //services.AddHostedService<ManageOverflow>();
+        //services.AddHostedService<RemoveTempRoles>();
 
-        services.AddHostedService<TestService>();
-        services.AddHostedService<TestUpdater>();
+        //services.AddHostedService<TestService>();
+        //services.AddHostedService<TestUpdater>();
 
         Console.WriteLine("RUNNING IN DEBUG");
 
@@ -80,8 +81,6 @@ await Host.CreateDefaultBuilder(args)
         services.AddBugsnag(configuration => {
             configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
         });
-
-        //services.AddHostedService<DatabaseQueue>();
 
         services.AddSingleton<DiscordHostedService>();
         services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using EGG9000.APILinkSite.Models;
 using Microsoft.Extensions.Caching.Memory;
 using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using System.Collections.Concurrent;
 using EGG9000.Common.Database;
 
