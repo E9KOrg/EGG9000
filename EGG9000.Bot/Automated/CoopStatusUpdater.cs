@@ -861,7 +861,7 @@ namespace EGG9000.Bot.Automated {
                                                 xref.OutsideCoop = true;
                                                 var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
                                                 if(outsideCoopLog != null) {
-                                                    await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername}, they are assigned to co-op <#{coopChannel.Id}>");
+                                                    await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>");
                                                 }
                                                 await _db.SaveChangesAsync();
                                             }
