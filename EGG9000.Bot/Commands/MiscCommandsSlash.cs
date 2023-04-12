@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Getting backups...");
+           // await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
@@ -41,7 +41,8 @@ namespace EGG9000.Bot.Commands {
             }
             var builder = new EmbedBuilder();
             builder.Title = $"Next Rank Details";
-            foreach(var id in user.EggIncIds) {
+            foreach(var id in user.EggIncIds)
+            {
                 var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
                 if(backup == null)
                     continue;
@@ -49,8 +50,9 @@ namespace EGG9000.Bot.Commands {
                 var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
 
                 var nextRankText = "";
-                foreach(var subrank in nextSubRank.Take(5)) {
-                    nextRankText += $"<:Egg_of_Prophecy_PE:669981330477547580>{subrank.EggsOfProphecy} <:Soul_Egg_SE:724341890794913964>{ Math.Max(0, subrank.SoulsEggs).ToEggString()}\n";
+                foreach(var subrank in nextSubRank.Take(5))
+                {
+                    nextRankText += $"<:Egg_of_Prophecy_PE:669981330477547580>{subrank.EggsOfProphecy} <:Soul_Egg_SE:724341890794913964>{Math.Max(0, subrank.SoulsEggs).ToEggString()}\n";
                     if(subrank.SoulsEggs < 0)
                         break;
                 }
@@ -58,9 +60,11 @@ namespace EGG9000.Bot.Commands {
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
                 var currentRank = SIPrefix.GetPrefixFromEB(backup.EarningsBonus);
-                if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs) {
+                if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs)
+                {
                     nextRankText = "";
-                    foreach(var subrank in nextRank.Take(5)) {
+                    foreach(var subrank in nextRank.Take(5))
+                    {
                         nextRankText += $"<:Egg_of_Prophecy_PE:669981330477547580>{subrank.EggsOfProphecy} <:Soul_Egg_SE:724341890794913964>{Math.Max(0, subrank.SoulsEggs).ToEggString()}\n";
                         if(subrank.SoulsEggs < 0)
                             break;
@@ -81,9 +85,14 @@ Prestiges {backup.NumPrestiges}
 Last Backup <t:{backup.LastBackupTime}:R>
 " });
             }
+            //Daveed's fix
+            await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
+
+            /*
             await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
             await command.DeleteResponseFix();
-            //await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
+            */
         }
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
