@@ -237,7 +237,7 @@ namespace EGG9000.Bot.Automated {
                         var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
                         if(outsideCoopLog != null) {
                             foreach(var userNotTracked in notTracked) {
-                                await outsideCoopLog.SendMessageAsync($"{userNotTracked.DiscordUser.Mention} in <#{channel.Id}>, joined `{userNotTracked.Farm?.CoopId ?? userNotTracked.ArchivedFarm?.CoopName}`, Joined <T:{userNotTracked.DBUser.Registered.Value.ToUnixTimeSeconds()}:R>");
+                                await outsideCoopLog.SendMessageAsync($"{userNotTracked.DiscordUser.Mention} in <#{channel.Id}>, joined `{userNotTracked.Farm?.CoopId ?? userNotTracked.ArchivedFarm?.CoopName}`, Joined <t:{userNotTracked.DBUser.Registered.Value.ToUnixTimeSeconds()}:R>");
                                 alreadyTrackedOutsideCoop.Add(userNotTracked.DBUser.Id.ToString());
                             }
                             guildContract.OutsideCoops = String.Join(",", alreadyTrackedOutsideCoop);

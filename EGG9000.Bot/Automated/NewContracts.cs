@@ -138,7 +138,7 @@ namespace EGG9000.Bot.Automated {
                                     Status = ContractStatus.Prefarming,
                                     NumberOfCoops = 1,
                                     DiscordChannelId = standardChannel.Id,
-                                    League = 0,
+                                    League = 1,
                                     Created = DateTimeOffset.Now
                                 };
 
