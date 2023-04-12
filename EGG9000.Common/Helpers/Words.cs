@@ -1290,7 +1290,6 @@ namespace EGG9000.Bot
     "whoop",
     "wick",
     "widen",
-    "widow",
     "width",
     "wife",
     "wifi",
