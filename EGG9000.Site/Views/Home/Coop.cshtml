@@ -28,9 +28,9 @@
 	var projectPercentEveryoneStr = PercentString(projectPercentEveryone);
 
 	var discordChannelDeleted = Model.CoopDetails.Coop.DeletedChannel;
-	var discordGuildID = Model.CoopDetails.Coop.GuildId;
+	var discordGuildID = Model.CoopDetails.Coop.OverflowGuildId != default ? Model.CoopDetails.Coop.OverflowGuildId : Model.CoopDetails.Coop.GuildId;
 	var discordChannelID = Model.CoopDetails.Coop.DiscordChannelId;
-	var discordLink = "https://discord.com/channels/" + discordGuildID + "/" + discordChannelID;
+	var discordLink = "discord://discordapp.com/channels/" + discordGuildID + "/" + discordChannelID + "/";
 
 
 	var projectPercentWidth = Math.Min(projectPercent, 100) - percent;
