@@ -48,7 +48,7 @@
 		<!-- If the channel isn't deleted, turn the coop name into a link to the discord channel-->
 		@{
 			if (!discordChannelDeleted){
-				<a href="@discordLink">#@Model.CoopStatus.CoopIdentifier</a>
+				<a href="@discordLink" alt="Discord channel link" target="_blank">#@Model.CoopStatus.CoopIdentifier</a>
 			}
 			else {
 				@Model.CoopStatus.CoopIdentifier;
