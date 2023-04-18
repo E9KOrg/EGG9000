@@ -228,7 +228,6 @@ namespace EGG9000.Bot
     "canal",
     "candy",
     "cane",
-    "canon",
     "cape",
     "card",
     "cargo",
