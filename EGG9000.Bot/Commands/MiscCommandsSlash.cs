@@ -29,19 +29,24 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Bot.Services;
 
-namespace EGG9000.Bot.Commands {
-    public static class MiscCommandsSlash {
+namespace EGG9000.Bot.Commands
+{
+    public static class MiscCommandsSlash
+    {
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
-        public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
+        public static async Task NextRank(FauxCommand command, ApplicationDbContext db)
+        {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
+            if(user == null)
+            {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
             var builder = new EmbedBuilder();
             builder.Title = $"Next Rank Details";
-            foreach(var id in user.EggIncIds) {
+            foreach(var id in user.EggIncIds)
+            {
                 var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
                 if(backup == null)
                     continue;
@@ -49,8 +54,9 @@ namespace EGG9000.Bot.Commands {
                 var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
 
                 var nextRankText = "";
-                foreach(var subrank in nextSubRank.Take(5)) {
-                    nextRankText += $"<:Egg_of_Prophecy_PE:669981330477547580>{subrank.EggsOfProphecy} <:Soul_Egg_SE:724341890794913964>{ Math.Max(0, subrank.SoulsEggs).ToEggString()}\n";
+                foreach(var subrank in nextSubRank.Take(5))
+                {
+                    nextRankText += $"<:Egg_of_Prophecy_PE:669981330477547580>{subrank.EggsOfProphecy} <:Soul_Egg_SE:724341890794913964>{Math.Max(0, subrank.SoulsEggs).ToEggString()}\n";
                     if(subrank.SoulsEggs < 0)
                         break;
                 }
@@ -58,9 +64,11 @@ namespace EGG9000.Bot.Commands {
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
                 var currentRank = SIPrefix.GetPrefixFromEB(backup.EarningsBonus);
-                if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs) {
+                if(nextRank.First().SoulsEggs != nextSubRank.First().SoulsEggs)
+                {
                     nextRankText = "";
-                    foreach(var subrank in nextRank.Take(5)) {
+                    foreach(var subrank in nextRank.Take(5))
+                    {
                         nextRankText += $"<:Egg_of_Prophecy_PE:669981330477547580>{subrank.EggsOfProphecy} <:Soul_Egg_SE:724341890794913964>{Math.Max(0, subrank.SoulsEggs).ToEggString()}\n";
                         if(subrank.SoulsEggs < 0)
                             break;
@@ -87,9 +95,11 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
-        public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
+        public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname)
+        {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop == null) {
+            if(targetCoop == null)
+            {
                 await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels");
                 return;
             }
@@ -101,9 +111,11 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Get a ping from the bot via DM and all assigned members have joined")]
-        public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db) {
+        public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db)
+        {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop == null) {
+            if(targetCoop == null)
+            {
                 await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
                 return;
             }
@@ -113,17 +125,21 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             xref.PingOnFull = !xref.PingOnFull;
             await db.SaveChangesAsync();
-            if(xref.PingOnFull) {
+            if(xref.PingOnFull)
+            {
                 await command.RespondAsync($"Will receive DM ping when everyone has joined", ephemeral: true);
-            } else {
+            } else
+            {
                 await command.RespondAsync($"Will no longer receive ping", ephemeral: true);
             }
         }
 
         [SlashCommand(Description = "Get a ping from the bot via DM on Highest EB Joined")]
-        public static async Task PingOnHighestEB(FauxCommand command, ApplicationDbContext db) {
+        public static async Task PingOnHighestEB(FauxCommand command, ApplicationDbContext db)
+        {
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop == null) {
+            if(targetCoop == null)
+            {
                 await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
                 return;
             }
@@ -133,17 +149,21 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             xref.PingOnHighestEB = !xref.PingOnHighestEB;
             await db.SaveChangesAsync();
-            if(xref.PingOnHighestEB) {
+            if(xref.PingOnHighestEB)
+            {
                 await command.RespondAsync($"Will receive DM ping when the highest EB has joined", ephemeral: true);
-            } else {
+            } else
+            {
                 await command.RespondAsync($"Will no longer receive a ping when the highest EB has joined", ephemeral: true);
             }
         }
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
-        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
+        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink)
+        {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop != null) {
+            if(targetCoop != null)
+            {
                 await command.RespondAsync("Updating coop...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
@@ -154,7 +174,8 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
 
             var targetGuildContract = await db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetGuildContract != null) {
+            if(targetGuildContract != null)
+            {
                 await command.RespondAsync("Updating contract...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
                 var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
@@ -171,7 +192,8 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Test delete response")]
-        public static async Task TestDeleteResponse1(FauxCommand command) {
+        public static async Task TestDeleteResponse1(FauxCommand command)
+        {
             await command.RespondAsync("Test Response");
             await Task.Delay(1000);
             await command.ModifyOriginalResponseAsync(x => x.Content = "After Delay");
@@ -195,11 +217,14 @@ Last Backup <t:{backup.LastBackupTime}:R>
         //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
         //}
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
+        public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users)
+        {
             DateTimeOffset expireTime;
-            try {
+            try
+            {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
-            } catch(Exception ex) {
+            } catch(Exception ex)
+            {
                 await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
                 return;
             }
@@ -207,9 +232,11 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var userids = users.Select(x => x.Id);
             var existingTempRoles = await db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.Now && userids.Contains(x.UserId)).ToListAsync();
             var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
-            foreach(var user in users) {
+            foreach(var user in users)
+            {
                 var tempRole = existingTempRoles.FirstOrDefault(x => x.RoleId == role.Id && user.Id == x.UserId);
-                if(tempRole == null) {
+                if(tempRole == null)
+                {
                     tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.Now, UserId = user.Id, GuildId = guild.Id };
                     db.Add(tempRole);
                     await user.AddRoleAsync(role);
@@ -224,11 +251,14 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
-        public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
+        public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user)
+        {
             DateTimeOffset expireTime;
-            try {
+            try
+            {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
-            } catch(Exception ex) {
+            } catch(Exception ex)
+            {
                 await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
                 return;
             }
@@ -244,13 +274,16 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
-        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
+        {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
             await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
-            if(keepPrivate) {
+            if(keepPrivate)
+            {
 
                 await command.RespondAsync("Staff has been called.", ephemeral: true);
-            } else {
+            } else
+            {
                 await command.RespondAsync($"Staff has been called ({details})");
             }
         }
