@@ -17,6 +17,8 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using EGG9000.Bot.Services;
+using EGG9000.Common.Migrations;
+using UserSnapShots = EGG9000.Bot.Automated.UserSnapShots;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -24,16 +26,18 @@ await Host.CreateDefaultBuilder(args)
         Console.WriteLine("Main Start");
 
         var Configuration = new ConfigurationBuilder()
-            .AddUserSecrets<Secrets>()
+            .AddUserSecrets<Program>()
             .Build();
 
+        services.AddSingleton<IConfiguration>(Configuration);
         services.Configure<HostOptions>(options => {
             options.ShutdownTimeout = TimeSpan.FromMinutes(5);
         });
 
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(
-                Configuration.GetConnectionString("DefaultConnection")));
+        services.AddDbContext<ApplicationDbContext>(//options =>
+            //options.UseSqlServer(
+                //Configuration.GetConnectionString("DefaultConnection"))
+            );
 
         services.AddSingleton<Words>();
         services.AddMemoryCache();
@@ -69,6 +73,8 @@ await Host.CreateDefaultBuilder(args)
 
         //services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
+
+        services.AddHostedService<UpcomingContracts>();
 
         Console.WriteLine("RUNNING IN DEBUG");
 

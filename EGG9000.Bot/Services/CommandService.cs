@@ -12,9 +12,12 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Newtonsoft.Json;
+
+using Quartz.Impl.AdoJobStore.Common;
 
 using System;
 using System.Collections.Generic;
@@ -44,7 +47,7 @@ namespace EGG9000.Bot.Services {
         private ContractUpdater _contractUpdater;
         private CoopStatusUpdater _coopStatusUpdater;
         private Guild _cpGuild;
-        private IServiceProvider _serviceProvider;
+        private IServiceProvider _provider;
 
         public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context, IServiceProvider serviceProvider) {
             _discord = discord;
@@ -58,7 +61,7 @@ namespace EGG9000.Bot.Services {
             _coopStatusUpdater = coopStatusUpdater;
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
-            _serviceProvider = serviceProvider;
+            _provider = serviceProvider;
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -141,7 +144,7 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
                             parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
-                            parameters.Add(new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]));
+                            parameters.Add(_provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>());
                         } else if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
                             parameters.Add((DiscordSocketClient)_discord);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
@@ -157,7 +160,7 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(ContractUpdater)) {
                             parameters.Add(_contractUpdater);
                         } else if(parameterInfo.ParameterType == typeof(IServiceProvider)) {
-                            parameters.Add(_serviceProvider);
+                            parameters.Add(_provider);
                         }  else {
                             throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
                         }
@@ -339,7 +342,7 @@ namespace EGG9000.Bot.Services {
             }
         }
         private async Task _discord_MessageReceived(SocketMessage message) {
-            var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
                 var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);

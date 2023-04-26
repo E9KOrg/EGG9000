@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace EGG9000.Common.Database {
-    //public class ApplicationDbFactory : IDesignTimeDbContextFactory<ApplicationDbContext> {
+    //public class ApplicationDbContext : IDesignTimeDbContextFactory<ApplicationDbContext> {
     //    public ApplicationDbContext CreateDbContext(string[] args) {
     //        //Console.WriteLine("Creating DB Context");
     //        // Get environment
@@ -55,6 +55,7 @@ namespace EGG9000.Common.Database {
         public DbSet<TemporaryRole> TemporaryRoles { get; set; }
         public DbSet<ExpiringShell> ExpiringShells { get; set; }
         public DbSet<AutomationLog> AutomationLogs { get; set; }
+        public DbSet<UpcomingContract> UpcomingContracts { get; set; }
 
         //    private IConfiguration _configuration;
         //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {
@@ -66,8 +67,8 @@ namespace EGG9000.Common.Database {
 
         public ApplicationDbContext(IConfiguration configuration) : base(GetOptions(configuration)) {
         }
-        public ApplicationDbContext(string connstring) : base(GetOptions(connstring)) {
-        }
+        //public ApplicationDbContext(string connstring) : base(GetOptions(connstring)) {
+        //}
 
         private static DbContextOptions GetOptions(IConfiguration configuration) {
             //        var Configuration = new ConfigurationBuilder()
@@ -78,11 +79,11 @@ namespace EGG9000.Common.Database {
             return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), configuration["ConnectionStrings:DefaultConnection"], options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
         }
 
-        private static DbContextOptions GetOptions(string connString) {
-            //if(connString == null)
-            //return GetOptions();
-            return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), connString, options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
-        }
+        //private static DbContextOptions GetOptions(string connString) {
+        //    //if(connString == null)
+        //    //return GetOptions();
+        //    return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), connString, options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
+        //}
 
 
 

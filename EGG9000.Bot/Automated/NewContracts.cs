@@ -28,6 +28,7 @@ using EGG9000.Common.Migrations;
 using Polly;
 using Microsoft.Data.SqlClient;
 using EGG9000.Common.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
@@ -39,7 +40,7 @@ namespace EGG9000.Bot.Automated {
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             Console.WriteLine("NewContracts Run");
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
             var contractsResponse = await ContractsAPI.GetPeriodicalsAsync();
@@ -138,7 +139,7 @@ namespace EGG9000.Bot.Automated {
                                     Status = ContractStatus.Prefarming,
                                     NumberOfCoops = 1,
                                     DiscordChannelId = standardChannel.Id,
-                                    League = 0,
+                                    League = 1,
                                     Created = DateTimeOffset.Now
                                 };
 

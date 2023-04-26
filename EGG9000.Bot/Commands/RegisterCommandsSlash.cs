@@ -55,7 +55,7 @@ namespace EGG9000.Bot.Commands {
                 await db.SaveChangesAsync();
 
                 //var Response = await ContractsAPI.FirstContact(user.EggIncIds.First().Id);
-                var Response = await apiLink.GetBackup(user.EggIncIds.First().Id);
+                var Response = await apiLink.GetBackup(user.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
@@ -101,7 +101,7 @@ namespace EGG9000.Bot.Commands {
             if(user == null) {
                 await command.RespondAsync($"⚠️ERROR: Cannot find user");
                 return;
-            } else if(user.EggIncIds.Any(x => x.Id == eggincid)) {
+            } else if(user.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
                 user.Backups = user.Backups.Where(x => x.EggIncId != eggincid).ToList();
             } else {
@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            var json = JsonConvert.SerializeObject(user.EggIncIds, Formatting.Indented);
+            var json = JsonConvert.SerializeObject(user.EggIncAccounts, Formatting.Indented);
 
             await command.RespondAsync($"ID removed\n{await AccountsString(db, user, apiLink, false)}");
         }
@@ -173,7 +173,7 @@ namespace EGG9000.Bot.Commands {
                 user.AcceptedRules = true;
             }
 
-            if(user.EggIncIds.Count > 0 && user.GuildId > 0) {
+            if(user.EggIncAccounts.Count > 0 && user.GuildId > 0) {
                 await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the command  __**/moveserver**__");
             } else {
                 string channelText = "";
@@ -181,7 +181,7 @@ namespace EGG9000.Bot.Commands {
                 if(talkChannel != null) {
                     channelText = $"If you have questions about this, feel free to message us in {talkChannel.Mention}";
                 }
-                if(user.EggIncIds.Count > 0) {
+                if(user.EggIncAccounts.Count > 0) {
                     if(user.GuildId != guild.Id) {
                         await command.RespondAsync($"{targetUser.Mention}, now run the command /moveserver");
                     } else if(user.TempDisabled) {
@@ -230,7 +230,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
-            if(user.EggIncIds.Count > 1) {
+            if(user.EggIncAccounts.Count > 1) {
                 if(accountnumber == 0) {
                     var count = 1;
                     var accounts = String.Join("\n", user.Backups.Select(x => $"{count++} {x.UserName} EB: {x.EarningsBonus.ToEggString()}"));
@@ -239,17 +239,17 @@ namespace EGG9000.Bot.Commands {
                 }
                 var account = accountnumber - 1;
 
-                var eggIncIDs = new List<EggIncNameAndId>();
-                for(var i = 0; i < user.EggIncIds.Count; i++) {
+                var eggIncIDs = new List<EggIncAccount>();
+                for(var i = 0; i < user.EggIncAccounts.Count; i++) {
                     if(i == account)
-                        eggIncIDs.Add(new EggIncNameAndId { Id = Response.EggIncId, Name = Response.UserName });
+                        eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName });
                     else
-                        eggIncIDs.Add(user.EggIncIds[i]);
+                        eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
 
-                user.EggIncIds = eggIncIDs;
+                user.EggIncAccounts = eggIncIDs;
             } else {
-                user.EggIncIds = new List<EggIncNameAndId> { new EggIncNameAndId { Id = Response.EggIncId, Name = Response.UserName } };
+                user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName } };
             }
             await db.SaveChangesAsync();
 
@@ -289,7 +289,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncIds = new List<EggIncNameAndId> { new EggIncNameAndId { Id = Response.EggIncId, Name = Response.UserName } },
+                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName } },
                     CreateOn = DateTimeOffset.Now,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -297,11 +297,11 @@ namespace EGG9000.Bot.Commands {
                 db.DBUsers.Add(dbuser);
                 addedUser = true;
             } else {
-                if(dbuser.EggIncIds.Any(y => y.Id == Response.EggIncId)) {
+                if(dbuser.EggIncAccounts.Any(y => y.Id == Response.EggIncId)) {
                     await command.ModifyOriginalResponseAsync(m => m.Content = $"You are already registered with the bot. {user.Mention}");
                     return;
                 }
-                if(dbuser.EggIncIds.Count == 0) {
+                if(dbuser.EggIncAccounts.Count == 0) {
                     addedUser = true;
                 }
                 dbuser.AddName(Response.UserName, Response.EggIncId);
@@ -474,8 +474,8 @@ namespace EGG9000.Bot.Commands {
 
 
         private static async Task<string> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
-            var msg = $"Egg Inc Account{(user.EggIncIds.Count > 1 ? "s" : "")}";
-            foreach(var egginc in user.EggIncIds) {
+            var msg = $"Egg Inc Account{(user.EggIncAccounts.Count > 1 ? "s" : "")}";
+            foreach(var egginc in user.EggIncAccounts) {
                 //var backup = await ContractsAPI.FirstContact(egginc.Id);//user.LastBackup.FirstOrDefault(x => x.GetID() == egginc.Id);
                 var backup = await apiLink.GetBackup(egginc.Id);
                 //if(egginc.Name != backup.UserName) {
@@ -490,7 +490,7 @@ namespace EGG9000.Bot.Commands {
             }
             if(admin) {
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
-                msg += $"\n{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncIds.Count > 1 ? $"({user.EggIncIds.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
+                msg += $"\n{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
                 msg += $"\nRecent Demerit:\n{await DemeritCommands.GetDemerits(user.Id, db)}";
             }
             return msg;
@@ -585,7 +585,7 @@ namespace EGG9000.Bot.Commands {
 
             //var higherEB = user.Backups.OrderByDescending(x => x.EarningsBonus).First();
 
-            var ebs = dbUser.Backups.Where(x => dbUser.EggIncIds.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
+            var ebs = dbUser.Backups.Where(x => dbUser.EggIncAccounts.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
             var ebString = $" ({string.Join(",", values: ebs)})";
             var newName = ((IGuildUser)command.User).GetCleanName().Truncate(32 - ebString.Length) + ebString;
 

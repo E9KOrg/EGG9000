@@ -27,6 +27,10 @@ namespace EGG9000.Common.Helpers {
             if(guildContract.Contract.GoodUntil < DateTimeOffset.Now)
                 secondsRemaining = (guildContract.Contract.GoodUntil.AddSeconds(guildContract.Contract.Details.LengthSeconds) - DateTimeOffset.Now).TotalSeconds;
 
+            secondsRemaining = Math.Max(secondsRemaining, TimeSpan.FromDays(1.6).TotalSeconds);
+            Console.WriteLine($"Seconds Remaining {secondsRemaining}");
+
+
             var coopEnds = DateTimeOffset.Now.AddSeconds(secondsRemaining);
 
             var coop = new Coop();
@@ -141,7 +145,7 @@ namespace EGG9000.Common.Helpers {
 
             var eggEmoji = EggIncEggs.GetEggById((int)targetCoop.Contract.Details.Egg).Emoji;
             var mention = user.Mention;
-            if(dbuser.EggIncIds.Count > 1) {
+            if(dbuser.EggIncAccounts.Count > 1) {
                 mention += $"({eggIncName})";
             }
             try {

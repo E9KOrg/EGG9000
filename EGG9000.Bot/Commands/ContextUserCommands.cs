@@ -42,7 +42,7 @@ namespace EGG9000.Bot.Commands
             } else {
 
                 StringBuilder sb = new StringBuilder();
-                foreach(var id in user.EggIncIds) {
+                foreach(var id in user.EggIncAccounts) {
                     var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
                     if(sb.ToString() != "") sb.Append("\n\n");
                     sb.Append(backup.UserName + ": " + $"<https://wasmegg.netlify.app/inventory-visualizer/?playerId={id.Id}>");

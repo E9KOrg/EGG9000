@@ -17,7 +17,7 @@
     var max = prefarmers.Max(x => Math.Log(x.Farm.EggsPaidFor, 10));
 
     var chartData = prefarmers.Select(x => new {
-        name = x.User.DiscordUsername + (x.User.EggIncIds.Count > 1 ? $" ({x.Backup.UserName})" : ""),
+        name = x.User.DiscordUsername + (x.User.EggIncAccounts.Count > 1 ? $" ({x.Backup.UserName})" : ""),
         data = new object[] { new object[] { x.Backup.EarningsBonus.GetNumberOfZeros(), GetScore(x.Farm.EggsPaidFor) } }
     });
 

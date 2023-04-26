@@ -32,7 +32,7 @@
 
     //currentCoops.ForEach(c => c.Prefarms.ForEach(p => p.DiscordUser = guild.GetUser(p.DiscordId)));
     var activeCoops = currentCoops.Select(c => new {
-        c.Coop.Name,
+        Name = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
         c.Coop.ContractID,
         CurrentCoop = c.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId),
         Status = c.Coop.Finished ? "Finished" : c.TimeRemaining < TimeSpan.Zero ? "Complete once everyone checks in" : $"Time to complete {c.TimeRemaining.Humanize(precision: 2).ShortenTime()}",
@@ -44,14 +44,14 @@
             //Status = u.Coop,
             Status = u.DBUser is null ? "👽" : u.InCoop ? "✔️" : "❌",
             Locked = true,
-            EggIncId = u.EggIncId,
-            UserId = u.DBUser?.Id,
-            DiscordID = u.DiscordUser?.Id
+            EggIncId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.EggIncId : "",
+            UserId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DBUser?.Id : Guid.Empty,
+            DiscordID = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DiscordUser?.Id : 0
         }),
         MaxSize = Model.GuildContract.Contract.Details.MaxCoopSize,
         Rate = $"{ArgumentsHelper.NumberToString(c.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false)}/h",
         Percent = (c.CoopParticipants.Sum(x => x.Projected) / targetAmount).ToString("P0"),
-        CoopId = c.Coop.Id,
+        CoopId = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Id : Guid.Empty,
         HoursToFinish = c.TimeRemaining.TotalHours
     });
 
@@ -65,9 +65,9 @@
 
     var potentialCoops = Model.CoopsBreakdown.PotentialCoops.Select(c => {
         var users = c.CoopParticipants.OrderByDescending(x => x.Projected).Select(u => new {
-            u.EggIncId,
-            DatabaseId = u.DBUser.Id,
-            DiscordID = u.DiscordUser.Id,
+            EggIncId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.EggIncId : "",
+            DatabaseId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DBUser.Id : Guid.Empty,
+            DiscordID = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DiscordUser.Id : 0,
             Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
             NumChickens = u.NumChickens.ToEggString(),
             Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
@@ -93,8 +93,8 @@
     });
 
     var expiredFarms = Model.CoopsBreakdown.ExpiredFarms.Select(u => new {
-        u.EggIncId,
-        DatabaseId = u.DBUser.Id,
+        EggIncId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.EggIncId : "",
+        DatabaseId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DBUser.Id : Guid.Empty,
         Name = (u.DiscordUser?.Roles.Any(r => r.Id == 796512753241161748) ?? false ? "🆕" : "") + ebrgx.Replace(u.Name, ""),
         NumChickens = u.NumChickens.ToEggString(),
         Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
