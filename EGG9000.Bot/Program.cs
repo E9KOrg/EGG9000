@@ -74,7 +74,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
-        services.AddHostedService<UpcomingContracts>();
+        //services.AddHostedService<UpcomingContracts>();
 
         Console.WriteLine("RUNNING IN DEBUG");
 
