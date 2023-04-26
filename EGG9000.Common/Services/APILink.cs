@@ -19,8 +19,10 @@ using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace EGG9000.Bot.Services {
+namespace EGG9000.Common.Services {
     public class BackupRequest {
         public string UserId { get; set; }
         public float LastBackupTime { get; set; }
@@ -46,13 +48,17 @@ namespace EGG9000.Bot.Services {
 
         private IMemoryCache _cache;
         private HttpClient _httpClient;
-        private ApplicationDbContext _db;
+        public IConfiguration _configuration;
+        public IServiceProvider _provider;
+        //private ApplicationDbContext _db;
 
-        public APILink(ApplicationDbContext db) {
+        public APILink(IConfiguration configuration, IServiceProvider provider) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
             //_cache = memoryCache;
             _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
-            _db = db;
+            //_db = db;
+            _configuration = configuration;
+            _provider = provider;
         }
 
         private string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
@@ -65,19 +71,19 @@ namespace EGG9000.Bot.Services {
         }
 
         public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, bool longBackup = false) {
-            var eggIncIds = users.SelectMany(u => u.EggIncIds.Where(e => !string.IsNullOrWhiteSpace(e.Id)).Select(e => e.Id));
+            var eggIncIds = users.SelectMany(u => u.EggIncAccounts.Where(e => !string.IsNullOrWhiteSpace(e.Id)).Select(e => e.Id));
             var backups = await GetUserBackups(eggIncIds, longBackup);
 
             var lUsers = new List<LeaderboardUser>();
 
             foreach(var user in users) {
-                foreach(var eggInc in user.EggIncIds.Where(e => !string.IsNullOrEmpty(e.Id))) {
+                foreach(var eggInc in user.EggIncAccounts.Where(e => !string.IsNullOrEmpty(e.Id))) {
                     var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
                     var dbBackup = user.Backups?.FirstOrDefault(b => b.EggIncId == eggInc.Id);
 
-                    if(backup != null && backup.LastBackupTime !=  dbBackup?.LastBackupTime) {
+                    if(backup != null && backup.LastBackupTime != dbBackup?.LastBackupTime) {
                         var userBackups = user.Backups?.ToList() ?? new List<CustomBackup>();
-                        userBackups = userBackups.Where(x => x != null && x.EggIncId != eggInc.Id && user.EggIncIds.Any(y => y.Id == x.EggIncId)).ToList();
+                        userBackups = userBackups.Where(x => x != null && x.EggIncId != eggInc.Id && user.EggIncAccounts.Any(y => y.Id == x.EggIncId)).ToList();
                         userBackups.Add(backup);
                         user.Backups = userBackups;
                     }
@@ -152,7 +158,7 @@ namespace EGG9000.Bot.Services {
                                     backups.Add(backupResponse.Backup);
                                     backupResponse.Backup.CacheAdded = DateTime.Now;
                                     _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
-                                } 
+                                }
                             }
                         } catch(Exception) {
                             Console.WriteLine("Error getting backup from APILink");
@@ -288,14 +294,30 @@ namespace EGG9000.Bot.Services {
             }
         }
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         public async Task StartAsync(CancellationToken cancellationToken) {
+#if DEBUG
+#pragma warning disable 4014
+            Task.Run(() => {
+                GetUsers();
+            }).ConfigureAwait(false);
+#pragma warning restore 4014
+#else
+            await GetUsers();
+#endif
+        }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        public async Task GetUsers() {
             Console.WriteLine("Getting User Backups for Cache");
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
             var backups = usersTask.SelectMany(x => x.Backups ?? new List<CustomBackup>());
             if(backups != null) {
                 AddExistingBackups(backups);
             }
             Console.WriteLine("Finished Getting User Backups for Cache");
+
         }
 
         public Task StopAsync(CancellationToken cancellationToken) {

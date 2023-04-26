@@ -2,9 +2,12 @@
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 
+using Google.Protobuf.WellKnownTypes;
+
 using MessagePack;
 
 using Microsoft.AspNetCore.Identity;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -20,6 +23,9 @@ using System.Text;
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
     public class DBUser {
+        [NotMapped]
+        public static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+
         public Guid Id { get; set; }
         public ulong DiscordId { get; set; }
         public string DiscordUsername { get; set; }
@@ -84,19 +90,17 @@ namespace EGG9000.Common.Database.Entities {
                     return _backups;
                 if(_CustomBackups == null)
                     return new List<CustomBackup>();
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
                 _backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
                 return _backups;
             }
             set {
                 _backups = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
                 _CustomBackups = MessagePackSerializer.Serialize(value, lz4Options);
             }
         }
 
         [NotMapped]
-        private List<ShipDM> _shipDMs{ get; set; }
+        private List<ShipDM> _shipDMs { get; set; }
 
         [NotMapped]
         public List<ShipDM> ShipDMs {
@@ -105,37 +109,40 @@ namespace EGG9000.Common.Database.Entities {
                     return _shipDMs;
                 if(_shipDMsByte == null)
                     return null;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
                 _shipDMs = MessagePackSerializer.Deserialize<List<ShipDM>>(_shipDMsByte, lz4Options);
                 return _shipDMs;
             }
             set {
                 _shipDMs = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
                 _shipDMsByte = MessagePackSerializer.Serialize(value, lz4Options);
                 _shipDMsString = JsonConvert.SerializeObject(value);
             }
         }
 
-
-
-
-
-        //public static void CopyTo(Stream src, Stream dest) {
-        //    byte[] bytes = new byte[4096];
-
-        //    int cnt;
-
-        //    while ((cnt = src.Read(bytes, 0, bytes.Length)) != 0) {
-        //        dest.Write(bytes, 0, cnt);
-        //    }
-        //}
+        public byte[] _contractRegistrationByte { get; set; }
 
         [NotMapped]
-        public List<EggIncNameAndId> EggIncIds {
-            get => JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]"); 
-            set { _eggIncIds = JsonConvert.SerializeObject(value); Console.WriteLine("Updating _eggIncIds"); }
+        private List<EggIncAccount> _accounts = null;
+        [NotMapped]
+        public List<EggIncAccount> EggIncAccounts {
+            get {
+                if(_contractRegistrationByte is null) {
+                    _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
+                } else {
+                    _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+                }
+                return _accounts;
+            } set {
+                _accounts = value;
+                UpdateAccounts();
+            }
 
+        }
+
+        public void UpdateAccounts() {
+            if(_eggIncIds is not null)
+                _eggIncIds = null;
+            _contractRegistrationByte = MessagePackSerializer.Serialize(_accounts, lz4Options);
         }
 
         public DateTimeOffset CreateOn { get; set; }
@@ -144,60 +151,75 @@ namespace EGG9000.Common.Database.Entities {
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
         public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            return EggIncIds.Any(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
+            return EggIncAccounts.Any(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
         }
 
 
         public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            var eggIncIds = JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]");
+            var eggIncIds = EggIncAccounts;
             var nameId = eggIncIds.First(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
 
             var update = false;
-            if (string.IsNullOrEmpty(nameId.Id)) {
+            if(string.IsNullOrEmpty(nameId.Id)) {
                 nameId.Id = proto.UserId;
                 update = true;
                 Console.WriteLine("Updating ID");
             }
-            if (nameId.Name != proto.UserName) {
+            if(nameId.Name != proto.UserName) {
                 nameId
                     .Name = proto.UserName;
                 update = true;
                 Console.WriteLine("Updating Name");
             }
-            if (update) {
-                EggIncIds = eggIncIds;//Force JSON Update
+            if(update) {
+                UpdateAccounts();//Force JSON Update
             }
         }
 
 
 
         public void AddName(string Name, string Id = null) {
-            var eggIncIds = JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]");
-            eggIncIds.Add(new EggIncNameAndId { Name = Name, Id = Id });
-            EggIncIds = eggIncIds; //Force JSON Update
+            var eggIncIds = EggIncAccounts;
+            eggIncIds.Add(new EggIncAccount { Name = Name, Id = Id });
+            UpdateAccounts();//Force JSON Update
         }
 
         public void RemoveID(string id) {
-            var eggIncIds = JsonConvert.DeserializeObject<List<EggIncNameAndId>>(_eggIncIds ?? "[]");
+            var eggIncIds = EggIncAccounts;
             eggIncIds.RemoveAll(x => x.Id.ToLower() == id.ToLower());
-            EggIncIds = eggIncIds; //Force JSON Update
+            UpdateAccounts();//Force JSON Update
         }
-    }
 
-    public class EggIncNameAndId {
-        public string Name { get; set; }
-        public string Id { get; set; }
-    }
+        [MessagePackObject]
+        public class EggIncAccount {
+            [Key(0)]
+            public string Name { get; set; }
+            [Key(1)]
+            public string Id { get; set; }
+            [Key(2)]
+            public DateTimeOffset OnBreakUntil { get; set; }
+            [Key(3)]
+            public List<Ei.RewardType> AutoRegisterRewards { get; set; }
+            [Key(4)]
+            public bool AutoRegister { get; set; } //Not being used
+            [Key(5)]
+            public byte Group { get; set; }
+            [Key(6)]
+            public bool EnableFilter { get; set; }
+            [Key(7)]
+            public bool RedoLeggacy { get; set; }
+        }
 
-    [MessagePackObject]
-    public class ShipDM {
-        [Key(0)]
-        public string EggIncID { get; set; }
-        [Key(1)]
-        public DateTimeOffset DMTime { get; set; }
-        [Key(2)]
-        public bool Sent { get; set; }
-        [Key(3)]
-        public long ShipReturnTime { get; set; }
+        [MessagePackObject]
+        public class ShipDM {
+            [Key(0)]
+            public string EggIncID { get; set; }
+            [Key(1)]
+            public DateTimeOffset DMTime { get; set; }
+            [Key(2)]
+            public bool Sent { get; set; }
+            [Key(3)]
+            public long ShipReturnTime { get; set; }
+        }
     }
 }

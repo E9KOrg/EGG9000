@@ -25,7 +25,7 @@ using Newtonsoft.Json.Serialization;
 using System.Reflection;
 using EGG9000.Common.Helpers;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using Polly;
 using static EGG9000.Common.Helpers.Prefarm;
 using System.Text.Json;
@@ -450,7 +450,7 @@ namespace EGG9000.Site.Controllers {
 
 
                 if(oldest) {
-                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncIds.Count == 1).OrderBy(x => x.User.Registered).ToList());
+                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
                 } else {
                     switch(sortby) {
                         case "se":
@@ -487,7 +487,7 @@ namespace EGG9000.Site.Controllers {
 
 
                 if(oldest) {
-                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncIds.Count == 1).OrderBy(x => x.User.Registered).ToList());
+                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
                 } else {
                     switch(sortby) {
                         case "se":
@@ -560,7 +560,7 @@ namespace EGG9000.Site.Controllers {
             activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
 
             // Get users ebs - could be multiple.
-            IEnumerable<double> myEbs = user.Backups.Where(b => user.EggIncIds.Any(i => i.Id == b.EggIncId)).Select(x => x.EarningsBonus);
+            IEnumerable<double> myEbs = user.Backups.Where(b => user.EggIncAccounts.Any(i => i.Id == b.EggIncId)).Select(x => x.EarningsBonus);
             List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
             foreach (var eb in myEbs)
             {
@@ -569,7 +569,7 @@ namespace EGG9000.Site.Controllers {
 
             // Get active EggInc Accounts
             var activeAccounts = await _db.DBUsers.Where(x => x.GuildId == user.GuildId && !x.TempDisabled && activeUsers.Any(y => y == x.Id)).Select(x => new DBUser { Id = x.Id, _eggIncIds = x._eggIncIds}).ToListAsync();
-            var activeIDs = activeAccounts.SelectMany(x => x.EggIncIds.Select(y => new Tuple<Guid, string>(x.Id, y.Id)));
+            var activeIDs = activeAccounts.SelectMany(x => x.EggIncAccounts.Select(y => new Tuple<Guid, string>(x.Id, y.Id)));
 
             // Get top snapshot for each group of userid, eggincid
             // This accounts for users with multiple egginc accounts registred
@@ -991,7 +991,7 @@ namespace EGG9000.Site.Controllers {
             foreach(var user in users) {
                 Console.WriteLine($"Processing {i++} of {users.Count}");
                 var backups = new List<CustomBackup>();
-                foreach(var eiid in user.EggIncIds.Where(x => x.Id?.StartsWith("EI") ?? false)) {
+                foreach(var eiid in user.EggIncAccounts.Where(x => x.Id?.StartsWith("EI") ?? false)) {
                     var rawBackup = await ContractsAPI.FirstContact(eiid.Id);
                     var customBackup = new CustomBackup(rawBackup.Backup);
                     if(customBackup?.SpaceMissions != null) {

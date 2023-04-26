@@ -17,7 +17,7 @@ namespace EGG9000.Bot.Helpers {
                 var xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.UserMatchesProto(p));
 
                 if (xref == null) {
-                    var user = users.FirstOrDefault(x => x.EggIncIds.Any(x => x.Id == p.UserId));
+                    var user = users.FirstOrDefault(x => x.EggIncAccounts.Any(x => x.Id == p.UserId));
                     if (user != null) {
                         if (coopChannel != null) {
                             var discoordUser = _client.GetUser(user.DiscordId); ;

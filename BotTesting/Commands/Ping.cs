@@ -1,14 +1,7 @@
-﻿using Discord.WebSocket;
-
-using EGG9000.Common.Commands;
+﻿using EGG9000.Common.Commands;
 using EGG9000.Common.Services;
 
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace EGG9000.Bot.Commands {
+namespace TestBot.Commands {
     public class PingCommands {
         [SlashCommand(Description = "Test to see if bot is alive")]
         public static async Task Ping(FauxCommand command) {

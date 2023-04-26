@@ -23,7 +23,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {

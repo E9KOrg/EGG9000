@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 
 
 using MessagePack;
@@ -58,7 +58,7 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             var backups = new List<CustomBackup>();
             var rawBackups = new List<Ei.Backup>();
-            foreach(var accounts in user.EggIncIds) {
+            foreach(var accounts in user.EggIncAccounts) {
                 var rawBackup = await ContractsAPI.FirstContact(accounts.Id);
                 rawBackups.Add(rawBackup.Backup);
                 var customBackup = new CustomBackup(rawBackup.Backup);
@@ -113,7 +113,7 @@ namespace EGG9000.Site.Controllers {
 
             //Get fresh backups
             var backups = new List<CustomBackup>();
-            foreach(var accounts in user.EggIncIds) {
+            foreach(var accounts in user.EggIncAccounts) {
                 backups.Add((await _apiLink.GetBackup(accounts.Id)));
             }
             user.Backups = backups;
@@ -139,7 +139,7 @@ namespace EGG9000.Site.Controllers {
 
             //Get fresh backups
             var backups = new List<CustomBackup>();
-            foreach(var accounts in user.EggIncIds) {
+            foreach(var accounts in user.EggIncAccounts) {
                 backups.Add((await _apiLink.GetBackup(accounts.Id)));
             }
             user.Backups = backups;

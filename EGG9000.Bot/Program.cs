@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using Bugsnag.AspNet.Core;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
@@ -16,6 +16,9 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
+using EGG9000.Bot.Services;
+using EGG9000.Common.Migrations;
+using UserSnapShots = EGG9000.Bot.Automated.UserSnapShots;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -23,16 +26,18 @@ await Host.CreateDefaultBuilder(args)
         Console.WriteLine("Main Start");
 
         var Configuration = new ConfigurationBuilder()
-            .AddUserSecrets<Secrets>()
+            .AddUserSecrets<Program>()
             .Build();
 
+        services.AddSingleton<IConfiguration>(Configuration);
         services.Configure<HostOptions>(options => {
             options.ShutdownTimeout = TimeSpan.FromMinutes(5);
         });
 
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(
-                Configuration.GetConnectionString("DefaultConnection")));
+        services.AddDbContext<ApplicationDbContext>(//options =>
+            //options.UseSqlServer(
+                //Configuration.GetConnectionString("DefaultConnection"))
+            );
 
         services.AddSingleton<Words>();
         services.AddMemoryCache();
@@ -55,8 +60,8 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
         ////services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        services.AddSingleton<ContractUpdater>();
-        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+        //services.AddSingleton<ContractUpdater>();
+        //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         //services.AddHostedService<NewContracts>();
         //services.AddHostedService<CreateCoopChannels>();
@@ -69,6 +74,8 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
+        services.AddHostedService<UpcomingContracts>();
+
         Console.WriteLine("RUNNING IN DEBUG");
 
 
@@ -80,8 +87,6 @@ await Host.CreateDefaultBuilder(args)
         services.AddBugsnag(configuration => {
             configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
         });
-
-        //services.AddHostedService<DatabaseQueue>();
 
         services.AddSingleton<DiscordHostedService>();
         services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());

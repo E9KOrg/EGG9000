@@ -18,8 +18,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using EGG9000.Common.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
@@ -29,7 +30,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            ApplicationDbContext _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            ApplicationDbContext _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync();
 
             if(coops.Count > 0) {

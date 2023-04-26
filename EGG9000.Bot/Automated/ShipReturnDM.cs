@@ -17,7 +17,9 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Discord.Net;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using static EGG9000.Common.Database.Entities.DBUser;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM : _UpdaterBase<ShipReturnDM> {
@@ -26,7 +28,7 @@ namespace EGG9000.Bot.Automated {
         ) : base(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
         }
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var users = await _db.DBUsers.AsQueryable().Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync();
             foreach(var user in users) {
@@ -101,10 +103,10 @@ namespace EGG9000.Bot.Automated {
                         var needsFuel = NeedsFuel(b);
 
                         return b.SpaceMissions.Where(m => m.Status != MissionInfo.Types.Status.Fueling).Select(m => new ShipDM {
-                            EggIncID = user.EggIncIds.Count > 1 ? b.EggIncId : null,
+                            EggIncID = user.EggIncAccounts.Count > 1 ? b.EggIncId : null,
                             ShipReturnTime = m.ReturnTime,
                             DMTime = DateTimeOffset.FromUnixTimeSeconds(m.ReturnTime).AddMinutes(0 - (needsFuel ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes)),
-                            Sent = user.ShipDMs?.FirstOrDefault(d => d.ShipReturnTime == m.ReturnTime && d.EggIncID ==( user.EggIncIds.Count > 1 ? b.EggIncId : null))?.Sent ?? false
+                            Sent = user.ShipDMs?.FirstOrDefault(d => d.ShipReturnTime == m.ReturnTime && d.EggIncID ==( user.EggIncAccounts.Count > 1 ? b.EggIncId : null))?.Sent ?? false
                         });
                     });
 
