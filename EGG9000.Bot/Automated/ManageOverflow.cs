@@ -23,6 +23,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
 using EGG9000.Common.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class ManageOverflow : _UpdaterBase<ManageOverflow> {
@@ -35,7 +36,7 @@ namespace EGG9000.Bot.Automated {
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guilds = await _db.Guilds.AsQueryable().ToListAsync();
 
             foreach(var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {

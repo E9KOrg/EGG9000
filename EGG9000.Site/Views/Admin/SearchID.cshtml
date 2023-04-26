@@ -15,7 +15,7 @@
 			<td>
 				<a href="/MyFarms/ViewUser?discordId=@(user.DiscordId)"> @user.DiscordUsername </a>
 			</td>
-			@foreach (var ei in user.EggIncIds) {
+			@foreach (var ei in user.EggIncAccounts) {
 				<td>@ei.Name</td>
 			}
 		</tr>

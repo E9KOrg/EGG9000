@@ -17,6 +17,7 @@ using Microsoft.Net.Http.Headers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
@@ -71,13 +72,13 @@ namespace EGG9000.Bot.Commands {
             if(account.AutoRegisterRewards is null)
                 account.AutoRegisterRewards = new List<Ei.RewardType>();
             eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
-            eBuilder.AddField("Redo Leggacies", account.RedoLeggacy ? "Yes" : "No");
+            eBuilder.AddField("Redo Completed Leggacies", account.RedoLeggacy ? "Yes (Will redo all contracts to help out others)" : "No (Will still be assigned to incomplete leggacies)");
 
             var builder = new ComponentBuilder()
                 .WithButton("Boarding Group", $"MCSBg:{index}")
                 .WithButton("Set Break", $"MCSBreak:{index}")
                 .WithButton("Rewards Filter", $"MCSRewards:{index}")
-                .WithButton("Redo Leggacies", $"MCS_Redo:{index}");
+                .WithButton("Redo Completed Leggacies", $"MCS_Redo:{index}");
             if(dbuser.EggIncAccounts.Count > 1)
                 builder.WithButton("Return", $"MCSAccounts");
             props.Components = builder.Build();
@@ -112,12 +113,12 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder().WithSelectMenu($"MCSBoardingGroup:{index}", new List<SelectMenuOptionBuilder> {
-                new SelectMenuOptionBuilder("Group 1", "1", isDefault: account.Group == 1),
+                new SelectMenuOptionBuilder("Group 1 (Contract Launch)", "1", isDefault: account.Group == 1),
                 new SelectMenuOptionBuilder("Group 2", "2", isDefault: account.Group == 2),
                 new SelectMenuOptionBuilder("Group 3", "3", isDefault: account.Group == 3),
             });
             builder.WithButton("Cancel", $"MCSMenu:{index}");
-            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out. Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\nBG1 <t:1681138800:t>\n BG2 <t:1681167600:t>\n BG3 <t:1681196400:t>";
+            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out. Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\nBG1 <t:1681138800:t>  (When contracts normally launch)\n BG2 <t:1681167600:t>\n BG3 <t:1681196400:t>";
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
         }
 

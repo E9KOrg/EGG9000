@@ -18,6 +18,7 @@ using Ei;
 using Humanizer;
 using Discord.Rest;
 using EGG9000.Common.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class StaffCoopsMessage : _UpdaterBase<StaffCoopsMessage> {
@@ -28,7 +29,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.ToListAsync();
 
             foreach(var dbguild in dbguilds.Where(x => x.StaffCoopsMessageDetails?.StartsWith("{") ?? false)) {

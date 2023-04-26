@@ -203,7 +203,7 @@ namespace EGG9000.Bot.Commands {
 
 
             var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == user.Id).ToListAsync();
-            if(xrefs.Count == dbuser.EggIncIds.Count && xrefs.First().JoinedCoop) {
+            if(xrefs.Count == dbuser.EggIncAccounts.Count && xrefs.First().JoinedCoop) {
                 await command.RespondAsync($"⚠️ERROR: {user.Mention} has already joined {xrefs.First().Coop.Name}");
                 return;
             }
@@ -211,9 +211,9 @@ namespace EGG9000.Bot.Commands {
             Guid dbuserid;
             string EggIncId;
             var eggIncName = "";
-            if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
+            if(xrefs.Count == 0 || dbuser.EggIncAccounts.Count > 1) {
                 dbuserid = dbuser.Id;
-                if(dbuser.EggIncIds.Count > 1) {
+                if(dbuser.EggIncAccounts.Count > 1) {
                     var contract = await db.Contracts.AsQueryable().FirstAsync(x => x.ID == targetCoop.ContractID);
                     var prefarms = dbuser.Backups.Select(b => Prefarm.BackupToPreFarm(new LeaderboardUser { Backup = b, User = dbuser }, contract)).Where(x => x.League == targetCoop.League).ToList();
 
@@ -231,7 +231,7 @@ namespace EGG9000.Bot.Commands {
                     }
                     xrefs.Clear();
                 } else {
-                    EggIncId = dbuser.EggIncIds.First().Id;
+                    EggIncId = dbuser.EggIncAccounts.First().Id;
                 }
             } else {
                 dbuserid = xrefs.First().GetID();
@@ -606,7 +606,7 @@ namespace EGG9000.Bot.Commands {
 
                 var contractBreakdown = await GetBreakdown(db, guildContract, _client);
 
-                var currentCoops = contractBreakdown.ExistingCoops.Where(x => !x.Coop.Finished && x.HasSpots).OrderByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
+                var currentCoops = contractBreakdown.ExistingCoops.Where(x => !x.Coop.Finished && x.HasSpots && x.TimeRemaining > TimeSpan.Zero).OrderByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
 
                 if(currentCoops.Count == 0) {
                     await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find open co-op, all spots may have been filled.");
@@ -635,7 +635,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.Coop.ContractID == targetCoop.ContractID && x.User.DiscordId == dbuser.DiscordId && x.CreatedOn > DateTimeOffset.Now.AddMonths(-2)).ToListAsync();
-                if(xrefs.Count == dbuser.EggIncIds.Count) {
+                if(xrefs.Count == dbuser.EggIncAccounts.Count) {
                     if(xrefs.Count == 1 && (xrefs.First().Coop.DeletedChannel || xrefs.First().Coop.FinishedOrFailed)) {
                         db.UserCoopXrefs.Remove(xrefs.First());
                         await db.SaveChangesAsync();
@@ -649,8 +649,8 @@ namespace EGG9000.Bot.Commands {
 
                 string EggIncId;
                 var eggIncName = "";
-                if(xrefs.Count == 0 || dbuser.EggIncIds.Count > 1) {
-                    if(dbuser.EggIncIds.Count > 1) {
+                if(xrefs.Count == 0 || dbuser.EggIncAccounts.Count > 1) {
+                    if(dbuser.EggIncAccounts.Count > 1) {
                         var prefarms = contractBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Where(x => x.DBUser.Id == dbuser.Id);
                         if(prefarms.Count() == 0) {
                             await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Looks like all prefarms for <@{dbuser.DiscordId}> have been assigned.");
@@ -659,7 +659,7 @@ namespace EGG9000.Bot.Commands {
                         EggIncId = prefarms.First().EggIncId;
                         eggIncName = $" ({prefarms.First().Backup.UserName})";
                     } else {
-                        EggIncId = dbuser.EggIncIds.First().Id;
+                        EggIncId = dbuser.EggIncAccounts.First().Id;
                     }
                 } else {
                     EggIncId = xrefs.First().EggIncId;
@@ -738,7 +738,7 @@ namespace EGG9000.Bot.Commands {
                             }
 
                             var eggIncName = "";
-                            if(user.DBUser.EggIncIds.Count > 1 && !string.IsNullOrEmpty(user.Backup.UserName)) {
+                            if(user.DBUser.EggIncAccounts.Count > 1 && !string.IsNullOrEmpty(user.Backup.UserName)) {
                                 eggIncName = $" ({user.Backup.UserName})";
                             }
 

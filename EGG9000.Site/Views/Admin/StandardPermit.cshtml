@@ -6,7 +6,7 @@
     var merits = (List<Merit>)ViewBag.Merits;
 
     Model.ForEach(x => {
-        x.Backups = x.Backups.Where(b => x.EggIncIds.Any(y => y.Id == b.EggIncId)).ToList();
+        x.Backups = x.Backups.Where(b => x.EggIncAccounts.Any(y => y.Id == b.EggIncId)).ToList();
     });
 
     var users = Model.Select(x => {

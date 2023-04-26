@@ -3,7 +3,9 @@ using Bugsnag.AspNet.Core;
 
 using Discord.WebSocket;
 
+using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
@@ -36,7 +38,7 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         services.AddHostedService<CommandService>();
-
+        //services.AddHostedService<UpcomingContracts>();
 
 
     }).ConfigureAppConfiguration((context, config) => {

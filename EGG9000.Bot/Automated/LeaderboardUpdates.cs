@@ -24,6 +24,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
 using EGG9000.Common.Services;
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
@@ -47,7 +48,7 @@ namespace EGG9000.Bot.Automated {
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             Console.WriteLine("Updating Leaderboard");
             var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created < DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync();
             var currentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created >= DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).ToListAsync();
@@ -190,12 +191,12 @@ namespace EGG9000.Bot.Automated {
                         }
 
 
-                        var unnessacryBackups = dbUser.Backups.Where(x => !dbUser.EggIncIds.Any(y => y.Id == x.EggIncId)).ToList();
+                        var unnessacryBackups = dbUser.Backups.Where(x => !dbUser.EggIncAccounts.Any(y => y.Id == x.EggIncId)).ToList();
                         unnessacryBackups.ForEach(x => dbUser.Backups.Remove(x));
 
                         if(dbUser.showEB) {
                             try {
-                                var ebs = dbUser.Backups.Where(x => dbUser.EggIncIds.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
+                                var ebs = dbUser.Backups.Where(x => dbUser.EggIncAccounts.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
                                 var ebString = $" ({string.Join(",", values: ebs)})";
                                 var newName = discordUser.GetCleanName().Truncate(32 - ebString.Length) + ebString;
                                 if(newName != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {

@@ -12,6 +12,7 @@ using Ei;
 using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
@@ -30,7 +31,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             await CheckShells(_db);
 

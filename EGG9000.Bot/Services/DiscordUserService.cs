@@ -11,9 +11,12 @@ using EGG9000.Common.Database.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Newtonsoft.Json;
+
+using Quartz.Impl.AdoJobStore.Common;
 
 using System;
 using System.Collections.Generic;
@@ -33,15 +36,15 @@ namespace EGG9000.Common.Services {
         private Words _words;
         private Bugsnag.IClient _bugsnag;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
+        private IServiceProvider _provider;
 
-        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag) {
+        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, IServiceProvider provider) {
             _discord = discord;
             _configuration = Configuration;
             _apiLink = apilink;
             _words = words;
-
-
             _bugsnag = bugsnag;
+            _provider = provider;
         }
 
 
@@ -67,7 +70,7 @@ namespace EGG9000.Common.Services {
         }
 
         private async Task Client_UserJoined_Task(SocketGuildUser user) {
-            var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await UserJoined(user, db);
         }
 
@@ -77,7 +80,7 @@ namespace EGG9000.Common.Services {
         }
 
         private async Task Client_UserLeft_Task(SocketGuild guild, SocketUser user) {
-            var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await UserLeft(guild, user, db);
         }
 

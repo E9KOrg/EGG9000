@@ -7,6 +7,7 @@ using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using System;
@@ -22,12 +23,13 @@ namespace EGG9000.Common.Services {
         private IConfiguration _configuration;
         private ApplicationDbContext _db;
         private readonly IMemoryCache _cache;
+        private IServiceProvider _provider;
         private static DiscordSocketConfig config = new DiscordSocketConfig() {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages
         };
-        public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache) : base(config) {
+        public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache, IServiceProvider provider) : base(config) {
             _configuration = Configuration;
-            
+            _provider = provider;
 
             this.Log += PrintLog;
             this.Ready += DiscordHostedService_Ready;
@@ -70,7 +72,7 @@ namespace EGG9000.Common.Services {
 
         private async Task<Guild> GetDbGuild(SocketGuild guild) {
             if(!_cache.TryGetValue(DBGuildsKey, out List<Guild> guildData)) {
-                var db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+                var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 guildData = await db.Guilds.ToListAsync();
                 _cache.Set(DBGuildsKey, guildData, TimeSpan.FromMinutes(30));
             }
