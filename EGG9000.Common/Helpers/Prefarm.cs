@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using EGG9000.Common.Database;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;

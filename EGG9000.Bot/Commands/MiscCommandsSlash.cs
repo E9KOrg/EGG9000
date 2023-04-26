@@ -27,7 +27,8 @@ using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -41,7 +42,7 @@ namespace EGG9000.Bot.Commands {
             }
             var builder = new EmbedBuilder();
             builder.Title = $"Next Rank Details";
-            foreach(var id in user.EggIncIds) {
+            foreach(var id in user.EggIncAccounts) {
                 var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
                 if(backup == null)
                     continue;
@@ -54,7 +55,7 @@ namespace EGG9000.Bot.Commands {
                     if(subrank.SoulsEggs < 0)
                         break;
                 }
-                builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncIds.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
+                builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
                 var currentRank = SIPrefix.GetPrefixFromEB(backup.EarningsBonus);
@@ -65,7 +66,7 @@ namespace EGG9000.Bot.Commands {
                         if(subrank.SoulsEggs < 0)
                             break;
                     }
-                    builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncIds.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
+                    builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
                 }
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
                 builder.AddField(new EmbedFieldBuilder { IsInline = false, Name = "Current Details", Value = @$"{currentRank.RankWithSubRank}
@@ -160,7 +161,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
                 //var backups = await apiLink.GetUserBackups(dbusers, db);
-                var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncIds.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
+                var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncAccounts.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
 
                 await contractUpdater.UpdateContractChannel(db, backups, targetGuildContract, guild, dbguild, dbusers, command);
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
@@ -170,30 +171,6 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
         }
 
-        [SlashCommand(Description = "Test delete response")]
-        public static async Task TestDeleteResponse1(FauxCommand command) {
-            await command.RespondAsync("Test Response");
-            await Task.Delay(1000);
-            await command.ModifyOriginalResponseAsync(x => x.Content = "After Delay");
-        }
-        //[SlashCommand(Description = "Test delete response")]
-        //public static async Task TestDeleteResponse1(FauxCommand command) {
-        //    await command.RespondAsync("Test Respoinse");
-        //    await Task.Delay(1000);
-        //    await command.DeleteOriginalResponseAsync();
-        //}
-        //[SlashCommand(Description = "Test delete response")]
-        //public static async Task TestDeleteResponse2(FauxCommand command) {
-        //    await command.RespondAsync("Test Respoinse");
-        //    await Task.Delay(1000);
-        //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
-        //}
-        //[SlashCommand(Description = "Test delete response")]
-        //public static async Task TestDeleteResponse3(FauxCommand command) {
-        //    await command.RespondAsync("Test Respoinse", ephemeral: true);
-        //    await Task.Delay(1000);
-        //    await (await command.GetOriginalResponseAsync()).DeleteAsync();
-        //}
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
         public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
             DateTimeOffset expireTime;

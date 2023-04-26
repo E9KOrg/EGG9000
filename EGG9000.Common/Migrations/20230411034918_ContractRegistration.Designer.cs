@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230411034918_ContractRegistration")]
+    partial class ContractRegistration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -659,37 +661,6 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("TemporaryRoles");
                 });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b =>
-                {
-                    b.Property<Guid>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("ChannelId")
-                        .HasColumnType("decimal(20,0)");
-
-                    b.Property<string>("ContractId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<decimal>("GuildID")
-                        .HasColumnType("decimal(20,0)");
-
-                    b.Property<bool>("IsLeggacy")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset>("TargetDate")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<byte[]>("_userRegs")
-                        .HasColumnType("varbinary(max)");
-
-                    b.HasKey("ID");
-
-                    b.HasIndex("ContractId");
-
-                    b.ToTable("UpcomingContracts");
-                });
-
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1122,15 +1093,6 @@ namespace EGG9000.Common.Migrations
                     b.Navigation("AdminUser");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b =>
-                {
-                    b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
-                        .WithMany()
-                        .HasForeignKey("ContractId");
-
-                    b.Navigation("Contract");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b =>

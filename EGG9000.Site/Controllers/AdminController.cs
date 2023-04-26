@@ -90,7 +90,7 @@ namespace EGG9000.Site.Controllers {
 
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == DiscordUserID);
 
-            var egginids = user.EggIncIds.Select(x => x.Id).ToList();
+            var egginids = user.EggIncAccounts.Select(x => x.Id).ToList();
 
             var participant = coopStatus.Participants.FirstOrDefault(x => egginids.Contains(x.UserId));
             if(participant is null) {
@@ -806,7 +806,7 @@ namespace EGG9000.Site.Controllers {
             //}
 
             id = id.ToLower();
-            var matchingUsers = users.Where(x => (x.DiscordUsername ?? "").ToLower().Contains(id) || x.EggIncIds.Any(y => y.Name.ToLower().Contains(id))).ToList();
+            var matchingUsers = users.Where(x => (x.DiscordUsername ?? "").ToLower().Contains(id) || x.EggIncAccounts.Any(y => y.Name.ToLower().Contains(id))).ToList();
             if(matchingUsers.Count == 1) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUsers.First().DiscordId });
             }
@@ -865,7 +865,7 @@ namespace EGG9000.Site.Controllers {
                 var user = backup.First().User;
                 var backups = new List<CustomBackup>();
                 var rawBackups = new List<Ei.Backup>();
-                foreach(var accounts in user.EggIncIds) {
+                foreach(var accounts in user.EggIncAccounts) {
                     var rawBackup = await ContractsAPI.FirstContact(accounts.Id);
                     rawBackups.Add(rawBackup.Backup);
                     var customBackup = new CustomBackup(rawBackup.Backup);
@@ -1009,7 +1009,7 @@ namespace EGG9000.Site.Controllers {
                             var guildUser = await guild.GetUserAsync(user.Id);
                             var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
 
-                            var needsProPermit = dbuser.Backups.Any(x => dbuser.EggIncIds.Any(y => x.EggIncId == y.Id) && x.PermitLevel == 0);
+                            var needsProPermit = dbuser.Backups.Any(x => dbuser.EggIncAccounts.Any(y => x.EggIncId == y.Id) && x.PermitLevel == 0);
                             eggsFound.Add(new EasterUser { User = guildUser, NeedsProPermit = needsProPermit }, 1);
                         }
                     }

@@ -21,10 +21,11 @@ using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Bot.Automated.CoopStatusUpdater;
 using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -46,7 +47,7 @@ namespace EGG9000.Bot.Automated {
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var sw = new Stopwatch();
             sw.Restart();
-            using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
+            using(var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()) {
 #if DEBUG
                 var checkFinished = true;
 #else
@@ -67,7 +68,7 @@ namespace EGG9000.Bot.Automated {
                 var throttler = new SemaphoreSlim(5);
 
 #if DEBUG
-                //coops = coops.Where(x => x.Name == "TweakCost44").ToList();
+                coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.Name == "LapelSend32").ToList();
                 //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
 #endif
@@ -391,7 +392,7 @@ namespace EGG9000.Bot.Automated {
 
         public async Task SendUpdate(Guid coopid, SocketGuild guild, List<DBUser> users, Guild dbguild, CancellationToken cancellationToken, ApplicationDbContext db) {
             try {
-                using(var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"])) {
+                using(var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()) {
                     var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid);
                     if(coop == null) {
                         return;
@@ -567,7 +568,7 @@ namespace EGG9000.Bot.Automated {
 
 
                             if(xref == null) {
-                                var dbuser = users.FirstOrDefault(x => x.EggIncIds.Any(y => y.Id == userCoopStatus.GetID()));
+                                var dbuser = users.FirstOrDefault(x => x.EggIncAccounts.Any(y => y.Id == userCoopStatus.GetID()));
                                 if(dbuser != null) {
                                     xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.GetID() == dbuser.Id && x.EggIncId == userCoopStatus.GetID());
                                     if(xref != null) {
@@ -807,8 +808,8 @@ namespace EGG9000.Bot.Automated {
                                     if(discordUser == null) {
                                         userList.Add($"{user.DiscordUsername} (Missing from server)");
                                         missingFromServer = true;
-                                    } else if(user.EggIncIds.Count > 1) {
-                                        var eggaccount = user.EggIncIds.FirstOrDefault(x => x.Id == xref.EggIncId);
+                                    } else if(user.EggIncAccounts.Count > 1) {
+                                        var eggaccount = user.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId);
                                         if(eggaccount != null)
                                             userList.Add($"{discordUser.Mention} ({eggaccount.Name})");
                                     } else {

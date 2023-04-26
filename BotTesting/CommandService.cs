@@ -4,20 +4,16 @@ using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
 
-using EGG9000.Bot.Automated;
 using EGG9000.Bot.Commands;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Services;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Newtonsoft.Json;
-
-using Quartz.Impl.AdoJobStore.Common;
 
 using System;
 using System.Collections.Generic;
@@ -31,7 +27,7 @@ using System.Threading.Tasks;
 
 using static EGG9000.Common.Services.FauxCommand;
 
-namespace EGG9000.Bot.Services {
+namespace EGG9000.Common.Services {
 
 
     public class CommandService : IHostedService {
@@ -41,27 +37,21 @@ namespace EGG9000.Bot.Services {
         private List<ComponentCommandFunction> _componentCommandFunctions;
         private IConfiguration _configuration;
         private APILink _apilink;
-        private Words _words;
         private Bugsnag.IClient _bugsnag;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
-        private ContractUpdater _contractUpdater;
-        private CoopStatusUpdater _coopStatusUpdater;
         private Guild _cpGuild;
         private IServiceProvider _provider;
 
-        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context, IServiceProvider serviceProvider) {
+        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Bugsnag.IClient bugsnag, ApplicationDbContext context, IServiceProvider provider) {
             _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
-            _words = words;
 
 
             _bugsnag = bugsnag;
-            _contractUpdater = contractUpdater;
-            _coopStatusUpdater = coopStatusUpdater;
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
-            _provider = serviceProvider;
+            _provider = provider;
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -134,6 +124,7 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(data.Length > 1 ? (object)data[1] : null);
                             continue;
                         }
+
                         if(parameterInfo.ParameterType == typeof(FauxCommand)) {
                             if(arg is SocketSlashCommand)
                                 parameters.Add(new FauxCommand(arg as SocketSlashCommand));
@@ -151,17 +142,11 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_discord);
                         } else if(parameterInfo.ParameterType == typeof(APILink)) {
                             parameters.Add(_apilink);
-                        } else if(parameterInfo.ParameterType == typeof(Words)) {
-                            parameters.Add(_words);
                         } else if(parameterInfo.ParameterType == typeof(SocketUser)) {
                             parameters.Add(arg.User);
-                        } else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
-                            parameters.Add(_coopStatusUpdater);
-                        } else if(parameterInfo.ParameterType == typeof(ContractUpdater)) {
-                            parameters.Add(_contractUpdater);
                         } else if(parameterInfo.ParameterType == typeof(IServiceProvider)) {
                             parameters.Add(_provider);
-                        }  else {
+                        } else {
                             throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
                         }
                     }
@@ -280,7 +265,11 @@ namespace EGG9000.Bot.Services {
                 foreach(var guild in _discord.Guilds) {
                     Console.WriteLine($"Creating slash commands for {guild.Name}");
 
-                    var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
+                    bool isCPGuild;
+                    if(_cpGuild is not null)
+                        isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
+                    else 
+                        isCPGuild = false;
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
                 }
@@ -302,7 +291,11 @@ namespace EGG9000.Bot.Services {
 
 
                 _ = Task.Run(() => RunCommand(command, arg));
+            } catch(System.InvalidOperationException e) {
+                _bugsnag.Notify(e);
+                var frame = (new StackTrace(e, true)).GetFrame(0);
 
+                await arg.RespondAsync($"⚠️ERROR: Bot error - Unable to locate function for the following action `{_componentCommandFunctions.First(x => x.Name == arg.Data.CustomId.Split(":")[0].ToLower())}` {arg.User.Mention}");
             } catch(Exception e) {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
@@ -310,6 +303,7 @@ namespace EGG9000.Bot.Services {
                 await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
             }
         }
+
 
 
         private object GetParam(ParameterInfo parameterInfo, CommandFunctionBase command, IDiscordInteraction arg) {
@@ -342,11 +336,11 @@ namespace EGG9000.Bot.Services {
             }
         }
         private async Task _discord_MessageReceived(SocketMessage message) {
-            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
                 var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
-                await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty, cpGeneralChannel);
+                //await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty, cpGeneralChannel);
                 await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
             }
             if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
@@ -441,6 +435,7 @@ namespace EGG9000.Bot.Services {
                       .Where(m => m.GetCustomAttributes(typeof(ComponentCommandAttribute), false).Length > 0)
                       .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
+
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;
         }

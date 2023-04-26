@@ -14,7 +14,9 @@ using System.Threading.Tasks;
 using EGG9000.Bot.Helpers;
 using Discord;
 using EGG9000.Common.Helpers;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using Quartz.Impl.AdoJobStore.Common;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class CoopReorder : _UpdaterBase<CoopReorder> {
@@ -25,7 +27,7 @@ namespace EGG9000.Bot.Automated {
         public override async Task Run(object state, CancellationToken cancellationToken) {
             try
             {
-                var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+                var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
                 foreach (var dbguild in dbguilds)
                 {

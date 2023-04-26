@@ -27,7 +27,8 @@ using Ei;
 using EGG9000.Common.Migrations;
 using Polly;
 using Microsoft.Data.SqlClient;
-using EGG9000.Bot.Services;
+using EGG9000.Common.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
@@ -69,7 +70,7 @@ namespace EGG9000.Bot.Automated {
             var sw = new Stopwatch();
             sw.Start();
 
-            var _db = new ApplicationDbContext(_configuration["ConnectionStrings:DefaultConnection"]);
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync();
 
             if(showTimings)

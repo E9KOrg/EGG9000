@@ -24,7 +24,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            var usersNotSeenInCoop = dbUsers.Where(x => !x.EggIncIds.Any(y => !string.IsNullOrEmpty(y.Id)));
+            var usersNotSeenInCoop = dbUsers.Where(x => !x.EggIncAccounts.Any(y => !string.IsNullOrEmpty(y.Id)));
 
 
             var msg = "";
@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Commands {
                     var mention = client.GetUser(x.DiscordId)?.Mention;
                     if (mention == null)
                         return null;
-                    return mention + $" EggIncName: **{String.Join(",", x.EggIncIds.Select(y => y.Name))}**";
+                    return mention + $" EggIncName: **{String.Join(",", x.EggIncAccounts.Select(y => y.Name))}**";
                 }).Where(x => x != null);
                 msg += $"The following users are registered but have not been seen in a coop (possibly wrong EggInc name): \n{string.Join("\n", list)}";
             }
