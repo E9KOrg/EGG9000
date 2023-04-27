@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO.Compression;
 using ComponentAce.Compression.Libs.zlib;
+using Ei;
 
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
@@ -363,7 +364,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
                     var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
-                    
+
 
 
                     client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
@@ -374,10 +375,10 @@ namespace EGG9000.Bot.EggIncAPI {
                     HttpResponseMessage response;
 
                     //try {
-                        response = await client.PostAsync("ei/first_contact_secure", bac);
+                    response = await client.PostAsync("ei/first_contact_secure", bac);
                     //} catch(Exception) {
-                        //await Task.Delay(500);
-                        //response = await client.PostAsync("ei/first_contact", bac);
+                    //await Task.Delay(500);
+                    //response = await client.PostAsync("ei/first_contact", bac);
                     //}
 
 
@@ -406,6 +407,70 @@ namespace EGG9000.Bot.EggIncAPI {
                 return new Ei.EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
             }
         }
+        public static async Task<string> FirstContactRaw(string UserId) {
+            try {
+                var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
+                using(var client = new HttpClient(handler)) {
+                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
+
+                    var ms1 = new MemoryStream();
+                    new Ei.EggIncFirstContactRequest {
+                        ClientVersion = ClientVersion,
+                        Platform = Aux.Platform.Droid,
+                        EiUserId = UserId,
+                        DeviceId = UserId,
+                        Username = "",
+                        //GameServicesId = "102371659776481580429", 
+                        Rinfo = GetInfo(UserId)
+                    }.WriteTo(ms1);
+                    //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
+                    ms1.Position = 0;
+                    var messageData = ms1.ToArray();
+                    var ms2 = new MemoryStream();
+                    new Ei.AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) }.WriteTo(ms2);
+
+                    ms2.Position = 0;
+                    var sr = new StreamReader(ms2);
+                    var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
+                    var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
+                    client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
+                    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                    client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+                    bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+
+                    HttpResponseMessage response;
+
+                    //try {
+                    response = await client.PostAsync("ei/first_contact_secure", bac);
+                    //} catch(Exception) {
+                    //    await Task.Delay(500);
+                    //    response = await client.PostAsync("ei/first_contact", bac);
+                    //}
+
+                    if(response.IsSuccessStatusCode) {
+                        var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                        var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(responseString);
+
+                        if(authMessageDecoded.Compressed) {
+                            using(MemoryStream outMemoryStream = new MemoryStream())
+                            using(ZOutputStream outZStream = new ZOutputStream(outMemoryStream))
+                            using(Stream inMemoryStream = new MemoryStream(authMessageDecoded.Message.ToArray())) {
+                                CopyStream(inMemoryStream, outZStream);
+                                outZStream.finish();
+                                return Convert.ToBase64String(outMemoryStream.ToArray());
+                            }
+                        } else {
+                            return authMessageDecoded.Message.ToString();
+                        }
+                    } else {
+                        return "Error";
+                    }
+                }
+
+            } catch(Exception e) {
+                return "Error";
+            }
+        }
 
         private static async Task<Ei.EggIncFirstContactResponse> FirstContactNew(string UserId) {
             try {
@@ -415,7 +480,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
-                        ClientVersion = 27,
+                        ClientVersion = ClientVersion,
                         Platform = Aux.Platform.Droid,
                         EiUserId = UserId,
                         DeviceId = UserId,

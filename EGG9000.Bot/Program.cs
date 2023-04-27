@@ -43,10 +43,10 @@ await Host.CreateDefaultBuilder(args)
         services.AddMemoryCache();
 #if DEBUG
         services.AddBugsnag();
-        services.AddSingleton<DiscordHostedService>();
-        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-        services.AddSingleton<APILink>();
-        services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+        //services.AddSingleton<DiscordHostedService>();
+        //services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+        //services.AddSingleton<APILink>();
+        //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         //services.AddHostedService<CommandService>();
         //services.AddHostedService<DiscordUserService>();
@@ -71,7 +71,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
 
-        //services.AddHostedService<TestService>();
+        services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
         //services.AddHostedService<UpcomingContracts>();
@@ -123,10 +123,10 @@ await Host.CreateDefaultBuilder(args)
     }).Build().RunAsync();
 
 public class TestService : IHostedService {
-    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext) {
-        _client = client;
-        db = applicationDbContext;
-    }
+    //public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext) {
+    //    _client = client;
+    //    db = applicationDbContext;
+    //}
 
     public DiscordHostedService _client { get; }
     public ApplicationDbContext db { get; }
@@ -173,20 +173,7 @@ public class TestService : IHostedService {
         //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
         //    RequestingUserId = coopStatus.CreatorId
         //}, ContractsAPI.UserId);
-
-        var shellTypes = await db.ExpiringShells.GroupBy(x => x.Identifier).Select(x => x.Key).ToListAsync();
-        foreach(var shellType in shellTypes) {
-            var shells = await db.ExpiringShells.Where(x => x.Identifier == shellType).ToListAsync();
-            var groupedShells = shells.GroupBy(x => new { x.Identifier, Expires = RoundToNearest(x.Expires.DateTime, TimeSpan.FromHours(1)) });
-            foreach(var group in groupedShells) {
-                var toDelete = ChunkBy(group.Skip(1).ToList(), 1000);
-                foreach(var chunk in toDelete) {
-                    db.RemoveRange(chunk);
-                    Console.WriteLine($"Deleting {chunk.Count()} entries for {shellType}");
-                    await db.SaveChangesAsync();
-                }
-            }
-        }
+        var raw = await ContractsAPI.FirstContactRaw("EI5015560351383552");
     }
 
     public DateTime RoundToNearest(DateTime dt, TimeSpan d) {
