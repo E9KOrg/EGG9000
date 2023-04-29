@@ -67,7 +67,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CreateCoopChannels>();
         //services.AddHostedService<ShipReturnDM>();
         //services.AddHostedService<UserSnapShots>();
-        //services.AddHostedService<LeaderboardUpdater>();
+        services.AddHostedService<LeaderboardUpdater>();
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
 

@@ -79,6 +79,20 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
+        [IgnoreMember]
+        public Ei.Contract.Types.PlayerGrade Grade { 
+            get {
+                if(EarningsBonus < 1_000_000)
+                    return Ei.Contract.Types.PlayerGrade.GradeC;
+                if(EarningsBonus < 100_000_000)
+                    return Ei.Contract.Types.PlayerGrade.GradeB;
+                if(EarningsBonus < 10_000_000_000)
+                    return Ei.Contract.Types.PlayerGrade.GradeA;
+                if(EarningsBonus < 1_000_000_000_000)
+                    return Ei.Contract.Types.PlayerGrade.GradeAa;
+                return Ei.Contract.Types.PlayerGrade.GradeAaa;
+            }
+        }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
