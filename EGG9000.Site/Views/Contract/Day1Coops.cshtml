@@ -1,0 +1,64 @@
+﻿@model List<EGG9000.Common.Contracts.PotentialCoopGroup>
+@{
+    var boardingGroups = Model.GroupBy(x => x.BoardingGroup).Select(x => new
+    {
+        BoardingGroup = x.Key,
+        Grades = x.Where(y => y.PotentialCoops.Count > 0).Select(y => new {
+            Grade = y.Grade.ToString(),
+            Coops = y.PotentialCoops.Select(c => new {
+                Users = c.Users.Select(u => new {
+                    EB = u.Backup.EarningsBonus,
+                    EBString = u.Backup.EarningsBonus.ToEggString(),
+                    Name = u.User.DiscordUsername,
+                    MultipleAccounts = u.User.EggIncAccounts.Count > 1,
+                    AccountName = u.Backup.UserName
+                }),
+                TotalEB = c.Users.Sum(u => u.Backup.EarningsBonus).ToEggString()
+            })
+        })
+
+    });
+}
+<style>
+    .container {
+        max-width: 100%;
+    }
+    .card {
+    margin-bottom: 50px;
+}
+</style>
+<div ng-controller="Page">
+    Boarding Group <select ng-model="bg" ng-options="item as item.BoardingGroup for item in boardingGroups track by item.BoardingGroup"></select>
+    <div class="row scrollable">
+    <div class="col-sm" ng-repeat="group in bg.Grades">
+        <h2>{{group.Grade}} ({{group.Coops.length}})</h2>
+        <div class="card" ng-repeat="coop in group.Coops">
+            <h5 class="card-header">Coop</h5>
+                <table class="table table-striped">
+                    <tbody>
+                        <tr ng-repeat="user in coop.Users">
+                            <td>{{user.Name}} <span ng-if="user.MultipleAccounts">({{user.AccountName}})</span></td>
+                            <td>{{user.EBString}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            <div class="card-footer">
+                Total EB {{coop.TotalEB}}
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+    <script>
+    angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
+        .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+            $scope.boardingGroups = @Html.Raw(JsonConvert.SerializeObject(boardingGroups));
+            $scope.bg = $scope.boardingGroups[0];
+    }]);
+    </script>
+}

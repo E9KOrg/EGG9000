@@ -35,9 +35,8 @@ namespace EGG9000.Bot.Commands
     public static class MiscCommandsSlash
     {
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
-        public static async Task NextRank(FauxCommand command, ApplicationDbContext db)
-        {
-            await command.RespondAsync("Getting backups...");
+        public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
+            await command.RespondAsync("Getting backups...", ephemeral: true);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null)
             {
@@ -89,9 +88,9 @@ Prestiges {backup.NumPrestiges}
 Last Backup <t:{backup.LastBackupTime}:R>
 " });
             }
-            await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
-            await command.DeleteResponseFix();
-            //await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
+            //await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
+            //await command.DeleteResponseFix();
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
         }
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
