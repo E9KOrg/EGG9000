@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 using Discord.Rest;
 using System.Threading;
+using EGG9000.Common.Services;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpers {
@@ -253,12 +254,10 @@ namespace EGG9000.Bot.Helpers {
         }
 
 
-        public static async Task CheckActive(SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
-            var role = Guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+        public static async Task CheckActive(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
+            var role = await _client.GetRoleAsync(GuildChannelType.ActiveRole, Guild); ;
             if(role != null) {
-                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-14)
-                    || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5)
-                    || userAccounts.Any(ua => ua.Backup.Farms.Any(f => f.Started > DateTimeOffset.Now.AddDays(-7)));
+                var needsRole = isActive(user, userAccounts);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {
@@ -270,6 +269,33 @@ namespace EGG9000.Bot.Helpers {
                     await DiscordUser.RemoveRoleAsync(role);
                     Console.WriteLine($"Removing active role for {DiscordUser.GetName()}");
                     await Task.Delay(500);
+                }
+
+            }
+        }
+
+        private static bool isActive(DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
+            return user.Registered > DateTimeOffset.Now.AddDays(-14)
+                    || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5)
+                    || userAccounts.Any(ua => ua.Backup.Farms.Any(f => f.Started > DateTimeOffset.Now.AddDays(-7)));
+        }
+
+
+        public static async Task CheckBG(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
+            var role = await _client.GetRoleAsync(GuildChannelType.MissingBoardingGroupRole, Guild);;
+            if(role != null) {
+                var needsRole = isActive(user, userAccounts) && user.EggIncAccounts.Any(y => y.Group == 0);
+                var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
+
+                if(!hasRole && needsRole) {
+                    await DiscordUser.AddRoleAsync(role);
+                    Console.WriteLine($"Adding missingbg role for {DiscordUser.GetName()}");
+                    //await Task.Delay(500);
+                }
+                if(hasRole && !needsRole) {
+                    await DiscordUser.RemoveRoleAsync(role);
+                    Console.WriteLine($"Removing missingbg for {DiscordUser.GetName()}");
+                    //await Task.Delay(500);
                 }
 
             }

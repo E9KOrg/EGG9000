@@ -440,38 +440,69 @@ message Reward {
 }
 
 message Contract {
-    optional string identifier = 1;
-    optional string name = 9;
-    optional string description = 10;
-    optional Egg egg = 2;
 
-    repeated Goal goals = 3;
-    message Goal {
-        optional GoalType type = 1;
-        optional double target_amount = 2;
-        optional RewardType reward_type = 3;
-        optional string reward_sub_type = 4;
-        optional double reward_amount = 5;
-        optional double target_soul_eggs = 6;
-    }
+	enum PlayerGrade {
 
-    repeated GoalSet goal_sets = 16;
-    message GoalSet {
-        repeated Goal goals = 1;
-    }
+		GRADE_UNSET = 0;
 
-    optional bool coop_allowed = 4;
-    optional uint32 max_coop_size = 5;
-    optional uint32 max_boosts = 12;
-    optional double minutes_per_token = 15 [default = 60];
-    optional double chicken_run_cooldown_minutes = 18 [default = 60];
-    optional double start_time = 17;
-    optional double expiration_time = 6;
-    optional double length_seconds = 7;
-    optional double max_soul_eggs = 13;
-    optional uint32 min_client_version = 14;
-    optional bool leggacy = 19;
-    optional bool debug = 11;
+		GRADE_C = 1;
+		GRADE_B = 2;
+		GRADE_A = 3;
+		GRADE_AA = 4;
+		GRADE_AAA = 5;
+	}
+
+
+	message Goal {
+
+		optional GoalType type = 1;
+		optional double target_amount = 2;
+
+		optional RewardType reward_type = 3;
+		optional string reward_sub_type = 4;
+		optional double reward_amount = 5;
+
+		optional double target_soul_eggs = 6; //// used ot determine difficulty
+	}
+
+	message GoalSet {
+  	repeated Goal goals = 1;
+  }
+
+	message GradeSpec {
+		optional PlayerGrade grade = 1;
+		repeated Goal goals = 2;
+		//repeated GameModifier modifiers = 3;
+		optional double length_seconds = 4;
+	}
+
+
+	optional string identifier = 1;
+	optional string name = 9;
+	optional string description = 10;
+	optional Egg egg = 2;
+
+	repeated Goal goals = 3; // Deprecated
+	repeated GoalSet goal_sets = 16; // Deprecated
+
+	repeated GradeSpec grade_specs = 20;
+	optional string season_id = 23;
+
+	optional bool coop_allowed = 4;
+	optional uint32 max_coop_size = 5;
+	optional uint32 max_boosts = 12; // deprecated
+	optional double minutes_per_token = 15 [default = 60];
+	optional double chicken_run_cooldown_minutes = 18 [default = 180];
+	optional double start_time = 17; // server time
+	optional double expiration_time = 6; // server time
+	optional double length_seconds = 7;
+	optional double max_soul_eggs = 13;
+	optional uint32 min_client_version = 14;
+	optional bool leggacy = 19;
+
+	optional bool debug = 11;
+
+	optional string key = 21;
 }
 
 message BasicRequestInfo {

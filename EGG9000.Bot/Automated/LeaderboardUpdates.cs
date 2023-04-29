@@ -87,9 +87,12 @@ namespace EGG9000.Bot.Automated {
 //#endif
 
                 Console.WriteLine("Getting User Backups for Leaderboard");
-                var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
-                 
+                //var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
 
+                var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser {
+                    User = x,
+                    Backup = x.Backups.FirstOrDefault(b => b.EggIncId == y.Id)
+                })).Where(x => x.Backup is not null).ToList();
 
                 foreach(var lUser in lUsers) {
                     if(lUser.Backup == null)
@@ -174,7 +177,8 @@ namespace EGG9000.Bot.Automated {
                         await DiscordHelpers.CheckSiloResearch(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
                         await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);
                         await DiscordHelpers.CheckFreshEggsRole(guild, discordUser, dbUser);
-                        await DiscordHelpers.CheckActive(guild, discordUser, dbUser, userAccounts);
+                        await DiscordHelpers.CheckActive(_client, guild, discordUser, dbUser, userAccounts);
+                        await DiscordHelpers.CheckBG(_client, guild, discordUser, dbUser, userAccounts);
                         await DiscordHelpers.CheckPermitRoles(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
 
                         if(higherEB.Backup.EggsOfProphecy > 1000) {

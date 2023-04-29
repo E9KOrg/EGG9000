@@ -201,11 +201,11 @@ namespace EGG9000.Common.Database.Entities {
             [Key(3)]
             public List<Ei.RewardType> AutoRegisterRewards { get; set; }
             [Key(4)]
-            public bool AutoRegister { get; set; } //Not being used
+            public bool bool1 { get; set; } //Not being used
             [Key(5)]
             public byte Group { get; set; }
             [Key(6)]
-            public bool EnableFilter { get; set; }
+            public bool bool2 { get; set; } //Not being user
             [Key(7)]
             public bool RedoLeggacy { get; set; }
         }
@@ -220,6 +220,17 @@ namespace EGG9000.Common.Database.Entities {
             public bool Sent { get; set; }
             [Key(3)]
             public long ShipReturnTime { get; set; }
+        }
+
+        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, Ei.RewardType selectReward) {
+            switch(selectReward) {
+                case Ei.RewardType.Artifact:
+                    return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.Artifact || g.RewardType == Ei.RewardType.ArtifactCase);
+                case Ei.RewardType.PiggyMultiplier:
+                    return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.PiggyMultiplier || g.RewardType == Ei.RewardType.PiggyLevelBump);
+                default:
+                    return gradeSpec.Goals.Any(g => g.RewardType == selectReward);
+            }
         }
     }
 }
