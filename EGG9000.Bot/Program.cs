@@ -67,14 +67,14 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CreateCoopChannels>();
         //services.AddHostedService<ShipReturnDM>();
         //services.AddHostedService<UserSnapShots>();
-        //services.AddHostedService<LeaderboardUpdater>();
+        services.AddHostedService<LeaderboardUpdater>();
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
 
         //services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
-        services.AddHostedService<UpcomingContracts>();
+        //services.AddHostedService<UpcomingContracts>();
 
         Console.WriteLine("RUNNING IN DEBUG");
 

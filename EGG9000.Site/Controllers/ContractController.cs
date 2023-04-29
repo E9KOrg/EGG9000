@@ -11,6 +11,7 @@ using Discord.WebSocket;
 
 using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -50,6 +51,22 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult>CoopStatusJson(string coopid, string contractid) {
             var status = await ContractsAPI.GetCoopStatus(contractid, coopid);
             return new ObjectResult(status);
+        }
+
+        public async Task<IActionResult> Day1Coops([FromQuery] ulong GuildId) {
+            var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
+
+            var contract = new Ei.Contract();
+            foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                var gradeSpec = new Ei.Contract.Types.GradeSpec();
+                gradeSpec.Grade = grade;
+                gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
+                contract.GradeSpecs.Add(gradeSpec);
+            }
+            contract.MaxCoopSize = 10;
+
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users,contract);
+            return View(coopGroups);
         }
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] UInt32 League) {

@@ -102,5 +102,9 @@ namespace EGG9000.Common.Database.Entities {
         OutsideCoopLog,
         [Description("Required: Category for contract Channels")]
         ContractCategory,
+        [Description("Optional: Missing Boarding Group Role")]
+        MissingBoardingGroupRole,
+        [Description("Optional: Active Role (participated in a co-op in the last 3 weeks)")]
+        ActiveRole
     }
 }
