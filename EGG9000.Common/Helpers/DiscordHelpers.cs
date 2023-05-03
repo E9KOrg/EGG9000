@@ -188,14 +188,14 @@ namespace EGG9000.Bot.Helpers {
 
         public static ulong ProPermitRoleID = 966017147350446121;
         public static ulong StandardPermitRoleID = 966017278078517248;
-        public static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, List<CustomBackup> backups) {
+        public static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, IGrouping<Guid, LeaderboardUser> accounts) {
             //Console.WriteLine($"Checking Permit for {DiscordUser.GetName()}");
             if(Guild.Roles.Any(x => x.Id == ProPermitRoleID)) {
                 var hasPro = DiscordUser.RoleIds.Any(x => x == ProPermitRoleID);
                 var hasStandard = DiscordUser.RoleIds.Any(x => x == StandardPermitRoleID); ;
 
-                var needsPro = backups.Any(x => x.PermitLevel == 1);
-                var needsStandard = backups.Any(x => x.PermitLevel == 0);
+                var needsPro = accounts.Any(x => x.Backup.PermitLevel == 1);
+                var needsStandard = accounts.Any(x => x.Backup.PermitLevel == 0);
 
 
                 if(!hasPro && needsPro) {
@@ -216,6 +216,27 @@ namespace EGG9000.Bot.Helpers {
                     Console.WriteLine($"Removing StandardPermit role for {DiscordUser.GetName()}");
                 }
 
+            }
+        }
+        public static async Task CheckGrades(SocketGuild Guild, IGuildUser DiscordUser, IGrouping<Guid, LeaderboardUser> accounts, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
+            var neededRoles = accounts.Select(x => grades.First(g => g.grade == x.Backup.Grade).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();
+
+            var extraRoles = grades.Where(x => x.role is not null)
+                .Where(g => 
+                    !accounts.Any(a => a.User.GetGrade(a.Backup.EggIncId) == g.grade) && 
+                    DiscordUser.RoleIds.Any(r => r == g.role.Id)
+                ).Select(x => x.role).ToList();
+
+            if(neededRoles.Count() > 0) {
+                Console.WriteLine($"Adding grade roles {String.Join(",", neededRoles.Select(x => x.Name))} for {DiscordUser.GetName()}");
+                await DiscordUser.AddRolesAsync(neededRoles);
+
+            }
+
+
+            if(extraRoles.Count() > 0) {
+                Console.WriteLine($"Removing grade roles {String.Join(",", extraRoles.Select(x => x.Name))} for {DiscordUser.GetName()}");
+                await DiscordUser.RemoveRolesAsync(extraRoles);
             }
         }
 
@@ -282,7 +303,7 @@ namespace EGG9000.Bot.Helpers {
 
 
         public static async Task CheckBG(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
-            var role = await _client.GetRoleAsync(GuildChannelType.MissingBoardingGroupRole, Guild);;
+            var role = await _client.GetRoleAsync(GuildChannelType.MissingBoardingGroupRole, Guild);
             if(role != null) {
                 var needsRole = isActive(user, userAccounts) && user.EggIncAccounts.Any(y => y.Group == 0);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);

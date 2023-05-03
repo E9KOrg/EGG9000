@@ -118,7 +118,7 @@
 								<td>@(farm.Completed ? "✔️" : "")</td>
 								<td class="text-right">@xref?.Score?.ToString("G2")</td>
 								<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-								@if (userFarmDetails != null) {
+								@if (userFarmDetails != null && xref != null) {
 									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
 									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
 									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>

@@ -612,6 +612,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Coop([FromRoute] string ContractId, [FromRoute] string CoopId) {
+            return NotFound();
             CoopId = CoopId.ToLower();
             ContractId = ContractId.ToLower();
             var model = new CoopModel {
@@ -660,7 +661,7 @@ namespace EGG9000.Site.Controllers {
 
             model.League = GetLeague(model.UserInfos, CoopId, ContractId);
 
-            var goals = model.Contract.Details.GoalSets != null ? model.Contract.Details.GoalSets[(int)model.League].Goals : model.Contract.Details.Goals;
+            var goals = model.Contract.Details.GetGoals((int)model.League);
             model.GoalDetails = goals.Select(goal => {
                 var detail = new GoalDetails {
                     Goal = goal,

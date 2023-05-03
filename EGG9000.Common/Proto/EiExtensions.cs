@@ -52,7 +52,7 @@ namespace Ei {
         //public string TotalString { get { return ArgumentsHelper.NumberToString(this.TotalAmount, false, -1); } }
 
         private double _targetAmoun(EGG9000.Common.Database.Entities.Contract contract, int League) {
-            return contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
+            return contract.Details.GetGoals(League).Last().TargetAmount;
             ;
         }
 
@@ -66,8 +66,6 @@ namespace Ei {
         //    return Projected > _targetAmoun(contract, League);
         //}
         public bool Finished(EGG9000.Common.Database.Entities.Contract contract, int League) {
-            var targetAmount = contract.Details.GoalSets.Count > 0 ? contract.Details.GoalSets[League].Goals.Last().TargetAmount : contract.Details.Goals.Last().TargetAmount;
-            //var target = contract.GoalsDetail.Last().TargetAmount;
             return this.TotalAmount > _targetAmoun(contract, League);
         }
 
@@ -112,6 +110,14 @@ namespace Ei {
         }
 
 
+    }
+
+    public partial class Contract {
+        public List<Ei.Contract.Types.Goal> GetGoals(int league) {
+            if(this.GradeSpecs.Count > 0)
+                return this.GradeSpecs[league - 1].Goals.ToList();
+            else return this.GoalSets[league].Goals.ToList();
+        }
     }
 
     public partial class LocalContract {

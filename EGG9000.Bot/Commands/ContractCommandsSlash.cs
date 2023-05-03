@@ -103,11 +103,30 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname) {
+        public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname, [SlashParam] string grade) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
             if(guildContract == null) {
                 await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
                 return;
+            }
+
+            int league = 0;
+            switch(grade.ToLower().Trim()) {
+                case "aaa":
+                    league = 5;
+                    break;
+                case "aa":
+                    league = 4;
+                    break;
+                case "a":
+                    league = 3;
+                    break;
+                case "b":
+                    league = 2;
+                    break;
+                case "c":
+                    league = 1;
+                    break;
             }
 
             var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
@@ -119,8 +138,8 @@ namespace EGG9000.Bot.Commands {
                     GuildId = guildContract.GuildID,
                     Name = coopname,
                     MaxUsers = guildContract.Contract.MaxUsers,
-                    Status = CoopStatusEnum.WaitingOnAssigned,
-                    League = (UInt32)guildContract.League,
+                    Status = CoopStatusEnum.WaitingOnAssigned, 
+                    League = (uint)league,
                     CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
                 };
                 db.Coops.Add(coop);
@@ -384,7 +403,7 @@ namespace EGG9000.Bot.Commands {
                 await command.Channel.SendMessageAsync($"Started {coopCount} co-ops");
                 coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-                await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
+                //await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
             } finally {
                 semapohre.Release();
             }
@@ -486,7 +505,7 @@ namespace EGG9000.Bot.Commands {
 
                 coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-                await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
+                //await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
             } finally {
                 semapohre.Release();
             }
@@ -775,7 +794,7 @@ namespace EGG9000.Bot.Commands {
 
                 coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
 
-                await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
+                //await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)command.Channel);
 
             }
         }

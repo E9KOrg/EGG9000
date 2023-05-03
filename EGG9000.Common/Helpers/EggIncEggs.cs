@@ -54,7 +54,7 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
         public static string GetReward(Ei.Contract.Types.Goal goal) {
             switch (goal.RewardType) {
                 case Ei.RewardType.EggsOfProphecy:
-                    return $"{goal.RewardAmount} - <:Egg_of_Prophecy:669981330477547580> ";
+                    return $"<:Egg_of_Prophecy:669981330477547580> {goal.RewardAmount}";
                 case Ei.RewardType.PiggyFill:
                     return $"<:Piggy_bank:724396277676113955> + {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.Gold:
@@ -91,15 +91,15 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
                     }
                     return (goal.RewardAmount > 1 ? goal.RewardAmount.ToString() + " - " : "") + type;
                 case Ei.RewardType.SoulEggs:
-                    return $"{goal.RewardAmount.ToEggString()} <:Egg_soul:724341890794913964>";
+                    return $"<:Egg_soul:724341890794913964> {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.PiggyMultiplier:
-                    return $"{goal.RewardAmount}x <:Piggy_bank:724396277676113955>";
+                    return $"<:Piggy_bank:724396277676113955> {goal.RewardAmount}x";
                 case Ei.RewardType.PiggyLevelBump:
                     return $"<:Piggy_up:812846540426838016> Level + {goal.RewardAmount}";
                 case Ei.RewardType.ArtifactCase:
-                    return $"{goal.RewardAmount} <:Afx_reward:877681508607987772>";
+                    return $"<:Afx_reward:877681508607987772> {goal.RewardAmount}";
                 case Ei.RewardType.ShellScript:
-                    return $"{goal.RewardAmount} <:tickets:998630687831769189>";
+                    return $"<:tickets:998630687831769189> {goal.RewardAmount}";
                 default:
                     return goal.RewardType.ToString();
             }

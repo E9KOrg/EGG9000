@@ -28,22 +28,26 @@ namespace EGG9000.Common.Contracts {
                 (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed))
             );
 
-            for(var bg = 1; bg <= 3; bg++) {
-                foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+            foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                var includeBg = new List<int>();
+                for(var bg = 3; bg >= 1; bg--) {
                     var group = new PotentialCoopGroup {
                         BoardingGroup = bg, Grade = grade
                     };
                     groups.Add(group);
 
-                    group.PotentialCoops = SortUsersIntoDay1Coops(accounts, bg, grade, contract);
+                    group.PotentialCoops = SortUsersIntoDay1Coops(accounts, bg, grade, contract, includeBg);
                 }
             }
 
             return groups;
         }
 
-        private static List<PotentialCoop> SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract) {
-            var matchingAccounts = Accounts.Where(x => x.Backup.Grade == Grade && x.AccountSettings.Group == BoardingGroup);
+        private static List<PotentialCoop> SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG) {
+            var matchingAccounts = Accounts.Where(x => 
+                x.User.GetGrade(x.Backup.EggIncId) == Grade && 
+                (x.AccountSettings.Group == BoardingGroup || includeBG.Any(y => x.AccountSettings.Group == y))
+            );
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
             matchingAccounts = matchingAccounts.Where(x =>
                 x.AccountSettings.AutoRegisterRewards == null
@@ -67,6 +71,12 @@ namespace EGG9000.Common.Contracts {
                 }
             }
 
+            if(BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > 1)) {
+                coops = new List<PotentialCoop>();
+                includeBG.Add(BoardingGroup);
+            } else if(includeBG.Count > 0) {
+                includeBG.RemoveAll(x => true);
+            }
             return coops;
         }
     }

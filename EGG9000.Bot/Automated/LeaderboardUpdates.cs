@@ -42,7 +42,7 @@ namespace EGG9000.Bot.Automated {
         public LeaderboardUpdater(
             IServiceProvider provider,
             APILink apilink
-        ) : base(UpdateTime, TimeSpan.FromMinutes(0), provider) {
+        ) : base(UpdateTime, delayedStart: TimeSpan.FromMinutes(5), provider) {
             _apiLink = apilink;
         }
 
@@ -130,6 +130,16 @@ namespace EGG9000.Bot.Automated {
                     //Handle promotions
                     Console.WriteLine($"Handling promotions for {guild.Name}");
 
+
+                    var grades = new List<(Ei.Contract.Types.PlayerGrade, SocketRole)> {
+                        (Ei.Contract.Types.PlayerGrade.GradeAaa, await _client.GetRoleAsync(GuildChannelType.GradeAAA, guild)),
+                        (Ei.Contract.Types.PlayerGrade.GradeAa, await _client.GetRoleAsync(GuildChannelType.GradeAA, guild)),
+                        (Ei.Contract.Types.PlayerGrade.GradeA, await _client.GetRoleAsync(GuildChannelType.GradeA, guild)),
+                        (Ei.Contract.Types.PlayerGrade.GradeB, await _client.GetRoleAsync(GuildChannelType.GradeB, guild)),
+                        (Ei.Contract.Types.PlayerGrade.GradeC, await _client.GetRoleAsync(GuildChannelType.GradeC, guild)),
+                        (Ei.Contract.Types.PlayerGrade.GradeUnset, null),
+                    };
+
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {
                         if(cancellationToken.IsCancellationRequested)
                             break;
@@ -179,7 +189,8 @@ namespace EGG9000.Bot.Automated {
                         await DiscordHelpers.CheckFreshEggsRole(guild, discordUser, dbUser);
                         await DiscordHelpers.CheckActive(_client, guild, discordUser, dbUser, userAccounts);
                         await DiscordHelpers.CheckBG(_client, guild, discordUser, dbUser, userAccounts);
-                        await DiscordHelpers.CheckPermitRoles(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
+                        await DiscordHelpers.CheckPermitRoles(guild, discordUser, userAccounts);
+                        await DiscordHelpers.CheckGrades(guild, discordUser, userAccounts, grades);
 
                         if(higherEB.Backup.EggsOfProphecy > 1000) {
                             dbUser.showEB = false;

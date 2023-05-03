@@ -19,6 +19,8 @@ using System.Collections.Generic;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Migrations;
 using UserSnapShots = EGG9000.Bot.Automated.UserSnapShots;
+using Ei;
+using Google.Protobuf;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -43,10 +45,10 @@ await Host.CreateDefaultBuilder(args)
         services.AddMemoryCache();
 #if DEBUG
         services.AddBugsnag();
-        //services.AddSingleton<DiscordHostedService>();
-        //services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-        //services.AddSingleton<APILink>();
-        //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+        services.AddSingleton<DiscordHostedService>();
+        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+        services.AddSingleton<APILink>();
+        services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         //services.AddHostedService<CommandService>();
         //services.AddHostedService<DiscordUserService>();
@@ -55,23 +57,23 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
 
-        ////services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         //services.AddSingleton<CoopStatusUpdater>();
         //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        ////services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        //services.AddSingleton<ContractUpdater>();
-        //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+        //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+        services.AddSingleton<ContractUpdater>();
+        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
         //services.AddHostedService<NewContracts>();
         //services.AddHostedService<CreateCoopChannels>();
         //services.AddHostedService<ShipReturnDM>();
         //services.AddHostedService<UserSnapShots>();
-        services.AddHostedService<LeaderboardUpdater>();
+        //services.AddHostedService<LeaderboardUpdater>();
         //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
 
-        services.AddHostedService<TestService>();
+        //services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
         //services.AddHostedService<UpcomingContracts>();
@@ -79,10 +81,7 @@ await Host.CreateDefaultBuilder(args)
         Console.WriteLine("RUNNING IN DEBUG");
 
 
-#endif
-
-
-#if !DEBUG
+#else
         Console.WriteLine("RUNNING IN RELEASE");
         services.AddBugsnag(configuration => {
             configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
@@ -127,11 +126,15 @@ public class TestService : IHostedService {
     //    _client = client;
     //    db = applicationDbContext;
     //}
+    public TestService(ApplicationDbContext applicationDbContext) {
+        db = applicationDbContext;
+    }
 
     public DiscordHostedService _client { get; }
     public ApplicationDbContext db { get; }
 
     public async Task StartAsync(CancellationToken cancellationToken) {
+
         //var DMChannel = await Client.GetUser(620365345303167006).CreateDMChannelAsync();
         //await DMChannel.SendMessageAsync("Testing DM <@620365345303167006>");
         //Console.WriteLine("Sent DM");
@@ -173,7 +176,30 @@ public class TestService : IHostedService {
         //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
         //    RequestingUserId = coopStatus.CreatorId
         //}, ContractsAPI.UserId);
-        var raw = await ContractsAPI.FirstContactRaw("EI5015560351383552");
+        //var raw = await ContractsAPI.FirstContactRaw("EI5015560351383552");
+        //var user = db.DBUsers.First(x => x.DiscordId == 710137969465491498);
+        //var backup = await ContractsAPI.FirstContact(user.Backups.First().EggIncId);
+        //var response = await ContractsAPI.Post<PeriodicalsResponse, GetPeriodicalsRequest>(new GetPeriodicalsRequest { 
+        //    UserId = "EI6229292070993920",
+        //     ArtifactsUnlocked = true, ContractsUnlocked = true, CurrentClientVersion = ContractsAPI.ClientVersion, SoulEggs = user.Backups.First().SoulEggs, SecondsFullRealtime = 100000, SecondsFullGametime = 100000, PiggyFoundFull = true, PiggyFull = true, Eop =1000,MysticalEarningsMult = 0, LostIncrements = 0
+        //}, "EI6229292070993920", true);
+        //var t = response.ContractPlayerInfo;
+
+        //var response = await ContractsAPI.GetCoopStatus("a-new-grade", "test3");
+        //var backup = await ContractsAPI.FirstContact("EI5932295321550848");
+        //var customBackup = new CustomBackup(backup.Backup);
+        //var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == 170412210076516352);
+        //var req = "CgthLW5ldy1ncmFkZRIGdGVzdDM0GhJFSTUyMjMyOTk1MTgzMDAxNjAgLio1ChJFSTUyMjMyOTk1MTgzMDAxNjAQLhoEMS4yNiIIMS4yNi4wLjUqA0lPUzICVVM6AmVuQAA=";
+        //var reqarray = System.Convert.FromBase64String(req);
+        //var parse = new MessageParser<ContractCoopStatusRequest>(() => new ContractCoopStatusRequest());
+        //var p = parse.ParseFrom(reqarray);
+
+        var authString = "CucBCgthLW5ldy1ncmFkZRIFdGVzdDMaeGdBQUFBQUJrVVlKRGs4aFU5RFpRRVIzSFpHLTB0Q3ByQzE1aXMwNVpodElTSjNfbXl3V2VFYU9ka20wdzZaektnaWJHMndXRDJvYlNGWXVsdFo5WHJBSU9wekMtLXhsWElmZlBMTWZOTlo5dElBc0NGT3g2a1ZNPSISRUk1MjIzMjk5NTE4MzAwMTYwKAEyCEtlbmRyb21lOC5CNQoSRUk1MjIzMjk5NTE4MzAwMTYwEC4aBDEuMjYiCDEuMjYuMC41KgNJT1MyAlVTOgJlbkAAEkBmYTQyNGFjYzY4OTY0ZjA1ZTQ1ZDBhNDRmN2RhYjkyMzBlM2I2MjdkODZjZGY4MzkyYjVjZDIxYTA1NzE5MjMz";
+        var parse1 = new MessageParser<AuthenticatedMessage>(() => new AuthenticatedMessage());
+        var res = parse1.ParseFrom(System.Convert.FromBase64String(authString));
+        var parse2 = new MessageParser<GiftPlayerCoopRequest>(() => new GiftPlayerCoopRequest());
+        var res2 = parse2.ParseFrom(res.Message);
+
     }
 
     public DateTime RoundToNearest(DateTime dt, TimeSpan d) {

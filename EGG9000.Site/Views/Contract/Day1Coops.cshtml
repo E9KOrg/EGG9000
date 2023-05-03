@@ -11,33 +11,45 @@
                     EBString = u.Backup.EarningsBonus.ToEggString(),
                     Name = u.User.DiscordUsername,
                     MultipleAccounts = u.User.EggIncAccounts.Count > 1,
-                    AccountName = u.Backup.UserName
+                    AccountName = u.Backup.UserName,
+                    FromGroup = (u.AccountSettings.Group != x.Key ? u.AccountSettings.Group : 0)
                 }),
                 TotalEB = c.Users.Sum(u => u.Backup.EarningsBonus).ToEggString()
             })
         })
 
-    });
+    }).OrderBy(x => x.BoardingGroup);
+
+
+    var grades = Model.GroupBy(x => x.Grade).Where(x => x.Count() > 0);
+    var contract = (Ei.Contract)ViewBag.Contract;
 }
 <style>
     .container {
-        max-width: 100%;
+        max-width: 100% !important;
     }
     .card {
     margin-bottom: 50px;
 }
 </style>
+
+<div>User Counts:
+@foreach(var grade in grades) {
+    <span><b>@grade.Key</b> @grade.Sum(x => x.PotentialCoops.Sum(y => y.Users.Count)) &nbsp;&nbsp;</span>
+}
+</div>
+
 <div ng-controller="Page">
     Boarding Group <select ng-model="bg" ng-options="item as item.BoardingGroup for item in boardingGroups track by item.BoardingGroup"></select>
     <div class="row scrollable">
     <div class="col-sm" ng-repeat="group in bg.Grades">
         <h2>{{group.Grade}} ({{group.Coops.length}})</h2>
         <div class="card" ng-repeat="coop in group.Coops">
-            <h5 class="card-header">Coop</h5>
+            <h5 class="card-header">Coop ({{coop.Users.length}}/@contract.MaxCoopSize)</h5>
                 <table class="table table-striped">
                     <tbody>
                         <tr ng-repeat="user in coop.Users">
-                            <td>{{user.Name}} <span ng-if="user.MultipleAccounts">({{user.AccountName}})</span></td>
+                            <td>{{user.Name}} <span ng-if="user.MultipleAccounts">({{user.AccountName}})</span> <span ng-if="user.FromGroup > 0" style="display: inline-block;background-color: mediumvioletred">BG{{user.FromGroup}}</span></td>
                             <td>{{user.EBString}}</td>
                         </tr>
                     </tbody>
