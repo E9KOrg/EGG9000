@@ -496,17 +496,10 @@ namespace EGG9000.Bot.Commands {
             return msg;
         }
 
-        [SlashCommand(Description = "Bot will not you ping you about not pre-farming, stays until you pre-farming again")]
-        public static async Task TakeABreak(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client) {
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
-            }
-
-            user.OnBreakSince = DateTimeOffset.Now;
-            await db.SaveChangesAsync();
-
-            await command.RespondAsync($"{command.User.Mention} is set to take a break. This status will automatically be removed the next time you start pre-farming. If you are currently pre-farming you will still be assigned to a co-op unless you exit the contract. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
+        [Obsolete("TakeABreak is deprecated, please use MyContractSettings instead.")]
+        [SlashCommand(Description = "Please use the command '/mycontractsettings' instead")]
+        public static async Task TakeABreak(FauxCommand command) {
+            await command.RespondAsync("Please use the command '/mycontractsettings' to take a break.", ephemeral: true);
         }
 
         [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = true)]
