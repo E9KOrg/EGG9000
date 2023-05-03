@@ -373,6 +373,9 @@ namespace EGG9000.Bot.Services {
                 slashParamDetails.Description = name;
             }
 
+
+            
+
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
                         {typeof(int), ApplicationCommandOptionType.Integer },
                         {typeof(string), ApplicationCommandOptionType.String },

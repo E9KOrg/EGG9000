@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.IO.Compression;
 using ComponentAce.Compression.Libs.zlib;
 using Ei;
+using Newtonsoft.Json;
 
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
@@ -22,18 +23,21 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
     public class ContractsAPI {
-        public const string BaseAddressNew = "https://www.auxbrain.com/";
+        public const string BaseAddressNew = "https://ctx-dot-auxbrainhome.appspot.com/";
+        //public const string BaseAddressNew = "https://www.auxbrain.com/";
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
-        public const uint ClientVersion = 45;
+        public const uint ClientVersion = 46;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.25.4",
-                Build = "111225",
-                Platform = "ANDROID"
+                Version = "1.26.0",
+                Build = "111230",
+                Platform = "ANDROID",
+                Country = "US",
+                Language = "en", Debug = false
             };
             if(!noUserID) {
                 info.EiUserId = UserId;
@@ -250,20 +254,25 @@ namespace EGG9000.Bot.EggIncAPI {
         //    }
         //}
 
-        public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, CancellationToken cancellationToken = default) {
+        public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, CancellationToken cancellationToken = default, string EIID = null) {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
                     client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
-                    new Ei.ContractCoopStatusRequest { 
-                        ContractIdentifier = ContractName, 
-                        CoopIdentifier = CoopName.ToLower(), 
-                        Rinfo = GetInfo(ContractsAPI.UserId), 
-                        UserId = ContractsAPI.UserId, 
-                        ClientVersion = ContractsAPI.ClientVersion }.WriteTo(ms1);
+                    var model = new Ei.ContractCoopStatusRequest {
+                        ContractIdentifier = ContractName,
+                        CoopIdentifier = CoopName.ToLower(),
+                        Rinfo = GetInfo(EIID ?? UserId),
+                        UserId = EIID ?? UserId,
+                        ClientVersion = ContractsAPI.ClientVersion
+                    };
+                    model.WriteTo(ms1);
                     //Serializer.Serialize<Ei.ContractCoopStatusRequest>(ms1, new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower() });
+
+                    var json = JsonConvert.SerializeObject(model, Formatting.Indented);
+                    Console.WriteLine(json);
                     ms1.Position = 0;
                     var sr = new StreamReader(ms1);
                     var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
@@ -343,12 +352,12 @@ namespace EGG9000.Bot.EggIncAPI {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
-                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
+                    client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
                         ClientVersion = 27,
-                        Platform = Aux.Platform.Droid,
+                        Platform = Ei.Platform.Droid,
                         UserId = UserId
                     }.WriteTo(ms1);
                     //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
@@ -411,12 +420,12 @@ namespace EGG9000.Bot.EggIncAPI {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
-                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
+                    client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
                         ClientVersion = ClientVersion,
-                        Platform = Aux.Platform.Droid,
+                        Platform = Ei.Platform.Droid,
                         EiUserId = UserId,
                         DeviceId = UserId,
                         Username = "",
@@ -476,12 +485,12 @@ namespace EGG9000.Bot.EggIncAPI {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
-                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
+                    client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
                         ClientVersion = ClientVersion,
-                        Platform = Aux.Platform.Droid,
+                        Platform = Ei.Platform.Droid,
                         EiUserId = UserId,
                         DeviceId = UserId,
                         Username = "",
@@ -537,7 +546,7 @@ namespace EGG9000.Bot.EggIncAPI {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
-                    client.BaseAddress = new Uri("https://www.auxbrain.com/");
+                    client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {

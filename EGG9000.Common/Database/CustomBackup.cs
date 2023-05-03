@@ -79,20 +79,8 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
-        [IgnoreMember]
-        public Ei.Contract.Types.PlayerGrade Grade { 
-            get {
-                if(EarningsBonus < 1_000_000)
-                    return Ei.Contract.Types.PlayerGrade.GradeC;
-                if(EarningsBonus < 100_000_000)
-                    return Ei.Contract.Types.PlayerGrade.GradeB;
-                if(EarningsBonus < 10_000_000_000)
-                    return Ei.Contract.Types.PlayerGrade.GradeA;
-                if(EarningsBonus < 1_000_000_000_000)
-                    return Ei.Contract.Types.PlayerGrade.GradeAa;
-                return Ei.Contract.Types.PlayerGrade.GradeAaa;
-            }
-        }
+        [Key(27)]
+        public Ei.Contract.Types.PlayerGrade Grade { get; set;}
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -173,6 +161,7 @@ namespace EGG9000.Common.Database {
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
+            Grade = backup.Contracts.LastCpi?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms) {
@@ -251,8 +240,11 @@ namespace EGG9000.Common.Database {
                 BoostsUsed = (ushort)(contract?.BoostsUsed ?? 0),
                 TimeCheatsDetected = (ushort)farm.TimeCheatsDetected,
                 Habs = farm.Habs.Select(x => (ushort)x).ToList(),
-                LastStepTime = (float)farm.LastStepTime
+                LastStepTime = (float)farm.LastStepTime,
+                ReportedUUIDs = contract?.ReportedUuids.ToList(),
+                Grade = contract?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset
             };
+            
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
             var farmIndex = backup.Farms.IndexOf(farm);
             if(backup.ArtifactsDb != null) {
@@ -363,7 +355,6 @@ namespace EGG9000.Common.Database {
         public ushort BoostsUsed { get; set; }
         [Key(25)]
         public ushort TimeCheatsDetected { get; set; }
-
         //[Key(26)]
         //public Double CurrentShippingRate { get; set; }
         //[Key(27)]
@@ -380,6 +371,10 @@ namespace EGG9000.Common.Database {
         public List<ushort> Habs { get; set; }
         [Key(33)]
         public float LastStepTime { get; set; }
+        [Key(34)]
+        public List<string> ReportedUUIDs { get; set; }
+        [Key(35)]
+        public Ei.Contract.Types.PlayerGrade Grade { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
@@ -433,6 +428,8 @@ namespace EGG9000.Common.Database {
         public uint PEGained { get; set; }
         [Key(7)]
         public double ContributionAmount { get; set; }
+        [Key(8)]
+        public Ei.Contract.Types.PlayerGrade Grade { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
@@ -445,7 +442,7 @@ namespace EGG9000.Common.Database {
             Completed = localContract.Completed;
             League = localContract.League;
             ContributionAmount = localContract.CoopLastUploadedContribution;
-
+            Grade = localContract.Grade;
 
             var goals = localContract.Contract.Goals;
             if(localContract.Contract.GoalSets is not null && localContract.Contract.GoalSets.Count > localContract.League)

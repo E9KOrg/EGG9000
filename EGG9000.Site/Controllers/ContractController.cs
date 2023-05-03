@@ -53,7 +53,7 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(status);
         }
 
-        public async Task<IActionResult> Day1Coops([FromQuery] ulong GuildId) {
+        public async Task<IActionResult> Day1Coops([FromQuery] ulong GuildId, [FromQuery] uint size) {
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
 
             var contract = new Ei.Contract();
@@ -63,9 +63,12 @@ namespace EGG9000.Site.Controllers {
                 gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
                 contract.GradeSpecs.Add(gradeSpec);
             }
-            contract.MaxCoopSize = 10;
+            contract.Name = "test";
+            contract.Identifier = "test";
+            contract.MaxCoopSize = size;
 
             var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users,contract);
+            ViewBag.Contract = contract;
             return View(coopGroups);
         }
 

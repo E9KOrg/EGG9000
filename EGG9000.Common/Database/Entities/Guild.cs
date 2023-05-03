@@ -75,36 +75,46 @@ namespace EGG9000.Common.Database.Entities {
 
     public enum GuildChannelType {
         [Description("Required: Greets new users and handles registering")]
-        Welcome,
+        Welcome = 0,
         [Description("Required: Announces new users who registered and other various messages like new rank roles")]
-        General,
+        General = 1,
         [Description("Required: Rules channel you want people to read before registering")]
-        Rules,
+        Rules = 2,
         [Description("Optional: Leaderboard of registered users")]
-        Leaderboard,
+        Leaderboard = 3,
         [Description("Optional: Shows in-game daily events")]
-        GameEvents,
+        GameEvents = 4,
         [Description("Optional: FAQ Channel linked to when announcing new registered users")]
-        FaqChannel,
+        FaqChannel = 5,
         [Description("Required: Category for elite contract Channels (TO BE REMOVED)")]
-        EliteCategory,
+        EliteCategory = 6,
         [Description("Optional: Category for standard contract Channels (TO BE REMOVED)")]
-        StandardCategory,
+        StandardCategory = 7,
         [Description("Optional: Category for failed co-ops")]
-        FailedCategory,
+        FailedCategory = 8,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
-        WarningMessagesForUser,
+        WarningMessagesForUser = 9,
         [Description("Optional: Shows limited time shells")]
-        LimitedTimeShells,
+        LimitedTimeShells = 10,
         [Description("Optional: Limited time shells notification role")]
-        LimitedTimeShellsRole,
+        LimitedTimeShellsRole = 11,
         [Description("Optional")]
-        OutsideCoopLog,
+        OutsideCoopLog = 12,
         [Description("Required: Category for contract Channels")]
-        ContractCategory,
+        ContractCategory = 13,
         [Description("Optional: Missing Boarding Group Role")]
-        MissingBoardingGroupRole,
+        MissingBoardingGroupRole = 14,
         [Description("Optional: Active Role (participated in a co-op in the last 3 weeks)")]
-        ActiveRole
+        ActiveRole = 15,
+        [Description("Optional: Grade AAA Role")]
+        GradeAAA = 16,
+        [Description("Optional: Grade AA Role")]
+        GradeAA = 17,
+        [Description("Optional: Grade A Role")]
+        GradeA = 18,
+        [Description("Optional: Grade B Role")]
+        GradeB = 19,
+        [Description("Optional: Grade C Role")]
+        GradeC = 20
     }
 }

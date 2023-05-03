@@ -103,11 +103,47 @@
 		@foreach (var backup in Model.Backups) {
 			var index = Model.Backups.IndexOf(backup);
 			<li class="nav-item">
-				<a class="nav-link @(backup == Model.Backups.First() ? "active" : "")" id="tab@(backup.EggIncId)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(backup == Model.Backups.First())">@backup.UserName</a>
+				<a class="nav-link @(backup == Model.Backups.First() ? "active" : "")" id="tab@(backup.EggIncId)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(backup == Model.Backups.First())">
+					@backup.UserName
+					@switch(Model.GetGrade(backup.EggIncId)) {
+						case Ei.Contract.Types.PlayerGrade.GradeAaa:
+							<img src="https://cdn.discordapp.com/emojis/1102985471862247426.png?v=1" style="max-height: 30px;" />
+							break;
+						case Ei.Contract.Types.PlayerGrade.GradeAa:
+							<img src="https://cdn.discordapp.com/emojis/1102985434562297989.png?v=1" style="max-height: 30px;" />
+							break;
+						case Ei.Contract.Types.PlayerGrade.GradeA:
+							<img src="https://cdn.discordapp.com/emojis/1102985380845867068.png?v=1" style="max-height: 30px;" />
+							break;
+						case Ei.Contract.Types.PlayerGrade.GradeB:
+							<img src="https://cdn.discordapp.com/emojis/1102985335920668742.png?v=1" style="max-height: 30px;" />
+							break;
+						case Ei.Contract.Types.PlayerGrade.GradeC:
+							<img src="https://cdn.discordapp.com/emojis/1102984452935794799.png?v=1" style="max-height: 30px;" />
+							break;
+					}
+				</a>
 			</li>
 		}
 	</ul>
-
+} else {
+	@switch(Model.GetGrade(Model.Backups.First().EggIncId)) {
+		case Ei.Contract.Types.PlayerGrade.GradeAaa:
+			<img src="https://cdn.discordapp.com/emojis/1102985471862247426.png?v=1" style="max-height: 30px;" />
+			break;
+		case Ei.Contract.Types.PlayerGrade.GradeAa:
+			<img src="https://cdn.discordapp.com/emojis/1102985434562297989.png?v=1" style="max-height: 30px;" />
+			break;
+		case Ei.Contract.Types.PlayerGrade.GradeA:
+			<img src="https://cdn.discordapp.com/emojis/1102985380845867068.png?v=1" style="max-height: 30px;" />
+			break;
+		case Ei.Contract.Types.PlayerGrade.GradeB:
+			<img src="https://cdn.discordapp.com/emojis/1102985335920668742.png?v=1" style="max-height: 30px;" />
+			break;
+		case Ei.Contract.Types.PlayerGrade.GradeC:
+			<img src="https://cdn.discordapp.com/emojis/1102984452935794799.png?v=1" style="max-height: 30px;" />
+			break;
+	}
 }
 <div class="tab-content">
 	@foreach (var backup in Model.Backups) {

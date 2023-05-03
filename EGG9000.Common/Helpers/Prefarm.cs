@@ -141,7 +141,7 @@ namespace EGG9000.Common.Helpers {
             }
             public void SetCoopDetails(List<UserFarmDetails> coopParticipants, Contract contract, UInt32 league) {
                 CoopParticipants = coopParticipants.Where(x => x.DBUser is not null || x.CoopStatus is not null).ToList();
-                TargetAmount = contract.Details.GoalSets[(int)league].Goals.Last().TargetAmount;
+                TargetAmount = contract.Details.GetGoals((int)league).Last().TargetAmount;
                 if(TargetAmount > 0) {
                     TimeRemaining = Prefarm.GetTimeRemainingValue(TargetAmount, CoopParticipants);
                     Projected = CoopParticipants.Sum(x => x.Projected);
@@ -256,7 +256,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var targetAmount = guildContract.Contract.Details.GoalSets[(int)guildContract.League].Goals.Last().TargetAmount;
+            var targetAmount = guildContract.Contract.Details.GetGoals((int)guildContract.League).Last().TargetAmount;
 
 
 
@@ -471,6 +471,14 @@ namespace EGG9000.Common.Helpers {
                 coopParticipants.RemoveAll(x => x is null);
             }
 
+            foreach(var missingUser in coopParticipants.Where(x => x.Xref is null)) {
+                var user = backups.FirstOrDefault(x => x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
+                if(user is not null) {
+                    missingUser.DBUser = user.User;
+                    missingUser.Backup = user.Backup;
+                }
+            }
+
             return coopParticipants;
         }
 
@@ -507,7 +515,7 @@ namespace EGG9000.Common.Helpers {
                 EggsPaidFor = farm.EggsPaidFor
             };
 
-            var goal = contract.Details.GoalSets[user.Elite ? 0 : 1].Goals.Last().TargetAmount;
+            var goal = contract.Details.GetGoals(user.Elite ? 0 : 1).Last().TargetAmount;
 
             //var farmDetails = user.Backup.GetFarmDetails(farm);
 

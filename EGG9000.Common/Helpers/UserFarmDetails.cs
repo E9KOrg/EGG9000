@@ -225,7 +225,7 @@ namespace EGG9000.Common.Helpers {
 
         public double ProjectedPercent {
             get {
-                var target = Contract.Details.GoalSets[(int)League].Goals.Max(x => x.TargetAmount);
+                var target = Contract.Details.GetGoals((int)League).Max(x => x.TargetAmount);
                 return Projected / target * 100;
             }
         }

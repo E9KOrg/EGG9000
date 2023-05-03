@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
                 var throttler = new SemaphoreSlim(5);
 
 #if DEBUG
-                coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
+                //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.Name == "LapelSend32").ToList();
                 //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
 #endif
@@ -147,7 +147,6 @@ namespace EGG9000.Bot.Automated {
             }
             };
             var everyoneJoined = coopDetails.CoopParticipants.All(x => x.CoopStatus is not null);
-            var targetAmount = contract.GoalsDetail.Last().TargetAmount;
 
             table.AddRange(coopDetails.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
                 var sleeping = (x.OfflineTime.TotalMinutes > x.SiloTimeMinutes ? "💤" : "");
@@ -442,8 +441,8 @@ namespace EGG9000.Bot.Automated {
                         x.DBUser is not null &&
                         x.Xref is null &&
                         x.CoopStatus is not null &&
-                        x.Backup.Farms.Any(f => f.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase))
-                    );
+                        x.Backup.Farms.Any(f => f.CoopId is not null && f.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase))
+                    ).ToList();
                     foreach(var participant in participantsInCoopButWithoutXref) {
                         var xref = new UserCoopXref {
                             EggIncId = participant.Backup.EggIncId,
@@ -644,7 +643,7 @@ namespace EGG9000.Bot.Automated {
                         }
 
                         var league = (int?)coop.League ?? 0;
-                        var targetAmount = coop.Contract.Details.GoalSets.Count > 0 ? coop.Contract.Details.GoalSets[league].Goals.Last().TargetAmount : coop.Contract.Details.Goals.Last().TargetAmount;
+                        var targetAmount = coop.Contract.Details.GetGoals(league).Max(x => x.TargetAmount);
                         var amountWithOffline = coopDetails.CoopParticipants.Where(x => x.CoopStatus is not null).Sum(x => x.EggsShipped + x.OfflineEggs);
                         var remainingAmount = targetAmount - amountWithOffline;
                         var totalRate = status.Participants.Sum(x => x.ContributionRate);
@@ -1127,8 +1126,8 @@ namespace EGG9000.Bot.Automated {
 
 
                         for(int i = 0; i < 3; i++) {
-                            if(coop.Contract.Details.GoalSets[league].Goals.Count > i) {
-                                var goal = coop.Contract.Details.GoalSets[league].Goals[i];
+                            if(coop.Contract.Details.GetGoals(league).Count > i) {
+                                var goal = coop.Contract.Details.GetGoals(league)[i];
                                 var title = $"Goal {i + 1} ";
                                 var time = "";
                                 var goalRemaingAmount = goal.TargetAmount - amountWithOffline;

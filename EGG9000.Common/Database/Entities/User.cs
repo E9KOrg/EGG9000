@@ -94,9 +94,36 @@ namespace EGG9000.Common.Database.Entities {
                 return _backups;
             }
             set {
+                foreach(var account in EggIncAccounts) {
+                    var backup = value.FirstOrDefault(x => x.EggIncId == account.Id);
+                    if(backup is not null && backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && backup.Grade != account.LastGrade) {
+                        account.LastGrade = backup.Grade;
+                        UpdateAccounts();
+                    }
+                }
                 _backups = value;
                 _CustomBackups = MessagePackSerializer.Serialize(value, lz4Options);
             }
+        }
+
+        public Ei.Contract.Types.PlayerGrade GetGrade(string EIID) {
+            var backup = Backups.FirstOrDefault(x => x.EggIncId == EIID);
+            if(backup is not null && backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset)
+                return backup.Grade;
+            var account = EggIncAccounts.FirstOrDefault(x => x.Id == EIID);
+            if(account is not null && account.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
+                return account.LastGrade;
+
+            if(backup is not null) {
+                var farms = new List<(float, Ei.Contract.Types.PlayerGrade)>();
+                farms.AddRange(backup.Farms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((float)x.TimeAccepted, x.Grade)));
+                farms.AddRange(backup.ArchivedFarms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((float)x.TimeAccepted, x.Grade)));
+                var latestFarms = farms.OrderByDescending(x => x.Item1).ToList();
+                if(latestFarms.Count > 0) {
+                    return latestFarms.First().Item2;
+                }
+            }
+            return Ei.Contract.Types.PlayerGrade.GradeUnset;
         }
 
         [NotMapped]
@@ -208,6 +235,9 @@ namespace EGG9000.Common.Database.Entities {
             public bool bool2 { get; set; } //Not being user
             [Key(7)]
             public bool RedoLeggacy { get; set; }
+            [Key(8)]
+            public Ei.Contract.Types.PlayerGrade LastGrade { get; set; }
+
         }
 
         [MessagePackObject]
