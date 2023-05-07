@@ -134,7 +134,7 @@ namespace EGG9000.Common.Services {
             } else {
                 var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
                 var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
-                var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then send the message __**/accept**__ when you are ready.";
+                var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
                 var talkChannel = user.Guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
                 if(talkChannel != null)
                     msg += $" If you have any questions feel free to ask us in {talkChannel.Mention}, we are glad you are here!";
