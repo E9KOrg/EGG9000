@@ -174,7 +174,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(user.EggIncAccounts.Count > 0 && user.GuildId > 0) {
-                await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the command  __**/moveserver**__");
+                await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the </moveserver:1095116354329268366> command");
             } else {
                 string channelText = "";
                 var talkChannel = guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
@@ -183,7 +183,7 @@ namespace EGG9000.Bot.Commands {
                 }
                 if(user.EggIncAccounts.Count > 0) {
                     if(user.GuildId != guild.Id) {
-                        await command.RespondAsync($"{targetUser.Mention}, now run the command /moveserver");
+                        await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:1095116354329268366> command");
                     } else if(user.TempDisabled) {
                         await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
                     } else {
@@ -459,7 +459,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(dbuser.GuildId != guild.Id) {
-                    msg += $"\nNot registered with this server, try the /moveserver command";
+                    msg += $"\nNot registered with this server, try the </moveserver:1095116354329268366> command";
                 }
             }
 
@@ -497,9 +497,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [Obsolete("TakeABreak is deprecated, please use MyContractSettings instead.")]
-        [SlashCommand(Description = "Please use the command '/mycontractsettings' instead")]
+        [SlashCommand(Description = "Please use the command </mycontractsettings:1100476258518839336>' instead")]
         public static async Task TakeABreak(FauxCommand command) {
-            await command.RespondAsync("Please use the command '/mycontractsettings' to take a break.", ephemeral: true);
+            await command.RespondAsync("Please use the command </mycontractsettings:1100476258518839336> to take a break.", ephemeral: true);
         }
 
         [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = true)]
