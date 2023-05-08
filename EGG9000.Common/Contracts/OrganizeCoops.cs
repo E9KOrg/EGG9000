@@ -29,9 +29,11 @@ namespace EGG9000.Common.Contracts {
             );
 
             //TODO: Need to determine whether it's an active farm or not
-            accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier));
+            //accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier));
 
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
+                    continue;
                 var includeBg = new List<int>();
                 for(var bg = 3; bg >= 1; bg--) {
                     var group = new PotentialCoopGroup {
