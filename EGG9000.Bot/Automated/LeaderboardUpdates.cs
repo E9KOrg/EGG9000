@@ -182,7 +182,6 @@ namespace EGG9000.Bot.Automated {
 
                         var higherEB = userAccounts.Where(x => x.Backup?.Farms.Count != 0).OrderByDescending(x => x.Backup.EarningsBonus).First();
                         var role = await DiscordHelpers.SetRole(guild, discordUser, higherEB.Backup.EarningsBonus);
-                        var checkElite = await DiscordHelpers.CheckLeague(guild, discordUser, userAccounts.Select(y => y.Backup.EarningsBonus).ToList());
 
                         await DiscordHelpers.CheckSiloResearch(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
                         await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);
@@ -224,26 +223,6 @@ namespace EGG9000.Bot.Automated {
                             }
                         }
 
-                        if(checkElite.Promoted) {
-                            var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                            await generalChannel.SendMessageAsync($"Congrats, you are now an Elite Contractor! {discordUser.Mention}, look forward to better rewards.");
-
-                            try {
-                                var guildContracts = await _db.GuildContracts.AsQueryable().Where(x => !x.DeletedChannel && x.GuildID == guild.Id).ToListAsync();
-                                foreach(var guildContract in guildContracts) {
-                                    var skipList = JsonConvert.DeserializeObject<List<ulong>>(guildContract.Skip ?? "[]");
-                                    skipList.Add(discordUser.Id);
-
-                                    guildContract.Skip = JsonConvert.SerializeObject(skipList);
-
-                                    var channel = guild.GetTextChannel(guildContract.DiscordChannelId);
-                                    if(channel is not null) {
-                                        //await channel.AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                                    }
-                                }
-                                await _db.SaveChangesAsync();
-                            } finally { }
-                        }
                         if(role != null && existingRole != null && existingRole.Name != role.Name) {
                             Console.WriteLine($"{discordUser.Nickname} changing role from {existingRole.Name} to {role.Name})");
                         }

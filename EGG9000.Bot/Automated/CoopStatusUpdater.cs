@@ -842,28 +842,28 @@ namespace EGG9000.Bot.Automated {
                                         if(userFarmDetails.Backup is not null && coop.CoopEnds > DateTimeOffset.Now && !coop.FinishedOrFailed) {
                                             var farm = userFarmDetails.Farm;
                                             if(farm == null || farm.Cancelled) {
-                                                string message;
-                                                if(userFarmDetails.Farm?.Completed ?? userFarmDetails.ArchivedFarm?.Completed ?? false) {
-                                                    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has completed the contract before joining the co-op.";
-                                                } else {
-                                                    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm.";
-                                                }
-                                                await coopChannel.SendMessageAsync(message);
-                                                if(dbguild.DemeritLogChannel.HasValue)
-                                                    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
-                                                xref.OutsideCoop = true;
-                                                await _db.SaveChangesAsync();
+                                                //string message;
+                                                //if(userFarmDetails.Farm?.Completed ?? userFarmDetails.ArchivedFarm?.Completed ?? false) {
+                                                //    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has completed the contract before joining the co-op.";
+                                                //} else {
+                                                //    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm.";
+                                                //}
+                                                //await coopChannel.SendMessageAsync(message);
+                                                //if(dbguild.DemeritLogChannel.HasValue)
+                                                //    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
+                                                //xref.OutsideCoop = true;
+                                                //await _db.SaveChangesAsync();
                                             } else if(!string.IsNullOrWhiteSpace(farm.CoopId) && !farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
-                                                var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
-                                                await coopChannel.SendMessageAsync(message);
-                                                if(dbguild.DemeritLogChannel.HasValue)
-                                                    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
-                                                xref.OutsideCoop = true;
-                                                var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
-                                                if(outsideCoopLog != null) {
-                                                    await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>");
-                                                }
-                                                await _db.SaveChangesAsync();
+                                                //var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
+                                                //await coopChannel.SendMessageAsync(message);
+                                                //if(dbguild.DemeritLogChannel.HasValue)
+                                                //    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
+                                                //xref.OutsideCoop = true;
+                                                //var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
+                                                //if(outsideCoopLog != null) {
+                                                //    await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>");
+                                                //}
+                                                //await _db.SaveChangesAsync();
                                             }
                                         }
                                     }
@@ -1267,32 +1267,32 @@ namespace EGG9000.Bot.Automated {
                     user.Xref.TotalHoursSleeping = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours;
                     user.Xref.HoursSleeping = 0;
                 } else {
-                    var nextDemeritAt = (currentSleep.DemeritsGiven + 1) * 24;
-                    bool needsDemerit = timeEmpty > nextDemeritAt && dbguild.DemeritLogChannel.HasValue && !user.Xref.NoDemerit;
-                    if(needsDemerit && user.DBUser is not null) {
-                        currentSleep.DemeritsGiven++;
+                    //var nextDemeritAt = (currentSleep.DemeritsGiven + 1) * 24;
+                    //bool needsDemerit = timeEmpty > nextDemeritAt && dbguild.DemeritLogChannel.HasValue && !user.Xref.NoDemerit;
+                    //if(needsDemerit && user.DBUser is not null) {
+                    //    currentSleep.DemeritsGiven++;
 
-                        var demerit = new Demerit {
-                            When = DateTimeOffset.Now,
-                            AdminUserId = Guid.Empty,
-                            UserId = user.DBUser.Id,
-                            Id = Guid.NewGuid(),
-                            Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}"
-                        };
-                        _db.Demerit.Add(demerit);
-                        await _db.SaveChangesAsync();
+                    //    var demerit = new Demerit {
+                    //        When = DateTimeOffset.Now,
+                    //        AdminUserId = Guid.Empty,
+                    //        UserId = user.DBUser.Id,
+                    //        Id = Guid.NewGuid(),
+                    //        Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}"
+                    //    };
+                    //    _db.Demerit.Add(demerit);
+                    //    await _db.SaveChangesAsync();
 
-                        var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.DBUser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
-                        var demeritText = $"Demerit added to {user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
-                        await coopChannel.SendMessageAsync(demeritText);
-                        if(count >= 3)
-                            demeritText = $"**{demeritText}**";
-                        if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
-                            _demeritChannel = _client.GetGuild(coop.GuildId).GetTextChannel(dbguild.DemeritLogChannel.Value);
-                        }
-                        await _demeritChannel.SendMessageAsync($"{demeritText} {coopChannel.Mention}");
-                    }
-                    user.Xref.HoursSleeping = (int)Math.Floor((DateTimeOffset.Now - currentSleep.SleepStart).TotalHours);
+                    //    var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.DBUser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+                    //    var demeritText = $"Demerit added to {user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
+                    //    await coopChannel.SendMessageAsync(demeritText);
+                    //    if(count >= 3)
+                    //        demeritText = $"**{demeritText}**";
+                    //    if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
+                    //        _demeritChannel = _client.GetGuild(coop.GuildId).GetTextChannel(dbguild.DemeritLogChannel.Value);
+                    //    }
+                    //    await _demeritChannel.SendMessageAsync($"{demeritText} {coopChannel.Mention}");
+                    //}
+                    //user.Xref.HoursSleeping = (int)Math.Floor((DateTimeOffset.Now - currentSleep.SleepStart).TotalHours);
                 }
 
                 if(!currentSleep.WokeUp) {
@@ -1350,31 +1350,31 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, ITextChannel coopChannel, Guild dbguild, Coop coop) {
-            var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
-            if(existingDemerit) {
-                await coopChannel.SendMessageAsync($"Removing {discordUser?.Mention ?? user.DiscordUsername} due to: {reason} (They have already received a demerit for this contract)");
-                return;
-            }
-            var demerit = new Demerit {
-                When = DateTimeOffset.Now,
-                AdminUserId = Guid.Empty,
-                UserId = user.Id,
-                Id = Guid.NewGuid(),
-                Reason = reason
-            };
-            _db.Demerit.Add(demerit);
-            _db.Remove(xref);
-            await _db.SaveChangesAsync();
+            //var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
+            //if(existingDemerit) {
+            //    await coopChannel.SendMessageAsync($"Removing {discordUser?.Mention ?? user.DiscordUsername} due to: {reason} (They have already received a demerit for this contract)");
+            //    return;
+            //}
+            //var demerit = new Demerit {
+            //    When = DateTimeOffset.Now,
+            //    AdminUserId = Guid.Empty,
+            //    UserId = user.Id,
+            //    Id = Guid.NewGuid(),
+            //    Reason = reason
+            //};
+            //_db.Demerit.Add(demerit);
+            //_db.Remove(xref);
+            //await _db.SaveChangesAsync();
 
-            var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
-            var demeritText = $"Demerit added to {discordUser?.Mention ?? user.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
-            await coopChannel.SendMessageAsync(demeritText);
-            if(count >= 3)
-                demeritText = $"**{demeritText}**";
-            if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
-                _demeritChannel = _client.GetGuild(dbguild.Id).GetTextChannel(dbguild.DemeritLogChannel.Value);
-            }
-            await _demeritChannel.SendMessageAsync(demeritText + $" {coopChannel.Mention}");
+            //var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+            //var demeritText = $"Demerit added to {discordUser?.Mention ?? user.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
+            //await coopChannel.SendMessageAsync(demeritText);
+            //if(count >= 3)
+            //    demeritText = $"**{demeritText}**";
+            //if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
+            //    _demeritChannel = _client.GetGuild(dbguild.Id).GetTextChannel(dbguild.DemeritLogChannel.Value);
+            //}
+            //await _demeritChannel.SendMessageAsync(demeritText + $" {coopChannel.Mention}");
 
         }
 

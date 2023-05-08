@@ -138,7 +138,7 @@ namespace EGG9000.Bot.Commands {
                     GuildId = guildContract.GuildID,
                     Name = coopname,
                     MaxUsers = guildContract.Contract.MaxUsers,
-                    Status = CoopStatusEnum.WaitingOnAssigned, 
+                    Status = CoopStatusEnum.WaitingOnAssigned,
                     League = (uint)league,
                     CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
                 };
@@ -151,6 +151,57 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
         }
+
+
+        //[SlashCommand(Description = "Start a new co-op")]
+        //public static async Task NewCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname, [SlashParam] string grade) {
+        //    var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
+        //    if(guildContract == null) {
+        //        await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
+        //        return;
+        //    }
+
+        //    int league = 0;
+        //    switch(grade.ToLower().Trim()) {
+        //        case "aaa":
+        //            league = 5;
+        //            break;
+        //        case "aa":
+        //            league = 4;
+        //            break;
+        //        case "a":
+        //            league = 3;
+        //            break;
+        //        case "b":
+        //            league = 2;
+        //            break;
+        //        case "c":
+        //            league = 1;
+        //            break;
+        //    }
+
+        //    var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
+        //    if(status != null && status.Success) {
+
+        //        var coop = new Coop {
+        //            ContractID = guildContract.ContractID,
+        //            Created = DateTimeOffset.Now,
+        //            GuildId = guildContract.GuildID,
+        //            Name = coopname,
+        //            MaxUsers = guildContract.Contract.MaxUsers,
+        //            Status = CoopStatusEnum.WaitingOnAssigned,
+        //            League = (uint)league,
+        //            CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
+        //        };
+        //        db.Coops.Add(coop);
+        //        await db.SaveChangesAsync();
+        //        await command.RespondAsync($"Co-op Added: {coopname} for {((SocketTextChannel)contractchannel).Mention}");
+        //        return;
+        //    } else {
+        //        await command.RespondAsync($"⚠️ERROR: Unable to find co-op details, double check co-op name ({coopname}) and correct contract channel ({((SocketTextChannel)contractchannel).Mention}).");
+        //        return;
+        //    }
+        //}
 
 
 
