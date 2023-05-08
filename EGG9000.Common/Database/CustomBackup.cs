@@ -243,7 +243,7 @@ namespace EGG9000.Common.Database {
                 LastStepTime = (float)farm.LastStepTime,
                 ReportedUUIDs = contract?.ReportedUuids.ToList(),
                 Grade = contract?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset,
-                EvaluationCxp = contract?.Evaluation.Cxp ?? 0.0
+                EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
             };
             
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
@@ -448,8 +448,9 @@ namespace EGG9000.Common.Database {
             League = localContract.League;
             ContributionAmount = localContract.CoopLastUploadedContribution;
             Grade = localContract.Grade;
-            EvaluationCxp = localContract?.Evaluation.Cxp ?? 0.0;
-
+            if(localContract.Evaluation != null){
+                EvaluationCxp = localContract?.Evaluation?.Cxp ?? 0.0;
+            }
             var goals = localContract.Contract.Goals;
             if(localContract.Contract.GoalSets is not null && localContract.Contract.GoalSets.Count > localContract.League)
                 goals = localContract.Contract.GoalSets[(int)localContract.League].Goals;
