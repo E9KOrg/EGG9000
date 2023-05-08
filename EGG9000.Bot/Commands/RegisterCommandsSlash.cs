@@ -497,9 +497,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [Obsolete("TakeABreak is deprecated, please use MyContractSettings instead.")]
-        [SlashCommand(Description = "Please use the command </mycontractsettings:1100476258518839336>' instead")]
+        [SlashCommand(Description = "Please use the `mycontractsettings` command instead")]
         public static async Task TakeABreak(FauxCommand command) {
-            await command.RespondAsync("Please use the command </mycontractsettings:1100476258518839336> to take a break.", ephemeral: true);
+            await command.RespondAsync("Please use the </mycontractsettings:1100476258518839336> command to take a break.", ephemeral: true);
         }
 
         [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = true)]
