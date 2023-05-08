@@ -33,6 +33,8 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Commands;
 using static EGG9000.Common.Database.Entities.DBUser;
+using Ei;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -487,6 +489,27 @@ namespace EGG9000.Bot.Commands {
                 } else {
                     msg += " Backup Is Empty. Double check your ID.";
                 }
+
+                //Determine user's grade emoji based on LastGrade
+                var gradeEmoji = egginc.LastGrade switch {
+                    Ei.Contract.Types.PlayerGrade.GradeAaa => "<:grade_aaa:1102985471862247426>",
+                    Ei.Contract.Types.PlayerGrade.GradeAa => "<:grade_aa:1102985434562297989>",
+                    Ei.Contract.Types.PlayerGrade.GradeA => "<:grade_a:1102985380845867068>",
+                    Ei.Contract.Types.PlayerGrade.GradeB => "<:grade_b:1102985335920668742>",
+                    Ei.Contract.Types.PlayerGrade.GradeC => "<:grade_c:1102984452935794799>",
+                    _ => "None",
+                };
+                msg += "\nGrade: " + gradeEmoji;
+                msg += "\nBoarding Group: " + (egginc.Group == 0 ? "**None**" : "BG" + egginc?.Group);
+                //Create a filter string
+                var filterString = "";
+                foreach(var r in egginc.AutoRegisterRewards){
+                    filterString += (r.ToString() + ",");
+                }
+                //Remove trailing ,
+                filterString = filterString.Remove(filterString.Length - 1);
+                msg += "\nFilter: " + filterString ?? "No Filter";
+                msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
             }
             if(admin) {
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
