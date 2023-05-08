@@ -28,6 +28,8 @@ namespace EGG9000.Common.Contracts {
                 (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed))
             );
 
+            accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier));
+
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                 var includeBg = new List<int>();
                 for(var bg = 3; bg >= 1; bg--) {

@@ -28,7 +28,7 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
-        public const uint ClientVersion = 46;
+        public const uint ClientVersion = 47;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
@@ -136,7 +136,7 @@ namespace EGG9000.Bot.EggIncAPI {
                             e.WriteTo(ms1);
                             break;
                         case Ei.ContractCoopStatusUpdateRequest e:
-                            url = "ei/contract_coop_status_update";
+                            url = "ei/update_coop_status";
                             e.Rinfo = GetInfo(UserId);
                             e.WriteTo(ms1);
                             break;
@@ -271,8 +271,8 @@ namespace EGG9000.Bot.EggIncAPI {
                     model.WriteTo(ms1);
                     //Serializer.Serialize<Ei.ContractCoopStatusRequest>(ms1, new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower() });
 
-                    var json = JsonConvert.SerializeObject(model, Formatting.Indented);
-                    Console.WriteLine(json);
+                    //var json = JsonConvert.SerializeObject(model, Formatting.Indented);
+                    //Console.WriteLine(json);
                     ms1.Position = 0;
                     var sr = new StreamReader(ms1);
                     var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));

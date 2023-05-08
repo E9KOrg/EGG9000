@@ -21,6 +21,8 @@ using EGG9000.Common.Migrations;
 using UserSnapShots = EGG9000.Bot.Automated.UserSnapShots;
 using Ei;
 using Google.Protobuf;
+using EGG9000.Common.Contracts;
+using RazorEngine.Compilation.ImpromptuInterface;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -37,8 +39,8 @@ await Host.CreateDefaultBuilder(args)
         });
 
         services.AddDbContext<ApplicationDbContext>(//options =>
-            //options.UseSqlServer(
-                //Configuration.GetConnectionString("DefaultConnection"))
+                                                    //options.UseSqlServer(
+                                                    //Configuration.GetConnectionString("DefaultConnection"))
             );
 
         services.AddSingleton<Words>();
@@ -122,16 +124,20 @@ await Host.CreateDefaultBuilder(args)
     }).Build().RunAsync();
 
 public class TestService : IHostedService {
-    //public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext) {
-    //    _client = client;
+    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink) {
+        _client = client;
+        _db = applicationDbContext;
+        _words = words;
+        _apilink = apilink;
+    }
+    //public TestService(ApplicationDbContext applicationDbContext) {
     //    db = applicationDbContext;
     //}
-    public TestService(ApplicationDbContext applicationDbContext) {
-        db = applicationDbContext;
-    }
 
     public DiscordHostedService _client { get; }
-    public ApplicationDbContext db { get; }
+    public ApplicationDbContext _db { get; }
+    public Words _words { get; }
+    private APILink _apilink { get; set; }
 
     public async Task StartAsync(CancellationToken cancellationToken) {
 
@@ -194,12 +200,95 @@ public class TestService : IHostedService {
         //var parse = new MessageParser<ContractCoopStatusRequest>(() => new ContractCoopStatusRequest());
         //var p = parse.ParseFrom(reqarray);
 
-        var authString = "CucBCgthLW5ldy1ncmFkZRIFdGVzdDMaeGdBQUFBQUJrVVlKRGs4aFU5RFpRRVIzSFpHLTB0Q3ByQzE1aXMwNVpodElTSjNfbXl3V2VFYU9ka20wdzZaektnaWJHMndXRDJvYlNGWXVsdFo5WHJBSU9wekMtLXhsWElmZlBMTWZOTlo5dElBc0NGT3g2a1ZNPSISRUk1MjIzMjk5NTE4MzAwMTYwKAEyCEtlbmRyb21lOC5CNQoSRUk1MjIzMjk5NTE4MzAwMTYwEC4aBDEuMjYiCDEuMjYuMC41KgNJT1MyAlVTOgJlbkAAEkBmYTQyNGFjYzY4OTY0ZjA1ZTQ1ZDBhNDRmN2RhYjkyMzBlM2I2MjdkODZjZGY4MzkyYjVjZDIxYTA1NzE5MjMz";
-        var parse1 = new MessageParser<AuthenticatedMessage>(() => new AuthenticatedMessage());
-        var res = parse1.ParseFrom(System.Convert.FromBase64String(authString));
-        var parse2 = new MessageParser<GiftPlayerCoopRequest>(() => new GiftPlayerCoopRequest());
-        var res2 = parse2.ParseFrom(res.Message);
+        //var authString = "CucBCgthLW5ldy1ncmFkZRIFdGVzdDMaeGdBQUFBQUJrVVlKRGs4aFU5RFpRRVIzSFpHLTB0Q3ByQzE1aXMwNVpodElTSjNfbXl3V2VFYU9ka20wdzZaektnaWJHMndXRDJvYlNGWXVsdFo5WHJBSU9wekMtLXhsWElmZlBMTWZOTlo5dElBc0NGT3g2a1ZNPSISRUk1MjIzMjk5NTE4MzAwMTYwKAEyCEtlbmRyb21lOC5CNQoSRUk1MjIzMjk5NTE4MzAwMTYwEC4aBDEuMjYiCDEuMjYuMC41KgNJT1MyAlVTOgJlbkAAEkBmYTQyNGFjYzY4OTY0ZjA1ZTQ1ZDBhNDRmN2RhYjkyMzBlM2I2MjdkODZjZGY4MzkyYjVjZDIxYTA1NzE5MjMz";
+        //var parse1 = new MessageParser<AuthenticatedMessage>(() => new AuthenticatedMessage());
+        //var res = parse1.ParseFrom(System.Convert.FromBase64String(authString));
+        //var parse2 = new MessageParser<GiftPlayerCoopRequest>(() => new GiftPlayerCoopRequest());
+        //var res2 = parse2.ParseFrom(res.Message);
 
+        //await Task.Delay(12000);
+        //var staffDiscord = _client.Guilds.First(x => x.Id == 656455567858073601).Users.Where(x => x.Roles.Any(y => y.Id == 804513329292116030 || y.Id == 750797304797069323 || y.Id == 759887156029423636 || y.Id == 1045132006989774999));
+        //var staffIds = staffDiscord.Select(x => x.Id).ToList();
+        //var staffIds = new List<ulong> { 689298717081468973, 248865520756064257, 170412210076516352, 807946907678277662, 899062018194161695 };
+        //var staffUsers = await _db.DBUsers.Where(x => staffIds.Contains(x.DiscordId)).ToListAsync();
+        //////var staffUsers = await db.DBUsers.Where(x => x.DiscordId == 248865520756064257).ToListAsync();
+        //var accounts = staffUsers.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
+        //    AccountSettings = a,
+        //    Backup = u.Backups.FirstOrDefault(b => b.EggIncId == a.Id),
+        //    User = u
+        //}).Take(1)).Where(x => x.User.GetGrade(x.Backup.EggIncId) == Ei.Contract.Types.PlayerGrade.GradeAa).ToList();
+
+        //var contract = await _db.GuildContracts.Include(x => x.Contract).Where(x => x.DiscordChannelId == 1104076802034520094).FirstAsync();
+        //await CreateCoopsV2.Start(accounts, contract.Contract, Ei.Contract.Types.PlayerGrade.GradeAa, _client.Guilds.First(x => x.Id == 656455567858073601), _words, _db, ContractsAPI.UserId);
+        ////"EI6229292070993920"
+        ////var coop = await CreateCoopsV2.Start(new List<UserByAccount>(), contract.Contract, Ei.Contract.Types.PlayerGrade.GradeAa, _client.Guilds.First(x => x.Id == 656455567858073601), _words, _db, "EI6229292070993920");
+        //await _db.SaveChangesAsync();
+
+        //var r1 = await ContractsAPI.GetCoopStatus("quantum-conference", "joycarol26");
+
+        //var s = "ChJxdWFudHVtLWNvbmZlcmVuY2USBHRlc3QYLiAAKjUKEkVJNTIyMzI5OTUxODMwMDE2MBAuGgQxLjI2IggxLjI2LjAuNSoDSU9TMgJVUzoCZW5AADAA";
+        //var parse1 = new MessageParser<QueryCoopRequest>(() => new QueryCoopRequest());
+        //var res = parse1.ParseFrom(System.Convert.FromBase64String(s));
+
+        //res.ContractIdentifier = "quantum-conference";
+        //res.CoopIdentifier = "joycarol26";r
+
+        //res.UserId = "EI4816370305073152";
+
+        //var response = await ContractsAPI.Post<ContractCoopStatusUpdateResponse, ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+
+
+        //var dbusers = await _db.DBUsers.Where(x => x.GuildId > 0).ToListAsync();
+        //var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-12)).ToListAsync();
+        //var contracts = await _db.Contracts.ToListAsync();
+        //var count = 0;
+        //var potentialCoops = new List<(string contractid, string coopname, List<Guid> userids, ulong guildid, uint grade)>();
+        //foreach(var user in dbusers) {
+        //    foreach(var account in user.EggIncAccounts) {
+        //        var backup = user.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
+        //        if(backup is null)
+        //            continue;
+
+        //        foreach(var farm in backup.Farms.Where(x =>
+        //            x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset &&
+        //            !coops.Any(c => c.Name.ToLower() == x.CoopId) &&
+        //            !string.IsNullOrWhiteSpace(x.CoopId)
+        //        )) {
+
+        //            if(potentialCoops.Any(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId)) {
+        //                var poentialCoop = potentialCoops.First(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId);
+        //                poentialCoop.userids.Add(user.Id);
+        //                poentialCoop.userids = poentialCoop.userids.Distinct().ToList();
+        //            } else {
+        //                potentialCoops.Add((farm.ContractId, farm.CoopId, new List<Guid> { user.Id }, user.GuildId, (uint)farm.Grade));
+        //            }
+        //        }
+        //    }
+        //}
+
+        //foreach(var pCoop in potentialCoops.Where(x => x.userids.Count > 1)) {
+        //    var contract = contracts.First(x => x.ID == pCoop.contractid);
+        //    var coop = new Coop {
+        //        ContractID = pCoop.contractid, Created = DateTimeOffset.Now, GuildId = pCoop.guildid, Name = pCoop.coopname,
+        //        MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnAssigned, League = pCoop.grade,
+        //        CoopEnds = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.LengthSeconds)
+        //    };
+        //    coops.Add(coop);
+        //    _db.Add(coop);
+        //    await _db.SaveChangesAsync();
+        //    count++;
+        //}
+
+
+        var failedCoops = await _db.Coops.Where(x => x.Status == CoopStatusEnum.Failed && !x.DeletedChannel).ToListAsync();
+        foreach(var failedCoop in failedCoops) {
+            SocketTextChannel chanel = (SocketTextChannel)_client.GetChannel(failedCoop.DiscordChannelId);
+            try {
+                await chanel.DeleteAsync();
+            } catch(Exception ex) { }
+            failedCoop.DeletedChannel = true;
+            await _db.SaveChangesAsync();
+        }
     }
 
     public DateTime RoundToNearest(DateTime dt, TimeSpan d) {

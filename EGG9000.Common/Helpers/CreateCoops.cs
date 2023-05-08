@@ -19,9 +19,6 @@ using Polly;
 namespace EGG9000.Common.Helpers {
     public class CreateCoops {
         public static async Task<Coop> Start(List<UserFarmDetails> prefarms, GuildContract guildContract, SocketGuild guild, Words _words, ApplicationDbContext db) {
-            //var discordUsers = prefarms.Select(x => guild.GetUser(x.DiscordId));
-
-
             var secondsRemaining = guildContract.Contract.Details.LengthSeconds;
 
             if(guildContract.Contract.GoodUntil < DateTimeOffset.Now)
@@ -95,8 +92,6 @@ namespace EGG9000.Common.Helpers {
             } catch (Exception) {
                 return false;
             }
-
-            //var response = await _CreateCoop(ContractID, League, coop, secondsRemaining);
 
             var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
                 ClientVersion = ContractsAPI.ClientVersion,

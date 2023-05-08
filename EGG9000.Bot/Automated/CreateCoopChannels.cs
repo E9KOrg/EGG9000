@@ -26,7 +26,7 @@ namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
         public CreateCoopChannels(
             IServiceProvider provider
-        ) : base(TimeSpan.FromSeconds(10), TimeSpan.Zero, provider) {
+        ) : base(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
