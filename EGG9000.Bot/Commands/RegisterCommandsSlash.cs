@@ -33,8 +33,6 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Commands;
 using static EGG9000.Common.Database.Entities.DBUser;
-using Ei;
-using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
