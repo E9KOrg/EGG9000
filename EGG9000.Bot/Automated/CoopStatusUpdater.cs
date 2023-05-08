@@ -928,8 +928,15 @@ namespace EGG9000.Bot.Automated {
                             lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n";
                         }
 
-                        lastMessage += "Co-op Commands:\n`/pingonhighesteb` **NEW!** Receive DM ping when the highest EB has joined \n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
-                        lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";
+                        //New commands list, each is a quick-link to start using the command
+                        lastMessage += "__Co-op Commands (click to use):__\n";
+                        lastMessage += "\n</pingonhighesteb:1095116354169864206> **NEW!** Receive DM ping when the highest EB has joined ";
+                        lastMessage += "\n</pingonfull:1095116354169864205> Receive DM ping when everyone has joined";
+                        lastMessage += "\n</fixjoinedwrongcoop:1095116354010493081> Use this command if you mistyped the co-op name";
+                        lastMessage += "\n</callstaff:1095116354169864210> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
+
+                        /*lastMessage += "Co-op Commands:\n`/pingonhighesteb` **NEW!** Receive DM ping when the highest EB has joined \n`/pingonfull` Receive DM ping when everyone has joined\n`/callstaff` Use this instead of pinging us for help with things like typing in the wrong code (don't restart until we tell you to)";
+                        lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";*/
 
 
                         foreach(var u in usersWithStatus.Where(x => x.Xref is not null)) {
