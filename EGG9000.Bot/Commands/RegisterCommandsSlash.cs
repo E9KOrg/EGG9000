@@ -504,10 +504,10 @@ namespace EGG9000.Bot.Commands {
                 //Create a filter string
                 var filterString = "";
                 foreach(var r in egginc.AutoRegisterRewards){
-                    filterString += (r.ToString() + ",");
+                    filterString += (r.ToString() + ", ");
                 }
-                //Remove trailing ,
-                filterString = filterString.Remove(filterString.Length - 1);
+                //Remove trailing ", "
+                filterString = filterString.Remove(filterString.Length - 2);
                 msg += "\nFilter: " + filterString ?? "No Filter";
                 msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
             }
