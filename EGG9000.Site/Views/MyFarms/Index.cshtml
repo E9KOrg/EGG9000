@@ -146,7 +146,8 @@
 	}
 }
 <div class="tab-content">
-	@foreach (var backup in Model.Backups) {
+	@foreach (var account in Model.EggIncAccounts) {
+		var backup = Model.Backups.First(x => x.EggIncId == account.Id);
 		var index = Model.Backups.IndexOf(backup);
 		var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
 		<div class="tab-pane @(backup == Model.Backups.First() ? "show active" : "")" id="user@(index)" role="tabpanel">
@@ -166,6 +167,16 @@
 				} else {
 					<span>Member of discord server: @(discordClient.Guilds.FirstOrDefault(x => x.Id == Model.GuildId)?.Name ?? "unknown")</span>
 				}]
+				[BG @account.Group]
+				@if(account.OnBreakUntil > DateTimeOffset.Now) {
+					<span>[OnBreak @account.OnBreakUntil.ToString()]</span>
+				}
+				@if (account.AutoRegisterRewards.Count > 0)
+				{
+					<span>[Filter @string.Join(",", account.AutoRegisterRewards)]</span>
+				} else {
+					<span>[Filter All]</span>
+				}
 			</div>
 
 			<ul class="nav nav-tabs" role="tablist">

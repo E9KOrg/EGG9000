@@ -40,7 +40,7 @@ namespace EGG9000.Bot.Automated {
 
         public CoopStatusUpdater(
             IServiceProvider provider
-            ) : base(TimeSpan.FromMinutes(5), TimeSpan.Zero, provider) {
+            ) : base(TimeSpan.FromMinutes(2), TimeSpan.Zero, provider) {
             _counter = 59;
         }
 
@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.Name == "LapelSend32").ToList();
-                //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+                coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
 #endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
@@ -939,6 +939,7 @@ namespace EGG9000.Bot.Automated {
                         lastMessage += "\n`/fixjoinedwrongcoop` Use this command if you mistyped the co-op name, if you joined a co-op for the wrong contract use `/callstaff`";*/
 
 
+                        lastMessage += $"\n\nCo-op Grade: {(Ei.Contract.Types.PlayerGrade)((int)coop.League)}";
                         foreach(var u in usersWithStatus.Where(x => x.Xref is not null)) {
                             u.Xref.HasTachyonDeflector = u.Xref.HasTachyonDeflector || (u.Backup?.GetAvailableArtifacts.Any(a => a.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) ?? false);
                             var farm = u.Backup?.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);

@@ -53,23 +53,66 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(status);
         }
 
-        public async Task<IActionResult> Day1Coops([FromQuery] ulong GuildId, [FromQuery] uint size) {
-            var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
+        public async Task<IActionResult> Fix() {
+            //var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == "summer-construction-2023" && x.GuildId == 656455567858073601 && x.League < 4).ToListAsync();
 
-            var contract = new Ei.Contract();
-            foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
-                var gradeSpec = new Ei.Contract.Types.GradeSpec();
-                gradeSpec.Grade = grade;
-                gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
-                contract.GradeSpecs.Add(gradeSpec);
+            //foreach(var coop in coops) {
+            //    try {
+            //        var channel = (SocketGuildChannel)_discord.GetChannel(coop.DiscordChannelId);
+            //        await channel.DeleteAsync();
+            //    } catch(Exception) { }
+            //    _db.UserCoopXrefs.RemoveRange(coop.UserCoopsXrefs);
+            //    _db.Coops.Remove(coop);
+            //    await _db.SaveChangesAsync();
+            //}
+            return Content("success");
+        }
+
+        public async Task<IActionResult> Day1Coops([FromQuery] ulong GuildId, [FromQuery] uint size, [FromQuery] string contractid) {
+
+            Ei.Contract contract;
+
+            if(string.IsNullOrWhiteSpace(contractid)) {
+                contract = new Ei.Contract();
+                foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                    var gradeSpec = new Ei.Contract.Types.GradeSpec();
+                    gradeSpec.Grade = grade;
+                    gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
+                    contract.GradeSpecs.Add(gradeSpec);
+                }
+                contract.Name = "test";
+                contract.Identifier = "test";
+                contract.MaxCoopSize = size;
+            } else {
+                contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid)).Details;
             }
-            contract.Name = "test";
-            contract.Identifier = "test";
-            contract.MaxCoopSize = size;
 
-            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users,contract);
+            var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract);
             ViewBag.Contract = contract;
             return View(coopGroups);
+        }
+
+        public async Task<IActionResult> CreateDay1Coops([FromQuery] ulong GuildId, [FromQuery] string contractid, [FromQuery] string bg) {
+
+            var contract = await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid);
+
+            var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details);
+            ViewBag.Contract = contract;
+
+            var coopsCreated = 0;
+            var _words = new Words();
+            foreach(var group in coopGroups.Where(x => x.bg == bg && x.Grade != Ei.Contract.Types.PlayerGrade.GradeAaa && x.Grade != Ei.Contract.Types.PlayerGrade.GradeAa)) {
+                Console.WriteLine($"BG {group.bg}, Grade {group.Grade}, Count {group.PotentialCoops.Count}");
+                foreach(var coop in group.PotentialCoops) {
+                    coopsCreated++;
+                    await CreateCoopsV2.Start(coop.Users, contract, group.Grade, _discord.GetGuild(GuildId), _words, _db, coop.Users.First().Backup.EggIncId);
+                    await _db.SaveChangesAsync();
+                }
+            }
+
+            return Content($"Success {coopsCreated} coops created");
         }
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] UInt32 League) {
@@ -83,7 +126,7 @@ namespace EGG9000.Site.Controllers {
 
                 ViewBag.Discord = _discord;
 
-
+                //var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.ContractID == ContractID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
 
                 return View(new CoopsViewModel {
                     GuildContract = guildContract,
