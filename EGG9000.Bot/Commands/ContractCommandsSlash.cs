@@ -418,7 +418,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Start co-ops with users above a certain percent and backfill with low EB users", AdminOnly = true)]
         public static async Task StartFill(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, APILink _apiLink, Words _words, [SlashParam(Description = "Percent at which a user will be started")] int percenttostart) {
             if(percenttostart < 120) {
-                await command.RespondAsync($"Minumum percent for /startfill is 120%");
+                await command.RespondAsync($"Minumum percent for </startfill:1095116344392941610> is 120%");
                 return;
             }
             await _StartUser(command, db, _client, _apiLink, _words, true, percent: percenttostart);
