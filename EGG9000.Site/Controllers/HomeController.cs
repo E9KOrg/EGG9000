@@ -612,7 +612,6 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Coop([FromRoute] string ContractId, [FromRoute] string CoopId) {
-            return NotFound();
             CoopId = CoopId.ToLower();
             ContractId = ContractId.ToLower();
             var model = new CoopModel {
@@ -640,6 +639,9 @@ namespace EGG9000.Site.Controllers {
 
                 model.UserInfos.AddRange(existingBackups.Where(x => x.Contribution != null));
                 backupsNeeded = backupsNeeded.Where(x => !existingBackups.Any(y => y.Contribution?.UserId == x.UserId)).ToList();
+                model.League = model.DbCoop.League;
+            } else {
+                model.League = GetLeague(model.UserInfos, CoopId, ContractId);
             }
             var backups = await _apiLink.GetUserBackups(backupsNeeded.Select(x => x.UserId), true);
             model.UserInfos.AddRange(backups.Select(b => new CoopUserInfo {
@@ -659,7 +661,7 @@ namespace EGG9000.Site.Controllers {
                 await _db.SaveChangesAsync();
             }
 
-            model.League = GetLeague(model.UserInfos, CoopId, ContractId);
+            
 
             var goals = model.Contract.Details.GetGoals((int)model.League);
             model.GoalDetails = goals.Select(goal => {

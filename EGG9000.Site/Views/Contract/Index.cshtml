@@ -5,7 +5,7 @@
 
 
 <h2>Recent Contracts</h2>
-@foreach(var contractGroup in Model.OrderBy(x => x.DeletedChannel).GroupBy(x => x.Contract)) {
+@foreach(var contractGroup in Model.OrderBy(x => x.DeletedChannel).Where(x => x.Created > DateTimeOffset.FromUnixTimeSeconds(1682917200)).GroupBy(x => x.Contract)) {
     var contract = contractGroup.Key;
     <div class="card">
         <h5 class="card-header">
@@ -15,8 +15,11 @@
                 }
         </h5>
         <div class="card-body">
-            @foreach(var guildContract in contractGroup) {
-                <a href="/Contract/Details?GuildId=@guildContract.GuildID&ContractId=@guildContract.ContractID&League=@guildContract.League" class="btn btn-primary">@(guildContract.League == 0 ? "Elite" : "Standard") Co-ops</a>
+            @foreach (var grade in (Ei.Contract.Types.PlayerGrade[])Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset) {
+                    continue;
+                }
+                <a href="/Contract/Details?GuildId=@contractGroup.First().GuildID&ContractId=@contractGroup.First().ContractID&League=@((int)grade)" class="btn btn-primary">@grade Co-ops</a>
             }
             @if(contractGroup.Any(x => x.HasScores)) {
                 <a href="/Contract/ScoreGraph?GuildId=@contractGroup.First().GuildID&ContractId=@contractGroup.First().ContractID" class="btn btn-primary">Scores Graph</a>

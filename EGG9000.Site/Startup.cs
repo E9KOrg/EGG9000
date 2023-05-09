@@ -116,7 +116,9 @@ namespace EGG9000.Site {
                 options.EnableForHttps = true;
             });
             services.AddBugsnag(configuration => {
+#if !DEBUG
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
+#endif
             });
             services.AddDatabaseDeveloperPageExceptionFilter();
         }

@@ -39,6 +39,15 @@
 	};
 	List<Merit> merits = ViewBag.Merits;
 	var inDB = Model.DiscordId > 0;
+
+
+	if ((Model.EggIncAccounts?.Count ?? 0) == 0) {
+		Model.EggIncAccounts = new List<DBUser.EggIncAccount> {
+			new DBUser.EggIncAccount {
+			Id = Model.Backups.First().EggIncId
+		}
+		};
+	}
 }
 <style>
 	.card-header img {
@@ -98,52 +107,21 @@
 
 
 
-@if (Model.Backups.Count > 1) {
+@if (Model.EggIncAccounts.Count > 1) {
 	<ul class="nav nav-tabs" role="tablist">
-		@foreach (var backup in Model.Backups) {
+		@foreach (var account in Model.EggIncAccounts) {
+			var backup = Model.Backups.First(x => x.EggIncId == account.Id);
 			var index = Model.Backups.IndexOf(backup);
 			<li class="nav-item">
 				<a class="nav-link @(backup == Model.Backups.First() ? "active" : "")" id="tab@(backup.EggIncId)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(backup == Model.Backups.First())">
 					@backup.UserName
-					@switch(Model.GetGrade(backup.EggIncId)) {
-						case Ei.Contract.Types.PlayerGrade.GradeAaa:
-							<img src="https://cdn.discordapp.com/emojis/1102985471862247426.png?v=1" style="max-height: 30px;" />
-							break;
-						case Ei.Contract.Types.PlayerGrade.GradeAa:
-							<img src="https://cdn.discordapp.com/emojis/1102985434562297989.png?v=1" style="max-height: 30px;" />
-							break;
-						case Ei.Contract.Types.PlayerGrade.GradeA:
-							<img src="https://cdn.discordapp.com/emojis/1102985380845867068.png?v=1" style="max-height: 30px;" />
-							break;
-						case Ei.Contract.Types.PlayerGrade.GradeB:
-							<img src="https://cdn.discordapp.com/emojis/1102985335920668742.png?v=1" style="max-height: 30px;" />
-							break;
-						case Ei.Contract.Types.PlayerGrade.GradeC:
-							<img src="https://cdn.discordapp.com/emojis/1102984452935794799.png?v=1" style="max-height: 30px;" />
-							break;
-					}
+					<img src="@PlayerGradeDetails.GetImage(Model.GetGrade(backup.EggIncId))" style="max-height: 30px;" />
 				</a>
 			</li>
 		}
 	</ul>
 } else {
-	@switch(Model.GetGrade(Model.Backups.First().EggIncId)) {
-		case Ei.Contract.Types.PlayerGrade.GradeAaa:
-			<img src="https://cdn.discordapp.com/emojis/1102985471862247426.png?v=1" style="max-height: 30px;" />
-			break;
-		case Ei.Contract.Types.PlayerGrade.GradeAa:
-			<img src="https://cdn.discordapp.com/emojis/1102985434562297989.png?v=1" style="max-height: 30px;" />
-			break;
-		case Ei.Contract.Types.PlayerGrade.GradeA:
-			<img src="https://cdn.discordapp.com/emojis/1102985380845867068.png?v=1" style="max-height: 30px;" />
-			break;
-		case Ei.Contract.Types.PlayerGrade.GradeB:
-			<img src="https://cdn.discordapp.com/emojis/1102985335920668742.png?v=1" style="max-height: 30px;" />
-			break;
-		case Ei.Contract.Types.PlayerGrade.GradeC:
-			<img src="https://cdn.discordapp.com/emojis/1102984452935794799.png?v=1" style="max-height: 30px;" />
-			break;
-	}
+	<img src="@PlayerGradeDetails.GetImage(Model.GetGrade(Model.EggIncAccounts.First().Id))" style="max-height: 30px;" />
 }
 <div class="tab-content">
 	@foreach (var account in Model.EggIncAccounts) {
@@ -168,11 +146,10 @@
 					<span>Member of discord server: @(discordClient.Guilds.FirstOrDefault(x => x.Id == Model.GuildId)?.Name ?? "unknown")</span>
 				}]
 				[BG @account.Group]
-				@if(account.OnBreakUntil > DateTimeOffset.Now) {
+				@if (account.OnBreakUntil > DateTimeOffset.Now) {
 					<span>[OnBreak @account.OnBreakUntil.ToString()]</span>
 				}
-				@if (account.AutoRegisterRewards.Count > 0)
-				{
+				@if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
 					<span>[Filter @string.Join(",", account.AutoRegisterRewards)]</span>
 				} else {
 					<span>[Filter All]</span>
@@ -355,12 +332,12 @@
 					<div class="tab-pane" id="merits@(index)" role="tabpanel">
 						@{
 							foreach (var merit in merits) {
-														<div>
-															@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-															@if (isAdmin) {
-																<a href="/myfarms/removemerit?id=@merit.Id">X</a>
+								<div>
+									@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
+									@if (isAdmin) {
+										<a href="/myfarms/removemerit?id=@merit.Id">X</a>
 									}
-														</div>
+								</div>
 							}
 						}
 					</div>
@@ -369,16 +346,18 @@
 							@{
 								List<Demerit> demerits = ViewBag.Demerits;
 								foreach (var demerit in demerits) {
-															<div>
-																@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
-															</div>
+									<div>
+										@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+									</div>
 								}
 							}
 						</div>
 					}
 					@if (snapshots != null) {
 						<div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
-						@{await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin));}
+							@{
+								await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin));
+							}
 						</div>
 					}
 				}
@@ -424,10 +403,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-															<tr>
-																<td>@ri.EggsOfProphecy</td>
-																<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-															</tr>
+									<tr>
+										<td>@ri.EggsOfProphecy</td>
+										<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+									</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -449,10 +428,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-															<tr>
-																<td>@ri.EggsOfProphecy</td>
-																<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-															</tr>
+									<tr>
+										<td>@ri.EggsOfProphecy</td>
+										<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+									</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -475,19 +454,19 @@
 
 @{
 	void artifactTemplate(EggIncArtifactInstance artifact) {
-	<tr>
-									<td>@artifact.Artifact</td>
-									@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-										<td>@Math.Round((artifact.Value) * 100)%</td>
+		<tr>
+			<td>@artifact.Artifact</td>
+			@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+				<td>@Math.Round((artifact.Value) * 100)%</td>
 			} else if (artifact.Additive) {
-										<td>+@artifact.Value</td>
+				<td>+@artifact.Value</td>
 			} else if (+artifact.Value < 2) {
-										<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+				<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
 			} else {
-										<td>@(artifact.Value)x</td>
+				<td>@(artifact.Value)x</td>
 			}
-									<td>@artifact.Boost</td>
-	</tr>
+			<td>@artifact.Boost</td>
+		</tr>
 	}
 
 	//(IHtmlContent, DateTimeOffset) GetActiveFarm(CustomFarm farm) {
@@ -569,7 +548,7 @@
 	//			<td></td>
 	//		} else {
 	//			<td colspan="99"></td>
-			//		}
+	//		}
 
 	//	</tr>
 	//	;
@@ -584,11 +563,11 @@
 
 			if (location.hash) {
 				const hash = url.split("#");
-                var backupNum = hash[1].slice(-1);
-				if(backupNum != "0") {
+				var backupNum = hash[1].slice(-1);
+				if (backupNum != "0") {
 					$('a[href="#user' + backupNum + '"]').tab("show");
 				}
-				
+
 				$('a[href="#' + hash[1] + '"]').tab("show");
 				url = location.href.replace(/\/#/, "#");
 				history.replaceState(null, null, url);
@@ -598,13 +577,13 @@
 
 			}
 
-			$('a[data-toggle="tab"]').on("click", function() {
+			$('a[data-toggle="tab"]').on("click", function () {
 				let newUrl;
 				const hash = $(this).attr("href");
 
-                console.log(hash.substring(1, 5));
-                if (hash.substring(1, 5) == "user")
-						return;
+				console.log(hash.substring(1, 5));
+				if (hash.substring(1, 5) == "user")
+					return;
 				newUrl = url.split("#")[0] + hash;
 				//newUrl += "/";
 				history.replaceState(null, null, newUrl);
