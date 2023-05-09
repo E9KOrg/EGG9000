@@ -7,6 +7,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 
+using AutoMapper.Internal;
+
 using Discord.WebSocket;
 
 using EGG9000.Bot;
@@ -88,24 +90,42 @@ namespace EGG9000.Site.Controllers {
             }
 
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
-            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract);
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, 0);
             ViewBag.Contract = contract;
             return View(coopGroups);
         }
 
-        public async Task<IActionResult> CreateDay1Coops([FromQuery] ulong GuildId, [FromQuery] string contractid, [FromQuery] string bg) {
+        public async Task<IActionResult> Day1CoopsFillLate([FromQuery] ulong GuildId, [FromQuery] string contractid) {
 
+            Ei.Contract contract;
+
+            //contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid)).Details;
+            var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.GuildID == GuildId && x.ContractID == contractid);
+
+            var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, guildContract.Contract.Details, coops, 2);
+            ViewBag.Contract = guildContract.Contract.Details;
+            return View("Day1Coops", coopGroups);
+        }
+
+        public async Task<IActionResult> CreateDay1Coops([FromQuery] ulong GuildId, [FromQuery] string contractid, [FromQuery] string bg) {
+            Console.WriteLine("Gettings Users");
             var contract = await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid);
 
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
-            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details);
+            Console.WriteLine("Gettings Coops");
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
+            Console.WriteLine("Sorting");
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, 2);
             ViewBag.Contract = contract;
 
             var coopsCreated = 0;
             var _words = new Words();
-            foreach(var group in coopGroups.Where(x => x.bg == bg && x.Grade != Ei.Contract.Types.PlayerGrade.GradeAaa && x.Grade != Ei.Contract.Types.PlayerGrade.GradeAa)) {
+            foreach(var group in coopGroups.Where(x => x.bg == bg)) {
                 Console.WriteLine($"BG {group.bg}, Grade {group.Grade}, Count {group.PotentialCoops.Count}");
-                foreach(var coop in group.PotentialCoops) {
+                foreach(var coop in group.PotentialCoops.Where(x => x.Users.Count > 2)) {
                     coopsCreated++;
                     await CreateCoopsV2.Start(coop.Users, contract, group.Grade, _discord.GetGuild(GuildId), _words, _db, coop.Users.First().Backup.EggIncId);
                     await _db.SaveChangesAsync();
@@ -119,10 +139,10 @@ namespace EGG9000.Site.Controllers {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
                 await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
 
-                var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId && x.League == League);
+                var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId);
 
 
-                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord);
+                var coopsBreakdown = await Prefarm.GetBreakdown(_db, guildContract, _discord, League);
 
                 ViewBag.Discord = _discord;
 
@@ -130,7 +150,8 @@ namespace EGG9000.Site.Controllers {
 
                 return View(new CoopsViewModel {
                     GuildContract = guildContract,
-                    CoopsBreakdown = coopsBreakdown
+                    CoopsBreakdown = coopsBreakdown,
+                    League = League
                 });
             } else {
                 return View("TempDisabled");
@@ -253,6 +274,7 @@ namespace EGG9000.Site.Controllers {
             public GuildContract GuildContract { get; set; }
             public CoopsBreakdown CoopsBreakdown { get; set; }
             public List<UserPreFarm> UserPreFarms { get; set; }
+            public UInt32 League { get; set; }
         }
     }
 }

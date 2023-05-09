@@ -1,24 +1,31 @@
-﻿@model List<EGG9000.Common.Contracts.PotentialCoopGroup>
+﻿@using Discord.WebSocket
+@model List<EGG9000.Common.Contracts.PotentialCoopGroup>
+@inject DiscordSocketClient discordClient
 @{
     var boardingGroups = Model.GroupBy(x => x.BoardingGroup).Select(x => new
     {
         BoardingGroup = x.Key,
-        Grades = x.Where(y => y.PotentialCoops.Count > 0).Select(y => new {
+        Grades = x.Where(y => (y.PotentialCoops?.Count ?? 0)  > 0).Select(y => new {
             Grade = y.Grade.ToString(),
             Coops = y.PotentialCoops.Select(c => new {
-                Users = c.Users.Select(u => new {
-                    EB = u.Backup.EarningsBonus,
-                    EBString = u.Backup.EarningsBonus.ToEggString(),
-                    Name = u.User.DiscordUsername,
-                    MultipleAccounts = u.User.EggIncAccounts.Count > 1,
-                    AccountName = u.Backup.UserName,
-                    FromGroup = (u.AccountSettings.Group != x.Key ? u.AccountSettings.Group : 0)
+                Users = c.Users.Select(u =>
+                {
+                    var discordUser = discordClient.GetGuild(u.User.GuildId).GetUser(u.User.DiscordId);
+                    return new
+                    {
+                        EB = u.Backup.EarningsBonus,
+                        EBString = u.Backup.EarningsBonus.ToEggString(),
+                        Name = discordUser?.GetCleanName() ?? u.User.DiscordUsername,
+                        MultipleAccounts = u.User.EggIncAccounts.Count > 1,
+                        AccountName = u.Backup.UserName,
+                        FromGroup = (u.AccountSettings.Group != x.Key ? u.AccountSettings.Group : 0)
+                    };
                 }),
                 TotalEB = c.Users.Sum(u => u.Backup.EarningsBonus).ToEggString()
             })
         })
 
-    }).OrderBy(x => x.BoardingGroup);
+    }).Where(x => x.Grades.Any(y => y.Coops.Count() > 0)).OrderBy(x => x.BoardingGroup);
 
 
     var grades = Model.GroupBy(x => x.Grade).Where(x => x.Count() > 0);
@@ -35,7 +42,7 @@
 
 <div>User Counts:
 @foreach(var grade in grades) {
-    <span><b>@grade.Key</b> @grade.Sum(x => x.PotentialCoops.Sum(y => y.Users.Count)) &nbsp;&nbsp;</span>
+    <span><b>@grade.Key</b> @grade.Sum(x => x.PotentialCoops?.Sum(y => y.Users.Count) ?? 0) &nbsp;&nbsp;</span>
 }
 </div>
 

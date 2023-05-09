@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static List<PotentialCoopGroup> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract) {
+        public static List<PotentialCoopGroup> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG) {
             var groups = new List<PotentialCoopGroup>();
 
             var accounts = users
@@ -28,8 +28,12 @@ namespace EGG9000.Common.Contracts {
                 (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed))
             );
 
-            //TODO: Need to determine whether it's an active farm or not
-            //accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier));
+            accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier && y.FarmType == Ei.FarmType.Contract));
+
+
+            accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Backup.EggIncId)));
+
+
 
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                 if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
@@ -41,14 +45,24 @@ namespace EGG9000.Common.Contracts {
                     };
                     groups.Add(group);
 
-                    group.PotentialCoops = SortUsersIntoDay1Coops(accounts, bg, grade, contract, includeBg);
+                    var dontMergeDown = false;
+                    if(SkipBG > 0 && SkipBG == bg - 1) {
+                        for(var i = SkipBG; i > 0; i--) {
+                            includeBg.Add(i);
+                        }
+                        dontMergeDown = true;
+                    }
+
+                    if(bg > SkipBG) {
+                        group.PotentialCoops = SortUsersIntoDay1Coops(accounts, bg, grade, contract, includeBg, dontMergeDown);
+                    }
                 }
             }
 
             return groups;
         }
 
-        private static List<PotentialCoop> SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG) {
+        private static List<PotentialCoop> SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {
             var matchingAccounts = Accounts.Where(x => 
                 x.User.GetGrade(x.Backup.EggIncId) == Grade && 
                 (x.AccountSettings.Group == BoardingGroup || includeBG.Any(y => x.AccountSettings.Group == y))
@@ -76,7 +90,7 @@ namespace EGG9000.Common.Contracts {
                 }
             }
 
-            if(BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > 1)) {
+            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > 1)) {
                 coops = new List<PotentialCoop>();
                 includeBG.Add(BoardingGroup);
             } else if(includeBG.Count > 0) {

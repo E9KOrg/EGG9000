@@ -136,8 +136,8 @@ namespace EGG9000.Common.Helpers {
                 Coop = coop;
                 SetCoopDetails(coopParticipants, contract, league);
             }
-            public CoopDetails(List<UserFarmDetails> coopParticipants, GuildContract guildContract) {
-                SetCoopDetails(coopParticipants, guildContract.Contract, guildContract.League);
+            public CoopDetails(List<UserFarmDetails> coopParticipants, GuildContract guildContract, UInt32 league) {
+                SetCoopDetails(coopParticipants, guildContract.Contract, league);
             }
             public void SetCoopDetails(List<UserFarmDetails> coopParticipants, Contract contract, UInt32 league) {
                 CoopParticipants = coopParticipants.Where(x => x.DBUser is not null || x.CoopStatus is not null).ToList();
@@ -166,14 +166,14 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract, DiscordSocketClient discord) {
+        public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract, DiscordSocketClient discord, UInt32 league) {
             var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildContract.GuildID).ToListAsync();
             var backups = dbusers.Where(x => x.Backups != null && x.GuildId == guildContract.GuildID).SelectMany(y => y.Backups.Select(x => new UserWithBackup {
                 User = y,
                 Backup = x
             })).ToList();
 
-            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == guildContract.League).ToListAsync();
+            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == league).ToListAsync();
 
 
             var missingXrefUsers = coops.SelectMany(c => c.UserCoopsXrefs.Where(x => !backups.Any(b => b.User.Id == x.UserId))).Select(x => x.UserId);
@@ -181,22 +181,22 @@ namespace EGG9000.Common.Helpers {
             var missingUsers = await db.DBUsers.Where(x => missingXrefUsers.Contains(x.Id)).ToListAsync();
             backups.AddRange(missingUsers.SelectMany(u => u.Backups.Select(b => new UserWithBackup { User = u, Backup = b })));
 
-            var coopsBreakdown = Prefarm.GetBreakdown(coops, backups, guildContract, discord);
+            var coopsBreakdown = Prefarm.GetBreakdown(coops, backups, guildContract, discord, league);
             return coopsBreakdown;
         }
 
-        public static CoopsBreakdown GetBreakdown(List<Coop> coops, List<UserWithBackup> usersWithBackups, GuildContract guildContract, DiscordSocketClient discord) {
+        public static CoopsBreakdown GetBreakdown(List<Coop> coops, List<UserWithBackup> usersWithBackups, GuildContract guildContract, DiscordSocketClient discord, UInt32 league) {
             coops = coops.Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6)).ToList();
 
             var coopsBreakdown = new CoopsBreakdown {
-                ExistingCoops = coops.Select(c => new CoopDetails(c, guildContract.Contract, guildContract.League, usersWithBackups, discord, c.LastStatusUpdate)).ToList()
+                ExistingCoops = coops.Select(c => new CoopDetails(c, guildContract.Contract, league, usersWithBackups, discord, c.LastStatusUpdate)).ToList()
             };
 
             var notAssignedCoop = usersWithBackups
                 .Where(x =>
                     !coopsBreakdown.ExistingCoops.Any(c => c.CoopParticipants.Any(p => (p.Xref?.EggIncId) == x.Backup.EggIncId))
                 )
-                .Select(x => new UserFarmDetails(guildContract.Contract, x, discord, guildContract.League));
+                .Select(x => new UserFarmDetails(guildContract.Contract, x, discord, league));
 
             notAssignedCoop = notAssignedCoop.Where(x => x.Backup != null && !x.DBUser.TempDisabled && x.DBUser.GuildId == guildContract.GuildID &&
                     (
@@ -256,7 +256,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var targetAmount = guildContract.Contract.Details.GetGoals((int)guildContract.League).Last().TargetAmount;
+            var targetAmount = guildContract.Contract.Details.GetGoals((int)league).Last().TargetAmount;
 
 
 
@@ -285,7 +285,7 @@ namespace EGG9000.Common.Helpers {
 
             coopsBreakdown.PotentialCoops = new List<CoopDetails>();
             for(int i = 1; i <= potentialCoops.Count; i++) {
-                var details = new CoopDetails(potentialCoops[i - 1], guildContract);
+                var details = new CoopDetails(potentialCoops[i - 1], guildContract, league);
                 coopsBreakdown.PotentialCoops.Add(details);
             }
 

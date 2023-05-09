@@ -221,7 +221,7 @@ namespace EGG9000.Common.Database {
                 League = contract?.League,
                 CoopId = contract?.CoopIdentifier,
                 Cancelled = contract?.Cancelled ?? false,
-                Completed = contract != null ? contract.NumGoalsAchieved == contract.Contract.Goals.Count : false,
+                Completed = contract != null ?  contract.NumGoalsAchieved == (contract.Contract.Goals.Count == 0 ? contract.Contract.GradeSpecs.First(x => x.Grade == contract.Grade).Goals.Count :contract.Contract.Goals.Count) : false,
                 NumChickens = farm.NumChickens,
                 CommonResearch = farm.CommonResearch.Select(x => new CustomResearch(x)).ToList(),
                 EggType = farm.EggType,

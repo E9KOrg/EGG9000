@@ -232,7 +232,7 @@ namespace EGG9000.Common.Helpers {
 
         public double NumChickens {
             get {
-                return CoopStatus is not null ?
+                return CoopStatus?.ProductionParams is not null ?
                     CoopStatus.ProductionParams.FarmPopulation :
                     Farm?.NumChickens ?? 0;
             }
