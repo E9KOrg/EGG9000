@@ -452,14 +452,6 @@ namespace EGG9000.Common.Helpers {
                     var backup = backups.FirstOrDefault(b => b.Backup.EggIncId == x.EggIncId);
                     if(backup == null)
                         backup = backups.FirstOrDefault(b => b.User.Id == x.UserId);
-                    try {
-                        if(x.Status is not null) {
-                            var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(x.Status);
-                            if(lastStatus is not null)
-                                return new UserFarmDetails(x, lastStatus, contract, new UserWithBackup { Backup = backup?.Backup, User = backup?.User ?? x.User }, discord, league);
-                        }
-                    } catch(Exception) {
-                    }
                     if(backup == null)
                         backup = x.User?.Backups?.Select(b => new UserWithBackup { User = x.User, Backup = b }).FirstOrDefault();
                     if(backup is null)

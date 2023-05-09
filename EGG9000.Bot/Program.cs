@@ -60,8 +60,8 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CoopDeleteChannel>();
 
         //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        //services.AddSingleton<CoopStatusUpdater>();
-        //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+        services.AddSingleton<CoopStatusUpdater>();
+        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
         //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         //services.AddSingleton<ContractUpdater>();

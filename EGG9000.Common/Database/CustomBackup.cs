@@ -244,6 +244,7 @@ namespace EGG9000.Common.Database {
                 ReportedUUIDs = contract?.ReportedUuids.ToList(),
                 Grade = contract?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset,
                 EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
+                ContributionFinalized = contract?.CoopContributionFinalized ?? false,
             };
             
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
@@ -378,7 +379,8 @@ namespace EGG9000.Common.Database {
         public Ei.Contract.Types.PlayerGrade Grade { get; set; }
         [Key(36)]
         public double EvaluationCxp { get; set; }
-
+        [Key(37)]
+        public bool ContributionFinalized { get; set; }
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 

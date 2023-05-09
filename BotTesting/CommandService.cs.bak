@@ -395,9 +395,6 @@ namespace EGG9000.Common.Services {
                 slashParamDetails.Description = name;
             }
 
-
-            
-
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
                         {typeof(int), ApplicationCommandOptionType.Integer },
                         {typeof(string), ApplicationCommandOptionType.String },

@@ -1,7 +1,10 @@
-﻿using System;
+﻿using Discord.WebSocket;
+
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Commands {
     [AttributeUsage(AttributeTargets.Method)]
@@ -27,6 +30,7 @@ namespace EGG9000.Common.Commands {
     public class SlashParamAttribute : System.Attribute {
         public string Description = "";
         public bool Required = true;
+        public Type AutocompleteHandler;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
@@ -54,5 +58,9 @@ namespace EGG9000.Common.Commands {
 
     public class ButtonObject {
 
+    }
+
+    public interface AutoCompleteHandler {
+        public Task Run(SocketAutocompleteInteraction arg);
     }
 }
