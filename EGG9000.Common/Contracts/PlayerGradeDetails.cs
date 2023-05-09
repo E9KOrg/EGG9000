@@ -25,5 +25,25 @@ namespace EGG9000.Common.Contracts {
             var id = rgx.Match(emoji).Groups[1];
             return $"https://cdn.discordapp.com/emojis/{id}.png?v=1";
         }
+        public static string GetNameFromLeague(uint league) {
+            return GetNameFromLeague((int)league);
+        }
+
+        public static string GetNameFromLeague(int league) {
+            switch(league) {
+                case 1:
+                    return "C";
+                case 2:
+                    return "B";
+                case 3:
+                    return "A";
+                case 4:
+                    return "AA";
+                case 5:
+                    return "AAA";
+                default:
+                    return "Not Set";
+            }
+        }
     }
 }

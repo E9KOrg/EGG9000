@@ -218,6 +218,7 @@ namespace EGG9000.Bot.Services {
             _discord.MessageReceived += _discord_MessageReceived;
             _discord.ButtonExecuted += _discord_ButtonExecuted;
             _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
+            _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
 
             Console.WriteLine("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -292,6 +293,33 @@ namespace EGG9000.Bot.Services {
             Console.WriteLine("Slash Commands Created");
         }
 
+        private async Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
+            var command = _slashCommandFunctions.First(x => x.Name == arg.Data.CommandName);
+            var paremeter = command.Parameters.First(x => x.Name == arg.Data.Current.Name);
+
+            var autocompleteHandler = (AutoCompleteHandler)DependencyInjection(paremeter.GetCustomAttributes<SlashParamAttribute>().First().AutocompleteHandler);
+            await autocompleteHandler.Run(arg);
+
+        }
+
+        private object DependencyInjection(Type T){
+            var constructor = T.GetConstructors().FirstOrDefault();
+            if(constructor is null) {
+                return Activator.CreateInstance(T);
+            }
+
+            var constructorParameters = constructor.GetParameters();
+            var objectList = new List<object>();
+            foreach(var param in constructorParameters) {
+                switch(param.ParameterType.Name) {
+                    case nameof(ApplicationDbContext):
+                        objectList.Add(_provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>());
+                        break;
+                }
+            }
+            return Activator.CreateInstance(T, objectList.ToArray());
+        }
+
         private Task _discord_ButtonExecuted(SocketMessageComponent arg) {
             return _discord_SelectMenuExecuted(arg);
         }
@@ -310,6 +338,7 @@ namespace EGG9000.Bot.Services {
                 await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
             }
         }
+
 
 
         private object GetParam(ParameterInfo parameterInfo, CommandFunctionBase command, IDiscordInteraction arg) {
@@ -387,23 +416,23 @@ namespace EGG9000.Bot.Services {
                     };
 
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
-                AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, guildCommand, subCommand);
+                AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                 for(var i = 1; i <= 10; i++) {
-                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i > 1 ? false : slashParamDetails.Required, guildCommand, subCommand);
+                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i > 1 ? false : slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
                 }
                 return;
             }
             throw new NotImplementedException($"Parameter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
         }
 
-        private void AddOption(String name, ApplicationCommandOptionType type, string description, bool isRequired, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
+        private void AddOption(String name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
             if(guildCommand != null) {
-                guildCommand.AddOption(name, type, description, isRequired);
+                guildCommand.AddOption(name, type, description, isRequired, isAutocomplete: isAutocomplete);
             } else {
-                subCommand.AddOption(name, type, description, isRequired);
+                subCommand.AddOption(name, type, description, isRequired, isAutocomplete: isAutocomplete);
             }
 
         }
@@ -444,6 +473,7 @@ namespace EGG9000.Bot.Services {
                       .Where(m => m.GetCustomAttributes(typeof(ComponentCommandAttribute), false).Length > 0)
                       .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
+
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;
         }

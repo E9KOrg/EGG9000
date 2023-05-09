@@ -69,8 +69,8 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                //coops = coops.Where(x => x.Name == "LapelSend32").ToList();
-                coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
+                coops = coops.Where(x => x.Name == "ComicNavy39").ToList();
+                //coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
 #endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());

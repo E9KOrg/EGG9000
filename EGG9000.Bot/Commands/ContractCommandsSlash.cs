@@ -26,6 +26,7 @@ using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -252,8 +253,8 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
         }
 
-        [SlashCommand(Description = "Move a user to a co-op. Tag channel or type co-op name", AdminOnly = true)]
-        public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] SocketChannel coop, [SlashParam(Required = false)] string coopname, [SlashParam(Required = false)] int accountnumber) {
+        //[SlashCommand(Description = "Move a user to a co-op. Tag channel or type co-op name", AdminOnly = true)]
+        public static async Task MoveToCoopOld(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] SocketChannel coop, [SlashParam(Required = false)] string coopname, [SlashParam(Required = false)] int accountnumber) {
             Coop targetCoop;
             if(coop == null) {
                 targetCoop = await db.Coops.AsQueryable().Include(x => x.Contract).FirstAsync(x => x.Name.ToLower() == coopname.ToLower());
@@ -320,6 +321,72 @@ namespace EGG9000.Bot.Commands {
 
             await command.RespondAsync($"Moved {user.Mention}{eggIncName} to {((ITextChannel)coop).Mention}");
             await db.SaveChangesAsync();
+        }
+        
+        [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = true)]
+        public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(AutocompleteHandler = typeof(MoveToCoopCoopNameAutoComplete))] string coopid) {
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.Id == Guid.Parse(coopid));
+            var userid = useraccount.Split("|")[0];
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
+
+
+
+            var discordUser = _client.GetUser(dbuser.DiscordId);
+            var coopChannel = _client.GetChannel(coop.DiscordChannelId);
+
+            var newxref = await CreateCoops.MoveUser(coop, dbuser.Id, account.Id, account.Name, discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+
+            if(newxref == null) {
+                await command.RespondAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
+                return;
+            }
+
+            db.Add(newxref);
+
+            await command.RespondAsync($"Moved {discordUser.Mention} ({account.Name}) to {((ITextChannel)coop).Mention}");
+            await db.SaveChangesAsync();
+        }
+
+
+        public class MoveToCoopCoopNameAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public MoveToCoopCoopNameAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var coops = await _db.Coops.Include(x => x.Contract)
+                    .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.DeletedChannel && x.GuildId == arg.GuildId)
+                    .Take(25).Select(x => new { x.Name, x.Id, Contract = x.Contract.Name, x.League }).ToListAsync();
+
+
+                await arg.RespondAsync(null, coops.Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
+            }
+        }
+        public class UserAccountAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public UserAccountAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var users = await _db.DBUsers
+                    .Where(x => x.GuildId == arg.GuildId && EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
+                    .Take(10).ToListAsync();
+
+                var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y }));
+
+                var results = new List<AutocompleteResult>();
+                foreach(var account in accounts) {
+                    if(account.User.EggIncAccounts.Count > 1) {
+                        var name = account.User.Backups.FirstOrDefault(x => x.EggIncId == account.Account.Id)?.UserName;
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Name}", $"{account.User.Id}|{account.Account.Id}"));
+                    } else {
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.Account.Id}"));
+                    }
+                }
+
+                await arg.RespondAsync(null, results.ToArray());
+            }
         }
 
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined", AdminOnly = true)]
