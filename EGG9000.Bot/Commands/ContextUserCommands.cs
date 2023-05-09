@@ -33,7 +33,6 @@ namespace EGG9000.Bot.Commands {
         [UserCommand(Name = "View User on Rockets Tracker", AdminOnly = true)]
         public static async Task RocketsTrackerLinks(SocketUserCommand command, ApplicationDbContext db)
         {
-
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);
             if(user == null) {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
