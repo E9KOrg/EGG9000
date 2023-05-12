@@ -49,6 +49,7 @@ namespace EGG9000.Common.Database.Entities
         public bool HasTachyonDeflector { get; set; }
         public bool EquipedTachyonDeflector { get; set; }
         public bool PingOnHighestEB { get; set; }
+        public bool PingOnFinished { get; set; }
 
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]

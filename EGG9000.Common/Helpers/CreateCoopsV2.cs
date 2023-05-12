@@ -20,9 +20,21 @@ using Google.Protobuf;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
-        public static async Task<Coop> Start(List<UserByAccount> prefarms, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words _words, ApplicationDbContext db, string EIID) {
+        public static async Task<Coop> Start(List<UserByAccount> prefarms, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words _words, ApplicationDbContext db, Guild dbguild) {
             //var discordUsers = prefarms.Select(x => guild.GetUser(x.DiscordId));
 
+            string EIID = null;
+
+            foreach(var account in prefarms) {
+                var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Backup.EggIncId);
+                if(r.Grade == grade) {
+                    EIID = account.Backup.EggIncId;
+                    break;
+                }
+            }
+
+            if(string.IsNullOrEmpty(EIID))
+                throw new Exception($"Unable to find user in the grade {grade}");
 
             var secondsRemaining = contract.Details.LengthSeconds;
 
@@ -36,7 +48,6 @@ namespace EGG9000.Common.Helpers {
             var coopEnds = DateTimeOffset.Now.AddSeconds(secondsRemaining);
 
             var coop = new Coop();
-            var dbguild = await db.Guilds.FirstAsync(x => x.Id == guild.Id);
             coop.ContractID = contract.ID;
             coop.Created = DateTimeOffset.Now;
             coop.GuildId = guild.Id;
@@ -45,6 +56,7 @@ namespace EGG9000.Common.Helpers {
             coop.Status = CoopStatusEnum.WaitingOnAssigned;
             coop.League = (uint)grade;
             coop.CoopEnds = coopEnds;
+            coop.CreatorID = EIID;
 
 
             db.Coops.Add(coop);
@@ -135,7 +147,7 @@ namespace EGG9000.Common.Helpers {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Grade = grade,
-                Platform = Ei.Platform.Ios,
+                Platform = Aux.Platform.Ios,
                 SecondsRemaining = secondsRemaining,
                 //SecondsRemaining = (uint)guildContract.Contract.Details.LengthSeconds,
                 SoulPower = 26.24559831915049,

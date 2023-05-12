@@ -2,6 +2,8 @@
 @model List<EGG9000.Common.Contracts.PotentialCoopGroup>
 @inject DiscordSocketClient discordClient
 @{
+
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
     var boardingGroups = Model.GroupBy(x => x.BoardingGroup).Select(x => new
     {
         BoardingGroup = x.Key,
@@ -18,7 +20,9 @@
                         Name = discordUser?.GetCleanName() ?? u.User.DiscordUsername,
                         MultipleAccounts = u.User.EggIncAccounts.Count > 1,
                         AccountName = u.Backup.UserName,
-                        FromGroup = (u.AccountSettings.Group != x.Key ? u.AccountSettings.Group : 0)
+                        FromGroup = (u.AccountSettings.Group != x.Key ? u.AccountSettings.Group : 0),
+                        EggIncId = isAdmin ? u.Backup.EggIncId : "",  
+                        DatabaseId = isAdmin ? u.User.Id : Guid.Empty
                     };
                 }),
                 TotalEB = c.Users.Sum(u => u.Backup.EarningsBonus).ToEggString()
@@ -62,8 +66,12 @@
                     </tbody>
                 </table>
             <div class="card-footer">
-                Total EB {{coop.TotalEB}}
-            </div>
+                    Total EB {{coop.TotalEB}} 
+                    @if (isAdmin)
+                    {
+                        <button ng-click="Start(coop, group.Coops, group.Grade)">Start</button>
+                    }
+                </div>
         </div>
     </div>
     </div>
@@ -78,6 +86,28 @@
         .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
             $scope.boardingGroups = @Html.Raw(JsonConvert.SerializeObject(boardingGroups));
             $scope.bg = $scope.boardingGroups[0];
+
+                $scope.Start = function (coop, coops, grade) {
+                    if (confirm("Are you sure you want to start this co-op?")) {
+                        var prefarms = [];
+                        angular.forEach(coop.Users, function (user) {
+                            prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
+                        });
+                        $http.post("/contract/startcoop?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.Identifier&grade=" + grade, prefarms).then(function Success(response) {
+                            if (response.data.error) {
+                                alert(response.data.message);
+                                return;
+                            }
+                            console.log(response);
+
+                            document.location = document.location;
+                        }, function Error(response) {
+                            alert("Error");
+                            console.log(response);
+                        });
+                    }
+                };
+
     }]);
     </script>
 }

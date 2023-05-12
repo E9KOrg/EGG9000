@@ -110,7 +110,7 @@ namespace EGG9000.Common.Helpers {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 League = League,
-                Platform = Ei.Platform.Ios,
+                Platform = Aux.Platform.Ios,
                 SecondsRemaining = secondsRemaining,
                 //SecondsRemaining = (uint)guildContract.Contract.Details.LengthSeconds,
                 SoulPower = League == 0 ? 24.24559831915049 : 8.75,

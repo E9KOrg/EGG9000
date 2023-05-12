@@ -31,6 +31,7 @@ namespace EGG9000.Common.Database.Entities {
         public ulong OverflowGuildId { get; set; }
         public string UpdateMessagesId { get; set; }
 
+        public string CreatorID { get; set; }
         public DateTimeOffset? LastUpdateToChannel { get; set; }
         public DateTimeOffset? WarningForDeleteChannel {get; set;}
         public bool DeletedChannel { get; set; }

@@ -1040,6 +1040,16 @@ namespace EGG9000.Site.Controllers {
 
             return Ok();
         }
+        public async Task<IActionResult> SaveRolesToSync(ulong id, [FromForm] string rolestosync) {
+            if(!VerifyId(id)) {
+                return NotFound();
+            }
+            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+            dbGuild.RolesToSync = rolestosync;
+            await _db.SaveChangesAsync();
+
+            return Ok();
+        }
 
         public ulong GetGuildID() {
             return ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);

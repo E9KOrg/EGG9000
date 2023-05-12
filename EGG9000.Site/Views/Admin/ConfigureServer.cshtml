@@ -30,10 +30,10 @@
 						DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
 
 						if (attributes != null && attributes.Any()) {
-							@attributes.First().Description
+												@attributes.First().Description
 							;
 						} else {
-							@val.ToString()
+												@val.ToString()
 							;
 						}
 
@@ -42,7 +42,7 @@
 				<td>
 					@{
 						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
-						<input class="channelDetail" id="@val.ToString()" value="@detail.Id" />
+											<input class="channelDetail" id="@val.ToString()" value="@detail.Id" />
 					}
 				</td>
 				<td>
@@ -76,56 +76,22 @@
 
 
 
+@if(Model.OverflowServers.Any()) {
+	var allRoles = discord.GetGuild(Model.Id).Roles.OrderByDescending(x => x.Position);
+	var roleIds = (Model.RolesToSync ?? "").Split(",");
+	<h3>Sync Roles to overflows</h3>
+	foreach(var role in allRoles) {
+		<div>
+			<label style="color: @(role.Color.ToString() != "#000000" ? role.Color: "")">
+				<input class="role" data-id="@role.Id" type="checkbox" checked="@roleIds.Any(x => x == role.Id.ToString())" />
+				@role.Name <img style="height: 1em; vertical-align: baseline;" src="@role.GetIconUrl()" />
+			</label>
+		</div>
+	}
+	<button class="btn btn-success" onclick="SaveRoles(this)">Save Roles</button>
+}
 
-<div>
-	<table>
-		@{
-			var orderedChannels = discord.GetGuild(Model.Id).Channels.OrderBy(x => x is not SocketTextChannel).ThenBy(x => x.Position);
-		}
-		@foreach (var channel in orderedChannels) {
-			@if (channel is SocketCategoryChannel || (channel is SocketTextChannel && (channel as SocketTextChannel).CategoryId is null)) {
-				<tr>
-					<td colspan="3">
-						@if (channel is SocketTextChannel) {
-							@:#
-						}
-						@channel.Name
-					</td>
-					<td>@channel.Id</td>
-					@*					<td>@channel.GetType()</td>
-			<th>@channel.Position</th>
-			*@
-				</tr>
-				@foreach (var subChannel in orderedChannels) {
-					if ((subChannel is SocketTextChannel && (subChannel as SocketTextChannel).CategoryId == channel.Id) || (subChannel is SocketThreadChannel && (subChannel as SocketThreadChannel).CategoryId == channel.Id)) {
-						<tr>
-							<td>&nbsp;&nbsp;</td>
 
-							<td colspan="2">
-								@(subChannel is SocketTextChannel ? "#" : "∟")
-								@subChannel.Name
-							</td>
-							<td>@subChannel.Id</td>
-						</tr>
-						@foreach (var threadChannel in orderedChannels) {
-							if ((threadChannel is SocketThreadChannel && (threadChannel as SocketThreadChannel).CategoryId == subChannel.Id)) {
-								<tr>
-									<td>&nbsp;&nbsp;</td>
-
-									<td colspan="2">
-										∟
-										@threadChannel.Name
-									</td>
-									<td>@threadChannel.Id</td>
-								</tr>
-							}
-						}
-					}
-				}
-			}
-		}
-	</table>
-</div>
 @section Scripts {
 	<script>
 		function SaveChannels(button) {
@@ -140,6 +106,17 @@
 			var finishedCategories = GetCategoryJoins(".finishedCategory");
 
 			$.post("/admin/savechanneldetails/@(Model.Id)" , { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
+				document.location = document.location;
+			});
+		}
+		function SaveRoles(button) {
+			$(button).removeClass("btn-success");
+			$(button).attr("disabled", "disabled");
+
+			var rolesjoin = $.map($(".role:checked"), function (val, i) { return $(val).data("id"); }).join(",");
+
+
+			$.post("/admin/SaveRolesToSync/@(Model.Id)", { rolestosync: rolesjoin }, function () {
 				document.location = document.location;
 			});
 		}

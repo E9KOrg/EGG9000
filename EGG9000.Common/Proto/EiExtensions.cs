@@ -122,7 +122,7 @@ namespace Ei {
 
     public partial class LocalContract {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
-        public bool Completed { get { return NumGoalsAchieved == (Contract.GradeSpecs.Count > 0 ? Contract.GradeSpecs[(int)(this.Grade - 1)].Goals.Count : Contract.Goals.Count); } }
+        public bool Completed { get { return NumGoalsAchieved == (Contract.GradeSpecs.Count > 0 && Grade != Contract.Types.PlayerGrade.GradeUnset ? Contract.GradeSpecs[(int)(this.Grade - 1)].Goals.Count : Contract.Goals.Count); } }
     }
 
     public partial class Backup {

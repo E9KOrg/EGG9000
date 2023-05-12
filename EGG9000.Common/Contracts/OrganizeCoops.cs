@@ -1,9 +1,12 @@
-﻿using EGG9000.Common.Database;
+﻿using EGG9000.Bot;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
+using EGG9000.Common.Helpers;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -54,7 +57,7 @@ namespace EGG9000.Common.Contracts {
                     }
 
                     if(bg > SkipBG) {
-                        group.PotentialCoops = SortUsersIntoDay1Coops(accounts, bg, grade, contract, includeBg, dontMergeDown);
+                        group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, bg, grade, contract, includeBg, dontMergeDown);
                     }
                 }
             }
@@ -62,7 +65,7 @@ namespace EGG9000.Common.Contracts {
             return groups;
         }
 
-        private static List<PotentialCoop> SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {
+        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {
             var matchingAccounts = Accounts.Where(x => 
                 x.User.GetGrade(x.Backup.EggIncId) == Grade && 
                 (x.AccountSettings.Group == BoardingGroup || includeBG.Any(y => x.AccountSettings.Group == y))
@@ -98,5 +101,7 @@ namespace EGG9000.Common.Contracts {
             }
             return coops;
         }
+
+
     }
 }

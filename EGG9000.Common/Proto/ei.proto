@@ -2,25 +2,7 @@ syntax = "proto2";
 
 package ei;
 
-enum Platform {
-    IOS = 1;
-    DROID = 2;
-}
-
-enum DeviceFormFactor {
-    PHONE = 1;
-    TABLET = 2;
-}
-
-enum AdNetwork {
-    VUNGLE = 0;
-    CHARTBOOST = 1;
-    AD_COLONY = 2;
-    HYPER_MX = 3;
-    UNITY = 4;
-    FACEBOOK = 5;
-    APPLOVIN = 6;
-}
+import "Proto/common.proto";
 
 message Backup {
     optional string user_id = 1;
@@ -155,7 +137,7 @@ message Backup {
         optional bool tank_filling_enabled = 14;
         optional uint32 tank_level = 15;
         repeated double tank_fuels = 16;
-        optional ei.MissionInfo.Spaceship last_fueled_ship = 9;
+        //optional MissionInfo.Spaceship last_fueled_ship = 9;
         optional double inventory_score = 10;
         optional double crafting_xp = 17;
         optional bool enabled = 11;
@@ -289,7 +271,7 @@ message EggIncFirstContactRequest {
     optional string device_id = 5;
     optional string username = 6;
     optional uint32 client_version = 2;
-    optional Platform platform = 3;
+    optional aux.Platform platform = 3;
 }
 
 message EggIncFirstContactResponse {
@@ -308,7 +290,7 @@ message EggIncFirstContactResponse {
 }
 
 message EggIncAdConfig {
-    repeated AdNetwork network_priority = 1;
+    repeated aux.AdNetwork network_priority = 1;
 }
 
 message DailyGiftInfo {
@@ -757,10 +739,12 @@ message ContractCoopStatusResponse {
         optional FarmProductionParams production_params = 15;
         optional PlayerFarmInfo farm_info = 18;
         optional int32 rank_change = 8;
+        optional bool recently_active = 23;
         optional bool active = 4;
         optional bool leech = 16;
+        optional bool finalized = 22;
         optional bool time_cheat_detected = 7;
-        optional Platform platform = 5;
+        optional aux.Platform platform = 5;
         optional string push_id = 9;
         optional uint32 ban_votes = 10;
         optional bool autojoined = 17;
@@ -774,9 +758,11 @@ message ContractCoopStatusResponse {
     optional bool public = 10;
     optional string creator_id = 9;
     optional double seconds_remaining = 5;
+    optional double seconds_since_all_goals_achieved = 16;
     optional bool all_goals_achieved = 14;
     optional bool all_members_reporting = 6;
     optional double grace_period_seconds_remaining = 7;
+    optional bool cleared_for_exit = 15;
     
     repeated CoopGift gifts = 11;
     message CoopGift {
@@ -819,6 +805,7 @@ message LocalContract {
     optional bool cancelled = 4;
     optional bool new = 8;
     optional double coop_shared_end_time = 5;
+    optional double coop_simulation_end_time = 22;
     optional double coop_grace_period_end_time = 9;
     optional bool coop_contribution_finalized = 10;
     optional double coop_last_uploaded_contribution = 11;
@@ -878,7 +865,8 @@ message CreateCoopRequest {
     optional double eop = 11;
     optional uint32 league = 9;
     optional Contract.PlayerGrade grade = 12;
-    optional Platform platform = 6;
+    optional bool points_replay = 15;
+    optional aux.Platform platform = 6;
     optional uint32 client_version = 7;
 }
 
@@ -897,7 +885,8 @@ message JoinCoopRequest {
     optional double eop = 12;
     optional uint32 league = 9;
     optional Contract.PlayerGrade grade = 13;
-    optional Platform platform = 5;
+    optional bool points_replay = 14;
+    optional aux.Platform platform = 5;
     optional double seconds_remaining = 11;
     optional uint32 client_version = 7;
 }
@@ -924,8 +913,9 @@ message AutoJoinCoopRequest {
     optional double eop = 10;
     optional uint32 league = 8;
     optional Contract.PlayerGrade grade = 12;
+    optional bool points_replay = 14;
     optional double seconds_remaining = 5;
-    optional Platform platform = 6;
+    optional aux.Platform platform = 6;
     optional uint32 client_version = 7;
 }
 
@@ -1330,7 +1320,7 @@ message ArtifactsClientInfo {
     
     repeated LaunchCount launch_counts = 3;
     message LaunchCount {
-        optional ei.MissionInfo.Spaceship ship = 1;
+        optional MissionInfo.Spaceship ship = 1;
         optional uint32 num_launches = 2;
         optional double launch_points = 3;
     }
@@ -1497,7 +1487,7 @@ message ArtifactsConfigurationRequest {
 message ArtifactsConfigurationResponse {
     repeated MissionParameters mission_parameters = 1;
     message MissionParameters {
-        optional ei.MissionInfo.Spaceship ship = 1;
+        optional MissionInfo.Spaceship ship = 1;
         
         repeated Duration durations = 3;
         message Duration {
@@ -1568,7 +1558,7 @@ message CollectContractArtifactRewardsRequest {
     optional uint32 league = 5;
     optional Contract.PlayerGrade grade = 6;
     optional uint32 goal_index = 3;
-    optional ei.MissionInfo.Spaceship best_ship = 4;
+    optional MissionInfo.Spaceship best_ship = 4;
 }
 
 message CraftArtifactRequest {
@@ -2094,7 +2084,7 @@ message UserSubscriptionInfo {
     
     optional Level next_subscription_level = 15;
     optional bool lock_next_subscription_level = 18;
-    optional Platform platform = 10;
+    optional aux.Platform platform = 10;
     optional string original_transaction_id = 1;
     optional string linked_transaction_id = 16;
     optional bool acknowledged = 17;

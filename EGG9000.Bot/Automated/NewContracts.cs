@@ -29,13 +29,18 @@ using Polly;
 using Microsoft.Data.SqlClient;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using EGG9000.Common.Contracts;
+using System.Diagnostics.Contracts;
+using Contract = EGG9000.Common.Database.Entities.Contract;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
+        private Words _words;
         public NewContracts(
-            IServiceProvider provider
+            IServiceProvider provider, Words words
         ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
             Console.WriteLine("NewContracts Configured");
+            _words = words;
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
@@ -99,60 +104,10 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsync();
                     }
 
-
-
-
-
-
-                    foreach(var dbguild in dbguilds) {
-                        var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                        var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 0);
-
-                        if(guildContract == null) {
-                            var contractCategory = await _client.GetCategoryAsync(GuildChannelType.EliteCategory, guild);
-                            var eliteChannel = await guild.CreateTextChannelAsync((contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier, x => { x.CategoryId = contractCategory.Id; x.Topic = ""; });
-
-                            guildContract = new GuildContract {
-                                ContractID = contract.ID,
-                                GuildID = guild.Id,
-                                Status = ContractStatus.Prefarming,
-                                NumberOfCoops = 1,
-                                DiscordChannelId = eliteChannel.Id,
-                                League = 0,
-                                Created = DateTimeOffset.Now
-                            };
-
-                            _db.GuildContracts.Add(guildContract);
-                            await _db.SaveChangesAsync();
-                        }
-
-                        var standardContractCategory = await _client.GetCategoryAsync(GuildChannelType.StandardCategory, guild);
-                        if(standardContractCategory != null) {
-                            var standardGuildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 1);
-                            if(standardGuildContract == null) {
-                                var standardChannel = await guild.CreateTextChannelAsync((contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier, x => { x.CategoryId = standardContractCategory.Id; x.Topic = ""; });
-
-
-                                var guildContract2 = new GuildContract {
-                                    ContractID = contract.ID,
-                                    GuildID = guild.Id,
-                                    Status = ContractStatus.Prefarming,
-                                    NumberOfCoops = 1,
-                                    DiscordChannelId = standardChannel.Id,
-                                    League = 1,
-                                    Created = DateTimeOffset.Now
-                                };
-
-                                _db.GuildContracts.Add(guildContract2);
-                                await _db.SaveChangesAsync();
-                            }
-                        }
-                    }
-
-
-
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync();
+
+                    await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
             }
 
@@ -166,5 +121,69 @@ namespace EGG9000.Bot.Automated {
             if(needsUpdate)
                 ContractUpdater.ResetTimeStatic();
         }
+
+        private async Task AddContractChanelsIfNeeded(List<Guild> dbguilds, Contract contract, Ei.Contract contractResponse, ApplicationDbContext _db) {
+            foreach(var dbguild in dbguilds) {
+                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 0);
+                if(guildContract == null) {
+                    var contractCategory = await _client.GetCategoryAsync(GuildChannelType.EliteCategory, guild);
+                    var contractChannel = await guild.CreateTextChannelAsync((contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier, x => { x.CategoryId = contractCategory.Id; x.Topic = ""; });
+
+                    guildContract = new GuildContract {
+                        ContractID = contract.ID,
+                        GuildID = guild.Id,
+                        Status = ContractStatus.Prefarming,
+                        NumberOfCoops = 1,
+                        DiscordChannelId = contractChannel.Id,
+                        League = 0,
+                        Created = DateTimeOffset.Now,
+                        BoardingGroup = 1
+                    };
+
+                    _db.GuildContracts.Add(guildContract);
+                    await _db.SaveChangesAsync();
+                    _ = OrganizeAndLaunch(contract, guild, 0);
+                } else if(guildContract.BoardingGroup < 3) {
+                    var nextLaunch = guildContract.Created.Date.AddHours(guildContract.Created.Hour + guildContract.BoardingGroup * 8);
+                    if(nextLaunch < DateTimeOffset.Now) {
+                        //guildContract.BoardingGroup++;
+                        //await _db.SaveChangesAsync();
+                        //_ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
+                    }
+                }
+            }
+        }
+
+
+        private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
+            Console.WriteLine($"*!*!*!* Starting co-ops for {guild.Name} for BG{skipbg + 1} *!*!*!*");
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
+            Console.WriteLine("Getting Coops");
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
+            Console.WriteLine("Sorting");
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg);
+
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
+            foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
+                Console.WriteLine($"BG {group.bg}, Grade {group.Grade}, Count {group.PotentialCoops.Count(x => x.Users.Count > 2)}");
+                var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 2);
+
+                await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
+                    try {
+                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _db, dbguild);
+                    } catch(Exception e) {
+                        var frame = (new StackTrace(e, true)).GetFrame(0);
+                        Console.WriteLine($"⚠️ERROR: {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()}");
+                        _bugsnag.Notify(e);
+                    }
+
+                });
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        
     }
 }

@@ -36,7 +36,7 @@
 				@{
 					foreach (var tuple in allFarms.Where(x => x.Item1 is CustomFarm && (x.Item1 as CustomFarm).Cancelled == false && (x.Item1 as CustomFarm).Completed == false).OrderByDescending(x => x.Item2)) {
 						CustomFarm farm = (CustomFarm)tuple.Item1;
-						var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
+						var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
 						var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
 						var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
 						var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
@@ -102,7 +102,7 @@
 					).OrderByDescending(x => x.Item2)) {
 						if (tuple.Item1 is CustomFarm) {
 							CustomFarm farm = (CustomFarm)tuple.Item1;
-							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
+							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
 							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.EggIncId == backup.EggIncId);
 
 							UserFarmDetails userFarmDetails = null;

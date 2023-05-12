@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 
@@ -25,6 +26,9 @@ namespace EGG9000.Common.Database {
         //public double EarningsBonus { get; set; }
         [Key(4)]
         public long LastBackupTime { get; set; }
+        public DateTimeOffset GetLastBackupDateTime() {
+            return DateTimeOffset.FromUnixTimeSeconds(LastBackupTime);
+        }
         [Key(5)]
         public List<CustomResearch> EpicResearch { get; set; }
         [Key(6)]
@@ -81,6 +85,8 @@ namespace EGG9000.Common.Database {
         public uint TankLevel { get; set; }
         [Key(27)]
         public Ei.Contract.Types.PlayerGrade Grade { get; set;}
+        [Key(28)]
+        public byte ClientVersion { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -162,6 +168,7 @@ namespace EGG9000.Common.Database {
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
             Grade = backup.Contracts.LastCpi?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
+            ClientVersion = (byte)backup.Version;
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms) {

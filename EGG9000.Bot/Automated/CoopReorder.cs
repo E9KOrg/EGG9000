@@ -66,7 +66,7 @@ namespace EGG9000.Bot.Automated {
             coops = coops.OrderBy(x =>
             {
                 //x.CoopEnds
-                var targetAmount = x.Contract.Details.GoalSets.Count > 0 ? x.Contract.Details.GoalSets[(int?)x.League ?? 0].Goals.Last().TargetAmount : x.Contract.Details.Goals.Last().TargetAmount;
+                var targetAmount = x.Contract.Details.GradeSpecs[(int)x.League - 1].Goals.Last().TargetAmount;
                 var totalAmount = x.LastStatusUpdate?.Participants.Sum(x => x.AmountWithOfflineIgnoreSilo()) ?? 0;
                 var remainingAmount = targetAmount - totalAmount;
                 var totalRate = x.LastStatusUpdate?.Participants.Sum(x => x.ContributionRate) ?? 0;

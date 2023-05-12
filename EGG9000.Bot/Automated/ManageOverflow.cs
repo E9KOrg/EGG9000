@@ -24,6 +24,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using System.IO;
+using System.Net.Http;
 
 namespace EGG9000.Bot.Automated {
     public class ManageOverflow : _UpdaterBase<ManageOverflow> {
@@ -40,6 +42,9 @@ namespace EGG9000.Bot.Automated {
             var guilds = await _db.Guilds.AsQueryable().ToListAsync();
 
             foreach(var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {
+                if(cancellationToken.IsCancellationRequested) {
+                    break;
+                }
                 Console.Write($"Manage Overflow for {guild.Name}");
                 var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
                 var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
@@ -48,7 +53,13 @@ namespace EGG9000.Bot.Automated {
                 foreach(var server in overflowServers) {
                     await server.DownloadUsersAsync();
                 }
+                await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
+                await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
+                _client.RoleUpdated += _client_RoleUpdated;
 
+#if DEBUG
+                continue;
+#endif
 
                 const ulong overflowRoleID = 775547850134257675;
                 const ulong activeRoleID = 798284088967430144;
@@ -63,51 +74,214 @@ namespace EGG9000.Bot.Automated {
                 Console.Write($"Manage Overflow Roles for {guild.Name}");
                 var role = mainServer.Roles.First(x => x.Id == overflowRoleID);
                 foreach(var u in onlyMainWithoutRole) {
+                    if(cancellationToken.IsCancellationRequested) {
+                        break;
+                    }
                     await u.AddRoleAsync(role);
                     Console.WriteLine($"Adding overflow role for {u.GetName()}");
-                    await Task.Delay(750);
                 }
 
                 foreach(var u in mainServer.Users.Where(x => x.Roles.Count == 1 && x.Roles.Any(y => y.Id == overflowRoleID) && !x.IsBot)) {
+                    if(cancellationToken.IsCancellationRequested) {
+                        break;
+                    }
                     await u.RemoveRoleAsync(role);
                     Console.WriteLine($"Removing overflow role for {u.GetName()}, it was the only role");
-                    await Task.Delay(750);
                 }
 
                 foreach(var u in bothAllWithRole) {
+                    if(cancellationToken.IsCancellationRequested) {
+                        break;
+                    }
                     await u.RemoveRoleAsync(role);
                     Console.WriteLine($"Removing overflow role for {u.GetName()}, they were in all servers.");
-                    await Task.Delay(750);
                 }
 
-                
+
                 foreach(var overflowServer in overflowServers) {
+                    if(cancellationToken.IsCancellationRequested) {
+                        break;
+                    }
                     Console.Write($"Manage Nicknames for {guild.Name} in {overflowServer.Name}");
                     var onlyOverflow = overflowServer.Users.Where(x => !mainServer.Users.Any(y => y.Id == x.Id) && !x.IsBot);
                     foreach(var u in onlyOverflow) {
                         await u.KickAsync("No longer in main server");
                         Console.WriteLine($"Kicking {u.GetName()}");
-                        await Task.Delay(750);
                     }
 
                     foreach(var overflowUser in overflowServer.Users) {
+                        if(cancellationToken.IsCancellationRequested) {
+                            break;
+                        }
                         var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
                         if(mainServerUser == null)
                             continue;
-                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id)
-                        { // && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)
+                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id) { // && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)
                             try {
                                 Console.WriteLine($"Changing nickname for {mainServerUser.Nickname}, it was {overflowUser.Nickname}. Server: {overflowServer.Name}");
                                 await overflowUser.ModifyAsync(x => x.Nickname = mainServerUser.Nickname);
-
-                                await Task.Delay(750);
                             } catch(Exception) {
                                 Console.WriteLine($"Unable to change nickname for {mainServerUser.Nickname}");
                             }
                         }
                     }
                 }
+
             }
         }
+
+        private async Task _client_RoleUpdated(SocketRole originalRole, SocketRole updatedRole) {
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var guild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
+            if(!guild.OverflowServers.Any() || guild.RolesToSync is null)
+                return;
+
+            if(!guild.RolesToSync.Contains(originalRole.Id.ToString()))
+                return;
+
+            var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
+            foreach(var overflowServer in overflowServers) {
+                var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == originalRole.Name);
+                if(overflowRole != null) {
+                    await overflowRole.ModifyAsync(async x => {
+                        x.Name = updatedRole.Name;
+                        x.Color = updatedRole.Color;
+                        //if(updatedRole.Icon != originalRole.Icon) {
+                        //    x.Icon = new Image(await DownloadImage(updatedRole.GetIconUrl()));
+                        //}
+                    });
+                }
+            }
+        }
+
+        private async Task HandleRoleSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            var roleids = guild.RolesToSync.Split(",");
+            var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
+
+            foreach(var overflowServer in overflowServers) {
+                if(cancellationToken.IsCancellationRequested) break;
+
+                //Add missing roles
+                foreach(var role in rolesToSync.OrderByDescending(x => x.Position)) {
+                    if(cancellationToken.IsCancellationRequested) break;
+
+                    var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                    if(overflowRole is null) {
+                        var newRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Color);
+                        //if(!string.IsNullOrEmpty(role.Icon)) {
+                        //    await newRole.ModifyAsync(async x => x.Icon = new Image(await DownloadImage(role.GetIconUrl())));
+                        //}
+                    } else if(overflowRole.Icon is null && role.Icon is not null) {
+                        //var image = new Image(await DownloadImage(role.GetIconUrl()));
+                        //await overflowRole.ModifyAsync(x => x.Icon = image);
+                    }
+
+                }
+
+                //Sync user roles
+                for(var i = 0; i < overflowServer.Users.Count; i++) {
+                    var overflowUser = overflowServer.Users.ElementAt(i);
+                    //foreach(var overflowUser in overflowServer.Users) {
+                    if(cancellationToken.IsCancellationRequested) {
+                        break;
+                    }
+                    var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
+                    if(mainServerUser == null)
+                        continue;
+
+                    var neededRoles = new List<SocketRole>();
+                    var removeRoles = new List<SocketRole>();
+                    foreach(var role in rolesToSync) {
+                        var hasRoleInMain = mainServerUser.Roles.Any(x => x.Name == role.Name);
+                        var hasRoleInOverflow = overflowUser.Roles.Any(x => x.Name == role.Name);
+                        var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                        if(hasRoleInMain && !hasRoleInOverflow && overflowRole is not null) {
+                            neededRoles.Add(overflowRole);
+                        }
+                        if(!hasRoleInMain && hasRoleInOverflow && overflowRole is not null) {
+                            removeRoles.Add(overflowRole);
+                        }
+                    }
+                    if(neededRoles.Count > 0) {
+                        Console.WriteLine($"Adding overflow roles ({String.Join(",", neededRoles.Select(x => x.Name))}) to {overflowUser.GetCleanName()}  {i + 1} of {overflowServer.Users.Count} in {overflowServer.Name}");
+                        await overflowUser.AddRolesAsync(neededRoles);
+                    }
+                    if(removeRoles.Count > 0) {
+                        Console.WriteLine($"Removing overflow roles ({String.Join(",", removeRoles.Select(x => x.Name))}) to {overflowUser.GetCleanName()}");
+                        await overflowUser.RemoveRolesAsync(removeRoles);
+                    }
+                }
+
+            }
+        }
+
+        private async Task<MemoryStream> DownloadImage(string url) {
+            using(var httpClient = new HttpClient()) {
+                var imageContent = await httpClient.GetByteArrayAsync(url);
+
+                var imageBuffer = new MemoryStream(imageContent);
+                imageBuffer.Position = 0;
+                return imageBuffer;
+            }
+        }
+        private async Task HandleChannelPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            var mainCoopCategory = (await _client.GetAllCoopCategories(mainServer)).First();
+            var roles = mainServer.Roles.Where(x => mainCoopCategory.PermissionOverwrites.Any(y => y.TargetType == PermissionTarget.Role && y.TargetId == x.Id)).ToList();
+
+            foreach(var overflowServer in overflowServers) {
+                var matches = mainCoopCategory.PermissionOverwrites.Where(y => y.TargetType == PermissionTarget.Role).Select(x => {
+                    var mainRole = mainServer.Roles.First(r => r.Id == x.TargetId);
+                    return new OverflowPermissionRoleMatch {
+                        MainRole = mainRole,
+                        OverflowRole = overflowServer.Roles.First(x => x.Name == mainRole.Name),
+                        Overwrite = x
+                    };
+                });
+                var coopCategories = await _client.GetAllCoopCategories(overflowServer);
+                foreach(var coopCategory in coopCategories) {
+                    foreach(var overwrite in coopCategory.PermissionOverwrites) {
+                        var match = matches.FirstOrDefault(x => x.OverflowRole.Id == overwrite.TargetId);
+                        if(match == null) {
+                            if(overwrite.TargetType == PermissionTarget.Role) {
+                                await coopCategory.RemovePermissionOverwriteAsync(overflowServer.GetRole(overwrite.TargetId));
+                            } else {
+                                await coopCategory.RemovePermissionOverwriteAsync(overflowServer.GetUser(overwrite.TargetId));
+                            }
+                            
+                        } else {
+                            if(!Compare(overwrite.Permissions, match.Overwrite.Permissions)) {
+                                await coopCategory.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
+                            }
+                        }
+                    }
+
+                    foreach(var match in matches.Where(x => !coopCategory.PermissionOverwrites.Any(y => y.TargetId == x.OverflowRole.Id))) {
+                        await coopCategory.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
+                    }
+
+                    //Temp to fix missing role permissions
+                    //foreach(var channel in coopCategory.Channels) {
+                    //    foreach(var match in matches.Where(x => !x.OverflowRole.IsEveryone)) {
+                    //        await channel.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
+                    //    }
+                    //}
+                }
+            }
+        }
+        public bool Compare(OverwritePermissions x, OverwritePermissions y) {
+            return (
+              from l1 in x.GetType().GetFields()
+              join l2 in y.GetType().GetFields() on l1.Name equals l2.Name
+              where !l1.GetValue(x).Equals(l2.GetValue(y))
+              select l1.GetValue(x) == l2.GetValue(y)
+            ).All(x => x);
+        }
+
+        private class OverflowPermissionRoleMatch {
+            public SocketRole MainRole { get; set; }
+            public SocketRole OverflowRole { get; set; }
+            public Overwrite Overwrite { get; set; }
+        }
+
     }
 }

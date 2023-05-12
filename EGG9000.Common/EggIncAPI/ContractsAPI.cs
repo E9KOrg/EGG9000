@@ -28,7 +28,7 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
-        public const uint ClientVersion = 47;
+        public const uint ClientVersion = 48;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
@@ -145,6 +145,17 @@ namespace EGG9000.Bot.EggIncAPI {
                             e.Rinfo = GetInfo(UserId);
                             e.WriteTo(ms1);
                             break;
+                        case Ei.BasicRequestInfo e:
+                            url = "ei_ctx/get_contract_player_info";
+                            var memorySteam = new MemoryStream();
+                            e = GetInfo(UserId);
+                            e.WriteTo(memorySteam);
+                            memorySteam.Position = 0;
+                            var messageData = memorySteam.ToArray();
+                            var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                            message.WriteTo(ms1);
+                            authenticated = true;
+                            break;
                         //case Ei.EggIncFirstContactResponse e:
                         //    url = "ei/first_contact";
                         //    e.Rinfo = GetInfo(UserId);
@@ -153,13 +164,13 @@ namespace EGG9000.Bot.EggIncAPI {
                         default:
                             throw new Exception($"Missing Info for {typeof(TRequest).Name}");
                     }
-
+                    var json = JsonConvert.SerializeObject(data);
                     ms1.Position = 0;
                     var sr = new StreamReader(ms1);
                     var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
                     var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
-                    client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-                    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                    client.DefaultRequestHeaders.Add("User-Agent", "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0");
+                    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
                     client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                     bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
@@ -318,6 +329,24 @@ namespace EGG9000.Bot.EggIncAPI {
             }
             return message;
         }
+        public static T GetFromAuthenticatedMessage<T>(string authenticatedMessage) where T : IMessage, new() {
+
+            var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(Convert.FromBase64String(authenticatedMessage));
+
+            T message = new T();
+            if(authMessageDecoded.Compressed) {
+                using(MemoryStream outMemoryStream = new MemoryStream())
+                using(ZOutputStream outZStream = new ZOutputStream(outMemoryStream))
+                using(Stream inMemoryStream = new MemoryStream(authMessageDecoded.Message.ToArray())) {
+                    CopyStream(inMemoryStream, outZStream);
+                    outZStream.finish();
+                    message.MergeFrom(outMemoryStream.ToArray());
+                }
+            } else {
+                message.MergeFrom(authMessageDecoded.Message);
+            }
+            return message;
+        }
 
 
         private static void CopyStream(System.IO.Stream input, System.IO.Stream output) {
@@ -357,14 +386,14 @@ namespace EGG9000.Bot.EggIncAPI {
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
                         ClientVersion = 27,
-                        Platform = Ei.Platform.Droid,
+                        Platform = Aux.Platform.Droid,
                         UserId = UserId
                     }.WriteTo(ms1);
                     //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
                     ms1.Position = 0;
                     var messageData = ms1.ToArray();
                     var ms2 = new MemoryStream();
-                    new Ei.AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) }.WriteTo(ms2);
+                    new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) }.WriteTo(ms2);
 
                     ms2.Position = 0;
                     var sr = new StreamReader(ms2);
@@ -425,7 +454,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
                         ClientVersion = ClientVersion,
-                        Platform = Ei.Platform.Droid,
+                        Platform = Aux.Platform.Droid,
                         EiUserId = UserId,
                         DeviceId = UserId,
                         Username = "",
@@ -476,7 +505,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     }
                 }
 
-            } catch(Exception e) {
+            } catch(Exception) {
                 return "Error";
             }
         }
@@ -490,7 +519,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
                         ClientVersion = ClientVersion,
-                        Platform = Ei.Platform.Droid,
+                        Platform = Aux.Platform.Droid,
                         EiUserId = UserId,
                         DeviceId = UserId,
                         Username = "",
