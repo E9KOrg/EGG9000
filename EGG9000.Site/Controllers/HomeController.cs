@@ -700,7 +700,7 @@ namespace EGG9000.Site.Controllers {
             var farms = userInfos.SelectMany(x => x.Backup?.Farms.Where(y => y.CoopId == CoopId) ?? new List<CustomFarm>());
             if(farms.Count() > 0 && farms.Any(f => f.League == 1))
                 return 1;
-            var archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.CoopName == CoopId) ?? new List<CustomArchivedFarms>());
+            var archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.CoopId == CoopId) ?? new List<CustomArchivedFarms>());
             if(archivedFarms.Count() > 0 && farms.Any(f => f.League == 1))
                 return 1;
             archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.ContractId == ContractId) ?? new List<CustomArchivedFarms>());

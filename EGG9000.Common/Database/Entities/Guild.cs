@@ -116,6 +116,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Grade B Role")]
         GradeB = 19,
         [Description("Optional: Grade C Role")]
-        GradeC = 20
+        GradeC = 20,
+        [Description("Optional: Game Version Outdated Role")]
+        GameVersionOutdated = 21
     }
 }

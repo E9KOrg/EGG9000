@@ -494,6 +494,10 @@ namespace EGG9000.Bot.Commands {
                 msg += "\nFilter: " + String.Join(", ", egginc.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
                 msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
                 msg += $"\nRedo Leggacy: {egginc.RedoLeggacy}";
+
+                if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
+                    msg += $"\n\n**Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}**\n";
+                }
             }
             if(admin) {
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();

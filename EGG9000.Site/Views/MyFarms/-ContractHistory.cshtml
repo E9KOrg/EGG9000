@@ -1,5 +1,5 @@
 ﻿@using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User)
+@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User, Ei.MyContracts scores)
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
@@ -41,33 +41,33 @@
 						var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
 						var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
 
-						<tr>
-							<td>@(contract?.Name ?? farm.ContractId)</td>
-							<td>
-								<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-									@(farm.CoopId ?? coop?.Name)
-								</a>
-								@if (coop is not null && !coop.DeletedChannel) {
-									<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+								<tr>
+									<td>@(contract?.Name ?? farm.ContractId)</td>
+									<td>
+										<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+											@(farm.CoopId ?? coop?.Name)
+										</a>
+										@if (coop is not null && !coop.DeletedChannel) {
+											<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
 								}
-							</td>
-							<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-							<td class="text-right">@farm.NumChickens.ToEggString()</td>
-							<td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
-							<td class="text-right">
-								@if (lastUpdate != null) {
+									</td>
+									<td>@farm.Started.ToString("yyyy-MM-dd")</td>
+									<td class="text-right">@farm.NumChickens.ToEggString()</td>
+									<td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
+									<td class="text-right">
+										@if (lastUpdate != null) {
 									var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-									@percent.ToString("P0")
+											@percent.ToString("P0")
 								}
-							</td>
-							@if (isAdmin) {
-								<td class="text-right">@farm.TimeCheatsDetected</td>
-								<td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
+									</td>
+									@if (isAdmin) {
+										<td class="text-right">@farm.TimeCheatsDetected</td>
+										<td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
 							}
-							<td class="text-right">@farm.BoostTokensReceived</td>
-							<td class="text-right">@farm.BoostTokensSpent</td>
-							<td class="text-right">@farm.BoostTokensGiven</td>
-						</tr>
+									<td class="text-right">@farm.BoostTokensReceived</td>
+									<td class="text-right">@farm.BoostTokensSpent</td>
+									<td class="text-right">@farm.BoostTokensGiven</td>
+								</tr>
 					}
 				}
 			</tbody>
@@ -76,11 +76,12 @@
 </div>
 
 <div class="card" style="margin-top:15px">
-	<h4 class="card-header">Archived Farms</h4>
+	<h4 class="card-header">Archived Farms <input class="form-control" style="width: 150px; display: inline;" placeholder="Search" id="ArchivedFarmsSearch" /></h4>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
 				<tr>
+					<th>CS</th>
 					<th>Contract</th>
 					<th>Coop</th>
 					<th>Started</th>
@@ -93,7 +94,7 @@
 					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡💲</th>
 				</tr>
 			</thead>
-			<tbody>
+			<tbody id="ArchivedFarmsTBody">
 				@{
 					// Show completed farms, these could be 'active' and 'archived' farms.
 					foreach (var tuple in allFarms.Where(x =>
@@ -110,30 +111,36 @@
 								userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-							<tr>
-								<td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
-								<td>
-									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-										@(farm.CoopId ?? coop?.Name)
-									</a>
-									@if (coop is not null && !coop.DeletedChannel) {
-										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
-									}
-								</td>
-								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-								<td>@(farm.Completed ? "✔️" : "")</td>
-								<td class="text-right">@xref?.Score?.ToString("G2")</td>
-								<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-								@if (userFarmDetails != null && xref != null) {
-									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
-									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
-									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-									<td class="text-right">@(userFarmDetails.CoopStatus?.TimeCheatDetected ?? false ? "Yes" : "No")</td>
-									<td class="text-right">@userFarmDetails.CoopStatus?.BoostTokensSpent</td>
-								} else {
-									<td colspan="99"></td>
+							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)?.Evaluation;
+									<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)">
+										<td>
+										@if(score is not null) {
+											@score.Cxp
 								}
-							</tr>
+										</td>
+										<td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
+										<td>
+											<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+												@(farm.CoopId ?? coop?.Name)
+											</a>
+											@if (coop is not null && !coop.DeletedChannel) {
+												<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+									}
+										</td>
+										<td>@farm.Started.ToString("yyyy-MM-dd")</td>
+										<td>@(farm.Completed ? "✔️" : "")</td>
+										<td class="text-right">@xref?.Score?.ToString("G2")</td>
+										<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
+										@if (userFarmDetails != null && xref != null) {
+									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
+											<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
+											<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+											<td class="text-right">@(userFarmDetails.CoopStatus?.TimeCheatDetected ?? false ? "Yes" : "No")</td>
+											<td class="text-right">@userFarmDetails.CoopStatus?.BoostTokensSpent</td>
+								} else {
+											<td colspan="99"></td>
+								}
+									</tr>
 						} else {
 							CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
 							var xref = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.EggIncId == backup.EggIncId);
@@ -142,31 +149,37 @@
 								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-							<tr>
-								<td>@(contract?.Name ?? farm.ContractId)</td>
-								<td>
-									@if (!string.IsNullOrEmpty(farm.CoopName) || (contract?.MaxUsers ?? 0) > 1) {
-										<a href="/coop/@farm.ContractId/@(farm.CoopName)">
-											@(farm.CoopName)
-										</a>
-									} else {
-										<em>Solo</em>
+							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)?.Evaluation;
+								<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)">
+										<td>
+											@if (score is not null) {
+												@score.Cxp
 									}
-								</td>
-								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-								<td>@(farm.Completed ? "✔️" : "")</td>
-								<td class="text-right">@xref?.Score?.ToString("G2")</td>
-								<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
-								@if (userFarmDetails?.CoopStatus != null) {
+										</td>
+										<td>@(contract?.Name ?? farm.ContractId)</td>
+										<td>
+											@if (!string.IsNullOrEmpty(farm.CoopId) || (contract?.MaxUsers ?? 0) > 1) {
+												<a href="/coop/@farm.ContractId/@(farm.CoopId)">
+													@(farm.CoopId)
+												</a>
+									} else {
+												<em>Solo</em>
+									}
+										</td>
+										<td>@farm.Started.ToString("yyyy-MM-dd")</td>
+										<td>@(farm.Completed ? "✔️" : "")</td>
+										<td class="text-right">@xref?.Score?.ToString("G2")</td>
+										<td class="text-right">@xref?.RunningScore?.ToString("G2")</td>
+										@if (userFarmDetails?.CoopStatus != null) {
 									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
-									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
-									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-									<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
-									<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
+											<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
+											<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+											<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
+											<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
 								} else {
-									<td colspan="99"></td>
+											<td colspan="99"></td>
 								}
-							</tr>
+									</tr>
 						}
 					}
 				}

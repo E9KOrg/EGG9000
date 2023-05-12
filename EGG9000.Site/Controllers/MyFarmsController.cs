@@ -20,6 +20,10 @@ using Microsoft.Extensions.Logging;
 using EGG9000.Common.Helpers;
 using Discord.WebSocket;
 using Newtonsoft.Json;
+using Ei;
+using Stripe;
+using System.Security.Principal;
+using Event = EGG9000.Common.Database.Entities.Event;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -58,8 +62,9 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             var backups = new List<CustomBackup>();
             var rawBackups = new List<Ei.Backup>();
-            foreach(var accounts in user.EggIncAccounts) {
-                var rawBackup = await ContractsAPI.FirstContact(accounts.Id);
+            var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
+            foreach(var account in user.EggIncAccounts) {
+                var rawBackup = await ContractsAPI.FirstContact(account.Id);
                 rawBackups.Add(rawBackup.Backup);
                 var customBackup = new CustomBackup(rawBackup.Backup);
                 //var json = JsonSerializer.Serialize(customBackup);
@@ -67,14 +72,20 @@ namespace EGG9000.Site.Controllers {
                 //var customBackupAfterJson = Newtonsoft.Json.JsonConvert.DeserializeObject<CustomBackup>(json);
 
                 //var response = await _apiLink.GetBackup(accounts.Id);
-                Console.WriteLine($"Getting backups for {accounts.Name}");
+                Console.WriteLine($"Getting backups for {account.Name}");
                 if(customBackup?.SpaceMissions != null) {
                     backups.Add(customBackup);
                 }
                 //Console.WriteLine(customBackup.SpaceMissions.Count);
+                
+                var scores = await ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
+                
+                scoring.Add((account.Id, scores));
             }
-            user.Backups = backups;
-            await _db.SaveChangesAsync();
+            if(backups.Count > 0) {
+                user.Backups = backups;
+                await _db.SaveChangesAsync();
+            }
             var contractIDs = user.Backups.SelectMany(b => b.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             ViewBag.Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
@@ -83,6 +94,7 @@ namespace EGG9000.Site.Controllers {
             ViewBag.Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
             ViewBag.Coops = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.JoinedCoop && !x.Coop.DeletedChannel).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             ViewBag.EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
+            ViewBag.Scoring = scoring; 
             return View("Index", user);
         }
 
