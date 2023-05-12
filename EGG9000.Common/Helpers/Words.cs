@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 
 using Discord.WebSocket;
-
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 
@@ -14,8 +14,8 @@ namespace EGG9000.Bot
 {
     public class Words
     {
-        private Random _rnd;
-        private List<String> _wordList;
+        private readonly Random _rnd;
+        private readonly List<string> _wordList;
 
         public Words()
         {
@@ -41,36 +41,36 @@ namespace EGG9000.Bot
             return number.ToString();
         }
 
-        public string FirstCharToUpper(string input)
+        public static string FirstCharToUpper(string input)
         {
             switch (input)
             {
                 case null:
                 case "":
                     return input;
-                default: return input.First().ToString().ToUpper() + input.Substring(1);
+                default: return input.First().ToString().ToUpper() + input[1..];
             }
         }
 
-        public string GetCoopName(List<UserFarmDetails> prefarms, SocketGuild discordguild, Guild dbguild) {
+        public string GetCoopName(List<UserByAccount> prefarms, SocketGuild discordguild, Guild dbguild) {
             if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
                 return $"{dbguild.CoopNamePrefix}{GetRandomSecondWord(dbguild.CoopNamePrefix)}{GetRandomNumber()}";
 
-            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.DBUser?.CustomCoopName)).GroupBy(x => x.DBUser.Id).ToList();
-            var customNamesExpired = customNames.Where(x => x.First().DBUser.ExpireCustomCoopName.HasValue && x.First().DBUser.ExpireCustomCoopName.Value < DateTimeOffset.Now);
+            var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User?.CustomCoopName)).GroupBy(x => x.User.Id).ToList();
+            var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.Now);
             foreach(var customName in customNamesExpired) {
-                customName.First().DBUser.ExpireCustomCoopName = null;
-                customName.First().DBUser.CustomCoopName = null;
+                customName.First().User.ExpireCustomCoopName = null;
+                customName.First().User.CustomCoopName = null;
             }
-            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().DBUser.CustomCoopName)).ToList();
+            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName)).ToList();
 
-            if(customNames.Count() > 1) {
-                return String.Join("", customNames.Select(x => x.First().DBUser.CustomCoopName)) + GetRandomNumber();
+            if(customNames.Count > 1) {
+                return string.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
             } 
-            if(customNames.Count() == 1) {
-                var name = customNames.First().First().DBUser.CustomCoopName;
+            if(customNames.Count == 1) {
+                var name = customNames.First().First().User.CustomCoopName;
 
-                if(name.Count(c => Char.IsUpper(c)) > 1 && name.Length > 5) {
+                if(name.Count(c => char.IsUpper(c)) > 1 && name.Length > 5) {
                     return name + GetRandomNumber();
                 } else {
                     return name + GetRandomSecondWord(name) + GetRandomNumber();
@@ -80,7 +80,6 @@ namespace EGG9000.Bot
                 var wordTwo = GetRandomSecondWord(wordOne);
                 return wordOne + wordTwo + GetRandomNumber();
             }
-            
         }
 
         private List<String> WordList {
