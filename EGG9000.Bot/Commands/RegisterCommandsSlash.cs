@@ -493,6 +493,7 @@ namespace EGG9000.Bot.Commands {
                 msg += "\nBoarding Group: " + (egginc.Group == 0 ? "**None**" : "BG" + egginc?.Group);
                 msg += "\nFilter: " + String.Join(", ", egginc.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
                 msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
+                msg += $"\nRedo Leggacy: {egginc.RedoLeggacy}";
             }
             if(admin) {
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();

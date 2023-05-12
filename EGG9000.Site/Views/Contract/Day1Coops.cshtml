@@ -9,6 +9,7 @@
         BoardingGroup = x.Key,
         Grades = x.Where(y => (y.PotentialCoops?.Count ?? 0)  > 0).Select(y => new {
             Grade = y.Grade.ToString(),
+            GradeImage = PlayerGradeDetails.GetImage(y.Grade),
             Coops = y.PotentialCoops.Select(c => new {
                 Users = c.Users.Select(u =>
                 {
@@ -46,7 +47,7 @@
 
 <div>User Counts:
 @foreach(var grade in grades) {
-    <span><b>@grade.Key</b> @grade.Sum(x => x.PotentialCoops?.Sum(y => y.Users.Count) ?? 0) &nbsp;&nbsp;</span>
+    <span><img src="@PlayerGradeDetails.GetImage(grade.Key)" style="height: 1em;" /> @grade.Sum(x => x.PotentialCoops?.Sum(y => y.Users.Count) ?? 0) &nbsp;&nbsp;</span>
 }
 </div>
 
@@ -54,7 +55,7 @@
     Boarding Group <select ng-model="bg" ng-options="item as item.BoardingGroup for item in boardingGroups track by item.BoardingGroup"></select>
     <div class="row scrollable">
     <div class="col-sm" ng-repeat="group in bg.Grades">
-        <h2>{{group.Grade}} ({{group.Coops.length}})</h2>
+        <h2><img ng-src="{{group.GradeImage}}" style="height: 1em;" /> ({{group.Coops.length}})</h2>
         <div class="card" ng-repeat="coop in group.Coops">
             <h5 class="card-header">Coop ({{coop.Users.length}}/@contract.MaxCoopSize)</h5>
                 <table class="table table-striped">
@@ -89,6 +90,8 @@
 
                 $scope.Start = function (coop, coops, grade) {
                     if (confirm("Are you sure you want to start this co-op?")) {
+
+
                         var prefarms = [];
                         angular.forEach(coop.Users, function (user) {
                             prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
@@ -100,7 +103,12 @@
                             }
                             console.log(response);
 
-                            document.location = document.location;
+                            $.each(coops, function (i) {
+                                if (coops[i].Users[0].EggIncId == coop.Users[0].EggIncId) {
+                                    coops.splice(i, 1);
+                                    return;
+                                }
+                            });
                         }, function Error(response) {
                             alert("Error");
                             console.log(response);

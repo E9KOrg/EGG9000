@@ -39,9 +39,6 @@ namespace EGG9000.Common.Helpers {
 
             var secondsRemaining = contract.Details.LengthSeconds;
 
-            if(contract.GoodUntil < DateTimeOffset.Now)
-                secondsRemaining = (contract.GoodUntil.AddSeconds(contract.Details.LengthSeconds) - DateTimeOffset.Now).TotalSeconds;
-
             secondsRemaining = Math.Max(secondsRemaining, TimeSpan.FromDays(1.6).TotalSeconds);
             Console.WriteLine($"Seconds Remaining {secondsRemaining}");
 

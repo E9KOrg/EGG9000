@@ -574,7 +574,6 @@ namespace EGG9000.Bot.Automated {
                                 if(dbuser != null) {
                                     xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.GetID() == dbuser.Id && x.EggIncId == userCoopStatus.GetID());
                                     if(xref != null) {
-                                        _db.Remove(xref);
                                         await _db.SaveChangesAsync();
                                         var newXref = new UserCoopXref {
                                             EggIncId = userCoopStatus.GetID(),
@@ -778,7 +777,7 @@ namespace EGG9000.Bot.Automated {
                                 Console.WriteLine("Adding user to channel");
                             }
 
-                            if(!userStatus.Xref.JoinedCoop) {
+                            if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                                 userStatus.Xref.JoinedCoop = true;
                                 Console.WriteLine("User Joined Co-op");
                                 var unjoinedRole = userStatus.DiscordUser?.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
