@@ -84,9 +84,9 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, bool longBackup = false) {
+        public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, bool longBackup = false, bool forceAll = false) {
             var eggIncIds = users.SelectMany(u => u.EggIncAccounts.Where(e => !string.IsNullOrWhiteSpace(e.Id)).Select(e => e.Id));
-            var backups = await GetUserBackups(eggIncIds, longBackup);
+            var backups = await GetUserBackups(eggIncIds, longBackup, forceAll);
 
             var lUsers = new List<LeaderboardUser>();
 
@@ -95,7 +95,7 @@ namespace EGG9000.Common.Services {
                     var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
                     var dbBackup = user.Backups?.FirstOrDefault(b => b.EggIncId == eggInc.Id);
 
-                    if(backup != null && backup.LastBackupTime != dbBackup?.LastBackupTime) {
+                    if(backup != null && (backup.LastBackupTime != dbBackup?.LastBackupTime || forceAll)) {
                         var userBackups = user.Backups?.ToList() ?? new List<CustomBackup>();
                         userBackups = userBackups.Where(x => x != null && x.EggIncId != eggInc.Id && user.EggIncAccounts.Any(y => y.Id == x.EggIncId)).ToList();
                         userBackups.Add(backup);
@@ -118,7 +118,7 @@ namespace EGG9000.Common.Services {
             return lUsers;
         }
 
-        public async Task<List<CustomBackup>> GetUserBackups(IEnumerable<string> eggIncIds, bool longBackup = false) {
+        public async Task<List<CustomBackup>> GetUserBackups(IEnumerable<string> eggIncIds, bool longBackup = false, bool forceAll = false) {
             var backupsNeeded = new List<BackupRequest>();
             var backups = new List<CustomBackup>();
 
@@ -126,7 +126,7 @@ namespace EGG9000.Common.Services {
                 var key = GetUserBackupKey(eggIncId);
                 CustomBackup currentBackup;
                 float lastBackupTime = -1;
-                if(_cache.TryGetValue(key, out currentBackup)) {
+                if(!forceAll && _cache.TryGetValue(key, out currentBackup)) {
                     if(!currentBackup.Farms.All(f => f.Vehicles == null)) {
 
                         if(currentBackup.CacheAdded < DateTime.Now.AddMinutes(10) && ((DateTime.Now - currentBackup.CacheAdded).TotalMinutes < 5 || longBackup)) {
@@ -138,7 +138,7 @@ namespace EGG9000.Common.Services {
                     }
                 }
                 if(eggIncId.StartsWith("EI")) {
-                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = lastBackupTime });
+                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime });
                 }
             }
 

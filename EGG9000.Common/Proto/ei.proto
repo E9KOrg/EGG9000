@@ -542,6 +542,7 @@ message ContractPlayerInfo {
     repeated ContractEvaluation unread_evaluations = 6;
 }
 
+
 message ContractEvaluation {
     optional string contract_identifier = 40;
     optional string coop_identifier = 41;

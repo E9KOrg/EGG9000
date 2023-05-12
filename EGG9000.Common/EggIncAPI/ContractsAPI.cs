@@ -146,15 +146,22 @@ namespace EGG9000.Bot.EggIncAPI {
                             e.WriteTo(ms1);
                             break;
                         case Ei.BasicRequestInfo e:
-                            url = "ei_ctx/get_contract_player_info";
-                            var memorySteam = new MemoryStream();
-                            e = GetInfo(UserId);
-                            e.WriteTo(memorySteam);
-                            memorySteam.Position = 0;
-                            var messageData = memorySteam.ToArray();
-                            var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
-                            message.WriteTo(ms1);
-                            authenticated = true;
+                            if(typeof(TResponse) == typeof(ContractPlayerInfo)) {
+                                url = "ei_ctx/get_contract_player_info";
+                                var memorySteam = new MemoryStream();
+                                e = GetInfo(UserId);
+                                e.WriteTo(memorySteam);
+                                memorySteam.Position = 0;
+                                var messageData = memorySteam.ToArray();
+                                var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                                message.WriteTo(ms1);
+                                authenticated = true;
+                            } else if(typeof(TResponse) == typeof(MyContracts)) {
+                                url = "ei_ctx/get_contracts_archive";
+                                e = GetInfo(UserId);
+                                e.WriteTo(ms1);
+                                authenticated = true;
+                            }
                             break;
                         //case Ei.EggIncFirstContactResponse e:
                         //    url = "ei/first_contact";

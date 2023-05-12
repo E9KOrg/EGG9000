@@ -17,6 +17,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 using Discord.Rest;
 using System.Threading;
 using EGG9000.Common.Services;
+using System.Data;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpers {
@@ -170,6 +171,25 @@ namespace EGG9000.Bot.Helpers {
                 }
                 if(hasRole && !needsRole) {
                     await DiscordUser.RemoveRoleAsync(role);
+                }
+
+            }
+        }
+        public static async Task CheckOudatedGameRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var role = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild); ;
+            if(role != null) {
+                var needsRole = user.Backups.Any(x =>x.ClientVersion > 0 && x.ClientVersion < ContractsAPI.ClientVersion);
+                var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
+
+                if(!hasRole && needsRole) {
+                    await DiscordUser.AddRoleAsync(role);
+                    Console.WriteLine($"Adding outdated role for {DiscordUser.GetName()}");
+                    await Task.Delay(500);
+                }
+                if(hasRole && !needsRole) {
+                    await DiscordUser.RemoveRoleAsync(role);
+                    Console.WriteLine($"Removing outdated role for {DiscordUser.GetName()}");
+                    await Task.Delay(500);
                 }
 
             }

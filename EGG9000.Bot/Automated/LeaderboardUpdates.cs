@@ -190,6 +190,7 @@ namespace EGG9000.Bot.Automated {
                         await DiscordHelpers.CheckBG(_client, guild, discordUser, dbUser, userAccounts);
                         await DiscordHelpers.CheckPermitRoles(guild, discordUser, userAccounts);
                         await DiscordHelpers.CheckGrades(guild, discordUser, userAccounts, grades);
+                        await DiscordHelpers.CheckOudatedGameRole(_client, guild, discordUser, userAccounts.First().User);
 
                         if(higherEB.Backup.EggsOfProphecy > 1000) {
                             dbUser.showEB = false;

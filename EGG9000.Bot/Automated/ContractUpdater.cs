@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Automated {
                     User = y,
                     Backup = x
                 })).ToList();
-                //var backups = await _apiLink.GetUserBackups(dbusers, _db);
+                //var backups = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
 #else
                 var backups = await _apiLink.GetUserBackups(dbusers, _db);
 #endif
@@ -430,7 +430,7 @@ namespace EGG9000.Bot.Automated {
 
         private string GetCoopStatus(Coop coop, UserFarmDetails user, bool alreadyInCoop) {
             if(alreadyInCoop)
-                return $"[{user.Farm?.CoopId ?? user.ArchivedFarm?.CoopName}] Joined {(DateTimeOffset.Now - user.DBUser.Registered.Value).Humanize().ShortenTime()} ago";
+                return $"[{user.Farm?.CoopId ?? user.ArchivedFarm?.CoopId}] Joined {(DateTimeOffset.Now - user.DBUser.Registered.Value).Humanize().ShortenTime()} ago";
             if(coop is not null && user.InCoop && user.DBUser is null)
                 return "👽";
             if(coop is not null && user.InCoop)

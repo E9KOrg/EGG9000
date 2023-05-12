@@ -151,17 +151,19 @@ namespace EGG9000.Bot.Automated {
                     _ = OrganizeAndLaunch(contract, guild, 0);
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(guildContract.BoardingGroup < 3) {
+                } else if(guildContract.BoardingGroup < 3 && dbguild.Id == 656455567858073601) {
                     var nextLaunch = guildContract.Created.Date.AddHours(guildContract.Created.Hour + guildContract.BoardingGroup * 8);
+                    Console.WriteLine(nextLaunch.ToString());
                     if(nextLaunch < DateTimeOffset.Now) {
-                        //guildContract.BoardingGroup++;
-                        //await _db.SaveChangesAsync();
-                        //_ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
+                        guildContract.BoardingGroup++;
+                        await _db.SaveChangesAsync();
+                        _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
                     }
                 }
             }
+            
         }
-
+        
         private async Task UpdateChannel(SocketGuild guild, Guild dbguild, GuildContract targetGuildContract) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();

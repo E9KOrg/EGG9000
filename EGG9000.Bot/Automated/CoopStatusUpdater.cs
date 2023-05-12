@@ -427,7 +427,7 @@ namespace EGG9000.Bot.Automated {
 
                     if(statusReponse.Status.LocalTimestamp == 0 && statusReponse.Status.SecondsRemaining == 0) {
                         var details = new CoopDetails(coop, coop.Contract, coop.League, users.SelectMany(u => u.Backups.Select(b => new UserWithBackup { Backup = b, User = u })).ToList(), _client, statusReponse.Status);
-                        var response = await CreateCoops.CreateCoopViaApi(coop.ContractID, (uint)coop.League, coop, (coop.CoopEnds.Value - DateTimeOffset.Now).TotalSeconds, details.CoopParticipants.FirstOrDefault()?.Backup?.EggIncId);
+                        var response = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, (coop.CoopEnds.Value - DateTimeOffset.Now).TotalSeconds, details.CoopParticipants.FirstOrDefault()?.Backup?.EggIncId);
                         statusReponse = await GetStatus(coop, coopChannel, cancellationToken);
                         if(statusReponse.Status.LocalTimestamp == 0 && statusReponse.Status.SecondsRemaining == 0) {
                             var kendromeDMChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
@@ -967,8 +967,8 @@ namespace EGG9000.Bot.Automated {
                             lastMessage += $" Warning! Looks like this co-op is the wrong grade and is actually {farm.Grade}";
                         }
 
+                        var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
                         if(status.AllGoalsAchieved && status.Participants.Any(y => !y.Finalized)) {
-                            var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
                             lastMessage += $"\n\nWaiting on the following users to check-in: {String.Join(", ", waitingOn.Select(x => x.DiscordUser?.Mention ?? x.Status.UserName))}";
                         }
 
@@ -1157,7 +1157,6 @@ namespace EGG9000.Bot.Automated {
 
 
                         var updates = UpdateInterval.TotalMinutes;
-                        var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
                         if(coop.Finished && !waitingOn.Any())
                             updates *= 60;
                         embedBuilder.WithFooter($"Updates Every {updates} Minute{(updates > 1 ? "s" : "")} - Last Updated");

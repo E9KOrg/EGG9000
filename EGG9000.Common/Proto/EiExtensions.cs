@@ -22,10 +22,10 @@ namespace Ei {
         public string Error { get; set; }
 
 
-        public uint League { 
+        public uint League {
             get {
                 return (uint)(this.Contributors.Any(y => Math.Pow(10, y.SoulPower) * 100 < 10_000_000_000_000) ? 1 : 0);
-            } 
+            }
         }
 
         private List<Types.ContributionInfo> _participants { get; set; }
@@ -122,7 +122,15 @@ namespace Ei {
 
     public partial class LocalContract {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
-        public bool Completed { get { return NumGoalsAchieved == (Contract.GradeSpecs.Count > 0 && Grade != Contract.Types.PlayerGrade.GradeUnset ? Contract.GradeSpecs[(int)(this.Grade - 1)].Goals.Count : Contract.Goals.Count); } }
+        public bool Completed {
+            get {
+                var targetGoals = Contract.GradeSpecs.Count > 0 && Grade != Contract.Types.PlayerGrade.GradeUnset ?
+                    Contract.GradeSpecs[(int)(this.Grade - 1)].Goals.Count :
+                    (Contract.GoalSets.Any() ?
+                    Contract.GoalSets[0].Goals.Count : Contract.Goals.Count);
+                return NumGoalsAchieved == targetGoals;
+            }
+        }
     }
 
     public partial class Backup {
@@ -216,7 +224,7 @@ namespace Ei {
         }
     }
     public partial class MissionInfo {
-        public  static Dictionary<Egg, double> GetFuelTargets(Types.Spaceship Ship, Types.DurationType DurationType) {
+        public static Dictionary<Egg, double> GetFuelTargets(Types.Spaceship Ship, Types.DurationType DurationType) {
             Dictionary<Types.Spaceship, Dictionary<Types.DurationType, Dictionary<Egg, double>>> ShipFuelTargets = new Dictionary<Types.Spaceship, Dictionary<Types.DurationType, Dictionary<Egg, double>>>();
             ShipFuelTargets.Add(Types.Spaceship.ChickenOne, new Dictionary<Types.DurationType, Dictionary<Egg, double>> {
                     { Types.DurationType.Tutorial, new Dictionary<Egg, double> { { Egg.RocketFuel, 1e5 } } },

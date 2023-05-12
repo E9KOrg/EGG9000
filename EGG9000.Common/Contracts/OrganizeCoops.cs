@@ -26,9 +26,7 @@ namespace EGG9000.Common.Contracts {
 
             accounts = accounts.Where(x => x.AccountSettings.OnBreakUntil < DateTimeOffset.Now && x.Backup is not null);
 
-            accounts = accounts.Where(x =>
-                x.AccountSettings.RedoLeggacy ||
-                (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed))
+            accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract)
             );
 
             accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier && y.FarmType == Ei.FarmType.Contract));
@@ -63,6 +61,12 @@ namespace EGG9000.Common.Contracts {
             }
 
             return groups;
+        }
+
+        private static bool CheckOnPreviousComplete(UserByAccount x, Ei.Contract contract) {
+            return x.AccountSettings.RedoLeggacy ||
+                (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
+
         }
 
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {

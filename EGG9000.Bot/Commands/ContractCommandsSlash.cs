@@ -375,6 +375,11 @@ namespace EGG9000.Bot.Commands {
 
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1) {
+                if(user.Backups.Count == 0) {
+                    await command.ModifyOriginalResponseAsync("⚠️ERROR: User doesn't contain a backup");
+                    return;
+
+                }
                 var userList = new List<UserByAccount> { new UserByAccount {
                     AccountSettings = user.EggIncAccounts.First(),
                     Backup = user.Backups.First(),

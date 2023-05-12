@@ -15,6 +15,8 @@
 
 	List<EpicResearchDetail> epicResearchConfig = ViewBag.EpicResearchConfig ?? new List<EpicResearchDetail>();
 
+	List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = ViewBag.Scoring ?? new List<(string EggIncId, Ei.MyContracts MyContracts)>();
+
 	@*Func<EggIncArtifactInstance, object> artifactTemplate = @<span>
 		<span>@item.Artifact</span>
 		@if(item.Additive) {
@@ -336,12 +338,12 @@
 					<div class="tab-pane" id="merits@(index)" role="tabpanel">
 						@{
 							foreach (var merit in merits) {
-									<div>
-										@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-										@if (isAdmin) {
-											<a href="/myfarms/removemerit?id=@merit.Id">X</a>
+																									<div>
+																										@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
+																										@if (isAdmin) {
+																											<a href="/myfarms/removemerit?id=@merit.Id">X</a>
 									}
-									</div>
+																									</div>
 							}
 						}
 					</div>
@@ -350,9 +352,9 @@
 							@{
 								List<Demerit> demerits = ViewBag.Demerits;
 								foreach (var demerit in demerits) {
-										<div>
-											@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
-										</div>
+																										<div>
+																											@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+																										</div>
 								}
 							}
 						</div>
@@ -367,7 +369,8 @@
 				}
 				<div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
 					@{
-						await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model));
+						Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
+						await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model, scores));
 					}
 				</div>
 
@@ -407,10 +410,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-										<tr>
-											<td>@ri.EggsOfProphecy</td>
-											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-										</tr>
+																										<tr>
+																											<td>@ri.EggsOfProphecy</td>
+																											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+																										</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -432,10 +435,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-										<tr>
-											<td>@ri.EggsOfProphecy</td>
-											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-										</tr>
+																										<tr>
+																											<td>@ri.EggsOfProphecy</td>
+																											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+																										</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -459,17 +462,17 @@
 @{
 	void artifactTemplate(EggIncArtifactInstance artifact) {
 	<tr>
-				<td>@artifact.Artifact</td>
-				@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-					<td>@Math.Round((artifact.Value) * 100)%</td>
+																				<td>@artifact.Artifact</td>
+																				@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+																					<td>@Math.Round((artifact.Value) * 100)%</td>
 			} else if (artifact.Additive) {
-					<td>+@artifact.Value</td>
+																					<td>+@artifact.Value</td>
 			} else if (+artifact.Value < 2) {
-					<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+																					<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
 			} else {
-					<td>@(artifact.Value)x</td>
+																					<td>@(artifact.Value)x</td>
 			}
-				<td>@artifact.Boost</td>
+																				<td>@artifact.Boost</td>
 	</tr>
 	}
 
@@ -591,6 +594,28 @@
 				newUrl = url.split("#")[0] + hash;
 				//newUrl += "/";
 				history.replaceState(null, null, newUrl);
+			});
+
+			$("#ArchivedFarmsSearch").keyup(function() {
+				var terms = $("#ArchivedFarmsSearch").val().split(" ");
+				var showAll = $("#ArchivedFarmsSearch").val().trim().length == 0;
+				$('#ArchivedFarmsTBody tr').each(function(index) {
+					var row = $(this);
+					var name = row.data("name");
+					var matches = 0;
+					$.each(terms, function(index, value) {
+						if(name.toUpperCase().indexOf(value.toUpperCase()) !== -1) {
+							matches++;
+						}
+					});
+					var show = showAll || matches == terms.length;
+					console.log(matches);
+					if(show) {
+						$(this).show(); 
+					} else {
+						$(this).hide();
+					}
+				});
 			});
 		});
 	</script>
