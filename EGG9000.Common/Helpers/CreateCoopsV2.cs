@@ -52,7 +52,7 @@ namespace EGG9000.Common.Helpers {
             coop.ContractID = contract.ID;
             coop.Created = DateTimeOffset.Now;
             coop.GuildId = guild.Id;
-            coop.Name = words.GetCoopName(new List<UserFarmDetails>(), guild, dbguild);
+            coop.Name = words.GetCoopName(prefarms, guild, dbguild);
             coop.MaxUsers = contract.MaxUsers;
             coop.Status = CoopStatusEnum.WaitingOnAssigned;
             coop.League = (uint)grade;
@@ -63,18 +63,18 @@ namespace EGG9000.Common.Helpers {
             db.Coops.Add(coop);
 
 
-foreach(var user in prefarms) {
-    db.UserCoopXrefs.Add(new UserCoopXref {
-        AddedToChannel = false,
-        CreatedOn = DateTimeOffset.Now,
-        CoopId = coop.Id,
-        JoinedCoop = false,
-        WaitingOnStarter = false,
-        UserId = user.User.Id,
-        EggIncId = user.Backup.EggIncId,
-        WasAssigned = true
-    });
-}
+            foreach(var user in prefarms) {
+                db.UserCoopXrefs.Add(new UserCoopXref {
+                    AddedToChannel = false,
+                    CreatedOn = DateTimeOffset.Now,
+                    CoopId = coop.Id,
+                    JoinedCoop = false,
+                    WaitingOnStarter = false,
+                    UserId = user.User.Id,
+                    EggIncId = user.Backup.EggIncId,
+                    WasAssigned = true
+                });
+            }
 
             //var coopLength = Math.Max(guildContract.Contract.Details.LengthSeconds, 131072);
 
