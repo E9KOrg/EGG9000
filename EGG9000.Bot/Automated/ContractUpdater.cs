@@ -237,11 +237,6 @@ namespace EGG9000.Bot.Automated {
                 if(guildContract.BoardingGroup < 3)
                     description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
 
-                var redoThread = channel.Threads.FirstOrDefault(x => x.Name.Contains("replay", StringComparison.InvariantCultureIgnoreCase) || x.Name.Contains("redo", StringComparison.InvariantCultureIgnoreCase));
-                if(redoThread is not null) {
-                    description += $"\n\nUse this thread if you want to replay a contract {redoThread.Mention}";
-                }
-
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
                     .WithTimestamp(DateTimeOffset.Now)

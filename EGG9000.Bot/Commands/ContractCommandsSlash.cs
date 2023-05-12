@@ -27,6 +27,10 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
+using EGG9000.Common.Migrations;
+using Quartz.Impl.AdoJobStore.Common;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using Bugsnag.Payload;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -359,47 +363,114 @@ namespace EGG9000.Bot.Commands {
             await channel.DeleteAsync();
         }
 
-        [SlashCommand(Description = "Makes it so the bot won't notify you for contracts that don't have an Egg of Prophecy (PE)")]
-        public static async Task SkipNoEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
-            var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
-            if(dbUser == null) {
-                await command.RespondAsync($"⚠️ERROR: Unable to find user");
+        [SlashCommand(Description = "Create a co-op with the selected contract for you")]
+        public static async Task CreateCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, Words _words, IServiceProvider _provider, CoopStatusUpdater coopStatusUpdater, [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid) {
+            await command.RespondAsync("Working...", ephemeral: true);
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user is null) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find user");
                 return;
             }
+            var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
 
-            dbUser.SkipNoPE = true;
-            await db.SaveChangesAsync();
-            await command.RespondAsync($"You are set to skip contracts without <:Egg_of_Prophecy_PE:669981330477547580>, what this means is you won't get a demerit for not participating in this contract. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
-        }
-
-        [SlashCommand(Description = "Bot will notify you of contracts even without an Egg of Prophecy (PE)")]
-        public static async Task UnSkipNoPeEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
-            var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
-            if(dbUser == null) {
-                await command.RespondAsync($"⚠️ERROR: Unable to find user");
-                return;
+            var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
+            if(user.EggIncAccounts.Count == 1) {
+                var userList = new List<UserByAccount> { new UserByAccount {
+                    AccountSettings = user.EggIncAccounts.First(),
+                    Backup = user.Backups.First(),
+                    User = user
+                } };
+                var guild = _client.GetGuild(command.GuildId.Value);
+                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().AccountSettings.LastGrade, guild, _words, _provider, dbguild);
+                await coopStatusUpdater.SendUpdate(coop.Id, guild, userList.Select(x => x.User).ToList(), dbguild, new CancellationToken(), db);
+                await command.ModifyOriginalResponseAsync("Done");
+                await command.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {command.User.Mention}");
+            } else {
+                var builder = new ComponentBuilder();
+                foreach(var account in user.EggIncAccounts) {
+                    var backup = user.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
+                    Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
+                    builder.WithButton($"{account.Name} {backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
+                }
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to create the co-op with."; x.Components = builder.Build(); });
             }
-
-            dbUser.SkipNoPE = false;
-            await db.SaveChangesAsync();
-            await command.RespondAsync($"You are NO longer set to skip contracts without an <:Egg_of_Prophecy_PE:669981330477547580>.", ephemeral: true);
+        }
+        [ComponentCommand]
+        public static async Task CreateCoopButton(SocketMessageComponent component, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+            await component.UpdateAsync(x => { x.Content = "Working..."; x.Components = null; });
+            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var contractid = data.Split("|")[0];
+            var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
+            var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
+            var account = user.EggIncAccounts.First(x => x.Id == data.Split("|")[1]);
+            var userList = new List<UserByAccount> { new UserByAccount {
+                    AccountSettings = account,
+                    Backup = user.Backups.First(x => x.EggIncId == account.Id),
+                    User = user
+                } };
+            var guild = _client.GetGuild(component.GuildId.Value);
+            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().AccountSettings.LastGrade, guild, _words, _provider, dbguild);
+            await coopStatusUpdater.SendUpdate(coop.Id, guild, userList.Select(x => x.User).ToList(), dbguild, new CancellationToken(), db);
+            await component.ModifyOriginalResponseAsync(x => x.Content = "Done");
+            await component.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {component.User.Mention}");
         }
 
-        [SlashCommand(Description = "Stop the bot from pinging you for the tagged contract.")]
-        public static async Task Skip(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketChannel contractchannel) {
-            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
-            if(guildContract == null) {
-                await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
-                return;
+
+        public class ContractAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public ContractAutoComplete(ApplicationDbContext db) {
+                _db = db;
             }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var contracts = await _db.Contracts.Where(x => x.GoodUntil > DateTimeOffset.Now).Select(x => new { x.ID, x.Name }).ToListAsync();
 
-            var skipList = JsonConvert.DeserializeObject<List<ulong>>(guildContract.Skip ?? "[]");
-            skipList.Add(command.User.Id);
 
-            guildContract.Skip = JsonConvert.SerializeObject(skipList);
-            await db.SaveChangesAsync();
-            await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
+                await arg.RespondAsync(null, contracts.Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
+            }
         }
+
+
+        //[SlashCommand(Description = "Makes it so the bot won't notify you for contracts that don't have an Egg of Prophecy (PE)")]
+        //public static async Task SkipNoEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
+        //    var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
+        //    if(dbUser == null) {
+        //        await command.RespondAsync($"⚠️ERROR: Unable to find user");
+        //        return;
+        //    }
+
+        //    dbUser.SkipNoPE = true;
+        //    await db.SaveChangesAsync();
+        //    await command.RespondAsync($"You are set to skip contracts without <:Egg_of_Prophecy_PE:669981330477547580>, what this means is you won't get a demerit for not participating in this contract. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
+        //}
+
+        //[SlashCommand(Description = "Bot will notify you of contracts even without an Egg of Prophecy (PE)")]
+        //public static async Task UnSkipNoPeEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
+        //    var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
+        //    if(dbUser == null) {
+        //        await command.RespondAsync($"⚠️ERROR: Unable to find user");
+        //        return;
+        //    }
+
+        //    dbUser.SkipNoPE = false;
+        //    await db.SaveChangesAsync();
+        //    await command.RespondAsync($"You are NO longer set to skip contracts without an <:Egg_of_Prophecy_PE:669981330477547580>.", ephemeral: true);
+        //}
+
+        //[SlashCommand(Description = "Stop the bot from pinging you for the tagged contract.")]
+        //public static async Task Skip(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketChannel contractchannel) {
+        //    var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
+        //    if(guildContract == null) {
+        //        await command.RespondAsync($"⚠️ERROR: Unable to find contract details, have you tagged a contract channel?");
+        //        return;
+        //    }
+
+        //    var skipList = JsonConvert.DeserializeObject<List<ulong>>(guildContract.Skip ?? "[]");
+        //    skipList.Add(command.User.Id);
+
+        //    guildContract.Skip = JsonConvert.SerializeObject(skipList);
+        //    await db.SaveChangesAsync();
+        //    await command.RespondAsync($"{command.User.Mention} is set to skip {((SocketTextChannel)contractchannel).Mention}. **If you have already started the contract and don't exit it, you will still get a demerit**. If you change your mind, just start pre-farming and you will show up in a co-op. **What this doesn't mean** is that you can participate in an outside co-op. To do that you need to leave the server.", ephemeral: true);
+        //}
 
         private static Dictionary<ulong, SemaphoreSlim> startSemapohores = new Dictionary<ulong, SemaphoreSlim>();
         private static SemaphoreSlim dictionarySemaphore = new SemaphoreSlim(1);

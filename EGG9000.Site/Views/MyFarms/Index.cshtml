@@ -62,6 +62,9 @@
 	.tight-emojis {
 		letter-spacing: -0.5em;
 	}
+	.nobreak span {
+		white-space: nowrap;
+	}
 </style>
 
 
@@ -76,8 +79,8 @@
 		<div class="alert alert-danger">
 			@Model.DiscordUsername has not joined the following coops they've been assigned.
 			<div class="font-weight-bold" style="margin-top:10px;">
-				@foreach (var coop in userCoops) {
-					<div><img style="max-height: 30px;" src="/images/Egg_@((int)coop.Coop.Contract.Details.Egg).png" />@coop.Coop.Contract.Name - @coop.Coop.Name</div>
+				@foreach (var xref in userCoops) {
+					<div><img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />@xref.Coop.Contract.Name - @xref.Coop.Name<a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a></div>
 				}
 			</div>
 		</div>
@@ -85,8 +88,8 @@
 		<div class="alert alert-danger">
 			Pssst... It looks like you haven't joined the following coops that you've been assigned!
 			<div class="font-weight-bold" style="margin-top:10px;">
-				@foreach (var coop in userCoops) {
-					<div>><img style="max-height: 30px;" src="/images/Egg_@((int)coop.Coop.Contract.Details.Egg).png" />@coop.Coop.Contract.Name - @coop.Coop.Name</div>
+				@foreach (var xref in userCoops) {
+					<div>><img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />@xref.Coop.Contract.Name - @xref.Coop.Name<a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a></div>
 				}
 			</div>
 		</div>
@@ -129,7 +132,7 @@
 		var index = Model.Backups.IndexOf(backup);
 		var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
 		<div class="tab-pane @(backup == Model.Backups.First() ? "show active" : "")" id="user@(index)" role="tabpanel">
-			<div style="padding-bottom: 10px;">
+			<div style="padding-bottom: 10px;" class="nobreak">
 				@if (backup.PermitLevel == 0) {
 					<img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 30px;" />
 				} else {
@@ -154,6 +157,7 @@
 				} else {
 					<span>[Filter All]</span>
 				}
+				<span>Redo Leggacies: @account.RedoLeggacy</span>
 			</div>
 
 			<ul class="nav nav-tabs" role="tablist">
@@ -332,12 +336,12 @@
 					<div class="tab-pane" id="merits@(index)" role="tabpanel">
 						@{
 							foreach (var merit in merits) {
-								<div>
-									@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-									@if (isAdmin) {
-										<a href="/myfarms/removemerit?id=@merit.Id">X</a>
+									<div>
+										@merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
+										@if (isAdmin) {
+											<a href="/myfarms/removemerit?id=@merit.Id">X</a>
 									}
-								</div>
+									</div>
 							}
 						}
 					</div>
@@ -346,9 +350,9 @@
 							@{
 								List<Demerit> demerits = ViewBag.Demerits;
 								foreach (var demerit in demerits) {
-									<div>
-										@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
-									</div>
+										<div>
+											@demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+										</div>
 								}
 							}
 						</div>
@@ -403,10 +407,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-									<tr>
-										<td>@ri.EggsOfProphecy</td>
-										<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-									</tr>
+										<tr>
+											<td>@ri.EggsOfProphecy</td>
+											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+										</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -428,10 +432,10 @@
 						<tbody>
 							@{
 								foreach (var ri in nextRankInfo) {
-									<tr>
-										<td>@ri.EggsOfProphecy</td>
-										<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
-									</tr>
+										<tr>
+											<td>@ri.EggsOfProphecy</td>
+											<td>@Math.Max(ri.SoulsEggs, 0).ToEggString()</td>
+										</tr>
 									if (ri.SoulsEggs < 0)
 										break;
 								}
@@ -454,19 +458,19 @@
 
 @{
 	void artifactTemplate(EggIncArtifactInstance artifact) {
-		<tr>
-			<td>@artifact.Artifact</td>
-			@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-				<td>@Math.Round((artifact.Value) * 100)%</td>
+	<tr>
+				<td>@artifact.Artifact</td>
+				@if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+					<td>@Math.Round((artifact.Value) * 100)%</td>
 			} else if (artifact.Additive) {
-				<td>+@artifact.Value</td>
+					<td>+@artifact.Value</td>
 			} else if (+artifact.Value < 2) {
-				<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+					<td>+@Math.Round((artifact.Value - 1) * 100)%</td>
 			} else {
-				<td>@(artifact.Value)x</td>
+					<td>@(artifact.Value)x</td>
 			}
-			<td>@artifact.Boost</td>
-		</tr>
+				<td>@artifact.Boost</td>
+	</tr>
 	}
 
 	//(IHtmlContent, DateTimeOffset) GetActiveFarm(CustomFarm farm) {

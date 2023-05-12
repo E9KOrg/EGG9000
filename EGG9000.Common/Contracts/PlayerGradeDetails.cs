@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class PlayerGradeDetails {
+        public static string GetEmoji(uint league) {
+            return GetEmoji((Ei.Contract.Types.PlayerGrade)league);
+        }
         public static string GetEmoji(Ei.Contract.Types.PlayerGrade grade) {
             return grade switch {
                 Ei.Contract.Types.PlayerGrade.GradeAaa => "<:grade_aaa:1102985471862247426>",
@@ -18,8 +21,11 @@ namespace EGG9000.Common.Contracts {
             };
         }
 
-        public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
-            var emoji = GetEmoji(grade);
+        public static string GetImage(uint league) {
+            return GetImage((Ei.Contract.Types.PlayerGrade)league);
+        }
+            public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
+                var emoji = GetEmoji(grade);
 
             var rgx = new Regex(@":(\d+)>");
             var id = rgx.Match(emoji).Groups[1];

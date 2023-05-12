@@ -201,7 +201,14 @@
 </style>
 <div ng-controller="Page">
     <div style="float: left;">
-        <h3>@Model.GuildContract.Contract.Name - @(Model.GuildContract.League == 0 ? "Elite" : "Standard") </h3>
+        <h3><img src="@PlayerGradeDetails.GetImage(Model.League)" style="height: 1em;" /> @Model.GuildContract.Contract.Name</h3>
+        <select id="League">
+            <option value="1" selected="@(Model.League == 1)">C</option>
+            <option value="2" selected="@(Model.League == 2)">B</option>
+            <option value="3" selected="@(Model.League == 3)">A</option>
+            <option value="4" selected="@(Model.League == 4)">AA</option>
+            <option value="5" selected="@(Model.League == 5)">AAA</option>
+        </select>
         @if(isSolo) {
             var accounts = currentCoops.SelectMany(x => x.CoopParticipants.Where(x => x.DiscordUser?.Id.ToString() == discordId)).ToList();
             if(accounts.Count == 0) {
@@ -228,7 +235,7 @@
 
     </div>
     @if(isAdmin && !isSolo) {
-    <div style="float: left;">
+    <div style="float: right;">
         <table>
             <tr>
                 <td>Spots in active co-ops</td>
@@ -420,10 +427,10 @@
 @{
     void PotentialRowDetails() {
     <td>
-                                                                                    @if(isSolo) {
-                                                                                    <div style="position: relative; top: -20px;" id="{{user.EggIncId}}"></div>
+                                                                                                            @if(isSolo) {
+                                                                                                            <div style="position: relative; top: -20px;" id="{{user.EggIncId}}"></div>
             }
-                                                                                    {{user.Name}}
+                                                                                                            {{user.Name}}
     </td>
     <td align="right">{{user.NumChickens}}</td>
     <td align="right">{{user.Rate}}</td>
@@ -435,32 +442,32 @@
 
     void PotentialHeader() {
     <thead>
-                                                                                    <tr>
-                                                                                        <th>Name</th>
-                                                                                        <th align="right">🐔</th>
-                                                                                        <th align="right">Rate</th>
-                                                                                        <th align="right">📈</th>
-                                                                                        <th align="right">EB</th>
-                                                                                        <th align="right"></th>
-                                                                                        @if(isSolo) {
-                                                                                        <th>Rate Needed</th>
+                                                                                                            <tr>
+                                                                                                                <th>Name</th>
+                                                                                                                <th align="right">🐔</th>
+                                                                                                                <th align="right">Rate</th>
+                                                                                                                <th align="right">📈</th>
+                                                                                                                <th align="right">EB</th>
+                                                                                                                <th align="right"></th>
+                                                                                                                @if(isSolo) {
+                                                                                                                <th>Rate Needed</th>
                 } else {
-                                                                                        <th>Status</th>
+                                                                                                                <th>Status</th>
                 }
-                                                                                    </tr>
+                                                                                                            </tr>
     </thead>
     }
     void PotentialFooter() {
     <tfoot>
-                                                                                    <tr>
-                                                                                        <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
-                                                                                        <td></td>
-                                                                                        <td align="right">{{coop.Rate}}</td>
-                                                                                        <td align="right">{{PercentSum(coop.Users) | percentage:0}}</td>
-                                                                                        <td></td>
-                                                                                        <td></td>
-                                                                                        <td></td>
-                                                                                    </tr>
+                                                                                                            <tr>
+                                                                                                                <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
+                                                                                                                <td></td>
+                                                                                                                <td align="right">{{coop.Rate}}</td>
+                                                                                                                <td align="right">{{PercentSum(coop.Users) | percentage:0}}</td>
+                                                                                                                <td></td>
+                                                                                                                <td></td>
+                                                                                                                <td></td>
+                                                                                                            </tr>
     </tfoot>
     }
 }
@@ -666,5 +673,9 @@
                 return $filter('number')(input * 100, decimals) + '%';
             };
         }]);
+
+        $("#League").change(function(val) {
+            document.location = '/Contract/Details?GuildId=@(guild.Id)&ContractId=@(Model.GuildContract.ContractID)&League=' + $(val.target).val();
+        });
     </script>
 }

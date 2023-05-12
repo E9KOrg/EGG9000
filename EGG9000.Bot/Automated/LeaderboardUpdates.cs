@@ -348,25 +348,12 @@ namespace EGG9000.Bot.Automated {
             }
 
 
-            dbguild.ActiveElites = JsonConvert.SerializeObject(activeUsers.Where(x => x.Elite).Select(x => new GuildUser(x)));
-            dbguild.InactiveElites = JsonConvert.SerializeObject(inactiveUsers.Where(x => x.Elite).Select(x => new GuildUser(x)));
-            dbguild.ActiveStandards = JsonConvert.SerializeObject(activeUsers.Where(x => !x.Elite).Select(x => new GuildUser(x)));
-            dbguild.InactiveStandards = JsonConvert.SerializeObject(inactiveUsers.Where(x => !x.Elite).Select(x => new GuildUser(x)));
-
             await _db.SaveChangesAsync();
 
             var table1 = GetTables(activeUsers, guild);
 
             var str = "";
-            if(lUsers.Any(x => x.Elite)) {
-                str += $"Active Elite Accounts: {activeUsers.Count(x => x.Elite)}\n";
-            }
-            if(lUsers.Any(x => !x.Elite)) {
-                str += $"Active Standard Accounts: {activeUsers.Count(x => !x.Elite)}\n";
-            }
-            if(lUsers.Any(x => x.Elite) && lUsers.Any(x => !x.Elite)) {
-                str += $"Total Active Accounts: {activeUsers.Count()}\n";
-            }
+            str += $"Total Active Accounts: {activeUsers.Count()}\n";
             str += $"Last 5 Contracts: \n{recentContracts[0].ID}: {lUsers.Count(x => x.Last1)}\n{recentContracts[1].ID}: {lUsers.Count(x => x.Last2)}\n{recentContracts[2].ID}: {lUsers.Count(x => x.Last3)}\n{recentContracts[3].ID}: {lUsers.Count(x => x.Last4)}\n{recentContracts[4].ID}: {lUsers.Count(x => x.Last5)}";
             table1.Add(str);
 
@@ -435,10 +422,7 @@ namespace EGG9000.Bot.Automated {
             users = users.OrderByDescending(x => x.Backup.EarningsBonus).Where(x => x.DiscordUser != null).ToList();
 
             var msgs = new List<string>();
-            msgs.AddRange(GetTable("**Elites**", users.Where(x => x.Elite)));
-            if(users.Any(x => !x.Elite)) {
-                msgs.AddRange(GetTable("**Standards**", users.Where(x => !x.Elite)));
-            }
+            msgs.AddRange(GetTable("", users));
 
             return msgs;
         }
