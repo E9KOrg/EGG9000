@@ -17,11 +17,12 @@ using Microsoft.EntityFrameworkCore;
 using Polly;
 using EGG9000.Common.Contracts;
 using Google.Protobuf;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
-        public static async Task<Coop> Start(List<UserByAccount> prefarms, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words _words, ApplicationDbContext db, Guild dbguild) {
-            //var discordUsers = prefarms.Select(x => guild.GetUser(x.DiscordId));
+        public static async Task<Coop> Start(List<UserByAccount> prefarms, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild) {
+            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             string EIID = null;
 
@@ -51,7 +52,7 @@ namespace EGG9000.Common.Helpers {
             coop.ContractID = contract.ID;
             coop.Created = DateTimeOffset.Now;
             coop.GuildId = guild.Id;
-            coop.Name = _words.GetCoopName(new List<UserFarmDetails>(), guild, dbguild);
+            coop.Name = words.GetCoopName(new List<UserFarmDetails>(), guild, dbguild);
             coop.MaxUsers = contract.MaxUsers;
             coop.Status = CoopStatusEnum.WaitingOnAssigned;
             coop.League = (uint)grade;
@@ -62,18 +63,18 @@ namespace EGG9000.Common.Helpers {
             db.Coops.Add(coop);
 
 
-            foreach(var user in prefarms) {
-                db.UserCoopXrefs.Add(new UserCoopXref {
-                    AddedToChannel = false,
-                    CreatedOn = DateTimeOffset.Now,
-                    CoopId = coop.Id,
-                    JoinedCoop = false,
-                    WaitingOnStarter = false,
-                    UserId = user.User.Id,
-                    EggIncId = user.Backup.EggIncId,
-                    WasAssigned = true
-                });
-            }
+foreach(var user in prefarms) {
+    db.UserCoopXrefs.Add(new UserCoopXref {
+        AddedToChannel = false,
+        CreatedOn = DateTimeOffset.Now,
+        CoopId = coop.Id,
+        JoinedCoop = false,
+        WaitingOnStarter = false,
+        UserId = user.User.Id,
+        EggIncId = user.Backup.EggIncId,
+        WasAssigned = true
+    });
+}
 
             //var coopLength = Math.Max(guildContract.Contract.Details.LengthSeconds, 131072);
 
@@ -86,7 +87,7 @@ namespace EGG9000.Common.Helpers {
 
             await CreateCoopViaApi(contract.ID, grade, coop, secondsRemaining, EIID);
 
-
+            await db.SaveChangesAsync();
             return coop;
         }
 

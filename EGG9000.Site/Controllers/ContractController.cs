@@ -34,13 +34,15 @@ namespace EGG9000.Site.Controllers {
         private readonly ApplicationDbContext _db;
         private readonly DiscordSocketClient _discord;
         private readonly Bugsnag.IClient _bugsnag;
+        private readonly IServiceProvider _provider;
         public ContractController(
             ApplicationDbContext db,
-            DiscordSocketClient discord, Bugsnag.IClient bugsnag
+            DiscordSocketClient discord, Bugsnag.IClient bugsnag, IServiceProvider provider
             ) {
             _db = db;
             _discord = discord;
             _bugsnag = bugsnag;
+            _provider = provider;
         }
 
         public async Task<IActionResult> Index() {
@@ -150,7 +152,7 @@ namespace EGG9000.Site.Controllers {
 
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
-                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, _discord.GetGuild(GuildId), _words, _db, dbguild);
+                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, _discord.GetGuild(GuildId), _words, _provider, dbguild);
                     } catch(Exception e) {
                         var frame = (new StackTrace(e, true)).GetFrame(0);
                         Console.WriteLine($"⚠️ERROR: {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()}");
@@ -233,7 +235,7 @@ namespace EGG9000.Site.Controllers {
             }).ToList();
             //(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord, League)).ToList();
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
-            var coop = await CreateCoopsV2.Start(userdetails, contract, grade, guild, new Words(), _db, dbguild);
+            var coop = await CreateCoopsV2.Start(userdetails, contract, grade, guild, new Words(), _provider, dbguild);
             await _db.SaveChangesAsync();
 
             return Json(new { coopName = coop.Name });
