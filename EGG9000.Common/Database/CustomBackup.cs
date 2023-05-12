@@ -87,6 +87,8 @@ namespace EGG9000.Common.Database {
         public Ei.Contract.Types.PlayerGrade Grade { get; set;}
         [Key(28)]
         public byte ClientVersion { get; set; }
+        [Key(29)]
+        public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -192,6 +194,13 @@ namespace EGG9000.Common.Database {
                     Egg = f.Egg
                 }).ToList()
             }).ToList();
+
+            FuelAmounts = new Dictionary<Ei.Egg, double>();
+            for(var i = 0; i < backup.Artifacts.TankFuels.Count; i++) {
+                if(backup.Artifacts.TankFuels[i] > 0)
+                    FuelAmounts.Add((Ei.Egg)(i + 1), backup.Artifacts.TankFuels[i]);
+            }
+            
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 

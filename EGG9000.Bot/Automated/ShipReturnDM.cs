@@ -70,6 +70,23 @@ namespace EGG9000.Bot.Automated {
                         if(user.Backups.Count > 1) {
                             message += $" (For {backup.UserName})";
                         }
+
+                        try {
+                            if(backup.FuelAmounts is not null && backup.FuelAmounts.Count > 0) {
+                                double tankSize = 0;
+                                switch(backup.TankLevel) {
+                                    case 0: tankSize = 2_000_000_000; break;
+                                    case 1: tankSize = 200_000_000_000; break;
+                                    case 2: tankSize = 10_000_000_000_000; break;
+                                    case 3: tankSize = 100_000_000_000_000; break;
+                                }
+
+                                message += $"\n{String.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncEggs.GetEggById(x.Key).Emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
+                            }
+                        } catch(Exception e) {
+                            _bugsnag.Notify(e);
+                        }
+
                         shipDm.Sent = true;
                         try {
                             await dmChannel.SendMessageAsync(message);

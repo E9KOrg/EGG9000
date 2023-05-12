@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Automated {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
                         if(cancellationToken.IsCancellationRequested)
                             break;
-                        await UpdateContractChannel(_db, backups, guildContract, guild, dbguild, dbusers);
+                        await UpdateContractChannel(_db, guildContract, guild);
                     }
                 }
                 await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
@@ -200,19 +200,8 @@ namespace EGG9000.Bot.Automated {
             Console.WriteLine($"Finished Contract Channels Update {Math.Round(totalStopwatch.ElapsedMilliseconds / 1000.0 / 60.0, 1)}mins");
         }
 
-        public async Task UpdateContractChannel(ApplicationDbContext _db, List<LeaderboardUser> backups, GuildContract guildContract, SocketGuild guild, Guild dbguild, List<DBUser> dbusers, FauxCommand slashCommand = null) {
+        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, FauxCommand slashCommand = null) {
             try {
-                List<Coop> coops;
-                try {
-                    coops = await sqlExcpetionPolicy.ExecuteAsync(async () => await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6) && x.ContractID == guildContract.ContractID && x.GuildId == guild.Id && x.League == guildContract.League).ToListAsync());
-                } catch(Exception e) {
-                    _bugsnag.Notify(e);
-                    Console.WriteLine($"*** Error getting coops in contract updated: {e.Message}");
-                    return;
-                }
-
-
-
                 Console.WriteLine($"Working on GuildContract for {guildContract.GuildID} - {guildContract.Contract.ID}");
 
 

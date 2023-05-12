@@ -188,12 +188,13 @@ Last Backup <t:{backup.LastBackupTime}:R>
             {
                 await command.RespondAsync("Updating contract...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
-                var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
-                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
+                
+                //var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
+                //var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
                 //var backups = await apiLink.GetUserBackups(dbusers, db);
-                var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncAccounts.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
+                //var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncAccounts.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
 
-                await contractUpdater.UpdateContractChannel(db, backups, targetGuildContract, guild, dbguild, dbusers, command);
+                await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, command);
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
                 //await command.DeleteOriginalResponseAsync();
                 return;

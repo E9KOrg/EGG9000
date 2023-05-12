@@ -70,6 +70,11 @@ namespace EGG9000.Bot.Automated {
             _timer.Change(TimeSpan.Zero, UpdateInterval);
         }
 
+        public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
+            UpdateInterval = newUpdateInterval;
+            _timer.Change(UpdateInterval, UpdateInterval);
+        }
+
         private async void _run(object state) {
             Console.WriteLine($"Running {this.GetType().Name}");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();

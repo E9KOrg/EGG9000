@@ -78,11 +78,11 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<UserSnapShots>();
         //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
         //services.AddHostedService<LeaderboardUpdater>();
-        services.AddHostedService<ManageOverflow>();
+        //services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
         //services.AddHostedService<HandleGradeChanges>();
 
-        //services.AddHostedService<TestService>();
+        services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
 
         //services.AddHostedService<UpcomingContracts>();

@@ -32,15 +32,18 @@ using Microsoft.Extensions.DependencyInjection;
 using EGG9000.Common.Contracts;
 using System.Diagnostics.Contracts;
 using Contract = EGG9000.Common.Database.Entities.Contract;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
         private Words _words;
+        private ContractUpdater _contractUpdater;
         public NewContracts(
-            IServiceProvider provider, Words words
+            IServiceProvider provider, Words words, ContractUpdater contractUpdater
         ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
             Console.WriteLine("NewContracts Configured");
             _words = words;
+            _contractUpdater = contractUpdater;
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
@@ -57,6 +60,8 @@ namespace EGG9000.Bot.Automated {
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync();
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
+
+                CheckUpdateInterval(existingContracts);
 
                 foreach(var contractResponse in contracts) {
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
@@ -144,6 +149,8 @@ namespace EGG9000.Bot.Automated {
                     _db.GuildContracts.Add(guildContract);
                     await _db.SaveChangesAsync();
                     _ = OrganizeAndLaunch(contract, guild, 0);
+                    _ = UpdateChannel(guild, dbguild, guildContract);
+                    ChangeUpdateInterval(TimeSpan.FromMinutes(5));
                 } else if(guildContract.BoardingGroup < 3) {
                     var nextLaunch = guildContract.Created.Date.AddHours(guildContract.Created.Hour + guildContract.BoardingGroup * 8);
                     if(nextLaunch < DateTimeOffset.Now) {
@@ -155,7 +162,13 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
+        private async Task UpdateChannel(SocketGuild guild, Guild dbguild, GuildContract targetGuildContract) {
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
+            var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncAccounts.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
 
+            await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild);
+        }
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
             Console.WriteLine($"*!*!*!* Starting co-ops for {guild.Name} for BG{skipbg + 1} *!*!*!*");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -172,7 +185,7 @@ namespace EGG9000.Bot.Automated {
 
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
-                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _db, dbguild);
+                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild);
                     } catch(Exception e) {
                         var frame = (new StackTrace(e, true)).GetFrame(0);
                         Console.WriteLine($"⚠️ERROR: {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()}");
@@ -184,6 +197,29 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
+        private void CheckUpdateInterval(List<Contract> existingContracts) {
+            var dayOfWeek = DateTimeOffset.Now.DayOfWeek;
+            TimeSpan newUpdateInterval = TimeSpan.FromMinutes(5);
+            switch(dayOfWeek) {
+                case DayOfWeek.Monday:
+                case DayOfWeek.Wednesday:
+                case DayOfWeek.Friday:
+                    var startOfQuickUpdates = DateTimeOffset.Now.Date.AddHours(10).AddMinutes(50);
+                    if(DateTimeOffset.Now > startOfQuickUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.Now.Date)) {
+                        TimeSpan.FromSeconds(15);
+                    } else {
+                        TimeSpan.FromMinutes(5);
+                    }
+                    break;
+                default:
+                    newUpdateInterval = TimeSpan.FromMinutes(10);
+                    break;
+            }
+            if(UpdateInterval != newUpdateInterval) {
+                Console.WriteLine($"Setting Update Interval to {newUpdateInterval} for NewContracts");
+                ChangeUpdateInterval(newUpdateInterval);
+            }
+        }
         
     }
 }
