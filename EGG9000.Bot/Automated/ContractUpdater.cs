@@ -29,6 +29,7 @@ using Polly;
 using Microsoft.Data.SqlClient;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using EGG9000.Common.Contracts;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
@@ -110,6 +111,7 @@ namespace EGG9000.Bot.Automated {
                     User = y,
                     Backup = x
                 })).ToList();
+                //var backups = await _apiLink.GetUserBackups(dbusers, _db);
 #else
                 var backups = await _apiLink.GetUserBackups(dbusers, _db);
 #endif
@@ -245,6 +247,12 @@ namespace EGG9000.Bot.Automated {
                 //description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&League={guildContract.League})";
                 if(guildContract.BoardingGroup < 3)
                     description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
+
+                var redoThread = channel.Threads.FirstOrDefault(x => x.Name.Contains("replay", StringComparison.InvariantCultureIgnoreCase) || x.Name.Contains("redo", StringComparison.InvariantCultureIgnoreCase));
+                if(redoThread is not null) {
+                    description += $"\n\nUse this thread if you want to replay a contract {redoThread.Mention}";
+                }
+
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
                     .WithTimestamp(DateTimeOffset.Now)
@@ -256,11 +264,14 @@ namespace EGG9000.Bot.Automated {
 
                 for(int i = 5; i >=  1; i--) {
                     var gradeSpec = guildContract.Contract.Details.GradeSpecs[i - 1];
-                    var goals = String.Join("\n", gradeSpec.Goals.Select(x => $"{EggIncEggs.GetReward(x)} - {x.TargetAmount.ToEggString()}"));
+                    var maxTargetLength = gradeSpec.Goals.Select(x => x.TargetAmount.ToEggString()).Max(x => x.Length);
+                    var goals = String.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncEggs.GetReward(x)}"));
                     var length = TimeSpan.FromSeconds(gradeSpec.LengthSeconds);
                     goals += $"\n**Length**: {length.Humanize(precision: 2).ShortenTime()}";
-                    goals += "\n**Modifiers:**\n" + String.Join("\n", gradeSpec.Modifiers.Select(x => $"{x.Dimension} {x.Value * 100}%"));
-                    embedBuilder.AddField(((Ei.Contract.Types.PlayerGrade)i).ToString().Replace("Grade", "").ToUpper(), goals);
+                    if(gradeSpec.Modifiers.Any()) {
+                        goals += "\n**Modifiers:**\n" + String.Join("\n", gradeSpec.Modifiers.Select(x => $"{x.Dimension} {(x.Value < 1 ? $"{x.Value * 100}%" : $"{x.Value}x")}"));
+                    }
+                    embedBuilder.AddField(PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)i), goals, inline: true);
                 }
 
                 var condensedMsgs = new List<string>();

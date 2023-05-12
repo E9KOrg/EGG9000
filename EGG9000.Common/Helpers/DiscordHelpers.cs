@@ -219,7 +219,10 @@ namespace EGG9000.Bot.Helpers {
             }
         }
         public static async Task CheckGrades(SocketGuild Guild, IGuildUser DiscordUser, IGrouping<Guid, LeaderboardUser> accounts, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
-            var neededRoles = accounts.Select(x => grades.First(g => g.grade == x.Backup.Grade).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();
+            var dbuser = accounts.First().User;
+            var neededGrades = dbuser.EggIncAccounts.Select(x => dbuser.GetGrade(x.Id));
+
+            var neededRoles = neededGrades.Select(x => grades.First(g => g.grade == x).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();
 
             var extraRoles = grades.Where(x => x.role is not null)
                 .Where(g => 

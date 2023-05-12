@@ -23,6 +23,7 @@ using Ei;
 using Google.Protobuf;
 using EGG9000.Common.Contracts;
 using RazorEngine.Compilation.ImpromptuInterface;
+using System.Diagnostics.Contracts;
 
 await Host.CreateDefaultBuilder(args)
     .UseWindowsService()
@@ -45,6 +46,8 @@ await Host.CreateDefaultBuilder(args)
 
         services.AddSingleton<Words>();
         services.AddMemoryCache();
+
+        services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 #if DEBUG
         services.AddBugsnag();
         services.AddSingleton<DiscordHostedService>();
@@ -54,14 +57,16 @@ await Host.CreateDefaultBuilder(args)
 
         //services.AddHostedService<CommandService>();
         //services.AddHostedService<DiscordUserService>();
-      //services.AddHostedService<StaffCoopsMessage>();
+        //services.AddHostedService<StaffCoopsMessage>();
         //services.AddHostedService<EventUpdater>();
         //services.AddHostedService<CoopReorder>();
         //services.AddHostedService<CoopDeleteChannel>();
 
+
         //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-        services.AddSingleton<CoopStatusUpdater>();
-        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+        //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
+        //services.AddSingleton<CoopStatusUpdater>();
+        //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
         //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
         //services.AddSingleton<ContractUpdater>();
@@ -71,9 +76,11 @@ await Host.CreateDefaultBuilder(args)
         //services.AddHostedService<CreateCoopChannels>();
         //services.AddHostedService<ShipReturnDM>();
         //services.AddHostedService<UserSnapShots>();
+        //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
         //services.AddHostedService<LeaderboardUpdater>();
-        //services.AddHostedService<ManageOverflow>();
+        services.AddHostedService<ManageOverflow>();
         //services.AddHostedService<RemoveTempRoles>();
+        //services.AddHostedService<HandleGradeChanges>();
 
         //services.AddHostedService<TestService>();
         //services.AddHostedService<TestUpdater>();
@@ -94,8 +101,6 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<CommandService>();
-        services.AddHostedService<DiscordUserService>();
         services.AddHostedService<StaffCoopsMessage>();
         services.AddHostedService<EventUpdater>();
         services.AddHostedService<CoopReorder>();
@@ -116,6 +121,10 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<LeaderboardUpdater>();
         services.AddHostedService<ManageOverflow>();
         services.AddHostedService<RemoveTempRoles>();
+        services.AddHostedService<HandleGradeChanges>();
+
+        services.AddHostedService<CommandService>();
+        services.AddHostedService<DiscordUserService>();
 #endif
 
 
@@ -226,9 +235,6 @@ public class TestService : IHostedService {
 
         //var r1 = await ContractsAPI.GetCoopStatus("quantum-conference", "joycarol26");
 
-        //var s = "ChJxdWFudHVtLWNvbmZlcmVuY2USBHRlc3QYLiAAKjUKEkVJNTIyMzI5OTUxODMwMDE2MBAuGgQxLjI2IggxLjI2LjAuNSoDSU9TMgJVUzoCZW5AADAA";
-        //var parse1 = new MessageParser<QueryCoopRequest>(() => new QueryCoopRequest());
-        //var res = parse1.ParseFrom(System.Convert.FromBase64String(s));
 
         //res.ContractIdentifier = "quantum-conference";
         //res.CoopIdentifier = "joycarol26";r
@@ -280,15 +286,68 @@ public class TestService : IHostedService {
         //}
 
 
-        var failedCoops = await _db.Coops.Where(x => x.Status == CoopStatusEnum.Failed && !x.DeletedChannel).ToListAsync();
-        foreach(var failedCoop in failedCoops) {
-            SocketTextChannel chanel = (SocketTextChannel)_client.GetChannel(failedCoop.DiscordChannelId);
-            try {
-                await chanel.DeleteAsync();
-            } catch(Exception ex) { }
-            failedCoop.DeletedChannel = true;
-            await _db.SaveChangesAsync();
-        }
+        //var failedCoops = await _db.Coops.Where(x => x.Status == CoopStatusEnum.Failed && !x.DeletedChannel).ToListAsync();
+        //foreach(var failedCoop in failedCoops) {
+        //    SocketTextChannel chanel = (SocketTextChannel)_client.GetChannel(failedCoop.DiscordChannelId);
+        //    try {
+        //        await chanel.DeleteAsync();
+        //    } catch(Exception ex) { }
+        //    failedCoop.DeletedChannel = true;
+        //    await _db.SaveChangesAsync();
+        //}
+        //var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(new Ei.CreateCoopRequest {
+        //    ClientVersion = ContractsAPI.ClientVersion,
+        //    ContractIdentifier = "a-new-grade",
+        //    CoopIdentifier = "solar-3",
+        //    Grade = Ei.Contract.Types.PlayerGrade.GradeAaa,
+        //    Platform = Ei.Platform.Ios,
+        //    SecondsRemaining = 5 * 24 * 60 * 60,
+        //    //SecondsRemaining = (uint)guildContract.Contract.Details.LengthSeconds,
+        //    SoulPower = 26.24559831915049,
+        //    Eop = 206,
+        //    UserId = "EI5062529266221056",
+        //    UserName = "Solar",
+        //    League = 0,
+        //    CcOnly = false,
+        //    Public = false,
+        //}, "EI5062529266221056");
+
+
+        //var r2 = await ContractsAPI.GetCoopStatus("a-new-grade", "solar-1", EIID: "EI5062529266221056");
+        //var backup = await ContractsAPI.FirstContact("EI5062529266221056");
+
+
+
+
+        //foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+        //    var r = await ContractsAPI.Post<QueryCoopResponse, QueryCoopRequest>(new QueryCoopRequest {
+        //        ClientVersion = ContractsAPI.ClientVersion, ContractIdentifier = "quantum-conference", CoopIdentifier = "sillyeggs32", Grade = grade
+        //    }, "EI5062529266221056");
+
+        //}
+
+        //var s = "Ck54nONgFmQAgi/F+o4SzIrvg4PmhYjcdNTiTq4o0C0z0DPUM7S0ZIACRwil5OAJohxevHUINLHnsbe3s3BIPHsGBJ7YZ8IUF8IYAElLFdMSQGViNGM4YWZlYzVjZmQ1OTk2YjIyNWNlMTZhMTIyNGMyODA5YWQyYmY2NmQ1ODM1YmJiYzc3OWExZTdiYzJlZjQgAShi";
+        //var parse1 = new MessageParser<AuthenticatedMessage>(() => new AuthenticatedMessage());
+        //var res = parse1.ParseFrom(System.Convert.FromBase64String(s));
+        //var res2 = ContractsAPI.GetFromAuthenticatedMessage<ContractPlayerInfo>(System.Convert.FromBase64String(s));
+        //var parse2 = new MessageParser<AuthenticatedMessage>(() => new AuthenticatedMessage());
+        //var res2 = parse2.ParseFrom(res.Message);
+        //var parse2 = new MessageParser<ContractPlayerInfo>(() => new ContractPlayerInfo());
+        //var res2 = parse2.ParseFrom(res.Message);
+        //var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), "EI5223299518300160");
+
+        //var r = ParseMessage<AuthenticatedMessage>("CjUKEkVJNTIyMzI5OTUxODMwMDE2MBAuGgQxLjI2IggxLjI2LjAuNSoDSU9TMgJVUzoCZW5AABJAOGNjNDFjNTA5OGYzNzE4NDU5YTQ5NjQ2YzIzMDA0NzAyZDBmZTFjN2Y4MzIwZjc2YzA1MTc2MGExNjM2ZTg2YQ==");
+
+        //var r1 = ContractsAPI.GetFromAuthenticatedMessage<BasicRequestInfo>("CjcKEkVJNTIyMzI5OTUxODMwMDE2MBAvGgYxLjI2LjEiCDEuMjYuMS4zKgNJT1MyAlVTOgJlbkAAEkA0YjZkN2UxMjRkNjBlMDAyZGZlMjNkMmZiMDRmZGU0ZGFjNjJjZWQzYTcxZjMzZjE1NDRkNjI0ZmE2YzllZGQz");
+        //var r2 = ContractsAPI.GetFromAuthenticatedMessage<BasicRequestInfo>("CjkKEkVJNjIyOTI5MjA3MDk5MzkyMBAvGgYxLjI2LjEiBjExMTIzMyoHQU5EUk9JRDICVVM6AmVuQAASQGU2NDdjNDExNWIzY2ZkYTkzNmM4YjNiMWU3MGE0NjVkY2FhZDJjYWU5OTM2MzAzNjBjNjAwNjcxYThkODQzZDg=");
+
+
+        //var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), "EI6657527166271488");
+        var backup = await ContractsAPI.FirstContact("EI6229292070993920");
+    }
+    public T ParseMessage<T>(string message) where T : Google.Protobuf.IMessage<T>, new() {
+        var parse1 = new MessageParser<T>(() => new T());
+        return parse1.ParseFrom(Convert.FromBase64String(message));
     }
 
     public DateTime RoundToNearest(DateTime dt, TimeSpan d) {

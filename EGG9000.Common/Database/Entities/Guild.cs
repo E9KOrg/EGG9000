@@ -65,6 +65,7 @@ namespace EGG9000.Common.Database.Entities {
                 _channelDetailsJson = JsonConvert.SerializeObject(value);
             }
         }
+        public string RolesToSync { get; set; }
     }
 
     [NotMapped]

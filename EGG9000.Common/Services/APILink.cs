@@ -21,8 +21,15 @@ using static EGG9000.Common.Helpers.Prefarm;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using EGG9000.Bot.EggIncAPI;
+using Discord;
+using Discord.WebSocket;
 
 namespace EGG9000.Common.Services {
+    public class APILinkOptions {
+        public bool ReportUpdatedClientVersion = false;
+    }
     public class BackupRequest {
         public string UserId { get; set; }
         public float LastBackupTime { get; set; }
@@ -38,6 +45,7 @@ namespace EGG9000.Common.Services {
         //private static string urlBase = "http://localhost:5014/Home/";
 
 #if DEBUG
+        //private static string urlBase = "http://localhost:5014/Home/";
         //private static string urlBase = "https://localhost:44316/Home/";
         private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
 #else
@@ -50,15 +58,21 @@ namespace EGG9000.Common.Services {
         private HttpClient _httpClient;
         public IConfiguration _configuration;
         public IServiceProvider _provider;
+        private bool _ReportUpdatedClientVersion;
+        private int _LastClientVersion;
+        private DiscordSocketClient _discord;
         //private ApplicationDbContext _db;
 
-        public APILink(IConfiguration configuration, IServiceProvider provider) {
+        public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
             //_cache = memoryCache;
             _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
             //_db = db;
             _configuration = configuration;
             _provider = provider;
+            var options = provider.GetService<IOptionsMonitor<APILinkOptions>>();
+            _ReportUpdatedClientVersion = options.CurrentValue.ReportUpdatedClientVersion;
+            _discord = discord;
         }
 
         private string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
@@ -155,12 +169,25 @@ namespace EGG9000.Common.Services {
                                     }
                                 }
                                 if(!backupResponse.Backup.EmptyBackup) {
+                                    if(_ReportUpdatedClientVersion && 
+                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion && 
+                                        backupResponse.Backup.ClientVersion > _LastClientVersion) {
+                                        _LastClientVersion = backupResponse.Backup.ClientVersion;
+                                        Console.WriteLine($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                        var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
+                                        if(kendromedmchannel is not null) {
+                                            await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                        } else {
+                                            Console.WriteLine("Unable to get DM channel");
+                                        }
+                                    }
+
                                     backups.Add(backupResponse.Backup);
                                     backupResponse.Backup.CacheAdded = DateTime.Now;
                                     _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
                                 }
                             }
-                        } catch(Exception) {
+                        } catch(Exception e) {
                             Console.WriteLine("Error getting backup from APILink");
                         } finally {
                             throttler.Release();

@@ -97,8 +97,11 @@ namespace EGG9000.Common.Database.Entities {
                 foreach(var account in EggIncAccounts) {
                     var backup = value.FirstOrDefault(x => x.EggIncId == account.Id);
                     if(backup is not null && backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && backup.Grade != account.LastGrade) {
-                        account.LastGrade = backup.Grade;
-                        UpdateAccounts();
+                        var backupTime = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
+                        if(backupTime > account.PromotionTime) {
+                            account.LastGrade = backup.Grade;
+                            UpdateAccounts();
+                        }
                     }
                 }
                 _backups = value;
@@ -108,9 +111,11 @@ namespace EGG9000.Common.Database.Entities {
 
         public Ei.Contract.Types.PlayerGrade GetGrade(string EIID) {
             var backup = Backups.FirstOrDefault(x => x.EggIncId == EIID);
+            var account = EggIncAccounts.FirstOrDefault(x => x.Id == EIID);
+            if(backup != null && account.PromotionTime > backup.GetLastBackupDateTime())
+                return account.LastGrade;
             if(backup is not null && backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset)
                 return backup.Grade;
-            var account = EggIncAccounts.FirstOrDefault(x => x.Id == EIID);
             if(account is not null && account.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
                 return account.LastGrade;
 
@@ -237,6 +242,8 @@ namespace EGG9000.Common.Database.Entities {
             public bool RedoLeggacy { get; set; }
             [Key(8)]
             public Ei.Contract.Types.PlayerGrade LastGrade { get; set; }
+            [Key(9)]
+            public DateTimeOffset PromotionTime { get; set; }
 
         }
 

@@ -77,7 +77,7 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
                             type = $"{boost.Emoji} {boost.Value}x for {boost.Time.Humanize().ShortenTime()}";
                             break;
                         case EggIncBoostTypeEnum.FarmValue:
-                            type = $"{boost.Emoji} +{boost.Value}% of Farm Value";
+                            type = $"{boost.Emoji} {boost.Value / 100}x of Farm Value";
                             break;
                         case EggIncBoostTypeEnum.SoulEggs:
                             type = $"{boost.Emoji} {boost.Value}x for {boost.Time.Humanize().ShortenTime()}";
@@ -89,7 +89,7 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
                             type = $"{boost.Emoji} for {boost.Time.Humanize().ShortenTime()}";
                             break;
                     }
-                    return (goal.RewardAmount > 1 ? goal.RewardAmount.ToString() + " - " : "") + type;
+                    return (goal.RewardAmount > 1 ? goal.RewardAmount.ToString() : "") + type;
                 case Ei.RewardType.SoulEggs:
                     return $"<:Egg_soul:724341890794913964> {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.PiggyMultiplier:
