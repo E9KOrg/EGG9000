@@ -1157,7 +1157,8 @@ namespace EGG9000.Bot.Automated {
 
 
                         var updates = UpdateInterval.TotalMinutes;
-                        if(coop.Finished)
+                        var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
+                        if(coop.Finished && !waitingOn.Any())
                             updates *= 60;
                         embedBuilder.WithFooter($"Updates Every {updates} Minute{(updates > 1 ? "s" : "")} - Last Updated");
 
