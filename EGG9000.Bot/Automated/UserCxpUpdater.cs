@@ -1,6 +1,8 @@
 ﻿using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using Ei;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -62,10 +64,16 @@ namespace EGG9000.Bot.Automated
 
                     if (backup != null) {
                         foreach(var archivedFarm in backup.ArchivedFarms) {
+                            //Get the score from the list
                             var score = scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == archivedFarm.ContractId)?.Evaluation;
-                            if(score != null) {
-                                archivedFarm.EvaluationCxp = score.Cxp;
-                            } else archivedFarm.EvaluationCxp = 0.0;
+                            //Check if a score for this contract already exists in the User's list
+                            if(!account.CSHistory.Where(h => h.ContractIdentifier == archivedFarm.ContractId && h.Cxp == score.Cxp).Any()) {
+                                //If it doesn't exist, add a new one
+                                account.CSHistory.Add(new UserCsHistory(archivedFarm.ContractId, archivedFarm.CoopId, score.Cxp));
+                            } else {
+                                //If it does, update the score
+                                account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).Cxp = score.Cxp;
+                            }
                         }
                     }
                 }
