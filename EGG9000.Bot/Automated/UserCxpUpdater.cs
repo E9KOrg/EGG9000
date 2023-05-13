@@ -71,8 +71,9 @@ namespace EGG9000.Bot.Automated
                                 //If it doesn't exist, add a new one
                                 account.CSHistory.Add(new UserCsHistoryEntry(archivedFarm.ContractId, archivedFarm.CoopId, score.Cxp));
                             } else {
-                                //If it does, update the score
+                                //If it does, update the score and coop name
                                 account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).Cxp = score.Cxp;
+                                account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).CoopIdentifier = archivedFarm.CoopId
                             }
                         }
                     }

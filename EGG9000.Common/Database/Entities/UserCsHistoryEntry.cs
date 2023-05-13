@@ -30,5 +30,9 @@ namespace EGG9000.Common.Database.Entities
                 return history.ContractIdentifier == ContractIdentifier;
             } else return false;
         }
+
+        public override int GetHashCode() {
+           return ContractIdentifier.GetHashCode() ^ CoopIdentifier.GetHashCode();
+        }
     }
 }
