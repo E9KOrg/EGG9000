@@ -197,10 +197,22 @@ namespace EGG9000.Bot.Commands {
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
+
+        /*[ComponentCommand]
+        public static async Task MCS_Redo(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var index = int.Parse(data);
+            var reg = dbuser.EggIncAccounts[index];
+            reg.RedoLeggacy = !reg.RedoLeggacy;
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }*/
         #endregion
 
-            #region Break
-            [ComponentCommand]
+        #region Break
+        [ComponentCommand]
         public static async Task MCSBreak(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
@@ -310,16 +322,5 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
-        /*[ComponentCommand]
-        public static async Task MCS_Redo(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
-            var reg = dbuser.EggIncAccounts[index];
-            reg.RedoLeggacy = !reg.RedoLeggacy;
-            dbuser.UpdateAccounts();
-            await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
-        }*/
     }
 }
