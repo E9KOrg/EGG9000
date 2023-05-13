@@ -239,7 +239,7 @@ namespace EGG9000.Common.Database.Entities {
             [Key(6)]
             public bool bool2 { get; set; } //Not being user
             [Key(7)]
-            public RedoLeggacyOption RedoLeggacy { get; set; }
+            public RedoLeggacyOption RedoLeggacy { get; set; } = RedoLeggacyOption.No;
             [Key(8)]
             public Ei.Contract.Types.PlayerGrade LastGrade { get; set; }
             [Key(9)]
@@ -247,7 +247,7 @@ namespace EGG9000.Common.Database.Entities {
             [Key(10)]
             public List<UserCsHistoryEntry> CSHistory { get; set; }
             [Key(11)]
-            public int RedoScoreThreshold { get; set; }
+            public int RedoScoreThreshold { get; set; } = 20000;
 
         }
 
