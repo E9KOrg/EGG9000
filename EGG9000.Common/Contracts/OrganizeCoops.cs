@@ -64,8 +64,8 @@ namespace EGG9000.Common.Contracts {
         }
 
         private static bool CheckOnPreviousComplete(UserByAccount x, Ei.Contract contract) {
-            return x.AccountSettings.RedoLeggacy.type == RedoType.YesAll ||
-                x.AccountSettings.RedoLeggacy.type == RedoType.YesThreshold && x.AccountSettings.CSHistory.FirstOrDefault(f => f.Equals(contract)).Cxp <= x.AccountSettings.RedoScoreThreshold ||
+            return x.AccountSettings.RedoLeggacy == RedoLeggacyOption.YesAll ||
+                x.AccountSettings.RedoLeggacy == RedoLeggacyOption.YesThreshold && x.AccountSettings.CSHistory.FirstOrDefault(f => f.Equals(contract)).Cxp <= x.AccountSettings.RedoScoreThreshold ||
                 (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
         }
 
