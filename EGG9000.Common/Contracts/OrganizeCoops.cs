@@ -3,7 +3,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
-
+using Google.Protobuf;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -64,9 +64,9 @@ namespace EGG9000.Common.Contracts {
         }
 
         private static bool CheckOnPreviousComplete(UserByAccount x, Ei.Contract contract) {
-            return x.AccountSettings.RedoLeggacy ||
+            return x.AccountSettings.RedoLeggacy.type == RedoType.YesAll ||
+                x.AccountSettings.RedoLeggacy.type == RedoType.YesThreshold && (x.Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.Identifier).EvaluationCxp <= x.AccountSettings.RedoScoreThreshold) ||
                 (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
-
         }
 
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {

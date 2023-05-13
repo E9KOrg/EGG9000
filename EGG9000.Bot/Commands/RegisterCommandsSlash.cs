@@ -493,7 +493,7 @@ namespace EGG9000.Bot.Commands {
                 msg += "\nBoarding Group: " + (egginc.Group == 0 ? "**None**" : "BG" + egginc?.Group);
                 msg += "\nFilter: " + String.Join(", ", egginc.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
                 msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
-                msg += $"\nRedo Leggacy: {egginc.RedoLeggacy}";
+                msg += $"\nRedo Leggacy: {egginc.RedoLeggacy.menuText.Replace("[X]", egginc.RedoScoreThreshold.ToString())}";
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
                     msg += $"\n\n**Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}**\n";
