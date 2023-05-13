@@ -8,9 +8,13 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database.Entities
 {
+    [MessagePack.MessagePackObject]
     public class UserCsHistoryEntry {
+        [MessagePack.Key(0)]
         public string ContractIdentifier { get; set; }
+        [MessagePack.Key(1)]
         public string CoopIdentifier { get; set; }
+        [MessagePack.Key(2)]
         public double Cxp { get; set; }
 
         public UserCsHistoryEntry(string contractIdentifier, string coopIdentifier, double cxp) {

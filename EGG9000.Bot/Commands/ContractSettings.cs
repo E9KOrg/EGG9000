@@ -75,7 +75,12 @@ namespace EGG9000.Bot.Commands {
             eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
 
             //eBuilder.AddField("Redo Completed Leggacies", account.RedoLeggacy ? "Yes (Will redo all contracts to help out others)" : "No (Will still be assigned to incomplete leggacies)");
-            var redoText = account.RedoLeggacy?.menuText ?? "No (Will still be assigned to incomplete leggacies)";
+            var redoText = account.RedoLeggacy switch {
+                RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
+                RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.RedoScoreThreshold} score)",
+                RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
+                _ => "No (Will still be assigned to incomplete leggacies)"
+            };
             eBuilder.AddField("Redo Completed Leggacies", redoText);
 
             var builder = new ComponentBuilder()
@@ -146,11 +151,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index}", new List<SelectMenuOptionBuilder> {
-                new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacy.type == RedoType.YesAll),
-                new SelectMenuOptionBuilder($"Yes (If previous score was under {account.RedoScoreThreshold} score)", "2", isDefault: account.RedoLeggacy.type == RedoType.YesThreshold),
-                new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacy.type == RedoType.No)
+                new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacy == RedoLeggacyOption.YesAll),
+                new SelectMenuOptionBuilder($"Yes (If previous score was under {account.RedoScoreThreshold} score)", "2", isDefault: account.RedoLeggacy == RedoLeggacyOption.YesThreshold),
+                new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacy == RedoLeggacyOption.No)
             });
-            if(account.RedoLeggacy.type == RedoType.YesThreshold) {
+            if(account.RedoLeggacy == RedoLeggacyOption.YesThreshold) {
                 builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
                 if(account.RedoScoreThreshold >= 1000)
                     builder.WithButton("Decrease Threshold by 1000 CS", $"RLThreshDec:{index}");
@@ -191,7 +196,12 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
-            account.RedoLeggacy = new RedoLeggacyOption(int.Parse(component.Data.Values.First()) - 1);
+            account.RedoLeggacy = (int.Parse(component.Data.Values.First()) - 1) switch {
+                1 => RedoLeggacyOption.YesAll,
+                2 => RedoLeggacyOption.YesThreshold,
+                3 => RedoLeggacyOption.No,
+                _ => RedoLeggacyOption.No
+            };
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
