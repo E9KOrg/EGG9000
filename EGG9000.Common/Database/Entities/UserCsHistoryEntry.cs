@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database.Entities
 {
-    public class UserCsHistory {
+    public class UserCsHistoryEntry {
         public string ContractIdentifier { get; set; }
         public string CoopIdentifier { get; set; }
         public double Cxp { get; set; }
 
-        public UserCsHistory(string contractIdentifier, string coopIdentifier, double cxp) {
+        public UserCsHistoryEntry(string contractIdentifier, string coopIdentifier, double cxp) {
             ContractIdentifier = contractIdentifier;
             CoopIdentifier = coopIdentifier;
             Cxp = cxp;
@@ -22,7 +22,7 @@ namespace EGG9000.Common.Database.Entities
         public override bool Equals(object obj) {
             if(obj is Ei.Contract contract) {
                 return contract.Identifier == ContractIdentifier;
-            } else if(obj is UserCsHistory history) {
+            } else if(obj is UserCsHistoryEntry history) {
                 return history.ContractIdentifier == ContractIdentifier;
             } else return false;
         }
