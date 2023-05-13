@@ -69,7 +69,7 @@ namespace EGG9000.Bot.Automated
                             //Check if a score for this contract already exists in the User's list
                             if(!account.CSHistory.Where(h => h.ContractIdentifier == archivedFarm.ContractId && h.Cxp == score.Cxp).Any()) {
                                 //If it doesn't exist, add a new one
-                                account.CSHistory.Add(new UserCsHistory(archivedFarm.ContractId, archivedFarm.CoopId, score.Cxp));
+                                account.CSHistory.Add(new UserCsHistoryEntry(archivedFarm.ContractId, archivedFarm.CoopId, score.Cxp));
                             } else {
                                 //If it does, update the score
                                 account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).Cxp = score.Cxp;

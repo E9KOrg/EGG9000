@@ -245,7 +245,7 @@ namespace EGG9000.Common.Database.Entities {
             [Key(9)]
             public DateTimeOffset PromotionTime { get; set; }
             [Key(10)]
-            public List<UserCsHistory> CSHistory { get; set; }
+            public List<UserCsHistoryEntry> CSHistory { get; set; }
             [Key(11)]
             public int RedoScoreThreshold { get; set; }
 
