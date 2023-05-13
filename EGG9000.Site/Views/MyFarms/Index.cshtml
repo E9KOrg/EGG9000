@@ -159,7 +159,14 @@
 				} else {
 					<span>[Filter All]</span>
 				}
-				<span>Redo Leggacies: @account.RedoLeggacy</span>
+				<span>
+					Redo Leggacies: 
+					@if (account.RedoLeggacy.type == RedoType.YesAll) { @string.Join("", "Yes (All)")}
+					else {
+						if (account.RedoLeggacy.type == RedoType.YesThreshold) { @string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS")}
+						else { @string.Join("", "No")}
+					}
+				</span>
 			</div>
 
 			<ul class="nav nav-tabs" role="tablist">
