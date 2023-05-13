@@ -146,11 +146,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index}", new List<SelectMenuOptionBuilder> {
-                new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacy.numVal == 0),
-                new SelectMenuOptionBuilder("Yes (If previous score was under [X] score)", "2", isDefault: account.RedoLeggacy.numVal == 1),
-                new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacy.numVal == 2)
+                new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacy.type == RedoType.YesAll),
+                new SelectMenuOptionBuilder($"Yes (If previous score was under {account.RedoScoreThreshold} score)", "2", isDefault: account.RedoLeggacy.type == RedoType.YesThreshold),
+                new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacy.type == RedoType.No)
             });
-            if(account.RedoLeggacy.numVal == 1) {
+            if(account.RedoLeggacy.type == RedoType.YesThreshold) {
                 builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
                 if(account.RedoScoreThreshold >= 1000)
                     builder.WithButton("Decrease Threshold by 1000 CS", $"RLThreshDec:{index}");
@@ -191,7 +191,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
-            account.RedoLeggacy = new RedoLeggacyOption(int.Parse(component.Data.Values.First()));
+            account.RedoLeggacy = new RedoLeggacyOption(int.Parse(component.Data.Values.First()) - 1);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);

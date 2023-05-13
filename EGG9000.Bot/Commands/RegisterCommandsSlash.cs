@@ -491,7 +491,7 @@ namespace EGG9000.Bot.Commands {
 
                 msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(user.GetGrade(egginc.Id));
                 msg += "\nBoarding Group: " + (egginc.Group == 0 ? "**None**" : "BG" + egginc?.Group);
-                msg += "\nFilter: " + String.Join(", ", egginc.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
+                msg += "\nFilter: " + string.Join(", ", egginc.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
                 msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
                 msg += $"\nRedo Leggacy: {egginc.RedoLeggacy.menuText.Replace("[X]", egginc.RedoScoreThreshold.ToString())}";
 
