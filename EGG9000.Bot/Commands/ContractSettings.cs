@@ -154,11 +154,36 @@ namespace EGG9000.Bot.Commands {
                 builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
                 if(account.RedoScoreThreshold >= 1000)
                     builder.WithButton("Decrease Threshold by 1000 CS", $"RLThreshDec:{index}");
-                if(account.RedoScoreThreshold <= 80000)
+                if(account.RedoScoreThreshold <= 79000)
                     builder.WithButton("Increase Threshold by 1000 CS", $"RLThreshInc:{index}");
             }
 
             builder.WithButton("Cancel", $"MCSMenu:{index}");
+        }
+
+        [ComponentCommand]
+        public static async Task RLThreshDec(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var index = int.Parse(data);
+            var account = dbuser.EggIncAccounts[index];
+            account.RedoScoreThreshold -= 1000;
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+
+        [ComponentCommand]
+        public static async Task RLThreshInc(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db)
+        {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var index = int.Parse(data);
+            var account = dbuser.EggIncAccounts[index];
+            account.RedoScoreThreshold += 1000;
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
