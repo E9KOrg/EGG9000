@@ -25,6 +25,7 @@ using Microsoft.Extensions.Options;
 using EGG9000.Bot.EggIncAPI;
 using Discord;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Common.Services {
     public class APILinkOptions {
@@ -61,18 +62,17 @@ namespace EGG9000.Common.Services {
         private bool _ReportUpdatedClientVersion;
         private int _LastClientVersion;
         private DiscordSocketClient _discord;
-        //private ApplicationDbContext _db;
+        private ILogger<APILink> _logger;
 
-        public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord) {
+        public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
-            //_cache = memoryCache;
             _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
-            //_db = db;
             _configuration = configuration;
             _provider = provider;
             var options = provider.GetService<IOptionsMonitor<APILinkOptions>>();
             _ReportUpdatedClientVersion = options.CurrentValue.ReportUpdatedClientVersion;
             _discord = discord;
+            _logger = logger;
         }
 
         private string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
@@ -109,11 +109,11 @@ namespace EGG9000.Common.Services {
                     if(backup != null) {
                         lUsers.Add(new LeaderboardUser { User = user, Backup = backup });
                     } else {
-                        Console.WriteLine($"Missing backup for {user.DiscordUsername} {eggInc.Id}");
+                        _logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
                     }
                 }
             }
-            Console.WriteLine($"Saving {db.ChangeTracker.Entries().Count()} changes to db");
+            _logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
             await db.SaveChangesAsync();
             return lUsers;
         }
@@ -142,7 +142,7 @@ namespace EGG9000.Common.Services {
                 }
             }
 
-            Console.WriteLine($"Backups from cache {backups.Count}");
+            _logger.LogInformation("Backups from cache {count}", backups.Count);
 
             if(backupsNeeded.Count > 0) {
                 var throttler = new SemaphoreSlim(3);
@@ -153,17 +153,17 @@ namespace EGG9000.Common.Services {
                 var i = 1;
                 foreach(var partition in partitions) {
                     await throttler.WaitAsync();
-                    Console.WriteLine($"Handling partition {i++} of {partitions.Count()}");
+                    _logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
+                    i++;
                     tasks.Add(Task.Run(async () => {
                         try {
                             var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
-                            Console.WriteLine($"                                                   Changed {response.Data.Count(x => !x.Unchanged)}  Unchanged {response.Data.Count(x => x.Unchanged)}");
+                            _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
                             foreach(var backupResponse in response.Data) {
                                 var key = GetUserBackupKey(backupResponse.EggIncId);
                                 if(backupResponse.Unchanged) {
                                     CustomBackup currentBackup;
                                     if(_cache.TryGetValue(key, out currentBackup)) {
-                                        //Console.WriteLine("Unchanged");
                                         backups.Add(currentBackup);
                                         continue;
                                     }
@@ -173,12 +173,12 @@ namespace EGG9000.Common.Services {
                                         backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion && 
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
-                                        Console.WriteLine($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                        _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
                                         var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
                                         if(kendromedmchannel is not null) {
                                             await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
                                         } else {
-                                            Console.WriteLine("Unable to get DM channel");
+                                            _logger.LogError("Unable to get DM channel for Kendrome");
                                         }
                                     }
 
@@ -188,7 +188,7 @@ namespace EGG9000.Common.Services {
                                 }
                             }
                         } catch(Exception e) {
-                            Console.WriteLine("Error getting backup from APILink");
+                            _logger.LogError("Error getting backup from APILink {exception}", e);
                         } finally {
                             throttler.Release();
                         }
@@ -236,10 +236,8 @@ namespace EGG9000.Common.Services {
                         var json = await response.Content.ReadAsStringAsync();
                         var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
                         if(backupResponse.Unchanged) {
-                            //Console.WriteLine($"Unchanged! {json.Length}");
                             return currentBackup;
                         }
-                        //Console.WriteLine($"Changed! {json.Length}");
                         if(backupResponse.Backup.Farms != null) {
                             _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
                         }
@@ -336,14 +334,14 @@ namespace EGG9000.Common.Services {
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
         public async Task GetUsers() {
-            Console.WriteLine("Getting User Backups for Cache");
+            _logger.LogInformation("Getting User Backups for Cache");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
             var backups = usersTask.SelectMany(x => x.Backups ?? new List<CustomBackup>());
             if(backups != null) {
                 AddExistingBackups(backups);
             }
-            Console.WriteLine("Finished Getting User Backups for Cache");
+            _logger.LogInformation("Finished Getting User Backups for Cache");
 
         }
 

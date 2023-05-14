@@ -26,6 +26,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Bot.Automated.CoopStatusUpdater;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -45,8 +46,6 @@ namespace EGG9000.Bot.Automated {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var sw = new Stopwatch();
-            sw.Restart();
             using(var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()) {
 #if DEBUG
                 var checkFinished = true;
@@ -56,20 +55,17 @@ namespace EGG9000.Bot.Automated {
                 if(++_counter >= 60) {
                     _counter = 0;
                 }
-                Console.WriteLine("Getting Users For CoopStatusUpdater");
                 var users = await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync();
-                Console.WriteLine("Getting Coops For CoopStatusUpdater");
                 var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel && ((!x.Finished && x.Status != CoopStatusEnum.Failed) || checkFinished || x.UserCoopsXrefs.Any(y => y.PingOnFinished)) && x.Status != CoopStatusEnum.WaitingOnStarter).ToListAsync();
 
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
-                Console.WriteLine($"Users and Coops: {sw.ElapsedMilliseconds}ms");
 
                 var throttler = new SemaphoreSlim(5);
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                //coops = coops.Where(x => x.Name.ToLower() == "SteepAngle25".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "EvenEdge97".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
 #endif
 
@@ -81,7 +77,7 @@ namespace EGG9000.Bot.Automated {
                     if(guild == null)
                         continue;
                     await guild.DownloadUsersAsync();
-                    Console.WriteLine($"Coops for guild: {guild.Name}");
+                    _logger.LogInformation("Coops for guild: {guildName}", guild.Name);
 
                     var tasks = new List<Task>();
 
@@ -92,10 +88,8 @@ namespace EGG9000.Bot.Automated {
                         await throttler.WaitAsync();
                         tasks.Add(Task.Run(async () => {
                             try {
-                                //Console.WriteLine($"Running co-op {coop.Name}");
                                 await SendUpdate(coop.Id, guild, users, dbguild, cancellationToken, _db);
                             } finally {
-                                //Console.WriteLine($"Finished co-op {coop.Name}");
                                 throttler.Release();
                             }
                         }));
@@ -103,13 +97,10 @@ namespace EGG9000.Bot.Automated {
 
                     await Task.WhenAll(tasks);
 
-                    Console.WriteLine($"Co-op Count: {guildCoops.Count()}, Successful: {tasks.Count(x => !x.IsFaulted)}, Error: {tasks.Count(x => x.IsFaulted)}");
+                    _logger.LogInformation("Co-op Count: {count}, Successful: {successful}, Error: {errors}", guildCoops.Count(), tasks.Count(x => !x.IsFaulted), tasks.Count(x => x.IsFaulted));
                 }
 
             }
-            sw.Stop();
-            var time = sw.Elapsed.TotalSeconds;
-            Console.WriteLine($"Finished Updating Co-ops in {Math.Round(time)} seconds");
         }
 
         public class UserWithStatus {
@@ -208,7 +199,6 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task UpdateChannel(List<string> msgs, Embed embed, ITextChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
-            //Console.WriteLine($"UpdateChannel for {coop.Name} with thread {Thread.CurrentThread.ManagedThreadId}");
             var sw = new Stopwatch();
             sw.Restart();
             var times = new List<long>();
@@ -246,37 +236,22 @@ namespace EGG9000.Bot.Automated {
                 var NewUpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
 
                 if(coopChannel != null) {
-                    //IEnumerable<IMessage> discordMessages;
-                    //try {
-                    //    discordMessages = await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12).FlattenAsync();
-                    //} catch(Exception ex) when(ex is TimeoutException || ex is HttpException || ex is System.Net.Http.HttpRequestException) {
-                    //    try {
-                    //        discordMessages = await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12).FlattenAsync();
-                    //    } catch(Exception) {
-                    //        Console.WriteLine("***Failed to get Messages for CoopStatus");
-                    //        return;
-                    //    }
-                    //}
 
                     var pinnedMessages = false;
                     for(int i = 0; i < msgs.Count(); i++) {
-                        //Console.WriteLine($"Handling message {i + 1} of {msgs.Count()}");
                         if(UpdateMessageIDs.Count > i) {
                             try {
                                 var post = (RestUserMessage)existingMessages.FirstOrDefault(x => x.Id == UpdateMessageIDs[i]);
                                 if(post == null) {
                                     if(msgs[i] == "@@@EMBED") {
-                                        //Console.WriteLine($"3");
                                         post = ((RestUserMessage)await coopChannel.SendMessageAsync(embed: embed));
                                     } else {
-                                        //Console.WriteLine($"4");
                                         post = ((RestUserMessage)await coopChannel.SendMessageAsync(msgs[i]));
                                     }
                                     NewUpdateMessageIDs.Remove(UpdateMessageIDs[i]);
                                     NewUpdateMessageIDs.Add(post.Id);
                                 } else {
                                     if(msgs[i] == "@@@EMBED") {
-                                        //Console.WriteLine($"5");
                                         await post.ModifyWithTimeoutAsync(msg => { msg.Embed = embed; msg.Content = null; });
                                     } else {
                                         var changes = post.Content.CompareChanges(msgs[i]);
@@ -288,29 +263,25 @@ namespace EGG9000.Bot.Automated {
                                 }
                                 if(!post.IsPinned) {
                                     pinnedMessages = true;
-                                    //Console.WriteLine($"7");
                                     await post.PinAsync();
                                 }
                             } catch(Exception e) {
-                                Console.WriteLine($"Error updating messages: {e.Message}");
+                                _logger.LogError(e, "Error updating messages");
                                 _bugsnag.Notify(e);
                             }
                         } else {
                             if(msgs[i] == "@@@EMBED") {
-                                //Console.WriteLine($"1");
                                 var post = await coopChannel.SendMessageAsync(embed: embed);
                                 NewUpdateMessageIDs.Add(post.Id);
                                 pinnedMessages = true;
                                 await post.PinAsync();
                             } else {
-                                //Console.WriteLine($"2");
                                 var post = await coopChannel.SendMessageAsync(msgs[i]);
                                 NewUpdateMessageIDs.Add(post.Id);
                                 pinnedMessages = true;
                                 await post.PinAsync();
                             }
                         }
-                        //Console.WriteLine($"Handled message {i + 1} of {msgs.Count()}");
 
                     }
                     if(pinnedMessages) {
@@ -396,7 +367,6 @@ namespace EGG9000.Bot.Automated {
                     if(coop == null) {
                         return;
                     }
-                    //Console.WriteLine($"Calling update for {coop.Name}");
                     var times = new List<long>();
                     var sw = new Stopwatch();
                     sw.Reset();
@@ -412,7 +382,7 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     if(coopChannel == null) {
-                        Console.WriteLine($"ERROR FINDING CHANNEL FOR CO-OP: {coop.Name}");
+                        _logger.LogWarning("ERROR FINDING CHANNEL FOR CO-OP: {coopName}", coop.Name);
                         return;
                     }
 
@@ -421,7 +391,7 @@ namespace EGG9000.Bot.Automated {
                     var statusReponse = await GetStatus(coop, coopChannel, cancellationToken);
 
                     if(statusReponse.Status is null) {
-                        Console.WriteLine($"Status is null for co-op: {coop.Name}");
+                        _logger.LogWarning("Status is null for co-op: {coopName}", coop.Name);
                         return;
                     }
 
@@ -542,7 +512,7 @@ namespace EGG9000.Bot.Automated {
                             }
                             if(!coopDiscordUsers.Any(x => x.Id == user.DiscordId) && discordUser != null) {
                                 await ((ITextChannel)coopChannel).AddPermissionOverwriteAsync(discordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                                Console.WriteLine($"Added Permission for {user.DiscordUsername}");
+                                _logger.LogInformation("Added Permission for {user}", user.DiscordUsername);
                                 coopDiscordUsers.Add(discordUser);
                             }
 
@@ -602,7 +572,7 @@ namespace EGG9000.Bot.Automated {
                                                     channeluser = discorduser;
                                                 }
                                             } catch {
-                                                Console.WriteLine($"Error Adding Permission for {dbuser.DiscordUsername}");
+                                                _logger.LogWarning("Error Adding Permission for {user}", dbuser.DiscordUsername);
                                             }
                                         }
                                         if(channeluser != null) {
@@ -696,15 +666,12 @@ namespace EGG9000.Bot.Automated {
                                 var finishedCoopCategories = await _client.GetAllFinishedCategories(guild);
                                 foreach(var category in finishedCoopCategories) {
                                     var channelCount = guild.TextChannels.Count(x => x.CategoryId == category.Id);
-                                    Console.WriteLine($"Finished Coop Category {category.Name} Count {channelCount}");
                                     if(channelCount < 50) {
                                         try {
-                                            Console.WriteLine($"Trying to set category");
                                             await coopChannel.ModifyAsync(x => { x.CategoryId = category.Id; });
-                                            Console.WriteLine($"Category set!");
                                             break;
                                         } catch(Exception) {
-                                            Console.WriteLine($"Error setting category");
+                                            _logger.LogWarning("Error setting category");
                                         }
                                     }
                                 }
@@ -715,7 +682,6 @@ namespace EGG9000.Bot.Automated {
                             if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
                                 coop.Finished = true;
                                 coop.Status = CoopStatusEnum.Completed;
-                                Debug.WriteLine(" * **Not Showing as completed");
                                 try {
                                     await _db.SaveChangesAsync();
                                 } catch(Exception) {
@@ -748,7 +714,7 @@ namespace EGG9000.Bot.Automated {
                                 //Check if in channel
                                 if(!coopDiscordUsers.Any(x => x.Id == userStatus.DiscordUser.Id)) {
                                     await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                                    Console.WriteLine($"Added Permission for {userStatus.User.DiscordUsername}");
+                                    _logger.LogInformation("Added Permission for {user}", userStatus.User.DiscordUsername);
                                 }
                             }
                         }
@@ -774,12 +740,12 @@ namespace EGG9000.Bot.Automated {
                                     await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
                                 }
                                 userStatus.Xref.AddedToChannel = true;
-                                Console.WriteLine("Adding user to channel");
+                                _logger.LogInformation("Adding user to channel {user}", userStatus.DiscordUser.DisplayName);
                             }
 
                             if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                                 userStatus.Xref.JoinedCoop = true;
-                                Console.WriteLine("User Joined Co-op");
+                                _logger.LogInformation("User Joined Co-op");
                                 var unjoinedRole = userStatus.DiscordUser?.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                                 if(unjoinedRole != null) {
                                     await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
@@ -950,12 +916,13 @@ namespace EGG9000.Bot.Automated {
 
                         lastMessage += $"\n\nCo-op Grade: {(Ei.Contract.Types.PlayerGrade)((int)coop.League)}";
 
-                        if(!coop.FinishedOrFailed && !string.IsNullOrEmpty(coop.CreatorID) && usersWithStatus.Any(x => x.Backup is not null && x.Backup.EggIncId == coop.CreatorID)) {
-                            var creator = usersWithStatus.First(x => x.Backup is not null && x.Backup.EggIncId == coop.CreatorID);
-                            lastMessage += $" Created By {creator.DiscordUser.GetName()}";
-                            var farm = creator.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
-                            if(farm != null && (uint)farm.Grade != coop.League) {
-                                lastMessage += $" (Wrong Grade {farm.Grade})";
+
+                        if(!string.IsNullOrEmpty(coop.CreatorID)) {
+                            var creator = users.FirstOrDefault(x => x.EggIncAccounts.Any(y => y.Id == coop.CreatorID)); 
+                            if(creator != null) {
+                                var account = creator.EggIncAccounts.First(x => x.Id == coop.CreatorID);
+                                lastMessage += $"\nCreated By {creator.DiscordUsername} {account.LastGrade}";
+
                             }
                         }
 
@@ -1242,7 +1209,7 @@ namespace EGG9000.Bot.Automated {
                         if(string.IsNullOrEmpty(coop.UpdateMessagesId)) {
                             await coopChannel.SendMessageAsync("Error getting status");
                         }
-                        Console.WriteLine($"Error getting status {coop.Name}");
+                        _logger.LogCritical("Error getting status {coopName}", coop.Name);
                     }
 
                     try {
@@ -1258,7 +1225,7 @@ namespace EGG9000.Bot.Automated {
 
                 }
             } catch(Exception e) {
-                Console.WriteLine($"Error in co-op {coopid}: {e.Message}");
+                _logger.LogError(e, "Error in co-op {coopid}", coopid);
                 _bugsnag.Notify(e);
             }
         }
@@ -1298,7 +1265,6 @@ namespace EGG9000.Bot.Automated {
                         var message = await dmChannel.SendMessageAsync(warningText);
                     } catch(Exception) {
                         await coopChannel.SendMessageAsync($"{warningText} (DMs are blocked)");
-                        Console.WriteLine($"Unable to send DM to {user.DiscordUser.GetCleanName()}");
                     }
 
                 }
@@ -1380,7 +1346,7 @@ namespace EGG9000.Bot.Automated {
                 try {
                     await dmChannel.SendMessageAsync($"All users have joined the co-op {coopChannel.Mention}");
                 } catch(Exception) {
-                    Console.WriteLine($"Unable to send DM to {userStatus.DiscordUser.GetCleanName()}");
+                    await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} All users have joined the co-op {coopChannel.Mention} (User has blocked DMs from bot)");
                 }
 
             }
@@ -1392,7 +1358,7 @@ namespace EGG9000.Bot.Automated {
                 try {
                     await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has completed.");
                 } catch(Exception) {
-                    Console.WriteLine($"Unable to send DM to {userStatus.DiscordUser.GetCleanName()}");
+                    await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} The co-op {coopChannel.Mention} has completed. (User has blocked DMs from bot)");
                 }
 
             }

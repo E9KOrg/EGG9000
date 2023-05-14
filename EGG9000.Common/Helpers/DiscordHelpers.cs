@@ -18,18 +18,15 @@ using Discord.Rest;
 using System.Threading;
 using EGG9000.Common.Services;
 using System.Data;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Helpers {
-    public static class DiscordHelpers {
+    public static class DiscordHelpersExt {
         public static String GetName(this IGuildUser user) {
             return string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
         }
 
         public static String GetCleanName(this IGuildUser user) {
-            //if(user == null)
-            //{
-            //    return "";
-            //}
             var name = string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
             var ebrgx = new Regex(@"\(.+?\)");
             name = ebrgx.Replace(name, "").Trim();
@@ -37,6 +34,43 @@ namespace EGG9000.Bot.Helpers {
             return name;
         }
 
+        public static async Task DeleteMessagesBatchAsync(this ITextChannel channel, IEnumerable<IMessage> messages) {
+            if(messages.Count() == 0) return;
+            var timeSplit = DateTimeOffset.Now.AddDays(-14).AddHours(1);
+            var oldMessages = messages.Where(x => x.Timestamp <= timeSplit);
+            var recentMessages = messages.Where((x) => x.Timestamp > timeSplit);
+            await channel.DeleteMessagesAsync(recentMessages);
+            foreach(var message in oldMessages) {
+                await message.DeleteAsync();
+            }
+        }
+
+        public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
+            CancellationTokenSource tokenSource2 = new CancellationTokenSource();
+            CancellationToken token2 = tokenSource2.Token;
+            if(options is null)
+                options = new RequestOptions();
+            options.CancelToken = token2;
+
+            var thread = message.ModifyAsync(msgProperties, options);
+            tokenSource2.CancelAfter(9000);
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            CancellationToken token = tokenSource.Token;
+            var timer = Task.Delay(10000, token);
+            Task.WaitAny(thread, timer);
+            if(timer.IsCompleted) {
+                GetLogger<IUserMessage>().LogWarning($"Timer Expired");
+            } else {
+                tokenSource.Cancel();
+                if(thread.IsCanceled) {
+                    GetLogger<IUserMessage>().LogWarning($"Modify Task CANCELLED!");
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+    public class DiscordHelpers {
         public class CheckEliteResposne {
             public bool Promoted { get; set; }
             public SocketRole Role { get; set; }
@@ -105,7 +139,6 @@ namespace EGG9000.Bot.Helpers {
         public static ulong ProPermitRoleID = 966017147350446121;
         public static ulong StandardPermitRoleID = 966017278078517248;
         public static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, IGrouping<Guid, LeaderboardUser> accounts) {
-            //Console.WriteLine($"Checking Permit for {DiscordUser.GetName()}");
             if(Guild.Roles.Any(x => x.Id == ProPermitRoleID)) {
                 var hasPro = DiscordUser.RoleIds.Any(x => x == ProPermitRoleID);
                 var hasStandard = DiscordUser.RoleIds.Any(x => x == StandardPermitRoleID); ;
@@ -116,20 +149,20 @@ namespace EGG9000.Bot.Helpers {
 
                 if(!hasPro && needsPro) {
                     await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
-                    Console.WriteLine($"Adding ProPermit role for {DiscordUser.GetName()}");
+                    GetLogger<DiscordHelpers>().LogInformation("Adding ProPermit role for {user}", DiscordUser.GetName());
                 }
                 if(hasPro && !needsPro) {
                     await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
-                    Console.WriteLine($"Removing ProPermit role for {DiscordUser.GetName()}");
+                    GetLogger<DiscordHelpers>().LogInformation("Removing ProPermit role for {user}", DiscordUser.GetName());
                 }
                 if(!hasStandard && needsStandard) {
                     await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
-                    Console.WriteLine($"Adding StandardPermit role for {DiscordUser.GetName()}");
+                    GetLogger<DiscordHelpers>().LogInformation("Adding StandardPermit role for {user}", DiscordUser.GetName());
 
                 }
                 if(hasStandard && !needsStandard) {
                     await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
-                    Console.WriteLine($"Removing StandardPermit role for {DiscordUser.GetName()}");
+                    GetLogger<DiscordHelpers>().LogInformation("Removing StandardPermit role for {user}", DiscordUser.GetName());
                 }
 
             }
@@ -147,14 +180,14 @@ namespace EGG9000.Bot.Helpers {
                 ).Select(x => x.role).ToList();
 
             if(neededRoles.Count() > 0) {
-                Console.WriteLine($"Adding grade roles {String.Join(",", neededRoles.Select(x => x.Name))} for {DiscordUser.GetName()}");
+                GetLogger<DiscordHelpers>().LogInformation("Adding grade roles {roles} for {user}", String.Join(",", neededRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.AddRolesAsync(neededRoles);
 
             }
 
 
             if(extraRoles.Count() > 0) {
-                Console.WriteLine($"Removing grade roles {String.Join(",", extraRoles.Select(x => x.Name))} for {DiscordUser.GetName()}");
+                GetLogger<DiscordHelpers>().LogInformation("Removing grade roles {roles} for {user}", String.Join(",", extraRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.RemoveRolesAsync(extraRoles);
             }
         }
@@ -183,13 +216,11 @@ namespace EGG9000.Bot.Helpers {
 
                 if(!hasRole && needsRole) {
                     await DiscordUser.AddRoleAsync(role);
-                    Console.WriteLine($"Adding outdated role for {DiscordUser.GetName()}");
-                    await Task.Delay(500);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding outdated role for {user}", DiscordUser.GetName());
                 }
                 if(hasRole && !needsRole) {
                     await DiscordUser.RemoveRoleAsync(role);
-                    Console.WriteLine($"Removing outdated role for {DiscordUser.GetName()}");
-                    await Task.Delay(500);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing outdated role for {user}", DiscordUser.GetName());
                 }
 
             }
@@ -221,13 +252,11 @@ namespace EGG9000.Bot.Helpers {
 
                 if(!hasRole && needsRole) {
                     await DiscordUser.AddRoleAsync(role);
-                    Console.WriteLine($"Adding active role for {DiscordUser.GetName()}");
-                    await Task.Delay(500);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding active role for {user}", DiscordUser.GetName());
                 }
                 if(hasRole && !needsRole) {
                     await DiscordUser.RemoveRoleAsync(role);
-                    Console.WriteLine($"Removing active role for {DiscordUser.GetName()}");
-                    await Task.Delay(500);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing active role for {user}", DiscordUser.GetName());
                 }
 
             }
@@ -248,13 +277,11 @@ namespace EGG9000.Bot.Helpers {
 
                 if(!hasRole && needsRole) {
                     await DiscordUser.AddRoleAsync(role);
-                    Console.WriteLine($"Adding missingbg role for {DiscordUser.GetName()}");
-                    //await Task.Delay(500);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding missingbg role for {user}", DiscordUser.GetName());
                 }
                 if(hasRole && !needsRole) {
                     await DiscordUser.RemoveRoleAsync(role);
-                    Console.WriteLine($"Removing missingbg for {DiscordUser.GetName()}");
-                    //await Task.Delay(500);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing missingbg for {user}", DiscordUser.GetName());
                 }
 
             }
@@ -263,7 +290,7 @@ namespace EGG9000.Bot.Helpers {
 
 
         public static async Task<SocketRole> SetRole(SocketGuild Guild, IGuildUser DiscordUser, Double EarningsBonus) {
-            var currentRole = DiscordUser.RoleIds.Select(y => Guild.Roles.First(z => z.Id == y)).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+            var currentRole = DiscordUser.RoleIds.Select(y => Guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);
             var newRoleName = prefix.Rank;
@@ -288,40 +315,6 @@ namespace EGG9000.Bot.Helpers {
             return newRole;
         }
 
-        public static async Task DeleteMessagesBatchAsync(this ITextChannel channel, IEnumerable<IMessage> messages) {
-            if(messages.Count() == 0) return;
-            var timeSplit = DateTimeOffset.Now.AddDays(-14).AddHours(1);
-            var oldMessages = messages.Where(x => x.Timestamp <= timeSplit);
-            var recentMessages = messages.Where((x) => x.Timestamp > timeSplit);
-            await channel.DeleteMessagesAsync(recentMessages);
-            foreach(var message in oldMessages) {
-                await message.DeleteAsync();
-            }
-        }
 
-        public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
-            CancellationTokenSource tokenSource2 = new CancellationTokenSource();
-            CancellationToken token2 = tokenSource2.Token;
-            if(options is null)
-                options = new RequestOptions();
-            options.CancelToken = token2;
-
-            var thread = message.ModifyAsync(msgProperties, options);
-            tokenSource2.CancelAfter(9000);
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
-            CancellationToken token = tokenSource.Token;
-            var timer = Task.Delay(10000, token);
-            Task.WaitAny(thread, timer);
-            if(timer.IsCompleted) {
-                Console.WriteLine($"Timer Expired");
-            } else {
-                tokenSource.Cancel();
-                if(thread.IsCanceled) {
-                    Console.WriteLine($"Modify Task CANCELLED!");
-                }
-            }
-
-            return Task.CompletedTask;
-        }
     }
 }

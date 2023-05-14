@@ -79,6 +79,7 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? NextShipReturnDMDue { get; set; }
         public byte[] _shipDMsByte { get; set; }
         public string _shipDMsString { get; set; }
+        public string Notes { get; set; }
 
         [NotMapped]
         private List<CustomBackup> _backups { get; set; }
@@ -195,13 +196,11 @@ namespace EGG9000.Common.Database.Entities {
             if(string.IsNullOrEmpty(nameId.Id)) {
                 nameId.Id = proto.UserId;
                 update = true;
-                Console.WriteLine("Updating ID");
             }
             if(nameId.Name != proto.UserName) {
                 nameId
                     .Name = proto.UserName;
                 update = true;
-                Console.WriteLine("Updating Name");
             }
             if(update) {
                 UpdateAccounts();//Force JSON Update

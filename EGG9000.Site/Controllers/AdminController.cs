@@ -15,6 +15,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Migrations;
 
 using Humanizer;
 
@@ -25,6 +26,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
 using Newtonsoft.Json;
+
+using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
@@ -1105,6 +1108,23 @@ namespace EGG9000.Site.Controllers {
             ViewBag.Xrefs = await _db.UserCoopXrefs.Where(x => x.Score.HasValue && userids.Contains(x.UserId)).ToListAsync();
 
             return View(users);
+        }
+
+        public async Task<IActionResult> InactivePlayers() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var users = await _db.DBUsers.ToListAsync();
+            var guild = _discord.Guilds.First(x => x.Id == guildId);
+            await guild.DownloadUsersAsync();
+            var xrefs = await _db.UserCoopXrefs.FromSqlRaw("select UserCoopXrefs.* from UserCoopXrefs where UserCoopXrefs.CreatedOn = (select max(t2.CreatedOn) from UserCoopXrefs t2 where t2.UserId = UserCoopXrefs.UserId)").ToListAsync();
+
+            return View((users, guild.Users, xrefs));
+        }
+
+        public async Task<IActionResult> SaveNotes([FromQuery]Guid UserId, [FromQuery]String Notes) {
+            var user = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
+            user.Notes = Notes;
+            await _db.SaveChangesAsync();
+            return Content("Success");
         }
     }
 }

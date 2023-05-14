@@ -467,6 +467,10 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.TempDisabled) {
                 msg += $"\nUser is disabled";
             }
+            
+            if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
+                msg += $"\n**Notes:** {dbuser.Notes}";
+            }
 
             msg += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 

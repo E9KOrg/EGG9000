@@ -25,11 +25,11 @@ using System.Text.RegularExpressions;
 using EGG9000.Common.Services;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
         public static TimeSpan UpdateTime = TimeSpan.FromMinutes(15);
-        private APILink _apiLink;
 
         public static List<UserX> _users;
 
@@ -40,21 +40,18 @@ namespace EGG9000.Bot.Automated {
         }
 
         public LeaderboardUpdater(
-            IServiceProvider provider,
-            APILink apilink
+            IServiceProvider provider
         ) : base(UpdateTime, delayedStart: TimeSpan.FromMinutes(5), provider) {
-            _apiLink = apilink;
         }
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            Console.WriteLine("Updating Leaderboard");
             var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created < DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync();
             var currentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created >= DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).ToListAsync();
             var recentContractIDs = recentContracts.Select(x => x.ID);
 
-            Console.WriteLine("Getting Xrefs for Leaderboard");
+            _logger.LogInformation("Getting Xrefs for Leaderboard");
             try {
                 var threeWeeksAgo = DateTimeOffset.Now.AddDays(-21);
 //#if DEBUG
@@ -64,7 +61,7 @@ namespace EGG9000.Bot.Automated {
 //#endif
                 var recentxrefs = xrefs.Where(x => recentContractIDs.Contains(x.ContractID)).ToList();
 
-                Console.WriteLine("Getting Users for Leaderboard");
+                _logger.LogInformation("Getting Users for Leaderboard");
                 //#if DEBUG
                 //var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == 770469712064151593 && !x.TempDisabled).Select(x => new {
                 //    DBUser = x,
@@ -81,12 +78,12 @@ namespace EGG9000.Bot.Automated {
 
                 var dbusers = dbusersWithGuildCoops.Select(x => x.DBUser).ToList();
 
-//#if DEBUG
-//                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
-//                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
-//#endif
+#if DEBUG
+                //                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
+                //                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
+#endif
 
-                Console.WriteLine("Getting User Backups for Leaderboard");
+                _logger.LogInformation("Getting User Backups for Leaderboard");
                 //var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
 
                 var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser {
@@ -98,14 +95,15 @@ namespace EGG9000.Bot.Automated {
                     if(lUser.Backup == null)
                         return;
                     var userXrefs = xrefs.Where(x => lUser.User.Id == x.UserId).ToList();
+                    var recentUserXrefs = recentxrefs.Where(x => x.UserId == lUser.User.Id).ToList();
                     lUser.TotalContracts = userXrefs.Where(x => (x.EggIncId == null || x.EggIncId == lUser.Backup.EggIncId || x.RefEggIncId == lUser.Backup.EggIncId)).GroupBy(x => x.ContractID).Count();
-                    lUser.ActiveContracts = recentxrefs.Count(x => x.UserId == lUser.User.Id);
+                    lUser.ActiveContracts = recentUserXrefs.Count();
                     lUser.RecentContracts = Math.Max(recentContracts.Count(x => x.Created > lUser.User.Registered), lUser.ActiveContracts);
-                    lUser.Last1 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[0].ID);
-                    lUser.Last2 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[1].ID);
-                    lUser.Last3 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[2].ID);
-                    lUser.Last4 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[3].ID);
-                    lUser.Last5 = recentxrefs.Any(x => x.UserId == lUser.User.Id && x.ContractID == recentContracts[4].ID);
+                    lUser.Last1 = recentUserXrefs.Any(x => x.ContractID == recentContracts[0].ID);
+                    lUser.Last2 = recentUserXrefs.Any(x => x.ContractID == recentContracts[1].ID);
+                    lUser.Last3 = recentUserXrefs.Any(x => x.ContractID == recentContracts[2].ID);
+                    lUser.Last4 = recentUserXrefs.Any(x => x.ContractID == recentContracts[3].ID);
+                    lUser.Last5 = recentUserXrefs.Any(x => x.ContractID == recentContracts[4].ID);
                     lUser.Active = userXrefs.Any(x => x.UserId == lUser.User.Id && x.LastThreeWeeks) || lUser.User.Registered > DateTimeOffset.Now.AddDays(-14);
                 }
 
@@ -113,7 +111,7 @@ namespace EGG9000.Bot.Automated {
                     if(cancellationToken.IsCancellationRequested)
                         break;
 
-                    Console.WriteLine($"Working on leaderboard for {dbguild.Name}");
+                    _logger.LogInformation("Working on leaderboard for {guild}", dbguild.Name);
 
                     var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                     await guild.DownloadUsersAsync();
@@ -128,7 +126,7 @@ namespace EGG9000.Bot.Automated {
                     var users = lUsers.Where(x => x.User.GuildId == guild.Id).ToList();
 
                     //Handle promotions
-                    Console.WriteLine($"Handling promotions for {guild.Name}");
+                    _logger.LogInformation("Handling promotions for {guild}", guild.Name);
 
 
                     var grades = new List<(Ei.Contract.Types.PlayerGrade, SocketRole)> {
@@ -144,7 +142,6 @@ namespace EGG9000.Bot.Automated {
                         if(cancellationToken.IsCancellationRequested)
                             break;
 
-                        //Console.WriteLine($"Handling {userAccounts.First().User.DiscordUsername}");
                         var dbUser = userAccounts.First().User;
                         var discordUser = guild.GetUser(dbUser.DiscordId);
                         if(userAccounts.Count() > 1) {
@@ -161,8 +158,6 @@ namespace EGG9000.Bot.Automated {
                         var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
                         if(registeredRole == null) {
                             await discordUser.AddRoleAsync(guild.Roles.First(x => x.Name.ToLower().Contains("registered")));
-                            Console.WriteLine("Adding registered role");
-                            await Task.Delay(500);
                         }
 
                         if(unjoinedRole != null) {
@@ -170,10 +165,8 @@ namespace EGG9000.Bot.Automated {
                             var needsRole = userAccounts.All(x => x.TotalContracts == 0);
                             if(hasRole && !needsRole) {
                                 await discordUser.RemoveRoleAsync(unjoinedRole);
-                                await Task.Delay(500);
                             } else if(!hasRole && needsRole) {
                                 await discordUser.AddRoleAsync(unjoinedRole);
-                                await Task.Delay(500);
                             }
 
                         }
@@ -197,11 +190,10 @@ namespace EGG9000.Bot.Automated {
                         }
                         if(!dbUser.showEB && !string.IsNullOrEmpty(discordUser.Nickname) && discordUser.GetCleanName() != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
                             try {
-                                Console.WriteLine($"Updating {discordUser.Nickname} to {discordUser.GetCleanName()}");
+                                _logger.LogInformation("Updating {user} to {newname}", discordUser.Nickname, discordUser.GetCleanName());
                                 await discordUser.ModifyAsync(x => x.Nickname = discordUser.GetCleanName());
-                                await Task.Delay(250);
                             } catch(Exception) {
-                                Console.WriteLine($"Unable to change name of {discordUser.GetName()}");
+                                _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
 
@@ -215,17 +207,16 @@ namespace EGG9000.Bot.Automated {
                                 var ebString = $" ({string.Join(",", values: ebs)})";
                                 var newName = discordUser.GetCleanName().Truncate(32 - ebString.Length) + ebString;
                                 if(newName != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
-                                    Console.WriteLine($"Updating {discordUser.Nickname} to {newName}");
+                                    _logger.LogInformation("Updating {user} to {newName}", discordUser.Nickname, newName);
                                     await discordUser.ModifyAsync(x => x.Nickname = newName);
-                                    await Task.Delay(250);
                                 }
                             } catch(Exception) {
-                                Console.WriteLine($"Unable to change name of {discordUser.GetName()}");
+                                _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
 
                         if(role != null && existingRole != null && existingRole.Name != role.Name) {
-                            Console.WriteLine($"{discordUser.Nickname} changing role from {existingRole.Name} to {role.Name})");
+                            _logger.LogInformation("{user} changing role from {existingRole} to {newRole})", discordUser.Nickname, existingRole.Name, role.Name);
                         }
                         if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) {
                             var eb = higherEB.Backup.EarningsBonus.ToEggString();
@@ -323,11 +314,11 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     await PostOverallLeaderboard(guild, users, recentContracts, _db);
-                    Console.WriteLine("Finished updating Leaderboard");
+                    _logger.LogInformation("Finished updating Leaderboard");
                 }
             } catch(Exception e) {
                 _bugsnag.Notify(e);
-                Console.WriteLine("**************ERROR in LeaderboardUpdater**********")
+                _logger.LogError("**************ERROR in LeaderboardUpdater**********")
 ;
             }
 
