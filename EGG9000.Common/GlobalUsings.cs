@@ -1,0 +1,1 @@
+﻿global using static EGG9000.Common.Factories.StaticLoggerFactory;

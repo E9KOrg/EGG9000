@@ -1,0 +1,96 @@
+﻿@using Discord.WebSocket
+@using EGG9000.Common.Helpers
+@inject DiscordSocketClient _discord
+@model (List<DBUser> users, IReadOnlyCollection<SocketGuildUser> guildUsers, List<UserCoopXref> xrefs)
+@{
+	var users = Model.users.Select(u => {
+		return (User: u, Xref: Model.xrefs.FirstOrDefault(x => x.UserId == u.Id), GuildUser: Model.guildUsers.FirstOrDefault(gu => gu.Id == u.DiscordId));
+	});
+
+	var i = 0;
+
+	var guild = Model.guildUsers.First().Guild;
+}
+
+
+
+
+<h2>Inactive Users</h2>
+
+<table class="table table-striped">
+	<thead>
+		<tr>
+			<th>Discord Name</th>
+			<th>Last Co-op</th>
+			<th>Accounts</th>
+			<th>Roles</th>
+			<th>Notes</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var user in users.Where(x => x.GuildUser is not null && !x.GuildUser.Roles.Any(r => r.Name == "Prophet" || r.Name == "Guest" || r.Name == "Pleb")).OrderBy(x => x.Xref?.CreatedOn ?? DateTimeOffset.Now)) {
+			//var messageCount = i++ < 50 ? guild.mes : "Not Checked";
+			<tr>
+				<td>
+					@user.GuildUser.DisplayName @user.GuildUser.Id @if (user.User.TempDisabled) {
+						<div><b>Disabled</b></div>
+					}
+				</td>
+				<td class="nowrap">
+					@user.Xref?.CreatedOn.ToString("yyyy-MM-dd")
+				</td>
+				<td>
+					@foreach (var account in user.User.EggIncAccounts) {
+						<span>@account.Id</span>
+					}
+				</td>
+				<td>@string.Join(", ", user.GuildUser.Roles.Where(x => !x.IsEveryone).Select(x => x.Name) ?? new List<string>())</td>
+				<td style="width: 25%;"><input style="width: 100%;" name="notes" value="@user.User.Notes" data-id="@user.User.Id" /></td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+
+<h2>Users not in database</h2>
+<table class="table table-striped">
+	<thead>
+		<tr>
+			<th>Discord Name</th>
+			<th>Roles</th>
+			<th>Joined</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var user in Model.guildUsers.Where(x => !x.IsBot && !Model.users.Any(y => y.DiscordId == x.Id)).OrderBy(x => x.JoinedAt)) {
+			<tr>
+				<td>@user.DisplayName</td>
+				<td>@string.Join(",", user.Roles.Where(x => !x.IsEveryone).Select(x => x.Name))</td>
+				<td>@user.JoinedAt?.ToString("yyyy-MM-dd")</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<style>
+	.nowrap {
+		white-space: nowrap;
+	}
+
+	.container {
+		max-width: initial !important;
+	}
+</style>
+
+@section Scripts {
+	<script>
+	$(document).on("change", "input[name='notes']", function() {
+		var elem = $(this);
+		$(this).css('background-color', 'yellow');
+		$.get( "/admin/savenotes?UserId=" + $(this).data("id") + "&Notes=" + encodeURIComponent($(this).val()), function( data ) {
+		  elem.css('background-color', 'green');
+		  setTimeout(() => elem.css('background-color', 'initial'), 2000);
+		});
+	});
+	</script>
+}

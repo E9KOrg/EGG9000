@@ -12,6 +12,7 @@ using EGG9000.Common.Database.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
@@ -41,8 +42,9 @@ namespace EGG9000.Common.Services {
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
         private Guild _cpGuild;
         private IServiceProvider _provider;
+        private ILogger<CommandService> _logger;
 
-        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Bugsnag.IClient bugsnag, ApplicationDbContext context, IServiceProvider provider) {
+        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Bugsnag.IClient bugsnag, ApplicationDbContext context, IServiceProvider provider, ILogger<CommandService> logger) {
             _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
@@ -52,6 +54,7 @@ namespace EGG9000.Common.Services {
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = provider;
+            _logger = logger;
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -205,7 +208,7 @@ namespace EGG9000.Common.Services {
             _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
             _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
 
-            Console.WriteLine("Creating slash commands");
+            _logger.LogInformation("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
             List<ApplicationCommandProperties> cpApplicationCommandProperties = new();
 
@@ -264,7 +267,7 @@ namespace EGG9000.Common.Services {
 
             try {
                 foreach(var guild in _discord.Guilds) {
-                    Console.WriteLine($"Creating slash commands for {guild.Name}");
+                    _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
                     bool isCPGuild;
                     if(_cpGuild is not null)
@@ -275,11 +278,12 @@ namespace EGG9000.Common.Services {
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
                 }
             } catch(Exception exception) {
+                _bugsnag.Notify(exception);
+                _logger.LogError(exception, "Error doing BulkOverwriteApplicationCommandAsync");
                 var json = JsonConvert.SerializeObject(exception, Formatting.Indented);
-                Console.WriteLine(json);
             }
 
-            Console.WriteLine("Slash Commands Created");
+            _logger.LogInformation("Slash Commands Created");
         }
 
         private async Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
@@ -473,9 +477,9 @@ namespace EGG9000.Common.Services {
 
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.SlashCommandExecuted -= _discord_SlashCommandExecuted;
-            Console.WriteLine($"Stopped listening to slash commands");
+            _logger.LogInformation($"Stopped listening to slash commands");
             if(_semaphoreSlim.CurrentCount > 0) {
-                Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
+                _logger.LogInformation("Waiting on semaphores to shutdown");
             }
             await _semaphoreSlim.WaitAsync(cancellationToken);
         }

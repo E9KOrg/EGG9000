@@ -30,6 +30,7 @@ using Microsoft.Data.SqlClient;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using EGG9000.Common.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
@@ -62,27 +63,12 @@ namespace EGG9000.Bot.Automated {
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var showTimings = false;
-
-            var totalStopwatch = new Stopwatch();
-            totalStopwatch.Start();
-
-            Console.WriteLine("Starting Contract Update");
-            var sw = new Stopwatch();
-            sw.Start();
-
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync();
 
-            if(showTimings)
-                Console.WriteLine($"Contracts: {sw.ElapsedMilliseconds}");
-            sw.Restart();
 
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
-            if(showTimings)
-                Console.WriteLine($"Guilds: {sw.ElapsedMilliseconds}");
-            sw.Restart();
             var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-7)).ToListAsync();
 
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
@@ -99,12 +85,9 @@ namespace EGG9000.Bot.Automated {
                 if(guild == null)
                     continue;
 
-                Console.WriteLine($"Running Contracts for {guild.Name}");
+                _logger.LogInformation("Running Contracts for {guild}", guild.Name);
                 var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id).ToListAsync();
 
-                if(showTimings)
-                    Console.WriteLine($"DBUsers: {sw.ElapsedMilliseconds}");
-                sw.Restart();
 
 #if DEBUG
                 var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
@@ -116,9 +99,6 @@ namespace EGG9000.Bot.Automated {
                 var backups = await _apiLink.GetUserBackups(dbusers, _db);
 #endif
 
-                if(showTimings)
-                    Console.WriteLine($"Backups: {sw.ElapsedMilliseconds}");
-                sw.Restart();
 
                 var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);
                 //var contractIds = groupGuildContracts.Select(x => x.ContractID);
@@ -126,9 +106,6 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                if(showTimings)
-                    Console.WriteLine($"Get Coops: {sw.ElapsedMilliseconds}");
-                sw.Restart();
                 //var dbguild = dbguilds.First(x => x.Id == guild.Id);
                 if(groupGuildContracts is not null) {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
@@ -191,18 +168,11 @@ namespace EGG9000.Bot.Automated {
 
  
 
-            if(showTimings)
-                Console.WriteLine($"Saving DB: {sw.ElapsedMilliseconds}");
-            sw.Restart();
-
-
-
-            Console.WriteLine($"Finished Contract Channels Update {Math.Round(totalStopwatch.ElapsedMilliseconds / 1000.0 / 60.0, 1)}mins");
         }
 
         public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, FauxCommand slashCommand = null) {
             try {
-                Console.WriteLine($"Working on GuildContract for {guildContract.GuildID} - {guildContract.Contract.ID}");
+                _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
@@ -219,7 +189,7 @@ namespace EGG9000.Bot.Automated {
 
 
                 if(channel == null) {
-                    Console.WriteLine($"Missing Channel for {guildContract.ContractID}");
+                    _logger.LogWarning("Missing Channel for {contract} in {guild}", guildContract.Contract.Name, guild.Name);
                     return;
                 }
 
@@ -300,7 +270,7 @@ namespace EGG9000.Bot.Automated {
 
 
             } catch(Exception e) {
-                Console.WriteLine($"Error Updating Contracts Channel {e.Message}");
+                _logger.LogError(e, "Error Updating Contracts Channel");
                 _bugsnag.Notify(e);
             }
 
@@ -417,7 +387,6 @@ namespace EGG9000.Bot.Automated {
             var tableString = $"{coopName}\n```{FixedWidthTable.GetTable(table)}```\n";
             //var startLength = tableString.Length;
             //tableString = tableString.Replace("  ", "\t");
-            //Console.WriteLine($"Original Length: {startLength}, Final Length: {tableString.Length}, Save: {startLength - tableString.Length}");
             var msgs = new List<string>();
             while(tableString.Length > 2000) {
                 var index = tableString.LastIndexOf('\n', 2000);

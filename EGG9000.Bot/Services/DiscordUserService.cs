@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
@@ -35,16 +36,16 @@ namespace EGG9000.Common.Services {
         private APILink _apiLink;
         private Words _words;
         private Bugsnag.IClient _bugsnag;
-        private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
         private IServiceProvider _provider;
-
-        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, IServiceProvider provider) {
+        private ILogger<DiscordUserService> _logger;
+        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) {
             _discord = discord;
             _configuration = Configuration;
             _apiLink = apilink;
             _words = words;
             _bugsnag = bugsnag;
             _provider = provider;
+            _logger = logger;
         }
 
 
@@ -52,16 +53,34 @@ namespace EGG9000.Common.Services {
         public Task StartAsync(CancellationToken cancellationToken) {
             _discord.UserJoined += Client_UserJoined;
             _discord.UserLeft += Client_UserLeft;
+            _discord.ChannelDestroyed += _discord_ChannelDestroyed;
             return Task.CompletedTask;
+        }
+
+        private Task _discord_ChannelDestroyed(SocketChannel arg) {
+            _ = HandleChannelDeleted(arg);
+            return Task.CompletedTask;
+        }
+
+        private async Task HandleChannelDeleted(SocketChannel arg) {
+            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var guildContract = await db.GuildContracts.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
+            if(guildContract is not null) {
+                guildContract.DeletedChannel = true;
+                await db.SaveChangesAsync();
+            }
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
+            if(coop is not null) {
+                coop.DeletedChannel = true;
+                await db.SaveChangesAsync();
+            }
+
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.UserJoined -= Client_UserJoined;
             _discord.UserLeft -= Client_UserLeft;
-            if(_semaphoreSlim.CurrentCount > 0) {
-                Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
-            }
-            await _semaphoreSlim.WaitAsync(cancellationToken);
+            _discord.ChannelDestroyed -= _discord_ChannelDestroyed;
         }
 
         private Task Client_UserJoined(SocketGuildUser user) {
@@ -87,6 +106,7 @@ namespace EGG9000.Common.Services {
         public async Task UserJoined(SocketGuildUser user, ApplicationDbContext db) {
             if(user.IsBot)
                 return;
+
 
             var guilds = await db.Guilds.ToListAsync();
             var dbguild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
@@ -121,7 +141,7 @@ namespace EGG9000.Common.Services {
                     }
                 }
                 return;
-            }
+            } 
 
 
 
@@ -131,16 +151,24 @@ namespace EGG9000.Common.Services {
                 var generalChannel = await _discord.GetChannelAsync(GuildChannelType.General, user.Guild);
                 await generalChannel.SendMessageAsync($"Welcome back {user.Mention}!");
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
-            } else {
-                var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
-                var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
-                var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
-                var talkChannel = user.Guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
-                if(talkChannel != null)
-                    msg += $" If you have any questions feel free to ask us in {talkChannel.Mention}, we are glad you are here!";
-                
-                await welcomeChannel.SendMessageAsync(msg);
+                return;
+            } else if(dbuser is not null && dbuser.GuildId == 0) {
+                var previouslyHere = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id);
+                if(previouslyHere) {
+                    dbuser.GuildId = user.Guild.Id;
+                    await db.SaveChangesAsync();
+                    return;
+                }
             }
+
+            var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
+            var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
+            var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
+            var talkChannel = user.Guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
+            if(talkChannel != null)
+                msg += $" If you have any questions feel free to ask us in {talkChannel.Mention}, we are glad you are here!";
+                
+            await welcomeChannel.SendMessageAsync(msg);
         }
 
         public async Task UserLeft(SocketGuild guild, SocketUser user, ApplicationDbContext db) {

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {
@@ -45,9 +46,11 @@ namespace EGG9000.Bot.Automated {
         protected Bugsnag.IClient _bugsnag;
 
         protected ulong _CPGuildId;
+        private ILogger<T> _logger;
 
-        public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider) {
-            Console.WriteLine($"Initiating {this.GetType().Name}");
+        public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider, ILogger<T> logger) {
+            _logger = logger;
+            _logger.LogInformation($"Initiating");
             var options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>();
             _configuration = provider.GetService<IConfiguration>();
             UpdateInterval = updateInterval;
