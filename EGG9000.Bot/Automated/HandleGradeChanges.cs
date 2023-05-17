@@ -18,6 +18,7 @@ using Ei;
 using Humanizer;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class HandleGradeChanges : _UpdaterBase<UserSnapShots> {
@@ -35,22 +36,26 @@ namespace EGG9000.Bot.Automated {
             var chunkedUsers = users.Chunk(100);
             foreach(var userchunk in chunkedUsers) {
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (user, token) => {
-                    foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
-                        var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
-                        if(r is null) {
-                            Console.WriteLine($" **  Null response for {user.DiscordUsername} ({account.Id})");
-                            continue;
+                    try {
+                        foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
+                            var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
+                            if(r is null) {
+                                _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);
+                                continue;
+                            }
+                            if(r?.Grade != account.LastGrade) {
+                                _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Name, account.LastGrade, r.Grade);
+                                account.PromotionTime = DateTimeOffset.Now;
+                                account.LastGrade = r.Grade;
+                                user.UpdateAccounts();
+                            }
                         }
-                        if(r?.Grade != account.LastGrade) {
-                            Console.WriteLine($"Update grade for {user.DiscordUsername} ({account.Name}) Prev {account.LastGrade} New {r.Grade}");
-                            account.PromotionTime = DateTimeOffset.Now;
-                            account.LastGrade = r.Grade;
-                            user.UpdateAccounts();
-                        }
+                    } catch(Exception e) {
+                        _bugsnag.Notify(e);
+                        _logger.LogError(e, "Error checking for grade update");
                     }
                 });
                 await _db.SaveChangesAsync();
-                //Console.WriteLine("Saving Changes");
             }
         }
     }

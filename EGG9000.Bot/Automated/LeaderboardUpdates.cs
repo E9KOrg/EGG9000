@@ -57,7 +57,9 @@ namespace EGG9000.Bot.Automated {
 //#if DEBUG
 //                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.Coop.GuildId == 770469712064151593 && x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
 //#else
-                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
+                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync(cancellationToken);
+                if(cancellationToken.IsCancellationRequested)
+                    return;
 //#endif
                 var recentxrefs = xrefs.Where(x => recentContractIDs.Contains(x.ContractID)).ToList();
 
@@ -69,7 +71,9 @@ namespace EGG9000.Bot.Automated {
                 //#else
                 var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && !x.TempDisabled).Select(x => new {
                     DBUser = x,
-                }).ToListAsync();
+                }).ToListAsync(cancellationToken);
+                if(cancellationToken.IsCancellationRequested)
+                    return;
                 //#endif
                 dbusersWithGuildCoops.ForEach(x => { //
                     x.DBUser.GuildCoops = (ushort)xrefs.Where(xref => xref.UserId == x.DBUser.Id).Select(xref => xref.ContractID).Distinct().Count();
@@ -88,10 +92,13 @@ namespace EGG9000.Bot.Automated {
 
                 var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser {
                     User = x,
-                    Backup = x.Backups.FirstOrDefault(b => b.EggIncId == y.Id)
+                    Backup = y.Backup
                 })).Where(x => x.Backup is not null).ToList();
 
                 foreach(var lUser in lUsers) {
+                    if(cancellationToken.IsCancellationRequested)
+                        return;
+
                     if(lUser.Backup == null)
                         return;
                     var userXrefs = xrefs.Where(x => lUser.User.Id == x.UserId).ToList();
@@ -174,7 +181,7 @@ namespace EGG9000.Bot.Automated {
                         var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
                         var higherEB = userAccounts.Where(x => x.Backup?.Farms.Count != 0).OrderByDescending(x => x.Backup.EarningsBonus).First();
-                        var role = await DiscordHelpers.SetRole(guild, discordUser, higherEB.Backup.EarningsBonus);
+                        var role = await DiscordHelpers.SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, _bugsnag);
 
                         await DiscordHelpers.CheckSiloResearch(guild, discordUser, userAccounts.Select(y => y.Backup).ToList());
                         await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);
@@ -198,12 +205,10 @@ namespace EGG9000.Bot.Automated {
                         }
 
 
-                        var unnessacryBackups = dbUser.Backups.Where(x => !dbUser.EggIncAccounts.Any(y => y.Id == x.EggIncId)).ToList();
-                        unnessacryBackups.ForEach(x => dbUser.Backups.Remove(x));
 
                         if(dbUser.showEB) {
                             try {
-                                var ebs = dbUser.Backups.Where(x => dbUser.EggIncAccounts.Any(y => y.Id == x.EggIncId)).OrderByDescending(x => x.EarningsBonus).Select(x => x.EarningsBonus.ToEggString());
+                                var ebs = dbUser.EggIncAccounts.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).Select(x => x.Backup.EarningsBonus.ToEggString());
                                 var ebString = $" ({string.Join(",", values: ebs)})";
                                 var newName = discordUser.GetCleanName().Truncate(32 - ebString.Length) + ebString;
                                 if(newName != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
@@ -318,7 +323,7 @@ namespace EGG9000.Bot.Automated {
                 }
             } catch(Exception e) {
                 _bugsnag.Notify(e);
-                _logger.LogError("**************ERROR in LeaderboardUpdater**********")
+                _logger.LogError(e, "**************ERROR in LeaderboardUpdater**********")
 ;
             }
 

@@ -37,7 +37,8 @@ namespace EGG9000.Bot.Automated {
                 var snapshots = 0;
                 foreach(var user in users) {
                     try {
-                        foreach(var backup in user.Backups) {
+                        foreach(var account in user.EggIncAccounts) {
+                            var backup = account.Backup;
                             var lastSnapshot = await _db.UserSnapShots.AsQueryable().FirstOrDefaultAsync(x => x.UserId == user.Id &&
                             x.Prestiges == backup.NumPrestiges &&
                             x.EarningsBonus == backup.EarningsBonus &&

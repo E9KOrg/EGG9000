@@ -61,21 +61,6 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(status);
         }
 
-        public async Task<IActionResult> Fix() {
-            //var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == "summer-construction-2023" && x.GuildId == 656455567858073601 && x.League < 4).ToListAsync();
-
-            //foreach(var coop in coops) {
-            //    try {
-            //        var channel = (SocketGuildChannel)_discord.GetChannel(coop.DiscordChannelId);
-            //        await channel.DeleteAsync();
-            //    } catch(Exception) { }
-            //    _db.UserCoopXrefs.RemoveRange(coop.UserCoopsXrefs);
-            //    _db.Coops.Remove(coop);
-            //    await _db.SaveChangesAsync();
-            //}
-            return Content("success");
-        }
-
         
         //public async Task<IActionResult> Day1Coops([FromQuery] ulong GuildId, [FromQuery] uint size, [FromQuery] string contractid) {
 
@@ -223,13 +208,12 @@ namespace EGG9000.Site.Controllers {
 
             var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
             var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
-            var userswithbackups = dbusers.SelectMany(x => x.Backups.Select(y => new UserWithBackup { User = x, Backup = y }));
+            var userswithbackups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount { User = x, Account = y }));
             var userdetails = Users.Select(x => {
-                var user = userswithbackups.FirstOrDefault(y => y.Backup.EggIncId == x.EggIncId);
+                var user = userswithbackups.FirstOrDefault(y => y.Account.Backup.EggIncId == x.EggIncId);
                 var account = user.User.EggIncAccounts.First(y => y.Id == x.EggIncId);
                 return new UserByAccount {
-                    AccountSettings = account,
-                     Backup = user.Backup,
+                    Account = account,
                      User = user.User
                 };
             }).ToList();

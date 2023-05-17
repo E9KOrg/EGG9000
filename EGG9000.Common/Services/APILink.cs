@@ -77,33 +77,32 @@ namespace EGG9000.Common.Services {
 
         private string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
 
-        public void AddExistingBackups(IEnumerable<CustomBackup> backups) {
-            foreach(var backup in backups) {
-                var key = GetUserBackupKey(backup.EggIncId);
-                _cache.Set(key, backup, DateTimeOffset.Now.AddDays(7));
+        public void AddExistingBackups(IEnumerable<EggIncAccount> accounts) {
+            foreach(var account in accounts.Where(x => x.Backup is not null)) {
+                var key = GetUserBackupKey(account.Id);
+                _cache.Set(key, account.Backup, DateTimeOffset.Now.AddDays(7));
             }
         }
 
-        public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, bool longBackup = false, bool forceAll = false) {
+        public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, CancellationToken token, bool longBackup = false, bool forceAll = false) {
             var eggIncIds = users.SelectMany(u => u.EggIncAccounts.Where(e => !string.IsNullOrWhiteSpace(e.Id)).Select(e => e.Id));
-            var backups = await GetUserBackups(eggIncIds, longBackup, forceAll);
-
+            var backups = await GetUserBackups(eggIncIds, token, longBackup, forceAll);
             var lUsers = new List<LeaderboardUser>();
 
             foreach(var user in users) {
+                if(token.IsCancellationRequested)
+                    return null;
                 foreach(var eggInc in user.EggIncAccounts.Where(e => !string.IsNullOrEmpty(e.Id))) {
                     var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
-                    var dbBackup = user.Backups?.FirstOrDefault(b => b.EggIncId == eggInc.Id);
+                    var account = user.EggIncAccounts.FirstOrDefault(b => b.Id == eggInc.Id);
 
-                    if(backup != null && (backup.LastBackupTime != dbBackup?.LastBackupTime || forceAll)) {
-                        var userBackups = user.Backups?.ToList() ?? new List<CustomBackup>();
-                        userBackups = userBackups.Where(x => x != null && x.EggIncId != eggInc.Id && user.EggIncAccounts.Any(y => y.Id == x.EggIncId)).ToList();
-                        userBackups.Add(backup);
-                        user.Backups = userBackups;
+                    if(backup?.Farms != null && account is not null && (backup.LastBackupTime != account.Backup?.LastBackupTime || forceAll)) {
+                        account.Backup = backup;
+                        user.UpdateAccounts();
                     }
 
                     if(backup == null) {
-                        backup = dbBackup;
+                        backup = account?.Backup;
                     }
 
                     if(backup != null) {
@@ -118,16 +117,19 @@ namespace EGG9000.Common.Services {
             return lUsers;
         }
 
-        public async Task<List<CustomBackup>> GetUserBackups(IEnumerable<string> eggIncIds, bool longBackup = false, bool forceAll = false) {
+        public async Task<List<CustomBackup>> GetUserBackups(IEnumerable<string> eggIncIds, CancellationToken token, bool longBackup = false, bool forceAll = false) {
             var backupsNeeded = new List<BackupRequest>();
             var backups = new List<CustomBackup>();
 
             foreach(var eggIncId in eggIncIds) {
+                if(token.IsCancellationRequested)
+                    return null;
+
                 var key = GetUserBackupKey(eggIncId);
                 CustomBackup currentBackup;
                 float lastBackupTime = -1;
                 if(!forceAll && _cache.TryGetValue(key, out currentBackup)) {
-                    if(!currentBackup.Farms.All(f => f.Vehicles == null)) {
+                    if(currentBackup.Farms is not null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
 
                         if(currentBackup.CacheAdded < DateTime.Now.AddMinutes(10) && ((DateTime.Now - currentBackup.CacheAdded).TotalMinutes < 5 || longBackup)) {
                             backups.Add(currentBackup);
@@ -152,6 +154,9 @@ namespace EGG9000.Common.Services {
                 var partitions = Partition(backupsNeeded, 500);
                 var i = 1;
                 foreach(var partition in partitions) {
+                    if(token.IsCancellationRequested)
+                        return null;
+
                     await throttler.WaitAsync();
                     _logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
                     i++;
@@ -162,8 +167,7 @@ namespace EGG9000.Common.Services {
                             foreach(var backupResponse in response.Data) {
                                 var key = GetUserBackupKey(backupResponse.EggIncId);
                                 if(backupResponse.Unchanged) {
-                                    CustomBackup currentBackup;
-                                    if(_cache.TryGetValue(key, out currentBackup)) {
+                                    if(_cache.TryGetValue(key, out CustomBackup currentBackup)) {
                                         backups.Add(currentBackup);
                                         continue;
                                     }
@@ -337,7 +341,7 @@ namespace EGG9000.Common.Services {
             _logger.LogInformation("Getting User Backups for Cache");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
-            var backups = usersTask.SelectMany(x => x.Backups ?? new List<CustomBackup>());
+            var backups = usersTask.SelectMany(x => x.EggIncAccounts);
             if(backups != null) {
                 AddExistingBackups(backups);
             }

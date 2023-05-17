@@ -77,10 +77,11 @@ namespace EGG9000.Common.Services {
 
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken) {
+        public Task StopAsync(CancellationToken cancellationToken) {
             _discord.UserJoined -= Client_UserJoined;
             _discord.UserLeft -= Client_UserLeft;
             _discord.ChannelDestroyed -= _discord_ChannelDestroyed;
+            return Task.CompletedTask;
         }
 
         private Task Client_UserJoined(SocketGuildUser user) {

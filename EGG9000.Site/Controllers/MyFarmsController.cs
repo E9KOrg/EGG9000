@@ -60,7 +60,7 @@ namespace EGG9000.Site.Controllers {
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
-            var backups = new List<CustomBackup>();
+            bool update = false;
             var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
             foreach(var account in user.EggIncAccounts) {
@@ -73,8 +73,9 @@ namespace EGG9000.Site.Controllers {
 
                 //var response = await _apiLink.GetBackup(accounts.Id);
                 Console.WriteLine($"Getting backups for {account.Name}");
-                if(customBackup?.SpaceMissions != null) {
-                    backups.Add(customBackup);
+                if(customBackup?.Farms is not null) {
+                    account.Backup = customBackup;
+                    update = true;
                 }
                 //Console.WriteLine(customBackup.SpaceMissions.Count);
                 
@@ -82,11 +83,11 @@ namespace EGG9000.Site.Controllers {
                 
                 scoring.Add((account.Id, scores));
             }
-            if(backups.Count > 0) {
-                user.Backups = backups;
+            if(update) {
+                user.UpdateAccounts();
                 await _db.SaveChangesAsync();
             }
-            var contractIDs = user.Backups.SelectMany(b => b.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
+            var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             ViewBag.Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             ViewBag.Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
@@ -112,7 +113,7 @@ namespace EGG9000.Site.Controllers {
             var serialized = MessagePackSerializer.Serialize(backup, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
             backup = MessagePackSerializer.Deserialize<CustomBackup>(serialized, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
             return View("Index", new DBUser {
-                Backups = new List<CustomBackup> { backup },
+                EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
                 UserCoopXrefs = new List<UserCoopXref>()
             });
         }
@@ -124,20 +125,21 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
             //Get fresh backups
-            var backups = new List<CustomBackup>();
-            foreach(var accounts in user.EggIncAccounts) {
-                backups.Add((await _apiLink.GetBackup(accounts.Id)));
+            foreach(var account in user.EggIncAccounts) {
+                var backup = await _apiLink.GetBackup(account.Id);
+                if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
+                    account.Backup = backup;
+                }
             }
-            user.Backups = backups;
 
-            var contractIDs = user.Backups.SelectMany(b => b.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
+            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
             //user.Backups.ForEach(b => b.Contracts.Contracts.ToList().ForEach(c => c.Contract.Name = contracts.FirstOrDefault(x => x.ID == c.Contract.Identifier)?.Name));
 
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.Now).FirstOrDefaultAsync();
 
             return View(new EarningsBoostCalculatorModel {
-                Backups = user.Backups,
+                Backups = user.EggIncAccounts.Select(x => x.Backup).ToList(),
                 Event = boostEvent
             });
         }
@@ -150,18 +152,19 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
             //Get fresh backups
-            var backups = new List<CustomBackup>();
-            foreach(var accounts in user.EggIncAccounts) {
-                backups.Add((await _apiLink.GetBackup(accounts.Id)));
+            foreach(var account in user.EggIncAccounts) {
+                var backup = await _apiLink.GetBackup(account.Id);
+                if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
+                    account.Backup = backup;
+                }
             }
-            user.Backups = backups;
 
-            var contractIDs = user.Backups.SelectMany(b => b.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
+            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
             //user.Backups.ForEach(b => b.Contracts.Contracts.ToList().ForEach(c => c.Contract.Name = contracts.FirstOrDefault(x => x.ID == c.Contract.Identifier)?.Name));
 
             return View(new EarningsBoostCalculatorModel {
-                Backups = user.Backups,
+                Backups = user.EggIncAccounts.Select(x => x.Backup).ToList(),
             });
         }
 

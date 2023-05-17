@@ -13,6 +13,7 @@ using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
@@ -42,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync();
 
             if(response?.Events?.Events == null) {
-                Console.WriteLine("Response is null for Event Updater");
+                _logger.LogWarning("Response is null for Event Updater");
                 return;
             }
 
@@ -172,7 +173,7 @@ namespace EGG9000.Bot.Automated {
                                 });
                             }
                         } catch(Exception) {
-                            Console.WriteLine($"Error Updating Messages: ");
+                            _logger.LogWarning("Error Updating Messages for {guild}", guild.Name);
                         }
                     }
                 }

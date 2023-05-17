@@ -224,6 +224,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<decimal>("GuildId")
                         .HasColumnType("decimal(20,0)");
 
+                    b.Property<decimal?>("LastGuild")
+                        .HasColumnType("decimal(20,0)");
+
                     b.Property<DateTimeOffset>("LastSleepingNotification")
                         .HasColumnType("datetimeoffset");
 
@@ -238,6 +241,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<DateTimeOffset?>("Registered")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("ShipReturnDMAfterFuel")
+                        .HasColumnType("bit");
 
                     b.Property<int>("ShipReturnMinutes")
                         .HasColumnType("int");
@@ -263,14 +269,14 @@ namespace EGG9000.Common.Migrations
                     b.Property<byte[]>("_contractRegistrationByte")
                         .HasColumnType("varbinary(max)");
 
+                    b.Property<byte[]>("_coopSettingByte")
+                        .HasColumnType("varbinary(max)");
+
                     b.Property<string>("_eggIncIds")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("_shipDMsByte")
                         .HasColumnType("varbinary(max)");
-
-                    b.Property<string>("_shipDMsString")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("showEB")
                         .HasColumnType("bit");
@@ -755,6 +761,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<bool>("AddedToChannel")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("CoopFullWarning")
+                        .HasColumnType("bit");
+
                     b.Property<DateTimeOffset>("CreatedOn")
                         .HasColumnType("datetimeoffset");
 
@@ -835,6 +844,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<bool>("WasAssigned")
                         .HasColumnType("bit");
+
+                    b.Property<byte[]>("_coopSettingByte")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<byte[]>("_sleepTrackingByte")
                         .HasColumnType("varbinary(max)");

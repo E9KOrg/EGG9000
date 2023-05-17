@@ -31,6 +31,7 @@ using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using EGG9000.Common.Contracts;
 using Microsoft.Extensions.Logging;
+using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
@@ -63,15 +64,20 @@ namespace EGG9000.Bot.Automated {
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
+            var times = new TimingsFactory(_logger);
+            times.Start();
+
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync();
-
+            times.Set("guildcontracts");
 
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-
-            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-7)).ToListAsync();
-
+            times.Set("dbguilds");
+            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync();
+            times.Set("coops");
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
+
+            var timings = times.Finished();
 
 #if DEBUG
             //guildGroups = guildGroups.Where(x => x.Key == dbguilds.First(x => x.Name.Contains("ingham")).DiscordSeverId);
@@ -90,15 +96,14 @@ namespace EGG9000.Bot.Automated {
 
 
 #if DEBUG
-                var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
-                    User = y,
-                    Backup = x
-                })).ToList();
-                //var backups = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
+                //dbusers = dbusers.Take(100).ToList();
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
+                //await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
 #else
-                var backups = await _apiLink.GetUserBackups(dbusers, _db);
+                _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
+                await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
 #endif
-
 
                 var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);
                 //var contractIds = groupGuildContracts.Select(x => x.ContractID);
@@ -114,43 +119,46 @@ namespace EGG9000.Bot.Automated {
                         await UpdateContractChannel(_db, guildContract, guild);
                     }
                 }
-                await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 
 
                 var contracts = await _db.Contracts.ToListAsync();
                 var count = 0;
                 var potentialCoops = new List<(string contractid, string coopname, List<Guid> userids, ulong guildid, uint grade, long endtime)>();
                 foreach(var user in dbusers) {
-                    foreach(var account in user.EggIncAccounts) {
-                        var backup = user.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
-                        if(backup is null)
+                    foreach(var account in user.EggIncAccounts.Where(x => x.Backup?.Farms is not null)) {
+                        if(account.Backup is null)
                             continue;
 
-                        foreach(var farm in backup.Farms.Where(x =>
+
+                        var farms = account.Backup.Farms.Where(x =>
                             x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset &&
+                            !x.Completed &&
                             !coops.Any(c => c.Name.ToLower() == x.CoopId) &&
-                            !string.IsNullOrWhiteSpace(x.CoopId)
-                        )) {
+                            !string.IsNullOrWhiteSpace(x.CoopId) && x.TimeAccepted > DateTimeOffset.Now.AddDays(-7).ToUnixTimeSeconds()
+                        );
+
+                        foreach(var farm in farms) {
 
                             if(potentialCoops.Any(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId)) {
                                 var poentialCoop = potentialCoops.First(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId);
                                 poentialCoop.userids.Add(user.Id);
                                 poentialCoop.userids = poentialCoop.userids.Distinct().ToList();
                             } else {
-                                potentialCoops.Add((farm.ContractId, farm.CoopId, new List<Guid> { user.Id }, user.GuildId, (uint)farm.Grade, farm.CoopSharedEndTime)); 
+                                potentialCoops.Add((farm.ContractId, farm.CoopId, new List<Guid> { user.Id }, user.GuildId, (uint)farm.Grade, farm.CoopSharedEndTime));
                             }
                         }
                     }
                 }
 
                 foreach(var pCoop in potentialCoops.Where(x => x.userids.Count > 1)) {
+                    _logger.LogInformation("Adding co-op {coopname} from backups", pCoop.coopname);
                     var contract = contracts.First(x => x.ID == pCoop.contractid);
                     var coop = new Coop {
                         ContractID = pCoop.contractid, Created = DateTimeOffset.Now, GuildId = pCoop.guildid, Name = pCoop.coopname,
                         MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnAssigned, League = pCoop.grade,
                         CoopEnds = DateTimeOffset.FromUnixTimeSeconds(pCoop.endtime)
                     };
-                    coops.Add(coop);
+                    coops.Add(new { Name = coop.Name });
                     _db.Add(coop);
                     await _db.SaveChangesAsync();
                     count++;

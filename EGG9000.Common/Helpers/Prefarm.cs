@@ -11,8 +11,8 @@ using EGG9000.Common.Services;
 using EGG9000.Common.Database;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using static Ei.ContractCoopStatusResponse.Types;
 using Newtonsoft.Json;
+using static Ei.ContractCoopStatusResponse.Types;
 
 namespace EGG9000.Common.Helpers {
     public static class Prefarm {
@@ -23,6 +23,7 @@ namespace EGG9000.Common.Helpers {
         }
         public class LeaderboardUser {
             public DBUser User { get; set; }
+            public EggIncAccount Account { get => User.EggIncAccounts.First(x => x.Id == Backup.EggIncId); }
             public CustomBackup Backup { get; set; }
             public DateTimeOffset? lastSeen { get; set; }
             public int RecentContracts { get; set; }
@@ -168,9 +169,9 @@ namespace EGG9000.Common.Helpers {
 
         public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract, DiscordSocketClient discord, UInt32 league) {
             var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildContract.GuildID).ToListAsync();
-            var backups = dbusers.Where(x => x.Backups != null && x.GuildId == guildContract.GuildID).SelectMany(y => y.Backups.Select(x => new UserWithBackup {
+            var backups = dbusers.Where(x => x.GuildId == guildContract.GuildID).SelectMany(y => y.EggIncAccounts.Where(x => x.Backup is not null).Select(x => new UserWithBackup {
                 User = y,
-                Backup = x
+                Backup = x.Backup
             })).ToList();
 
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == league).ToListAsync();
@@ -179,7 +180,7 @@ namespace EGG9000.Common.Helpers {
             var missingXrefUsers = coops.SelectMany(c => c.UserCoopsXrefs.Where(x => !backups.Any(b => b.User.Id == x.UserId))).Select(x => x.UserId);
 
             var missingUsers = await db.DBUsers.Where(x => missingXrefUsers.Contains(x.Id)).ToListAsync();
-            backups.AddRange(missingUsers.SelectMany(u => u.Backups.Select(b => new UserWithBackup { User = u, Backup = b })));
+            backups.AddRange(missingUsers.SelectMany(u => u.EggIncAccounts.Where(x => x.Backup is not null).Select(b => new UserWithBackup { User = u, Backup = b.Backup })));
 
             var coopsBreakdown = Prefarm.GetBreakdown(coops, backups, guildContract, discord, league);
             return coopsBreakdown;
@@ -426,21 +427,21 @@ namespace EGG9000.Common.Helpers {
 
                         if(xref == null && !string.IsNullOrWhiteSpace(participant.UserName)) {
                             //Now try to match a backup username
-                            var matchbackup = backups.FirstOrDefault(x => x.Backup.UserName == participant.UserName);
+                            var matchbackup = backups.FirstOrDefault(x => x.Backup?.UserName == participant.UserName);
                             xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                             if(xref is not null) saveFixedUserName = true;
                         }
 
 
                         if(saveFixedUserName) {
-                            var isNameUnique = !backups.Any(b => b.Backup.UserName == participant.UserName && b.Backup.EggIncId != xref.EggIncId);
+                            var isNameUnique = !backups.Any(b => b.Backup?.UserName == participant.UserName && b.Backup?.EggIncId != xref.EggIncId);
                             var matchingBackup = backups.First(b => b.User.Id == xref.UserId);
                             var isInCoop = matchingBackup.Backup.Farms.Any(f => f.CoopId is not null && f.CoopId.Equals(coop.Name, StringComparison.InvariantCultureIgnoreCase));
                             if(isNameUnique && !string.IsNullOrEmpty(participant.UserName) && isInCoop)
                                 xref.FixedUserName = participant.UserName;
                         }
                     }
-                    var backup = xref is not null ? backups.OrderByDescending(x => x.User.GuildId != 0).FirstOrDefault(b => b.Backup.EggIncId == xref.EggIncId) : null;
+                    var backup = xref is not null ? backups.OrderByDescending(x => x.User.GuildId != 0).FirstOrDefault(b => b.Backup?.EggIncId == xref.EggIncId) : null;
                     coopParticipants.Add(new UserFarmDetails(xref, participant, contract, backup, discord, league));
                 }
             }
@@ -448,23 +449,24 @@ namespace EGG9000.Common.Helpers {
             if(coop is not null) {
                 //Add missing participants
                 var missingXrefs = coop.UserCoopsXrefs.Where(x => !coopParticipants.Any(y => y is not null && y.Xref == x));
-                coopParticipants.AddRange(missingXrefs.Select(x => {
-                    var backup = backups.FirstOrDefault(b => b.Backup.EggIncId == x.EggIncId);
+
+                foreach(var xref in missingXrefs) {
+                    var backup = backups.FirstOrDefault(b => b.Backup?.EggIncId == xref.EggIncId);
                     if(backup == null)
-                        backup = backups.FirstOrDefault(b => b.User.Id == x.UserId);
+                        backup = backups.FirstOrDefault(b => b.User.Id == xref.UserId);
                     if(backup == null)
-                        backup = x.User?.Backups?.Select(b => new UserWithBackup { User = x.User, Backup = b }).FirstOrDefault();
+                        backup = xref.User?.EggIncAccounts.Select(b => new UserWithBackup { User = xref.User, Backup = b.Backup }).FirstOrDefault();
                     if(backup is null)
-                        backup = backups.FirstOrDefault(b => b.User.Id == x.UserId);
-                    if(backup is not null)
-                        return new UserFarmDetails(x, contract, backup, discord, league);
-                    return null;
-                }));
-                coopParticipants.RemoveAll(x => x is null);
+                        backup = backups.FirstOrDefault(b => b.User.Id == xref.UserId);
+                    if(backup is not null) {
+                        var participant = new UserFarmDetails(xref, contract, backup, discord, league);
+                        coopParticipants.Add(participant);
+                    }
+                }
             }
 
             foreach(var missingUser in coopParticipants.Where(x => x.Xref is null)) {
-                var user = backups.FirstOrDefault(x => x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
+                var user = backups.Where(x => x.Backup is not null).FirstOrDefault(x => missingUser.CoopStatus.UserName.Length > 0 && x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
                 if(user is not null) {
                     missingUser.DBUser = user.User;
                     missingUser.Backup = user.Backup;

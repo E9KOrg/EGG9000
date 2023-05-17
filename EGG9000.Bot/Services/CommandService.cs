@@ -5,20 +5,22 @@ using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Commands;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Services;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
-
-using Quartz.Impl.AdoJobStore.Common;
 
 using System;
 using System.Collections.Generic;
@@ -40,6 +42,7 @@ namespace EGG9000.Bot.Services {
         private List<SlashCommandFunction> _slashCommandFunctions;
         private List<UserCommandFunction> _userCommandFunctions;
         private List<ComponentCommandFunction> _componentCommandFunctions;
+        private List<ModalCommandFunction> _modalFunctions;
         private IConfiguration _configuration;
         private APILink _apilink;
         private Words _words;
@@ -50,6 +53,7 @@ namespace EGG9000.Bot.Services {
         private Guild _cpGuild;
         private IServiceProvider _provider;
         private ILogger<CommandService> _logger;
+        private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
 
         public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context, IServiceProvider serviceProvider, ILogger<CommandService> logger) {
             _discord = discord;
@@ -137,12 +141,15 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(data.Length > 1 ? (object)data[1] : null);
                             continue;
                         }
+
                         if(parameterInfo.ParameterType == typeof(FauxCommand)) {
                             if(arg is SocketSlashCommand)
                                 parameters.Add(new FauxCommand(arg as SocketSlashCommand));
                             else
                                 parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(SocketMessageComponent)) {
+                            parameters.Add(arg);
+                        } else if(parameterInfo.ParameterType == typeof(SocketModal)) {
                             parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
                             parameters.Add(arg);
@@ -164,7 +171,9 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_contractUpdater);
                         } else if(parameterInfo.ParameterType == typeof(IServiceProvider)) {
                             parameters.Add(_provider);
-                        }  else {
+                        } else if(parameterInfo.ParameterType == typeof(Bugsnag.IClient)) {
+                            parameters.Add(_bugsnag);
+                        } else {
                             throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
                         }
                     }
@@ -222,6 +231,7 @@ namespace EGG9000.Bot.Services {
             _discord.ButtonExecuted += _discord_ButtonExecuted;
             _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
             _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
+            _discord.ModalSubmitted += _discord_ModalSubmitted;
 
             _logger.LogInformation("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -287,6 +297,7 @@ namespace EGG9000.Bot.Services {
                     var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
+                    _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
             } catch(Exception exception) {
                 _bugsnag.Notify(exception);
@@ -295,6 +306,14 @@ namespace EGG9000.Bot.Services {
             }
 
             _logger.LogInformation("Slash Commands Created");
+        }
+
+        private Task _discord_ModalSubmitted(SocketModal arg) {
+            var command = _modalFunctions.First(x => x.Name == arg.Data.CustomId.ToLower());
+
+            _ = Task.Run(() => RunCommand(command, arg));
+
+            return Task.CompletedTask;
         }
 
         private async Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
@@ -306,7 +325,7 @@ namespace EGG9000.Bot.Services {
 
         }
 
-        private object DependencyInjection(Type T){
+        private object DependencyInjection(Type T) {
             var constructor = T.GetConstructors().FirstOrDefault();
             if(constructor is null) {
                 return Activator.CreateInstance(T);
@@ -374,7 +393,11 @@ namespace EGG9000.Bot.Services {
                 }
             }
         }
-        private async Task _discord_MessageReceived(SocketMessage message) {
+        private Task _discord_MessageReceived(SocketMessage message) {
+            _ = HandleMessageReceived(message);
+            return Task.CompletedTask;
+        }
+        private async Task HandleMessageReceived(SocketMessage message) {
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
@@ -382,18 +405,39 @@ namespace EGG9000.Bot.Services {
                 await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty, cpGeneralChannel);
                 await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
             }
+
+            if(!message.Author.IsBot && message.Interaction == null) {
+                var coop = await db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == message.Channel.Id);
+                if(coop is not null) {
+                    var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
+                    foreach(var xref in xrefs.Where(x => x.User.DiscordId != message.Author.Id)) {
+                        if(xref.CoopSetting?.PingOnMessage ?? false) {
+                            var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
+                            var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
+                            _logger.LogInformation("Sending co-op message as DM, Author: {author}, User: {user}", message.Author.Id, xref.User.DiscordId);
+                            try {
+                                var dmChannel = await discordUser.CreateDMChannelAsync();
+                                await dmChannel.SendMessageAsync($"Message from <#{coop.DiscordChannelId}>, **{author.GetCleanName()}:** {message.Content}");
+                            } catch(Exception e) {
+                                _logger.LogError(e, "User {user} has DMs blocked", discordUser.Username);
+                            }
+                        }
+                    }
+                }
+            }
+
             if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
                 var commandText = new Regex(@"^/(\w+)").Match(message.Content).Groups[1].Value.ToLower();
                 var command = _slashCommandFunctions.FirstOrDefault(x => x.Name == commandText);
                 if(command != null) {
-                    if(command.Parameters.Any(x => x.GetCustomAttributes<SlashParamAttribute>().Any())) {
-                        await message.Channel.SendMessageAsync(
-                            $"⚠️{message.Author.Mention}, looks like you attempted to run the command `/{command.Name}` but Discord sent it as a normal message instead of a command. Make sure a popup comes up when you start typing a command, if the popup doesn't show up then try force closing Discord and trying again."
-                            , messageReference: new MessageReference(message.Id)
-                        );
-                    } else {
-                        await RunCommand(command, new FauxCommand(message, guild.Id));
-                    }
+                    SocketApplicationCommand discordCommand = null;
+                    try {
+                        discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == command.Name.ToLower() && x.guildid == (message.Channel as SocketGuildChannel).Guild.Id).command;
+                            } finally { }
+                    await message.Channel.SendMessageAsync(
+                        $"⚠️{message.Author.Mention}, looks like you attempted to run the command but Discord sent it as a normal message instead of a command. Make sure a pop-up comes up when you start typing a command, if the pop-up doesn't show up then try force closing Discord and trying again. You can also try clicking on this </{command.Name}:{discordCommand?.Id}> highlighted command to run it."
+                        , messageReference: new MessageReference(message.Id)
+                    );
                 }
             }
         }
@@ -407,7 +451,7 @@ namespace EGG9000.Bot.Services {
             }
 
 
-            
+
 
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
                         {typeof(int), ApplicationCommandOptionType.Integer },
@@ -478,12 +522,24 @@ namespace EGG9000.Bot.Services {
                       .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
 
+            _modalFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                .SelectMany(t => t.GetMethods())
+                      .Where(m => m.GetCustomAttributes(typeof(ModalAttribute), false).Length > 0)
+                      .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })
+                      .ToList();
+
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.SlashCommandExecuted -= _discord_SlashCommandExecuted;
+            _discord.UserCommandExecuted -= _discord_UserCommandExecuted;
+            _discord.MessageReceived -= _discord_MessageReceived;
+            _discord.ButtonExecuted -= _discord_ButtonExecuted;
+            _discord.SelectMenuExecuted -= _discord_SelectMenuExecuted;
+            _discord.AutocompleteExecuted -= _discord_AutocompleteExecuted;
+            _discord.ModalSubmitted += _discord_ModalSubmitted;
             _logger.LogInformation("Stopped listening to slash commands");
             if(_semaphoreSlim.CurrentCount > 0) {
                 _logger.LogInformation("Waiting on semaphore to shutdown");

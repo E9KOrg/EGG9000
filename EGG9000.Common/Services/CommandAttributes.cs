@@ -25,6 +25,9 @@ namespace EGG9000.Common.Commands {
     [AttributeUsage(AttributeTargets.Method)]
     public class ComponentCommandAttribute : System.Attribute {
     }
+    [AttributeUsage(AttributeTargets.Method)]
+    public class ModalAttribute : System.Attribute {
+    }
 
     [AttributeUsage(AttributeTargets.Parameter)]
     public class SlashParamAttribute : System.Attribute {
@@ -39,22 +42,25 @@ namespace EGG9000.Common.Commands {
 
     public class SlashCommandFunction : CommandFunctionBase {
         public SlashCommandAttribute Details { get; set; }
-        public string Name { get; set; }
         public List<SlashCommandFunction> SubFunctions { get; set; }
     }
     public class UserCommandFunction : CommandFunctionBase {
         public UserCommandAttribute Details { get; set; }
-        public string Name { get; set; }
     }
     public class ComponentCommandFunction : CommandFunctionBase {
-        public string Name { get; set; }
         public ComponentCommandAttribute Details { get; set; }
     }
+    public class ModalCommandFunction : CommandFunctionBase {
+        public ModalAttribute Details { get; set; }
+    }
+
 
     public class CommandFunctionBase {
         public MethodInfo MethodInfo { get; set; }
         public ParameterInfo[] Parameters { get; set; }
+        public string Name { get; set; }
     }
+
 
     public class ButtonObject {
 

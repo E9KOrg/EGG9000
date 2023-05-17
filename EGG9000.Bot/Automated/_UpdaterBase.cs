@@ -76,6 +76,7 @@ namespace EGG9000.Bot.Automated {
 
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
             UpdateInterval = newUpdateInterval;
+            _logger.LogInformation("Updating interval to {interval}", UpdateInterval);
             _timer.Change(UpdateInterval, UpdateInterval);
         }
 
@@ -101,7 +102,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
-                    _logger.LogError("Error during run: {Message}", e.Message);
+                    _logger.LogError(e, "Error during run: {Message}", e.Message);
                 } finally {
                     _logger.LogInformation("Releasing semaphore");
                     _semaphoreSlim.Release();
@@ -119,6 +120,8 @@ namespace EGG9000.Bot.Automated {
             return _timer is not null;
         }
         public Task StartAsync(CancellationToken cancellationToken) {
+            if(_cts is null)
+                _cts = new CancellationTokenSource();
             _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
             _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
             initialStart = false;
@@ -128,19 +131,17 @@ namespace EGG9000.Bot.Automated {
         public async Task StopAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("STOP: Called");
             _cts.Cancel();
-            _logger.LogInformation("STOP: Token Cancelled");
             _cts.Dispose();
-            _logger.LogInformation("STOP: CTS Disposed");
+            _cts = null;
             await _timer.DisposeAsync();
             _timer = null;
             await _watchDogTimer.DisposeAsync();
-            _logger.LogInformation("STOP: Timers Disposed");
 
-            if(_semaphoreSlim.CurrentCount > 0) {
-                _logger.LogWarning("STOP: Waiting to shutdown, semaphore locked");
+            while(!await _semaphoreSlim.WaitAsync(5000)) {
+                _logger.LogWarning("STOP: Waiting on semaphore");
             }
-            await _semaphoreSlim.WaitAsync(cancellationToken);
-            _logger.LogWarning("STOP: Stopped successfully");
+            _semaphoreSlim.Release();
+            _logger.LogInformation("STOP: Stopped successfully");
         }
 
         private async Task _WatchDog(object state) {
