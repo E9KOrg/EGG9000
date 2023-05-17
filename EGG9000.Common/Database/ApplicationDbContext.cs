@@ -56,6 +56,7 @@ namespace EGG9000.Common.Database {
         public DbSet<ExpiringShell> ExpiringShells { get; set; }
         public DbSet<AutomationLog> AutomationLogs { get; set; }
         public DbSet<UpcomingContract> UpcomingContracts { get; set; }
+        public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
 
         //    private IConfiguration _configuration;
         //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {
@@ -94,6 +95,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League});
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
+            builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);
             builder.Entity<Demerit>().HasOne(x => x.AdminUser).WithMany(x => x.DemeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);

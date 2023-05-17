@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public enum RedoLeggacyOption {
-        YesAll = 0,
-        YesThreshold = 1,
-        No = 2
+        NotSet = 0,
+        YesAll = 1,
+        YesThreshold = 2,
+        No = 3
     }
 }
