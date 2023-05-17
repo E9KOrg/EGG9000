@@ -27,12 +27,12 @@ namespace TestBot.Commands {
             }
             var builder = new EmbedBuilder();
             builder.Title = $"Next Rank Details";
-            foreach(var id in user.EggIncAccounts) {
-                var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
-                if(backup == null)
-                    continue;
-                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
-                var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
+            foreach(var account in user.EggIncAccounts) {
+                var backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup);
+                if(backup is null) {
+                    backup = account.Backup;
+                }
+                var nextSubRank = SIPrefix.GetNextRankInfo(account.Backup, true);
 
                 var nextRankText = "";
                 foreach(var subrank in nextSubRank.Take(5)) {

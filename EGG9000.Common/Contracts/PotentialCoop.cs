@@ -23,7 +23,6 @@ namespace EGG9000.Common.Contracts {
 
     public class UserByAccount {
         public DBUser User { get; set; }
-        public CustomBackup Backup { get; set; }
-        public EggIncAccount AccountSettings { get; set; }
+        public EggIncAccount Account { get; set; }
     }
 }

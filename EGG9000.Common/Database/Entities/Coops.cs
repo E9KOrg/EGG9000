@@ -98,6 +98,13 @@ namespace EGG9000.Common.Database.Entities {
                 return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed;
             }
         }
+
+        [NotMapped]
+        public bool FinishedOrFailedOrExpired {
+            get {
+                return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now;
+            }
+        }
     }
 
     public enum CoopStatusEnum {

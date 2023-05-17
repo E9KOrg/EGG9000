@@ -17,6 +17,7 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Quartz.Impl.AdoJobStore.Common;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class CoopReorder : _UpdaterBase<CoopReorder> {
@@ -31,6 +32,8 @@ namespace EGG9000.Bot.Automated {
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
                 foreach (var dbguild in dbguilds)
                 {
+                    if(cancellationToken.IsCancellationRequested)
+                        continue;
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.Id);
                     if (guild == null)
                         continue;
@@ -42,9 +45,11 @@ namespace EGG9000.Bot.Automated {
                     await SortCoops(coops, categories, guild);
 
                     foreach(var overflowId in dbguild.OverflowServers) {
+                        if(cancellationToken.IsCancellationRequested)
+                            continue;
                         var overflowGuild = _client.Guilds.FirstOrDefault(x => x.Id == overflowId);
-                        if(guild == null) {
-                            Console.WriteLine($"Missing overflow guild for {guild.Name}, overflowId = {overflowId}");
+                        if(overflowGuild == null) {
+                            _logger.LogWarning("Missing overflow guild for {guildName}, overflowId = {overflowId}", guild.Name, overflowId);
                             continue;
                         }
                         var overflowCategories = await _client.GetAllCoopCategories(overflowGuild);
@@ -52,17 +57,16 @@ namespace EGG9000.Bot.Automated {
                         await SortCoops(overflowCoops, overflowCategories, overflowGuild);
                     }
                 }
-                Console.WriteLine("All co-ops consolidated into categories");
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Failed to sort co-ops {e.Message}");
+                _logger.LogError(e, "Failed to sort co-ops");
                 _bugsnag.Notify(e);
             }
         }
 
         private async Task SortCoops(List<Coop> coops, List<SocketCategoryChannel> categories, SocketGuild guild) {
-            Console.WriteLine($"Sorting Co-ops for {guild.Name}");
+            _logger.LogInformation("Sorting Co-ops for {guildName}", guild.Name);
             coops = coops.OrderBy(x =>
             {
                 //x.CoopEnds
@@ -89,7 +93,7 @@ namespace EGG9000.Bot.Automated {
             foreach(var coop in coops.Where(x => x.DiscordChannelId > 0)) {
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == coop.DiscordChannelId);
                 if(channel == null) {
-                    Console.WriteLine($"Unable to find channel for {coop.Name}");
+                    _logger.LogWarning("Unable to find channel for {coopName}", coop.Name);
                     continue;
                 }
                 var currentCategory = categories.FirstOrDefault(x => x.Id == channel.Category.Id);
@@ -113,11 +117,9 @@ namespace EGG9000.Bot.Automated {
                 });
             }
 
-            //Console.WriteLine("CoopSorts count " + coopSorts.Count);
 
             var currentTry = 0;
             while(coopSorts.Any(x => x.NeedsMove)) {
-                //Console.WriteLine($"Sort Round {currentTry + 1}");
                 if(currentTry++ > 1000)
                     break;
                 foreach(var coopSort in coopSorts.Where(x => x.NeedsMove)) {

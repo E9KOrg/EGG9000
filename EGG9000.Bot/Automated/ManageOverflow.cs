@@ -26,6 +26,8 @@ using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Net.Http;
+using Microsoft.Extensions.Logging;
+using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Automated {
     public class ManageOverflow : _UpdaterBase<ManageOverflow> {
@@ -41,11 +43,36 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guilds = await _db.Guilds.AsQueryable().ToListAsync();
 
+            var users = await _db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync();
+            foreach(var guild in guilds) {
+                var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
+                await mainServer.DownloadUsersAsync();
+
+                var members = users.Where(x => x.GuildId == guild.Id);
+                var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
+
+                var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync();
+                membersMissing.ForEach(x => {
+                    x.GuildId = 0; x.LastGuild = guild.Id;
+                    _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
+                });
+
+                var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
+                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync();
+                membersReturn.ForEach(x => {
+                    x.GuildId = guild.Id;
+                    _logger.LogInformation("Return member to the guild {name}", x.DiscordUsername);
+                });
+
+                await _db.SaveChangesAsync();
+            }
+
+
             foreach(var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {
                 if(cancellationToken.IsCancellationRequested) {
                     break;
                 }
-                Console.Write($"Manage Overflow for {guild.Name}");
+                _logger.LogInformation("Manage Overflow for {guildName}", guild.Name);
                 var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
                 var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
                 //var overflowServer = _client.Guilds.First(x => x.Id == 763854787912794183);
@@ -59,7 +86,11 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 continue;
+#pragma warning disable CS0162 // Unreachable code detected
+                _ = 1;
+#pragma warning restore CS0162 // Unreachable code detected
 #endif
+
 
                 const ulong overflowRoleID = 775547850134257675;
                 const ulong activeRoleID = 798284088967430144;
@@ -71,14 +102,13 @@ namespace EGG9000.Bot.Automated {
 
                 var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == activeRoleID));
 
-                Console.Write($"Manage Overflow Roles for {guild.Name}");
                 var role = mainServer.Roles.First(x => x.Id == overflowRoleID);
                 foreach(var u in onlyMainWithoutRole) {
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
                     await u.AddRoleAsync(role);
-                    Console.WriteLine($"Adding overflow role for {u.GetName()}");
+                    _logger.LogInformation("Adding overflow role for {user}", u.GetName());
                 }
 
                 foreach(var u in mainServer.Users.Where(x => x.Roles.Count == 1 && x.Roles.Any(y => y.Id == overflowRoleID) && !x.IsBot)) {
@@ -86,7 +116,7 @@ namespace EGG9000.Bot.Automated {
                         break;
                     }
                     await u.RemoveRoleAsync(role);
-                    Console.WriteLine($"Removing overflow role for {u.GetName()}, it was the only role");
+                    _logger.LogInformation("Removing overflow role for {user}, it was the only role", u.GetName());
                 }
 
                 foreach(var u in bothAllWithRole) {
@@ -94,7 +124,7 @@ namespace EGG9000.Bot.Automated {
                         break;
                     }
                     await u.RemoveRoleAsync(role);
-                    Console.WriteLine($"Removing overflow role for {u.GetName()}, they were in all servers.");
+                    _logger.LogInformation("Removing overflow role for {user}, they were in all servers.", u.GetName());
                 }
 
 
@@ -102,11 +132,10 @@ namespace EGG9000.Bot.Automated {
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
-                    Console.Write($"Manage Nicknames for {guild.Name} in {overflowServer.Name}");
                     var onlyOverflow = overflowServer.Users.Where(x => !mainServer.Users.Any(y => y.Id == x.Id) && !x.IsBot);
                     foreach(var u in onlyOverflow) {
                         await u.KickAsync("No longer in main server");
-                        Console.WriteLine($"Kicking {u.GetName()}");
+                        _logger.LogInformation("Kicking {user}, no longer in main server", u.GetName());
                     }
 
                     foreach(var overflowUser in overflowServer.Users) {
@@ -118,10 +147,10 @@ namespace EGG9000.Bot.Automated {
                             continue;
                         if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id) { // && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)
                             try {
-                                Console.WriteLine($"Changing nickname for {mainServerUser.Nickname}, it was {overflowUser.Nickname}. Server: {overflowServer.Name}");
+                                _logger.LogInformation("Changing nickname for {newName}, it was {currentName} in {overflow}", mainServerUser.Nickname, overflowUser.Nickname, overflowServer.Name);
                                 await overflowUser.ModifyAsync(x => x.Nickname = mainServerUser.Nickname);
                             } catch(Exception) {
-                                Console.WriteLine($"Unable to change nickname for {mainServerUser.Nickname}");
+                                _logger.LogWarning("Unable to change nickname for {user}", mainServerUser.GetName());
                             }
                         }
                     }
@@ -131,6 +160,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _client_RoleUpdated(SocketRole originalRole, SocketRole updatedRole) {
+            _logger.LogInformation("c: {json}", JsonConvert.SerializeObject(originalRole, new JsonSerializerSettings {  ReferenceLoopHandling = ReferenceLoopHandling.Ignore}));
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
             if(!guild.OverflowServers.Any() || guild.RolesToSync is null)
@@ -143,7 +173,8 @@ namespace EGG9000.Bot.Automated {
             foreach(var overflowServer in overflowServers) {
                 var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == originalRole.Name);
                 if(overflowRole != null) {
-                    await overflowRole.ModifyAsync(async x => {
+                    //await overflowRole.ModifyAsync(async x => {
+                    await overflowRole.ModifyAsync(x => {
                         x.Name = updatedRole.Name;
                         x.Color = updatedRole.Color;
                         //if(updatedRole.Icon != originalRole.Icon) {
@@ -203,11 +234,12 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                     if(neededRoles.Count > 0) {
-                        Console.WriteLine($"Adding overflow roles ({String.Join(",", neededRoles.Select(x => x.Name))}) to {overflowUser.GetCleanName()}  {i + 1} of {overflowServer.Users.Count} in {overflowServer.Name}");
+                        _logger.LogInformation("Adding overflow roles ({roles}) to {user} in {overflowServer}",
+                            String.Join(",", neededRoles.Select(x => x.Name)), overflowUser.GetCleanName(), overflowServer.Name);
                         await overflowUser.AddRolesAsync(neededRoles);
                     }
                     if(removeRoles.Count > 0) {
-                        Console.WriteLine($"Removing overflow roles ({String.Join(",", removeRoles.Select(x => x.Name))}) to {overflowUser.GetCleanName()}");
+                        _logger.LogInformation("Removing overflow roles ({roles}) to {user}", String.Join(",", removeRoles.Select(x => x.Name)), overflowUser.GetCleanName());
                         await overflowUser.RemoveRolesAsync(removeRoles);
                     }
                 }
@@ -247,7 +279,7 @@ namespace EGG9000.Bot.Automated {
                             } else {
                                 await coopCategory.RemovePermissionOverwriteAsync(overflowServer.GetUser(overwrite.TargetId));
                             }
-                            
+
                         } else {
                             if(!Compare(overwrite.Permissions, match.Overwrite.Permissions)) {
                                 await coopCategory.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);

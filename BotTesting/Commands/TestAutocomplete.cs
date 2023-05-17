@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Commands {
             var results = new List<AutocompleteResult>();
             foreach(var account in accounts) {
                 if(account.User.EggIncAccounts.Count > 1) {
-                    var name = account.User.Backups.FirstOrDefault(x => x.EggIncId == account.Account.Id)?.UserName;
+                    var name = account.User.EggIncAccounts.FirstOrDefault(x => x.Id == account.Account.Id)?.Backup?.UserName;
                     results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Name}", $"{account.User.Id}|{account.Account.Id}"));
                 } else {
                     results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.Account.Id}"));

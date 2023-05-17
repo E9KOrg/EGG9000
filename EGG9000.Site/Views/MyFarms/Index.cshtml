@@ -42,14 +42,6 @@
 	List<Merit> merits = ViewBag.Merits;
 	var inDB = Model.DiscordId > 0;
 
-
-	if ((Model.EggIncAccounts?.Count ?? 0) == 0) {
-		Model.EggIncAccounts = new List<DBUser.EggIncAccount> {
-			new DBUser.EggIncAccount {
-			Id = Model.Backups.First().EggIncId
-		}
-		};
-	}
 }
 <style>
 	.card-header img {
@@ -114,26 +106,26 @@
 
 @if (Model.EggIncAccounts.Count > 1) {
 	<ul class="nav nav-tabs" role="tablist">
-		@foreach (var account in Model.EggIncAccounts) {
-			var backup = Model.Backups.First(x => x.EggIncId == account.Id);
-			var index = Model.Backups.IndexOf(backup);
+		@for(var index = 0; index < Model.EggIncAccounts.Count; index++) {
+			var account = Model.EggIncAccounts[index];
 			<li class="nav-item">
-				<a class="nav-link @(backup == Model.Backups.First() ? "active" : "")" id="tab@(backup.EggIncId)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(backup == Model.Backups.First())">
-					@backup.UserName
-					<img src="@PlayerGradeDetails.GetImage(Model.GetGrade(backup.EggIncId))" style="max-height: 30px;" />
+				<a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
+					@account.Backup.UserName
+					<img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 30px;" />
 				</a>
 			</li>
 		}
 	</ul>
 } else {
-	<img src="@PlayerGradeDetails.GetImage(Model.GetGrade(Model.EggIncAccounts.First().Id))" style="max-height: 30px;" />
+	<img src="@PlayerGradeDetails.GetImage(Model.EggIncAccounts.First().GetGrade())" style="max-height: 30px;" />
 }
 <div class="tab-content">
-	@foreach (var account in Model.EggIncAccounts) {
-		var backup = Model.Backups.First(x => x.EggIncId == account.Id);
-		var index = Model.Backups.IndexOf(backup);
+	@for(var index = 0; index < Model.EggIncAccounts.Count; index++) {
+		//var index = Model.EggIncAccounts.IndexOf(account);
+		var account = Model.EggIncAccounts[index];
+		var backup = account.Backup;
 		var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
-		<div class="tab-pane @(backup == Model.Backups.First() ? "show active" : "")" id="user@(index)" role="tabpanel">
+		<div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
 			<div style="padding-bottom: 10px;" class="nobreak">
 				@if (backup.PermitLevel == 0) {
 					<img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 30px;" />
@@ -141,7 +133,7 @@
 					<img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 30px;" />
 				}
 				[<span>EggIncId: @backup.EggIncId</span>]
-				@if (Model.Backups.Count == 1) {
+				@if (Model.EggIncAccounts.Count == 1) {
 					@:[<span>In-Game Name: @backup.UserName</span>]
 				}
 				[<span>Last Backup: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span>]

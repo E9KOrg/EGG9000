@@ -14,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Humanizer;
 
 namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {
@@ -43,11 +45,13 @@ namespace EGG9000.Bot.Automated {
         public IServiceProvider _provider;
 
         protected Bugsnag.IClient _bugsnag;
+        protected ILogger<T> _logger;
 
         protected ulong _CPGuildId;
 
         public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider) {
-            Console.WriteLine($"Initiating {this.GetType().Name}");
+            _logger = provider.GetService<ILogger<T>>();
+            _logger.LogInformation("Initiating");
             var options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>();
             _configuration = provider.GetService<IConfiguration>();
             UpdateInterval = updateInterval;
@@ -72,11 +76,12 @@ namespace EGG9000.Bot.Automated {
 
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
             UpdateInterval = newUpdateInterval;
+            _logger.LogInformation("Updating interval to {interval}", UpdateInterval);
             _timer.Change(UpdateInterval, UpdateInterval);
         }
 
         private async void _run(object state) {
-            Console.WriteLine($"Running {this.GetType().Name}");
+            _logger.LogInformation("Running");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
                 try {
@@ -97,15 +102,15 @@ namespace EGG9000.Bot.Automated {
                     }
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
-                    Console.WriteLine($"Error in {this.GetType().Name}: {e.Message}");
+                    _logger.LogError(e, "Error during run: {Message}", e.Message);
                 } finally {
-                    Console.WriteLine($"Releasing Semaphore for {this.GetType().Name}");
+                    _logger.LogInformation("Releasing semaphore");
                     _semaphoreSlim.Release();
                 }
             } else {
                 _db.AutomationLogs.Add(new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now, Skipped = true });
                 await _db.SaveChangesAsync();
-                Console.WriteLine($"Unable to run {this.GetType().Name} because it is already running");
+                _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize() );
             }
         }
 
@@ -115,6 +120,8 @@ namespace EGG9000.Bot.Automated {
             return _timer is not null;
         }
         public Task StartAsync(CancellationToken cancellationToken) {
+            if(_cts is null)
+                _cts = new CancellationTokenSource();
             _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
             _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
             initialStart = false;
@@ -122,30 +129,29 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
-            Console.WriteLine($"Stop called for {this.GetType().Name}");
+            _logger.LogInformation("STOP: Called");
             _cts.Cancel();
-            Console.WriteLine("Token Canceled");
             _cts.Dispose();
-            Console.WriteLine("CTS Disposed");
+            _cts = null;
             await _timer.DisposeAsync();
             _timer = null;
             await _watchDogTimer.DisposeAsync();
-            if(_semaphoreSlim.CurrentCount > 0) {
-                Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
+
+            while(!await _semaphoreSlim.WaitAsync(5000)) {
+                _logger.LogWarning("STOP: Waiting on semaphore");
             }
-            await _semaphoreSlim.WaitAsync(cancellationToken);
-            Console.WriteLine($"{this.GetType().Name} has successfully stopped.");
+            _semaphoreSlim.Release();
+            _logger.LogInformation("STOP: Stopped successfully");
         }
 
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
-                Console.WriteLine($"Watchdog run for {GetType().Name}");
+                _logger.LogWarning("Watchdog Ran, last start {time}", (DateTime.Now - LastStarted).Humanize());
                 if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
                     var success = await AttemptCancel();
                     var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
                     if(success) {
                         await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Restart Succeeded.", options: new RequestOptions { CancelToken = _cts.Token });
-                        Console.WriteLine($"Successfully canceled task for {GetType().Name}");
                         return;
                     }
                     await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.", options: new RequestOptions { CancelToken = _cts.Token });

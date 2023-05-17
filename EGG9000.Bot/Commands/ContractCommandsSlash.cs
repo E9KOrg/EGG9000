@@ -252,7 +252,7 @@ namespace EGG9000.Bot.Commands {
             var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
             var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-            await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild, default, db);
+            await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
             await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
         }
@@ -290,12 +290,29 @@ namespace EGG9000.Bot.Commands {
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                var coops = await _db.Coops.Include(x => x.Contract)
-                    .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.DeletedChannel && x.GuildId == guild.Id)
-                    .Take(25).Select(x => new { x.Name, x.Id, Contract = x.Contract.Name, x.League }).ToListAsync();
+                List<CoopMin> coops = null;
+                if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    coops = await _db.Coops.Include(x => x.Contract)
+                        .Where(x => x.DiscordChannelId == arg.ChannelId)
+                        .Select(x => new CoopMin { Name =  x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
+                } 
+                
+                if(coops is null) {
+                    coops = await _db.Coops.Include(x => x.Contract)
+                        .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.DeletedChannel && x.GuildId == guild.Id)
+                        .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
+                }
+
 
 
                 await arg.RespondAsync(null, coops.Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
+            }
+
+            public class CoopMin {
+                public string Name { get; set; }
+                public Guid Id { get; set; }
+                public string Contract { get; set; }
+                public uint League { get; set; }
             }
         }
         public class UserAccountAutoComplete : AutoCompleteHandler {
@@ -314,7 +331,7 @@ namespace EGG9000.Bot.Commands {
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts) {
                     if(account.User.EggIncAccounts.Count > 1) {
-                        var name = account.User.Backups.FirstOrDefault(x => x.EggIncId == account.Account.Id)?.UserName;
+                        var name = account.Account.Backup?.UserName;
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Name}", $"{account.User.Id}|{account.Account.Id}"));
                     } else {
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.Account.Id}"));
@@ -375,27 +392,24 @@ namespace EGG9000.Bot.Commands {
 
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1) {
-                if(user.Backups.Count == 0) {
+                if(user.EggIncAccounts.Count == 0) {
                     await command.ModifyOriginalResponseAsync("⚠️ERROR: User doesn't contain a backup");
                     return;
 
                 }
                 var userList = new List<UserByAccount> { new UserByAccount {
-                    AccountSettings = user.EggIncAccounts.First(),
-                    Backup = user.Backups.First(),
+                    Account = user.EggIncAccounts.First(),
                     User = user
                 } };
                 var guild = _client.GetGuild(command.GuildId.Value);
-                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().AccountSettings.LastGrade, guild, _words, _provider, dbguild);
-                await coopStatusUpdater.SendUpdate(coop.Id, guild, userList.Select(x => x.User).ToList(), dbguild, new CancellationToken(), db);
+                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild);
                 await command.ModifyOriginalResponseAsync("Done");
                 await command.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {command.User.Mention}");
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in user.EggIncAccounts) {
-                    var backup = user.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
                     Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    builder.WithButton($"{account.Name} {backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
+                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to create the co-op with."; x.Components = builder.Build(); });
             }
@@ -409,13 +423,11 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             var account = user.EggIncAccounts.First(x => x.Id == data.Split("|")[1]);
             var userList = new List<UserByAccount> { new UserByAccount {
-                    AccountSettings = account,
-                    Backup = user.Backups.First(x => x.EggIncId == account.Id),
+                    Account = account,
                     User = user
                 } };
             var guild = _client.GetGuild(component.GuildId.Value);
-            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().AccountSettings.LastGrade, guild, _words, _provider, dbguild);
-            await coopStatusUpdater.SendUpdate(coop.Id, guild, userList.Select(x => x.User).ToList(), dbguild, new CancellationToken(), db);
+            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild);
             await component.ModifyOriginalResponseAsync(x => x.Content = "Done");
             await component.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {component.User.Mention}");
         }

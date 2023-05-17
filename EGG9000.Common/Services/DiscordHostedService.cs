@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
@@ -24,46 +25,65 @@ namespace EGG9000.Common.Services {
         private ApplicationDbContext _db;
         private readonly IMemoryCache _cache;
         private IServiceProvider _provider;
+        private ILogger<DiscordHostedService> _logger;
         private static DiscordSocketConfig config = new DiscordSocketConfig() {
-            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages
+            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
+                             GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
-        public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache, IServiceProvider provider) : base(config) {
+        public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
             _provider = provider;
+            _logger = logger;
 
             this.Log += PrintLog;
             this.Ready += DiscordHostedService_Ready;
-
             this.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
             this.StartAsync().Wait();
 
-            Console.WriteLine("Waiting on Discord Connect");
+            _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
 
             while(this.ConnectionState != ConnectionState.Connected) { }
-            
-            Console.WriteLine("Waiting on Discord Ready");
+
+            _logger.Log(LogLevel.Information, "Discord Ready");
 
             _db = db;
             _cache = cache;
         }
+
+        //public Task StartAsync(CancellationToken cancellationToken) {
+        //    return Task.CompletedTask;
+        //}
+
+        //public async Task StopAsync(CancellationToken cancellationToken) {
+        //    _logger.LogInformation("Stopping Discord Client");
+        //    await this.StopAsync();
+        //    while(this.ConnectionState != ConnectionState.Disconnected) { }
+        //    _logger.LogInformation("Discord Client Stopped");
+        //}
+
 
         private Task DiscordHostedService_Ready() {
             IsReady = true;
             this.SetGameAsync("").Wait();
 
             foreach(var guild in this.Guilds) {
-                Console.WriteLine($"Downloading guild users for {guild.Name}");
+                _logger.Log(LogLevel.Information, "Download guild users for {Guild}", guild.Name);
+
                 guild.DownloadUsersAsync().Wait();
             }
 
-            Console.WriteLine("Discord Ready");
+            _logger.Log(LogLevel.Information, "Discord Ready");
 
             return Task.CompletedTask;
         }
 
         private Task PrintLog(LogMessage msg) {
-            if(!msg.ToString().Contains("Rate limit triggered")) {
-                Console.WriteLine(msg.ToString());
+            if(msg.ToString().Contains("Rate limit triggered")) {
+                _logger.Log(LogLevel.Trace, "Discord Log: {msg}", msg.Message);
+            } else if(msg.Exception is not null) {
+                _logger.LogError(msg.Exception, "Discord Log: Exception Thrown");
+            } else {
+                _logger.Log(LogLevel.Information, "Discord Log: {msg}", msg.Message);
             }
             return Task.CompletedTask;
         }
@@ -127,6 +147,7 @@ namespace EGG9000.Common.Services {
 
             return (T)Convert.ChangeType(guild.TextChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
         }
+
 
     }
 }

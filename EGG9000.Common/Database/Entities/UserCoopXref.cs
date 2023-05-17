@@ -3,12 +3,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Reflection;
 using System.Text;
 
-namespace EGG9000.Common.Database.Entities
-{
-    public class UserCoopXref
-    {
+namespace EGG9000.Common.Database.Entities {
+    public class UserCoopXref {
         public Guid UserId { get; set; }
         public Guid CoopId { get; set; }
         public string EggIncId { get; set; }
@@ -38,7 +37,6 @@ namespace EGG9000.Common.Database.Entities
         public DBUser User { get; set; }
 
         public bool NoDemerit { get; set; }
-        public bool PingOnFull { get; set; }
         public float? Score { get; set; }
         public float? RunningScore { get; set; }
         public double? SoulPower { get; set; }
@@ -48,8 +46,10 @@ namespace EGG9000.Common.Database.Entities
         public bool OutsideCoop { get; set; }
         public bool HasTachyonDeflector { get; set; }
         public bool EquipedTachyonDeflector { get; set; }
+        public bool PingOnFull { get; set; }
         public bool PingOnHighestEB { get; set; }
         public bool PingOnFinished { get; set; }
+        public bool CoopFullWarning { get; set; }
 
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]
@@ -73,6 +73,31 @@ namespace EGG9000.Common.Database.Entities
                 _sleepTrackingByte = MessagePackSerializer.Serialize(value, lz4Options);
             }
         }
+
+        public byte[] _coopSettingByte { get; set; }
+        [NotMapped]
+        private CoopSetting _coopSetting { get; set; }
+        [NotMapped]
+        public CoopSetting CoopSetting {
+            get {
+                if(_coopSetting != null)
+                    return _coopSetting;
+                if(_coopSettingByte == null)
+                    return null;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _coopSetting = MessagePackSerializer.Deserialize<CoopSetting>(_coopSettingByte, lz4Options);
+                return _coopSetting;
+            }
+            set {
+                _coopSetting = value;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
+            }
+        }
+
+        public void UpdateCoopSetting() {
+            CoopSetting = CoopSetting;
+        }
     }
     [MessagePackObject]
     public class SleepTracking {
@@ -88,5 +113,53 @@ namespace EGG9000.Common.Database.Entities
         public bool WokeUp { get; set; }
         [Key(5)]
         public DateTimeOffset LastChecked { get; set; }
+    }
+
+    [MessagePackObject]
+    public class CoopSetting {
+        [Key(0)]
+        public bool PingOnFull { get; set; }
+        [Key(1)]
+        public bool PingOnHighestEB { get; set; }
+        [Key(2)]
+        public bool PingOnFinished { get; set; }
+        [Key(3)]
+        public bool PingOnEveryoneCheckedIn { get; set; }
+        [Key(4)]
+        public bool PingOnMessage { get; set; }
+        [Key(5)]
+        public bool PingOnCoopCreated { get; set; }
+        [Key(6)]
+        public bool PingOnTachyonChange { get; set; }
+
+        [IgnoreMember]
+        public bool this[string propertyName] {
+            get {
+                Type myType = typeof(CoopSetting);
+                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
+                return (bool)myPropInfo.GetValue(this);
+            }
+            set {
+                Type myType = typeof(CoopSetting);
+                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
+                myPropInfo.SetValue(this, value);
+            }
+        }
+
+        public CoopSetting() {
+
+        }
+
+        public CoopSetting(UserCoopXref xref, DBUser user) {
+            if(user.CoopSetting is null)
+                user.CoopSetting = new CoopSetting();
+
+            PingOnFull = user.CoopSetting.PingOnFull || xref.PingOnFull;
+            PingOnHighestEB = user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
+            PingOnFinished = user.CoopSetting.PingOnFinished;
+            PingOnEveryoneCheckedIn = user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
+            PingOnMessage = user.CoopSetting.PingOnMessage;
+            PingOnCoopCreated = user.CoopSetting.PingOnCoopCreated;
+        }
     }
 }

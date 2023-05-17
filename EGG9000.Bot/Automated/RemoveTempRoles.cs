@@ -28,6 +28,7 @@ using EGG9000.Common.Migrations;
 using Polly;
 using Microsoft.Data.SqlClient;
 using EGG9000.Common.Services;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class RemoveTempRoles : _UpdaterBase<RemoveTempRoles> {
@@ -51,7 +52,7 @@ namespace EGG9000.Bot.Automated {
                     var user = _client.Guilds.First(g => g.Id == role.GuildId).GetUser(role.UserId);
                     await user.RemoveRoleAsync(role.RoleId);
                 } catch(Exception ex) {
-                    Console.WriteLine($"⚠️ERROR: Unable to remove role from user with id {role.UserId}, exception was {ex.Message}");
+                    _logger.LogError(ex, "⚠️ERROR: Unable to remove role from user with id {userid}", role.UserId);
                 }
                 role.IsRemoved = true;
             }

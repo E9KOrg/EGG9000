@@ -19,20 +19,19 @@ namespace EGG9000.Common.Contracts {
             var accounts = users
                 .Where(x => !x.TempDisabled)
                 .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
-                    AccountSettings = a,
-                    Backup = u.Backups.FirstOrDefault(b => b.EggIncId == a.Id),
+                    Account = a,
                     User = u
                 }));
 
-            accounts = accounts.Where(x => x.AccountSettings.OnBreakUntil < DateTimeOffset.Now && x.Backup is not null);
+            accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
 
             accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract)
             );
 
-            accounts = accounts.Where(x => !x.Backup.Farms.Any(y => y.ContractId == contract.Identifier && y.FarmType == Ei.FarmType.Contract));
+            accounts = accounts.Where(x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.Identifier && y.FarmType == Ei.FarmType.Contract));
 
 
-            accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Backup.EggIncId)));
+            accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)));
 
 
 
@@ -64,24 +63,24 @@ namespace EGG9000.Common.Contracts {
         }
 
         private static bool CheckOnPreviousComplete(UserByAccount x, Ei.Contract contract) {
-            return x.AccountSettings.RedoLeggacy == RedoLeggacyOption.YesAll ||
-                x.AccountSettings.RedoLeggacy == RedoLeggacyOption.YesThreshold && x.AccountSettings.CSHistory.FirstOrDefault(f => f.Equals(contract)).Cxp <= x.AccountSettings.RedoScoreThreshold ||
+            return x.Account.RedoLeggacy == RedoLeggacyOption.YesAll ||
+                x.Account.RedoLeggacy == RedoLeggacyOption.YesThreshold && x.Account.CSHistory.FirstOrDefault(f => f.Equals(contract)).Cxp <= x.Account.RedoScoreThreshold ||
                 (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
         }
 
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {
             var matchingAccounts = Accounts.Where(x => 
-                x.User.GetGrade(x.Backup.EggIncId) == Grade && 
-                (x.AccountSettings.Group == BoardingGroup || includeBG.Any(y => x.AccountSettings.Group == y))
+                x.Account.GetGrade() == Grade && 
+                (x.Account.Group == BoardingGroup || includeBG.Any(y => x.Account.Group == y))
             );
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
             matchingAccounts = matchingAccounts.Where(x =>
-                x.AccountSettings.AutoRegisterRewards == null
-                || x.AccountSettings.AutoRegisterRewards.Count == 0
-                || x.AccountSettings.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
+                x.Account.AutoRegisterRewards == null
+                || x.Account.AutoRegisterRewards.Count == 0
+                || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
             );
 
-            var ebGroups = matchingAccounts.GroupBy(x => (int)Math.Log10(x.Backup.EarningsBonus));
+            var ebGroups = matchingAccounts.GroupBy(x => (int)Math.Log10(x.Account.Backup.EarningsBonus));
             var rng = new Random();
 
             var numberOfCoops = Math.Ceiling((double)matchingAccounts.Count() / contract.MaxCoopSize);
@@ -92,7 +91,7 @@ namespace EGG9000.Common.Contracts {
 
             foreach(var ebGroup in ebGroups.OrderByDescending(x => x.Key)) {
                 foreach(var user in ebGroup.Shuffle(rng)) {
-                    var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Backup.EarningsBonus)).First();
+                    var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
                     coop.Users.Add(user);
                 }
             }
