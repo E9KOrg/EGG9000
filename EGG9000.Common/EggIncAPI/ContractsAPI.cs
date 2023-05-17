@@ -287,10 +287,6 @@ namespace EGG9000.Bot.EggIncAPI {
                         ClientVersion = ContractsAPI.ClientVersion
                     };
                     model.WriteTo(ms1);
-                    //Serializer.Serialize<Ei.ContractCoopStatusRequest>(ms1, new Ei.ContractCoopStatusRequest { ContractIdentifier = ContractName, CoopIdentifier = CoopName.ToLower() });
-
-                    //var json = JsonConvert.SerializeObject(model, Formatting.Indented);
-                    //Console.WriteLine(json);
                     ms1.Position = 0;
                     var sr = new StreamReader(ms1);
                     var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
@@ -630,69 +626,6 @@ namespace EGG9000.Bot.EggIncAPI {
             }
         }
 
-        public class FirstContactWithRaw {
-            public Ei.EggIncFirstContactResponse Response { get; set; }
-            public byte[] Raw { get; set; }
-        }
-
-        /*public static async Task<FirstContactWithRaw> FirstContactRaw(string UserId) {
-            var responseWithRaw = new FirstContactWithRaw();
-            try {
-                var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
-                using(var client = new HttpClient(handler)) {
-                    client.BaseAddress = new Uri("http://www.auxbrain.com/");
-
-                    var ms1 = new MemoryStream();
-                    new Ei.EggIncFirstContactRequest { ClientVersion = 27, Platform = Aux.Platform.Droid, UserId = UserId }.WriteTo(ms1);
-                    //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
-                    ms1.Position = 0;
-                    var sr = new StreamReader(ms1);
-                    var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
-                    var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
-                    client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-                    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-                    client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                    bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-
-                    HttpResponseMessage response;
-
-                    try {
-                        response = await client.PostAsync("ei/first_contact", bac);
-                    } catch(Exception) {
-                        await Task.Delay(500);
-                        response = await client.PostAsync("ei/first_contact", bac);
-                    }
-
-                    string r;
-                    if(response.IsSuccessStatusCode) {
-                        r = await response.Content.ReadAsStringAsync();
-                        var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
-
-                        var ms = new MemoryStream();
-                        ms.Write(responseString);
-                        ms.Position = 0;
-
-                        responseWithRaw.Raw = ms.ToArray();
-                        ms.Position = 0;
-
-                        var backup = Ei.EggIncFirstContactResponse.Parser.ParseFrom(ms);
-
-                        //var coop = Serializer.Deserialize<Ei.EggIncFirstContactResponse>(ms);
-                        backup.Success = true;
-                        responseWithRaw.Response = backup;
-                        return responseWithRaw;
-                    } else {
-                        responseWithRaw.Response = new Ei.EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
-                    }
-                }
-
-            } catch(Exception e) {
-                responseWithRaw.Response = new Ei.EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
-            }
-            return responseWithRaw;
-        }
-        */
-
         public static Ei.Backup GetRecentBackup(string EggIncId, IMemoryCache cache) {
             var key = $"Backup-{EggIncId}-long";
             if(cache.TryGetValue(key, out Ei.EggIncFirstContactResponse response)) {
@@ -701,76 +634,5 @@ namespace EGG9000.Bot.EggIncAPI {
                 return null;
             }
         }
-
-
-
-
-        //public static async Task<List<LeaderboardUser>> GetUserBackups(IMemoryCache cache, List<DBUser> users, bool longBackup = false) {
-        //    var lUsers = new List<LeaderboardUser>();
-
-
-
-        //    //if (HideDisabled) users = users.Where(x => !x.TempDisabled).ToList();
-
-        //    //if(GuildId > 0) {
-        //    //    users = users.Where(x => x.GuildId == GuildId).ToList();
-        //    //}
-        //    var tasks = users.Select(async (user) => {
-        //        List<Ei.Backup> backups;
-        //        var key = $"Backup-{user.Id}";
-        //        if(!cache.TryGetValue(key + (longBackup ? "-long" : ""), out backups)) {
-        //            backups = new List<Ei.Backup>();
-        //            foreach(var egginc in user.EggIncIds.Where(x => !string.IsNullOrWhiteSpace(x.Id))) {
-        //                var response = await ContractsAPI.FirstContact(egginc.Id);
-        //                if(response.Success && response.Backup != null && response.Backup.Settings != null) {
-        //                    backups.Add(response.Backup);
-        //                } else if(user.LastBackup != null && user.LastBackup.Any(x => x.UserId == egginc.Id)) {
-        //                    backups.Add(user.LastBackup.First(x => x.GetID() == egginc.Id));
-        //                }
-        //            }
-        //            var saveBackups = user.LastBackup == null || backups.Count != user.LastBackup.Count;
-        //            if(!saveBackups) {
-        //                foreach(var backup in backups) {
-        //                    var cBackup = user.LastBackup?.FirstOrDefault(x => x.UserId == backup.GetID());
-        //                    if(cBackup?.Settings?.LastBackupTime != backup.Settings?.LastBackupTime) {
-        //                        saveBackups = true;
-        //                        break;
-        //                    }
-        //                }
-        //            }
-        //            if(saveBackups && backups.Count > 0) {
-        //                user.LastBackup = backups;
-        //            }
-        //            cache.Set(key, backups, DateTimeOffset.Now.AddMinutes(5));
-        //            cache.Set(key + "-long", backups, DateTimeOffset.Now.AddDays(30));
-        //        }
-
-
-
-        //        foreach(var egginc in user.EggIncIds.Where(x => !string.IsNullOrWhiteSpace(x.Id))) {
-        //            var lUser = new LeaderboardUser {
-        //                Backup = backups.FirstOrDefault(x => x?.GetID() == egginc.Id),
-        //                User = user
-        //            };
-        //            if(lUser.Backup?.Game == null) {
-        //                Console.WriteLine($"Missing backup for {user.DiscordUsername}");
-        //                lUser.Backup = user.LastBackup?.FirstOrDefault(x => x?.UserId == egginc.Id);
-        //            }
-        //            if(lUser.Backup != null) {
-        //                lUsers.Add(lUser);
-        //            }
-        //        }
-        //    });
-
-        //    await Task.WhenAll(tasks);
-
-        //    //foreach(var lUser in lUsers) {
-        //    //    var lastSeen = await _db.UserCoopStatuses.Where(x => x.UserId == lUser.User.Id).OrderByDescending(x => x.CreatedOn).FirstOrDefaultAsync();
-        //    //    lUser.lastSeen = lastSeen?.CreatedOn;
-        //    //}
-
-
-        //    return lUsers;
-        //}
     }
 }

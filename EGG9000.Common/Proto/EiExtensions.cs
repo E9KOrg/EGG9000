@@ -80,7 +80,6 @@ namespace Ei {
                 public double TimeLeftSeconds { get; set; }
 
                 public TimeSpan LastActive { get; set; }
-                public string DiscordName { get; set; }
                 public string RateString { get { return ArgumentsHelper.NumberToString(this.ContributionRate * 60 * 60, false, -1) + "/h"; } }
 
                 public double AmountWithOffline(double siloTimeMinutes, TimeSpan lastActive) {

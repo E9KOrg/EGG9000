@@ -25,12 +25,17 @@ using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public static class ContextUserCommands {
-        [UserCommand(Name = "View User on EGG9000.com", AdminOnly = true)]
+        [UserCommand(Name = "Userstatus", AdminOnly = true)]
+        public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
+            await RegisterCommandsSlash._userstatus(command, db, _client, apiLink, command.Data.Member, true, false);
+        }
+
+        [UserCommand(Name = "EGG9000.com", AdminOnly = true)]
         public static async Task WebsiteLink(SocketUserCommand command) {
             await command.RespondAsync($"<https://egg9000.com/MyFarms/ViewUser?discordId={command.Data.Member.Id}>", ephemeral: true);
         }
 
-        [UserCommand(Name = "View User on Rockets Tracker", AdminOnly = true)]
+        [UserCommand(Name = "Rockets Tracker", AdminOnly = true)]
         public static async Task RocketsTrackerLinks(SocketUserCommand command, ApplicationDbContext db)
         {
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);
@@ -40,7 +45,7 @@ namespace EGG9000.Bot.Commands {
             } else {
                 var sb = new StringBuilder();
                 foreach(var id in user.EggIncAccounts) {
-                    var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
+                    var backup = user.EggIncAccounts.FirstOrDefault(x => x.Id == id.Id).Backup;
                     if(sb.ToString() != "") sb.Append("\n\n");
                     sb.Append(backup.UserName + ": " + $"<https://wasmegg-carpet.netlify.app/rockets-tracker/?playerId={id.Id}>");
                 }

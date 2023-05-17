@@ -187,18 +187,20 @@
     .card-header {
         padding: .4rem 1.25rem !important;
     }
-        @if (isSolo) {<text>
-            .col-sm {
-                flex-grow: 0 !important;
-            }
-    </text>}
     
 
     .bootstrap-dark .pb-3, .bootstrap-dark .py-3 {
     padding-bottom: 0 !important;
 }
-
 </style>
+        @if (isSolo) {<style>
+            .col-sm {
+                flex-grow: 0 !important;
+            }
+    </style>}
+
+
+
 <div ng-controller="Page">
     <div style="float: left;">
         <h3><img src="@PlayerGradeDetails.GetImage(Model.League)" style="height: 1em;" /> @Model.GuildContract.Contract.Name</h3>
@@ -425,51 +427,51 @@
 }
 
 @{
-    void PotentialRowDetails() {
-    <td>
-                                                                                                            @if(isSolo) {
-                                                                                                            <div style="position: relative; top: -20px;" id="{{user.EggIncId}}"></div>
-            }
-                                                                                                            {{user.Name}}
-    </td>
-    <td align="right">{{user.NumChickens}}</td>
-    <td align="right">{{user.Rate}}</td>
-    <td align="right">{{user.ProjectedPercent | percentage:0}}</td>
-    <td align="right">{{user.EB}}</td>
-    <td align="right">{{user.SiloTime}}</td>
-    <td>{{user.Status}} {{user.Sleep}}</td>
-    }
+    //void PotentialRowDetails() {
+    //<td>
+    //                                                                                                        @if(isSolo) {
+    //                                                                                                        <div style="position: relative; top: -20px;" id="{{user.EggIncId}}"></div>
+    //        }
+    //                                                                                                        {{user.Name}}
+    //</td>
+    //<td align="right">{{user.NumChickens}}</td>
+    //<td align="right">{{user.Rate}}</td>
+    //<td align="right">{{user.ProjectedPercent | percentage:0}}</td>
+    //<td align="right">{{user.EB}}</td>
+    //<td align="right">{{user.SiloTime}}</td>
+    //<td>{{user.Status}} {{user.Sleep}}</td>
+    //}
 
-    void PotentialHeader() {
-    <thead>
-                                                                                                            <tr>
-                                                                                                                <th>Name</th>
-                                                                                                                <th align="right">🐔</th>
-                                                                                                                <th align="right">Rate</th>
-                                                                                                                <th align="right">📈</th>
-                                                                                                                <th align="right">EB</th>
-                                                                                                                <th align="right"></th>
-                                                                                                                @if(isSolo) {
-                                                                                                                <th>Rate Needed</th>
-                } else {
-                                                                                                                <th>Status</th>
-                }
-                                                                                                            </tr>
-    </thead>
-    }
-    void PotentialFooter() {
-    <tfoot>
-                                                                                                            <tr>
-                                                                                                                <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
-                                                                                                                <td></td>
-                                                                                                                <td align="right">{{coop.Rate}}</td>
-                                                                                                                <td align="right">{{PercentSum(coop.Users) | percentage:0}}</td>
-                                                                                                                <td></td>
-                                                                                                                <td></td>
-                                                                                                                <td></td>
-                                                                                                            </tr>
-    </tfoot>
-    }
+    //void PotentialHeader() {
+    //<thead>
+    //                                                                                                        <tr>
+    //                                                                                                            <th>Name</th>
+    //                                                                                                            <th align="right">🐔</th>
+    //                                                                                                            <th align="right">Rate</th>
+    //                                                                                                            <th align="right">📈</th>
+    //                                                                                                            <th align="right">EB</th>
+    //                                                                                                            <th align="right"></th>
+    //                                                                                                            @if(isSolo) {
+    //                                                                                                            <th>Rate Needed</th>
+    //            } else {
+    //                                                                                                            <th>Status</th>
+    //            }
+    //                                                                                                        </tr>
+    //</thead>
+    //}
+    //void PotentialFooter() {
+    //<tfoot>
+    //                                                                                                        <tr>
+    //                                                                                                            <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
+    //                                                                                                            <td></td>
+    //                                                                                                            <td align="right">{{coop.Rate}}</td>
+    //                                                                                                            <td align="right">{{PercentSum(coop.Users) | percentage:0}}</td>
+    //                                                                                                            <td></td>
+    //                                                                                                            <td></td>
+    //                                                                                                            <td></td>
+    //                                                                                                        </tr>
+    //</tfoot>
+    //}
 }
 @section Scripts {
     <script src="~/lib/angular-drag-and-drop-lists.min.js"></script>

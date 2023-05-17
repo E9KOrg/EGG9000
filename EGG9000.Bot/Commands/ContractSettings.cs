@@ -28,46 +28,50 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {
+        public static List<(int bg, long time)> BoardingGroupTimes = new List<(int bg, long time)> {
+            (1, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
+            (2, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
+            (3, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
+        };
+
         #region MainMenu
         [SlashCommand(Description = "My Contract Settings")]
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
-                await command.RespondAsync("ERROR: Unable to find user, are you registered?", ephemeral: true);
-            } else if(dbuser.EggIncAccounts.Count > 1) {
-                await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: true);
+                await command.RespondAsync("ERROR: Unable to find user, are you registered?", ephemeral: !System.Diagnostics.Debugger.IsAttached);
             } else {
-                var props = MainMenu(dbuser, dbuser.EggIncAccounts.First(), 0);
-                await command.RespondAsync(props.Content.GetValueOrDefault(null), components: props.Components.GetValueOrDefault(null), embed: props.Embed.GetValueOrDefault(null), ephemeral: true);
+                await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             }
         }
 
         [ComponentCommand]
         public static async Task MCSAccounts(SocketMessageComponent component, ApplicationDbContext db) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            await component.UpdateAsync(x => { x.Content = "Select which account you would like to manage"; x.Components = GetAccountButtons(dbuser, "MCSMenu"); x.Embed = null; });
+            await component.UpdateAsync(x => { x.Content = ""; x.Components = GetAccountButtons(dbuser, "MCSMenu"); x.Embed = null; });
         }
 
         public static MessageComponent GetAccountButtons(DBUser dbuser, string prefix) {
             var builder = new ComponentBuilder();
             for(var i = 0; i < dbuser.EggIncAccounts.Count; i++) {
                 var account = dbuser.EggIncAccounts[i];
-                var backup = dbuser.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
-                builder.WithButton($"{(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i}");
+                builder.WithButton($"Manage {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i}");
             }
+
+            builder.WithButton("Coop Settings", "CSAccountMenu");
+            builder.WithButton("Ship Return DM", "SRDMenu");
             return builder.Build();
         }
-        public static MessageProperties MainMenu(DBUser dbuser, DBUser.EggIncAccount account, int index) {
+        public static MessageProperties MainMenu(DBUser dbuser, EggIncAccount account, int index) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()
                 .WithTitle($"Main Menu");
 
             if(dbuser.EggIncAccounts.Count > 1) {
-                var backup = dbuser.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
-                eBuilder.WithDescription($"For Account {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {backup?.EarningsBonus.ToEggString()}");
+                eBuilder.WithDescription($"For Account {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}");
             }
-            eBuilder.AddField("Boarding Group", account.Group != default ? account.Group.ToString() : "Not Set (please select below)");
+            eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
             eBuilder.AddField("Break", account.OnBreakUntil == default ? "Not on break" : $"Ends <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R>");
             var rDict = GetRewardDictionary();
             if(account.AutoRegisterRewards is null)
@@ -88,8 +92,7 @@ namespace EGG9000.Bot.Commands {
                 .WithButton("Set Break", $"MCSBreak:{index}")
                 .WithButton("Rewards Filter", $"MCSRewards:{index}")
                 .WithButton("Redo Completed Leggacies", $"MCSRL:{index}");
-            if(dbuser.EggIncAccounts.Count > 1)
-                builder.WithButton("Return", $"MCSAccounts");
+            builder.WithButton("Return", $"MCSAccounts");
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();
 
@@ -127,7 +130,7 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Group 3", "3", isDefault: account.Group == 3),
             });
             builder.WithButton("Cancel", $"MCSMenu:{index}");
-            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out. Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\nBG1 <t:1681142400:t>  (When contracts normally launch)\n BG2 <t:1681171200:t>\n BG3 <t:1681200000:t>";
+            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out.Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\n BG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Select(x => $" BG{x.bg} <t:{x.time}:t>"))}";
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
         }
 
@@ -238,7 +241,7 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        public static string MCSBreakMessage(DBUser.EggIncAccount account) {
+        public static string MCSBreakMessage(EggIncAccount account) {
             if(account.OnBreakUntil == default) {
                 return "Not currently on break";
             } else {

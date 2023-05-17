@@ -30,6 +30,8 @@ using Microsoft.Data.SqlClient;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using EGG9000.Common.Contracts;
+using Microsoft.Extensions.Logging;
+using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
@@ -62,30 +64,20 @@ namespace EGG9000.Bot.Automated {
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            var showTimings = false;
-
-            var totalStopwatch = new Stopwatch();
-            totalStopwatch.Start();
-
-            Console.WriteLine("Starting Contract Update");
-            var sw = new Stopwatch();
-            sw.Start();
+            var times = new TimingsFactory(_logger);
+            times.Start();
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync();
-
-            if(showTimings)
-                Console.WriteLine($"Contracts: {sw.ElapsedMilliseconds}");
-            sw.Restart();
+            times.Set("guildcontracts");
 
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-
-            if(showTimings)
-                Console.WriteLine($"Guilds: {sw.ElapsedMilliseconds}");
-            sw.Restart();
-            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-7)).ToListAsync();
-
+            times.Set("dbguilds");
+            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync();
+            times.Set("coops");
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
+
+            var timings = times.Finished();
 
 #if DEBUG
             //guildGroups = guildGroups.Where(x => x.Key == dbguilds.First(x => x.Name.Contains("ingham")).DiscordSeverId);
@@ -99,26 +91,19 @@ namespace EGG9000.Bot.Automated {
                 if(guild == null)
                     continue;
 
-                Console.WriteLine($"Running Contracts for {guild.Name}");
+                _logger.LogInformation("Running Contracts for {guild}", guild.Name);
                 var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id).ToListAsync();
 
-                if(showTimings)
-                    Console.WriteLine($"DBUsers: {sw.ElapsedMilliseconds}");
-                sw.Restart();
 
 #if DEBUG
-                var backups = dbusers.Where(x => x.Backups != null).SelectMany(y => y.Backups.Select(x => new LeaderboardUser {
-                    User = y,
-                    Backup = x
-                })).ToList();
-                //var backups = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
+                //dbusers = dbusers.Take(100).ToList();
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
+                //await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
 #else
-                var backups = await _apiLink.GetUserBackups(dbusers, _db);
+                _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
+                await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
 #endif
-
-                if(showTimings)
-                    Console.WriteLine($"Backups: {sw.ElapsedMilliseconds}");
-                sw.Restart();
 
                 var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);
                 //var contractIds = groupGuildContracts.Select(x => x.ContractID);
@@ -126,9 +111,6 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                if(showTimings)
-                    Console.WriteLine($"Get Coops: {sw.ElapsedMilliseconds}");
-                sw.Restart();
                 //var dbguild = dbguilds.First(x => x.Id == guild.Id);
                 if(groupGuildContracts is not null) {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
@@ -137,43 +119,46 @@ namespace EGG9000.Bot.Automated {
                         await UpdateContractChannel(_db, guildContract, guild);
                     }
                 }
-                await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 
 
                 var contracts = await _db.Contracts.ToListAsync();
                 var count = 0;
                 var potentialCoops = new List<(string contractid, string coopname, List<Guid> userids, ulong guildid, uint grade, long endtime)>();
                 foreach(var user in dbusers) {
-                    foreach(var account in user.EggIncAccounts) {
-                        var backup = user.Backups.FirstOrDefault(x => x.EggIncId == account.Id);
-                        if(backup is null)
+                    foreach(var account in user.EggIncAccounts.Where(x => x.Backup?.Farms is not null)) {
+                        if(account.Backup is null)
                             continue;
 
-                        foreach(var farm in backup.Farms.Where(x =>
+
+                        var farms = account.Backup.Farms.Where(x =>
                             x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset &&
+                            !x.Completed &&
                             !coops.Any(c => c.Name.ToLower() == x.CoopId) &&
-                            !string.IsNullOrWhiteSpace(x.CoopId)
-                        )) {
+                            !string.IsNullOrWhiteSpace(x.CoopId) && x.TimeAccepted > DateTimeOffset.Now.AddDays(-7).ToUnixTimeSeconds()
+                        );
+
+                        foreach(var farm in farms) {
 
                             if(potentialCoops.Any(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId)) {
                                 var poentialCoop = potentialCoops.First(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId);
                                 poentialCoop.userids.Add(user.Id);
                                 poentialCoop.userids = poentialCoop.userids.Distinct().ToList();
                             } else {
-                                potentialCoops.Add((farm.ContractId, farm.CoopId, new List<Guid> { user.Id }, user.GuildId, (uint)farm.Grade, farm.CoopSharedEndTime)); 
+                                potentialCoops.Add((farm.ContractId, farm.CoopId, new List<Guid> { user.Id }, user.GuildId, (uint)farm.Grade, farm.CoopSharedEndTime));
                             }
                         }
                     }
                 }
 
                 foreach(var pCoop in potentialCoops.Where(x => x.userids.Count > 1)) {
+                    _logger.LogInformation("Adding co-op {coopname} from backups", pCoop.coopname);
                     var contract = contracts.First(x => x.ID == pCoop.contractid);
                     var coop = new Coop {
                         ContractID = pCoop.contractid, Created = DateTimeOffset.Now, GuildId = pCoop.guildid, Name = pCoop.coopname,
                         MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnAssigned, League = pCoop.grade,
                         CoopEnds = DateTimeOffset.FromUnixTimeSeconds(pCoop.endtime)
                     };
-                    coops.Add(coop);
+                    coops.Add(new { Name = coop.Name });
                     _db.Add(coop);
                     await _db.SaveChangesAsync();
                     count++;
@@ -191,18 +176,11 @@ namespace EGG9000.Bot.Automated {
 
  
 
-            if(showTimings)
-                Console.WriteLine($"Saving DB: {sw.ElapsedMilliseconds}");
-            sw.Restart();
-
-
-
-            Console.WriteLine($"Finished Contract Channels Update {Math.Round(totalStopwatch.ElapsedMilliseconds / 1000.0 / 60.0, 1)}mins");
         }
 
         public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, FauxCommand slashCommand = null) {
             try {
-                Console.WriteLine($"Working on GuildContract for {guildContract.GuildID} - {guildContract.Contract.ID}");
+                _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
@@ -219,7 +197,7 @@ namespace EGG9000.Bot.Automated {
 
 
                 if(channel == null) {
-                    Console.WriteLine($"Missing Channel for {guildContract.ContractID}");
+                    _logger.LogWarning("Missing Channel for {contract} in {guild}", guildContract.Contract.Name, guild.Name);
                     return;
                 }
 
@@ -300,7 +278,7 @@ namespace EGG9000.Bot.Automated {
 
 
             } catch(Exception e) {
-                Console.WriteLine($"Error Updating Contracts Channel {e.Message}");
+                _logger.LogError(e, "Error Updating Contracts Channel");
                 _bugsnag.Notify(e);
             }
 
@@ -417,7 +395,6 @@ namespace EGG9000.Bot.Automated {
             var tableString = $"{coopName}\n```{FixedWidthTable.GetTable(table)}```\n";
             //var startLength = tableString.Length;
             //tableString = tableString.Replace("  ", "\t");
-            //Console.WriteLine($"Original Length: {startLength}, Final Length: {tableString.Length}, Save: {startLength - tableString.Length}");
             var msgs = new List<string>();
             while(tableString.Length > 2000) {
                 var index = tableString.LastIndexOf('\n', 2000);

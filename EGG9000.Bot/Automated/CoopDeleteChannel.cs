@@ -16,6 +16,7 @@ using Discord;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class CoopDeleteChannel : _UpdaterBase<CoopDeleteChannel> {
@@ -27,7 +28,6 @@ namespace EGG9000.Bot.Automated {
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            Console.WriteLine("Checking Delete Channel...");
             var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
             //var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(1) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
 
@@ -48,10 +48,10 @@ namespace EGG9000.Bot.Automated {
                         _bugsnag.Notify(e);
                     }
                     coop.DeletedChannel = true;
-                    Console.WriteLine($"Deleting co-op channel for {coop.Name}");
+                    _logger.LogInformation("Deleting co-op channel for {coopName}", coop.Name);
                 } else {
                     coop.DeletedChannel = true;
-                    Console.WriteLine($"Unable to find co-op channel for {coop.Name}");
+                    _logger.LogWarning("Unable to find co-op channel for {coopName}", coop.Name);
                 }
                 try {
                     await _db.SaveChangesAsync();

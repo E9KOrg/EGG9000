@@ -1,4 +1,6 @@
-﻿using System;
+﻿using NLog;
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -123,7 +125,6 @@ namespace EGG9000.Bot {
         public static BigInteger NumberFromString(string arg) {
             var size = arg[arg.Length - 1];
             var numberPortion = arg.Substring(0, arg.Length - 1);
-            Console.WriteLine($"Size: {size} NumberPortion: {numberPortion} ");
 
             if(BigInteger.TryParse(numberPortion, out var number)) {
                 switch(size) {
@@ -140,10 +141,6 @@ namespace EGG9000.Bot {
                 throw new UnableToParseNumberExecption();
             }
         }
-
-        //public static string NunberToString(BigInteger number) {
-
-        //}
     }
 
     public class UnableToParseNumberExecption : Exception {

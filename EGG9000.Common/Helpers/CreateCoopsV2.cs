@@ -18,29 +18,32 @@ using Polly;
 using EGG9000.Common.Contracts;
 using Google.Protobuf;
 using Microsoft.Extensions.DependencyInjection;
+using NLog;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
-        public static async Task<Coop> Start(List<UserByAccount> prefarms, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild) {
+        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild) {
             var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             string EIID = null;
 
-            foreach(var account in prefarms) {
-                var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Backup.EggIncId);
+            foreach(var account in accounts) {
+                var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
                 if(r.Grade == grade) {
-                    EIID = account.Backup.EggIncId;
+                    EIID = account.Account.Id;
                     break;
                 }
             }
 
-            if(string.IsNullOrEmpty(EIID))
-                throw new Exception($"Unable to find user in the grade {grade}");
+            if(string.IsNullOrEmpty(EIID)) {
+                GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
+                throw new Exception($"Unable to a find user in the grade {grade}");
+            }
 
             var secondsRemaining = contract.Details.LengthSeconds;
 
             secondsRemaining = Math.Max(secondsRemaining, TimeSpan.FromDays(1.6).TotalSeconds);
-            Console.WriteLine($"Seconds Remaining {secondsRemaining}");
 
 
             var coopEnds = DateTimeOffset.Now.AddSeconds(secondsRemaining);
@@ -49,7 +52,7 @@ namespace EGG9000.Common.Helpers {
             coop.ContractID = contract.ID;
             coop.Created = DateTimeOffset.Now;
             coop.GuildId = guild.Id;
-            coop.Name = words.GetCoopName(prefarms, guild, dbguild);
+            coop.Name = words.GetCoopName(accounts, guild, dbguild);
             coop.MaxUsers = contract.MaxUsers;
             coop.Status = CoopStatusEnum.WaitingOnAssigned;
             coop.League = (uint)grade;
@@ -60,7 +63,7 @@ namespace EGG9000.Common.Helpers {
             db.Coops.Add(coop);
 
 
-            foreach(var user in prefarms) {
+            foreach(var user in accounts) {
                 db.UserCoopXrefs.Add(new UserCoopXref {
                     AddedToChannel = false,
                     CreatedOn = DateTimeOffset.Now,
@@ -68,7 +71,7 @@ namespace EGG9000.Common.Helpers {
                     JoinedCoop = false,
                     WaitingOnStarter = false,
                     UserId = user.User.Id,
-                    EggIncId = user.Backup.EggIncId,
+                    EggIncId = user.Account.Id,
                     WasAssigned = true
                 });
             }

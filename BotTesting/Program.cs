@@ -34,8 +34,8 @@ await Host.CreateDefaultBuilder(args)
         services.AddMemoryCache();
         services.AddSingleton<DiscordHostedService>();
         services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-        services.AddSingleton<APILink>();
-        services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+        //services.AddSingleton<APILink>();
+        //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
         services.AddHostedService<CommandService>();
         //services.AddHostedService<UpcomingContracts>();
