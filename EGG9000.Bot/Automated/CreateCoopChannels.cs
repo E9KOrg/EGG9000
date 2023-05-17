@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using EGG9000.Common.Services;
 using EGG9000.Common.Helpers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
@@ -37,26 +38,35 @@ namespace EGG9000.Bot.Automated {
                 foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
                     var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
                     var servers = await GetOverflowGuildsCounts(guild, _db);
+                    if(servers == null) {
+                        _logger.LogWarning("Co-op is trying to be made for guild that is not registered, {guildname} {guildid}, Co-op Name {coop}, Users {user}",
+                            guild.Name, guild.Id, coopGroups.First().Name,
+                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync())
+                        );
+                        continue;
+                    }
                     var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && x.Status == CoopStatusEnum.Completed).OrderBy(x => x.CoopCompleted).ToListAsync();
-                    Console.WriteLine($"Coop Counts {coopGroups.Count()} {coopGroups.Key}");
+                    _logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
                     foreach(var coop in coopGroups) {
                         if(cancellationToken.IsCancellationRequested) return;
-                        
 
-                        Console.WriteLine($"Creating Channel for {coop.Name}");
-                        var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);
-                        if(channel != null) {
-                            coop.DiscordChannelId = channel.Id;
-                            coop.OverflowGuildId = channel.GuildId;
+                        try {
+                            var channel = await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);
+                            if(channel != null) {
+                                coop.DiscordChannelId = channel.Id;
+                                coop.OverflowGuildId = channel.GuildId;
 
-                            Console.WriteLine($"Channel created for {coop.Name}");
-                            try {
-                                await _db.SaveChangesAsync();
-                            } catch(Exception) {
-                                await _db.SaveChangesAsync();
+                                _logger.LogInformation("Channel created for {coopName}", coop.Name);
+                                try {
+                                    await _db.SaveChangesAsync();
+                                } catch(Exception) {
+                                    await _db.SaveChangesAsync();
+                                }
+                            } else {
+                                _logger.LogWarning("Channel NOT created for {coopName}", coop.Name);
                             }
-                        } else {
-                            Console.WriteLine($"Channel NOT created for {coop.Name}");
+                        } catch(Exception ex) {
+                            _logger.LogError(ex, "Error Creating Co-op Channel {coop} in {guild}", coop.Name, guild.Name);
                         }
                     }
                 }
@@ -65,12 +75,9 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops, CancellationToken cancellationToken) {
-            Console.WriteLine("Checking servers");
             foreach(var overflow in servers.Where(x => x.ChannelsLeft > 0)) {
-                Console.WriteLine($"Getting categories for {overflow.Guild.Name}");
                 var coopCategories = await overflow.GetCoopCategories(_client);
                 foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
-                    Console.WriteLine($"Creating channel in category {category.DiscordCategory.Name}");
                     try {
                         var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; }, options: new RequestOptions { CancelToken = cancellationToken });
                         category.CurrentCount++;
@@ -93,7 +100,7 @@ namespace EGG9000.Bot.Automated {
 
                     }
                     coop.DeletedChannel = true;
-                    Console.WriteLine($"Deleting co-op channel for {coop.Name}");
+                    _logger.LogInformation("Deleting co-op channel for {coop} to free up a channel", completedCoop.Name);
 
                     var server = servers.Where(x => x.Guild.Id == completedCoop.GuildId).FirstOrDefault();
                     if(server != null) {
@@ -108,7 +115,9 @@ namespace EGG9000.Bot.Automated {
                     }
                 } else {
                     coop.DeletedChannel = true;
-                    Console.WriteLine($"Unable to find co-op channel for {coop.Name}");
+                    _logger.LogWarning("Unable to find co-op channel for {coop} to be able to free up space, settings as deleted", completedCoop.Name);
+                    completedCoops.Remove(completedCoop);
+                    return await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);
                 }
 
             }
@@ -122,7 +131,7 @@ namespace EGG9000.Bot.Automated {
 
             var dbguild = await db.Guilds.AsAsyncEnumerable().FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
             if(dbguild == null) {
-                return servers;
+                return null;
             }
             foreach(var overflow in dbguild.OverflowServers) {
                 var overflowGuild = _client.Guilds.First(x => x.Id == overflow);

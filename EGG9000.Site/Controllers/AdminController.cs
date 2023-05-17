@@ -361,7 +361,7 @@ namespace EGG9000.Site.Controllers {
             var dbusers = rawusers.Select(x => new DBUser { DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, GuildId = x.GuildId, Id = x.Id, _CustomBackups = x._CustomBackups, _eggIncIds = x._eggIncIds, Registered = x.Registered });
 
             //await _db.Users.AsQueryable().Where(x => (x.GuildId == user.GuildId || all) && x._LastBackup != null).ToListAsync()
-            return View(dbusers.Where(x => x.Backups != null).ToList());
+            return View(dbusers.Where(x => x.EggIncAccounts.Any(y => y.Backup != null)).ToList());
         }
 
         public async Task<IActionResult> ContractScores([FromQuery] string contractid, [FromQuery] bool all = false) {
@@ -854,42 +854,6 @@ namespace EGG9000.Site.Controllers {
             return RedirectToAction("DuplicateChannels");
         }
 
-        public async Task<ActionResult> Modifiers() {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            //var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
-
-            //var users = await _db.DBUsers.Where(x => x.GuildId == guildId).ToListAsync();
-            var users = await _db.DBUsers.Where(x => x.GuildId != guildId).ToListAsync();
-            var backupWithUsers = users.Where(x => x.Backups != null).SelectMany(x => x.Backups.Select(y => new BackupWithUser { User = x, Backup = y })).ToList();
-            var tooManyPEBackups = backupWithUsers.Where(x => x.Backup.EggsOfProphecy > x.Backup.PEFromDailyGifts + x.Backup.PEFromTrophies + (x.Backup.ArchivedFarms?.Sum(x => x.PEGained) ?? 0)).ToList();
-
-            var usersToUpdate = tooManyPEBackups.Where(x => x.Backup.PEFromTrophies == -1).Take(500).GroupBy(x => x.User.Id);
-            foreach(var backup in usersToUpdate) {
-                var user = backup.First().User;
-                var backups = new List<CustomBackup>();
-                var rawBackups = new List<Ei.Backup>();
-                foreach(var accounts in user.EggIncAccounts) {
-                    var rawBackup = await ContractsAPI.FirstContact(accounts.Id);
-                    rawBackups.Add(rawBackup.Backup);
-                    var customBackup = new CustomBackup(rawBackup.Backup);
-                    //var json = JsonSerializer.Serialize(customBackup);
-                    //var json = Newtonsoft.Json.JsonConvert.SerializeObject(customBackup);
-                    //var customBackupAfterJson = Newtonsoft.Json.JsonConvert.DeserializeObject<CustomBackup>(json);
-
-                    //var response = await _apiLink.GetBackup(accounts.Id);
-                    Console.WriteLine($"Getting backups for {accounts.Name}");
-                    if(customBackup?.SpaceMissions != null) {
-                        backups.Add(customBackup);
-                    }
-                    //Console.WriteLine(customBackup.SpaceMissions.Count);
-                }
-                user.Backups = backups;
-            }
-            await _db.SaveChangesAsync();
-
-
-            return View(tooManyPEBackups);
-        }
 
         public async Task<ActionResult> AutomatedTasks() {
             return View(await _db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1)).OrderBy(x => x.StartTime).ToListAsync());
@@ -1012,7 +976,7 @@ namespace EGG9000.Site.Controllers {
                             var guildUser = await guild.GetUserAsync(user.Id);
                             var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
 
-                            var needsProPermit = dbuser.Backups.Any(x => dbuser.EggIncAccounts.Any(y => x.EggIncId == y.Id) && x.PermitLevel == 0);
+                            var needsProPermit = dbuser.EggIncAccounts.Any(x => x.Backup.PermitLevel == 0);
                             eggsFound.Add(new EasterUser { User = guildUser, NeedsProPermit = needsProPermit }, 1);
                         }
                     }
@@ -1100,7 +1064,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> StandardPermit() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var users = await _db.DBUsers.Where(x => x.GuildId == guildId && !x.TempDisabled).ToListAsync();
-            users = users.Where(x => x.Backups?.Any(y => y.PermitLevel == 0) ?? false).ToList();
+            users = users.Where(x => x.EggIncAccounts.Any(y => y.Backup.PermitLevel == 0)).ToList();
 
             var userids = users.Select(x => x.Id).ToArray();
             ViewBag.Demerits = await _db.Demerit.Where(x => userids.Contains(x.UserId)).ToListAsync();

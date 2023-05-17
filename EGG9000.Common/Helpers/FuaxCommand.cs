@@ -13,6 +13,8 @@ namespace EGG9000.Common.Services {
     public class FauxCommand : IDiscordInteraction {
         SocketMessage _originalMessage;
         SocketSlashCommand _socketSlashCommand;
+        SocketUserCommand _socketUserCommand;
+        SocketCommandBase _socketCommandBase;
 
         RestUserMessage _message;
         ulong? _guildid;
@@ -23,15 +25,27 @@ namespace EGG9000.Common.Services {
         }
         public FauxCommand(SocketSlashCommand command) {
             _socketSlashCommand = command;
+            _socketCommandBase = command;
         }
+
+        public FauxCommand(SocketUserCommand command) {
+            _socketUserCommand = command;
+            _socketCommandBase = command;
+        }
+
+
         public static implicit operator FauxCommand(SocketSlashCommand command) {
+            return new FauxCommand(command);
+        }
+
+        public static implicit operator FauxCommand(SocketUserCommand command) {
             return new FauxCommand(command);
         }
 
 
         public async Task RespondAsync(string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
-            if(_socketSlashCommand is not null)
-                await _socketSlashCommand.RespondAsync(text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
+           if(_socketCommandBase is not null)
+                await _socketCommandBase.RespondAsync(text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
             else
                 _message = await _originalMessage.Channel.SendMessageAsync(text, messageReference: new MessageReference(_originalMessage.Id, _originalMessage.Channel.Id));
         }
@@ -42,15 +56,15 @@ namespace EGG9000.Common.Services {
 
 
         public async Task DeleteOriginalResponseAsync(RequestOptions options = null) {
-            if(_socketSlashCommand is not null)
-                await _socketSlashCommand.DeleteOriginalResponseAsync(options);
+            if(_socketCommandBase is not null)
+                await _socketCommandBase.DeleteOriginalResponseAsync(options);
             else
                 await _message.DeleteAsync(options);
         }
 
         public async Task DeferAsync(bool ephemeral = false, RequestOptions options = null) {
-            if(_socketSlashCommand is not null)
-                await _socketSlashCommand.DeferAsync(ephemeral, options);
+            if(_socketCommandBase is not null)
+                await _socketCommandBase.DeferAsync(ephemeral, options);
         }
 
         public Task RespondWithModalAsync(Modal modal, RequestOptions options = null) {
@@ -66,15 +80,15 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task<IUserMessage> GetOriginalResponseAsync(RequestOptions options = null) {
-            return _socketSlashCommand is null ? _message : await _socketSlashCommand?.GetOriginalResponseAsync(options);
+            return _socketCommandBase is null ? _message : await _socketCommandBase?.GetOriginalResponseAsync(options);
         }
         async Task<IUserMessage> IDiscordInteraction.GetOriginalResponseAsync(RequestOptions options) {
             return await GetOriginalResponseAsync(options);
         }
 
         public async Task<IUserMessage> ModifyOriginalResponseAsync(Action<MessageProperties> func, RequestOptions options = null) {
-            if(_socketSlashCommand is not null)
-                return await _socketSlashCommand.ModifyOriginalResponseAsync(func, options);
+            if(_socketCommandBase is not null)
+                return await _socketCommandBase.ModifyOriginalResponseAsync(func, options);
             await _message.ModifyAsync(func, options);
             return _message;
         }
@@ -89,6 +103,11 @@ namespace EGG9000.Common.Services {
 
         public FauxApplicationCommandData Data {
             get {
+                if(_socketUserCommand is not null)
+                    return new FauxApplicationCommandData {
+                        Name = _socketUserCommand.Data.Name,
+                        Options = _socketUserCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList()
+                    };
                 if(_socketSlashCommand is not null)
                     return new FauxApplicationCommandData {
                         Name = _socketSlashCommand.Data.Name,
@@ -139,7 +158,7 @@ namespace EGG9000.Common.Services {
             public FauxSocketSlashCommandDataOption() {
 
             }
-            public FauxSocketSlashCommandDataOption(SocketSlashCommandDataOption option) {
+            public FauxSocketSlashCommandDataOption(IApplicationCommandInteractionDataOption option) {
                 Name = option.Name;
                 Type = option.Type;
                 Value = option.Value;
@@ -149,16 +168,16 @@ namespace EGG9000.Common.Services {
 
         public ulong Id {
             get {
-                if(_socketSlashCommand is not null)
-                    return _socketSlashCommand.Id;
+                if(_socketCommandBase is not null)
+                    return _socketCommandBase.Id;
                 return _originalMessage.Id;
             }
         }
 
         public InteractionType Type {
             get {
-                if(_socketSlashCommand is not null)
-                    return _socketSlashCommand.Type;
+                if(_socketCommandBase is not null)
+                    return _socketCommandBase.Type;
                 return InteractionType.ApplicationCommand;
             }
         }
@@ -177,15 +196,15 @@ namespace EGG9000.Common.Services {
 
         public bool HasResponded {
             get {
-                if(_socketSlashCommand is not null)
-                    return _socketSlashCommand.HasResponded;
+                if(_socketCommandBase is not null)
+                    return _socketCommandBase.HasResponded;
                 return _message != null;
             }
         }
 
         public IUser User {
             get {
-                return _socketSlashCommand?.User ?? _originalMessage.Author;
+                return _socketCommandBase?.User ?? _originalMessage.Author;
             }
         }
 
@@ -209,19 +228,19 @@ namespace EGG9000.Common.Services {
 
         public ulong? ChannelId {
             get {
-                return _socketSlashCommand?.ChannelId ?? _originalMessage.Channel?.Id;
+                return _socketCommandBase?.ChannelId ?? _originalMessage.Channel?.Id;
             }
         }
 
         public IMessageChannel Channel {
             get {
-                return (IMessageChannel)_socketSlashCommand?.Channel ?? _originalMessage.Channel;
+                return (IMessageChannel)_socketCommandBase?.Channel ?? _originalMessage.Channel;
             }
         }
 
         public ulong? GuildId {
             get {
-                return _socketSlashCommand?.GuildId ?? _guildid;
+                return _socketCommandBase?.GuildId ?? _guildid;
             }
         }
 
@@ -233,7 +252,7 @@ namespace EGG9000.Common.Services {
 
         public DateTimeOffset CreatedAt {
             get {
-                return _socketSlashCommand?.CreatedAt ?? _originalMessage.CreatedAt;
+                return _socketCommandBase?.CreatedAt ?? _originalMessage.CreatedAt;
             }
         }
 

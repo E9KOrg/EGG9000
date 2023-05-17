@@ -32,6 +32,8 @@ namespace EGG9000.Bot.Automated {
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
                 foreach (var dbguild in dbguilds)
                 {
+                    if(cancellationToken.IsCancellationRequested)
+                        continue;
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.Id);
                     if (guild == null)
                         continue;
@@ -43,6 +45,8 @@ namespace EGG9000.Bot.Automated {
                     await SortCoops(coops, categories, guild);
 
                     foreach(var overflowId in dbguild.OverflowServers) {
+                        if(cancellationToken.IsCancellationRequested)
+                            continue;
                         var overflowGuild = _client.Guilds.FirstOrDefault(x => x.Id == overflowId);
                         if(overflowGuild == null) {
                             _logger.LogWarning("Missing overflow guild for {guildName}, overflowId = {overflowId}", guild.Name, overflowId);

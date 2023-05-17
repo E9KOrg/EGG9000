@@ -30,6 +30,8 @@ using NLog.Extensions.Logging;
 using NLog.LayoutRenderers;
 using NLog.Web;
 using EGG9000.Common.Factories;
+using System.Security.Principal;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -80,7 +82,6 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
             //services.AddSingleton<CoopStatusUpdater>();
             //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
@@ -112,10 +113,13 @@ await Host.CreateDefaultBuilder(args)
             configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
         });
 
+
         services.AddSingleton<DiscordHostedService>();
         services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+
+        services.AddHostedService<LeaderboardUpdater>();
 
         services.AddHostedService<StaffCoopsMessage>();
         services.AddHostedService<EventUpdater>();
@@ -134,7 +138,6 @@ await Host.CreateDefaultBuilder(args)
         services.AddHostedService<ShipReturnDM>();
         services.AddHostedService<UserSnapShots>();
         services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
-        services.AddHostedService<LeaderboardUpdater>();
         services.AddHostedService<ManageOverflow>();
         services.AddHostedService<RemoveTempRoles>();
         services.AddHostedService<HandleGradeChanges>();
@@ -159,13 +162,15 @@ public class TestService : IHostedService {
     public Words _words { get; }
     private APILink _apilink { get; set; }
     private ILogger<TestService> _logger;
+    private IHostApplicationLifetime _applicationLifetime;
 
-    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger) {
+    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime) {
         _client = client;
         _db = applicationDbContext;
         _words = words;
         _apilink = apilink;
         _logger = logger;
+        _applicationLifetime = applicationLifetime;
     }
     //public TestService(ApplicationDbContext applicationDbContext) {
     //    db = applicationDbContext;
@@ -173,56 +178,6 @@ public class TestService : IHostedService {
 
 
     public async Task StartAsync(CancellationToken cancellationToken) {
-
-        //var DMChannel = await Client.GetUser(620365345303167006).CreateDMChannelAsync();
-        //await DMChannel.SendMessageAsync("Testing DM <@620365345303167006>");
-        //Console.WriteLine("Sent DM");
-        //var f = await Client.GetChannelAsync(GuildChannelType.FaqChannel, Client.GetGuild(656455567858073601));
-        //var w = await Client.GetChannelAsync(GuildChannelType.Welcome, Client.GetGuild(656455567858073601));
-        //var g = await Client.GetChannelAsync(GuildChannelType.General, Client.GetGuild(656455567858073601));
-        //var status = await ContractsAPI.GetCoopStatus("all-or-nothing", "DailyFolic4".ToLower());
-        //var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
-        //    ClientVersion = ContractsAPI.ClientVersion,
-        //    ContractIdentifier = status.ContractIdentifier,
-        //    CoopIdentifier = status.CoopIdentifier,
-        //    PlayerIdentifier = status.Participants[0].UserId,
-        //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-        //    RequestingUserId = status.CreatorId
-        //}, status.CreatorId);
-
-
-        //var guildContract = await db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == "arteggmis-2022" && x.GuildID == 656455567858073601 && x.League == 0);
-        //var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
-
-        //await ContractUpdater.UpdateContractChannelName(guildContract, coopsBreakdown, (SocketTextChannel)_client.GetChannel(1011288737600258049));
-
-
-        //var status = await ContractsAPI.GetCoopStatus("anniversary-edible", "BudGood16");
-        //var user = status.Participants.First(x => x.UserName.Contains("Schrod"));
-        //var eb = (Math.Pow(10, user.SoulPower) * 100).ToEggString();
-        //Console.WriteLine(eb);
-        //Console.WriteLine(user.RankChange);
-        //var r2 = await ContractsAPI.GetCoopStatus("eggutate-2022", "pocket575");
-        //var r = await ContractsAPI.Post<Ei.QueryCoopResponse, Ei.QueryCoopRequest>(new Ei.QueryCoopRequest {
-        //    ClientVersion = ContractsAPI.ClientVersion, League = 0, ContractIdentifier = "eggutate-2022", CoopIdentifier = "pocket575", Rinfo = ContractsAPI.GetInfo(ContractsAPI.UserId)
-        //}, ContractsAPI.UserId);
-        //var coopStatus = await ContractsAPI.GetCoopStatus("toy-builders-2020", "joygains41".ToLower().Trim());
-        //var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-        //    ClientVersion = ContractsAPI.ClientVersion,
-        //    ContractIdentifier = coopStatus.ContractIdentifier,
-        //    CoopIdentifier = coopStatus.CoopIdentifier,
-        //    PlayerIdentifier = "EI4599706528776192",
-        //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-        //    RequestingUserId = coopStatus.CreatorId
-        //}, ContractsAPI.UserId);
-        //var raw = await ContractsAPI.FirstContactRaw("EI5015560351383552");
-        //var user = db.DBUsers.First(x => x.DiscordId == 710137969465491498);
-        //var backup = await ContractsAPI.FirstContact(user.Backups.First().EggIncId);
-        //var response = await ContractsAPI.Post<PeriodicalsResponse, GetPeriodicalsRequest>(new GetPeriodicalsRequest { 
-        //    UserId = "EI6229292070993920",
-        //     ArtifactsUnlocked = true, ContractsUnlocked = true, CurrentClientVersion = ContractsAPI.ClientVersion, SoulEggs = user.Backups.First().SoulEggs, SecondsFullRealtime = 100000, SecondsFullGametime = 100000, PiggyFoundFull = true, PiggyFull = true, Eop =1000,MysticalEarningsMult = 0, LostIncrements = 0
-        //}, "EI6229292070993920", true);
-        //var t = response.ContractPlayerInfo;
 
         //var response = await ContractsAPI.GetCoopStatus("a-new-grade", "test3");
         //var backup = await ContractsAPI.FirstContact("EI5932295321550848");
@@ -373,11 +328,21 @@ public class TestService : IHostedService {
         //var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(Convert.FromBase64String(r));
         //var r1 = ContractsAPI.GetFromAuthenticatedMessage<MyContracts>(r);
 
-        var variable = new { val = 1234 };
-        _logger.Log(Microsoft.Extensions.Logging.LogLevel.Information, "Test log {Variable}", variable);
-        _logger.LogWarning("test");
-        _logger.LogError(new Exception("This is a test exception", new Exception("Test Inner Exception")), "Test");
-        _logger.LogCritical("Test2");
+
+
+
+        //var time = new DateTimeOffset(2023, 5, 1, 11, 0, 0, TimeSpan.FromHours(-5)).ToUnixTimeSeconds();
+
+
+        //await FixDuplicateCoops();
+
+        var status = await ContractsAPI.GetCoopStatus("bug-spray-2021", "graybrook59");
+
+        var sum = status.Participants.SelectMany(x => x.BuffHistory.Where(y => y.EggLayingRate > 1)).Sum(x => x.EggLayingRate - 1);
+
+        var text = $"{Math.Round(sum * 100)}%";
+
+        _applicationLifetime.StopApplication();
     }
     public T ParseMessage<T>(string message) where T : Google.Protobuf.IMessage<T>, new() {
         var parse1 = new MessageParser<T>(() => new T());
@@ -401,5 +366,30 @@ public class TestService : IHostedService {
 
     public Task StopAsync(CancellationToken cancellationToken) {
         return Task.CompletedTask;
+    }
+
+    public async Task FixDuplicateCoops() {
+        var coops = await _db.Coops.Where(x => x.Created > new DateTimeOffset(2023, 5, 1, 0, 0, 0, TimeSpan.FromHours(-5))).ToListAsync();
+
+        var dups = coops.GroupBy(x => new { Name = x.Name.ToLower(), x.ContractID }).Where(x => x.Count() > 1);
+
+        
+        foreach(var dup in dups) {
+            foreach(var extra in dup.OrderBy(x => x.Created).Skip(1)) {
+
+                if(!extra.DeletedChannel) {
+                    var channel = _client.GetGuild(extra.DiscordChannelId);
+                    if(channel is not null) {
+                        await channel.DeleteAsync();
+                        _logger.LogInformation("Deleting channel for {coop}", extra.Name);
+                    }
+                }
+                var xrefs = await _db.UserCoopXrefs.Where(x => x.CoopId == extra.Id).ToListAsync();
+                _db.RemoveRange(xrefs);
+                _db.Remove(extra);
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Deleting {coop} from database", extra.Name);
+            }
+        }
     }
 }

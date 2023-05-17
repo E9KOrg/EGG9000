@@ -16,17 +16,17 @@
                     var discordUser = discordClient.GetGuild(u.User.GuildId).GetUser(u.User.DiscordId);
                     return new
                     {
-                        EB = u.Backup.EarningsBonus,
-                        EBString = u.Backup.EarningsBonus.ToEggString(),
+                        EB = u.Account.Backup.EarningsBonus,
+                        EBString = u.Account.Backup.EarningsBonus.ToEggString(),
                         Name = discordUser?.GetCleanName() ?? u.User.DiscordUsername,
                         MultipleAccounts = u.User.EggIncAccounts.Count > 1,
-                        AccountName = u.Backup.UserName,
-                        FromGroup = (u.AccountSettings.Group != x.Key ? u.AccountSettings.Group : 0),
-                        EggIncId = isAdmin ? u.Backup.EggIncId : "",  
+                        AccountName = u.Account.Backup.UserName,
+                        FromGroup = (u.Account.Group != x.Key ? u.Account.Group : 0),
+                        EggIncId = isAdmin ? u.Account.Backup.EggIncId : "",
                         DatabaseId = isAdmin ? u.User.Id : Guid.Empty
                     };
                 }),
-                TotalEB = c.Users.Sum(u => u.Backup.EarningsBonus).ToEggString()
+                TotalEB = c.Users.Sum(u => u.Account.Backup.EarningsBonus).ToEggString()
             })
         })
 

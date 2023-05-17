@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Commands
             var builder = new EmbedBuilder();
             builder.Title = $"Next Rank Details";
             foreach(var id in user.EggIncAccounts) {
-                var backup = user.Backups.FirstOrDefault(x => x.EggIncId == id.Id);
+                var backup = id.Backup;
                 if(backup == null)
                     continue;
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
@@ -109,64 +109,64 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync($"Co-op renamed to {correctcoopname}");
         }
 
-        [SlashCommand(Description = "Get a ping from the bot via DM and all assigned members have joined")]
-        public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db)
-        {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop == null)
-            {
-                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
-                return;
-            }
-            var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
+        //[SlashCommand(Description = "Get a ping from the bot via DM and all assigned members have joined")]
+        //public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db)
+        //{
+        //    var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+        //    if(targetCoop == null)
+        //    {
+        //        await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
+        //        return;
+        //    }
+        //    var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
 
-            var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
+        //    var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
 
-            xref.PingOnFull = !xref.PingOnFull;
-            await db.SaveChangesAsync();
-            if(xref.PingOnFull)
-            {
-                await command.RespondAsync($"Will receive DM ping when everyone has joined", ephemeral: true);
-            } else
-            {
-                await command.RespondAsync($"Will no longer receive ping", ephemeral: true);
-            }
-        }
+        //    xref.PingOnFull = !xref.PingOnFull;
+        //    await db.SaveChangesAsync();
+        //    if(xref.PingOnFull)
+        //    {
+        //        await command.RespondAsync($"Will receive DM ping when everyone has joined", ephemeral: true);
+        //    } else
+        //    {
+        //        await command.RespondAsync($"Will no longer receive ping", ephemeral: true);
+        //    }
+        //}
 
-        [SlashCommand(Description = "Get a ping from the bot via DM on Highest EB Joined")]
-        public static async Task PingOnHighestEB(FauxCommand command, ApplicationDbContext db) {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop == null) {
-                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
-                return;
-            }
-            var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
+        //[SlashCommand(Description = "Get a ping from the bot via DM on Highest EB Joined")]
+        //public static async Task PingOnHighestEB(FauxCommand command, ApplicationDbContext db) {
+        //    var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+        //    if(targetCoop == null) {
+        //        await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
+        //        return;
+        //    }
+        //    var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
 
-            var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
+        //    var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
 
-            xref.PingOnHighestEB = !xref.PingOnHighestEB;
-            await db.SaveChangesAsync();
-            if(xref.PingOnHighestEB) {
-                await command.RespondAsync($"Will receive DM ping when the highest EB has joined", ephemeral: true);
-            } else {
-                await command.RespondAsync($"Will no longer receive a ping when the highest EB has joined", ephemeral: true);
-            }
-        }
-        [SlashCommand(Description = "Get a ping from the bot via DM when co-op is finished")]
-        public static async Task PingOnFinished(FauxCommand command, ApplicationDbContext db) {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop == null) {
-                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
-                return;
-            }
-            var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
+        //    xref.PingOnHighestEB = !xref.PingOnHighestEB;
+        //    await db.SaveChangesAsync();
+        //    if(xref.PingOnHighestEB) {
+        //        await command.RespondAsync($"Will receive DM ping when the highest EB has joined", ephemeral: true);
+        //    } else {
+        //        await command.RespondAsync($"Will no longer receive a ping when the highest EB has joined", ephemeral: true);
+        //    }
+        //}
+        //[SlashCommand(Description = "Get a ping from the bot via DM when co-op is finished")]
+        //public static async Task PingOnFinished(FauxCommand command, ApplicationDbContext db) {
+        //    var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+        //    if(targetCoop == null) {
+        //        await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
+        //        return;
+        //    }
+        //    var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
 
-            var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
+        //    var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
 
-            xref.PingOnFinished = true;
-            await db.SaveChangesAsync();
-            await command.RespondAsync($"Will receive DM ping when co-op is finished and everyone has reported in", ephemeral: true);
-        }
+        //    xref.PingOnFinished = true;
+        //    await db.SaveChangesAsync();
+        //    await command.RespondAsync($"Will receive DM ping when co-op is finished and everyone has reported in", ephemeral: true);
+        //}
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink)
@@ -178,7 +178,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users, dbguild, default, db);
+                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup {  Backup = y.Backup,User = x})).ToList(), dbguild, default, db);
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }

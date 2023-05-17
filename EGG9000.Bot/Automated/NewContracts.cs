@@ -33,6 +33,7 @@ using EGG9000.Common.Contracts;
 using System.Diagnostics.Contracts;
 using Contract = EGG9000.Common.Database.Entities.Contract;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
@@ -41,22 +42,19 @@ namespace EGG9000.Bot.Automated {
         public NewContracts(
             IServiceProvider provider, Words words, ContractUpdater contractUpdater
         ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
-            Console.WriteLine("NewContracts Configured");
             _words = words;
             _contractUpdater = contractUpdater;
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            Console.WriteLine("NewContracts Run");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
             var contractsResponse = await ContractsAPI.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
-                Console.WriteLine("⚠️ERROR: Invalid Contract Response");
+                _logger.LogWarning("⚠️ERROR: Invalid Contract Response");
             } else {
-                Console.WriteLine("Checking for new contracts");
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync();
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
@@ -151,9 +149,8 @@ namespace EGG9000.Bot.Automated {
                     _ = OrganizeAndLaunch(contract, guild, 0);
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(guildContract.BoardingGroup < 3 && dbguild.Id == 656455567858073601) {
+                } else if(guildContract.BoardingGroup < 3) {
                     var nextLaunch = guildContract.Created.Date.AddHours(guildContract.Created.Hour + guildContract.BoardingGroup * 8);
-                    Console.WriteLine(nextLaunch.ToString());
                     if(nextLaunch < DateTimeOffset.Now) {
                         guildContract.BoardingGroup++;
                         await _db.SaveChangesAsync();
@@ -167,30 +164,28 @@ namespace EGG9000.Bot.Automated {
         private async Task UpdateChannel(SocketGuild guild, Guild dbguild, GuildContract targetGuildContract) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
-            var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncAccounts.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
+            var backups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser { User = x, Backup = y.Backup })).ToList();
 
             await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild);
         }
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
-            Console.WriteLine($"*!*!*!* Starting co-ops for {guild.Name} for BG{skipbg + 1} *!*!*!*");
+            _logger.LogInformation("Starting co-ops for {guild} for BG{BG}", guild.Name, skipbg + 1);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
-            Console.WriteLine("Getting Coops");
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
-            Console.WriteLine("Sorting");
             var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg);
 
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
             foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
-                Console.WriteLine($"BG {group.bg}, Grade {group.Grade}, Count {group.PotentialCoops.Count(x => x.Users.Count > 2)}");
-                var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 2);
+                _logger.LogInformation("BG{bg}, Grade {grade}, Count {count}", group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2));
+                var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
 
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
                         await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild);
                     } catch(Exception e) {
                         var frame = (new StackTrace(e, true)).GetFrame(0);
-                        Console.WriteLine($"⚠️ERROR: {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()}");
+                        _logger.LogError(e, "⚠️ERROR staring co-op");
                         _bugsnag.Notify(e);
                     }
 
@@ -218,7 +213,7 @@ namespace EGG9000.Bot.Automated {
                     break;
             }
             if(UpdateInterval != newUpdateInterval) {
-                Console.WriteLine($"Setting Update Interval to {newUpdateInterval} for NewContracts");
+                _logger.LogInformation("Setting Update Interval to {newUpdateInterval} for NewContracts", newUpdateInterval);
                 ChangeUpdateInterval(newUpdateInterval);
             }
         }

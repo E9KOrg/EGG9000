@@ -71,45 +71,6 @@ namespace EGG9000.Bot.Helpers {
         }
     }
     public class DiscordHelpers {
-        public class CheckEliteResposne {
-            public bool Promoted { get; set; }
-            public SocketRole Role { get; set; }
-        }
-        public static async Task<CheckEliteResposne> CheckLeague(SocketGuild Guild, IGuildUser DiscordUser, List<Double> EarningsBonuses) {
-            var response = new CheckEliteResposne();
-            if(Guild.Roles.Any(x => x.Name.ToLower() == "elite contract")) {
-                var elite = EarningsBonuses.Any(x => x >= 10000000000000);
-                var standard = EarningsBonuses.Any(x => x < 10000000000000);
-
-                var eliteRole = Guild.Roles.FirstOrDefault(x => x.Name.ToLower() == "elite contract");
-                var standardRole = Guild.Roles.FirstOrDefault(x => x.Name.ToLower() == "standard contract");
-
-                var hasElite = DiscordUser.RoleIds.Any(x => x == eliteRole.Id);
-                var hasStandard = DiscordUser.RoleIds.Any(x => x == standardRole.Id);
-
-                if(elite && !hasElite) {
-                    response.Promoted = true;
-                    response.Role = eliteRole;
-
-                    await DiscordUser.AddRoleAsync(eliteRole);
-                }
-                if(standard && !hasStandard) {
-                    if(response.Role == null)
-                        response.Role = standardRole;
-                    await DiscordUser.AddRoleAsync(standardRole);
-                }
-
-                if(!standard && hasStandard) {
-                    await DiscordUser.RemoveRoleAsync(standardRole);
-                }
-
-                if(!elite && hasElite) {
-                    await DiscordUser.RemoveRoleAsync(eliteRole);
-                }
-            }
-            return response;
-        }
-
         public static async Task CheckSiloResearch(SocketGuild Guild, IGuildUser DiscordUser, List<CustomBackup> backups) {
             if(Guild.Roles.Any(x => x.Name.ToLower() == "needssiloepicresearch")) {
                 var needsResearch = false;
@@ -169,13 +130,13 @@ namespace EGG9000.Bot.Helpers {
         }
         public static async Task CheckGrades(SocketGuild Guild, IGuildUser DiscordUser, IGrouping<Guid, LeaderboardUser> accounts, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
             var dbuser = accounts.First().User;
-            var neededGrades = dbuser.EggIncAccounts.Select(x => dbuser.GetGrade(x.Id));
+            var neededGrades = dbuser.EggIncAccounts.Select(x => x.GetGrade());
 
             var neededRoles = neededGrades.Select(x => grades.First(g => g.grade == x).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();
 
             var extraRoles = grades.Where(x => x.role is not null)
                 .Where(g => 
-                    !accounts.Any(a => a.User.GetGrade(a.Backup.EggIncId) == g.grade) && 
+                    !accounts.Any(a =>  a.Account.GetGrade() == g.grade) && 
                     DiscordUser.RoleIds.Any(r => r == g.role.Id)
                 ).Select(x => x.role).ToList();
 
@@ -211,7 +172,7 @@ namespace EGG9000.Bot.Helpers {
         public static async Task CheckOudatedGameRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var role = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild); ;
             if(role != null) {
-                var needsRole = user.Backups.Any(x =>x.ClientVersion > 0 && x.ClientVersion < ContractsAPI.ClientVersion);
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < ContractsAPI.ClientVersion);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {
@@ -289,7 +250,9 @@ namespace EGG9000.Bot.Helpers {
 
 
 
-        public static async Task<SocketRole> SetRole(SocketGuild Guild, IGuildUser DiscordUser, Double EarningsBonus) {
+        public static async Task<SocketRole> SetRole(SocketGuild Guild, IGuildUser DiscordUser, Double EarningsBonus, Bugsnag.IClient client) {
+            client.Breadcrumbs.Leave("SetRoleStart", Bugsnag.BreadcrumbType.State, new Dictionary<string, string> { { "guild", Guild.Name }, { "user", DiscordUser.GetName() } });
+            
             var currentRole = DiscordUser.RoleIds.Select(y => Guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);
@@ -302,7 +265,10 @@ namespace EGG9000.Bot.Helpers {
             else
                 newRoleName = newRoleNameWithSuffix;
 
+            client.Breadcrumbs.Leave("Current Role", Bugsnag.BreadcrumbType.State, new Dictionary<string, string> { { "currentRole", currentRole?.Name }, { "newRole", newRole?.Name }, { "roleName", rolename },{ "newRoleName", newRoleName } });
+
             if(newRoleName != rolename) {
+                GetLogger<DiscordHelpers>().LogInformation("Updating roles from {exisitingrole} to {newrolename} ({current} -> {new})", rolename, newRoleName, currentRole?.Name, newRole?.Name);
                 if(currentRole != null) {
                     await DiscordUser.RemoveRoleAsync(currentRole);
                 }

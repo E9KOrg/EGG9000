@@ -27,7 +27,8 @@ namespace EGG9000.Common.Services {
         private IServiceProvider _provider;
         private ILogger<DiscordHostedService> _logger;
         private static DiscordSocketConfig config = new DiscordSocketConfig() {
-            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages
+            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
+                             GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
         public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
@@ -49,6 +50,18 @@ namespace EGG9000.Common.Services {
             _cache = cache;
         }
 
+        //public Task StartAsync(CancellationToken cancellationToken) {
+        //    return Task.CompletedTask;
+        //}
+
+        //public async Task StopAsync(CancellationToken cancellationToken) {
+        //    _logger.LogInformation("Stopping Discord Client");
+        //    await this.StopAsync();
+        //    while(this.ConnectionState != ConnectionState.Disconnected) { }
+        //    _logger.LogInformation("Discord Client Stopped");
+        //}
+
+
         private Task DiscordHostedService_Ready() {
             IsReady = true;
             this.SetGameAsync("").Wait();
@@ -65,10 +78,12 @@ namespace EGG9000.Common.Services {
         }
 
         private Task PrintLog(LogMessage msg) {
-            if(!msg.ToString().Contains("Rate limit triggered")) {
-                _logger.Log(LogLevel.Information, "Discord Log: {msg}", msg.Message);
-            } else {
+            if(msg.ToString().Contains("Rate limit triggered")) {
                 _logger.Log(LogLevel.Trace, "Discord Log: {msg}", msg.Message);
+            } else if(msg.Exception is not null) {
+                _logger.LogError(msg.Exception, "Discord Log: Exception Thrown");
+            } else {
+                _logger.Log(LogLevel.Information, "Discord Log: {msg}", msg.Message);
             }
             return Task.CompletedTask;
         }
@@ -132,6 +147,7 @@ namespace EGG9000.Common.Services {
 
             return (T)Convert.ChangeType(guild.TextChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
         }
+
 
     }
 }

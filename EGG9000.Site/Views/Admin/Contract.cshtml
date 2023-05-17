@@ -5,10 +5,10 @@
 
 
 
-    var prefarmers = Model.SelectMany(u => u.Backups.Where(x => x.Farms.Any(y => y.ContractId == contractid && y.Started > DateTimeOffset.Now.AddMonths(-4))).Select(x => new {
+    var prefarmers = Model.SelectMany(u => u.EggIncAccounts.Where(x => x.Backup.Farms.Any(y => y.ContractId == contractid && y.Started > DateTimeOffset.Now.AddMonths(-4))).Select(x => new {
         User = u,
-        Farm = x.Farms.First(y => y.ContractId == contractid),
-        Backup = x
+        Farm = x.Backup.Farms.First(y => y.ContractId == contractid),
+        Backup = x.Backup
     })).OrderByDescending(x => x.Farm.CashEarned);
 
     List<Guild> guilds = ViewBag.Guilds;

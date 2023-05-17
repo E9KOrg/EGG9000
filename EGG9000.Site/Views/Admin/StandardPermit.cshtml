@@ -5,17 +5,13 @@
     var demerits = (List<Demerit>)ViewBag.Demerits;
     var merits = (List<Merit>)ViewBag.Merits;
 
-    Model.ForEach(x => {
-        x.Backups = x.Backups.Where(b => x.EggIncAccounts.Any(y => y.Id == b.EggIncId)).ToList();
-    });
-
     var users = Model.Select(x => {
-        var standardPermitIDs = x.Backups.Where(z => z.PermitLevel == 0).Select(z => z.EggIncId);
+        var standardPermitIDs = x.EggIncAccounts.Where(z => z.Backup.PermitLevel == 0).Select(z => z.Id);
         var userXrefs = xrefs.Where(y => y.UserId == x.Id && standardPermitIDs.Contains(y.EggIncId));
             return new {
             x.Id,
             x.DiscordUsername,
-            x.Backups,
+            Backups = x.EggIncAccounts.Select(x => x.Backup),
             x.Registered,
             Xrefs = userXrefs.Where(y => y.UserId == x.Id),
             Demerits = demerits.Where(y => y.UserId == x.Id),

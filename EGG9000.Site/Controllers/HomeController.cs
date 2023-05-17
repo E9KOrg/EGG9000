@@ -36,6 +36,7 @@ using Discord.Rest;
 using Microsoft.Extensions.Caching.Memory;
 using EGG9000.Bot;
 using Stripe;
+using System.Threading;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -321,76 +322,6 @@ namespace EGG9000.Site.Controllers {
             return View("Index");
         }
 
-        public async Task<IActionResult> FixXref() {
-            var users = await _db.DBUsers.AsQueryable().ToListAsync();
-            var coops = (await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel).ToListAsync());
-            //var xrefs = new List<UserCoopXref>();
-            //coops.ForEach(x => {
-            //    x.Name = x.Name.Trim().ToLower();
-            //});
-            //foreach(var user in users.Where(x => x.Backups != null)) {
-            //    foreach(var backup in user.Backups) {
-            //        foreach(var farm in backup.Farms) {
-            //            CreateXref(farm.CoopId, farm.ContractId, user, backup.EggIncId, coops, farm.LastStepTime, xrefs);
-            //        }
-            //        if(backup.ArchivedFarms != null) {
-            //            foreach(var afarm in backup.ArchivedFarms) {
-            //                CreateXref(afarm.CoopName, afarm.ContractId, user, backup.EggIncId, coops, -1, xrefs);
-            //            }
-            //        }
-            //    }
-            //}
-            //var xrefgroups = xrefs.GroupBy(x => new { x.CoopId, x.UserId, x.EggIncId });
-            //var duplicates = xrefgroups.Where(x => x.Count() > 1);
-            //var i = 0;
-            //foreach(var xref in xrefgroups) {
-            //    _db.Add(xref.First());
-            //    if( i > 500) {
-            //        i = 0;
-            //        await _db.SaveChangesAsync();
-            //    }
-            //}
-            var multiplebackups = 0;
-            var xrefs = 0;
-            foreach(var coop in coops) {
-                var channel = _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).TextChannels.First(x => x.Id == coop.DiscordChannelId);
-                var pins = await channel.GetPinnedMessagesAsync();
-                foreach(var pin in pins.Where(x => x.MentionedUsers.Count > 0)) {
-                    foreach(var mention in pin.MentionedUsers) {
-                        var user = users.First(x => x.DiscordId == mention.Id);
-                        if(user.Backups.Count > 2) {
-                            multiplebackups++;
-                        }
-                        var backup = user.Backups.First();
-                        var xref = new UserCoopXref {
-                            JoinedCoop = false, AddedToChannel = true, CreatedOn = DateTimeOffset.Now,
-                            EggIncId = backup.EggIncId, CoopId = coop.Id, UserId = user.Id, WasAssigned = true,
-                        };
-                        _db.Add(xref);
-                        xrefs++;
-                    }
-                }
-            }
-            await _db.SaveChangesAsync();
-            return Content("Success");
-        }
-
-
-
-        private void CreateXref(string coopname, string contractid, DBUser user, string eggincid, List<Coop> coops, float laststeptime, List<UserCoopXref> xrefs) {
-            var coop = coops.FirstOrDefault(x => x.Name == coopname && x.ContractID == contractid);
-            if(coop != null) {
-                var xref = new UserCoopXref {
-                    JoinedCoop = true, AddedToChannel = true, CreatedOn = DateTimeOffset.Now, EggIncId = eggincid, UserId = user.Id, CoopId = coop.Id, WasAssigned = true,
-                };
-                if(laststeptime > 0) {
-                    //var timeChecked = DateTimeOffset.FromUnixTimeSeconds((long)laststeptime);
-                    //xref.LastStatusTime = timeChecked;
-                }
-                xrefs.Add(xref);
-            }
-        }
-
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
@@ -422,9 +353,9 @@ namespace EGG9000.Site.Controllers {
             //var clack = users.FirstOrDefault(x => x.DiscordId == 760260503124967426);
             //var users = await _db.Users.AsQueryable().Where(x => ).ToListAsync();
 
-            var accounts = rawusers.Where(x => x.DBUser.Backups != null).SelectMany(x => x.DBUser.Backups.Select(y => new LeaderboardUser {
+            var accounts = rawusers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new LeaderboardUser {
                 User = x.DBUser,
-                Backup = y,
+                Backup = y.Backup,
                 DiscordUser = _discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
                 TotalContracts = x.DBUser.GuildCoops
             })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
@@ -560,7 +491,7 @@ namespace EGG9000.Site.Controllers {
             activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
 
             // Get users ebs - could be multiple.
-            IEnumerable<double> myEbs = user.Backups.Where(b => user.EggIncAccounts.Any(i => i.Id == b.EggIncId)).Select(x => x.EarningsBonus);
+            IEnumerable<double> myEbs = user.EggIncAccounts.Select(x => x.Backup.EarningsBonus);
             List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
             foreach (var eb in myEbs)
             {
@@ -597,18 +528,16 @@ namespace EGG9000.Site.Controllers {
             var user = new DBUser {
                 UserCoopXrefs = new List<UserCoopXref>()
             };
-            var backups = new List<CustomBackup>();
-            var response = await _apiLink.GetBackup(id);
-            backups.Add(response);
-            user.Backups = backups;
-            user.DiscordUsername = response.UserName;
+            var backup = await _apiLink.GetBackup(id);
+            user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } };
+            user.DiscordUsername = backup.UserName;
             //return Json(response);
             return View("ViewUser", user);
         }
 
         public async Task<IActionResult> ViewBackup(string id) {
             var user = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.Id.ToString() == id || x.DiscordUsername == id);
-            return Json(user.Backups);
+            return Json(user.EggIncAccounts.Select(x => x.Backup));
         }
 
         public async Task<IActionResult> Coop([FromRoute] string ContractId, [FromRoute] string CoopId) {
@@ -628,8 +557,7 @@ namespace EGG9000.Site.Controllers {
 
             var backupsNeeded = model.CoopStatus.Contributors.ToList();
             if(model.DbCoop != null) {
-                var existingBackups = model.DbCoop.UserCoopsXrefs.SelectMany(xref => xref.User.Backups.Where(b => b.EggIncId == xref.EggIncId || b.EggIncId == xref.RefEggIncId)
-                //var existingBackups = model.DbCoop.UserCoopsXrefs.SelectMany(xref => xref.User.Backups.Where(b => b.EggIncId == xref.EggIncId || b.EggIncId == xref.RefEggIncId)
+                var existingBackups = model.DbCoop.UserCoopsXrefs.SelectMany(xref => xref.User.EggIncAccounts.Where(b => b.Id == xref.EggIncId || b.Id == xref.RefEggIncId).Select(x => x.Backup)
                 .Select(b => new CoopUserInfo {
                     Contribution = model.CoopStatus.Contributors.FirstOrDefault(c => c.UserName == b.UserName),
                     Backup = b,
@@ -643,7 +571,7 @@ namespace EGG9000.Site.Controllers {
             } else {
                 model.League = GetLeague(model.UserInfos, CoopId, ContractId);
             }
-            var backups = await _apiLink.GetUserBackups(backupsNeeded.Select(x => x.UserId), true);
+            var backups = await _apiLink.GetUserBackups(backupsNeeded.Select(x => x.UserId), new CancellationToken(), true);
             model.UserInfos.AddRange(backups.Select(b => new CoopUserInfo {
                 Contribution = model.CoopStatus.Contributors.First(c => c.UserId == b.EggIncId),
                 Backup = b,
@@ -691,7 +619,8 @@ namespace EGG9000.Site.Controllers {
             var projected = model.UserInfos.Sum(x => x.Projected);
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
 
-            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (model.DbCoop?.League ?? model.CoopStatus.League), model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.Backups.Select(b => new UserWithBackup { Backup = b, User = y.User})).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (model.DbCoop?.League ?? model.CoopStatus.League), 
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User})).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
 
             return View(model);
         }
@@ -984,34 +913,6 @@ namespace EGG9000.Site.Controllers {
                 _cache.Set(easterCacheKey, eggsFound, TimeSpan.FromMinutes(10));
             }
             return View(eggsFound);
-        }
-
-        public async Task<ActionResult> UpdateAllBackups() {
-            var users = await _db.DBUsers.ToListAsync();
-            var i = 1;
-            var done = 0;
-            users = users.Where(x => x.Backups.Any(y => y.ArchivedFarms.All(z => z.ContributionAmount == 0))).ToList();
-            foreach(var user in users) {
-                Console.WriteLine($"Processing {i++} of {users.Count}");
-                var backups = new List<CustomBackup>();
-                foreach(var eiid in user.EggIncAccounts.Where(x => x.Id?.StartsWith("EI") ?? false)) {
-                    var rawBackup = await ContractsAPI.FirstContact(eiid.Id);
-                    var customBackup = new CustomBackup(rawBackup.Backup);
-                    if(customBackup?.SpaceMissions != null) {
-                        backups.Add(customBackup);
-                    }
-                }
-                if(backups.Count > 0) {
-                    user.Backups = backups;
-                    done++;
-                }
-                if(done % 100 == 0) {
-                    await _db.SaveChangesAsync();
-                    Console.WriteLine("Saving Changes");
-                }
-            }
-            await _db.SaveChangesAsync();
-            return Content($"Updated {done}");
         }
     }
 }

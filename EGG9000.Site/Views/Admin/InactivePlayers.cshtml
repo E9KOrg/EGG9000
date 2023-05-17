@@ -7,7 +7,7 @@
 		return (User: u, Xref: Model.xrefs.FirstOrDefault(x => x.UserId == u.Id), GuildUser: Model.guildUsers.FirstOrDefault(gu => gu.Id == u.DiscordId));
 	});
 
-	var i = 0;
+	//var i = 0;
 
 	var guild = Model.guildUsers.First().Guild;
 }
