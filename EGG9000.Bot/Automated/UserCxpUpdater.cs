@@ -73,7 +73,7 @@ namespace EGG9000.Bot.Automated
                             } else {
                                 //If it does, update the score and coop name
                                 account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).Cxp = score.Cxp;
-                                account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).CoopIdentifier = archivedFarm.CoopId
+                                account.CSHistory.FirstOrDefault(h => h.ContractIdentifier == archivedFarm.ContractId).CoopIdentifier = archivedFarm.CoopId;
                             }
                         }
                     }
