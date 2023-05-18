@@ -36,6 +36,7 @@ using static EGG9000.Common.Database.Entities.DBUser;
 using EGG9000.Common.Contracts;
 using static EGG9000.Common.Helpers.Prefarm;
 using Ei;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -141,7 +142,7 @@ namespace EGG9000.Bot.Commands {
             await Task.Delay(2);
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-                 
+
             if(status.Participants.Count == contract.MaxUsers) {
                 foreach(var xref in xrefs) {
                     var res2 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
@@ -168,7 +169,7 @@ namespace EGG9000.Bot.Commands {
             } else {
                 await command.ModifyOriginalResponseAsync($"Attempted to remove {targetUser.Mention} from co-op, please check again in a few minutes.");
             }
-            
+
         }
 
 
@@ -240,7 +241,7 @@ namespace EGG9000.Bot.Commands {
             await _UpdateID(command, db, _client, apiLink, eggincid, (SocketGuildUser)command.User, accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = true, ParentCommand = "a")]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid,[SlashParam]SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
             await _UpdateID(command, db, _client, apiLink, eggincid, targetUser, accountnumber);
         }
         public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
@@ -285,14 +286,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = true, ParentCommand = "a")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
-            return _Register(command, db, _client, apiLink, bugsnag, eggincid, user);
+        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
+            return _Register(command, db, _client, apiLink, bugsnag, eggincid, user, logger);
         }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid) {
-            return _Register(command, db, _client, apiLink, bugsnag, eggincid, command.User);
+        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid) {
+            return _Register(command, db, _client, apiLink, bugsnag, eggincid, command.User, logger);
         }
-        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, string eggincid, IUser user) {
+        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, string eggincid, IUser user, ILogger logger) {
             await command.RespondAsync("Processing...");
             eggincid = eggincid.ToUpper();
             var Response = await apiLink.GetBackup(eggincid);
@@ -316,7 +317,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName } },
+                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName, Backup = Response } },
                     CreateOn = DateTimeOffset.Now,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -356,9 +357,9 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            var registeredRole = guild.Roles.First(x => x.Name.ToLower().Contains("registered"));
+            var registeredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
             //socketGuildUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
-            if(!socketGuildUser.RoleIds.Any(x => x == registeredRole.Id)) {
+            if(registeredRole is not null && !socketGuildUser.RoleIds.Any(x => x == registeredRole.Id)) {
                 await socketGuildUser.AddRoleAsync(registeredRole);
             }
 
@@ -382,7 +383,7 @@ namespace EGG9000.Bot.Commands {
             //}
 
             var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-            await generalChannel.SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}");
+            await (generalChannel ?? command.Channel).SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}");
 
 
 
@@ -425,7 +426,11 @@ namespace EGG9000.Bot.Commands {
                     var ebString = $" ({earningsBonus.ToEggString()})";
                     var newName = ((IGuildUser)user).GetCleanName().Trim().Truncate(32 - ebString.Length) + ebString;
 
-                    await ((IGuildUser)user).ModifyAsync(x => x.Nickname = newName);
+                    try {
+                        await ((IGuildUser)user).ModifyAsync(x => x.Nickname = newName);
+                    } catch(HttpException e) {
+                        logger.LogWarning("Unable to update nickname for {user}", user.Username);
+                    }
 
                 } catch(Exception) {
 
@@ -491,7 +496,7 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.TempDisabled) {
                 msg += $"\nUser is disabled";
             }
-            
+
             if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
                 msg += $"\n**Notes:** {dbuser.Notes}";
             }
@@ -517,11 +522,11 @@ namespace EGG9000.Bot.Commands {
                     msg += " Backup Is Empty. Double check your ID.";
                 }
 
-                msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(user.GetGrade(egginc.Id));
-                msg += "\nBoarding Group: " + (egginc.Group == 0 ? "**None**" : "BG" + egginc?.Group);
-                msg += "\nFilter: " + String.Join(", ", egginc.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
-                msg += "\nBreak: " + (egginc.OnBreakUntil == default ? "Not on break" : "On break until <t:" + egginc.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
-                msg += $"\nRedo Leggacy: {egginc.RedoLeggacy.menuText.Replace("[X]", egginc.RedoScoreThreshold.ToString())}";
+                msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(account.GetGrade());
+                msg += "\nBoarding Group: " + (account.Group == 0 ? "**None**" : "BG" + account?.Group);
+                msg += "\nFilter: " + String.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
+                msg += "\nBreak: " + (account.OnBreakUntil == default ? "Not on break" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
+                msg += $"\nRedo Leggacy: {account.RedoLeggacySelection}";
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
                     msg += $"\n\n**Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}**\n";

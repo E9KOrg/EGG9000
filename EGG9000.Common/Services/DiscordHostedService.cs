@@ -30,7 +30,7 @@ namespace EGG9000.Common.Services {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
-        public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
+        public DiscordHostedService(IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
             _provider = provider;
             _logger = logger;
@@ -46,7 +46,7 @@ namespace EGG9000.Common.Services {
 
             _logger.Log(LogLevel.Information, "Discord Ready");
 
-            _db = db;
+            _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             _cache = cache;
         }
 

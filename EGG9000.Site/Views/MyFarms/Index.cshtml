@@ -153,10 +153,12 @@
 				}
 				<span>
 					Redo Leggacies: 
-					@if (account.RedoLeggacy.type == RedoType.YesAll) { @string.Join("", "Yes (All)")}
-					else {
-						if (account.RedoLeggacy.type == RedoType.YesThreshold) { @string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS")}
-						else { @string.Join("", "No")}
+					@if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) { 
+						@string.Join("", "Yes (All)")
+					} else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
+							@string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS")
+					} else { 
+						@string.Join("", "No")
 					}
 				</span>
 			</div>

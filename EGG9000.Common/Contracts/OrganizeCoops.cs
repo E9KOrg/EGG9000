@@ -13,14 +13,15 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static List<PotentialCoopGroup> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG) {
+        public static List<PotentialCoopGroup> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries) {
             var groups = new List<PotentialCoopGroup>();
 
             var accounts = users
                 .Where(x => !x.TempDisabled)
                 .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
                     Account = a,
-                    User = u
+                    User = u,
+                    UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created)
                 }));
 
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
@@ -63,9 +64,9 @@ namespace EGG9000.Common.Contracts {
         }
 
         private static bool CheckOnPreviousComplete(UserByAccount x, Ei.Contract contract) {
-            return x.Account.RedoLeggacy == RedoLeggacyOption.YesAll ||
-                x.Account.RedoLeggacy == RedoLeggacyOption.YesThreshold && x.Account.CSHistory.FirstOrDefault(f => f.Equals(contract)).Cxp <= x.Account.RedoScoreThreshold ||
-                (!x.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
+            return x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAll ||
+                (x.Account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold && (x.UserCsHistoryEntry?.Cxp ?? 0) <= x.Account.RedoScoreThreshold) ||
+                (!x.Account.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
         }
 
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {

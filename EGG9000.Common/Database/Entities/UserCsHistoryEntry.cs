@@ -15,10 +15,11 @@ namespace EGG9000.Common.Database.Entities
         public double Cxp { get; set; }
         public DateTimeOffset Created { get; set; }
 
-        public UserCsHistoryEntry(string contractIdentifier, string coopIdentifier, double cxp) {
+        public UserCsHistoryEntry(string contractIdentifier, string coopIdentifier, double cxp, string eggIncId) {
             ContractIdentifier = contractIdentifier;
             CoopIdentifier = coopIdentifier;
             Cxp = cxp;
+            EggIncId = eggIncId;
         }
 
         public override bool Equals(object obj) {
