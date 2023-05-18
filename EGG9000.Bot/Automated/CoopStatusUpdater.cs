@@ -37,7 +37,6 @@ namespace EGG9000.Bot.Automated {
 #else
         private static TimeSpan delay = TimeSpan.FromMinutes(2);
 #endif
-        private int _counter;
         private SocketTextChannel _demeritChannel;
 
 
@@ -49,21 +48,12 @@ namespace EGG9000.Bot.Automated {
         public CoopStatusUpdater(
             IServiceProvider provider
             ) : base(TimeSpan.FromMinutes(8), delay, provider) {
-            _counter = 59;
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             using(var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()) {
-#if DEBUG
-                var checkFinished = true;
-#else
-                var checkFinished = _counter == 0;
-#endif
-                if(++_counter >= 60) {
-                    _counter = 0;
-                }
                 var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-                var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel && ((!x.Finished && x.Status != CoopStatusEnum.Failed) || checkFinished || x.UserCoopsXrefs.Any(y => y.PingOnFinished)) && x.Status != CoopStatusEnum.WaitingOnStarter).ToListAsync();
+                var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
 
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
@@ -72,7 +62,7 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "taskcedar44".ToLower()).ToList();
+                //coops = coops.Where(x => x.Name.ToLower() == "RelaySet98".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
 #endif
 
@@ -427,6 +417,8 @@ namespace EGG9000.Bot.Automated {
                     }
                     var status = statusReponse.Status;
 
+                    bool finalChannelUpdate = false;
+
                     if(cancellationToken.IsCancellationRequested) return;
 
                     var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, _client, statusReponse.Status);
@@ -580,10 +572,11 @@ namespace EGG9000.Bot.Automated {
                         }
 
 
-                        if(!coop.Finished && status.Finished(coop.Contract, (int?)coop.League ?? 0) && coop.Status != CoopStatusEnum.Failed) {
+                        if(!coop.Finished && status.Finished()) {
                             coop.Finished = true;
                             coop.CoopCompleted = DateTimeOffset.UtcNow;
                             coop.Status = CoopStatusEnum.Completed;
+                            finalChannelUpdate = true;
 
                             await _db.SaveChangesAsync();
                             await coopChannel.SendMessageAsync($"Coop {coop.Name} is finished!");
@@ -607,6 +600,7 @@ namespace EGG9000.Bot.Automated {
                         if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
                             coop.Finished = true;
                             coop.Status = CoopStatusEnum.Completed;
+                            finalChannelUpdate = true;
                             try {
                                 await _db.SaveChangesAsync();
                             } catch(Exception) {
@@ -880,13 +874,14 @@ namespace EGG9000.Bot.Automated {
                         coop.Status = CoopStatusEnum.Full;
                     }
 
-                    if(!coop.Finished && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed && status.Failed(coop.Contract, (int?)coop.League ?? 0) && (status.AllMembersReporting || coop.CoopEnds < DateTime.Now.AddDays(2))) {
+                    if(coop.Status != CoopStatusEnum.Failed && status.Failed()) {
                         if(coop.Contract.GoodUntil > DateTimeOffset.UtcNow) {
                             await coopChannel.SendMessageAsync($"Co-op {coop.Name} failed to reach all the goals and the contract is still available for {(coop.Contract.GoodUntil - DateTimeOffset.UtcNow).Humanize()} if you want to restart and try again.");
                         } else {
                             await coopChannel.SendMessageAsync($"Co-op {coop.Name} failed to reach all the goals and the contract is no longer available.");
                         }
                         coop.Status = CoopStatusEnum.Failed;
+                        finalChannelUpdate = true;
                         await _db.SaveChangesAsync();
 
                         try {
@@ -924,94 +919,7 @@ namespace EGG9000.Bot.Automated {
                         await HandleFinished(coopDetails.CoopParticipants, coopChannel);
                     }
 
-                    if(missingCount > 0) {
-                        if(missingCount <= 20) {
-                            emojis += Convert.ToChar(9311 + missingCount);
-                        } else if(missingCount <= 35) {
-                            emojis += Convert.ToChar(12881 + (missingCount - 21));
-                        } else if(missingCount <= 50) {
-                            emojis += Convert.ToChar(12977 + (missingCount - 36));
-                        } else {
-                            emojis += "❌";
-                        }
 
-
-                        if(
-                            !coop.Finished && (
-                                (timeRemaining.TotalHours < 24)
-                                || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(24).TotalSeconds
-                            )
-                        ) {
-                            emojis += "🔺";
-                        }
-                    } else if(
-                            !coop.FinishedOrFailed && (
-                                (timeRemaining.TotalHours < 3)
-                                || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
-                            ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
-                        ) {
-                        emojis += "🔘";
-                    }
-
-                    Color color = Color.DarkGrey;
-                    if(coop.Status == CoopStatusEnum.Failed) {
-                        emojis += "🚩";
-                    } else if(coop.Finished) {
-                        emojis += "🏁";
-                    } else {
-
-                        var percent = coopDetails.PercentProjectedForJoined;
-
-                        if(percent < 60) {
-                            color = Color.Red;
-                            emojis += "🔴";
-                        } else if(percent < 90) {
-                            color = new Color(139, 69, 19);
-                            emojis += "🤎";
-                        } else if(percent < 100) {
-                            color = Color.Orange;
-                            emojis += "🧡";
-                        } else if(percent < 105) {
-                            color = new Color(255, 255, 0);
-                            emojis += "💛";
-                        } else {
-                            color = Color.Green;
-                            emojis += "💚";
-                        }
-
-                        if(percent < 100 && coopDetails.PercentProjected >= 100) {
-                            emojis += "💹";
-                        }
-                    }
-
-                    if(missingFromServer) {
-                        emojis += "👻";
-                    }
-
-                    if(coopDetails.CoopParticipants.Any(x => x.Xref is null) && !status.Public && !coop.Finished) {
-                        emojis += "👽";
-                    }
-
-                    if(coopDetails.CoopParticipants.Count > coop.Contract.MaxUsers) {
-                        emojis += "🤢";
-                    }
-
-                    var coopname = emojis + coop.Name.ToLower();
-                    if(coopChannel.Name != coopname) {
-                        for(var i = 0; i < 5; i++) {
-                            try {
-                                await coopChannel.ModifyAsync(x => x.Name = coopname);
-                                break;
-                            } catch(Exception) {
-                                await Task.Delay(new Random().Next(500));
-                            }
-                        }
-                    }
-
-
-
-                    if(lastMessage != "")
-                        msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
 
                     timings.Set(6);
@@ -1022,10 +930,100 @@ namespace EGG9000.Bot.Automated {
                     coop.LastStatusUpdate = status;
 
 
+                    if(!coop.FinishedOrFailed || finalChannelUpdate) {
+                        if(missingCount > 0) {
+                            if(missingCount <= 20) {
+                                emojis += Convert.ToChar(9311 + missingCount);
+                            } else if(missingCount <= 35) {
+                                emojis += Convert.ToChar(12881 + (missingCount - 21));
+                            } else if(missingCount <= 50) {
+                                emojis += Convert.ToChar(12977 + (missingCount - 36));
+                            } else {
+                                emojis += "❌";
+                            }
 
-                    var embedBuilder = new EmbedBuilder()
+
+                            if(
+                                !coop.Finished && (
+                                    (timeRemaining.TotalHours < 24)
+                                    || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(24).TotalSeconds
+                                )
+                            ) {
+                                emojis += "🔺";
+                            }
+                        } else if(
+                                !coop.FinishedOrFailed && (
+                                    (timeRemaining.TotalHours < 3)
+                                    || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
+                                ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
+                            ) {
+                            emojis += "🔘";
+                        }
+
+                        Color color = Color.DarkGrey;
+                        if(coop.Status == CoopStatusEnum.Failed) {
+                            emojis += "🚩";
+                        } else if(coop.Finished) {
+                            emojis += "🏁";
+                        } else {
+
+                            var percent = coopDetails.PercentProjectedForJoined;
+
+                            if(percent < 60) {
+                                color = Color.Red;
+                                emojis += "🔴";
+                            } else if(percent < 90) {
+                                color = new Color(139, 69, 19);
+                                emojis += "🤎";
+                            } else if(percent < 100) {
+                                color = Color.Orange;
+                                emojis += "🧡";
+                            } else if(percent < 105) {
+                                color = new Color(255, 255, 0);
+                                emojis += "💛";
+                            } else {
+                                color = Color.Green;
+                                emojis += "💚";
+                            }
+
+                            if(percent < 100 && coopDetails.PercentProjected >= 100) {
+                                emojis += "💹";
+                            }
+                        }
+
+                        if(missingFromServer) {
+                            emojis += "👻";
+                        }
+
+                        if(coopDetails.CoopParticipants.Any(x => x.Xref is null) && !status.Public && !coop.Finished) {
+                            emojis += "👽";
+                        }
+
+                        if(coopDetails.CoopParticipants.Count > coop.Contract.MaxUsers) {
+                            emojis += "🤢";
+                        }
+
+                        var coopname = emojis + coop.Name.ToLower();
+                        if(coopChannel.Name != coopname) {
+                            for(var i = 0; i < 5; i++) {
+                                try {
+                                    await coopChannel.ModifyAsync(x => x.Name = coopname);
+                                    break;
+                                } catch(Exception) {
+                                    await Task.Delay(new Random().Next(500));
+                                }
+                            }
+                        }
+
+
+
+                        if(lastMessage != "")
+                            msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
+
+
+                        var embedBuilder = new EmbedBuilder()
                         .WithDescription(
-                            (status.Finished(coop.Contract, league)
+                            (status.Finished()
                             ? "This co-op is finished!"
                             : coopDetails.PercentProjectedForJoined >= 100 && !coop.FinishedOrFailed
                             ? "This co-op is projected to succeed without growth as long as there are no sleepers!"
@@ -1037,88 +1035,90 @@ namespace EGG9000.Bot.Automated {
                         ;
 
 
-                    var updates = UpdateInterval.TotalMinutes;
-                    if(coop.Finished && !waitingOn.Any())
-                        updates *= 60;
-                    embedBuilder.WithFooter($"Updates Every {updates} Minute{(updates > 1 ? "s" : "")} - Last Updated");
-
-
-
-
-                    var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
-
-                    if(status.SecondsRemaining <= 0)
-                        ends = $"Expired {ends} ago";
-
-
-
-                    for(int i = 0; i < 3; i++) {
-                        if(coop.Contract.Details.GetGoals(league).Count > i) {
-                            var goal = coop.Contract.Details.GetGoals(league)[i];
-                            var title = $"Goal {i + 1} ";
-                            var time = "";
-                            var goalRemaingAmount = goal.TargetAmount - amountWithOffline;
-                            var goalRemaingTime = goalRemaingAmount / totalRate;
-                            time = $"\nTime: {Prefarm.GetTimeRemaining(goal.TargetAmount, totalRate, amountWithOffline)}";
-                            if(status.TotalAmount > goal.TargetAmount) {
-                                title += "✅";
-                                time = "";
-                            } else if(coop.Status == CoopStatusEnum.Failed) {
-                                title += "❌";
-                                time = "";
-                            } else if(coopDetails.PercentProjectedForJoined > goal.TargetAmount) {
-                                title += "☑";
-                            }
-                            embedBuilder.AddField(title, $"Target: {goal.TargetAmount.ToEggString()}\nReward: {EggIncEggs.GetReward(goal)}{time}", true);
+                        var updates = UpdateInterval.TotalMinutes;
+                        if(finalChannelUpdate) {
+                            embedBuilder.WithFooter($"Final Update");
                         } else {
-                            embedBuilder.AddField("\u17B5", "\u17B5", true);
+                            embedBuilder.WithFooter($"Updates Every {updates} Minute{(updates > 1 ? "s" : "")} - Last Updated");
                         }
-                    }
 
 
-                    var totalRatePerHour = totalRate * 60 * 60;
-                    if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
-                        embedBuilder.AddField("Co-op Expires", ends, inline: true);
 
-                        if(remainingAmount > 0) {
-                            var remainingTime = remainingAmount / totalRate;
-                            if(remainingTime < TimeSpan.MaxValue.TotalSeconds) {
-                                try {
-                                    var timeSpan = TimeSpan.FromSeconds(remainingTime);
-                                    embedBuilder.AddField("Time To Complete", Prefarm.GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
-                                    if(status.SecondsRemaining > remainingTime) {
-                                        embedBuilder.AddField("Ahead By", TimeSpan.FromSeconds(status.SecondsRemaining - remainingTime).Humanize(2).ShortenTime(), inline: true);
-                                    } else {
-                                        embedBuilder.AddField("Behind By", TimeSpan.FromSeconds(status.SecondsRemaining - remainingTime).Humanize(2).ShortenTime(), inline: true);
-                                    }
-                                } catch(OverflowException) {
 
+                        var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
+
+                        if(status.SecondsRemaining <= 0)
+                            ends = $"Expired {ends} ago";
+
+
+
+                        for(int i = 0; i < 3; i++) {
+                            if(coop.Contract.Details.GetGoals(league).Count > i) {
+                                var goal = coop.Contract.Details.GetGoals(league)[i];
+                                var title = $"Goal {i + 1} ";
+                                var time = "";
+                                var goalRemaingAmount = goal.TargetAmount - amountWithOffline;
+                                var goalRemaingTime = goalRemaingAmount / totalRate;
+                                time = $"\nTime: {Prefarm.GetTimeRemaining(goal.TargetAmount, totalRate, amountWithOffline)}";
+                                if(status.TotalAmount > goal.TargetAmount) {
+                                    title += "✅";
+                                    time = "";
+                                } else if(coop.Status == CoopStatusEnum.Failed) {
+                                    title += "❌";
+                                    time = "";
+                                } else if(coopDetails.PercentProjectedForJoined > goal.TargetAmount) {
+                                    title += "☑";
                                 }
+                                embedBuilder.AddField(title, $"Target: {goal.TargetAmount.ToEggString()}\nReward: {EggIncEggs.GetReward(goal)}{time}", true);
                             } else {
-                                embedBuilder.AddField("Time To Complete", "**\u221E**", inline: true);
-                                embedBuilder.AddField("\u17B5", "\u17B5");
+                                embedBuilder.AddField("\u17B5", "\u17B5", true);
                             }
-                        } else if(!status.Finished(coop.Contract, league)) {
-                            embedBuilder.AddField("Time To Complete", "Once everyone checks in", inline: true);
                         }
 
-                        embedBuilder.AddField("Projected Amount", $"{coopDetails.Projected.ToEggString()} of {targetAmount.ToEggString()} {Math.Round(coopDetails.PercentProjectedForJoined)}%", inline: true);
-                        embedBuilder.AddField("Current Amount", status.TotalAmount.ToEggString(), inline: true);
-                        embedBuilder.AddField("Current With Offline", amountWithOffline.ToEggString(), inline: true);
-                        //embedBuilder.AddField("Egg Laying Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
-                        if(coopDetails.CoopParticipants.Any(x => x.CoopStatus is null)) {
-                            embedBuilder.AddField("Everyone Joins", $"Projected {Math.Round(coopDetails.PercentProjected)}%", inline: true);
+
+                        var totalRatePerHour = totalRate * 60 * 60;
+                        if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
+                            embedBuilder.AddField("Co-op Expires", ends, inline: true);
+
+                            if(remainingAmount > 0) {
+                                var remainingTime = remainingAmount / totalRate;
+                                if(remainingTime < TimeSpan.MaxValue.TotalSeconds) {
+                                    try {
+                                        var timeSpan = TimeSpan.FromSeconds(remainingTime);
+                                        embedBuilder.AddField("Time To Complete", Prefarm.GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
+                                        if(status.SecondsRemaining > remainingTime) {
+                                            embedBuilder.AddField("Ahead By", TimeSpan.FromSeconds(status.SecondsRemaining - remainingTime).Humanize(2).ShortenTime(), inline: true);
+                                        } else {
+                                            embedBuilder.AddField("Behind By", TimeSpan.FromSeconds(status.SecondsRemaining - remainingTime).Humanize(2).ShortenTime(), inline: true);
+                                        }
+                                    } catch(OverflowException) {
+
+                                    }
+                                } else {
+                                    embedBuilder.AddField("Time To Complete", "**\u221E**", inline: true);
+                                    embedBuilder.AddField("\u17B5", "\u17B5");
+                                }
+                            } else if(!status.Finished()) {
+                                embedBuilder.AddField("Time To Complete", "Once everyone checks in", inline: true);
+                            }
+
+                            embedBuilder.AddField("Projected Amount", $"{coopDetails.Projected.ToEggString()} of {targetAmount.ToEggString()} {Math.Round(coopDetails.PercentProjectedForJoined)}%", inline: true);
+                            embedBuilder.AddField("Current Amount", status.TotalAmount.ToEggString(), inline: true);
+                            embedBuilder.AddField("Current With Offline", amountWithOffline.ToEggString(), inline: true);
+                            //embedBuilder.AddField("Egg Laying Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
+                            if(coopDetails.CoopParticipants.Any(x => x.CoopStatus is null)) {
+                                embedBuilder.AddField("Everyone Joins", $"Projected {Math.Round(coopDetails.PercentProjected)}%", inline: true);
+                            }
+                        } else if(coop.Status == CoopStatusEnum.Completed) {
+                            embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
+                            embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
+                        } else if(coop.Status == CoopStatusEnum.Failed) {
+                            embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
+                            embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
                         }
-                    } else if(coop.Status == CoopStatusEnum.Completed) {
-                        embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
-                        embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
-                    } else if(coop.Status == CoopStatusEnum.Failed) {
-                        embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
-                        embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
+
+                        await UpdateChannel(msgs, embedBuilder.Build(), coopChannel, coop, statusReponse.DiscordMessages);
                     }
-
-
-                    await UpdateChannel(msgs, embedBuilder.Build(), coopChannel, coop, statusReponse.DiscordMessages);
 
 
                     try {
@@ -1195,7 +1195,6 @@ namespace EGG9000.Bot.Automated {
                         currentSleep.DemeritsGiven++;
 
 
-                        var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.DBUser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
                         if(_demeritChannel == null || _demeritChannel.Id != dbguild.DemeritLogChannel.Value) {
                             _demeritChannel = _client.GetGuild(coop.GuildId).GetTextChannel(dbguild.DemeritLogChannel.Value);
                         }
@@ -1207,12 +1206,13 @@ namespace EGG9000.Bot.Automated {
                                 Id = Guid.NewGuid(),
                                 Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}"
                             };
+                            _db.Demerit.Add(demerit);
+                            await _db.SaveChangesAsync();
+                            var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.DBUser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
                             var demeritText = $"Demerit added to {user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
                             if(count >= 3) {
                                 demeritText = $"**{demeritText}**";
                             }
-                            _db.Demerit.Add(demerit);
-                            await _db.SaveChangesAsync();
                             await coopChannel.SendMessageAsync(demeritText);
                             await _demeritChannel.SendMessageAsync($"{demeritText} {coopChannel.Mention}");
                         }

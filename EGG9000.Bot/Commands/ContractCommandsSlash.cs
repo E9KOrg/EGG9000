@@ -31,6 +31,7 @@ using EGG9000.Common.Migrations;
 using Quartz.Impl.AdoJobStore.Common;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Bugsnag.Payload;
+using System.Security.Principal;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -343,17 +344,18 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = true)]
-        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketUser user) {
+        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketUser user, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
 
             await command.RespondAsync("Please wait...");
-            UserCoopXref xref;
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Please use in a co-op channel");
                 return;
             }
 
-            xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
+            var userid = Guid.Parse(useraccount.Split("|")[0]);
+
+            var xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.UserId == userid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
 
             if(xref == null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unabled to find user in co-op");
@@ -365,6 +367,21 @@ namespace EGG9000.Bot.Commands {
 
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Removed {user?.Mention ?? xref.User.DiscordUsername} from co-op");
 
+        }
+
+        public class RemoveFromCoopAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public RemoveFromCoopAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername }).ToListAsync();
+                if(users.Count == 0) {
+                    await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
+                }
+
+                await arg.RespondAsync(users.Select(x => new AutocompleteResult(x.DiscordUsername, x.UserId.ToString())));
+            }
         }
 
         [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = true)]
