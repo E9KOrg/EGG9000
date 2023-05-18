@@ -347,16 +347,16 @@ namespace EGG9000.Bot.Automated {
 
             await _db.SaveChangesAsync();
 
-            var table1 = GetTables(activeUsers, guild);
+            var table1 = GetTables(activeUsers, "");
 
             var str = "";
             str += $"Total Active Accounts: {activeUsers.Count()}\n";
             str += $"Last 5 Contracts: \n{recentContracts[0].ID}: {lUsers.Count(x => x.Last1)}\n{recentContracts[1].ID}: {lUsers.Count(x => x.Last2)}\n{recentContracts[2].ID}: {lUsers.Count(x => x.Last3)}\n{recentContracts[3].ID}: {lUsers.Count(x => x.Last4)}\n{recentContracts[4].ID}: {lUsers.Count(x => x.Last5)}";
             table1.Add(str);
 
-            if(inactiveUsers.Count > 0 && inactiveUsers.Count < 20) {
-                var table2 = GetTables(inactiveUsers, guild);
-                table2.Prepend("Inactive Account: ");
+            if(inactiveUsers.Count > 0 && inactiveUsers.Count < 100) {
+                var table2 = GetTables(inactiveUsers, "Inactive Users");
+                //table2.Prepend("Inactive Account: ");
                 table1.AddRange(table2);
             }
 
@@ -367,26 +367,21 @@ namespace EGG9000.Bot.Automated {
             table1.Add("@@@EMBED");
 
 
-            IMessage standardMessage = null;
 
             for(int i = 0; i < Math.Max(msgs.Count, table1.Count); i++) {
                 if(msgs.Count > i && table1.Count > i) {
                     if(table1[i] == "@@@EMBED") {
-                        await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Embed = GetEmbed(guild, channel, msgs[0], standardMessage, dbguild); msg.Content = ""; });
+                        await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Embed = GetEmbed(guild, channel, msgs[0], dbguild); msg.Content = ""; });
                     } else if(msgs[i].Content != table1[i]) {
                         await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Embed = null; msg.Content = table1[i]; });
-                        if(table1[i].Contains("**Standards**"))
-                            standardMessage = msgs[i];
                     }
                 } else if(msgs.Count <= i) {
                     if(table1[i] == "@@@EMBED") {
                         if(msgs.Count > 0) {
-                            await channel.SendMessageAsync(embed: GetEmbed(guild, channel, msgs[0], standardMessage, dbguild));
+                            await channel.SendMessageAsync(embed: GetEmbed(guild, channel, msgs[0], dbguild));
                         }
                     } else {
                         var msg = await channel.SendMessageAsync(table1[i]);
-                        if(table1[i].Contains("**Standards**"))
-                            standardMessage = msg;
                     }
                 } else {
                     await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Content = "\u17B5"; msg.Embed = null; });
@@ -395,7 +390,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private Embed GetEmbed(SocketGuild guild, SocketTextChannel channel, IMessage FirstMessage, IMessage StandardMessage, Guild DbGuild) {
+        private Embed GetEmbed(SocketGuild guild, SocketTextChannel channel, IMessage FirstMessage, Guild DbGuild) {
             var baselink = $"https://discord.com/channels/{guild.Id}/{channel.Id}/";
             var embedBuilder = new EmbedBuilder()
                 .WithTitle("Leaderboard Shortcuts")
@@ -415,11 +410,11 @@ namespace EGG9000.Bot.Automated {
             return embedBuilder.Build();
         }
 
-        public List<string> GetTables(List<LeaderboardUser> users, SocketGuild guild) {
+        public List<string> GetTables(List<LeaderboardUser> users, string name) {
             users = users.OrderByDescending(x => x.Backup.EarningsBonus).Where(x => x.DiscordUser != null).ToList();
 
             var msgs = new List<string>();
-            msgs.AddRange(GetTable("", users));
+            msgs.AddRange(GetTable(name, users));
 
             return msgs;
         }
