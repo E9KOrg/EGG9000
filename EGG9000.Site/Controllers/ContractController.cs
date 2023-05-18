@@ -110,7 +110,8 @@ namespace EGG9000.Site.Controllers {
 
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
-            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg);
+            var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.Identifier).ToListAsync();
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries);
             ViewBag.Contract = contract;
             ViewBag.GuildId = GuildId;
             return View("Day1Coops", coopGroups);
@@ -125,7 +126,8 @@ namespace EGG9000.Site.Controllers {
             Console.WriteLine("Gettings Coops");
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
             Console.WriteLine("Sorting");
-            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg);
+            var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
+            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg, userCsHistoryEntries);
             ViewBag.Contract = contract;
 
             var coopsCreated = 0;

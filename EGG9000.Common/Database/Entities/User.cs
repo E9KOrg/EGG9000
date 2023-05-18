@@ -206,6 +206,8 @@ namespace EGG9000.Common.Database.Entities {
                     }
 
                     _accounts.ForEach(account => {
+                        if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
+                            account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
                         if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
                             var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
                             if(backupTime > account.PromotionTime) {

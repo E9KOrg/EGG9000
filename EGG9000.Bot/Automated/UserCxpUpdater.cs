@@ -77,8 +77,8 @@ namespace EGG9000.Bot.Automated {
                         //Check if a score for this contract already exists
                         if(existingScore is null) {
                             //If it doesn't exist, add a new one
-                            _db.UserCsHistoryEntries.Add(new UserCsHistoryEntry(score.Contract.Identifier, score.CoopIdentifier, score.Evaluation.Cxp));
-                        } else {
+                            _db.UserCsHistoryEntries.Add(new UserCsHistoryEntry(score.Contract.Identifier, score.CoopIdentifier, score.Evaluation.Cxp, account.Id));
+                        } else if(existingScore.Cxp != score.Evaluation.Cxp) {
                             //If it does, update the score and coop name. Should only happen if the dev changes the scoring algorithm
                             existingScore.Cxp = score.Evaluation.Cxp;
                         }
