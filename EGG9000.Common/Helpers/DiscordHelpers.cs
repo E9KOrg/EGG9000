@@ -267,7 +267,7 @@ namespace EGG9000.Bot.Helpers {
 
             client.Breadcrumbs.Leave("Current Role", Bugsnag.BreadcrumbType.State, new Dictionary<string, string> { { "currentRole", currentRole?.Name }, { "newRole", newRole?.Name }, { "roleName", rolename },{ "newRoleName", newRoleName } });
 
-            if(newRoleName != rolename) {
+            if(!newRoleName.Equals(rolename) && (currentRole is not null || newRole is not null)) {
                 GetLogger<DiscordHelpers>().LogInformation("Updating roles from {exisitingrole} to {newrolename} ({current} -> {new})", rolename, newRoleName, currentRole?.Name, newRole?.Name);
                 if(currentRole != null) {
                     await DiscordUser.RemoveRoleAsync(currentRole);
