@@ -25,7 +25,7 @@ namespace EGG9000.Site {
             Host.CreateDefaultBuilder(args)
 
                 .ConfigureWebHostDefaults(webBuilder => {
-                    webBuilder.UseStartup<Startup>().UseUrls("http://::5013;http://0.0.0.0:5013");
+                    webBuilder.UseStartup<Startup>().UseUrls("http://0.0.0.0:5013");
                 });
     }
 }

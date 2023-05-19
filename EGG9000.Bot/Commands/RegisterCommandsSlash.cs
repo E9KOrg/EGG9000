@@ -428,7 +428,7 @@ namespace EGG9000.Bot.Commands {
 
                     try {
                         await ((IGuildUser)user).ModifyAsync(x => x.Nickname = newName);
-                    } catch(HttpException e) {
+                    } catch(HttpException) {
                         logger.LogWarning("Unable to update nickname for {user}", user.Username);
                     }
 
