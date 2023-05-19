@@ -406,11 +406,7 @@ namespace EGG9000.Bot.Automated {
             if(!string.IsNullOrEmpty(DbGuild.LeaderboardImage))
                 embedBuilder.WithImageUrl(DbGuild.LeaderboardImage);
 
-            if(DbGuild.ChannelDetails.Any(y => y.ChannelType == GuildChannelType.StandardCategory))
-                embedBuilder
-                    .WithDescription($"[Top of Leaderboard/Elites]({baselink}{FirstMessage.Id})\n[Standards]({baselink}{StandardMessage?.Id})\n[egg9000.com Leaderboard](https://egg9000.com/home/leaderboard)");
-            else
-                embedBuilder
+            embedBuilder
                 .WithDescription($"[Top of Leaderboard]({baselink}{FirstMessage.Id})\n[egg9000.com Leaderboard](https://egg9000.com/home/leaderboard)");
             return embedBuilder.Build();
         }
