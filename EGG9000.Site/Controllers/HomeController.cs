@@ -47,11 +47,13 @@ namespace EGG9000.Site.Controllers {
         private readonly DiscordSocketClient _discord;
         private readonly APILink _apiLink;
         private readonly IMemoryCache _cache;
+        private readonly SignInManager<IdentityUser> _signInManager;
 
         public HomeController(
             ILogger<HomeController> logger,
             UserManager<IdentityUser> userManager,
             RoleManager<IdentityRole> roleManager,
+            SignInManager<IdentityUser> signInManager,
             DiscordSocketClient discord,
             APILink apiLink,
             ApplicationDbContext db, IMemoryCache cache) {
@@ -62,8 +64,17 @@ namespace EGG9000.Site.Controllers {
             _apiLink = apiLink;
             _db = db;
             _cache = cache;
+            _signInManager = signInManager;
         }
 
+#if DEBUG || DEV9002
+        public async Task<IActionResult> DebugLogin([FromQuery]string id) {
+            var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
+            var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
+            await _signInManager.SignInAsync(user, true);
+            return Redirect("/");
+        }
+#endif 
         
         public async Task<IActionResult> Test() {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
@@ -325,8 +336,8 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
-            var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites);
-            inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards));
+            var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites ?? "[]");
+            inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards ?? "[]"));
 
             var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
