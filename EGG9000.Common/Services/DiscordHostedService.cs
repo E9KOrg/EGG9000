@@ -42,7 +42,9 @@ namespace EGG9000.Common.Services {
 
             _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
 
-            while(this.ConnectionState != ConnectionState.Connected) { }
+            while(this.ConnectionState != ConnectionState.Connected) {
+                
+             }
 
             _logger.Log(LogLevel.Information, "Discord Ready");
 
