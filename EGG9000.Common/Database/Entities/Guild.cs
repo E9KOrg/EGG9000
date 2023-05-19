@@ -87,10 +87,8 @@ namespace EGG9000.Common.Database.Entities {
         GameEvents = 4,
         [Description("Optional: FAQ Channel linked to when announcing new registered users")]
         FaqChannel = 5,
-        [Description("Required: Category for elite contract Channels (TO BE REMOVED)")]
+        [Description("Required: Category for contract channels")]
         EliteCategory = 6,
-        [Description("Optional: Category for standard contract Channels (TO BE REMOVED)")]
-        StandardCategory = 7,
         [Description("Optional: Category for failed co-ops")]
         FailedCategory = 8,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
@@ -101,8 +99,6 @@ namespace EGG9000.Common.Database.Entities {
         LimitedTimeShellsRole = 11,
         [Description("Optional")]
         OutsideCoopLog = 12,
-        [Description("Required: Category for contract Channels")]
-        ContractCategory = 13,
         [Description("Optional: Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
         [Description("Optional: Active Role (participated in a co-op in the last 3 weeks)")]

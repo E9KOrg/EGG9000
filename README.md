@@ -1,5 +1,16 @@
 # EGG9000
 
+
+### Website Test
+```
+cd EGG9000.Site
+dotnet watch --no-hot-reload
+```
+To bypass discord login for debuggin use `/Home/DebugLogin?id={yourdiscordid}`, this will
+only work if you've logged into the dev DB at least once. Ask @Kendrome to spin up a instance.
+
+
+
 ### Linux Install
 **Prerequisites**
 ```
