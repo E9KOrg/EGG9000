@@ -1,6 +1,7 @@
 ﻿using Bugsnag.Payload;
 
 using Discord;
+using Discord.Interactions;
 using Discord.Webhook;
 using Discord.WebSocket;
 
@@ -150,6 +151,9 @@ namespace EGG9000.Bot.Commands {
         #endregion
 
         #region RedoLeggacies
+        //Max threshold value
+        private const int maxThresh = 90000;
+
         [ComponentCommand]
         public static async Task MCSRL(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
@@ -182,7 +186,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
 
             var modal = new ModalBuilder().WithTitle("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index}")
-                .AddTextInput(label: "Enter CS Threshold between 0 and 90,000", value: account.RedoScoreThreshold.ToString(), customId: "num", required: true).Build();
+                .AddTextInput(label: $"Enter CS Threshold between 0 and {maxThresh}", value: account.RedoScoreThreshold.ToString(), customId: "num", required: true).Build();
 
             await component.RespondWithModalAsync(modal);
         }
@@ -192,15 +196,13 @@ namespace EGG9000.Bot.Commands {
         {
             var numText = modal.Data.Components.First(x => x.CustomId == "num").Value.ToLower();
             //Parse to double so that we can handle things like "25.2k"
-            var isNum = double.TryParse(
-                ((numText.Last() == 'k') ? numText.Remove(numText.Length - 1) : numText), out var num
-            );
+            var isNum = double.TryParse((numText.Last() == 'k') ? numText.Remove(numText.Length - 1) : numText, out var num);
             //If there was a k, multiply by 1000
             if(isNum && (numText.Last() == 'k')) num *= 1000;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
             var index = int.Parse(data);
-            if(!isNum || (num <= 0 || num > 90000)) {
-                var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : "less than 90,000");
+            if(!isNum || (num <= 0 || num > maxThresh)) {
+                var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : $"less than {maxThresh}");
                 var embedBuilder = new EmbedBuilder().WithTitle(errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index}").WithButton("Cancel", $"MCSRL:{index}").Build();
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
