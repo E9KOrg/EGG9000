@@ -154,10 +154,16 @@
 				} else {
 					<span>[Filter All]</span>
 				}
-				<span>[Redo Leggacies: @account.RedoLeggacy]</span>
-				@if(Model.GuildId > 0 && discordClient.GetGuild(Model.GuildId).GetUser(Model.DiscordId) == null) {
-					<span class="bg-danger">[User not in server]</span>
-				}
+				<span>
+					Redo Leggacies: 
+					@if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) { 
+						@string.Join("", "Yes (All)")
+					} else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
+							@string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS")
+					} else { 
+						@string.Join("", "No")
+					}
+				</span>
 			</div>
 
 			<ul class="nav nav-tabs" role="tablist">

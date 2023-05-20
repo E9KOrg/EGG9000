@@ -37,6 +37,8 @@ using Microsoft.Extensions.Caching.Memory;
 using EGG9000.Bot;
 using Stripe;
 using System.Threading;
+using System.Security.Claims;
+using System.Security.Principal;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -47,11 +49,13 @@ namespace EGG9000.Site.Controllers {
         private readonly DiscordSocketClient _discord;
         private readonly APILink _apiLink;
         private readonly IMemoryCache _cache;
+        private readonly SignInManager<IdentityUser> _signInManager;
 
         public HomeController(
             ILogger<HomeController> logger,
             UserManager<IdentityUser> userManager,
             RoleManager<IdentityRole> roleManager,
+            SignInManager<IdentityUser> signInManager,
             DiscordSocketClient discord,
             APILink apiLink,
             ApplicationDbContext db, IMemoryCache cache) {
@@ -62,9 +66,26 @@ namespace EGG9000.Site.Controllers {
             _apiLink = apiLink;
             _db = db;
             _cache = cache;
+            _signInManager = signInManager;
         }
 
-        
+#if DEBUG || DEV9002
+        public async Task<IActionResult> DebugLogin([FromQuery] string id) {
+            var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
+            var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
+            var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(id));
+            if(dbuser.GuildId != 1108127105088241746) {
+                return NotFound();
+            }
+            await _signInManager.SignInWithClaimsAsync(user, true, new List<Claim> {
+                new Claim("DbUserId", dbuser.Id.ToString()),
+                new Claim("DiscordId", id),
+                new Claim("GuildId", dbuser.GuildId.ToString())
+            });
+            return Redirect("/");
+        }
+#endif
+
         public async Task<IActionResult> Test() {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
             _db.RemoveRange(demerits);
@@ -87,7 +108,7 @@ namespace EGG9000.Site.Controllers {
 
                 }
             }
-            
+
             return Json(messagesDeleted);
         }
 
@@ -325,8 +346,8 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
-            var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites);
-            inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards));
+            var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites ?? "[]");
+            inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards ?? "[]"));
 
             var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -477,8 +498,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize]
-        public async Task<IActionResult> Comparison()
-        {
+        public async Task<IActionResult> Comparison() {
             // Get logged in user.
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
@@ -493,18 +513,17 @@ namespace EGG9000.Site.Controllers {
             // Get users ebs - could be multiple.
             IEnumerable<double> myEbs = user.EggIncAccounts.Select(x => x.Backup.EarningsBonus);
             List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
-            foreach (var eb in myEbs)
-            {
+            foreach(var eb in myEbs) {
                 myEbsWithRole.Add(new Tuple<double, string>(eb, SIPrefix.GetPrefixFromEB(eb).RankWithSubRank));
             }
 
             // Get active EggInc Accounts
-            var activeAccounts = await _db.DBUsers.Where(x => x.GuildId == user.GuildId && !x.TempDisabled && activeUsers.Any(y => y == x.Id)).Select(x => new DBUser { Id = x.Id, _eggIncIds = x._eggIncIds}).ToListAsync();
+            var activeAccounts = await _db.DBUsers.Where(x => x.GuildId == user.GuildId && !x.TempDisabled && activeUsers.Any(y => y == x.Id)).Select(x => new DBUser { Id = x.Id, _eggIncIds = x._eggIncIds }).ToListAsync();
             var activeIDs = activeAccounts.SelectMany(x => x.EggIncAccounts.Select(y => new Tuple<Guid, string>(x.Id, y.Id)));
 
             // Get top snapshot for each group of userid, eggincid
             // This accounts for users with multiple egginc accounts registred
-            var snapShots = await _db.UserSnapShots.Where(x => x.EarningsBonus > 0 && activeUsers.Any(o => o == x.UserId)).GroupBy(x => new { x.UserId, x.EggIncID}).Select(y => y.OrderByDescending(o => o.Date).First()).ToArrayAsync();
+            var snapShots = await _db.UserSnapShots.Where(x => x.EarningsBonus > 0 && activeUsers.Any(o => o == x.UserId)).GroupBy(x => new { x.UserId, x.EggIncID }).Select(y => y.OrderByDescending(o => o.Date).First()).ToArrayAsync();
 
             List<Tuple<double, string>> allEbData = new List<Tuple<double, string>>();
             foreach(var snapShot in snapShots.Where(s => activeIDs.Any())) { //Limit to activeIDs, some IDs might have changed or been unregistered
@@ -589,7 +608,7 @@ namespace EGG9000.Site.Controllers {
                 await _db.SaveChangesAsync();
             }
 
-            
+
 
             var goals = model.Contract.Details.GetGoals((int)model.League);
             model.GoalDetails = goals.Select(goal => {
@@ -619,8 +638,8 @@ namespace EGG9000.Site.Controllers {
             var projected = model.UserInfos.Sum(x => x.Projected);
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
 
-            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (model.DbCoop?.League ?? 0), 
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User})).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+            model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, (model.DbCoop?.League ?? model.CoopStatus.League),
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
 
             return View(model);
         }

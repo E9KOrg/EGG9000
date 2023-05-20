@@ -30,7 +30,7 @@ namespace EGG9000.Common.Services {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
-        public DiscordHostedService(IConfiguration Configuration, ApplicationDbContext db, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
+        public DiscordHostedService(IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
             _provider = provider;
             _logger = logger;
@@ -42,11 +42,13 @@ namespace EGG9000.Common.Services {
 
             _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
 
-            while(this.ConnectionState != ConnectionState.Connected) { }
+            while(this.ConnectionState != ConnectionState.Connected) {
+                
+             }
 
             _logger.Log(LogLevel.Information, "Discord Ready");
 
-            _db = db;
+            _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             _cache = cache;
         }
 
@@ -111,10 +113,10 @@ namespace EGG9000.Common.Services {
         public async Task<List<SocketCategoryChannel>> GetAllFinishedCategories(SocketGuild guild) {
             var dbguild = await GetDbGuild(guild);
             if(guild.Id == dbguild.Id) {
-                return dbguild.FinishedCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).ToList();
+                return dbguild.FinishedCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null).ToList();
             } else {
                 var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
-                return categories.ToList();
+                return categories.Where(x => x is not null).ToList();
             }
         }
 

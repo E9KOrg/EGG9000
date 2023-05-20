@@ -137,7 +137,12 @@ namespace EGG9000.Bot.Services {
                             continue;
                         }
                         if(parameterInfo.GetCustomAttributes<ComponentDataAttribute>().Any()) {
-                            var data = ((SocketMessageComponent)arg).Data.CustomId.Split(":");
+                            string[] data;
+                            if(arg is SocketModal) {
+                                data = ((SocketModal)arg).Data.CustomId.Split(":");
+                            } else {
+                                data = ((SocketMessageComponent)arg).Data.CustomId.Split(":");
+                            }
                             parameters.Add(data.Length > 1 ? (object)data[1] : null);
                             continue;
                         }
@@ -173,6 +178,8 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_provider);
                         } else if(parameterInfo.ParameterType == typeof(Bugsnag.IClient)) {
                             parameters.Add(_bugsnag);
+                        } else if(parameterInfo.ParameterType == typeof(ILogger)) {
+                            parameters.Add(_logger);
                         } else {
                             throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
                         }
@@ -294,7 +301,7 @@ namespace EGG9000.Bot.Services {
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
-                    var isCPGuild = guild.Id == _cpGuild.Id || _cpGuild.OverflowServers.Contains(guild.Id);
+                    var isCPGuild = guild.Id == _cpGuild?.Id || (_cpGuild?.OverflowServers.Contains(guild.Id) ?? false);
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
@@ -309,7 +316,7 @@ namespace EGG9000.Bot.Services {
         }
 
         private Task _discord_ModalSubmitted(SocketModal arg) {
-            var command = _modalFunctions.First(x => x.Name == arg.Data.CustomId.ToLower());
+            var command = _modalFunctions.First(x => x.Name == arg.Data.CustomId.ToLower().Split(":")[0]);
 
             _ = Task.Run(() => RunCommand(command, arg));
 

@@ -818,7 +818,7 @@ namespace EGG9000.Bot.Automated {
                     lastMessage += "~~\n</pingonfinished:1105600377308577842> Receive DM ping when the co-op is finished and everyone has reported in";
                     lastMessage += "\n</pingonhighesteb:1095116334599241743>  Receive DM ping when the highest EB has joined ";
                     lastMessage += "\n</pingonfull:1095116354169864205> Receive DM ping when everyone has joined~~";
-                    lastMessage += "\n</coopsettings:1107809793999110218> **NEW!** Receive DM pings for various things (replaced the above commands)";
+                    lastMessage += "\n</coopsettings:1107809801469173933> **NEW!** Receive DM pings for various things (replaced the above commands)";
                     lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
 
 

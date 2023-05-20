@@ -17,63 +17,54 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using EGG9000.Bot.Services;
-using EGG9000.Common.Migrations;
-using UserSnapShots = EGG9000.Bot.Automated.UserSnapShots;
-using Ei;
 using Google.Protobuf;
 using EGG9000.Common.Contracts;
-using RazorEngine.Compilation.ImpromptuInterface;
-using System.Diagnostics.Contracts;
 using NLog;
-using Microsoft.Extensions.Logging;
-using NLog.Extensions.Logging;
-using NLog.LayoutRenderers;
 using NLog.Web;
+using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using System.Security.Principal;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
         logging.ClearProviders();
         logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
     }).UseNLog()
-    .UseWindowsService()
+//.UseWindowsService()
+    .ConfigureAppConfiguration((context, config) => {
+        config.AddUserSecrets<Secrets>();
+        //config.AddJsonFile("appsettings.json");
+        //config.AddJsonFile("appsettings.json");
+    })
+    .UseDefaultServiceProvider(options => options.ValidateScopes = false)
     .ConfigureServices((hostContext, services) => {
-        var Configuration = new ConfigurationBuilder()
-            .AddUserSecrets<Program>()
-            .Build();
 
         var logger = LogManager.Setup()
-                                   .SetupExtensions(ext => ext.RegisterConfigSettings(Configuration))
+                                   //.SetupExtensions(ext => ext.RegisterConfigSettings(Configuration))
                                    .GetCurrentClassLogger();
         logger.Log(NLog.LogLevel.Info, "Main Start");
         try {
             var serviceProvider = services.BuildServiceProvider();
             StaticLoggerFactory.Initialize(serviceProvider.GetRequiredService<ILoggerFactory>());
 
-            services.AddSingleton<IConfiguration>(Configuration);
+            //services.AddSingleton<IConfiguration>(Configuration);
             services.Configure<HostOptions>(options => {
                 options.ShutdownTimeout = TimeSpan.FromMinutes(5);
             });
 
-            services.AddDbContext<ApplicationDbContext>(//options =>
-                                                        //options.UseSqlServer(
-                                                        //Configuration.GetConnectionString("DefaultConnection"))
-                );
+            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x=> x.MigrationsAssembly("EGG9000.Common")));
 
             services.AddSingleton<Words>();
             services.AddMemoryCache();
 
             services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
-#if DEBUG
+#if DEBUG || DEV9002
             services.AddBugsnag();
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-            //services.AddHostedService<CommandService>();
+            services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
             //services.AddHostedService<StaffCoopsMessage>();
             //services.AddHostedService<EventUpdater>();
@@ -82,15 +73,18 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.AddSingleton<CoopStatusUpdater>();
-            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.AddSingleton<CoopStatusUpdater>();
+            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-            //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.AddSingleton<ContractUpdater>();
-            //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+            services.AddSingleton<ContractUpdater>();
+            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
-            //services.AddHostedService<NewContracts>();
-            //services.AddHostedService<CreateCoopChannels>();
+            services.Configure<UpdaterOptions<UserCxpUpdater>>(x => x.DelayStart = TimeSpan.Zero);
+            services.AddHostedService<UserCxpUpdater>();
+
+            services.AddHostedService<NewContracts>();
+            services.AddHostedService<CreateCoopChannels>();
             //services.AddHostedService<ShipReturnDM>();
             //services.AddHostedService<UserSnapShots>();
             //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
@@ -99,7 +93,7 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<RemoveTempRoles>();
             //services.AddHostedService<HandleGradeChanges>();
 
-            services.AddHostedService<TestService>();
+            //services.AddHostedService<TestService>();
             //services.AddHostedService<TestUpdater>();
 
             //services.AddHostedService<UpcomingContracts>();
@@ -110,7 +104,7 @@ await Host.CreateDefaultBuilder(args)
 #else
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
         services.AddBugsnag(configuration => {
-            configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
+            configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
         });
 
 
@@ -152,8 +146,6 @@ await Host.CreateDefaultBuilder(args)
             LogManager.Shutdown();
         }
 
-    }).ConfigureAppConfiguration((context, config) => {
-        config.AddUserSecrets<Secrets>();
     }).Build().RunAsync();
 
 public class TestService : IHostedService {
@@ -163,14 +155,16 @@ public class TestService : IHostedService {
     private APILink _apilink { get; set; }
     private ILogger<TestService> _logger;
     private IHostApplicationLifetime _applicationLifetime;
+    private IConfiguration _configuration;
 
-    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime) {
+    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime, IConfiguration configuration) {
         _client = client;
         _db = applicationDbContext;
         _words = words;
         _apilink = apilink;
         _logger = logger;
         _applicationLifetime = applicationLifetime;
+        _configuration = configuration;
     }
     //public TestService(ApplicationDbContext applicationDbContext) {
     //    db = applicationDbContext;
@@ -178,17 +172,14 @@ public class TestService : IHostedService {
 
 
     public async Task StartAsync(CancellationToken cancellationToken) {
-        var xrefs = await _db.UserCoopXrefs.Include(x => x.User).Where(y => y.Coop.ContractID == "eggetarian-2021").ToListAsync();
+        var config = _configuration.GetValue("ConfigSource", typeof(string));
 
-        var usersToFix = xrefs.Where(x => x.CoopSetting is not null && x.User.CoopSetting is not null && !x.CoopSetting.PingOnTachyonChange && x.User.CoopSetting.PingOnTachyonChange).ToList();
-        foreach(var xref in usersToFix) {
-            xref.CoopSetting.PingOnTachyonChange = true;
-            xref.UpdateCoopSetting();
-        }
-        await _db.SaveChangesAsync();
+        var user = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == 248865520756064257);
+
+
 
         _ = 1;
-        _applicationLifetime.StopApplication();
+        //_applicationLifetime.StopApplication();
     }
     public T ParseMessage<T>(string message) where T : Google.Protobuf.IMessage<T>, new() {
         var parse1 = new MessageParser<T>(() => new T());

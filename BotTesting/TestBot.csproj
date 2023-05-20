@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!--<Nullable>enable</Nullable>-->
     <UserSecretsId>696ad316-9798-42ee-bc40-06f4a1dba403</UserSecretsId>
+    <Configurations>Debug;Release;DEV9002</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
