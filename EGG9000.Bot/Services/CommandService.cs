@@ -178,6 +178,8 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_provider);
                         } else if(parameterInfo.ParameterType == typeof(Bugsnag.IClient)) {
                             parameters.Add(_bugsnag);
+                        } else if(parameterInfo.ParameterType == typeof(ILogger)) {
+                            parameters.Add(_logger);
                         } else {
                             throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
                         }
