@@ -16,6 +16,7 @@
 	List<EpicResearchDetail> epicResearchConfig = ViewBag.EpicResearchConfig ?? new List<EpicResearchDetail>();
 
 	List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = ViewBag.Scoring ?? new List<(string EggIncId, Ei.MyContracts MyContracts)>();
+	Guild dbguild = ViewBag.DbGuild;
 
 	@*Func<EggIncArtifactInstance, object> artifactTemplate = @<span>
 		<span>@item.Artifact</span>
@@ -142,7 +143,9 @@
 				} else {
 					<span>Member of discord server: @(discordClient.Guilds.FirstOrDefault(x => x.Id == Model.GuildId)?.Name ?? "unknown")</span>
 				}]
-				[BG @account.Group]
+				@if (!dbguild.DisableBG) {
+					@:[BG @account.Group]
+				}
 				@if (account.OnBreakUntil > DateTimeOffset.Now) {
 					<span>[OnBreak @account.OnBreakUntil.ToString()]</span>
 				}

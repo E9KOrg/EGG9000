@@ -1,4 +1,6 @@
-﻿using EGG9000.Common.Database;
+﻿using Discord.WebSocket;
+
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
 using System;
@@ -24,5 +26,6 @@ namespace EGG9000.Common.Contracts {
     public class UserByAccount {
         public DBUser User { get; set; }
         public EggIncAccount Account { get; set; }
+        public ulong RoleId { get; set; }
     }
 }

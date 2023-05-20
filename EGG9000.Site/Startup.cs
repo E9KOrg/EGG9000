@@ -92,6 +92,7 @@ namespace EGG9000.Site {
             services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
             services.AddRazorPages();
             services.AddTransient<IEmailSender, EmailSenderBlank>();
+            services.Configure<APILinkOptions>(x => x.AsyncLoadCache = true);
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 

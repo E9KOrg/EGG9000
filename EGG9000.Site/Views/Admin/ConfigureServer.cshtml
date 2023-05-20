@@ -3,11 +3,20 @@
 @using System.Reflection
 @using System.ComponentModel
 @model Guild
+@inject DiscordSocketClient discord
 @{
 	var channelDetails = Model.ChannelDetails;
+	var guild = discord.GetGuild(Model.Id);
 }
-@inject DiscordSocketClient discord
+<style>
+	.card {
+		margin-top: 50px;
+	}
 
+	.table {
+		border-bottom: 1px solid #ccc;
+	}
+</style>
 <h2>Configure Server</h2>
 
 <table class="table table-striped">
@@ -30,10 +39,10 @@
 						DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
 
 						if (attributes != null && attributes.Any()) {
-												@attributes.First().Description
+							@attributes.First().Description
 							;
 						} else {
-												@val.ToString()
+							@val.ToString()
 							;
 						}
 
@@ -42,7 +51,7 @@
 				<td>
 					@{
 						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
-											<input class="channelDetail" id="@val.ToString()" value="@detail.Id" />
+						<input class="channelDetail" id="@val.ToString()" value="@detail.Id" />
 					}
 				</td>
 				<td>
@@ -53,34 +62,56 @@
 	</tbody>
 </table>
 
-<p>
-	<b>Co-op Channels Category (and overflows if needed)</b>
-	@foreach (var coopCategory in (Model.CoopCategories ?? "").Split(",")) {
-		ulong.TryParse(coopCategory, out ulong id);
-		<div><input class="coopCategory" value="@coopCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
-	}
-	<button class="btn btn-primary" onclick="InsertCoopCategory(this)">Add Category</button>
-</p>
+<div class="card">
+	<div class="card-header">Co-op Channels Category (and overflows if needed)</div>
+	<div class="card-body">
+		@foreach (var coopCategory in (Model.CoopCategories ?? "").Split(",")) {
+			ulong.TryParse(coopCategory, out ulong id);
+			<div><input class="coopCategory" value="@coopCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
+		}
+		<button class="btn btn-primary" onclick="InsertCoopCategory(this)">Add Category</button>
+	</div>
+</div>
 
-<p>
-	<b>Finished Channels Category (and overflows if needed)</b>
-	@foreach (var finishedCategory in (Model.FinishedCategories ?? "").Split(",")) {
-		ulong.TryParse(finishedCategory, out ulong id);
-		<div><input class="finishedCategory" value="@finishedCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
-	}
-	<button class="btn btn-primary" onclick="InsertFinishedCategory(this)">Add Category</button>
-</p>
+<div class="card">
+	<div class="card-header">Finished Channels Category (and overflows if needed)</div>
+	<div class="card-body">
+		@foreach (var finishedCategory in (Model.FinishedCategories ?? "").Split(",")) {
+			ulong.TryParse(finishedCategory, out ulong id);
+			<div><input class="finishedCategory" value="@finishedCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
+		}
+		<button class="btn btn-primary" onclick="InsertFinishedCategory(this)">Add Category</button>
+	</div>
+</div>
+
+<div class="card">
+	<div class="card-header">Boarding Groups</div>
+	<div class="card-body">
+		<label>
+			<input type="checkbox" value="true" id="DisableBG" onclick="ShowGroupRoles(this)" checked="@Model.DisableBG" /> Disable Boarding Groups
+		</label>
+		<div id="GroupRoles" style="@(Model.DisableBG ? "" : "display: none;")">
+			<b>Group Roles</b>
+			@foreach (var roleid in (Model.GroupRoles ?? "").Split(",").Where(x => x.Length > 0)) {
+				var role = guild.GetRole(ulong.Parse(roleid));
+				<div>
+					<input class="GroupRole" value="@roleid" />@role.Name
+				</div>
+			}
+			<button class="btn btn-primary" onclick="InsertGroupRole(this)">Add Role</button>
+		</div>
+	</div>
+</div>
+
+<button class="btn btn-success" onclick="SaveChannels(this)">Save Channels</button>
 
 
-<button class="btn btn-success" onclick="            SaveChannels(this)">Save Channels</button>
 
-
-
-@if(Model.OverflowServers.Any()) {
+@if (Model.OverflowServers.Any()) {
 	var allRoles = discord.GetGuild(Model.Id).Roles.OrderByDescending(x => x.Position);
 	var roleIds = (Model.RolesToSync ?? "").Split(",");
 	<h3>Sync Roles to overflows</h3>
-	foreach(var role in allRoles) {
+	foreach (var role in allRoles) {
 		<div>
 			<label style="color: @(role.Color.ToString() != "#000000" ? role.Color: "")">
 				<input class="role" data-id="@role.Id" type="checkbox" checked="@roleIds.Any(x => x == role.Id.ToString())" />
@@ -105,7 +136,16 @@
 			var coopCategories = GetCategoryJoins(".coopCategory");
 			var finishedCategories = GetCategoryJoins(".finishedCategory");
 
-			$.post("/admin/savechanneldetails/@(Model.Id)" , { json: JSON.stringify({ channelDetails: details, coopCategories: coopCategories, finishedCategories: finishedCategories }) }, function() {
+			$.post("/admin/savechanneldetails/@(Model.Id)", {
+				json:
+					JSON.stringify({
+						channelDetails: details,
+						coopCategories: coopCategories,
+						finishedCategories: finishedCategories,
+						disableBG: $("#DisableBG").is(":checked"),
+						GroupRoles: GetCategoryJoins(".GroupRole")
+					})
+			}, function () {
 				document.location = document.location;
 			});
 		}
@@ -126,6 +166,16 @@
 		}
 		function InsertFinishedCategory(button) {
 			$('<div><input class=\"finishedCategory\" /></div>').insertBefore($(button));
+		}
+		function InsertGroupRole(button) {
+			$('<div><input class=\"GroupRole\" /></div>').insertBefore($(button));
+		}
+		function ShowGroupRoles(input) {
+			if ($(input).is(":checked")) {
+				$("#GroupRoles").show();
+			} else {
+				$("#GroupRoles").hide();
+			}
 		}
 		function GetCategoryJoins(selector) {
 			var arr = Array.from($(selector).map((index, element) => $(element).val()));

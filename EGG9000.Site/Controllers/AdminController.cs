@@ -22,8 +22,10 @@ using Humanizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Build.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
@@ -36,15 +38,17 @@ namespace EGG9000.Site.Controllers {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly DiscordSocketClient _discord;
         private readonly IMemoryCache _cache;
+        private readonly ILogger<AdminController> _logger;
 
         public AdminController(
             UserManager<IdentityUser> userManager,
             DiscordSocketClient discord,
-            ApplicationDbContext db, IMemoryCache cache) {
+            ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger) {
             _db = db;
             _userManager = userManager;
             _discord = discord;
             _cache = cache;
+            _logger = logger;
         }
 
         public class PrestigeGain {
@@ -375,7 +379,7 @@ namespace EGG9000.Site.Controllers {
             var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Where(x => x.GuildId == user.GuildId && x.ContractID == contractid).ToListAsync();
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
 
-            var scores = ContractScoring.GetContractScores(coops, contract);
+            var scores = ContractScoring.GetContractScores(coops, contract, _logger);
 
 
             return View(scores);
@@ -453,7 +457,7 @@ namespace EGG9000.Site.Controllers {
                 ).ToListAsync();
             Console.WriteLine($"Processing {contractid}");
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
-            var scores = ContractScoring.GetContractScores(contractCoops, contract);
+            var scores = ContractScoring.GetContractScores(contractCoops, contract, _logger);
             var userXrefs = await _db.UserCoopXrefs.Where(x => x.Score != null && x.Coop.ContractID != contractid && x.CreatedOn < contract.GoodUntil).GroupBy(x => x.UserId).Select(x => new { Key = x.Key, Last3Score = x.OrderByDescending(y => y.CreatedOn).Take(3) }).ToListAsync();
             foreach(var score in scores) {
                 score.xref.Score = score.Score;
@@ -484,12 +488,12 @@ namespace EGG9000.Site.Controllers {
             //}
             //await _db.SaveChangesAsync();
 
-            var users = _db.DBUsers.Where(x => x.GuildId == guildId).Select(x => new {
+            var users = await _db.DBUsers.Where(x => x.GuildId == guildId).Select(x => new {
                 x.Id,
                 x.DiscordId,
                 x.DiscordUsername,
                 x._eggIncIds
-            });
+            }).ToListAsync();
             //var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
             var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < 1e-3).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
@@ -512,7 +516,7 @@ namespace EGG9000.Site.Controllers {
 
             //var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
             var topXrefs = scores.Select((y => {
-                var user = users.FirstOrDefault(u => u.Id == y.UserId && !u._eggIncIds.Contains("},{"));
+                var user = users.FirstOrDefault(u => u.Id == y.UserId);
                 if(user == null) {
                     return null;
                 }
@@ -526,7 +530,7 @@ namespace EGG9000.Site.Controllers {
                     Score = y.Score,
                     DiscordUser = discordUser,
                 };
-            })).Where(x => x != null).OrderByDescending(x => x.Score).Take(10);
+            })).Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
 
 
 
@@ -1003,6 +1007,8 @@ namespace EGG9000.Site.Controllers {
             dbGuild.ChannelDetails = model.channelDetails;
             dbGuild.CoopCategories = model.coopCategories;
             dbGuild.FinishedCategories = model.finishedCategories;
+            dbGuild.DisableBG = model.disableBG;
+            dbGuild.GroupRoles = model.groupRoles;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1032,6 +1038,8 @@ namespace EGG9000.Site.Controllers {
             public List<ChannelDetail> channelDetails { get; set; }
             public string coopCategories { get; set; }
             public string finishedCategories { get; set; }
+            public bool disableBG { get; set; }
+            public string groupRoles { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {

@@ -61,7 +61,7 @@ namespace EGG9000.Bot.Commands {
             builder.WithButton("Ship Return DM", "SRDMenu");
             return builder.Build();
         }
-        public static MessageProperties MainMenu(DBUser dbuser, EggIncAccount account, int index) {
+        public static MessageProperties MainMenu(DBUser dbuser, EggIncAccount account, int index, Guild dbguild) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()
@@ -70,7 +70,9 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.EggIncAccounts.Count > 1) {
                 eBuilder.WithDescription($"For Account {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}");
             }
-            eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
+            if(!dbguild.DisableBG) {
+                eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
+            }
             eBuilder.AddField("Break", account.OnBreakUntil == default ? "Not on break" : $"Ends <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R>");
             var rDict = GetRewardDictionary();
             if(account.AutoRegisterRewards is null)
@@ -78,9 +80,11 @@ namespace EGG9000.Bot.Commands {
             eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
             eBuilder.AddField("Redo Completed Leggacies", account.RedoLeggacy ? "Yes (Will redo all contracts to help out others)" : "No (Will still be assigned to incomplete leggacies)");
 
-            var builder = new ComponentBuilder()
-                .WithButton("Boarding Group", $"MCSBg:{index}")
-                .WithButton("Set Break", $"MCSBreak:{index}")
+            var builder = new ComponentBuilder();
+            if(!dbguild.DisableBG)
+                builder.WithButton("Boarding Group", $"MCSBg:{index}");
+
+            builder.WithButton("Set Break", $"MCSBreak:{index}")
                 .WithButton("Rewards Filter", $"MCSRewards:{index}")
                 .WithButton("Redo Completed Leggacies", $"MCS_Redo:{index}");
             builder.WithButton("Return", $"MCSAccounts");
@@ -104,7 +108,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -133,7 +137,7 @@ namespace EGG9000.Bot.Commands {
             account.Group = byte.Parse(component.Data.Values.First());
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -151,7 +155,7 @@ namespace EGG9000.Bot.Commands {
                 .WithButton("Stop Break Early", $"StopBreakEarly:{index}")
                 .WithButton("Return", $"MCSMenu:{index}");
             builder.AddRow(row);
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -172,7 +176,7 @@ namespace EGG9000.Bot.Commands {
             account.OnBreakUntil = (account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -185,7 +189,7 @@ namespace EGG9000.Bot.Commands {
             account.OnBreakUntil = (account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -198,7 +202,7 @@ namespace EGG9000.Bot.Commands {
             account.OnBreakUntil = default;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -234,7 +238,7 @@ namespace EGG9000.Bot.Commands {
             reg.AutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         [ComponentCommand]
@@ -245,7 +249,7 @@ namespace EGG9000.Bot.Commands {
             reg.AutoRegisterRewards = new List<Ei.RewardType>();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -257,7 +261,7 @@ namespace EGG9000.Bot.Commands {
             reg.RedoLeggacy = !reg.RedoLeggacy;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
     }

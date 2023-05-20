@@ -160,6 +160,7 @@ namespace EGG9000.Common.Database.Entities {
             PingOnEveryoneCheckedIn = user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
             PingOnMessage = user.CoopSetting.PingOnMessage;
             PingOnCoopCreated = user.CoopSetting.PingOnCoopCreated;
+            PingOnTachyonChange = user.CoopSetting.PingOnTachyonChange;
         }
     }
 }

@@ -30,6 +30,7 @@ using Microsoft.Extensions.Logging;
 namespace EGG9000.Common.Services {
     public class APILinkOptions {
         public bool ReportUpdatedClientVersion = false;
+        public bool AsyncLoadCache = false;
     }
     public class BackupRequest {
         public string UserId { get; set; }
@@ -63,6 +64,7 @@ namespace EGG9000.Common.Services {
         private int _LastClientVersion;
         private DiscordSocketClient _discord;
         private ILogger<APILink> _logger;
+        private APILinkOptions _settings;
 
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
@@ -70,6 +72,7 @@ namespace EGG9000.Common.Services {
             _configuration = configuration;
             _provider = provider;
             var options = provider.GetService<IOptionsMonitor<APILinkOptions>>();
+            _settings = options.CurrentValue;
             _ReportUpdatedClientVersion = options.CurrentValue.ReportUpdatedClientVersion;
             _discord = discord;
             _logger = logger;
@@ -323,19 +326,14 @@ namespace EGG9000.Common.Services {
             }
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         public async Task StartAsync(CancellationToken cancellationToken) {
-#if DEBUG
-#pragma warning disable 4014
-            Task.Run(() => {
-                GetUsers();
-            }).ConfigureAwait(false);
-#pragma warning restore 4014
-#else
-            await GetUsers();
-#endif
+            if(_settings.AsyncLoadCache) {
+                _logger.LogInformation("Async Loading Users");
+                _ = GetUsers();
+            } else {
+                await GetUsers();
+            }
         }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
         public async Task GetUsers() {
             _logger.LogInformation("Getting User Backups for Cache");

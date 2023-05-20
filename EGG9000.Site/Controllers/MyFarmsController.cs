@@ -95,7 +95,8 @@ namespace EGG9000.Site.Controllers {
             ViewBag.Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
             ViewBag.Coops = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.JoinedCoop && !x.Coop.DeletedChannel).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             ViewBag.EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
-            ViewBag.Scoring = scoring; 
+            ViewBag.Scoring = scoring;
+            ViewBag.DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             return View("Index", user);
         }
 
