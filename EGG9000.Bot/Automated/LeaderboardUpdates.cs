@@ -402,7 +402,7 @@ namespace EGG9000.Bot.Automated {
                 embedBuilder.WithImageUrl(DbGuild.LeaderboardImage);
 
             embedBuilder
-            .WithDescription($"[Top of Leaderboard]({baselink}{FirstMessage.Id})\n[egg9000.com Leaderboard](https://egg9000.com/home/leaderboard)");
+                .WithDescription($"[Top of Leaderboard]({baselink}{FirstMessage.Id})\n[egg9000.com Leaderboard](https://egg9000.com/home/leaderboard)");
             return embedBuilder.Build();
         }
 

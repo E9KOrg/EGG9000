@@ -56,6 +56,7 @@ namespace EGG9000.Common.Database {
         public DbSet<ExpiringShell> ExpiringShells { get; set; }
         public DbSet<AutomationLog> AutomationLogs { get; set; }
         public DbSet<UpcomingContract> UpcomingContracts { get; set; }
+        public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
 
         //    private IConfiguration _configuration;
         //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {
@@ -94,12 +95,19 @@ namespace EGG9000.Common.Database {
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League});
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
+            builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);
             builder.Entity<Demerit>().HasOne(x => x.AdminUser).WithMany(x => x.DemeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
             builder.Entity<Merit>().HasOne(x => x.User).WithMany(x => x.Merits).OnDelete(DeleteBehavior.ClientCascade).HasForeignKey(x => x.UserId);
             builder.Entity<Merit>().HasOne(x => x.AdminUser).WithMany(x => x.MeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
 
+
+            builder.Entity<IdentityRole>().HasData(
+                new IdentityRole { Id = "c1dd39e4-dbe5-48a4-b0c6-897c5b3db799", Name = "LesserGuildAdmin", NormalizedName = "GUILDLESSERADMIN" },
+                new IdentityRole { Id = "d5cfa96d-1cde-49bb-87a4-95c8e2923b46", Name = "GuildAdmin", NormalizedName = "GUILDADMIN" },
+                new IdentityRole { Id = "ef4c281d-0ec5-4e70-b027-181e8eed8c54", Name = "Admin", NormalizedName = "ADMIN" }
+            );
             //builder.Entity<User>().Property(x => x.LastBackup).HasField("_LastBackup");
 
         }

@@ -26,6 +26,7 @@ namespace EGG9000.Common.Contracts {
     public class UserByAccount {
         public DBUser User { get; set; }
         public EggIncAccount Account { get; set; }
+        public UserCsHistoryEntry UserCsHistoryEntry { get; set; }
         public ulong RoleId { get; set; }
     }
 }

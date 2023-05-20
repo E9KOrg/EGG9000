@@ -7,13 +7,16 @@ using Discord.WebSocket;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
 using Google.Protobuf;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Net.Http.Headers;
-
+using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -76,14 +79,22 @@ namespace EGG9000.Bot.Commands {
             if(account.AutoRegisterRewards is null)
                 account.AutoRegisterRewards = new List<Ei.RewardType>();
             eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
-            eBuilder.AddField("Redo Completed Leggacies", account.RedoLeggacy ? "Yes (Will redo all contracts to help out others)" : "No (Will still be assigned to incomplete leggacies)");
+
+            //eBuilder.AddField("Redo Completed Leggacies", account.RedoLeggacy ? "Yes (Will redo all contracts to help out others)" : "No (Will still be assigned to incomplete leggacies)");
+            var redoText = account.RedoLeggacySelection switch {
+                RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
+                RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.RedoScoreThreshold} score)",
+                RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
+                _ => "No (Will still be assigned to incomplete leggacies)"
+            };
+            eBuilder.AddField("Redo Completed Leggacies", redoText);
 
             var builder = new ComponentBuilder()
                 .WithButton("Boarding Group", $"MCSBg:{index}")
                 .WithButton("Set Break", $"MCSBreak:{index}")
                 .WithButton("Rewards Filter", $"MCSRewards:{index}")
-                .WithButton("Redo Completed Leggacies", $"MCS_Redo:{index}");
-            builder.WithButton("Return", $"MCSAccounts");
+                .WithButton("Redo Completed Leggacies", $"MCSRL:{index}");
+            builder.WithButton("Return", $"MCSAccounts", ButtonStyle.Secondary);
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();
 
@@ -135,6 +146,85 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+        #endregion
+
+        #region RedoLeggacies
+        [ComponentCommand]
+        public static async Task MCSRL(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var index = int.Parse(data);
+            var account = dbuser.EggIncAccounts[index];
+
+            var mainMenu = MainMenu(dbuser, account, index);
+            await component.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+        }
+
+        private static MessageComponent GetRlButtons(int index, EggIncAccount account) {
+            var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index}", new List<SelectMenuOptionBuilder> {
+                new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesAll),
+                new SelectMenuOptionBuilder($"Yes (If your previous score was under a threshold you set)", "2", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold),
+                new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.No)
+            });
+            if(account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
+                builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
+                builder.WithButton("Change CS Threshold", $"RLThreshModal:{index}");
+            }
+
+            builder.WithButton("Return", $"MCSMenu:{index}", ButtonStyle.Secondary);
+            return builder.Build();
+        }
+
+        [ComponentCommand]
+        public static async Task RLThreshModal(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var index = int.Parse(data);
+            var account = dbuser.EggIncAccounts[index];
+
+            var modal = new ModalBuilder().WithTitle("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index}")
+                .AddTextInput(label: "Enter CS Threshold greater than 0", value: account.RedoScoreThreshold.ToString(), customId: "num", required: true).Build();
+
+            await component.RespondWithModalAsync(modal);
+        }
+
+        [Modal]
+        public static async Task RlThreshUpdate(SocketModal modal, [ComponentData] string data, ApplicationDbContext db)
+        {
+            var numText = modal.Data.Components.First(x => x.CustomId == "num").Value;
+            var isNum = int.TryParse(numText, out int num);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
+            var index = int.Parse(data);
+            if(!isNum || num <= 0) {
+                var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
+                var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index}").WithButton("Cancel", $"MCSRL:{index}").Build();
+                await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
+            } else {
+                var account = dbuser.EggIncAccounts[index];
+                account.RedoScoreThreshold = num;
+                dbuser.UpdateAccounts();
+                await db.SaveChangesAsync();
+
+                var mainMenu = MainMenu(dbuser, account, index);
+                await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+            }
+        }
+
+        [ComponentCommand]
+        public static async Task MCSRedoLeggacies(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var index = int.Parse(data);
+            var account = dbuser.EggIncAccounts[index];
+            account.RedoLeggacySelection = component.Data.Values.First() switch {
+                "1" => RedoLeggacyOption.YesAll,
+                "2" => RedoLeggacyOption.YesThreshold,
+                "3" => RedoLeggacyOption.No,
+                _ => RedoLeggacyOption.No
+            };
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
+            
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
 
@@ -249,16 +339,5 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
-        [ComponentCommand]
-        public static async Task MCS_Redo(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
-            var reg = dbuser.EggIncAccounts[index];
-            reg.RedoLeggacy = !reg.RedoLeggacy;
-            dbuser.UpdateAccounts();
-            await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
-        }
     }
 }

@@ -206,6 +206,8 @@ namespace EGG9000.Common.Database.Entities {
                     }
 
                     _accounts.ForEach(account => {
+                        if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
+                            account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
                         if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
                             var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
                             if(backupTime > account.PromotionTime) {
@@ -330,6 +332,10 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset PromotionTime { get; set; }
         [Key(10)]
         public CustomBackup Backup { get; set; }
+        [Key(11)]
+        public int RedoScoreThreshold { get; set; } = 20000;
+        [Key(12)]
+        public RedoLeggacyOption RedoLeggacySelection { get; set; } = RedoLeggacyOption.NotSet;
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())

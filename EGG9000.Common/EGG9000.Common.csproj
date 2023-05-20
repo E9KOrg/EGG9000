@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <Configurations>Debug;Release;DEV9002</Configurations>
     <!--<UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>-->
   </PropertyGroup>
 
