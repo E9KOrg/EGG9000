@@ -74,6 +74,9 @@ namespace EGG9000.Site.Controllers {
             var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
             var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
             var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(id));
+            if(dbuser.GuildId != 1108127105088241746) {
+                return NotFound();
+            }
             await _signInManager.SignInWithClaimsAsync(user, true, new List<Claim> {
                 new Claim("DbUserId", dbuser.Id.ToString()),
                 new Claim("DiscordId", id),
