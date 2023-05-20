@@ -82,9 +82,8 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.Zero);
-            services.AddSingleton<CoopStatusUpdater>();
-            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            //services.AddSingleton<CoopStatusUpdater>();
+            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
             //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
             //services.AddSingleton<ContractUpdater>();
@@ -100,7 +99,7 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<RemoveTempRoles>();
             //services.AddHostedService<HandleGradeChanges>();
 
-            //services.AddHostedService<TestService>();
+            services.AddHostedService<TestService>();
             //services.AddHostedService<TestUpdater>();
 
             //services.AddHostedService<UpcomingContracts>();
@@ -179,8 +178,14 @@ public class TestService : IHostedService {
 
 
     public async Task StartAsync(CancellationToken cancellationToken) {
-        var stauts = await ContractsAPI.GetCoopStatus("mday-chocoloate-refill-2023", "RelaySet98");
+        var xrefs = await _db.UserCoopXrefs.Include(x => x.User).Where(y => y.Coop.ContractID == "eggetarian-2021").ToListAsync();
 
+        var usersToFix = xrefs.Where(x => x.CoopSetting is not null && x.User.CoopSetting is not null && !x.CoopSetting.PingOnTachyonChange && x.User.CoopSetting.PingOnTachyonChange).ToList();
+        foreach(var xref in usersToFix) {
+            xref.CoopSetting.PingOnTachyonChange = true;
+            xref.UpdateCoopSetting();
+        }
+        await _db.SaveChangesAsync();
 
         _ = 1;
         _applicationLifetime.StopApplication();

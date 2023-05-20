@@ -504,6 +504,7 @@ namespace EGG9000.Bot.Commands {
 
         private static async Task<string> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
             var msg = $"Egg Inc Account{(user.EggIncAccounts.Count > 1 ? "s" : "")}";
+            var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             foreach(var account in user.EggIncAccounts) {
                 //var backup = await ContractsAPI.FirstContact(egginc.Id);//user.LastBackup.FirstOrDefault(x => x.GetID() == egginc.Id);
                 var backup = await apiLink.GetBackup(account.Id);
@@ -518,7 +519,9 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(account.GetGrade());
-                msg += "\nBoarding Group: " + (account.Group == 0 ? "**None**" : "BG" + account?.Group);
+                if(dbguild is null || !dbguild.DisableBG) {
+                    msg += "\nBoarding Group: " + (account.Group == 0 ? "**None**" : "BG" + account?.Group);
+                }
                 msg += "\nFilter: " + String.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
                 msg += "\nBreak: " + (account.OnBreakUntil == default ? "Not on break" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
                 msg += $"\nRedo Leggacy: {account.RedoLeggacy}";

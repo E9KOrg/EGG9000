@@ -22,6 +22,7 @@ using EGG9000.Common.Services;
 using EGG9000.Common.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using AutoMapper.Internal;
 
 namespace EGG9000.Bot.Automated {
     public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
@@ -39,11 +40,19 @@ namespace EGG9000.Bot.Automated {
                     var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
                     var servers = await GetOverflowGuildsCounts(guild, _db);
                     if(servers == null) {
-                        _logger.LogWarning("Co-op is trying to be made for guild that is not registered, {guildname} {guildid}, Co-op Name {coop}, Users {user}",
-                            guild.Name, guild.Id, coopGroups.First().Name,
-                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync())
-                        );
-                        continue;
+                        var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroups.Key.ToString())).FirstOrDefaultAsync();
+                        if(dbguild == null) {
+                            _logger.LogWarning("Co-op is trying to be made for guild that is not registered, {guildname} {guildid}, Co-op Name {coop}, Users {user}",
+                                guild.Name, guild.Id, coopGroups.First().Name,
+                                string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync())
+                            );
+                            continue;
+                        }
+                        guild = _client.Guilds.First(X => X.Id == dbguild.Id);
+                        servers = await GetOverflowGuildsCounts(guild, _db);
+                        foreach(var coopGroup in coopGroups) {
+                            coopGroup.GuildId = dbguild.Id;
+                        }
                     }
                     var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && x.Status == CoopStatusEnum.Completed).OrderBy(x => x.CoopCompleted).ToListAsync();
                     _logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);

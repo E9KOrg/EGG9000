@@ -1,4 +1,6 @@
-﻿using EGG9000.Bot;
+﻿using Discord.WebSocket;
+
+using EGG9000.Bot;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
@@ -13,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static List<PotentialCoopGroup> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG) {
+        public static async Task<List<PotentialCoopGroup>> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG, Guild dbguild = null, SocketGuild guild = null, int overrideNumber = 0) {
             var groups = new List<PotentialCoopGroup>();
 
             var accounts = users
@@ -22,7 +24,6 @@ namespace EGG9000.Common.Contracts {
                     Account = a,
                     User = u
                 }));
-
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
 
             accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract)
@@ -34,27 +35,50 @@ namespace EGG9000.Common.Contracts {
             accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)));
 
 
+            var accountList = accounts.ToList();
+
+            if(dbguild is not null && dbguild.DisableBG) {
+                await guild.DownloadUsersAsync();
+                foreach(var account in accountList) {
+                    var role = guild.GetUser(account.User.DiscordId)?.Roles.FirstOrDefault(x => dbguild.GroupRoles.Contains(x.Id.ToString()));
+                    account.RoleId = role?.Id ?? 0;
+                }
+            }
+
 
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                 if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
                     continue;
                 var includeBg = new List<int>();
-                for(var bg = 3; bg >= 1; bg--) {
-                    var group = new PotentialCoopGroup {
-                        BoardingGroup = bg, Grade = grade
-                    };
-                    groups.Add(group);
+                if(dbguild is not null && dbguild.DisableBG) {
+                    for(var i = 0; i < dbguild.GroupRoles.Split(",").Count(); i++) {
+                        var group = new PotentialCoopGroup {
+                            Grade = grade,
+                            BoardingGroup = i
+                        };
+                        groups.Add(group);
+                        var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i])).Id;
 
-                    var dontMergeDown = false;
-                    if(SkipBG > 0 && SkipBG == bg - 1) {
-                        for(var i = SkipBG; i > 0; i--) {
-                            includeBg.Add(i);
-                        }
-                        dontMergeDown = true;
+                        group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, overrideNumber, roleid);
                     }
+                } else {
+                    for(var bg = 3; bg >= 1; bg--) {
+                        var group = new PotentialCoopGroup {
+                            BoardingGroup = bg, Grade = grade
+                        };
+                        groups.Add(group);
 
-                    if(bg > SkipBG) {
-                        group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, bg, grade, contract, includeBg, dontMergeDown);
+                        var dontMergeDown = false;
+                        if(SkipBG > 0 && SkipBG == bg - 1) {
+                            for(var i = SkipBG; i > 0; i--) {
+                                includeBg.Add(i);
+                            }
+                            dontMergeDown = true;
+                        }
+
+                        if(bg > SkipBG) {
+                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown);
+                        }
                     }
                 }
             }
@@ -68,11 +92,20 @@ namespace EGG9000.Common.Contracts {
 
         }
 
-        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown) {
-            var matchingAccounts = Accounts.Where(x => 
-                x.Account.GetGrade() == Grade && 
-                (x.Account.Group == BoardingGroup || includeBG.Any(y => x.Account.Group == y))
-            );
+        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, int overrideNumber = 0,  ulong roleid = 0) {
+            IEnumerable<UserByAccount> matchingAccounts;
+
+            if(roleid > 0) {
+                matchingAccounts = Accounts.Where(x =>
+                    x.Account.GetGrade() == Grade &&
+                    x.RoleId == roleid
+                );
+            } else {
+                matchingAccounts = Accounts.Where(x =>
+                    x.Account.GetGrade() == Grade &&
+                    (x.Account.Group == BoardingGroup || includeBG.Any(y => x.Account.Group == y))
+                );
+            }
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
             matchingAccounts = matchingAccounts.Where(x =>
                 x.Account.AutoRegisterRewards == null
@@ -83,7 +116,8 @@ namespace EGG9000.Common.Contracts {
             var ebGroups = matchingAccounts.GroupBy(x => (int)Math.Log10(x.Account.Backup.EarningsBonus));
             var rng = new Random();
 
-            var numberOfCoops = Math.Ceiling((double)matchingAccounts.Count() / contract.MaxCoopSize);
+            var numberOfCoops = Math.Max(Math.Ceiling((double)matchingAccounts.Count() / contract.MaxCoopSize), overrideNumber);
+            
             var coops = new List<PotentialCoop>();
             for(var i = 0; i < numberOfCoops; i++) {
                 coops.Add(new PotentialCoop { Users = new List<UserByAccount>() });

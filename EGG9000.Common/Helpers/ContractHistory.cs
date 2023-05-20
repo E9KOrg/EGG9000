@@ -1,5 +1,7 @@
 ﻿using EGG9000.Common.Database.Entities;
 
+using Microsoft.Extensions.Logging;
+
 using Newtonsoft.Json;
 
 using System;
@@ -13,8 +15,8 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Helpers {
     public class ContractScoring {
-        public static List<UserContractScore> GetContractScores(List<Coop> coops, Contract contract) {
-
+        public static List<UserContractScore> GetContractScores(List<Coop> coops, Contract contract, ILogger logger) {
+            logger.LogInformation("Calculating scores for {contract}", contract.Name);
             var histories = new List<UserContractScore>();
             var skipped = 0;
             var xrefcount = 0;
@@ -23,7 +25,7 @@ namespace EGG9000.Common.Helpers {
                 foreach(var xref in coop.UserCoopsXrefs.Where(x => x.JoinedCoop)) {
                     //var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
                     //if(contribution != null) {
-                    var maxAmount = contract.Details.GoalSets[(int)coop.League].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
+                    var maxAmount = contract.Details.GradeSpecs[(int)coop.League - 1].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
                     //var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
                     var archiveFarm = xref.User.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Backup?.ArchivedFarms.FirstOrDefault(x => x.CoopId == xref.Coop.Name.ToLower());
 
@@ -58,6 +60,9 @@ namespace EGG9000.Common.Helpers {
                     //}
                 }
             }
+            histories = histories.GroupBy(x => x.UserId).Select(x => x.OrderBy(y => y.EggsShipped).First()).ToList();
+
+            logger.LogInformation("{num} of xrefs");
 
             var historiesOrderedBySoulPower = histories.OrderBy(x => x.SoulPower).ToArray();
             for(var currentIndex = 0; currentIndex < historiesOrderedBySoulPower.Length; currentIndex++) {

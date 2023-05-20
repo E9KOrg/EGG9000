@@ -62,7 +62,7 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                //coops = coops.Where(x => x.Name.ToLower() == "RelaySet98".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "kendromeninth0".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
 #endif
 
@@ -412,7 +412,13 @@ namespace EGG9000.Bot.Automated {
                     timings.Set("Got status");
 
                     if(statusReponse.Status is null) {
-                        _logger.LogWarning("Status is null for co-op: {coopName}", coop.Name);
+                        var messages = await (coopChannel as SocketTextChannel).GetMessagesAsync().FlattenAsync();
+                        if(messages.Count() == 0) {
+                            _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}", coop.Name);
+                        } else {
+                            _logger.LogWarning("Status is null for co-op: {coopName}", coop.Name);
+                        }
+                        
                         return;
                     }
                     var status = statusReponse.Status;
@@ -1356,15 +1362,21 @@ namespace EGG9000.Bot.Automated {
                 return;
             }
             foreach(var user in usersWithStatus.Where(x => x.Status is not null && (x.Xref?.CoopSetting?.PingOnTachyonChange ?? false))) {
-                var oldTachyon = prevStatus.Participants.Where(x => x.Uuid != user.Status.Uuid).SelectMany(x => x.BuffHistory.Where(y => y.EggLayingRate > 1)).Sum(x => x.EggLayingRate - 1);
-                var newTachyon = newStatus.Participants.Where(x => x.Uuid != user.Status.Uuid).SelectMany(x => x.BuffHistory.Where(y => y.EggLayingRate > 1)).Sum(x => x.EggLayingRate - 1);
+                var oldTachyon = GetTachyonAmount(prevStatus.Contributors, user.Status.Uuid);
+                var newTachyon = GetTachyonAmount(newStatus.Contributors, user.Status.Uuid);
                 if(oldTachyon != newTachyon) {
-                    var oldVal = Math.Round(oldTachyon * 100);
-                    var newVal = Math.Round(newTachyon * 100);
+                    var oldVal = oldTachyon * 100;
+                    var newVal = newTachyon * 100;
                     _logger.LogInformation("Tachyon Deflector amount changed from {from}% to {to}% for {coop}", oldVal, newVal, coop.Name);
                     await SendDMWarning(user.DiscordUser, coopChannel, $"Tachyon Deflector amount changed from {oldVal}% to {newVal}%", coop);
                 }
             }
+        }
+
+        private decimal GetTachyonAmount(IEnumerable<Ei.ContractCoopStatusResponse.Types.ContributionInfo> contributions, string currentUserUuid) {
+            var matches = contributions.Where(x => x.Uuid != currentUserUuid && x.BuffHistory.Count > 0);
+            var histories = matches.Select(x => x.BuffHistory.OrderBy(y => y.ServerTimestamp).Last());
+            return histories.Sum(x => ((decimal)x.EggLayingRate)  - 1);
         }
 
         public async Task CheckOnCoopFullError(List<UserWithStatus> usersWithStatus, Coop coop, Ei.ContractCoopStatusResponse status, Contract contract, ITextChannel coopChannel) {

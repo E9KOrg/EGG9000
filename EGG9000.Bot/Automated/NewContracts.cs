@@ -146,10 +146,12 @@ namespace EGG9000.Bot.Automated {
 
                     _db.GuildContracts.Add(guildContract);
                     await _db.SaveChangesAsync();
-                    _ = OrganizeAndLaunch(contract, guild, 0);
+                    if(!dbguild.DisableBG) {
+                        _ = OrganizeAndLaunch(contract, guild, 0);
+                    }
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(guildContract.BoardingGroup < 3) {
+                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 3) {
                     var nextLaunch = guildContract.Created.Date.AddHours(guildContract.Created.Hour + guildContract.BoardingGroup * 8);
                     if(nextLaunch < DateTimeOffset.Now) {
                         guildContract.BoardingGroup++;
@@ -173,7 +175,7 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
-            var coopGroups = OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg);
+            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg);
 
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
             foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
