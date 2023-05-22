@@ -97,7 +97,7 @@ namespace EGG9000.Bot.Automated {
                     if(Restarted) {
                         Restarted = false;
                         var dmChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync(new RequestOptions { CancelToken = _cts.Token });
-                        await dmChannel.SendMessageAsync($"{this.GetType().Name} successfully restarted.", options: new RequestOptions { CancelToken = _cts.Token});
+                        await dmChannel.SendMessageAsync($"{this.GetType().Name} successfully restarted.", options: new RequestOptions { CancelToken = _cts.Token });
 
                     }
                 } catch(Exception e) {
@@ -110,7 +110,7 @@ namespace EGG9000.Bot.Automated {
             } else {
                 _db.AutomationLogs.Add(new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now, Skipped = true });
                 await _db.SaveChangesAsync();
-                _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize() );
+                _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize());
             }
         }
 
@@ -120,34 +120,45 @@ namespace EGG9000.Bot.Automated {
             return _timer is not null;
         }
         public Task StartAsync(CancellationToken cancellationToken) {
-            if(_cts is null)
-                _cts = new CancellationTokenSource();
-            _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
-            _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
-            initialStart = false;
+            try {
+                if(_cts is null)
+                    _cts = new CancellationTokenSource();
+                _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
+                _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
+                initialStart = false;
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                _logger.LogError(e, "Error starting");
+            }
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
-            _logger.LogInformation("STOP: Called");
-            _cts.Cancel();
-            _cts.Dispose();
-            _cts = null;
-            await _timer.DisposeAsync();
-            _timer = null;
-            await _watchDogTimer.DisposeAsync();
+            try {
+                _logger.LogInformation("STOP: Called");
 
-            while(!await _semaphoreSlim.WaitAsync(5000)) {
-                _logger.LogWarning("STOP: Waiting on semaphore");
+                _cts.Cancel();
+                _cts.Dispose();
+                _cts = null;
+                await _timer.DisposeAsync();
+                _timer = null;
+                await _watchDogTimer.DisposeAsync();
+
+                while(!await _semaphoreSlim.WaitAsync(5000)) {
+                    _logger.LogWarning("STOP: Waiting on semaphore");
+                }
+                _semaphoreSlim.Release();
+                _logger.LogInformation("STOP: Stopped successfully");
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                _logger.LogError(e, "Error stopping");
             }
-            _semaphoreSlim.Release();
-            _logger.LogInformation("STOP: Stopped successfully");
         }
 
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
                 _logger.LogWarning("Watchdog Ran, last start {time}", (DateTime.Now - LastStarted).Humanize());
-                if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
+                if(_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
                     var success = await AttemptCancel();
                     var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
                     if(success) {
@@ -158,7 +169,7 @@ namespace EGG9000.Bot.Automated {
                     _semaphoreSlim.Release();
                     Restarted = true;
                     _timer.Change(TimeSpan.Zero, UpdateInterval);
-                    _lastMessageSent = DateTime.Now;    
+                    _lastMessageSent = DateTime.Now;
                 }
             }
         }

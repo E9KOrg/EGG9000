@@ -344,7 +344,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = true)]
-        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
+        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
 
             await command.RespondAsync("Please wait...");
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -369,11 +369,7 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        public class RemoveFromCoopAutoComplete : AutoCompleteHandler {
-            private readonly ApplicationDbContext _db;
-            public RemoveFromCoopAutoComplete(ApplicationDbContext db) {
-                _db = db;
-            }
+        public class RemoveFromCoopAutoComplete(ApplicationDbContext _db) : AutoCompleteHandler {
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername }).ToListAsync();
                 if(users.Count == 0) {

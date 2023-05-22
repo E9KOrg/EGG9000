@@ -7,10 +7,15 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9002|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <UserSecretsId>DEV9001</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -228,8 +228,11 @@ namespace EGG9000.Common.Database {
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
+
             var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
     ?? backup.Contracts.Archive.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
+
+            
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
                 ContractId = farm.ContractId,
@@ -237,7 +240,7 @@ namespace EGG9000.Common.Database {
                 League = contract?.League,
                 CoopId = contract?.CoopIdentifier,
                 Cancelled = contract?.Cancelled ?? false,
-                Completed = contract != null ? contract.NumGoalsAchieved == (contract.Contract.Goals.Count == 0 ? contract.Contract.GradeSpecs.First(x => x.Grade == contract.Grade).Goals.Count : contract.Contract.Goals.Count) : false,
+                Completed = contract != null ? contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count : false,
                 NumChickens = farm.NumChickens,
                 CommonResearch = farm.CommonResearch.Select(x => new CustomResearch(x)).ToList(),
                 EggType = farm.EggType,
