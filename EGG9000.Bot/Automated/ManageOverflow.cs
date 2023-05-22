@@ -160,7 +160,6 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _client_RoleUpdated(SocketRole originalRole, SocketRole updatedRole) {
-            _logger.LogInformation("c: {json}", JsonConvert.SerializeObject(originalRole, new JsonSerializerSettings {  ReferenceLoopHandling = ReferenceLoopHandling.Ignore}));
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
             if(!guild.OverflowServers.Any() || guild.RolesToSync is null)

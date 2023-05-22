@@ -90,7 +90,7 @@ namespace EGG9000.Bot.Automated {
                     if(Restarted) {
                         Restarted = false;
                         var dmChannel = await _client.GetUser(248865520756064257).CreateDMChannelAsync(new RequestOptions { CancelToken = _cts.Token });
-                        await dmChannel.SendMessageAsync($"{this.GetType().Name} successfully restarted.", options: new RequestOptions { CancelToken = _cts.Token});
+                        await dmChannel.SendMessageAsync($"{this.GetType().Name} successfully restarted.", options: new RequestOptions { CancelToken = _cts.Token });
 
                     }
                 } catch(Exception e) {
@@ -113,32 +113,43 @@ namespace EGG9000.Bot.Automated {
             return _timer is not null;
         }
         public Task StartAsync(CancellationToken cancellationToken) {
-            _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
-            _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
-            initialStart = false;
+            try {
+                _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
+                _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
+                initialStart = false;
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                _logger.LogError(e, "Error Trying to Start");
+            }
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
-            Console.WriteLine($"Stop called for {this.GetType().Name}");
-            _cts.Cancel();
-            Console.WriteLine("Token Canceled");
-            _cts.Dispose();
-            Console.WriteLine("CTS Disposed");
-            await _timer.DisposeAsync();
-            _timer = null;
-            await _watchDogTimer.DisposeAsync();
-            if(_semaphoreSlim.CurrentCount > 0) {
-                Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
+            try {
+                Console.WriteLine($"Stop called for {this.GetType().Name}");
+                _cts.Cancel();
+                Console.WriteLine("Token Canceled");
+                _cts.Dispose();
+                Console.WriteLine("CTS Disposed");
+                await _timer.DisposeAsync();
+                _timer = null;
+                await _watchDogTimer.DisposeAsync();
+                if(_semaphoreSlim.CurrentCount > 0) {
+                    Console.WriteLine($"Waiting on {this.GetType().Name} to shutdown");
+                }
+                await _semaphoreSlim.WaitAsync(cancellationToken);
+                Console.WriteLine($"{this.GetType().Name} has successfully stopped.");
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                _logger.LogError(e, "Error Trying to Stop");
             }
-            await _semaphoreSlim.WaitAsync(cancellationToken);
-            Console.WriteLine($"{this.GetType().Name} has successfully stopped.");
+
         }
 
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
                 Console.WriteLine($"Watchdog run for {GetType().Name}");
-                if( _lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
+                if(_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
                     var success = await AttemptCancel();
                     var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
                     if(success) {
@@ -150,7 +161,7 @@ namespace EGG9000.Bot.Automated {
                     _semaphoreSlim.Release();
                     Restarted = true;
                     _timer.Change(TimeSpan.Zero, UpdateInterval);
-                    _lastMessageSent = DateTime.Now;    
+                    _lastMessageSent = DateTime.Now;
                 }
             }
         }

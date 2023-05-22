@@ -84,10 +84,19 @@ namespace Ei {
     }
 
     public partial class Contract {
+
         public List<Ei.Contract.Types.Goal> GetGoals(int league) {
             if(this.GradeSpecs.Count > 0)
                 return this.GradeSpecs[league - 1].Goals.ToList();
             else return this.GoalSets[league].Goals.ToList();
+        }
+        public List<Ei.Contract.Types.Goal> GetGoals(Ei.LocalContract contract) {
+            if(contract.Grade != Types.PlayerGrade.GradeUnset)
+                return this.GradeSpecs[(int)contract.Grade - 1].Goals.ToList();
+            else if(this.GoalSets.Count > 0)
+                return this.GoalSets[(int)contract.League].Goals.ToList();
+            else
+                return this.Goals.ToList();
         }
     }
 

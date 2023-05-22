@@ -31,27 +31,26 @@ await Host.CreateDefaultBuilder(args)
     }).UseNLog()
 //.UseWindowsService()
     .ConfigureAppConfiguration((context, config) => {
-        config.AddUserSecrets<Secrets>();
-        //config.AddJsonFile("appsettings.json");
-        //config.AddJsonFile("appsettings.json");
+        config.AddUserSecrets<Program>();
     })
     .UseDefaultServiceProvider(options => options.ValidateScopes = false)
     .ConfigureServices((hostContext, services) => {
 
         var logger = LogManager.Setup()
-                                   //.SetupExtensions(ext => ext.RegisterConfigSettings(Configuration))
                                    .GetCurrentClassLogger();
         logger.Log(NLog.LogLevel.Info, "Main Start");
         try {
             var serviceProvider = services.BuildServiceProvider();
             StaticLoggerFactory.Initialize(serviceProvider.GetRequiredService<ILoggerFactory>());
 
-            //services.AddSingleton<IConfiguration>(Configuration);
             services.Configure<HostOptions>(options => {
                 options.ShutdownTimeout = TimeSpan.FromMinutes(5);
             });
 
-            services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x=> x.MigrationsAssembly("EGG9000.Common")));
+            services.AddDbContext<ApplicationDbContext>(options => {
+                options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
+                options.EnableSensitiveDataLogging();
+            });
 
             services.AddSingleton<Words>();
             services.AddMemoryCache();
@@ -64,7 +63,7 @@ await Host.CreateDefaultBuilder(args)
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-            services.AddHostedService<CommandService>();
+            //services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
             //services.AddHostedService<StaffCoopsMessage>();
             //services.AddHostedService<EventUpdater>();
@@ -73,18 +72,18 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            services.AddSingleton<CoopStatusUpdater>();
-            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            //services.AddSingleton<CoopStatusUpdater>();
+            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-            services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            services.AddSingleton<ContractUpdater>();
-            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+            //services.AddSingleton<ContractUpdater>();
+            //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
             services.Configure<UpdaterOptions<UserCxpUpdater>>(x => x.DelayStart = TimeSpan.Zero);
             services.AddHostedService<UserCxpUpdater>();
 
-            services.AddHostedService<NewContracts>();
-            services.AddHostedService<CreateCoopChannels>();
+            //services.AddHostedService<NewContracts>();
+            //services.AddHostedService<CreateCoopChannels>();
             //services.AddHostedService<ShipReturnDM>();
             //services.AddHostedService<UserSnapShots>();
             //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
@@ -127,12 +126,13 @@ await Host.CreateDefaultBuilder(args)
         services.AddSingleton<ContractUpdater>();
         services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
+        ///services.AddHostedService<UserCxpUpdater>();
         services.AddHostedService<NewContracts>();
         services.AddHostedService<CreateCoopChannels>();
         services.AddHostedService<ShipReturnDM>();
         services.AddHostedService<UserSnapShots>();
         services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
-        services.AddHostedService<ManageOverflow>();
+        //services.AddHostedService<ManageOverflow>();
         services.AddHostedService<RemoveTempRoles>();
         services.AddHostedService<HandleGradeChanges>();
 
@@ -210,7 +210,7 @@ public class TestService : IHostedService {
 
         var dups = coops.GroupBy(x => new { Name = x.Name.ToLower(), x.ContractID }).Where(x => x.Count() > 1);
 
-        
+
         foreach(var dup in dups) {
             foreach(var extra in dup.OrderBy(x => x.Created).Skip(1)) {
 

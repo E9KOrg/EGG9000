@@ -62,7 +62,6 @@ namespace EGG9000.Common.Helpers {
             }
             histories = histories.GroupBy(x => x.UserId).Select(x => x.OrderBy(y => y.EggsShipped).First()).ToList();
 
-            logger.LogInformation("{num} of xrefs");
 
             var historiesOrderedBySoulPower = histories.OrderBy(x => x.SoulPower).ToArray();
             for(var currentIndex = 0; currentIndex < historiesOrderedBySoulPower.Length; currentIndex++) {
