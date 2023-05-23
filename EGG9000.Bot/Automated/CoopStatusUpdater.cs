@@ -29,6 +29,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
 using Quartz;
+using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -53,7 +54,12 @@ namespace EGG9000.Bot.Automated {
         public override async Task Run(object state, CancellationToken cancellationToken) {
             using(var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()) {
                 var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
+#if DEBUG
+                //var coops = await _db.Coops.AsQueryable().Where(x =>x.DiscordChannelId == 1110237292318171227  &&  x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
                 var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
+#else
+                var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
+#endif
 
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
@@ -62,8 +68,8 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "kendromeninth0".ToLower()).ToList();
-                //coops = coops.Where(x => x.GuildId == 656455567858073601 && x.League == 5).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "slurpusher4".ToLower()).ToList();
+                coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
@@ -415,6 +421,17 @@ namespace EGG9000.Bot.Automated {
                         var messages = await (coopChannel as SocketTextChannel).GetMessagesAsync().FlattenAsync();
                         if(messages.Count() == 0) {
                             _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}", coop.Name);
+                            string EIID = null;
+                            var random = new Random();
+                            foreach(var account in coop.UserCoopsXrefs.OrderBy(x => random.Next())) {
+                                var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.EggIncId);
+                                if(r.Grade == (Ei.Contract.Types.PlayerGrade)coop.League) {
+                                    EIID = account.EggIncId;
+                                    break;
+                                }
+                            }
+
+                            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, coop.Contract.Details.LengthSeconds, EIID);
                         } else {
                             _logger.LogWarning("Status is null for co-op: {coopName}", coop.Name);
                         }
