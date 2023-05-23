@@ -89,6 +89,8 @@ namespace EGG9000.Common.Database {
         public byte ClientVersion { get; set; }
         [Key(29)]
         public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
+        [Key(30)]
+        public double GradeProgress { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -170,6 +172,7 @@ namespace EGG9000.Common.Database {
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
             Grade = backup.Contracts.LastCpi?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
+            GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
             Farms = new List<CustomFarm>();
