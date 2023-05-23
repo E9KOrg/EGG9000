@@ -8,29 +8,21 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {
         private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
-
-        private static async Task<DBUser> GetUser(ulong DiscordId, ApplicationDbContext db) {
-            var key = $"User:{DiscordId}";
-            if(_cache.TryGetValue(key, out DBUser user)) {
-                return user;
-            }
-            user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == DiscordId);
-            _cache.Set(key, user, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(10) });
-            return user;
-
-        }
 
         private static async Task<Guild> GetGuild(ulong? GuildId, ApplicationDbContext db) {
             if(GuildId == 0) return null;   
@@ -53,7 +45,7 @@ namespace EGG9000.Bot.Commands {
         #region MainMenu
         [SlashCommand(Description = "My Contract Settings")]
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
-            var dbuser = await GetUser(command.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
                 await command.RespondAsync("ERROR: Unable to find user, are you registered?", ephemeral: !System.Diagnostics.Debugger.IsAttached);
             } else {
@@ -63,7 +55,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSAccounts(SocketMessageComponent component, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             await component.UpdateAsync(x => { x.Content = ""; x.Components = GetAccountButtons(dbuser, "MCSMenu"); x.Embed = null; });
         }
 
@@ -130,7 +122,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
@@ -141,7 +133,7 @@ namespace EGG9000.Bot.Commands {
         #region Boarding Group
         [ComponentCommand]
         public static async Task MCSBg(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder().WithSelectMenu($"MCSBoardingGroup:{index}", new List<SelectMenuOptionBuilder> {
@@ -156,7 +148,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSBoardingGroup(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             account.Group = byte.Parse(component.Data.Values.First());
@@ -174,7 +166,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSRL(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
 
@@ -199,7 +191,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task RLThreshModal(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
 
@@ -217,7 +209,7 @@ namespace EGG9000.Bot.Commands {
             var isNum = double.TryParse((numText.Last() == 'k' ? numText.Remove(numText.Length - 1) : numText), out var num);
             //If there was a k, multiply by 1000
             if(isNum && (numText.Last() == 'k')) num *= 1000;
-            var dbuser = await GetUser(modal.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
 			var index = int.Parse(data);
             if(!isNum || (num <= 0 || num > maxThresh)) {
                 var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : $"less than {maxThresh}");
@@ -237,7 +229,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSRedoLeggacies(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             account.RedoLeggacySelection = component.Data.Values.First() switch {
@@ -257,7 +249,7 @@ namespace EGG9000.Bot.Commands {
         #region Break
         [ComponentCommand]
         public static async Task MCSBreak(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
@@ -281,7 +273,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task BreakAddDay(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
@@ -294,7 +286,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task BreakAddWeek(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
@@ -307,7 +299,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task StopBreakEarly(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //default OnBreakUntil
@@ -322,7 +314,7 @@ namespace EGG9000.Bot.Commands {
         #region Rewards
         [ComponentCommand]
         public static async Task MCSRewards(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var reg = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
@@ -344,7 +336,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSRewardsSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var reg = dbuser.EggIncAccounts[index];
             reg.AutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
@@ -355,7 +347,7 @@ namespace EGG9000.Bot.Commands {
         }
         [ComponentCommand]
         public static async Task MCSRewardsClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await GetUser(component.User.Id, db);
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var index = int.Parse(data);
             var reg = dbuser.EggIncAccounts[index];
             reg.AutoRegisterRewards = new List<Ei.RewardType>();

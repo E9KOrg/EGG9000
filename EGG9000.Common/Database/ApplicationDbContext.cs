@@ -103,13 +103,14 @@ namespace EGG9000.Common.Database {
             builder.Entity<Merit>().HasOne(x => x.AdminUser).WithMany(x => x.MeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
 
 
-            builder.Entity<IdentityRole>().HasData(
-                new IdentityRole { Id = "c1dd39e4-dbe5-48a4-b0c6-897c5b3db799", Name = "LesserGuildAdmin", NormalizedName = "GUILDLESSERADMIN" },
-                new IdentityRole { Id = "d5cfa96d-1cde-49bb-87a4-95c8e2923b46", Name = "GuildAdmin", NormalizedName = "GUILDADMIN" },
-                new IdentityRole { Id = "ef4c281d-0ec5-4e70-b027-181e8eed8c54", Name = "Admin", NormalizedName = "ADMIN" }
-            );
+            //builder.Entity<IdentityRole>().HasData(
+            //    new IdentityRole { Id = "c1dd39e4-dbe5-48a4-b0c6-897c5b3db799", Name = "LesserGuildAdmin", NormalizedName = "GUILDLESSERADMIN" },
+            //    new IdentityRole { Id = "d5cfa96d-1cde-49bb-87a4-95c8e2923b46", Name = "GuildAdmin", NormalizedName = "GUILDADMIN" },
+            //    new IdentityRole { Id = "ef4c281d-0ec5-4e70-b027-181e8eed8c54", Name = "Admin", NormalizedName = "ADMIN" }
+            //);
             //builder.Entity<User>().Property(x => x.LastBackup).HasField("_LastBackup");
 
+            builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
         }
     }
 }
