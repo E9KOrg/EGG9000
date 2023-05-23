@@ -194,17 +194,23 @@ namespace EGG9000.Bot.Commands {
         [Modal]
         public static async Task RlThreshUpdate(SocketModal modal, [ComponentData] string data, ApplicationDbContext db)
         {
-            var numText = modal.Data.Components.First(x => x.CustomId == "num").Value;
-            var isNum = int.TryParse(numText, out int num);
+            var numText = modal.Data.Components.First(x => x.CustomId == "num").Value.ToLower();
+            //Parse to double so that we can handle things like "25.2k"
+            var isNum = double.TryParse(
+                ((numText.Last() == 'k') ? numText.Remove(numText.Length - 1) : numText), out var num
+            );
+            //If there was a k, multiply by 1000
+            if(isNum && (numText.Last() == 'k')) num *= 1000;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
             var index = int.Parse(data);
-            if(!isNum || num <= 0) {
-                var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
+            if(!isNum || (num <= 0 || num > 90000)) {
+                var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : "less than 90,000");
+                var embedBuilder = new EmbedBuilder().WithTitle(errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index}").WithButton("Cancel", $"MCSRL:{index}").Build();
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 var account = dbuser.EggIncAccounts[index];
-                account.RedoScoreThreshold = num;
+                account.RedoScoreThreshold = (int)num;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
 
