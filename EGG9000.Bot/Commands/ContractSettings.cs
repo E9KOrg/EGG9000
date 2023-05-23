@@ -15,6 +15,7 @@ using Google.Protobuf;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Net.Http.Headers;
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 using System;
@@ -30,6 +31,31 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {
+        private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+
+        private static async Task<DBUser> GetUser(ulong DiscordId, ApplicationDbContext db) {
+            var key = $"User:{DiscordId}";
+            if(_cache.TryGetValue(key, out DBUser user)) {
+                return user;
+            }
+            user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == DiscordId);
+            _cache.Set(key, user, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(10) });
+            return user;
+
+        }
+
+        private static async Task<Guild> GetGuild(ulong? GuildId, ApplicationDbContext db) {
+            if(GuildId == 0) return null;   
+            var key = $"Guild:{GuildId}";
+            if(_cache.TryGetValue(key, out Guild guild)) {
+                return guild;
+            }
+            guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == GuildId);
+            _cache.Set(key, guild, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(10) });
+            return guild;
+
+        }
+
         public static List<(int bg, long time)> BoardingGroupTimes = new List<(int bg, long time)> {
             (1, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
             (2, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
@@ -39,7 +65,7 @@ namespace EGG9000.Bot.Commands {
         #region MainMenu
         [SlashCommand(Description = "My Contract Settings")]
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            var dbuser = await GetUser(command.User.Id, db);
             if(dbuser == null) {
                 await command.RespondAsync("ERROR: Unable to find user, are you registered?", ephemeral: !System.Diagnostics.Debugger.IsAttached);
             } else {
@@ -49,7 +75,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSAccounts(SocketMessageComponent component, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             await component.UpdateAsync(x => { x.Content = ""; x.Components = GetAccountButtons(dbuser, "MCSMenu"); x.Embed = null; });
         }
 
@@ -75,14 +101,12 @@ namespace EGG9000.Bot.Commands {
             }
             if(!dbguild.DisableBG) {
                 eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
-            }
-            eBuilder.AddField("Break", account.OnBreakUntil == default ? "Not on break" : $"Ends <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R>");
-            if(!dbguild.DisableBG) {
                 var rDict = GetRewardDictionary();
                 if(account.AutoRegisterRewards is null)
                     account.AutoRegisterRewards = new List<Ei.RewardType>();
                 eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
             }
+            eBuilder.AddField("Break", account.OnBreakUntil == default ? "Not on break" : $"Ends <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R>");
 
             //eBuilder.AddField("Redo Completed Leggacies", account.RedoLeggacy ? "Yes (Will redo all contracts to help out others)" : "No (Will still be assigned to incomplete leggacies)");
             var redoText = account.RedoLeggacySelection switch {
@@ -93,11 +117,13 @@ namespace EGG9000.Bot.Commands {
             };
             eBuilder.AddField("Redo Completed Leggacies", redoText);
 
-            var builder = new ComponentBuilder()
-                .WithButton("Boarding Group", $"MCSBg:{index}")
-                .WithButton("Set Break", $"MCSBreak:{index}")
-                .WithButton("Rewards Filter", $"MCSRewards:{index}")
-                .WithButton("Redo Completed Leggacies", $"MCSRL:{index}");
+            var builder = new ComponentBuilder();
+            if(!dbguild.DisableBG) {
+                builder.WithButton("Boarding Group", $"MCSBg:{index}");
+                builder.WithButton("Rewards Filter", $"MCSRewards:{index}");
+            }
+            builder.WithButton("Set Break", $"MCSBreak:{index}");
+            builder.WithButton("Redo Completed Leggacies", $"MCSRL:{index}");
             builder.WithButton("Return", $"MCSAccounts", ButtonStyle.Secondary);
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();
@@ -116,10 +142,10 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -127,7 +153,7 @@ namespace EGG9000.Bot.Commands {
         #region Boarding Group
         [ComponentCommand]
         public static async Task MCSBg(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder().WithSelectMenu($"MCSBoardingGroup:{index}", new List<SelectMenuOptionBuilder> {
@@ -142,13 +168,13 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSBoardingGroup(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             account.Group = byte.Parse(component.Data.Values.First());
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -156,11 +182,11 @@ namespace EGG9000.Bot.Commands {
         #region RedoLeggacies
         [ComponentCommand]
         public static async Task MCSRL(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
 
-            var mainMenu = MainMenu(dbuser, account, index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var mainMenu = MainMenu(dbuser, account, index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
         }
 
@@ -181,7 +207,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task RLThreshModal(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
 
@@ -196,7 +222,7 @@ namespace EGG9000.Bot.Commands {
         {
             var numText = modal.Data.Components.First(x => x.CustomId == "num").Value;
             var isNum = int.TryParse(numText, out int num);
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
+            var dbuser = await GetUser(modal.User.Id, db);
             var index = int.Parse(data);
             if(!isNum || num <= 0) {
                 var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
@@ -208,14 +234,14 @@ namespace EGG9000.Bot.Commands {
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
 
-                var mainMenu = MainMenu(dbuser, account, index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+                var mainMenu = MainMenu(dbuser, account, index, await GetGuild(modal.GuildId, db));
                 await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
             }
         }
 
         [ComponentCommand]
         public static async Task MCSRedoLeggacies(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             account.RedoLeggacySelection = component.Data.Values.First() switch {
@@ -226,7 +252,7 @@ namespace EGG9000.Bot.Commands {
             };
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
@@ -235,7 +261,7 @@ namespace EGG9000.Bot.Commands {
         #region Break
         [ComponentCommand]
         public static async Task MCSBreak(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
@@ -245,7 +271,7 @@ namespace EGG9000.Bot.Commands {
                 .WithButton("Stop Break Early", $"StopBreakEarly:{index}")
                 .WithButton("Return", $"MCSMenu:{index}");
             builder.AddRow(row);
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -259,40 +285,40 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task BreakAddDay(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
             account.OnBreakUntil = (account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
         public static async Task BreakAddWeek(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
             account.OnBreakUntil = (account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
         public static async Task StopBreakEarly(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //default OnBreakUntil
             account.OnBreakUntil = default;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
@@ -300,7 +326,7 @@ namespace EGG9000.Bot.Commands {
         #region Rewards
         [ComponentCommand]
         public static async Task MCSRewards(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var reg = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
@@ -322,24 +348,24 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSRewardsSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var reg = dbuser.EggIncAccounts[index];
             reg.AutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         [ComponentCommand]
         public static async Task MCSRewardsClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbuser = await GetUser(component.User.Id, db);
             var index = int.Parse(data);
             var reg = dbuser.EggIncAccounts[index];
             reg.AutoRegisterRewards = new List<Ei.RewardType>();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId));
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(component.GuildId, db));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion

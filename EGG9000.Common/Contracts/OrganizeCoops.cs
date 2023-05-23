@@ -60,7 +60,7 @@ namespace EGG9000.Common.Contracts {
                         groups.Add(group);
                         var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i])).Id;
 
-                        group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, overrideNumber, roleid);
+                        group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, overrideNumber, roleid);
                     }
                 } else {
                     for(var bg = 3; bg >= 1; bg--) {
@@ -78,7 +78,7 @@ namespace EGG9000.Common.Contracts {
                         }
 
                         if(bg > SkipBG) {
-                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown);
+                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown, false);
                         }
                     }
                 }
@@ -93,7 +93,7 @@ namespace EGG9000.Common.Contracts {
                 (!x.Account.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
         }
 
-        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, int overrideNumber = 0,  ulong roleid = 0) {
+        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool ignoreRewards, int overrideNumber = 0,  ulong roleid = 0) {
             IEnumerable<UserByAccount> matchingAccounts;
 
             if(roleid > 0) {
@@ -109,7 +109,8 @@ namespace EGG9000.Common.Contracts {
             }
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
             matchingAccounts = matchingAccounts.Where(x =>
-                x.Account.AutoRegisterRewards == null
+                   ignoreRewards 
+                || x.Account.AutoRegisterRewards == null
                 || x.Account.AutoRegisterRewards.Count == 0
                 || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
             );
