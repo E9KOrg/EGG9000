@@ -9,6 +9,8 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 using System;
 using System.Collections.Generic;
