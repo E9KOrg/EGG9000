@@ -72,17 +72,17 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.AddSingleton<CoopStatusUpdater>();
-            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.AddSingleton<CoopStatusUpdater>();
+            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-            services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            services.AddSingleton<ContractUpdater>();
-            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+            //services.AddSingleton<ContractUpdater>();
+            //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
             //services.Configure<UpdaterOptions<UserCxpUpdater>>(x => x.DelayStart = TimeSpan.Zero);
             //services.AddHostedService<UserCxpUpdater>();
 
-            services.AddHostedService<NewContracts>();
+            //services.AddHostedService<NewContracts>();
             //services.AddHostedService<CreateCoopChannels>();
             //services.AddHostedService<ShipReturnDM>();
             //services.AddHostedService<UserSnapShots>();

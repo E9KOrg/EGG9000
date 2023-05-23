@@ -412,6 +412,12 @@ namespace EGG9000.Common.Helpers {
                         }
 
                         if(xref == null) {
+                            //Try matching username to assigned backup
+                            var matchbackup = userBackupsAssigned.FirstOrDefault(x => x.Backup.UserName == participant.UserName);
+                            xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
+                        }
+
+                        if(xref == null) {
                             //Try matching to EB
                             var matchbackup = userBackupsAssigned.FirstOrDefault(x => Math.Log10(x.Backup.EarningsBonus / 100) == participant.SoulPower);
                             xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
