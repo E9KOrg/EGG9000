@@ -1,7 +1,5 @@
-﻿using Bugsnag.Payload;
-
+﻿
 using Discord;
-using Discord.Webhook;
 using Discord.WebSocket;
 
 using EGG9000.Common.Commands;
@@ -10,24 +8,12 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
-using Google.Protobuf;
-
-using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Net.Http.Headers;
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
-
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {
@@ -180,6 +166,10 @@ namespace EGG9000.Bot.Commands {
         #endregion
 
         #region RedoLeggacies
+
+        //Max threshold value
+        private const int maxThresh = 90000;
+
         [ComponentCommand]
         public static async Task MCSRL(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var dbuser = await GetUser(component.User.Id, db);
@@ -212,7 +202,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
 
             var modal = new ModalBuilder().WithTitle("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index}")
-                .AddTextInput(label: "Enter CS Threshold greater than 0", value: account.RedoScoreThreshold.ToString(), customId: "num", required: true).Build();
+                .AddTextInput(label: $"Enter CS Threshold between 0 and {maxThresh}", value: account.RedoScoreThreshold.ToString(), customId: "num", required: true).Build();
 
             await component.RespondWithModalAsync(modal);
         }
@@ -220,17 +210,21 @@ namespace EGG9000.Bot.Commands {
         [Modal]
         public static async Task RlThreshUpdate(SocketModal modal, [ComponentData] string data, ApplicationDbContext db)
         {
-            var numText = modal.Data.Components.First(x => x.CustomId == "num").Value;
-            var isNum = int.TryParse(numText, out int num);
+            var numText = modal.Data.Components.First(x => x.CustomId == "num").Value.ToLower();
+            //Parse to double so that we can handle things like "25.2k"
+            var isNum = double.TryParse((numText.Last() == 'k' ? numText.Remove(numText.Length - 1) : numText), out var num);
+            //If there was a k, multiply by 1000
+            if(isNum && (numText.Last() == 'k')) num *= 1000;
             var dbuser = await GetUser(modal.User.Id, db);
-            var index = int.Parse(data);
-            if(!isNum || num <= 0) {
-                var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
+			var index = int.Parse(data);
+            if(!isNum || (num <= 0 || num > maxThresh)) {
+                var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : $"less than {maxThresh}");
+                var embedBuilder = new EmbedBuilder().WithTitle(errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index}").WithButton("Cancel", $"MCSRL:{index}").Build();
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 var account = dbuser.EggIncAccounts[index];
-                account.RedoScoreThreshold = num;
+                account.RedoScoreThreshold = (int)num;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
 
