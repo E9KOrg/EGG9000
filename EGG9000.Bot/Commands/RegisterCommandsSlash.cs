@@ -527,7 +527,7 @@ namespace EGG9000.Bot.Commands {
                 msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(pGrade);
                 //Progress to next grade
                 if(pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa){
-                    msg += $"\n\t{Math.Round(account.Backup.GradeProgress, 4) * 100}% of the way to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))}";
+                    msg += $"\n\t{Math.Round(Math.Round(account.Backup.GradeProgress, 4) * 100, 2)}% of the way to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))}";
                 }
 
                 if(dbguild is null || !dbguild.DisableBG) {
