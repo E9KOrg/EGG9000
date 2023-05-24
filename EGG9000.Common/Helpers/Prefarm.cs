@@ -26,8 +26,8 @@ namespace EGG9000.Common.Helpers {
             public EggIncAccount Account { get => User.EggIncAccounts.First(x => x.Id == Backup.EggIncId); }
             public CustomBackup Backup { get; set; }
             public DateTimeOffset? lastSeen { get; set; }
-            public int RecentContracts { get; set; }
-            public int ActiveContracts { get; set; }
+            //public int RecentContracts { get; set; }
+            //public int ActiveContracts { get; set; }
             public int TotalContracts { get; set; }
             public bool Last1 { get; set; }
             public bool Last2 { get; set; }
@@ -38,7 +38,16 @@ namespace EGG9000.Common.Helpers {
             public SocketGuildUser DiscordUser { get; set; }
             public bool Elite { get { return Backup.EarningsBonus > 10000000000000; } }
             public DateTimeOffset Started { get; set; }
-            public bool Active { get; set; }
+            //public bool Active { get; set; }
+            public List<SimpleXref> RecentXrefs { get; set; }
+        }
+
+        public class SimpleXref {
+            //public bool LastThreeWeeks { get; set; }
+            public Guid UserId { get; set; }
+            public string ContractID { get; set; }
+            public string EggIncId { get; set; }
+            public bool Joined { get; set; }
         }
 
         public class UserPreFarm {

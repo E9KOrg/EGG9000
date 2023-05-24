@@ -336,6 +336,8 @@ namespace EGG9000.Common.Database.Entities {
         public int RedoScoreThreshold { get; set; } = 20000;
         [Key(12)]
         public RedoLeggacyOption RedoLeggacySelection { get; set; } = RedoLeggacyOption.NotSet;
+        [Key(13)]
+        public bool Active { get; set; }
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
