@@ -72,8 +72,8 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            services.AddSingleton<CoopStatusUpdater>();
-            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            //services.AddSingleton<CoopStatusUpdater>();
+            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
             //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
             //services.AddSingleton<ContractUpdater>();
@@ -87,7 +87,9 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<ShipReturnDM>();
             //services.AddHostedService<UserSnapShots>();
             //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromHours(0));
-            //services.AddHostedService<LeaderboardUpdater>();
+            
+            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.Zero);
+            services.AddHostedService<LeaderboardUpdater>();
             //services.AddHostedService<ManageOverflow>();
             //services.AddHostedService<RemoveTempRoles>();
             //services.AddHostedService<HandleGradeChanges>();

@@ -40,7 +40,6 @@ namespace EGG9000.Common.Services {
         private List<ComponentCommandFunction> _componentCommandFunctions;
         private List<ModalCommandFunction> _modalFunctions;
         private IConfiguration _configuration;
-        private APILink _apilink;
         private Bugsnag.IClient _bugsnag;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(100);
         private Guild _cpGuild;
@@ -51,7 +50,6 @@ namespace EGG9000.Common.Services {
         public CommandService(IConfiguration Configuration, DiscordHostedService discord,Bugsnag.IClient bugsnag, ApplicationDbContext context, IServiceProvider serviceProvider, ILogger<CommandService> logger) {
             _discord = discord;
             _configuration = Configuration;
-            //_apilink = apilink;
 
 
             _bugsnag = bugsnag;
@@ -65,27 +63,6 @@ namespace EGG9000.Common.Services {
             try {
                 var command = _slashCommandFunctions.First(x => x.Name == arg.Data.Name);
 
-                //if(command.Details.AdminOnly) {
-                //    var isAdmin = false;
-
-                //    try {
-                //        isAdmin = ((SocketGuildUser)arg.User).Roles.Any(x => x.Permissions.ManageChannels ||
-                //            x.Name.ToLower().Contains("admin") || x.Name.ToLower().Contains("staff")) ||
-                //            arg.User.Username == "kendrome" ||
-                //            ((SocketGuildUser)arg.User).GuildPermissions.ManageChannels;
-                //    } catch(Exception) {
-
-                //    }
-                //    if(!isAdmin) {
-                //        //if(command.Details.AllowFarmHand  && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                //        if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                //            //bypass for farm hands and merits
-                //        } else {
-                //            await arg.RespondAsync($"{arg.User.Mention} You don't have permissions to run the command '/{arg.Data.Name}'");
-                //            return;
-                //        }
-                //    }
-                //}
 
                 if(command.SubFunctions != null) {
                     command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
@@ -149,8 +126,8 @@ namespace EGG9000.Common.Services {
                             parameters.Add((DiscordSocketClient)_discord);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
                             parameters.Add(_discord);
-                        } else if(parameterInfo.ParameterType == typeof(APILink)) {
-                            parameters.Add(_apilink);
+                        //} else if(parameterInfo.ParameterType == typeof(APILink)) {
+                        //    parameters.Add(_apilink);
                         } else if(parameterInfo.ParameterType == typeof(SocketUser)) {
                             parameters.Add(arg.User);
                         } else if(parameterInfo.ParameterType == typeof(IServiceProvider)) {
@@ -302,8 +279,9 @@ namespace EGG9000.Common.Services {
             return Task.CompletedTask;
         }
 
-        private async Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
+        private Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
             _ = CallAutocompleteHandler(arg);
+            return Task.CompletedTask;
         }
 
         private async Task CallAutocompleteHandler(SocketAutocompleteInteraction arg) {

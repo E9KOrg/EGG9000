@@ -111,6 +111,7 @@ namespace EGG9000.Common.Database {
             //builder.Entity<User>().Property(x => x.LastBackup).HasField("_LastBackup");
 
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
+            builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
         }
     }
 }

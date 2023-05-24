@@ -40,7 +40,7 @@ namespace EGG9000.Common.Factories {
 
         public List<(string name, TimeSpan time)> Finished() {
             Set("Last");
-            var total = TimeSpan.FromMilliseconds(times.Sum(x => x.time.Milliseconds));
+            var total = TimeSpan.FromMilliseconds(times.Sum(x => x.time.TotalMilliseconds));
             times.Add(("TOTAL", total));
             if(_logger is not null)
                 _logger.LogTrace("Timing: {name} {time}", "Total", total);

@@ -206,9 +206,17 @@ namespace EGG9000.Bot.Helpers {
 
 
         public static async Task CheckActive(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
-            var role = await _client.GetRoleAsync(GuildChannelType.ActiveRole, Guild); ;
+            var role = await _client.GetRoleAsync(GuildChannelType.ActiveRole, Guild);
             if(role != null) {
-                var needsRole = isActive(user, userAccounts);
+                foreach(var account in userAccounts) {
+                    var recentJoin = account.RecentXrefs.Any(x => x.Joined);
+                    if(recentJoin != account.Account.Active) {
+                        account.Account.Active = recentJoin;
+                        account.User.UpdateAccounts();
+                    }
+                }
+
+                var needsRole = userAccounts.Any(x => x.Account.Active);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {
@@ -221,19 +229,14 @@ namespace EGG9000.Bot.Helpers {
                 }
 
             }
-        }
 
-        private static bool isActive(DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
-            return user.Registered > DateTimeOffset.Now.AddDays(-14)
-                    || userAccounts.Any(x => x.Last1 || x.Last2 || x.Last3 || x.Last4 || x.Last5)
-                    || userAccounts.Any(ua => ua.Backup.Farms.Any(f => f.Started > DateTimeOffset.Now.AddDays(-7)));
         }
-
 
         public static async Task CheckBG(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
             var role = await _client.GetRoleAsync(GuildChannelType.MissingBoardingGroupRole, Guild);
             if(role != null) {
-                var needsRole = isActive(user, userAccounts) && user.EggIncAccounts.Any(y => y.Group == 0);
+                var active = userAccounts.Any(x => x.Account.Active);
+                var needsRole = active && user.EggIncAccounts.Any(y => y.Group == 0);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {

@@ -39,7 +39,6 @@ namespace EGG9000.Bot.Automated {
             var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
 
             //Loop through each user in the DB
-            var i = 0;
             var userChunks = users.Chunk(100);
             var userIDs = users.SelectMany(x => x.EggIncAccounts.Select(y => y.Id)).ToList();
             _logger.LogInformation("Getting scores");

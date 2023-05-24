@@ -26,6 +26,7 @@ using EGG9000.Common.Services;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
@@ -45,42 +46,38 @@ namespace EGG9000.Bot.Automated {
         }
 
 
-        public override async Task Run(object state, CancellationToken cancellationToken) {
-            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created < DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync();
-            var currentContracts = await _db.Contracts.AsQueryable().Where(x => x.Created >= DateTime.Today.AddDays(-5)).Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).ToListAsync();
-            var recentContractIDs = recentContracts.Select(x => x.ID);
 
+        public override async Task Run(object state, CancellationToken cancellationToken) {
+            var timings = new TimingsFactory(_logger);
+            timings.Start();
+
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync();
+            timings.Set("recentContracts");
             _logger.LogInformation("Getting Xrefs for Leaderboard");
             try {
                 var threeWeeksAgo = DateTimeOffset.Now.AddDays(-21);
-//#if DEBUG
-//                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.Coop.GuildId == 770469712064151593 && x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync();
-//#else
-                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop).Select(x => new { LastThreeWeeks = x.CreatedOn > threeWeeksAgo, UserId = x.GetID(), x.Coop.ContractID, x.EggIncId, x.RefEggIncId }).ToListAsync(cancellationToken);
+
+                var recentxrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop && x.CreatedOn >= threeWeeksAgo).Select(x => new SimpleXref {
+                    UserId = x.UserId, ContractID = x.Coop.ContractID, EggIncId = x.EggIncId, Joined = x.JoinedCoop
+                }).ToListAsync(cancellationToken);
+                timings.Set("recentxrefs");
+                var oldXrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.CreatedOn < threeWeeksAgo).GroupBy(x => x.UserId).Select(x => x.Key).ToListAsync();
+                timings.Set("oldXrefs");
+
                 if(cancellationToken.IsCancellationRequested)
                     return;
-//#endif
-                var recentxrefs = xrefs.Where(x => recentContractIDs.Contains(x.ContractID)).ToList();
 
                 _logger.LogInformation("Getting Users for Leaderboard");
-                //#if DEBUG
-                //var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == 770469712064151593 && !x.TempDisabled).Select(x => new {
-                //    DBUser = x,
-                //}).ToListAsync();
-                //#else
-                var dbusersWithGuildCoops = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && !x.TempDisabled).Select(x => new {
-                    DBUser = x,
-                }).ToListAsync(cancellationToken);
+
+                var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && !x.TempDisabled).ToListAsync(cancellationToken);
+                timings.Set("dbusers");
                 if(cancellationToken.IsCancellationRequested)
                     return;
-                //#endif
-                dbusersWithGuildCoops.ForEach(x => { //
-                    x.DBUser.GuildCoops = (ushort)xrefs.Where(xref => xref.UserId == x.DBUser.Id).Select(xref => xref.ContractID).Distinct().Count();
-                });
-                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
-                var dbusers = dbusersWithGuildCoops.Select(x => x.DBUser).ToList();
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+                timings.Set("dbguilds");
+
 
 #if DEBUG
                 //                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
@@ -88,7 +85,6 @@ namespace EGG9000.Bot.Automated {
 #endif
 
                 _logger.LogInformation("Getting User Backups for Leaderboard");
-                //var lUsers = (await _apiLink.GetUserBackups(dbusers, _db, true)).Where(x => x != null);
 
                 var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser {
                     User = x,
@@ -101,18 +97,17 @@ namespace EGG9000.Bot.Automated {
 
                     if(lUser.Backup == null)
                         return;
-                    var userXrefs = xrefs.Where(x => lUser.User.Id == x.UserId).ToList();
+
                     var recentUserXrefs = recentxrefs.Where(x => x.UserId == lUser.User.Id).ToList();
-                    lUser.TotalContracts = userXrefs.Where(x => (x.EggIncId == null || x.EggIncId == lUser.Backup.EggIncId || x.RefEggIncId == lUser.Backup.EggIncId)).GroupBy(x => x.ContractID).Count();
-                    lUser.ActiveContracts = recentUserXrefs.Count();
-                    lUser.RecentContracts = Math.Max(recentContracts.Count(x => x.Created > lUser.User.Registered), lUser.ActiveContracts);
                     lUser.Last1 = recentUserXrefs.Any(x => x.ContractID == recentContracts[0].ID);
                     lUser.Last2 = recentUserXrefs.Any(x => x.ContractID == recentContracts[1].ID);
                     lUser.Last3 = recentUserXrefs.Any(x => x.ContractID == recentContracts[2].ID);
                     lUser.Last4 = recentUserXrefs.Any(x => x.ContractID == recentContracts[3].ID);
                     lUser.Last5 = recentUserXrefs.Any(x => x.ContractID == recentContracts[4].ID);
-                    lUser.Active = userXrefs.Any(x => x.UserId == lUser.User.Id && x.LastThreeWeeks) || lUser.User.Registered > DateTimeOffset.Now.AddDays(-14);
+                    lUser.RecentXrefs = recentUserXrefs;
                 }
+                timings.Set("Process Users");
+                timings.Finished();
 
                 foreach(var dbguild in dbguilds) {
                     if(cancellationToken.IsCancellationRequested)
@@ -335,8 +330,8 @@ namespace EGG9000.Bot.Automated {
                 return;
 
             lUsers = lUsers.Where(x => x.Backup != null).ToList();
-            var activeUsers = lUsers.Where(x => x.Active && x.DiscordUser != null).ToList();
-            var inactiveUsers = lUsers.Where(x => !x.Active && x.DiscordUser != null).ToList();
+            var activeUsers = lUsers.Where(x => x.Account.Active && x.DiscordUser != null).ToList();
+            var inactiveUsers = lUsers.Where(x => !x.Account.Active && x.DiscordUser != null).ToList();
 
             var dbguild = _db.Guilds.FirstOrDefault(x => x.Id == guild.Id);
             if(dbguild == null) {
