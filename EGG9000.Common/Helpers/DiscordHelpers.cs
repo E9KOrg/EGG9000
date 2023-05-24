@@ -235,8 +235,7 @@ namespace EGG9000.Bot.Helpers {
         public static async Task CheckBG(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, IGrouping<Guid, LeaderboardUser> userAccounts) {
             var role = await _client.GetRoleAsync(GuildChannelType.MissingBoardingGroupRole, Guild);
             if(role != null) {
-                var active = userAccounts.Any(x => x.Account.Active);
-                var needsRole = active && user.EggIncAccounts.Any(y => y.Group == 0);
+                var needsRole = user.EggIncAccounts.Any(y => y.Group == 0);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == role.Id);
 
                 if(!hasRole && needsRole) {
