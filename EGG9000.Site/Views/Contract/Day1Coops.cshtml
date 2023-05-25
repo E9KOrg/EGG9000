@@ -45,6 +45,10 @@
 	.card {
 		margin-bottom: 50px;
 	}
+
+	h2 span {
+		font-size: 12pt;
+	}
 </style>
 
 <div>
@@ -70,6 +74,12 @@
 					<input ng-model="group.CoopCount" style="width: 60px;" />
 					<button class="btn btn-primary" ng-click="ReloadGrade(group)">Update Count</button>
 					<button class="btn btn-primary" ng-click="StartAll(group)">Start All</button>
+					<span>
+						Assigned Users: {{Total(group)}}
+					</span>
+					<span>
+					| Free Spaces: {{FreeSpaces(group)}}
+					</span>
 				} else {
 					@: ({{group.Coops.length}})
 				}
@@ -105,6 +115,23 @@
 			.controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
 				$scope.boardingGroups = @Html.Raw(JsonConvert.SerializeObject(boardingGroups));
 				$scope.bg = $scope.boardingGroups[0];
+
+				$scope.FreeSpaces = function (grade) {
+					var freeSpaces = 0;
+						angular.forEach(grade.Coops, (coop) => {
+							console.log(coop);
+							console.log(coop.Users.length);
+							freeSpaces += @contract.MaxCoopSize - coop.Users.length;
+						});
+					return freeSpaces;
+				}
+				$scope.Total = function (grade) {
+					var total = 0;
+						angular.forEach(grade.Coops, (coop) => {
+							total += coop.Users.length;
+						});
+					return total;
+				}
 
 				$scope.ReloadGrade = function (grade) {
 					$http.post("/contract/reloadgrade?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.Identifier&Grade=" + grade.Grade + "&bg=" + $scope.bg.BoardingGroup.Value + "&count=" + grade.CoopCount).then(function Success(response) {

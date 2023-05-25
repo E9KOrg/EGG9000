@@ -301,7 +301,7 @@ namespace EGG9000.Common.Database.Entities {
                 case Ei.RewardType.Artifact:
                     return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.Artifact || g.RewardType == Ei.RewardType.ArtifactCase);
                 case Ei.RewardType.PiggyMultiplier:
-                    return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.PiggyMultiplier || g.RewardType == Ei.RewardType.PiggyLevelBump);
+                    return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.PiggyMultiplier || g.RewardType == Ei.RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill);
                 default:
                     return gradeSpec.Goals.Any(g => g.RewardType == selectReward);
             }

@@ -287,9 +287,13 @@ namespace EGG9000.Bot.Services {
                 guildCommand.WithName(command.Details.Name ?? command.Name);
                 command.Name = command.Details.Name ?? command.Name;
 
+                
                 if(command.Details.AdminOnly) {
                     guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
-                }
+                    if(command.Details.AllowFarmHand) {
+                        guildCommand.DefaultMemberPermissions |= GuildPermission.ModerateMembers;
+                    }
+                } 
 
                 if(!command.Details.CPOnly) {
                     applicationCommandProperties.Add(guildCommand.Build());

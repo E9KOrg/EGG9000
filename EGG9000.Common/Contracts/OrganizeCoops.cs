@@ -114,6 +114,7 @@ namespace EGG9000.Common.Contracts {
                 || x.Account.AutoRegisterRewards.Count == 0
                 || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
             );
+            matchingAccounts = matchingAccounts.ToList();
 
             var ebGroups = matchingAccounts.GroupBy(x => (int)Math.Log10(x.Account.Backup.EarningsBonus));
             var rng = new Random();
