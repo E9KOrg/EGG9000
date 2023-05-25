@@ -66,9 +66,8 @@ namespace EGG9000.Bot.Commands {
                 builder.WithButton("Set Time For Full Ship", "SRDSetFueledTime");
                 builder.WithButton("Set Time For Ship Needs Fueling", "SRDSetNotFueledTime");
                 builder.WithButton($"{(user.ShipReturnDMAfterFuel ? "Disable" : "Receive")} Second DM For Ship Needs Fueling", "SRDSecondDM");
-                builder.WithButton("↵ Contract Settings", "MCSAccounts", ButtonStyle.Secondary);
-
             }
+            builder.WithButton("↵ Contract Settings", "MCSAccounts", ButtonStyle.Secondary);
 
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();

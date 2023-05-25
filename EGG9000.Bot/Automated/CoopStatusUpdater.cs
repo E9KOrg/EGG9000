@@ -832,11 +832,9 @@ namespace EGG9000.Bot.Automated {
 
                     //New commands list, each is a quick-link to start using the command
                     lastMessage += "__Co-op Commands (click to use):__\n";
-                    lastMessage += "~~\n</pingonfinished:1105600377308577842> Receive DM ping when the co-op is finished and everyone has reported in";
-                    lastMessage += "\n</pingonhighesteb:1095116334599241743>  Receive DM ping when the highest EB has joined ";
-                    lastMessage += "\n</pingonfull:1095116354169864205> Receive DM ping when everyone has joined~~";
-                    lastMessage += "\n</coopsettings:1107809801469173933> **NEW!** Receive DM pings for various things (replaced the above commands)";
+                    lastMessage += "\n</coopsettings:1107809801469173933> Receive DM pings for various events in the co-op";
                     lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
+                    lastMessage += "\n</fixfullcooperror:1111043604178276463> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
 
 
 

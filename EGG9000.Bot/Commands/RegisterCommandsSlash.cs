@@ -37,6 +37,7 @@ using EGG9000.Common.Contracts;
 using static EGG9000.Common.Helpers.Prefarm;
 using Ei;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.Contracts;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -117,7 +118,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = true)]
-        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater) {
+        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
             await command.RespondAsync("Working...");
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
@@ -129,36 +130,49 @@ namespace EGG9000.Bot.Commands {
             var xrefs = await db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == dbuser.Id && x.CoopId == coop.Id).ToListAsync();
 
 
+            var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
             foreach(var xref in xrefs) {
-                var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
-                    ClientVersion = 24,
-                    ContractIdentifier = coop.ContractID,
-                    CoopIdentifier = coop.Name,
-                    PlayerIdentifier = xref.EggIncId,
-                }, xref.EggIncId);
+                //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
+                //    ClientVersion = 24,
+                //    ContractIdentifier = coop.ContractID,
+                //    CoopIdentifier = coop.Name,
+                //    PlayerIdentifier = xref.EggIncId,
+                //}, xref.EggIncId);
+                await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
             }
 
 
             await Task.Delay(2);
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-            var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
 
-            if(status.Participants.Count == contract.MaxUsers) {
-                foreach(var xref in xrefs) {
-                    var res2 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-                        ClientVersion = 24,
-                        ContractIdentifier = coop.ContractID,
-                        CoopIdentifier = coop.Name,
-                        PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
-                    }, coop.CreatorID);
-                }
+            //if(status.Participants.Count == contract.MaxUsers) {
+            //    foreach(var xref in xrefs) {
+                    
+            //        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
+            //            ContractIdentifier = coop.ContractID,
+            //            CoopIdentifier = coop.Name.ToLower(),
+            //            Eop = 1, SoulPower = 24, UserId = xref.EggIncId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = xref.EggIncId, BoostTokens = 1, BoostTokensSpent = 1, EggLayingRateBuff = 1, EarningsBuff = 1,
+            //            ProductionParams = new Ei.FarmProductionParams {
+            //                FarmPopulation = 1000, Delivered = 10000, Elr = 0, FarmCapacity = 10000, Ihr = 0, Sr = 0
+            //            }
+            //        }, xref.EggIncId, true);
 
-                await Task.Delay(2);
-                status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-            }
 
+
+            //        var res2 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+            //            ClientVersion = 24,
+            //            ContractIdentifier = coop.ContractID,
+            //            CoopIdentifier = coop.Name,
+            //            PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
+            //        }, coop.CreatorID);
+            //    }
+
+            //    await Task.Delay(2);
+            //    status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            //}
 
             if(status.Participants.Count < contract.MaxUsers) {
+                logger.LogInformation("Successfully remove {user} from {coop}", dbuser.DiscordUsername, coop.Name);
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
@@ -167,7 +181,76 @@ namespace EGG9000.Bot.Commands {
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
             } else {
+                logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
                 await command.ModifyOriginalResponseAsync($"Attempted to remove {targetUser.Mention} from co-op, please check again in a few minutes.");
+            }
+        }
+
+        [SlashCommand(Description = "Fix for getting full co-op error")]
+        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
+            await command.RespondAsync("Please wait...");
+            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(coop == null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Command can only be used in a co-op channel");
+                return;
+            }
+            
+            var dbuser = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.DiscordId == command.User.Id)?.User;
+            if(dbuser is null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user in co-op.");
+            }
+
+            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+
+            var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
+
+            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser.DiscordId == command.User.Id && x.EggsShipped == 0);
+
+            if(xref is null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user with zero production.");
+                return;
+            }
+
+            //logger.LogInformation("Attempting to fix {user} in {coop} by submitting leave request", dbuser.DiscordUsername, coop.Name);
+            //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
+            //    ClientVersion = 24,
+            //    ContractIdentifier = coop.ContractID,
+            //    CoopIdentifier = coop.Name,
+            //    PlayerIdentifier = xref.EggIncId,
+            //}, xref.EggIncId);
+            logger.LogInformation("Attempting to fix {user} in {coop} by creating temp co-op", dbuser.DiscordUsername, coop.Name);
+            var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
+
+            await Task.Delay(2);
+            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+
+            if(status.Participants.Count == contract.MaxUsers) {
+                logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
+                var res3 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+                    ClientVersion = 24,
+                    ContractIdentifier = coop.ContractID,
+                    CoopIdentifier = coop.Name,
+                    PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
+                }, coop.CreatorID);
+
+                await Task.Delay(2);
+                status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            }
+
+
+            if(status.Participants.Count < contract.MaxUsers) {
+                logger.LogInformation("Successfully remove {user} from {coop}", dbuser.DiscordUsername, coop.Name);
+                var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
+                var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
+                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
+                await coopStatusUpdater.SendUpdate(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+
+                await command.Channel.SendMessageAsync($"Successfully removed {command.User.Mention} from co-op, they should be able to rejoin now.");
+                await command.DeleteOriginalResponseAsync();
+            } else {
+                logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
+                await command.ModifyOriginalResponseAsync($"Attempted to remove {command.User.Mention} from co-op, please check again in a few minutes.");
             }
 
         }
@@ -200,7 +283,15 @@ namespace EGG9000.Bot.Commands {
                 db.DBUsers.Add(user);
             }
 
-            if(user.EggIncAccounts.Count > 0 && user.GuildId > 0 & !user.TempDisabled) {
+            if(user.AcceptedRules && user.GuildId == command.GuildId && user.EggIncAccounts.Count > 0) {
+                if(user.TempDisabled) {
+                    await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
+                } else {
+                    await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Your roles should show up during the next leaderboard update.");
+                }
+            } else if(user.AcceptedRules && user.GuildId == command.GuildId && user.EggIncAccounts.Count == 0) {
+                await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
+            } else if(user.EggIncAccounts.Count > 0 && user.GuildId > 0 & !user.TempDisabled) {
                 await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the </moveserver:1095116354329268366> command");
             } else {
                 string channelText = "";
@@ -526,7 +617,7 @@ namespace EGG9000.Bot.Commands {
                 var pGrade = account.GetGrade();
                 msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(pGrade);
                 //Progress to next grade
-                if(pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa){
+                if(pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
                     msg += $"\n\t{Math.Round(Math.Round(account.Backup.GradeProgress, 4) * 100, 2)}% of the way to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))}";
                 }
 
