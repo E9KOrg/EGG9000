@@ -499,35 +499,34 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize]
         public async Task<IActionResult> Comparison() {
-            // Get logged in user.
+            
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            // Get list of active users.
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == user.GuildId);
-            List<System.Guid> activeUsers = new List<System.Guid>();
-            activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveElites).Select(o => o.DatabaseId));
-            activeUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.ActiveStandards).Select(o => o.DatabaseId));
+            await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
 
-            // Get users ebs - could be multiple.
-            IEnumerable<double> myEbs = user.EggIncAccounts.Select(x => x.Backup.EarningsBonus);
-            List<Tuple<double, string>> myEbsWithRole = new List<Tuple<double, string>>();
-            foreach(var eb in myEbs) {
-                myEbsWithRole.Add(new Tuple<double, string>(eb, SIPrefix.GetPrefixFromEB(eb).RankWithSubRank));
-            }
+            var leaderboard = await _getLeaderboard(user.GuildId);
+            
+            var myEbsWithRole = new List<Tuple<double, string>>();
+            var allEbData = new List<Tuple<double, string>>();
 
-            // Get active EggInc Accounts
-            var activeAccounts = await _db.DBUsers.Where(x => x.GuildId == user.GuildId && !x.TempDisabled && activeUsers.Any(y => y == x.Id)).Select(x => new DBUser { Id = x.Id, _eggIncIds = x._eggIncIds }).ToListAsync();
-            var activeIDs = activeAccounts.SelectMany(x => x.EggIncAccounts.Select(y => new Tuple<Guid, string>(x.Id, y.Id)));
+            foreach(var u in leaderboard)
+            {
+                // Add all users data.
+                allEbData.Add(new Tuple<double, string>(
+                    u.Backup.EarningsBonus,
+                    SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
+                    ));
 
-            // Get top snapshot for each group of userid, eggincid
-            // This accounts for users with multiple egginc accounts registred
-            var snapShots = await _db.UserSnapShots.Where(x => x.EarningsBonus > 0 && activeUsers.Any(o => o == x.UserId)).GroupBy(x => new { x.UserId, x.EggIncID }).Select(y => y.OrderByDescending(o => o.Date).First()).ToArrayAsync();
-
-            List<Tuple<double, string>> allEbData = new List<Tuple<double, string>>();
-            foreach(var snapShot in snapShots.Where(s => activeIDs.Any())) { //Limit to activeIDs, some IDs might have changed or been unregistered
-                allEbData.Add(new Tuple<double, string>(snapShot.EarningsBonus, SIPrefix.GetPrefixFromEB(snapShot.EarningsBonus).RankWithSubRank));
+                // Add logged in users data.
+                if(u.User.Id == user.Id)
+                {
+                    myEbsWithRole.Add(new Tuple<double, string>(
+                        u.Backup.EarningsBonus,
+                        SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
+                    ));
+                }
             }
 
             ViewBag.ListOfEb = allEbData;
