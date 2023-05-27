@@ -69,6 +69,7 @@ namespace EGG9000.Common.Services {
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
             _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
+            _httpClient.Timeout = TimeSpan.FromMinutes(5);
             _configuration = configuration;
             _provider = provider;
             var options = provider.GetService<IOptionsMonitor<APILinkOptions>>();

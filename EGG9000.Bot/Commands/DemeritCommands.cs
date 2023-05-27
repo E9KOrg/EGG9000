@@ -29,7 +29,7 @@ using EGG9000.Common.Commands;
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         [SlashCommand(Description = "Add demerit to user", AdminOnly = true)]
-        public static async Task AddDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordSocketClient discordClient) {
+        public static async Task AddDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -50,14 +50,12 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync(message);
 
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
-                if(dbguild is not null && dbguild.DemeritLogChannel.HasValue) {
-                    var demeritChannel = (SocketTextChannel)discordClient.GetChannel(dbguild.DemeritLogChannel.Value);
-                    if(demeritChannel is not null) {
-                        if(count >= 3) {
-                            message = $"**{message}**";
-                        }
-                        await demeritChannel.SendMessageAsync(message);
+                var demeritChannel = await discordClient.GetChannelAsync(GuildChannelType.DemeritLogChannel, dbguild);
+                if(demeritChannel is not null) {
+                    if(count >= 3) {
+                        message = $"**{message}**";
                     }
+                    await demeritChannel.SendMessageAsync(message);
                 }
             } catch(Exception e) {
                 await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");

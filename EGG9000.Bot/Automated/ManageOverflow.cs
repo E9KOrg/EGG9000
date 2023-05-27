@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Automated {
                 _client.RoleUpdated += _client_RoleUpdated;
 
 #if DEBUG
-                continue;
+                //continue;
 #pragma warning disable CS0162 // Unreachable code detected
                 _ = 1;
 #pragma warning restore CS0162 // Unreachable code detected
@@ -93,16 +93,20 @@ namespace EGG9000.Bot.Automated {
 
 
                 const ulong overflowRoleID = 775547850134257675;
-                const ulong activeRoleID = 798284088967430144;
+                //const ulong activeRoleID = 798284088967430144;
+                const ulong registeredRoleID = 794713762396897280;
+
 
                 var onlyMain = mainServer.Users.Where(x => !overflowServers.All(o => o.Users.Any(y => y.Id == x.Id)) && !x.IsBot);
-                var both = mainServer.Users.Where(x => (overflowServers.All(o => o.Users.Any(y => y.Id == x.Id)) || !x.Roles.Any(y => y.Id == activeRoleID)) && !x.IsBot);
+                var allOverflows = mainServer.Users.Where(x => (overflowServers.All(o => o.Users.Any(y => y.Id == x.Id)) || !x.Roles.Any(y => y.Id == registeredRoleID)) && !x.IsBot);
 
-                var bothAllWithRole = both.Where(x => x.Roles.Any(y => y.Id == overflowRoleID));
+                var bothAllWithRole = allOverflows.Where(x => x.Roles.Any(y => y.Id == overflowRoleID));
 
-                var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == activeRoleID));
+                var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == registeredRoleID));
 
                 var role = mainServer.Roles.First(x => x.Id == overflowRoleID);
+
+
                 foreach(var u in onlyMainWithoutRole) {
                     if(cancellationToken.IsCancellationRequested) {
                         break;

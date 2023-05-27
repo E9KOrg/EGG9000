@@ -27,7 +27,7 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
-        public ulong? DemeritLogChannel { get; set; }
+        //public ulong? DemeritLogChannel { get; set; }
 
         public string CoopNamePrefix { get; set; }
 
@@ -64,6 +64,9 @@ namespace EGG9000.Common.Database.Entities {
                 _channelDetails = value;
                 _channelDetailsJson = JsonConvert.SerializeObject(value);
             }
+        }
+        public bool HasChannel(GuildChannelType channelType) {
+            return ChannelDetails.Any(x => x.ChannelType == channelType && x.Id > 0);
         }
         public string RolesToSync { get; set; }
         public bool DisableBG { get; set; }
@@ -116,6 +119,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Grade C Role")]
         GradeC = 20,
         [Description("Optional: Game Version Outdated Role")]
-        GameVersionOutdated = 21
+        GameVersionOutdated = 21,
+        [Description("Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
+        DemeritLogChannel = 22
     }
 }

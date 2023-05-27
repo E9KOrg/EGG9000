@@ -5,38 +5,39 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace EGG9000.Bot {
     public static class ArgumentsHelper {
-        public static List<KeyValuePair<int, string>> bignums = new List<KeyValuePair<int, string>> {
-            new KeyValuePair<int, string>(0, ""),
-            new KeyValuePair<int, string>(3, "K"),
-            new KeyValuePair<int, string>(6, "M"),
-            new KeyValuePair<int, string>(9, "B"),
-            new KeyValuePair<int, string>(12, "T"),
-            new KeyValuePair<int, string>(15, "q"),
-            new KeyValuePair<int, string>(18, "Q"),
-            new KeyValuePair<int, string>(21, "s"),
-            new KeyValuePair<int, string>(24, "S"),
-            new KeyValuePair<int, string>(27, "o"),
-            new KeyValuePair<int, string>(30, "N"),
-            new KeyValuePair<int, string>(33, "d"),
-            new KeyValuePair<int, string>(36, "u"),
-            new KeyValuePair<int, string>(39, "D"),
-            new KeyValuePair<int, string>(42, "Td"),
-            new KeyValuePair<int, string>(45, "qd"),
-            new KeyValuePair<int, string>(48, "Qd"),
-            new KeyValuePair<int, string>(51, "sd"),
-            new KeyValuePair<int, string>(54, "Sd"),
-            new KeyValuePair<int, string>(57, "Od"),
-            new KeyValuePair<int, string>(60, "Nd"),
-            new KeyValuePair<int, string>(63, "V"),
-            new KeyValuePair<int, string>(66, "uV"),
-            new KeyValuePair<int, string>(69, "dV"),
-            new KeyValuePair<int, string>(72, "tV"),
-            new KeyValuePair<int, string>(75, "qV"),
-            new KeyValuePair<int, string>(78, "QV"),
-        };
+public static List<KeyValuePair<int, string>> bignums = new List<KeyValuePair<int, string>> {
+    new KeyValuePair<int, string>(0, ""),
+    new KeyValuePair<int, string>(3, "K"),
+    new KeyValuePair<int, string>(6, "M"),
+    new KeyValuePair<int, string>(9, "B"),
+    new KeyValuePair<int, string>(12, "T"),
+    new KeyValuePair<int, string>(15, "q"),
+    new KeyValuePair<int, string>(18, "Q"),
+    new KeyValuePair<int, string>(21, "s"),
+    new KeyValuePair<int, string>(24, "S"),
+    new KeyValuePair<int, string>(27, "o"),
+    new KeyValuePair<int, string>(30, "N"),
+    new KeyValuePair<int, string>(33, "d"),
+    new KeyValuePair<int, string>(36, "u"),
+    new KeyValuePair<int, string>(39, "D"),
+    new KeyValuePair<int, string>(42, "Td"),
+    new KeyValuePair<int, string>(45, "qd"),
+    new KeyValuePair<int, string>(48, "Qd"),
+    new KeyValuePair<int, string>(51, "sd"),
+    new KeyValuePair<int, string>(54, "Sd"),
+    new KeyValuePair<int, string>(57, "Od"),
+    new KeyValuePair<int, string>(60, "Nd"),
+    new KeyValuePair<int, string>(63, "V"),
+    new KeyValuePair<int, string>(66, "uV"),
+    new KeyValuePair<int, string>(69, "dV"),
+    new KeyValuePair<int, string>(72, "tV"),
+    new KeyValuePair<int, string>(75, "qV"),
+    new KeyValuePair<int, string>(78, "QV"),
+};
 
         public static string ToEggString(this double number, bool showdecimalplaces = false, int numberOfDecimalPlaces = -1) {
             return NumberToString(number, showdecimalplaces, numberOfDecimalPlaces);
@@ -71,7 +72,7 @@ namespace EGG9000.Bot {
                 outString.Append(number.ToString("N0"));
 
             if(negative)
-                outString.Insert(0,"-");
+                outString.Insert(0, "-");
             outString.Append(suffix.Value);
             return outString.ToString();
 
@@ -141,8 +142,24 @@ namespace EGG9000.Bot {
                 throw new UnableToParseNumberExecption();
             }
         }
-    }
+public static double NumberFromStringDouble(string arg) {
+    var regex = new Regex(@"([\d\.]+)(\w*)");
+    var match = regex.Match(arg);
+    if(match.Success) {
+        var size = match.Groups[2].Value;
+        var numberPortion = match.Groups[1].Value;
 
+        var number = double.Parse(numberPortion);
+
+
+        if(bignums.Any(x => x.Value == size)) {
+            var value = bignums.First(x => x.Value == size);
+            return number * Math.Pow(10, value.Key);
+        }
+    }
+    throw new UnableToParseNumberExecption();
+}
+    }
     public class UnableToParseNumberExecption : Exception {
 
     }

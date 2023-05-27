@@ -79,8 +79,8 @@ await Host.CreateDefaultBuilder(args)
             //services.AddSingleton<ContractUpdater>();
             //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
-            services.Configure<UpdaterOptions<UserCxpUpdater>>(x => x.DelayStart = TimeSpan.Zero);
-            services.AddHostedService<UserCxpUpdater>();
+            //services.Configure<UpdaterOptions<UserCxpUpdater>>(x => x.DelayStart = TimeSpan.Zero);
+            //services.AddHostedService<UserCxpUpdater>();
 
             //services.AddHostedService<NewContracts>();
             //services.AddHostedService<CreateCoopChannels>();
@@ -90,7 +90,7 @@ await Host.CreateDefaultBuilder(args)
 
             //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.Zero);
             //services.AddHostedService<LeaderboardUpdater>();
-            //services.AddHostedService<ManageOverflow>();
+            services.AddHostedService<ManageOverflow>();
             //services.AddHostedService<RemoveTempRoles>();
             //services.AddHostedService<HandleGradeChanges>();
 

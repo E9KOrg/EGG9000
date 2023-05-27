@@ -8,25 +8,50 @@ using EGG9000.Bot;
 namespace EGG9000.Common.Test {
     [TestClass]
     public class ArgumentsHelperTest {
+        //[TestMethod]
+        //public void TestLoop1() {
+        //    for(double i = 500; i < 100000000; i++) {
+        //        Assert.AreEqual(ArgumentsHelper.NumberToStringOld(i), ArgumentsHelper.NumberToString(i));
+        //    }
+        //}
+        //[TestMethod]
+        //public void TestLoopShowDecimal() {
+        //    for(double i = 500; i < 100000000; i++) {
+        //        Assert.AreEqual(ArgumentsHelper.NumberToStringOld(i, true), ArgumentsHelper.NumberToString(i, true));
+        //    }
+        //}
+        //[TestMethod]
+        //public void TestLoopDecimalPlaces() {
+        //    for(var d = 0; d <= 3; d++) {
+        //        for(double i = 500; i < 100000000; i++) {
+        //            Assert.AreEqual(ArgumentsHelper.NumberToStringOld(i, false, d), ArgumentsHelper.NumberToString(i, false, d));
+        //        }
+        //    }
+        //}
+
         [TestMethod]
-        public void TestLoop1() {
-            for(double i = 500; i < 100000000; i++) {
-                Assert.AreEqual(ArgumentsHelper.NumberToStringOld(i), ArgumentsHelper.NumberToString(i));
-            }
+        public void TestNumberFromStringDouble1() {
+            var value = ArgumentsHelper.NumberFromStringDouble("1.1K");
+            Assert.AreEqual(value, 1100);
+
         }
         [TestMethod]
-        public void TestLoopShowDecimal() {
-            for(double i = 500; i < 100000000; i++) {
-                Assert.AreEqual(ArgumentsHelper.NumberToStringOld(i, true), ArgumentsHelper.NumberToString(i, true));
-            }
+        public void TestNumberFromStringDouble2() {
+            var value = ArgumentsHelper.NumberFromStringDouble("1Td");
+            Assert.AreEqual(value, 1 * Math.Pow(10,42));
+
         }
         [TestMethod]
-        public void TestLoopDecimalPlaces() {
-            for(var d = 0; d <= 3; d++) {
-                for(double i = 500; i < 100000000; i++) {
-                    Assert.AreEqual(ArgumentsHelper.NumberToStringOld(i, false, d), ArgumentsHelper.NumberToString(i, false, d));
-                }
-            }
+        public void TestNumberFromStringDouble3() {
+            var value = ArgumentsHelper.NumberFromStringDouble("1.1");
+            Assert.AreEqual(value, 1.1);
+
+        }
+        [TestMethod]
+        public void TestNumberFromStringDouble4() {
+            var value = ArgumentsHelper.NumberFromStringDouble("999D");
+            Assert.AreEqual(value, 999*Math.Pow(10,39));
+
         }
     }
 }

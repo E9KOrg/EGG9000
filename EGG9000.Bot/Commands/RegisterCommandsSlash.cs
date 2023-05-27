@@ -50,7 +50,11 @@ namespace EGG9000.Bot.Commands {
             if(user == null) {
                 await command.RespondAsync($"Cannot find user");
             } else if(user.GuildId == guild.Id) {
-                await command.RespondAsync($"Already configured for the current server.");
+                if(user.TempDisabled) {
+                    await command.RespondAsync($"It looks like you have been disabled, ask staff for help.");
+                } else {
+                    await command.RespondAsync($"Already configured for the current server, you should get your roles during the next Leaderboard update.");
+                }
             } else {
                 await command.RespondAsync($"Please wait...");
                 if(user.GuildId == 428181243474214942) {

@@ -25,7 +25,7 @@
 			<th>Type</th>
 			<th>Description</th>
 			<th>ID</th>
-			<th>Channel Name</th>
+			<th>Channel/Role Name</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -56,6 +56,7 @@
 				</td>
 				<td>
 					@discord.GetGuild(Model.Id).GetChannel(@detail.Id)?.Name
+					@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
 				</td>
 			</tr>
 		}

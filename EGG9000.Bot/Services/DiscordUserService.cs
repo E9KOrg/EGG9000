@@ -122,6 +122,7 @@ namespace EGG9000.Common.Services {
                     bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
                         inAllOverFlows = overflowServers.All(o => o.Users.Any(u => u.Id == user.Id) || o.Id == user.Guild.Id);
                     if(inMainWithRole && inAllOverFlows) {
+                        _logger.LogInformation("Removing overflow role for {user}, they joined all overflows", mainServer.Users.First(u => u.Id == user.Id).GetName());
                         await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
                     }
 
@@ -142,11 +143,17 @@ namespace EGG9000.Common.Services {
                     }
                 }
                 return;
-            } 
-
-
+            }
 
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+
+            var demeritChannel = await _discord.GetChannelAsync(GuildChannelType.DemeritLogChannel, dbguild);
+            if(dbuser is not null && dbuser.TempDisabled && demeritChannel is not null) {
+                var guild = _discord.GetGuild(user.Guild.Id);
+                await demeritChannel.SendMessageAsync($"{guild.EveryoneRole.Mention} {user.Mention} just joined and is disabled.");
+            }
+
+
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
                 var generalChannel = await _discord.GetChannelAsync(GuildChannelType.General, user.Guild);
@@ -161,6 +168,7 @@ namespace EGG9000.Common.Services {
                     return;
                 }
             }
+
 
             var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
