@@ -619,10 +619,14 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var pGrade = account.GetGrade();
+                var gradeProgressPercent = Math.Round(Math.Round(account.Backup.GradeProgress, 4) * 100, 2);
                 msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(pGrade);
                 //Progress to next grade
-                if(pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
-                    msg += $"\n\t{Math.Round(Math.Round(account.Backup.GradeProgress, 4) * 100, 2)}% of the way to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))}";
+                if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
+                    msg += $"\n\t{gradeProgressPercent}% of the way to ranking up to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))}";
+                } else if(gradeProgressPercent < 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeC) {
+                    //Negative percentage indicates ranking down - need to -1 invert the percentage for it to make sense
+                    msg += $"\n\t{gradeProgressPercent * -1}% of the way to ranking down to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade - 1))}";
                 }
 
                 if(dbguild is null || !dbguild.DisableBG) {
