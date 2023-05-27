@@ -123,6 +123,9 @@ namespace EGG9000.Common.Services {
         public async Task<SocketTextChannel> GetChannelAsync(GuildChannelType channelType, SocketGuild guild) {
             return await GetChannelOrCategory<SocketTextChannel>(channelType, guild);
         }
+        public async Task<SocketTextChannel> GetChannelAsync(GuildChannelType channelType, Guild guild) {
+            return await GetChannelOrCategory<SocketTextChannel>(channelType, GetGuild(guild.Id));
+        }
         public async Task<SocketCategoryChannel> GetCategoryAsync(GuildChannelType channelType, SocketGuild guild) {
             return await GetChannelOrCategory<SocketCategoryChannel>(channelType, guild);
         }
@@ -141,7 +144,7 @@ namespace EGG9000.Common.Services {
 
             var channelDetails = dbguild.ChannelDetails;
             var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
-            if(channelDetail == null)
+            if(channelDetail == null || channelDetail.Id == 0)
                 return default(T);
 
             if(channelType.ToString().Contains("Category"))
