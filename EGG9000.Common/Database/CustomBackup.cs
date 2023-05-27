@@ -91,6 +91,10 @@ namespace EGG9000.Common.Database {
         public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
         [Key(30)]
         public double GradeProgress { get; set; }
+        [Key(31)]
+        public Ei.Egg MaxEggReached { get; set; }
+        [Key(32)]
+        public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached { get; set; }
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -175,6 +179,8 @@ namespace EGG9000.Common.Database {
             GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
+            MaxEggReached = backup.Game.MaxEggReached;
+
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms) {
                 AddFarm(farm, backup);
@@ -204,6 +210,11 @@ namespace EGG9000.Common.Database {
                     FuelAmounts.Add((Ei.Egg)(i + 1), backup.Artifacts.TankFuels[i]);
             }
 
+            MaxFarmSizeReached = new Dictionary<Ei.Egg, ulong>();
+            for(var i = 0; i < backup.Game.MaxFarmSizeReached.Count; i++){
+                if(backup.Game.MaxFarmSizeReached[i] > 0)
+                    MaxFarmSizeReached.Add((Ei.Egg)(i+1), backup.Game.MaxFarmSizeReached[i]);
+            }
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 
