@@ -96,6 +96,31 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
+        public enum  DiscordTimestampFormat{
+            ShortTime = 1,
+            LongTime = 2,
+            ShortDate = 3,
+            LongDate = 4,
+            LongDateWShortTime = 5,
+            LongDateWDayWeekShortTime = 6,
+            Relative = 7
+        }
+        public static string Timestamper(TimeSpan time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
+
+            var ender = format switch {
+                DiscordTimestampFormat.ShortTime => "t",
+                DiscordTimestampFormat.LongTime => "T",
+                DiscordTimestampFormat.ShortDate => "d",
+                DiscordTimestampFormat.LongDate => "D",
+                DiscordTimestampFormat.LongDateWShortTime => "f",
+                DiscordTimestampFormat.LongDateWDayWeekShortTime => "F",
+                DiscordTimestampFormat.Relative => "R",
+                _=> "R"
+            };
+
+            return ($"<t:{time.TotalSeconds}:{ender}>");
+        }
+
 
         public static ulong ProPermitRoleID = 966017147350446121;
         public static ulong StandardPermitRoleID = 966017278078517248;

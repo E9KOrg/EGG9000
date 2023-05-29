@@ -13,6 +13,7 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using static Ei.ContractCoopStatusResponse.Types;
+using EGG9000.Bot.Helpers;
 
 namespace EGG9000.Common.Helpers {
     public static class Prefarm {
@@ -96,7 +97,9 @@ namespace EGG9000.Common.Helpers {
             if(remainingSeconds <= TimeSpan.MinValue.TotalSeconds) {
                 return "-∞";
             }
-            return TimeSpan.FromSeconds(remainingSeconds).Humanize(precision: 2).ShortenTime();
+            
+            return DiscordHelpers.Timestamper(TimeSpan.FromSeconds(remainingSeconds), DiscordHelpers.DiscordTimestampFormat.Relative);
+            //return TimeSpan.FromSeconds(remainingSeconds).Humanize(precision: 2).ShortenTime();
         }
 
         public static TimeSpan GetTimeRemainingValue(double targetAmount, double currentRate, double currentAmount) {
