@@ -1,4 +1,6 @@
 ﻿
+using Bugsnag.Payload;
+
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 
@@ -85,6 +87,7 @@ namespace EGG9000.Common.Database.Entities {
         public byte[] _shipDMsByte { get; set; }
         public string Notes { get; set; }
         public byte[] _coopSettingByte { get; set; }
+        public DateTimeOffset? NextBreakExpire { get; set; }
         [NotMapped]
         private CoopSetting _coopSetting { get; set; }
         [NotMapped]
@@ -342,6 +345,29 @@ namespace EGG9000.Common.Database.Entities {
         public double LastEB { get; set; }
         [Key(16)]
         public bool SentBreakWarning { get; set; }
+
+        public void SetBreak(DateTimeOffset until, DBUser user) {
+            OnBreakUntil = until;
+            SentBreakWarning = false;
+
+            UpdateUserBreak(user);
+        }
+
+        public void BreakWarningSent(DBUser dbuser) {
+            SentBreakWarning = true;
+            UpdateUserBreak(dbuser);
+
+        }
+
+        private void UpdateUserBreak(DBUser dbuser) {
+            var accountsWithExpire = dbuser.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning).ToList();
+            if(accountsWithExpire.Count == 0) {
+                dbuser.NextBreakExpire = null;
+            } else {
+                dbuser.NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
+            }
+
+        }
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
