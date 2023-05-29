@@ -305,11 +305,19 @@ namespace EGG9000.Bot.Automated {
 
 
                             var random = new Random();
-
                             var index = random.Next(messages.Count);
-                            var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
 
-                            await generalChannel.SendMessageAsync(messages[index]);
+                            //Attempt to find the "separate channel for rankup messages" channel, if it's been set
+                            var altRankupChannel = await _client.GetChannelAsync(GuildChannelType.AltRankup, guild);
+
+                            //If it can't be found, use 'General' instead
+                            if(altRankupChannel == null) {
+                                var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
+                                await generalChannel.SendMessageAsync(messages[index]);
+                            } else {
+                                await altRankupChannel.SendMessageAsync(messages[index]);
+                            }
+
                         }
                     }
 
