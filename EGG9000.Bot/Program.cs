@@ -56,7 +56,7 @@ await Host.CreateDefaultBuilder(args)
             services.AddMemoryCache();
 
             services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
-#if DEBUG || DEV9002
+#if DEBUG
             services.AddBugsnag();
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
@@ -103,13 +103,16 @@ await Host.CreateDefaultBuilder(args)
 
 
 #else
+#if RELEASE
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
         services.AddBugsnag(configuration => {
             configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
         });
+#else
+            services.AddBugsnag();
+#endif
 
-
-        services.AddSingleton<DiscordHostedService>();
+            services.AddSingleton<DiscordHostedService>();
         services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
         services.AddSingleton<APILink>();
         services.AddHostedService<APILink>(provider => provider.GetService<APILink>());

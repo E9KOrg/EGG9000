@@ -56,11 +56,14 @@ namespace EGG9000.Bot.Automated {
                 await UpdateMessages(e, embed, customization, _db);
             }
 
-            foreach(var e in response.Events.Events) {
-                var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == e.Identifier);
-                var customization = eventCustomizations.First(x => x.Type == e.Type);
+            var events = response.Events.Events.ToList();
+            foreach(var evt in events) {
+                var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == evt.Identifier);
+                var customization = eventCustomizations.FirstOrDefault(x => x.Type == evt.Type);
+                if(customization is null)
+                    return;
                 if(currentEvent == null) {
-                    var newEvent = new Event(e);
+                    var newEvent = new Event(evt);
                     _db.Add(newEvent);
                     recentEvents.Add(newEvent);
 
@@ -76,20 +79,20 @@ namespace EGG9000.Bot.Automated {
 
                     if(currentEvent.Ended) {
                         currentEvent.Ended = false;
-                    } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining)).Seconds) > 60) {
+                    } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).Seconds) > 60) {
                         timeChange = true;
                     } 
 
-                    if(currentEvent.Type != e.Type) {
-                        currentEvent.Type = e.Type;
+                    if(currentEvent.Type != evt.Type) {
+                        currentEvent.Type = evt.Type;
                         significantChange = true;
                     }
 
-                    if(currentEvent.Subtitle != e.Subtitle) {
-                        currentEvent.Subtitle = e.Subtitle;
+                    if(currentEvent.Subtitle != evt.Subtitle) {
+                        currentEvent.Subtitle = evt.Subtitle;
                     }
-                    if(currentEvent.Multiplier != e.Multiplier) {
-                        currentEvent.Multiplier = e.Multiplier;
+                    if(currentEvent.Multiplier != evt.Multiplier) {
+                        currentEvent.Multiplier = evt.Multiplier;
                         significantChange = true;
                     }
 

@@ -317,7 +317,18 @@ namespace EGG9000.Bot.Services {
             }
 
             _logger.LogInformation("Slash Commands Created");
+
+
+            //Shutdown other intsance if it's running
+            var instances = Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension(System.Reflection.Assembly.GetEntryAssembly().Location));
+            var exists = instances.Count() > 1;
+            if(exists) {
+                instances.First(x => x.Id != Process.GetCurrentProcess().Id).Close();
+            }
+
         }
+
+
 
         private Task _discord_ModalSubmitted(SocketModal arg) {
             var command = _modalFunctions.First(x => x.Name == arg.Data.CustomId.ToLower().Split(":")[0]);
