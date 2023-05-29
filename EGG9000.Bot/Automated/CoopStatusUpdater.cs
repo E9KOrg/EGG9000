@@ -1065,11 +1065,12 @@ namespace EGG9000.Bot.Automated {
 
 
 
-
-                        var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
+                        var ends = DiscordHelpers.Timestamper(TimeSpan.FromSeconds(status.SecondsRemaining));
+                        //var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
 
                         if(status.SecondsRemaining <= 0)
-                            ends = $"Expired {ends} ago";
+                            ends = $"Expired {ends}";
+                            //ends = $"Expired {ends} ago";
 
 
 
