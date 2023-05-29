@@ -19,6 +19,7 @@ using System.Threading;
 using EGG9000.Common.Services;
 using System.Data;
 using Microsoft.Extensions.Logging;
+using Google.Protobuf.WellKnownTypes;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpersExt {
@@ -105,8 +106,11 @@ namespace EGG9000.Bot.Helpers {
             LongDateWDayWeekShortTime = 6,
             Relative = 7
         }
-        public static string Timestamper(TimeSpan time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
-            var ender = format switch {
+        public static string TimeStamper(TimeSpan time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
+            return TimeStamper(DateTimeOffset.Now.AddSeconds(time.TotalSeconds), format);
+        }
+        public static string TimeStamper(DateTimeOffset time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
+                var ender = format switch {
                 DiscordTimestampFormat.ShortTime => "t",
                 DiscordTimestampFormat.LongTime => "T",
                 DiscordTimestampFormat.ShortDate => "d",
@@ -117,7 +121,7 @@ namespace EGG9000.Bot.Helpers {
                 _=> "R"
             };
 
-            return ($"<t:{DateTimeOffset.Now.AddSeconds(time.TotalSeconds).ToUnixTimeSeconds}:{ender}>");
+            return ($"<t:{time.ToUnixTimeSeconds()}:{ender}>");
         }
 
 

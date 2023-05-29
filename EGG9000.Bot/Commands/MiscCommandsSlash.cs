@@ -34,6 +34,43 @@ namespace EGG9000.Bot.Commands
 {
     public static class MiscCommandsSlash
     {
+        [SlashCommand(Description = "Track your EB since the last time you ran this command")]
+        public static async Task TrackEB(FauxCommand command, ApplicationDbContext db) {
+            await command.RespondAsync("Getting backups...", ephemeral: true);
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                return;
+            }
+            var builder = new EmbedBuilder();
+            builder.Title = $"EB Tracking";
+            foreach(var id in user.EggIncAccounts) {
+                var backup = id.Backup;
+                if(backup == null)
+                    continue;
+                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
+                if(user.EggIncAccounts.Count > 1) {
+                    builder.AddField($"**{backup.UserName}**", "");
+                }
+                var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
+
+                if(id.LastEBTime.HasValue) {
+                    builder.AddField("Last EB", $"{id.LastEB.ToEggString()} on {DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}", true);
+                }
+                builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()} as of  {DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
+                if(id.LastEBTime.HasValue) {
+                    var percentChange = (backup.EarningsBonus - id.LastEB) / id.LastEB * 100;
+                    var timeStampDifference = DiscordHelpers.TimeStamper(DateTimeOffset.Now - backupDate, DiscordHelpers.DiscordTimestampFormat.Relative);
+                    builder.AddField("EB Gained", $"{(backup.EarningsBonus - id.LastEB).ToEggString()} (+{percentChange: 0}%) in {timeStampDifference}", true);
+                }
+                id.LastEB = backup.EarningsBonus;
+                id.LastEBTime = DateTimeOffset.Now;
+            }
+            user.UpdateAccounts();
+            await db.SaveChangesAsync();
+            await command.ModifyOriginalResponseAsync(x => x.Embed = builder.Build());
+        }
+
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
             await command.RespondAsync("Getting backups...", ephemeral: true);

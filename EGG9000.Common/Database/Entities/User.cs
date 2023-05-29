@@ -84,8 +84,6 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? NextShipReturnDMDue { get; set; }
         public byte[] _shipDMsByte { get; set; }
         public string Notes { get; set; }
-
-
         public byte[] _coopSettingByte { get; set; }
         [NotMapped]
         private CoopSetting _coopSetting { get; set; }
@@ -338,6 +336,10 @@ namespace EGG9000.Common.Database.Entities {
         public RedoLeggacyOption RedoLeggacySelection { get; set; } = RedoLeggacyOption.NotSet;
         [Key(13)]
         public bool Active { get; set; }
+        [Key(14)]
+        public DateTimeOffset? LastEBTime { get; set; }
+        [Key(15)]
+        public double LastEB { get; set; }
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
