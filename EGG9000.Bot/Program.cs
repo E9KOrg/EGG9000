@@ -23,6 +23,7 @@ using NLog;
 using NLog.Web;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
+using Cronos;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -59,10 +60,10 @@ await Host.CreateDefaultBuilder(args)
 #if DEBUG
 //#if DEBUG || DEV9002
             services.AddBugsnag();
-            //services.AddSingleton<DiscordHostedService>();
-            //services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-            //services.AddSingleton<APILink>();
-            //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+            services.AddSingleton<DiscordHostedService>();
+            services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+            services.AddSingleton<APILink>();
+            services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
             //services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
@@ -113,6 +114,7 @@ await Host.CreateDefaultBuilder(args)
         });
 #else
             services.AddBugsnag();
+            services.AddHostedService<TestService>();
 #endif
 
             services.AddSingleton<DiscordHostedService>();
@@ -167,34 +169,25 @@ public class TestService : IHostedService {
     private IHostApplicationLifetime _applicationLifetime;
     private IConfiguration _configuration;
 
-    //public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime, IConfiguration configuration) {
-    //    _client = client;
-    //    _db = applicationDbContext;
-    //    _words = words;
-    //    _apilink = apilink;
-    //    _logger = logger;
-    //    _applicationLifetime = applicationLifetime;
-    //    _configuration = configuration;
-    //}
-    public TestService(ApplicationDbContext applicationDbContext, ILogger<TestService> logger) {
+    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime, IConfiguration configuration) {
+        _client = client;
         _db = applicationDbContext;
+        _words = words;
+        _apilink = apilink;
         _logger = logger;
+        _applicationLifetime = applicationLifetime;
+        _configuration = configuration;
     }
+    //public TestService(ApplicationDbContext applicationDbContext, ILogger<TestService> logger) {
+    //    _db = applicationDbContext;
+    //    _logger = logger;
+    //}
 
 
     public async Task StartAsync(CancellationToken cancellationToken) {
-        var users = await _db.DBUsers.Where(x => x.DiscordId > 0).ToListAsync();
-        _logger.LogInformation($"{users.Count} users");
-        foreach(var dbuser in users) {
-            var accountsWithExpire = dbuser.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning).ToList();
-            if(accountsWithExpire.Count == 0 && dbuser.NextBreakExpire is not null) {
-                dbuser.NextBreakExpire = null;
-            } else if(dbuser.EggIncAccounts.Count > 0 && accountsWithExpire.Count > 0) {
-                dbuser.  = accountsWithExpire.Min(x => x.OnBreakUntil);
-            }
-        }
-
-        await _db.SaveChangesAsync();
+        //var channel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
+        //_client.Rest.
+        //await channel.SendMessageAsync("");
 
         _ = 1;
         _applicationLifetime.StopApplication();

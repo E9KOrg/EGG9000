@@ -437,7 +437,6 @@ namespace EGG9000.Bot.Services {
                         if(xref.CoopSetting?.PingOnMessage ?? false) {
                             var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
                             var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
-                            _logger.LogInformation("Sending co-op message as DM, Author: {author}, User: {user}", message.Author.Id, xref.User.DiscordId);
                             try {
                                 var dmChannel = await discordUser.CreateDMChannelAsync();
                                 await dmChannel.SendMessageAsync($"Message from <#{coop.DiscordChannelId}>, **{author.GetCleanName()}:** {message.Content}");

@@ -307,6 +307,17 @@ namespace EGG9000.Common.Database.Entities {
                     return gradeSpec.Goals.Any(g => g.RewardType == selectReward);
             }
         }
+
+        public void UpdateUserBreak() {
+            var accountsWithExpire = this.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.Now).ToList();
+
+            if(accountsWithExpire.Count == 0) {
+                this.NextBreakExpire = null;
+            } else if(this.EggIncAccounts.Count > 0) {
+                this.NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
+            }
+
+        }
     }
 
     [MessagePackObject]
@@ -346,28 +357,19 @@ namespace EGG9000.Common.Database.Entities {
         [Key(16)]
         public bool SentBreakWarning { get; set; }
 
-        public void SetBreak(DateTimeOffset until, DBUser user) {
+        public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
             SentBreakWarning = false;
 
-            UpdateUserBreak(user);
+            dbuser.UpdateUserBreak();
         }
 
         public void BreakWarningSent(DBUser dbuser) {
             SentBreakWarning = true;
-            UpdateUserBreak(dbuser);
+            dbuser.UpdateUserBreak();
 
         }
 
-        private void UpdateUserBreak(DBUser dbuser) {
-            var accountsWithExpire = dbuser.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning).ToList();
-            if(accountsWithExpire.Count == 0) {
-                dbuser.NextBreakExpire = null;
-            } else if(dbuser.EggIncAccounts.Count > 0 && accountsWithExpire.Count > 0) {
-                dbuser.NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
-            }
-
-        }
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
