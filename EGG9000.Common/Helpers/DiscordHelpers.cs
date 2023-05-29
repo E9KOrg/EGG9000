@@ -107,6 +107,9 @@ namespace EGG9000.Bot.Helpers {
             Relative = 7
         }
         public static string TimeStamper(TimeSpan time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
+            if(time.TotalDays > 365) {
+                return "\\> Year";
+            }
             return TimeStamper(DateTimeOffset.Now.AddSeconds(time.TotalSeconds), format);
         }
         public static string TimeStamper(DateTimeOffset time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {

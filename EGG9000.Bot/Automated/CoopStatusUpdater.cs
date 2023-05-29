@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "RebelDuck10".ToLower()).ToList();
+                //coops = coops.Where(x => x.Name.ToLower() == "RebelDuck10".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -676,9 +676,9 @@ namespace EGG9000.Bot.Automated {
                                 await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                             }
                             await _db.SaveChangesAsync();
-                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                            var messagesToDelete = messages.Where(x => x.IsPinned == false && x.Author.IsBot && x.MentionedUserIds.Count == 1 && x.MentionedUserIds.Any(y => y == userStatus.DiscordUser?.Id) && !x.Content.ToLower().Contains("demerit"));
-                            await coopChannel.DeleteMessagesBatchAsync(messagesToDelete);
+                            //var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
+                            //var messagesToDelete = messages.Where(x => x.IsPinned == false && x.Author.IsBot && x.MentionedUserIds.Count == 1 && x.MentionedUserIds.Any(y => y == userStatus.DiscordUser?.Id) && !x.Content.ToLower().Contains("demerit"));
+                            //await coopChannel.DeleteMessagesBatchAsync(messagesToDelete);
                         }
                     }
 
@@ -1376,8 +1376,7 @@ namespace EGG9000.Bot.Automated {
                 if(oldTachyon != newTachyon) {
                     var oldVal = oldTachyon * 100;
                     var newVal = newTachyon * 100;
-                    _logger.LogInformation("Tachyon Deflector amount changed from {from}% to {to}% for {coop}", oldVal, newVal, coop.Name);
-                    await SendDMWarning(user.DiscordUser, coopChannel, $"Tachyon Deflector amount changed from {oldVal}% to {newVal}%", coop);
+                    await SendDMWarning(user.DiscordUser, coopChannel, $"Tachyon Deflector amount changed from {oldVal:F0}% to {newVal:F0}%", coop);
                 }
             }
         }

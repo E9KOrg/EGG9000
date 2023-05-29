@@ -281,6 +281,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
             account.OnBreakUntil = (account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1);
+            account.SentBreakWarning = false;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
@@ -294,6 +295,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
             account.OnBreakUntil = (account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7);
+            account.SentBreakWarning = false;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
@@ -307,6 +309,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             //default OnBreakUntil
             account.OnBreakUntil = default;
+            account.SentBreakWarning = false;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));

@@ -66,17 +66,17 @@ namespace EGG9000.Bot.Commands
                         percentChange = Math.Round(percentChange);
                     var digits = (int)Math.Log10(percentChange) - 2;
                     var format = $"F{(digits < 1 ? -digits + 2 : 0)}";
-                    var timeStampDifference = (DateTimeOffset.Now - backupDate).Humanize();
+                    var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
                     builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
                     logger.LogInformation($"Previous Backup: {id.LastEBTime} {id.LastEB}");
                     logger.LogInformation($"New Backup: {backup.GetLastBackupDateTime()} {backup.EarningsBonus}");
                 }
 
-                //id.LastEB = backup.EarningsBonus;
-                //id.LastEBTime = DateTimeOffset.Now;
+                id.LastEB = backup.EarningsBonus;
+                id.LastEBTime = DateTimeOffset.Now;
             }
-            //user.UpdateAccounts();
-            //await db.SaveChangesAsync();
+            user.UpdateAccounts();
+            await db.SaveChangesAsync();
             await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = ""; });
         }
 

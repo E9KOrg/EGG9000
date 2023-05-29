@@ -340,6 +340,8 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? LastEBTime { get; set; }
         [Key(15)]
         public double LastEB { get; set; }
+        [Key(16)]
+        public bool SentBreakWarning { get; set; }
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
