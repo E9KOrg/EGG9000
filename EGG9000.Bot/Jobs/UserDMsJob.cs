@@ -1,4 +1,6 @@
-﻿using Discord.WebSocket;
+﻿using Cronos;
+
+using Discord.WebSocket;
 
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
@@ -30,7 +32,7 @@ namespace EGG9000.Bot.Jobs {
             _bugsnag = bugsnag;
         }
 
-        [Job("0 */10 * * * *")]
+        [Job("0 */1 * * * *")]
         public async Task WarningBreakExpiring() {
             _logger.LogInformation("Running WarningBreakExpiring");
             var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1)).ToList();
@@ -43,9 +45,10 @@ namespace EGG9000.Bot.Jobs {
                             _logger.LogError($"Could not create DM channel with {user.DiscordUsername}");
                             continue;
                         }
-                        
 
-                        await dmChannel.SendMessageAsync($"Your break for {account.Name} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}. Please use the `/mycontractsettings` command to extend your break if you need more time otherwise you will be assigned a co-op for the next contract that comes out after then.");
+                        var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
+
+                        await dmChannel.SendMessageAsync($"Your break for {account.Name} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}.\n\nPlease use the `/mycontractsettings` command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on {DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.");
                         account.BreakWarningSent(user);
                     }
                 } catch(Exception e) {
