@@ -28,7 +28,6 @@ using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using Quartz;
 using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Automated {
