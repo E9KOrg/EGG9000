@@ -95,12 +95,12 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<RemoveTempRoles>();
             //services.AddHostedService<HandleGradeChanges>();
 
-            //services.AddHostedService<TestService>();
+            services.AddHostedService<TestService>();
             //services.AddHostedService<TestUpdater>();
 
             //services.AddHostedService<UpcomingContracts>();
 
-            services.AddHostedService<JobService>();
+            //services.AddHostedService<JobService>();
 
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
 
@@ -167,29 +167,37 @@ public class TestService : IHostedService {
     private IHostApplicationLifetime _applicationLifetime;
     private IConfiguration _configuration;
 
-    public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime, IConfiguration configuration) {
-        _client = client;
-        _db = applicationDbContext;
-        _words = words;
-        _apilink = apilink;
-        _logger = logger;
-        _applicationLifetime = applicationLifetime;
-        _configuration = configuration;
-    }
-    //public TestService(ApplicationDbContext applicationDbContext) {
-    //    db = applicationDbContext;
+    //public TestService(DiscordHostedService client, ApplicationDbContext applicationDbContext, Words words, APILink apilink, ILogger<TestService> logger, IHostApplicationLifetime applicationLifetime, IConfiguration configuration) {
+    //    _client = client;
+    //    _db = applicationDbContext;
+    //    _words = words;
+    //    _apilink = apilink;
+    //    _logger = logger;
+    //    _applicationLifetime = applicationLifetime;
+    //    _configuration = configuration;
     //}
+    public TestService(ApplicationDbContext applicationDbContext, ILogger<TestService> logger) {
+        _db = applicationDbContext;
+        _logger = logger;
+    }
 
 
     public async Task StartAsync(CancellationToken cancellationToken) {
-        var config = _configuration.GetValue("ConfigSource", typeof(string));
+        var users = await _db.DBUsers.Where(x => x.DiscordId > 0).ToListAsync();
+        _logger.LogInformation($"{users.Count} users");
+        foreach(var dbuser in users) {
+            var accountsWithExpire = dbuser.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning).ToList();
+            if(accountsWithExpire.Count == 0 && dbuser.NextBreakExpire is not null) {
+                dbuser.NextBreakExpire = null;
+            } else if(dbuser.EggIncAccounts.Count > 0 && accountsWithExpire.Count > 0) {
+                dbuser.  = accountsWithExpire.Min(x => x.OnBreakUntil);
+            }
+        }
 
-        var user = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == 248865520756064257);
-
-
+        await _db.SaveChangesAsync();
 
         _ = 1;
-        //_applicationLifetime.StopApplication();
+        _applicationLifetime.StopApplication();
     }
     public T ParseMessage<T>(string message) where T : Google.Protobuf.IMessage<T>, new() {
         var parse1 = new MessageParser<T>(() => new T());
