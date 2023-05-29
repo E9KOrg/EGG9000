@@ -97,13 +97,13 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Required: Category for contract channels")]
         EliteCategory = 6,
         [Description("Optional: Category for failed co-ops")]
-        FailedCategory = 7,
+        FailedCategory = 8,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
-        WarningMessagesForUser = 8,
+        WarningMessagesForUser = 9,
         [Description("Optional: Shows limited time shells")]
-        LimitedTimeShells = 9,
+        LimitedTimeShells = 10,
         [Description("Optional: Limited time shells notification role")]
-        LimitedTimeShellsRole = 10,
+        LimitedTimeShellsRole = 11,
         [Description("Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
         [Description("Optional: Missing Boarding Group Role")]
