@@ -62,6 +62,8 @@ namespace EGG9000.Bot.Automated {
 
         public async Task CleanUpTalkToEgg9000(ApplicationDbContext db) {
             var channel = (SocketTextChannel)_client.GetChannel(799084354638446649);
+            if(channel is null)
+                return;
             var messages = await channel.GetMessagesAsync(limit: 1000).FlattenAsync();
             var messagesToDelete = messages.Where(x => x.Content.Contains("used the command `/nextrank") && x.CreatedAt < DateTimeOffset.Now.AddHours(-1) || x.Content.ToLower().Trim() == "/nextrank");
             await channel.DeleteMessagesBatchAsync(messagesToDelete);

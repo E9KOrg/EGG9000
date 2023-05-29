@@ -29,14 +29,15 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands
 {
     public static class MiscCommandsSlash
     {
         [SlashCommand(Description = "Track your EB since the last time you ran this command")]
-        public static async Task TrackEB(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Getting backups...", ephemeral: true);
+        public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
+            await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
@@ -55,20 +56,28 @@ namespace EGG9000.Bot.Commands
                 var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
 
                 if(id.LastEBTime.HasValue) {
-                    builder.AddField("Last EB", $"{id.LastEB.ToEggString()} on {DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}", true);
+                    builder.AddField("Last EB", $"{id.LastEB.ToEggString()}\n{DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}", true);
                 }
-                builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()} as of  {DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
+                builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
                 if(id.LastEBTime.HasValue) {
-                    var percentChange = (backup.EarningsBonus - id.LastEB) / id.LastEB * 100;
-                    var timeStampDifference = DiscordHelpers.TimeStamper(DateTimeOffset.Now - backupDate, DiscordHelpers.DiscordTimestampFormat.Relative);
-                    builder.AddField("EB Gained", $"{(backup.EarningsBonus - id.LastEB).ToEggString()} (+{percentChange: 0}%) in {timeStampDifference}", true);
+                    var change = backup.EarningsBonus - id.LastEB;
+                    var percentChange = change / id.LastEB * 100d;
+                    if(percentChange >= 10)
+                        percentChange = Math.Round(percentChange);
+                    var digits = (int)Math.Log10(percentChange) - 2;
+                    var format = $"F{(digits < 1 ? -digits + 2 : 0)}";
+                    var timeStampDifference = (DateTimeOffset.Now - backupDate).Humanize();
+                    builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                    logger.LogInformation($"Previous Backup: {id.LastEBTime} {id.LastEB}");
+                    logger.LogInformation($"New Backup: {backup.GetLastBackupDateTime()} {backup.EarningsBonus}");
                 }
-                id.LastEB = backup.EarningsBonus;
-                id.LastEBTime = DateTimeOffset.Now;
+
+                //id.LastEB = backup.EarningsBonus;
+                //id.LastEBTime = DateTimeOffset.Now;
             }
-            user.UpdateAccounts();
-            await db.SaveChangesAsync();
-            await command.ModifyOriginalResponseAsync(x => x.Embed = builder.Build());
+            //user.UpdateAccounts();
+            //await db.SaveChangesAsync();
+            await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = ""; });
         }
 
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
