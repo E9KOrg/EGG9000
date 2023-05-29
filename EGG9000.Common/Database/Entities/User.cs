@@ -363,7 +363,7 @@ namespace EGG9000.Common.Database.Entities {
             var accountsWithExpire = dbuser.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning).ToList();
             if(accountsWithExpire.Count == 0) {
                 dbuser.NextBreakExpire = null;
-            } else {
+            } else if(dbuser.EggIncAccounts.Count > 0 && accountsWithExpire.Count > 0) {
                 dbuser.NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
             }
 
