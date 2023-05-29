@@ -57,10 +57,12 @@ namespace EGG9000.Bot.Commands {
                 var rnd = new Random();
                 var randomUsers = usersWithRole.OrderBy(u => rnd.Next()).Take(numberOfUsers);
 
-                //For production, use this
+#if DEBUG || DEV9002
+                var userList = string.Join("\n", randomUsers.Select(u => $"{u.Username} ({u.Id})"));
+#else
                 var userList = string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>"));
-                //Development, use this
-                //string userList = string.Join("\n", randomUsers.Select(u => $"{u.Username} ({u.Id})"));
+
+#endif
 
                 await command.RespondAsync(userList);
             } catch(Exception ex){
