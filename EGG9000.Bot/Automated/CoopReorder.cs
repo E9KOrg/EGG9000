@@ -15,7 +15,6 @@ using EGG9000.Bot.Helpers;
 using Discord;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-using Quartz.Impl.AdoJobStore.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

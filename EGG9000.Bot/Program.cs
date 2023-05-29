@@ -23,7 +23,6 @@ using NLog;
 using NLog.Web;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using Quartz;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {

@@ -17,7 +17,6 @@ using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
-using Quartz.Impl.AdoJobStore.Common;
 
 using System;
 using System.Collections.Generic;

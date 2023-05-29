@@ -28,7 +28,6 @@ using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Migrations;
-using Quartz.Impl.AdoJobStore.Common;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Bugsnag.Payload;
 using System.Security.Principal;
