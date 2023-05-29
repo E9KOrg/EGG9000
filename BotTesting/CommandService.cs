@@ -61,6 +61,7 @@ namespace EGG9000.Common.Services {
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
             try {
+                _logger.LogTrace($"Slash command {arg.Data.Name} executed by {arg.User.Username} in {arg.Channel.Name} in guild {arg.GuildId}");
                 var command = _slashCommandFunctions.First(x => x.Name == arg.Data.Name);
 
 
@@ -460,6 +461,7 @@ namespace EGG9000.Common.Services {
         }
 
         public Task StartAsync(CancellationToken cancellationToken) {
+            _logger.LogInformation("Starting Command Service");
             var slashCommands = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(SlashCommandAttribute), false).Length > 0)
@@ -502,6 +504,7 @@ namespace EGG9000.Common.Services {
                       .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
 
+            _logger.LogInformation("Creating Commands");
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;
         }

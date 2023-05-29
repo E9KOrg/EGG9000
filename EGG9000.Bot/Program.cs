@@ -23,6 +23,7 @@ using NLog;
 using NLog.Web;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
+using Quartz;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -59,10 +60,10 @@ await Host.CreateDefaultBuilder(args)
 #if DEBUG
 //#if DEBUG || DEV9002
             services.AddBugsnag();
-            services.AddSingleton<DiscordHostedService>();
-            services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-            services.AddSingleton<APILink>();
-            services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+            //services.AddSingleton<DiscordHostedService>();
+            //services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+            //services.AddSingleton<APILink>();
+            //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
             //services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
@@ -73,8 +74,8 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            services.AddSingleton<CoopStatusUpdater>();
-            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            //services.AddSingleton<CoopStatusUpdater>();
+            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
             //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
             //services.AddSingleton<ContractUpdater>();
@@ -100,6 +101,8 @@ await Host.CreateDefaultBuilder(args)
 
             //services.AddHostedService<UpcomingContracts>();
 
+            services.AddHostedService<JobService>();
+
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
 
 
@@ -114,36 +117,38 @@ await Host.CreateDefaultBuilder(args)
 #endif
 
             services.AddSingleton<DiscordHostedService>();
-        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-        services.AddSingleton<APILink>();
-        services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+            services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+            services.AddSingleton<APILink>();
+            services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<LeaderboardUpdater>();
+            services.AddHostedService<LeaderboardUpdater>();
 
-        services.AddHostedService<StaffCoopsMessage>();
-        services.AddHostedService<EventUpdater>();
-        services.AddHostedService<CoopReorder>();
-        services.AddHostedService<CoopDeleteChannel>();
+            services.AddHostedService<StaffCoopsMessage>();
+            services.AddHostedService<EventUpdater>();
+            services.AddHostedService<CoopReorder>();
+            services.AddHostedService<CoopDeleteChannel>();
 
-        services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
-        services.AddSingleton<CoopStatusUpdater>();
-        services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
+            services.AddSingleton<CoopStatusUpdater>();
+            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-        services.AddSingleton<ContractUpdater>();
-        services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            services.AddSingleton<ContractUpdater>();
+            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
-        services.AddHostedService<UserCxpUpdater>();
-        services.AddHostedService<NewContracts>();
-        services.AddHostedService<CreateCoopChannels>();
-        services.AddHostedService<ShipReturnDM>();
-        services.AddHostedService<UserSnapShots>();
-        services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
-        services.AddHostedService<ManageOverflow>();
-        services.AddHostedService<RemoveTempRoles>();
-        services.AddHostedService<HandleGradeChanges>();
+            services.AddHostedService<UserCxpUpdater>();
+            services.AddHostedService<NewContracts>();
+            services.AddHostedService<CreateCoopChannels>();
+            services.AddHostedService<ShipReturnDM>();
+            services.AddHostedService<UserSnapShots>();
+            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
+            services.AddHostedService<ManageOverflow>();
+            services.AddHostedService<RemoveTempRoles>();
+            services.AddHostedService<HandleGradeChanges>();
 
-        services.AddHostedService<CommandService>();
-        services.AddHostedService<DiscordUserService>();
+            services.AddHostedService<JobService>();
+
+            services.AddHostedService<CommandService>();
+            services.AddHostedService<DiscordUserService>();
 #endif
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");

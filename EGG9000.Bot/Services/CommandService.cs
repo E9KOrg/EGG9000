@@ -69,6 +69,7 @@ namespace EGG9000.Bot.Services {
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
+            logger.LogInformation($"Initiating CommandService");    
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -287,13 +288,13 @@ namespace EGG9000.Bot.Services {
                 guildCommand.WithName(command.Details.Name ?? command.Name);
                 command.Name = command.Details.Name ?? command.Name;
 
-                
+
                 if(command.Details.AdminOnly) {
                     guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
                     if(command.Details.AllowFarmHand) {
                         guildCommand.DefaultMemberPermissions |= GuildPermission.ModerateMembers;
                     }
-                } 
+                }
 
                 if(!command.Details.CPOnly) {
                     applicationCommandProperties.Add(guildCommand.Build());
@@ -455,7 +456,7 @@ namespace EGG9000.Bot.Services {
                     SocketApplicationCommand discordCommand = null;
                     try {
                         discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == command.Name.ToLower() && x.guildid == (message.Channel as SocketGuildChannel).Guild.Id).command;
-                            } finally { }
+                    } finally { }
                     await message.Channel.SendMessageAsync(
                         $"⚠️{message.Author.Mention}, looks like you attempted to run the command but Discord sent it as a normal message instead of a command. Make sure a pop-up comes up when you start typing a command, if the pop-up doesn't show up then try force closing Discord and trying again. You can also try clicking on this </{command.Name}:{discordCommand?.Id}> highlighted command to run it."
                         , messageReference: new MessageReference(message.Id)
@@ -568,7 +569,15 @@ namespace EGG9000.Bot.Services {
             }
             await _semaphoreSlim.WaitAsync(cancellationToken);
         }
+
+        public String GetCommandTag(ulong GuildId, Type Command) {
+            var discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == Command.Name.ToLower() && x.guildid == GuildId).command;
+
+            if(discordCommand is not null) {
+                return $"</{discordCommand.Name}:{discordCommand.Id}>";
+            } else {
+                return $"</{Command.Name.ToLower()}>";
+            }
+        }
     }
-
-
 }
