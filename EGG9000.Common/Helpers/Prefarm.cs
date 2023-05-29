@@ -98,7 +98,7 @@ namespace EGG9000.Common.Helpers {
                 return "-∞";
             }
             
-            return DiscordHelpers.Timestamper(TimeSpan.FromSeconds(remainingSeconds), DiscordHelpers.DiscordTimestampFormat.Relative);
+            return DiscordHelpers.TimeStamper(TimeSpan.FromSeconds(remainingSeconds), DiscordHelpers.DiscordTimestampFormat.Relative);
             //return TimeSpan.FromSeconds(remainingSeconds).Humanize(precision: 2).ShortenTime();
         }
 

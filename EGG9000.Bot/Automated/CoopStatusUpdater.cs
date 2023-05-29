@@ -1065,7 +1065,7 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                        var ends = DiscordHelpers.Timestamper(TimeSpan.FromSeconds(status.SecondsRemaining));
+                        var ends = DiscordHelpers.TimeStamper(TimeSpan.FromSeconds(status.SecondsRemaining));
                         //var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
 
                         if(status.SecondsRemaining <= 0)
