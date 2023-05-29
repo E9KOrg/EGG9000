@@ -70,7 +70,7 @@
 		<div class="col-sm" ng-repeat="group in bg.Grades">
 			<h2>
 				<img ng-src="{{group.GradeImage}}" style="height: 1em;" />
-				@if (isAdmin && dbguild.DisableBG) {
+				@if (isAdmin) {
 					<input ng-model="group.CoopCount" style="width: 60px;" />
 					<button class="btn btn-primary" ng-click="ReloadGrade(group)">Update Count</button>
 					<button class="btn btn-primary" ng-click="StartAll(group)">Start All</button>

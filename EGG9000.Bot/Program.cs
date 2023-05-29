@@ -57,6 +57,7 @@ await Host.CreateDefaultBuilder(args)
 
             services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 #if DEBUG
+//#if DEBUG || DEV9002
             services.AddBugsnag();
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
@@ -72,8 +73,8 @@ await Host.CreateDefaultBuilder(args)
 
 
             //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.AddSingleton<CoopStatusUpdater>();
-            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.AddSingleton<CoopStatusUpdater>();
+            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
             //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
             //services.AddSingleton<ContractUpdater>();
@@ -90,7 +91,7 @@ await Host.CreateDefaultBuilder(args)
 
             //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.Zero);
             //services.AddHostedService<LeaderboardUpdater>();
-            services.AddHostedService<ManageOverflow>();
+            //services.AddHostedService<ManageOverflow>();
             //services.AddHostedService<RemoveTempRoles>();
             //services.AddHostedService<HandleGradeChanges>();
 
