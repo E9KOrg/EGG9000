@@ -84,6 +84,8 @@ namespace EGG9000.Common.Database.Entities {
         Welcome = 0,
         [Description("Required: Announces new users who registered and other various messages like new rank roles")]
         General = 1,
+        [Description("Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
+        AltRankup = 23,
         [Description("Required: Rules channel you want people to read before registering")]
         Rules = 2,
         [Description("Optional: Leaderboard of registered users")]
@@ -102,7 +104,7 @@ namespace EGG9000.Common.Database.Entities {
         LimitedTimeShells = 10,
         [Description("Optional: Limited time shells notification role")]
         LimitedTimeShellsRole = 11,
-        [Description("Optional")]
+        [Description("Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
         [Description("Optional: Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
