@@ -106,7 +106,6 @@ namespace EGG9000.Bot.Helpers {
             Relative = 7
         }
         public static string Timestamper(TimeSpan time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
-
             var ender = format switch {
                 DiscordTimestampFormat.ShortTime => "t",
                 DiscordTimestampFormat.LongTime => "T",
@@ -118,7 +117,7 @@ namespace EGG9000.Bot.Helpers {
                 _=> "R"
             };
 
-            return ($"<t:{time.TotalSeconds}:{ender}>");
+            return ($"<t:{DateTimeOffset.Now.AddSeconds(time.TotalSeconds).ToUnixTimeSeconds}:{ender}>");
         }
 
 
