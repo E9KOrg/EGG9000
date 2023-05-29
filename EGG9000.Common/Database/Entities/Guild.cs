@@ -85,26 +85,26 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Required: Announces new users who registered and other various messages like new rank roles")]
         General = 1,
         [Description("Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
-        AltRankup = 2,
+        AltRankup = 23,
         [Description("Required: Rules channel you want people to read before registering")]
-        Rules = 3,
+        Rules = 2,
         [Description("Optional: Leaderboard of registered users")]
-        Leaderboard = 4,
+        Leaderboard = 3,
         [Description("Optional: Shows in-game daily events")]
-        GameEvents = 5,
+        GameEvents = 4,
         [Description("Optional: FAQ Channel linked to when announcing new registered users")]
-        FaqChannel = 6,
+        FaqChannel = 5,
         [Description("Required: Category for contract channels")]
-        EliteCategory = 7,
+        EliteCategory = 6,
         [Description("Optional: Category for failed co-ops")]
-        FailedCategory = 8,
+        FailedCategory = 7,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
-        WarningMessagesForUser = 9,
+        WarningMessagesForUser = 8,
         [Description("Optional: Shows limited time shells")]
-        LimitedTimeShells = 10,
+        LimitedTimeShells = 9,
         [Description("Optional: Limited time shells notification role")]
-        LimitedTimeShellsRole = 11,
-        [Description("Optional")]
+        LimitedTimeShellsRole = 10,
+        [Description("Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
         [Description("Optional: Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
