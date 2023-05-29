@@ -210,15 +210,16 @@ namespace EGG9000.Bot.Automated {
 
                 var description = "";
                 description += $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
-                description += $"**{(validFor > TimeSpan.Zero ? "Expires" : "Expired")}** {validFor.Humanize(precision: 2).ShortenTime()}";
+                description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.Timestamper(validFor)}";
+                //description += $"**{(validFor > TimeSpan.Zero ? "Expires" : "Expired")}** {validFor.Humanize(precision: 2).ShortenTime()}";
                 //description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&League={guildContract.League})";
                 if(guildContract.BoardingGroup < 3)
                     description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
 
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
-                    .WithTimestamp(DateTimeOffset.Now)
-                    .WithFooter($"Updates Every {_updateInterval.TotalMinutes} Minutes - Last Updated")
+                    //.WithTimestamp(DateTimeOffset.Now)
+                    //.WithFooter($"Updates Every {_updateInterval.TotalMinutes} Minutes - Last Updated")
                     .WithAuthor(
                         new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
                         .WithIconUrl(EggIncEggs.GetEggById((int)guildContract.Contract.Details.Egg).Image));
