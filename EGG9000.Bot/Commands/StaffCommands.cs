@@ -49,6 +49,26 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Sent", ephemeral: true);
         }
 
+        [SlashCommand(Description = "Select X random users with Y role", AdminOnly = true)]
+        public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required=true)] SocketRole role, [SlashParam] int numberOfUsers = 1) {
+            try {
+                var guildUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users;
+                var usersWithRole = guildUsers.Where(u => u.Roles.Contains(role));
+                var rnd = new Random();
+                var randomUsers = usersWithRole.OrderBy(u => rnd.Next()).Take(numberOfUsers);
+
+                //For production, use this
+                var userList = string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>"));
+                //Development, use this
+                //string userList = string.Join("\n", randomUsers.Select(u => $"{u.Username} ({u.Id})"));
+
+                await command.RespondAsync(userList);
+            } catch(Exception ex){
+                await command.RespondAsync($"⚠️ERROR: Unable to parse role `{role}`, {ex.Message}");
+                return;
+            }
+        }
+
         [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = true, AllowFarmHand = true)]
         public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
