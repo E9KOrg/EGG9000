@@ -84,16 +84,18 @@ namespace EGG9000.Common.Database.Entities {
         Welcome = 0,
         [Description("Required: Announces new users who registered and other various messages like new rank roles")]
         General = 1,
+        [Description("Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
+        AltRankup = 2,
         [Description("Required: Rules channel you want people to read before registering")]
-        Rules = 2,
+        Rules = 3,
         [Description("Optional: Leaderboard of registered users")]
-        Leaderboard = 3,
+        Leaderboard = 4,
         [Description("Optional: Shows in-game daily events")]
-        GameEvents = 4,
+        GameEvents = 5,
         [Description("Optional: FAQ Channel linked to when announcing new registered users")]
-        FaqChannel = 5,
+        FaqChannel = 6,
         [Description("Required: Category for contract channels")]
-        EliteCategory = 6,
+        EliteCategory = 7,
         [Description("Optional: Category for failed co-ops")]
         FailedCategory = 8,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
