@@ -739,33 +739,21 @@ namespace EGG9000.Bot.Automated {
                                     }
                                 }
 
-                                if(!xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.Finished && coop.Status != CoopStatusEnum.Failed) {
-                                    if(userFarmDetails.Backup is not null && coop.CoopEnds > DateTimeOffset.Now && !coop.FinishedOrFailed) {
-                                        var farm = userFarmDetails.Farm;
-                                        if(farm == null || farm.Cancelled) {
-                                            //string message;
-                                            //if(userFarmDetails.Farm?.Completed ?? userFarmDetails.ArchivedFarm?.Completed ?? false) {
-                                            //    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has completed the contract before joining the co-op.";
-                                            //} else {
-                                            //    message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has exited their farm.";
-                                            //}
-                                            //await coopChannel.SendMessageAsync(message);
-                                            //if(dbguild.DemeritLogChannel.HasValue)
-                                            //    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
-                                            //xref.OutsideCoop = true;
-                                            //await _db.SaveChangesAsync();
-                                        } else if(!string.IsNullOrWhiteSpace(farm.CoopId) && !farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
-                                            //var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
-                                            //await coopChannel.SendMessageAsync(message);
-                                            //if(dbguild.DemeritLogChannel.HasValue)
-                                            //    await ((SocketTextChannel)_client.GetChannel(940777970111488050)).SendMessageAsync($"<@&904799345122091018>: {message} {coopChannel.Mention}");
-                                            //xref.OutsideCoop = true;
-                                            //var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
-                                            //if(outsideCoopLog != null) {
-                                            //    await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>");
-                                            //}
-                                            //await _db.SaveChangesAsync();
+                                if(!xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.FinishedOrFailedOrExpired && userFarmDetails.Farm is not null) {
+                                    var farm = userFarmDetails.Farm;
+                                    if(farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
+                                        await coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op.");
+                                        xref.OutsideCoop = true;
+                                        await _db.SaveChangesAsync();
+                                    } else if(farm.CoopId.Length > 0) {
+                                        var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
+                                        await coopChannel.SendMessageAsync(message);
+                                        xref.OutsideCoop = true;
+                                        var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
+                                        if(outsideCoopLog != null) {
+                                            await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>");
                                         }
+                                        await _db.SaveChangesAsync();
                                     }
                                 }
                             } catch(Exception) { }
@@ -1069,7 +1057,7 @@ namespace EGG9000.Bot.Automated {
 
                         if(status.SecondsRemaining <= 0)
                             ends = $"Expired {ends}";
-                            //ends = $"Expired {ends} ago";
+                        //ends = $"Expired {ends} ago";
 
 
 
