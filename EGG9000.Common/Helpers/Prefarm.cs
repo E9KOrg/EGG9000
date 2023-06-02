@@ -20,6 +20,7 @@ namespace EGG9000.Common.Helpers {
         public class UserWithBackup {
             public DBUser User { get; set; }
             public CustomBackup Backup { get; set; }
+            public EggIncAccount Account { get; set; }
 
         }
         public class LeaderboardUser {
@@ -183,7 +184,8 @@ namespace EGG9000.Common.Helpers {
             var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildContract.GuildID).ToListAsync();
             var backups = dbusers.Where(x => x.GuildId == guildContract.GuildID).SelectMany(y => y.EggIncAccounts.Where(x => x.Backup is not null).Select(x => new UserWithBackup {
                 User = y,
-                Backup = x.Backup
+                Backup = x.Backup,
+                Account = x
             })).ToList();
 
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == guildContract.ContractID && x.GuildId == guildContract.GuildID && x.League == league).ToListAsync();

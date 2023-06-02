@@ -23,7 +23,8 @@
 						AccountName = u.Account.Backup.UserName,
 						FromGroup = (u.Account.Group != x.Key ? u.Account.Group : 0),
 						EggIncId = isAdmin ? u.Account.Backup.EggIncId : "",
-						DatabaseId = isAdmin ? u.User.Id : Guid.Empty
+						DatabaseId = isAdmin ? u.User.Id : Guid.Empty,
+						Guild = u.Account.Guild
 					};
 				}),
 				TotalEB = c.Users.Sum(u => u.Account.Backup.EarningsBonus).ToEggString()
@@ -90,7 +91,7 @@
 				<table class="table table-striped">
 					<tbody>
 						<tr ng-repeat="user in coop.Users">
-							<td>{{user.Name}} <span ng-if="user.MultipleAccounts">({{user.AccountName}})</span> <span ng-if="user.FromGroup > 0" style="display: inline-block;background-color: mediumvioletred">BG{{user.FromGroup}}</span></td>
+							<td>{{user.Name}} <span ng-if="user.MultipleAccounts">({{user.AccountName}})</span> <span ng-if="user.FromGroup > 0" style="display: inline-block;background-color: mediumvioletred">BG{{user.FromGroup}}</span> <span ng-if="user.Guild.length > 0">[{{user.Guild}}]</span> </td>
 							<td>{{user.EBString}}</td>
 						</tr>
 					</tbody>

@@ -51,12 +51,12 @@ namespace EGG9000.Bot.Commands
                     continue;
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
                 if(user.EggIncAccounts.Count > 1) {
-                    builder.AddField($"**{backup.UserName}**", "");
+                    builder.AddField("――――――――――――――――――", $"**{backup.UserName}**");
                 }
                 var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
 
                 if(id.LastEBTime.HasValue) {
-                    builder.AddField("Last EB", $"{id.LastEB.ToEggString()}\n{DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}", true);
+                    builder.AddField("Last EB", $"{id.LastEB.ToEggString()}\n{DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
                 }
                 builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
                 if(id.LastEBTime.HasValue) {
@@ -68,12 +68,10 @@ namespace EGG9000.Bot.Commands
                     var format = $"F{(digits < 1 ? -digits + 2 : 0)}";
                     var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
                     builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
-                    logger.LogInformation($"Previous Backup: {id.LastEBTime} {id.LastEB}");
-                    logger.LogInformation($"New Backup: {backup.GetLastBackupDateTime()} {backup.EarningsBonus}");
                 }
 
                 id.LastEB = backup.EarningsBonus;
-                id.LastEBTime = DateTimeOffset.Now;
+                id.LastEBTime = backupDate;
             }
             user.UpdateAccounts();
             await db.SaveChangesAsync();

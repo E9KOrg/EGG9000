@@ -46,7 +46,8 @@
             Locked = true,
             EggIncId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.EggIncId : "",
             UserId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DBUser?.Id : Guid.Empty,
-            DiscordID = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DiscordUser?.Id : 0
+            DiscordID = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.DiscordUser?.Id : 0,
+            Guild = u.Account?.Guild
         }),
         MaxSize = Model.GuildContract.Contract.Details.MaxCoopSize,
         Rate = $"{ArgumentsHelper.NumberToString(c.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false)}/h",
@@ -282,7 +283,10 @@
                     <table class="table table-striped">
                         <tbody class="sortablers" ui-sortable="sortableOptionsTarget" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
                             <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }">
-                                <td>{{user.Name}}</td>
+                                <td>{{user.Name}}
+                                <span ng-if="user.Guild.length > 0">[{{user.Guild}}]</span>
+
+                                </td>
                                 <td align="right">{{user.NumChickens}}</td>
                                 <td align="right">{{user.Rate}}</td>
                                 <td align="right">{{user.Projected}}</td>

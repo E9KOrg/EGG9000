@@ -70,6 +70,7 @@ namespace EGG9000.Common.Database.Entities {
         }
         public string RolesToSync { get; set; }
         public bool DisableBG { get; set; }
+        public bool AllowGuilds { get; set; }
         public string GroupRoles { get; set; }
     }
 

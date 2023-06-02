@@ -5,17 +5,20 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
+
 using Google.Protobuf;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static async Task<List<PotentialCoopGroup>> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbguild = null, SocketGuild guild = null, int overrideNumber = 0) {
+        public static async Task<List<PotentialCoopGroup>> SortUsersIntoDay1Coops(List<DBUser> users, Ei.Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbguild, SocketGuild guild = null, int overrideNumber = 0) {
             var groups = new List<PotentialCoopGroup>();
 
             var accounts = users
@@ -35,7 +38,7 @@ namespace EGG9000.Common.Contracts {
             //Need 1k soul eggs for contracts
             accounts = accounts.Where(x => x.Account.Backup.SoulEggs >= 1000);
             //Need to have the egg unlocked
-            accounts = accounts.Where(x =>x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg);
+            accounts = accounts.Where(x => x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg);
 
             accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)));
 
@@ -64,7 +67,7 @@ namespace EGG9000.Common.Contracts {
                         groups.Add(group);
                         var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i])).Id;
 
-                        group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, overrideNumber, roleid);
+                        group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
                     }
                 } else {
                     for(var bg = 3; bg >= 1; bg--) {
@@ -82,7 +85,7 @@ namespace EGG9000.Common.Contracts {
                         }
 
                         if(bg > SkipBG) {
-                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown, false);
+                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown, false, AllowGuilds: dbguild.AllowGuilds);
                         }
                     }
                 }
@@ -97,7 +100,7 @@ namespace EGG9000.Common.Contracts {
                 (!x.Account.Backup.Farms.Any(f => f.ContractId == contract.Identifier && f.Completed) && !x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.Identifier && f.Completed));
         }
 
-        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool ignoreRewards, int overrideNumber = 0,  ulong roleid = 0) {
+        private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool ignoreRewards, bool AllowGuilds, int overrideNumber = 0, ulong roleid = 0) {
             IEnumerable<UserByAccount> matchingAccounts;
 
             if(roleid > 0) {
@@ -113,29 +116,46 @@ namespace EGG9000.Common.Contracts {
             }
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
             matchingAccounts = matchingAccounts.Where(x =>
-                   ignoreRewards 
+                   ignoreRewards
                 || x.Account.AutoRegisterRewards == null
                 || x.Account.AutoRegisterRewards.Count == 0
                 || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
             );
             matchingAccounts = matchingAccounts.ToList();
 
-            var ebGroups = matchingAccounts.GroupBy(x => (int)Math.Log10(x.Account.Backup.EarningsBonus));
             var rng = new Random();
+            var ebGroups = matchingAccounts.Shuffle(rng).ToList().GroupBy(x => (int)Math.Log10(x.Account.Backup.EarningsBonus)).ToDictionary(x => x.Key, x => x.ToList());
 
             var numberOfCoops = Math.Max(Math.Ceiling((double)matchingAccounts.Count() / contract.MaxCoopSize), overrideNumber);
-            
+
             var coops = new List<PotentialCoop>();
             for(var i = 0; i < numberOfCoops; i++) {
                 coops.Add(new PotentialCoop { Users = new List<UserByAccount>() });
             }
-
-            foreach(var ebGroup in ebGroups.OrderByDescending(x => x.Key)) {
-                foreach(var user in ebGroup.Shuffle(rng)) {
-                    var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
-                    coop.Users.Add(user);
+            while(ebGroups.Any(x => x.Value.Count > 0)) {
+                var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
+                var potentionalGuilds = coop.Users.Where(x => !string.IsNullOrWhiteSpace(x.Account.Guild)).Select(x => x.Account.Guild).ToList();
+                UserByAccount user;
+                KeyValuePair<int, List<UserByAccount>> highestEBGroup;
+                if(AllowGuilds) {
+                    highestEBGroup = ebGroups.Where(x => x.Value.Count > 0).OrderBy(g => g.Value.Any(u => potentionalGuilds.Any(pc => pc.Equals(u.Account.Guild, StringComparison.InvariantCultureIgnoreCase))) ? 0 : 1).ThenByDescending(x => x.Key).First();
+                    user = highestEBGroup.Value.OrderBy(x => potentionalGuilds.Any(pc => pc.Equals(x.Account.Guild, StringComparison.InvariantCultureIgnoreCase)) ? 0 : 1).First();
+                } else {
+                    highestEBGroup = ebGroups.Where(x => x.Value.Count > 0).OrderByDescending(x => x.Key).First();
+                    user = highestEBGroup.Value.First();
                 }
+
+                coop.Users.Add(user);
+                highestEBGroup.Value.Remove(user);
+
             }
+
+            //foreach(var ebGroup in ebGroups.OrderByDescending(x => x.Key)) {
+            //    foreach(var user in ebGroup.Shuffle(rng)) {
+            //        var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
+            //        coop.Users.Add(user);
+            //    }
+            //}
 
             if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > 1)) {
                 coops = new List<PotentialCoop>();
@@ -144,6 +164,9 @@ namespace EGG9000.Common.Contracts {
                 includeBG.RemoveAll(x => true);
             }
             return coops;
+
+
+
         }
 
 

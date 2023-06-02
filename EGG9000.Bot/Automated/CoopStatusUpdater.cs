@@ -67,7 +67,7 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                //coops = coops.Where(x => x.Name.ToLower() == "RebelDuck10".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "bookacts41".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -710,8 +710,11 @@ namespace EGG9000.Bot.Automated {
                                     mention = discordUser?.Mention;
                                 }
 
-                                if((uint)userFarmDetails.Account.GetGrade() != coop.League) {
-                                    mention += $" (Wrong {userFarmDetails.Account.GetGrade()})";
+                                if(userFarmDetails.Account is not null || userFarmDetails.Backup is not null) {
+                                    var grade = userFarmDetails.Account?.GetGrade() ?? userFarmDetails.Backup.Grade;
+                                    if((uint)grade != coop.League) {
+                                        mention += $" (Wrong {grade})";
+                                    }
                                 }
 
                                 userList.Add(mention);

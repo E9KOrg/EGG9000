@@ -57,8 +57,8 @@ await Host.CreateDefaultBuilder(args)
             services.AddMemoryCache();
 
             services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
-#if DEBUG
-//#if DEBUG || DEV9002
+#if DEBUG               // Use to test only specific funcitons
+//#if DEBUG || DEV9002  //Use to test as if it was in production
             services.AddBugsnag();
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
@@ -102,19 +102,19 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<UpcomingContracts>();
 
             //services.AddHostedService<JobService>();
-
+            logger.Log(NLog.LogLevel.Trace, hostContext.Configuration.GetConnectionString("DefaultConnection"));
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
 
 
 #else
-#if RELEASE
+    #if RELEASE
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
         services.AddBugsnag(configuration => {
             configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
         });
-#else
+    #else
             services.AddBugsnag();
-            services.AddHostedService<TestService>();
+            //services.AddHostedService<TestService>();
 #endif
 
             services.AddSingleton<DiscordHostedService>();
@@ -188,7 +188,7 @@ public class TestService : IHostedService {
         //var channel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
         //_client.Rest.
         //await channel.SendMessageAsync("");
-
+        var scores = await ContractsAPI.Post<Ei.MyContracts, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), "EI4938138406879232");
         _ = 1;
         _applicationLifetime.StopApplication();
     }

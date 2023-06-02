@@ -16,7 +16,7 @@
 	List<EpicResearchDetail> epicResearchConfig = ViewBag.EpicResearchConfig ?? new List<EpicResearchDetail>();
 
 	List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = ViewBag.Scoring ?? new List<(string EggIncId, Ei.MyContracts MyContracts)>();
-	Guild dbguild = ViewBag.DbGuild;
+	Guild dbguild = ViewBag.DbGuild ?? new Guild();
 
 	@*Func<EggIncArtifactInstance, object> artifactTemplate = @<span>
 		<span>@item.Artifact</span>

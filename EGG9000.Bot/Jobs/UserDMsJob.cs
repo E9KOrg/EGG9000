@@ -35,14 +35,18 @@ namespace EGG9000.Bot.Jobs {
         [Job("0 */1 * * * *")]
         public async Task WarningBreakExpiring() {
             _logger.LogInformation("Running WarningBreakExpiring");
-            var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1)).ToList();
+            var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1) && x.DiscordId > 0 & x.DiscordId > 0).ToList();
             foreach(var user in users) {
                 try {
                     foreach(var account in user.EggIncAccounts) {
                         _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
-                        var dmChannel = await _discord.GetUser(user.DiscordId).CreateDMChannelAsync();
+                        var discorduser = _discord.GetUser(user.DiscordId);
+                        if(discorduser is null) {
+                            continue;
+                        }
+                        var dmChannel = await discorduser.CreateDMChannelAsync();
                         if(dmChannel is null) {
-                            _logger.LogError($"Could not create DM channel with {user.DiscordUsername}");
+                            //_logger.LogWarning($"Could not create DM channel with {user.DiscordUsername}");
                             continue;
                         }
 

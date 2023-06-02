@@ -160,9 +160,9 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
             }
-            
+
         }
-        
+
         private async Task UpdateChannel(SocketGuild guild, Guild dbguild, GuildContract targetGuildContract) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
@@ -176,9 +176,9 @@ namespace EGG9000.Bot.Automated {
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
-            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg, userCsHistoryEntries);
-
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
+            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg, userCsHistoryEntries, dbguild);
+
             foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
                 _logger.LogInformation("BG{bg}, Grade {grade}, Count {count}", group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2));
                 var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
@@ -199,16 +199,19 @@ namespace EGG9000.Bot.Automated {
 
         private void CheckUpdateInterval(List<Contract> existingContracts) {
             var dayOfWeek = DateTimeOffset.Now.DayOfWeek;
-            TimeSpan newUpdateInterval = TimeSpan.FromMinutes(5);
+            TimeSpan newUpdateInterval;
             switch(dayOfWeek) {
                 case DayOfWeek.Monday:
                 case DayOfWeek.Wednesday:
                 case DayOfWeek.Friday:
-                    var startOfQuickUpdates = DateTimeOffset.Now.Date.AddHours(10).AddMinutes(50);
-                    if(DateTimeOffset.Now > startOfQuickUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.Now.Date)) {
-                        TimeSpan.FromSeconds(15);
+                    var startOfPeriodicUpdates = DateTimeOffset.Now.Date.AddHours(10).AddMinutes(40);
+                    var startOfQuickUpdates = DateTimeOffset.Now.Date.AddHours(10).AddMinutes(54);
+                    if(DateTimeOffset.Now > startOfPeriodicUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.Now.Date)) {
+                        newUpdateInterval = TimeSpan.FromMinutes(1);
+                    } else if(DateTimeOffset.Now > startOfQuickUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.Now.Date)) {
+                        newUpdateInterval = TimeSpan.FromSeconds(15);
                     } else {
-                        TimeSpan.FromMinutes(5);
+                        newUpdateInterval = TimeSpan.FromMinutes(5);
                     }
                     break;
                 default:
@@ -220,6 +223,6 @@ namespace EGG9000.Bot.Automated {
                 ChangeUpdateInterval(newUpdateInterval);
             }
         }
-        
+
     }
 }
