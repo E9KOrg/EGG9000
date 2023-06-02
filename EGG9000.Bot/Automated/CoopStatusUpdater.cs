@@ -1382,8 +1382,7 @@ namespace EGG9000.Bot.Automated {
                 return;
             foreach(var user in usersWithStatus.Where(x => x.Xref is not null && x.Status is not null && x.Status.ContributionAmount == 0 && x.Status.ContributionRate == 0 && !x.Xref.CoopFullWarning)) {
                 user.Xref.CoopFullWarning = true;
-                await coopChannel.SendMessageAsync($"<@{user.User.DiscordId}>, it looks like you attempted to join the co-op but might have gotten an error about the co-op being full. If you got the error please use </callstaff:1095116342090268770> so we can fix it so you will be able to join.");
-
+                await coopChannel.SendMessageAsync($"<@{user.User.DiscordId}>, It looks like you attempted to join the co-op but might have gotten an error about the co-op being full. If you got the error please try using </fixfullcooperror:1111043604178276463>, wait a few minutes, and try joining again.\n\nIf this does not work, please use </callstaff:1095116354169864210>.");
             }
         }
 
