@@ -24,7 +24,7 @@ namespace EGG9000.Bot.Automated {
     public class UserCxpUpdater : _UpdaterBase<UserCxpUpdater> {
         private static DateTimeOffset? nextOccurance = CronExpression.Parse("0 9 * * MON,WED,FRI").GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
         private static TimeSpan _nextRunTimeDelay = (nextOccurance - DateTimeOffset.Now) ?? TimeSpan.FromHours(1);
-             
+
 
 
         public UserCxpUpdater(
@@ -37,7 +37,11 @@ namespace EGG9000.Bot.Automated {
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             //Get a list of all users that are a part of a guild
+#if DEBUG
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 305047615073026049).ToListAsync();
+#else
             var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
+#endif
 
             //Loop through each user in the DB
             var chunkSize = 100;
@@ -52,15 +56,11 @@ namespace EGG9000.Bot.Automated {
             foreach(var userchunk in userChunks) {
                 var scoresToAdd = new List<UserCsHistoryEntry>();
                 var skipped = 0;
-                 await Parallel.ForEachAsync(userchunk, new ParallelOptions {  MaxDegreeOfParallelism = 20}, async (user, cancellationToken) => {
+                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 20 }, async (user, cancellationToken) => {
                     //Loop through each account of the user
                     foreach(var account in user.EggIncAccounts.Where(x => x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                         try {
-                             var alreadyScored = existingScores.Any(x => x.EggIncId == account.Id);
-                             if(alreadyScored) {
-                                 skipped++;
-                                 continue;
-                             }
+
                             //Get every score of the user's contracts
                             var scores = await ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
 
@@ -69,8 +69,8 @@ namespace EGG9000.Bot.Automated {
                                 continue;
                             }
                             foreach(var score in scores.Contracts) {
-                                 //Max length for coop because of weird names
-                                 var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier.Substring(0, 100) : score.CoopIdentifier;
+                                //Max length for coop because of weird names
+                                var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier.Substring(0, 100) : score.CoopIdentifier;
                                 //Get the score from existing ones
                                 var existingScore = existingScores.FirstOrDefault(x => x.ContractIdentifier == score.Contract.Identifier && x.CoopIdentifier == coopIdentifier && x.EggIncId == account.Id);
 

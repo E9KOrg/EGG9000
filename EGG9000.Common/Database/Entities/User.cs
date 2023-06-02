@@ -356,6 +356,8 @@ namespace EGG9000.Common.Database.Entities {
         public double LastEB { get; set; }
         [Key(16)]
         public bool SentBreakWarning { get; set; }
+        [Key(17)]
+        public string Guild { get; set; }
 
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;

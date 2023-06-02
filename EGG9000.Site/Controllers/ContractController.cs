@@ -165,7 +165,7 @@ namespace EGG9000.Site.Controllers {
 
             });
 
-            return Content(JsonConvert.SerializeObject(new List<object>()), "application/json");
+            return Content(JsonConvert.SerializeObject(boardingGroups.FirstOrDefault(x => x.BoardingGroup.Value == bg)?.Grades.FirstOrDefault(x => x.Grade == Grade).Coops), "application/json");
         }
 
         public async Task<IActionResult> StartCoops([FromBody] List<CoopStart> coops, [FromQuery]ulong GuildId, [FromQuery] string ContractID, [FromQuery] int bg, [FromQuery] Ei.Contract.Types.PlayerGrade Grade) {

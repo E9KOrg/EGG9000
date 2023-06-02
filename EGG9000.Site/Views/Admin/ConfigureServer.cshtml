@@ -103,6 +103,15 @@
 		</div>
 	</div>
 </div>
+<div class="card">
+	<div class="card-header">Guilds</div>
+	<div class="card-body">
+		Guilds will attempt to include other members of the same guild when creating co-ops as long as they are in the same boarding group and it doesn't affect EB balance.
+		<label>
+			<input type="checkbox" value="true" id="AllowGuilds" checked="@Model.AllowGuilds" /> Allow Guilds
+		</label>
+	</div>
+</div>
 
 <button class="btn btn-success" onclick="SaveChannels(this)">Save Channels</button>
 
@@ -144,6 +153,7 @@
 						coopCategories: coopCategories,
 						finishedCategories: finishedCategories,
 						disableBG: $("#DisableBG").is(":checked"),
+						AllowGuilds: $("#AllowGuilds").is(":checked"),
 						GroupRoles: GetCategoryJoins(".GroupRole")
 					})
 			}, function () {

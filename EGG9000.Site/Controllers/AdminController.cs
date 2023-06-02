@@ -812,7 +812,7 @@ namespace EGG9000.Site.Controllers {
             //    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
             //}
 
-            id = id.ToLower();
+            id = id.ToLower().Trim();
             var matchingUsers = users.Where(x => (x.DiscordUsername ?? "").ToLower().Contains(id) || x.EggIncAccounts.Any(y => y.Name.ToLower().Contains(id))).ToList();
             if(matchingUsers.Count == 1) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUsers.First().DiscordId });
@@ -1009,6 +1009,7 @@ namespace EGG9000.Site.Controllers {
             dbGuild.FinishedCategories = model.finishedCategories;
             dbGuild.DisableBG = model.disableBG;
             dbGuild.GroupRoles = model.groupRoles;
+            dbGuild.AllowGuilds = model.AllowGuilds;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1040,6 +1041,7 @@ namespace EGG9000.Site.Controllers {
             public string finishedCategories { get; set; }
             public bool disableBG { get; set; }
             public string groupRoles { get; set; }
+            public bool AllowGuilds { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {

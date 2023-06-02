@@ -233,13 +233,6 @@ namespace EGG9000.Bot.Services {
 
         private async Task CreateCommands() {
             //await _discord.Rest.DeleteAllGlobalCommandsAsync();
-            _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
-            _discord.UserCommandExecuted += _discord_UserCommandExecuted;
-            _discord.MessageReceived += _discord_MessageReceived;
-            _discord.ButtonExecuted += _discord_ButtonExecuted;
-            _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
-            _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
-            _discord.ModalSubmitted += _discord_ModalSubmitted;
 
             _logger.LogInformation("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -320,11 +313,25 @@ namespace EGG9000.Bot.Services {
             _logger.LogInformation("Slash Commands Created");
 
 
+            _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
+            _discord.UserCommandExecuted += _discord_UserCommandExecuted;
+            _discord.MessageReceived += _discord_MessageReceived;
+            _discord.ButtonExecuted += _discord_ButtonExecuted;
+            _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
+            _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
+            _discord.ModalSubmitted += _discord_ModalSubmitted;
+
+
             //Shutdown other intsance if it's running
             var instances = Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension(System.Reflection.Assembly.GetEntryAssembly().Location));
             var exists = instances.Count() > 1;
+            _logger.LogInformation("Process Instances Count {count}, {exists}", instances.Count());
             if(exists) {
-                instances.First(x => x.Id != Process.GetCurrentProcess().Id).Close();
+                var instance = instances.First(x => x.Id != Process.GetCurrentProcess().Id);
+                _logger.LogInformation("Trying to send close command to other instance {id} {name}, {closed}", instance.Id, instance.ProcessName);
+                instance.Close();
+                var closed = instance.CloseMainWindow();
+                _logger.LogInformation("Sent close command to other instance, {closed}", closed);
             }
 
         }
