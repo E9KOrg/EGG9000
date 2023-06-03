@@ -38,7 +38,6 @@ using static EGG9000.Common.Helpers.Prefarm;
 using Ei;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
-using System.Security.Principal;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
