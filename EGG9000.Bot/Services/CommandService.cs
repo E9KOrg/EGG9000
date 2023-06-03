@@ -325,7 +325,7 @@ namespace EGG9000.Bot.Services {
             //Shutdown other intsance if it's running
             var instances = Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension(System.Reflection.Assembly.GetEntryAssembly().Location));
             var exists = instances.Count() > 1;
-            _logger.LogInformation("Process Instances Count {count}, {exists}", instances.Count());
+            _logger.LogInformation("Process Instances Count {count}, {exists}", instances.Count(), exists);
             if(exists) {
                 var instance = instances.First(x => x.Id != Process.GetCurrentProcess().Id);
                 _logger.LogInformation("Trying to send close command to other instance {id} {name}, {closed}", instance.Id, instance.ProcessName);
