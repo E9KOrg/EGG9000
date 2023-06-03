@@ -95,6 +95,11 @@ namespace EGG9000.Common.Database {
         public Ei.Egg MaxEggReached { get; set; }
         [Key(32)]
         public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached { get; set; }
+        [Key(33)] 
+        public bool HasDeviceId { get; set; } = false;
+        [Key(34)]
+        public string DeviceId { get; set; } = string.Empty;
+
 
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
@@ -178,6 +183,9 @@ namespace EGG9000.Common.Database {
             Grade = backup.Contracts.LastCpi?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
             GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
+
+            HasDeviceId = backup.HasDeviceId;
+            if(backup.HasDeviceId) DeviceId = backup.DeviceId;
 
             MaxEggReached = backup.Game.MaxEggReached;
 
