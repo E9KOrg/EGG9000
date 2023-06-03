@@ -38,6 +38,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 using Ei;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
+using System.Security.Principal;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -110,7 +111,7 @@ namespace EGG9000.Bot.Commands {
             } else if(user.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
             } else {
-                await command.RespondAsync($"⚠️ERROR: Unable to find the following EggIncId {eggincid} \n {await AccountsString(db, user, apiLink, false)}");
+                await command.RespondAsync($"⚠️ERROR: Unable to find the following EggIncId {eggincid}", embed: AccountsString(db, user, apiLink, false).Result.Build());
                 return;
             }
 
@@ -118,7 +119,7 @@ namespace EGG9000.Bot.Commands {
 
             var json = JsonConvert.SerializeObject(user.EggIncAccounts, Formatting.Indented);
 
-            await command.RespondAsync($"ID removed\n{await AccountsString(db, user, apiLink, false)}");
+            await command.RespondAsync($"ID removed", embed: AccountsString(db, user, apiLink, false).Result.Build());
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = true)]
@@ -376,7 +377,7 @@ namespace EGG9000.Bot.Commands {
             }
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"ID Update\n{await AccountsString(db, user, apiLink, false)}", ephemeral: true);
+            await command.RespondAsync($"ID Update", embed: AccountsString(db, user, apiLink, false).Result.Build(), ephemeral: true);
 
         }
 
@@ -568,88 +569,121 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: !showInChannel);
                 return;
             }
-            var msg = await AccountsString(db, dbuser, apiLink, admin);
+            var builder = await AccountsString(db, dbuser, apiLink, admin);
+            if(builder.Footer == null) builder.WithFooter("");
 
             if(command.Channel is SocketDMChannel) {
                 if(dbuser.GuildId > 0) {
-                    msg += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
+                    builder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
                 } else {
-                    msg += $"\nNot registered with a guild";
+                    builder.Footer.Text += $"\nNot registered with a guild";
                 }
             } else {
                 var channelGuildId = ((IGuildChannel)command.Channel).GuildId;
                 var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == channelGuildId || x.OverflowServersJson.Contains(channelGuildId.ToString()));
                 if(dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
-                    msg += $"\nProperly registered with this server";
+                    builder.Footer.Text += $"\nProperly registered with this server";
                 }
 
                 if(dbuser.GuildId != guild.Id) {
-                    msg += $"\nNot registered with this server, try the </moveserver:1095116354329268366> command";
+                    builder.Footer.Text += $"\nNot registered with this server, try the </moveserver:1095116354329268366> command";
                 }
             }
 
             if(dbuser.TempDisabled) {
-                msg += $"\nUser is disabled";
+                builder.Footer.Text += $"\n❗User is disabled";
             }
 
             if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
-                msg += $"\n**Notes:** {dbuser.Notes}";
+                builder.Footer.Text += $"\n**Notes:** {dbuser.Notes}";
             }
 
-            msg += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
+            builder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            await command.RespondAsync(msg, ephemeral: !showInChannel);
+            await command.RespondAsync("", embed: builder.Build(), ephemeral: !showInChannel);
         }
 
 
-        private static async Task<string> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
+        private static async Task<EmbedBuilder> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
             var msg = $"Egg Inc Account{(user.EggIncAccounts.Count > 1 ? "s" : "")}";
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+
+            var builder = new EmbedBuilder {
+                Title = "User Status"
+            };
             foreach(var account in user.EggIncAccounts) {
-                //var backup = await ContractsAPI.FirstContact(egginc.Id);//user.LastBackup.FirstOrDefault(x => x.GetID() == egginc.Id);
                 var backup = await apiLink.GetBackup(account.Id);
-                //if(egginc.Name != backup.UserName) {
-                //user.UpdateNameAndId
-                //}
-                msg += $"\nName: {account.Name} Id: {account.Id}";
+                if(backup == null)
+                    continue;
+
+                builder.AddField("――――――――――――――――――", account.Name ?? "(No Name)");
+                builder.AddField("EID", account.Id ?? "None", true);
                 if(backup?.Farms?.Count > 0) {
-                    msg += $" EB: {backup.EarningsBonus.ToEggString()} Lastbackup: {(DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize()}";
+                    builder.AddField("Last Backup", DiscordHelpers.TimeStamper(DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)), true);
+                    builder.AddField("EB", backup.EarningsBonus.ToEggString(), true);
                 } else {
-                    msg += " Backup Is Empty. Double check your ID.";
+                    builder.AddField("Last Backup", "Empty - Check EID", true);
+                    builder.AddField("EB", "None", true);
                 }
 
+                if(account.DeviceID != string.Empty) {
+                    builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
+                }
+                
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
                     var gradeProgressPercent = Math.Round(Math.Round((account.Backup?.GradeProgress ?? 0), 4) * 100, 2);
-                    msg += "\nGrade: " + PlayerGradeDetails.GetEmoji(pGrade);
-                    //Progress to next grade
-                    if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa)
-                    {
-                        msg += $"\n\t{gradeProgressPercent}% of the way to ranking up to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))}";
-                    } else if(gradeProgressPercent < 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeC)
-                    {
+                    builder.AddField("Grade", PlayerGradeDetails.GetEmoji(pGrade), true);
+
+                    if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
+                        var percentageString = $"{gradeProgressPercent}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))} :chart_with_upwards_trend:";
+                        builder.AddField("Rankup Percentage", percentageString, true);
+                    } else if(gradeProgressPercent < 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeC) {
                         //Negative percentage indicates ranking down - need to -1 invert the percentage for it to make sense
-                        msg += $"\n\t{gradeProgressPercent * -1}% of the way to ranking down to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade - 1))}";
+                        var percentageString = $"\n\t{gradeProgressPercent * -1}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade - 1))} :chart_with_downwards_trend:";
+                        builder.AddField("Rankdown Percentage", percentageString, true);
                     }
                 }
 
                 if(dbguild is null || !dbguild.DisableBG) {
-                    msg += "\nBoarding Group: " + (account.Group == 0 ? "**None**" : "BG" + account?.Group);
+                    builder.AddField("Boarding Group", (account.Group == 0 ? "**None**" : "BG" + account?.Group), true);
                 }
-                msg += "\nFilter: " + String.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
-                msg += "\nBreak: " + (account.OnBreakUntil == default ? "Not on break" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>");
-                msg += $"\nRedo Leggacy: {account.RedoLeggacySelection}";
+
+                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
+                var breakStr = account.OnBreakUntil == default ? "Not on break" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>";
+                var redoStr = account.RedoLeggacySelection == default ? RedoLeggacyOption.NotSet.ToString() : account.RedoLeggacySelection.ToString();
+
+                builder.AddField("Filter", filterStr == "" ? "No Filter" : filterStr, true);
+                builder.AddField("Break", breakStr  == "" ? "Not on break" : breakStr, true);
+                builder.AddField("Redo Leggacy", redoStr == "" ? "Not Set" : redoStr, true);
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
-                    msg += $"\n\n**Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}**\n";
+                    builder.WithFooter($"⚠️ **Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}** ⚠️");
                 }
             }
+
             if(admin) {
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
-                msg += $"\n{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
-                msg += $"\nRecent Demerit:\n{await DemeritCommands.GetDemerits(user.Id, db)}";
+
+                var infoSeparatorAdded = false;
+
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
+                if(coopsString != "") {
+                    builder.AddField("――――――――――――――――――", "User Information");
+                    infoSeparatorAdded = true;
+                    builder.AddField("Coops", coopsString);
+                }
+
+                var recentDemeritsString = $"{await DemeritCommands.GetDemerits(user.Id, db)}";
+                if(recentDemeritsString != "") {
+                    if(!infoSeparatorAdded) {
+                        builder.AddField("――――――――――――――――――", "User Information");
+                        infoSeparatorAdded = true;
+                    }
+                    builder.AddField("Recent Demerits", recentDemeritsString);
+                }
             }
-            return msg;
+            return builder;
         }
 
         [Obsolete("TakeABreak is deprecated, please use MyContractSettings instead.")]
