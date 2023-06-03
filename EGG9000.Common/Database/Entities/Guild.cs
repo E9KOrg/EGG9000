@@ -124,6 +124,10 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Game Version Outdated Role")]
         GameVersionOutdated = 21,
         [Description("Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
-        DemeritLogChannel = 22
+        DemeritLogChannel = 22,
+        [Description("Optional: 'Android' Role")]
+        AndroidRole = 24,
+        [Description("Optional: 'iOS/Apple' Role")]
+        IosRole = 25
     }
 }

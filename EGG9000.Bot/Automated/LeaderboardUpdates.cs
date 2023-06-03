@@ -158,8 +158,9 @@ namespace EGG9000.Bot.Automated {
 
 
                         var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
-                        if(registeredRole == null) {
-                            await discordUser.AddRoleAsync(guild.Roles.First(x => x.Name.ToLower().Contains("registered")));
+                        var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+                        if(registeredRole == null && guildRegisteredRole is not null) {
+                            await discordUser.AddRoleAsync(guildRegisteredRole);
                         }
 
                         if(unjoinedRole != null) {
@@ -186,6 +187,7 @@ namespace EGG9000.Bot.Automated {
                         await DiscordHelpers.CheckPermitRoles(guild, discordUser, userAccounts);
                         await DiscordHelpers.CheckGrades(guild, discordUser, userAccounts, grades);
                         await DiscordHelpers.CheckOudatedGameRole(_client, guild, discordUser, userAccounts.First().User);
+                        await DiscordHelpers.CheckUserOSRole(_client, guild, discordUser, dbUser);
 
                         if(higherEB.Backup.EggsOfProphecy > 1000) {
                             dbUser.showEB = false;
