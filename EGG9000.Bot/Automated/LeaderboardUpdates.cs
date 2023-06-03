@@ -158,8 +158,9 @@ namespace EGG9000.Bot.Automated {
 
 
                         var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
-                        if(registeredRole == null) {
-                            await discordUser.AddRoleAsync(guild.Roles.First(x => x.Name.ToLower().Contains("registered")));
+                        var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+                        if(registeredRole == null && guildRegisteredRole is not null) {
+                            await discordUser.AddRoleAsync(guildRegisteredRole);
                         }
 
                         if(unjoinedRole != null) {

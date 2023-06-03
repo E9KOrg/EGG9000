@@ -222,7 +222,7 @@ namespace EGG9000.Bot.Helpers {
             var iOSRole = await _client.GetRoleAsync(GuildChannelType.IosRole, Guild);
             var droidRole = await _client.GetRoleAsync(GuildChannelType.AndroidRole, Guild);
             if(iOSRole != null) {
-                var needsIosRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.DeviceID is not "" && x.DeviceID.Length == 36);
+                var needsIosRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => !string.IsNullOrEmpty(x.DeviceID) && x.DeviceID.Length == 36);
                 var hasIosRole = DiscordUser.RoleIds.Any(x => x == iOSRole.Id);
 
                 if(!hasIosRole && needsIosRole) {
@@ -235,7 +235,7 @@ namespace EGG9000.Bot.Helpers {
                 }
             }
             if(droidRole != null) {
-                var needsDroidRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.DeviceID is not "" && x.DeviceID.Length == 16);
+                var needsDroidRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => !string.IsNullOrEmpty(x.DeviceID) && x.DeviceID.Length == 16);
                 var hasDroidRole = DiscordUser.RoleIds.Any(x => x == iOSRole.Id);
 
                 if(!hasDroidRole && needsDroidRole) {
