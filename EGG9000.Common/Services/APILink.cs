@@ -26,6 +26,7 @@ using EGG9000.Bot.EggIncAPI;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
+using System.Net.NetworkInformation;
 
 namespace EGG9000.Common.Services {
     public class APILinkOptions {
@@ -44,15 +45,16 @@ namespace EGG9000.Common.Services {
     }
 
     public class APILink : IHostedService {
-        //private static string urlBase = "http://localhost:5014/Home/";
+//        //private static string urlBase = "http://localhost:5014/Home/";
 
-#if DEBUG
-        //private static string urlBase = "http://localhost:5014/Home/";
-        //private static string urlBase = "https://localhost:44316/Home/";
-        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
-#else
-        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
-#endif
+//#if DEBUG
+//        //private static string urlBase = "http://localhost:5014/Home/";
+//        //private static string urlBase = "https://localhost:44316/Home/";
+//        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+//#else
+//        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+//#endif
+
 
 
 
@@ -65,6 +67,7 @@ namespace EGG9000.Common.Services {
         private DiscordSocketClient _discord;
         private ILogger<APILink> _logger;
         private APILinkOptions _settings;
+        private string urlBase => _configuration.GetConnectionString("APILinkURL");
 
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });

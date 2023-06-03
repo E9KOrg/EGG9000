@@ -218,6 +218,37 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
+        public static async Task CheckUserOSRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var iOSRole = await _client.GetRoleAsync(GuildChannelType.IosRole, Guild);
+            var droidRole = await _client.GetRoleAsync(GuildChannelType.AndroidRole, Guild);
+            if(iOSRole != null) {
+                var needsIosRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => !string.IsNullOrEmpty(x.DeviceID) && x.DeviceID.Length == 36);
+                var hasIosRole = DiscordUser.RoleIds.Any(x => x == iOSRole.Id);
+
+                if(!hasIosRole && needsIosRole) {
+                    await DiscordUser.AddRoleAsync(iOSRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding iOS Role for {user}", DiscordUser.GetName());
+                }
+                if(hasIosRole && !needsIosRole) {
+                    await DiscordUser.RemoveRoleAsync(iOSRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing outdated iOS Role for {user}", DiscordUser.GetName());
+                }
+            }
+            if(droidRole != null) {
+                var needsDroidRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => !string.IsNullOrEmpty(x.DeviceID) && x.DeviceID.Length == 16);
+                var hasDroidRole = DiscordUser.RoleIds.Any(x => x == iOSRole.Id);
+
+                if(!hasDroidRole && needsDroidRole) {
+                    await DiscordUser.AddRoleAsync(droidRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding iOS Role for {user}", DiscordUser.GetName());
+                }
+                if(hasDroidRole && !needsDroidRole) {
+                    await DiscordUser.RemoveRoleAsync(droidRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing outdated iOS Role for {user}", DiscordUser.GetName());
+                }
+            }
+        }
+
         public static async Task CheckFreshEggsRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var role = Guild.Roles.FirstOrDefault(x => x.Id == 761005564615983152);
             if(role != null) {

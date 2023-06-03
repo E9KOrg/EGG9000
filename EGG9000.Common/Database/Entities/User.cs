@@ -216,6 +216,10 @@ namespace EGG9000.Common.Database.Entities {
                                 needsUpdate = true;
                             }
                         }
+                        //Sync account's Device ID from backup
+                        if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
+                            account.DeviceID = account.Backup.DeviceId;
+                        }
                     });
                     if(needsUpdate) {
                         UpdateAccounts();
@@ -358,6 +362,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool SentBreakWarning { get; set; }
         [Key(17)]
         public string Guild { get; set; }
+        [Key(18)]
+        public string DeviceID { get; set; } = string.Empty;
 
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
