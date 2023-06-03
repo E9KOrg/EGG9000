@@ -609,17 +609,18 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
 
             var builder = new EmbedBuilder {
-                Title = "User Status"
+                Title = "User Status",
+                Url = (admin ? $"https://egg9000.com/MyFarms/ViewUser?discordId={user.DiscordId}" : "")
             };
             foreach(var account in user.EggIncAccounts) {
                 var backup = await apiLink.GetBackup(account.Id);
                 if(backup == null)
                     continue;
 
-                builder.AddField("――――――――――――――――――", account.Name ?? "(No Name)");
+                builder.AddField("――――――――――――――――――", $"***{account.Name}***" ?? "(No Name)");
                 builder.AddField("EID", account.Id ?? "None", true);
                 if(backup?.Farms?.Count > 0) {
-                    builder.AddField("Last Backup", DiscordHelpers.TimeStamper(DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)), true);
+                    builder.AddField("Last Backup", DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)), true);
                     builder.AddField("EB", backup.EarningsBonus.ToEggString(), true);
                 } else {
                     builder.AddField("Last Backup", "Empty - Check EID", true);
@@ -650,11 +651,12 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
-                var breakStr = account.OnBreakUntil == default ? "Not on break" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>";
-                var redoStr = account.RedoLeggacySelection == default ? RedoLeggacyOption.NotSet.ToString() : account.RedoLeggacySelection.ToString();
+                var breakStr = account.OnBreakUntil == default ? "No" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>";
+                var redoOpt = account.RedoLeggacySelection == default ? RedoLeggacyOption.NotSet : account.RedoLeggacySelection;
+                var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt.ToString()} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
 
-                builder.AddField("Filter", filterStr == "" ? "No Filter" : filterStr, true);
-                builder.AddField("Break", breakStr  == "" ? "Not on break" : breakStr, true);
+                builder.AddField("Filter", filterStr == "" ? "None" : filterStr, true);
+                builder.AddField("Break", breakStr  == "" ? "No" : breakStr, true);
                 builder.AddField("Redo Leggacy", redoStr == "" ? "Not Set" : redoStr, true);
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
