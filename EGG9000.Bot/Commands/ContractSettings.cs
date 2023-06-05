@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Commands {
             builder.WithButton("Redo Completed Leggacies", $"MCSRL:{index}");
 
             if(dbguild.AllowGuilds) {
-                eBuilder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "Not Set" : account.Guild);
+                eBuilder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "Not Set" : account.Guild.Truncate(100));
                 builder.WithButton("Set Guild", $"MCSGuild:{index}");
             }
 
@@ -392,7 +392,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data);
 
             var account = dbuser.EggIncAccounts[index];
-            account.Guild = name;
+            account.Guild = name.Truncate(100);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
 
