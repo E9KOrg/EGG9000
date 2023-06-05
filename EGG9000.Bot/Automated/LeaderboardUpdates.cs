@@ -117,7 +117,6 @@ namespace EGG9000.Bot.Automated {
 
                     var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                     await guild.DownloadUsersAsync();
-                    var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
 
                     List<SocketGuild> overflowGuilds = null;
                     if(dbguild.OverflowServers.Count > 0) {
@@ -163,17 +162,6 @@ namespace EGG9000.Bot.Automated {
                             await discordUser.AddRoleAsync(guildRegisteredRole);
                         }
 
-                        if(unjoinedRole != null) {
-                            var hasRole = discordUser.Roles.Any(x => x.Id == unjoinedRole.Id);
-                            var needsRole = userAccounts.All(x => x.TotalContracts == 0);
-                            if(hasRole && !needsRole) {
-                                await discordUser.RemoveRoleAsync(unjoinedRole);
-                            } else if(!hasRole && needsRole) {
-                                await discordUser.AddRoleAsync(unjoinedRole);
-                            }
-
-                        }
-
                         var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
                         var higherEB = userAccounts.Where(x => x.Backup?.Farms.Count != 0).OrderByDescending(x => x.Backup.EarningsBonus).First();
@@ -188,6 +176,7 @@ namespace EGG9000.Bot.Automated {
                         await DiscordHelpers.CheckGrades(guild, discordUser, userAccounts, grades);
                         await DiscordHelpers.CheckOudatedGameRole(_client, guild, discordUser, userAccounts.First().User);
                         await DiscordHelpers.CheckUserOSRole(_client, guild, discordUser, dbUser);
+                        await DiscordHelpers.CheckUnjoined(guild, discordUser, dbUser);
 
                         if(higherEB.Backup.EggsOfProphecy > 1000) {
                             dbUser.showEB = false;
