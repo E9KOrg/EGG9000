@@ -670,7 +670,8 @@ namespace EGG9000.Bot.Automated {
                         if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                             userStatus.Xref.JoinedCoop = true;
                             _logger.LogInformation("User Joined Co-op");
-                            var unjoinedRole = userStatus.DiscordUser?.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
+                            var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
+                            //var unjoinedRole = userStatus.DiscordUser?.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                             if(unjoinedRole != null) {
                                 await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                             }
