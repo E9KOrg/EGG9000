@@ -68,7 +68,7 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
             //services.AddHostedService<StaffCoopsMessage>();
-            //services.AddHostedService<EventUpdater>();
+            services.AddHostedService<EventUpdater>();
             //services.AddHostedService<CoopReorder>();
             //services.AddHostedService<CoopDeleteChannel>();
 
@@ -89,8 +89,8 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<ShipReturnDM>();
             //services.AddHostedService<UserSnapShots>();
             
-            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.Zero);
-            services.AddHostedService<LeaderboardUpdater>();
+            //services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.Zero);
+            //services.AddHostedService<LeaderboardUpdater>();
 
             //services.AddHostedService<ManageOverflow>();
             //services.AddHostedService<RemoveTempRoles>();

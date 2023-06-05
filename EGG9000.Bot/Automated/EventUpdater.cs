@@ -114,6 +114,8 @@ namespace EGG9000.Bot.Automated {
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+                if(channel == default)
+                    continue;
                 var newName = "game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";

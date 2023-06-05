@@ -747,13 +747,30 @@ namespace EGG9000.Site.Controllers {
 
             return View(new EditUserModel {
                 Users = editUserList.ToList(),
-                Roles = roles
+                Roles = roles,
+                DiscordGuilds = _discord.Guilds.ToList(),
+                DbGuilds = await _db.Guilds.AsQueryable().ToListAsync()
             });
+        }
+
+                
+        public async Task<IActionResult> AddGuildToDb(ulong id) {
+            var discordGuild = _discord.GetGuild(id);
+            var dbGuild = new Guild {
+                Id = id,
+                DiscordSeverId = id,
+                Name = discordGuild.Name, 
+            };
+            _db.Guilds.Add(dbGuild);
+            await _db.SaveChangesAsync();
+            return RedirectToAction("EditUsers");
         }
 
         public class EditUserModel {
             public List<EditUserWithDetails> Users { get; set; }
             public List<IdentityRole> Roles { get; set; }
+            public List<SocketGuild> DiscordGuilds { get; set; }
+            public List<Guild> DbGuilds { get; set; }
         }
 
         public class EditUserWithDetails {
