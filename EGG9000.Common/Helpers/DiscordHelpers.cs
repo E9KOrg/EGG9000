@@ -236,15 +236,15 @@ namespace EGG9000.Bot.Helpers {
             }
             if(droidRole != null) {
                 var needsDroidRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => !string.IsNullOrEmpty(x.DeviceID) && x.DeviceID.Length == 16);
-                var hasDroidRole = DiscordUser.RoleIds.Any(x => x == iOSRole.Id);
+                var hasDroidRole = DiscordUser.RoleIds.Any(x => x == droidRole.Id);
 
                 if(!hasDroidRole && needsDroidRole) {
                     await DiscordUser.AddRoleAsync(droidRole);
-                    GetLogger<DiscordHelpers>().LogInformation("Adding iOS Role for {user}", DiscordUser.GetName());
+                    GetLogger<DiscordHelpers>().LogInformation("Adding Droid Role for {user}", DiscordUser.GetName());
                 }
                 if(hasDroidRole && !needsDroidRole) {
                     await DiscordUser.RemoveRoleAsync(droidRole);
-                    GetLogger<DiscordHelpers>().LogInformation("Removing outdated iOS Role for {user}", DiscordUser.GetName());
+                    GetLogger<DiscordHelpers>().LogInformation("Removing outdated Droid Role for {user}", DiscordUser.GetName());
                 }
             }
         }

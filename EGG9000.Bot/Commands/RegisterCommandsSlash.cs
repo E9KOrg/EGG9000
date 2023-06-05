@@ -626,7 +626,7 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("EB", "None", true);
                 }
 
-                if(account.DeviceID != string.Empty) {
+                if(string.IsNullOrEmpty(account.DeviceID)) {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
                 }
                 
