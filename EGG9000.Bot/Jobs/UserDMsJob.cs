@@ -20,12 +20,12 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Jobs {
 
     public class UserDMsJob {
-        private readonly ILogger<TestJob> _logger;
+        private readonly ILogger<UserDMsJob> _logger;
         private readonly ApplicationDbContext _db;
         private readonly DiscordSocketClient _discord;
         private readonly Bugsnag.IClient _bugsnag;
 
-        public UserDMsJob(ILogger<TestJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord, Bugsnag.IClient bugsnag) {
+        public UserDMsJob(ILogger<UserDMsJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord, Bugsnag.IClient bugsnag) {
             _logger = logger;
             _db = applicationDbContext;
             _discord = discord;
