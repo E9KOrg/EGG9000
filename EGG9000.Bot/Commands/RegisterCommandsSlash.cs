@@ -626,7 +626,7 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("EB", "None", true);
                 }
 
-                if(string.IsNullOrEmpty(account.DeviceID)) {
+                if(!string.IsNullOrEmpty(account.DeviceID)) {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
                 }
                 
@@ -657,6 +657,10 @@ namespace EGG9000.Bot.Commands {
                 builder.AddField("Filter", filterStr == "" ? "None" : filterStr, true);
                 builder.AddField("Break", breakStr  == "" ? "No" : breakStr, true);
                 builder.AddField("Redo Leggacy", redoStr == "" ? "Not Set" : redoStr, true);
+
+                if(dbguild?.AllowGuilds ?? false) {
+                    builder.AddField("Guild", account.Guild ?? "None", true);
+                }
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
                     builder.WithFooter($"⚠️ **Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}** ⚠️");
