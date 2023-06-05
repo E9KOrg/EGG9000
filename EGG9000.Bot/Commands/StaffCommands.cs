@@ -177,6 +177,28 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync($"Stopped {serviceName}");
         }
 
+        [SlashCommand(Description = "Run automated service now", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+
+            if(service == null) {
+                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
+                return;
+            }
+            if(!(service as IUpdaterService).Running()) {
+                await command.RespondAsync($"The service {serviceName} is already stopped.");
+                return;
+            }
+            await command.RespondAsync($"Attempting to run {serviceName}");
+            try {
+                (service as IUpdaterService).ResetTimer();
+            } catch(Exception e) {
+                var frame = (new StackTrace(e, true)).GetFrame(0);
+
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+            }
+        }
+
         [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
         public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);

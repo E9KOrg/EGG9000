@@ -24,6 +24,7 @@ namespace EGG9000.Bot.Automated {
 
     public interface IUpdaterService : IHostedService {
         public bool Running();
+        public void ResetTimer();
     }
 
     public abstract class _UpdaterBase<T> : IUpdaterService where T : _UpdaterBase<T> {
