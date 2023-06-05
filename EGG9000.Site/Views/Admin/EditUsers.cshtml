@@ -1,6 +1,35 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.EditUserModel
 @{
+    var isAdmin = User.IsInRole("Admin");
+}
 
+@if (isAdmin) {
+    <h2>Guilds</h2>
+    <table class="table table-striped">
+        <thead>
+
+            <tr>
+                <th>Name</th>
+                <th>InDb</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var discordGuild in Model.DiscordGuilds.OrderBy(x => x.Name)) {
+                var dbGuild = Model.DbGuilds.FirstOrDefault(x => x.Id == discordGuild.Id || x.OverflowServers.Contains(discordGuild.Id));
+                <tr>
+                    <td>@discordGuild.Name</td>
+                    @if(dbGuild is not null){
+                        <td>
+                            Yes
+                            <a href="/admin/configureserver?id=@discordGuild.Id">Configure Server</a>
+                        </td>
+                    } else {
+                        <td><a href="/admin/addguildtodb/@discordGuild.Id">Add To DB</a></td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 
 <h2>Edit Users</h2>
@@ -11,7 +40,7 @@
             <th>Name</th>
             <th>CustomCoopName</th>
             <th>CustomExpires</th>
-            @foreach(var role in Model.Roles) {
+            @foreach (var role in Model.Roles) {
                 <th>
                     @role.Name
                 </th>
@@ -19,15 +48,16 @@
         </tr>
     </thead>
     <tbody>
-        @foreach(var user in Model.Users.OrderByDescending(x => x.IdentityUserRoles.Any())) {
+        @foreach (var user in Model.Users.OrderByDescending(x => x.IdentityUserRoles.Any())) {
             <tr>
-                <td>@user.IdentityUser.UserName
-                <br/>
-                @user.DiscordId
+                <td>
+                    @user.IdentityUser.UserName
+                    <br />
+                    @user.DiscordId
                 </td>
                 <td><input class="customName" value="@user.CustomCoopName" data-id="@user.DiscordId" /></td>
                 <td>@user.ExpireCustomCoopName?.ToString("yyyy-M-d")</td>
-                @foreach(var role in Model.Roles) {
+                @foreach (var role in Model.Roles) {
                     <td>
                         <input type="checkbox" checked="@user.IdentityUserRoles.Any(ur => ur.RoleId == role.Id)" onchange="Change(this, '@user.IdentityUser.Id', '@role.Id')" />
                     </td>
@@ -37,31 +67,31 @@
     </tbody>
 </table>
 @section Scripts {
-<script>
-    function Change(element, userid, roleid) {
-        var setRole = element.checked;
-        $(element).css("background-color", "yellow");
-        $.post("/admin/setrole", { SetRole: setRole, UserID: userid, RoleId: roleid }, function (data) {
-            element.checked = data;
-            $(element).css("background-color", "green");
-        });
-    }
-    const input = document.querySelector(".customName");
-    input.addEventListener("keyup", (event) => {
-        console.log(event);
-    });
-
-
-$(".customName").on("keyup", function(event) {
-    console.log(event);
-        if (event.key === "Enter") {
-            $(event.target).css("background-color", "yellow");
-            $.post("/admin/setcustomname", { CustomName: $(event.target).val(), DiscordID: $(event.target).data("id") }, function (data) {
-                $(event.target).css("background-color", "green");
+    <script>
+        function Change(element, userid, roleid) {
+            var setRole = element.checked;
+            $(element).css("background-color", "yellow");
+            $.post("/admin/setrole", { SetRole: setRole, UserID: userid, RoleId: roleid }, function (data) {
+                element.checked = data;
+                $(element).css("background-color", "green");
             });
         }
+        const input = document.querySelector(".customName");
+        input.addEventListener("keyup", (event) => {
+            console.log(event);
+        });
 
-});
 
-</script>
+        $(".customName").on("keyup", function (event) {
+            console.log(event);
+            if (event.key === "Enter") {
+                $(event.target).css("background-color", "yellow");
+                $.post("/admin/setcustomname", { CustomName: $(event.target).val(), DiscordID: $(event.target).data("id") }, function (data) {
+                    $(event.target).css("background-color", "green");
+                });
+            }
+
+        });
+
+    </script>
 }
