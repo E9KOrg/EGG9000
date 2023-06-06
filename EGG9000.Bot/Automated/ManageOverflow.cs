@@ -65,6 +65,7 @@ namespace EGG9000.Bot.Automated {
                 });
 
                 await _db.SaveChangesAsync();
+                StillAlive();
             }
 
 
@@ -159,7 +160,7 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                 }
-
+                StillAlive();
             }
         }
 
