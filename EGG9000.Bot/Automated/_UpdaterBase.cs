@@ -31,6 +31,7 @@ namespace EGG9000.Bot.Automated {
         private bool initialStart;
         private Timer _timer;
         private Timer _watchDogTimer;
+        private DateTimeOffset _lastAlive;
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1);
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private bool Restarted = false;
@@ -49,6 +50,7 @@ namespace EGG9000.Bot.Automated {
         protected ILogger<T> _logger;
 
         protected ulong _CPGuildId;
+
 
         public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider) {
             _logger = provider.GetService<ILogger<T>>();
@@ -73,6 +75,10 @@ namespace EGG9000.Bot.Automated {
 
         public void ResetTimer() {
             _timer.Change(TimeSpan.Zero, UpdateInterval);
+        }
+
+        public void StillAlive() {
+            _lastAlive = DateTimeOffset.Now;
         }
 
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
