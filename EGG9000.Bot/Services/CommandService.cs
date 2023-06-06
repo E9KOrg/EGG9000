@@ -54,13 +54,24 @@ namespace EGG9000.Bot.Services {
         private IServiceProvider _provider;
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
-
-        public CommandService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, ContractUpdater contractUpdater, CoopStatusUpdater coopStatusUpdater, ApplicationDbContext context, IServiceProvider serviceProvider, ILogger<CommandService> logger) {
+        private IHostApplicationLifetime _applicationLifetime;
+        public CommandService(IConfiguration Configuration, 
+                DiscordHostedService discord, 
+                APILink apilink, 
+                Words words, 
+                Bugsnag.IClient bugsnag, 
+                ContractUpdater contractUpdater, 
+                CoopStatusUpdater coopStatusUpdater, 
+                ApplicationDbContext context, 
+                IServiceProvider serviceProvider, 
+                ILogger<CommandService> logger,
+                IHostApplicationLifetime applicationLifetime
+            ) {
             _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
             _words = words;
-
+            _applicationLifetime = applicationLifetime;
 
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
@@ -76,27 +87,6 @@ namespace EGG9000.Bot.Services {
             try {
                 var command = _slashCommandFunctions.First(x => x.Name == arg.Data.Name);
 
-                //if(command.Details.AdminOnly) {
-                //    var isAdmin = false;
-
-                //    try {
-                //        isAdmin = ((SocketGuildUser)arg.User).Roles.Any(x => x.Permissions.ManageChannels ||
-                //            x.Name.ToLower().Contains("admin") || x.Name.ToLower().Contains("staff")) ||
-                //            arg.User.Username == "kendrome" ||
-                //            ((SocketGuildUser)arg.User).GuildPermissions.ManageChannels;
-                //    } catch(Exception) {
-
-                //    }
-                //    if(!isAdmin) {
-                //        //if(command.Details.AllowFarmHand  && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                //        if((command.Details.AllowFarmHand || true) && ((SocketGuildUser)arg.User).Roles.Any(r => r.Name.ToLower().Contains("farm hand"))) {
-                //            //bypass for farm hands and merits
-                //        } else {
-                //            await arg.RespondAsync($"{arg.User.Mention} You don't have permissions to run the command '/{arg.Data.Name}'");
-                //            return;
-                //        }
-                //    }
-                //}
 
                 if(command.SubFunctions != null) {
                     command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
@@ -129,7 +119,7 @@ namespace EGG9000.Bot.Services {
 
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
-            _ = arg.DeferAsync();
+            //_ = arg.DeferAsync();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.8))) {
                 try {
                     var parameters = new List<object>();
@@ -323,23 +313,13 @@ namespace EGG9000.Bot.Services {
             _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
             _discord.ModalSubmitted += _discord_ModalSubmitted;
 
-
             //Shutdown other intsance if it's running
-            try {
-                var instances = Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension(System.Reflection.Assembly.GetEntryAssembly().Location));
-                var exists = instances.Count() > 1;
-                _logger.LogInformation("Process Instances Count {count}, {exists}", instances.Count(), exists);
-                if(exists) {
-                    var instance = instances.First(x => x.Id != Process.GetCurrentProcess().Id);
-                    _logger.LogInformation("Trying to send close command to other instance {id} {name}", instance.Id, instance.ProcessName);
-                    instance.Close();
-                    var closed = instance.CloseMainWindow();
-                    _logger.LogInformation("Sent close command to other instance, {closed}", closed);
-                }
-            }catch (Exception e) {
-                _logger.LogError(e, "Error closing other instance");
-                _bugsnag.Notify(e);
-            }
+#if RELEASE
+            _logger.LogInformation("Creating DM Channel for bot");
+            var botDMChannel = await _discord.GetUser(_discord.CurrentUser.Id).CreateDMChannelAsync();
+            _logger.LogInformation("DM Channel Created, ID: {id}", botDMChannel.Id);
+            await botDMChannel.SendMessageAsync($"TRIGGERSHUTDOWN:{Process.GetCurrentProcess().Id}");
+#endif
 
         }
 
@@ -435,6 +415,13 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
         private async Task HandleMessageReceived(SocketMessage message) {
+            if(message.Content.StartsWith("TRIGGERSHUTDOWN")) {
+                var processId = Convert.ToInt32(message.Content.Split(":")[1]);
+                if(processId != Process.GetCurrentProcess().Id) {
+                    _logger.LogInformation("Shutting down");
+                    _applicationLifetime.StopApplication();
+                }
+            }
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {

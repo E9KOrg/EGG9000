@@ -104,10 +104,10 @@ namespace EGG9000.Common.Services {
         public async Task<List<SocketCategoryChannel>> GetAllCoopCategories(SocketGuild guild) {
             var dbguild = await GetDbGuild(guild);
             if(guild.Id == dbguild.Id) {
-                return dbguild.CoopCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).ToList();
+                return dbguild.CoopCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null).ToList();
             } else {
                 var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed")).OrderBy(x => x.Position);
-                return categories.ToList();
+                return categories.Where(x => x is not null).ToList();
             }
         }
         public async Task<List<SocketCategoryChannel>> GetAllFinishedCategories(SocketGuild guild) {
