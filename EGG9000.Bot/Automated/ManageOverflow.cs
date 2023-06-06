@@ -194,6 +194,7 @@ namespace EGG9000.Bot.Automated {
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
             foreach(var overflowServer in overflowServers) {
+                StillAlive();
                 if(cancellationToken.IsCancellationRequested) break;
 
                 //Add missing roles
@@ -215,6 +216,7 @@ namespace EGG9000.Bot.Automated {
 
                 //Sync user roles
                 for(var i = 0; i < overflowServer.Users.Count; i++) {
+                    StillAlive();
                     var overflowUser = overflowServer.Users.ElementAt(i);
                     //foreach(var overflowUser in overflowServer.Users) {
                     if(cancellationToken.IsCancellationRequested) {
@@ -227,6 +229,7 @@ namespace EGG9000.Bot.Automated {
                     var neededRoles = new List<SocketRole>();
                     var removeRoles = new List<SocketRole>();
                     foreach(var role in rolesToSync) {
+                        StillAlive();
                         var hasRoleInMain = mainServerUser.Roles.Any(x => x.Name == role.Name);
                         var hasRoleInOverflow = overflowUser.Roles.Any(x => x.Name == role.Name);
                         var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
@@ -276,6 +279,7 @@ namespace EGG9000.Bot.Automated {
                 var coopCategories = await _client.GetAllCoopCategories(overflowServer);
                 foreach(var coopCategory in coopCategories) {
                     foreach(var overwrite in coopCategory.PermissionOverwrites) {
+                        StillAlive();
                         var match = matches.FirstOrDefault(x => x.OverflowRole.Id == overwrite.TargetId);
                         if(match == null) {
                             if(overwrite.TargetType == PermissionTarget.Role) {
@@ -292,6 +296,7 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     foreach(var match in matches.Where(x => !coopCategory.PermissionOverwrites.Any(y => y.TargetId == x.OverflowRole.Id))) {
+                        StillAlive();
                         await coopCategory.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
                     }
 

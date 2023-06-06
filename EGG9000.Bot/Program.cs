@@ -68,8 +68,8 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
             //services.AddHostedService<StaffCoopsMessage>();
-            services.AddHostedService<EventUpdater>();
-            //services.AddHostedService<CoopReorder>();
+            //services.AddHostedService<EventUpdater>();
+            services.AddHostedService<CoopReorder>();
             //services.AddHostedService<CoopDeleteChannel>();
 
 

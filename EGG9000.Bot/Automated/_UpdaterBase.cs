@@ -164,8 +164,9 @@ namespace EGG9000.Bot.Automated {
 
         private async Task _WatchDog(object state) {
             if(LastStarted < DateTime.Now - UpdateInterval * 4) {
-                _logger.LogWarning("Watchdog Ran, last start {time}", (DateTime.Now - LastStarted).Humanize());
-                if(_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1) {
+                var lastAlive = DateTimeOffset.Now - _lastAlive;
+                _logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - LastStarted).Humanize(), _lastAlive.Humanize());
+                if(lastAlive > TimeSpan.FromMinutes(5) && (_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1)) {
                     var success = await AttemptCancel();
                     var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
                     if(success) {
