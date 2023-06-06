@@ -129,6 +129,7 @@ namespace EGG9000.Bot.Services {
 
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
+            _ = arg.DeferAsync();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.8))) {
                 try {
                     var parameters = new List<object>();
@@ -208,6 +209,7 @@ namespace EGG9000.Bot.Services {
 
             } else {
                 _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
+                _logger.LogWarning("Command Semaphore Limit Hit");
                 await arg.RespondAsync("⚠️ERROR: Unable to run command at this time, please try again in a minute");
             }
         }
