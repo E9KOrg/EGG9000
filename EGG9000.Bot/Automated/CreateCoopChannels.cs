@@ -99,7 +99,7 @@ namespace EGG9000.Bot.Automated {
                 var completedCoop = completedCoops.First();
                 completedCoops.Remove(completedCoop);
                 var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
-                if(coopChannel == null) {
+                if(coopChannel == null && coop.DiscordChannelId > 0) {
                     coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId, options: new RequestOptions { CancelToken = cancellationToken }));
                 }
                 if(coopChannel != null) {
@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 } else {
                     coop.DeletedChannel = true;
-                    _logger.LogWarning("Unable to find co-op channel for {coop} to be able to free up space, settings as deleted", completedCoop.Name);
+                    _logger.LogWarning("Unable to find co-op channel for {coop} to be able to free up space, setting as deleted", completedCoop.Name);
                     completedCoops.Remove(completedCoop);
                     return await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);
                 }

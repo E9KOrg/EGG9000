@@ -412,7 +412,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName, Backup = Response } },
+                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName, Backup = Response, Group = 1 } },
                     CreateOn = DateTimeOffset.Now,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -427,7 +427,8 @@ namespace EGG9000.Bot.Commands {
                 if(dbuser.EggIncAccounts.Count == 0) {
                     addedUser = true;
                 }
-                dbuser.AddName(Response.UserName, Response, Response.EggIncId);
+                dbuser.EggIncAccounts.Add(new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName, Backup = Response, Group = 1 });
+                dbuser.UpdateAccounts();
             }
             if(!dbuser.Registered.HasValue) {
                 dbuser.Registered = DateTimeOffset.Now;
@@ -472,6 +473,7 @@ namespace EGG9000.Bot.Commands {
             if(faqChannel != null && dbuser.EggIncAccounts.Count == 1) {
                 faqText = $"When you have a chance, read over {faqChannel.Mention} to get an idea on how the server and bot functions";
             }
+
 
             //if(checkLeague.Role != null) {
             //    roleText += $" Your Grade is {checkLeague.Role.Name}";

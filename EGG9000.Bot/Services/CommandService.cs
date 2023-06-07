@@ -33,6 +33,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Services.FauxCommand;
+using System.IO.Pipes;
+using System.IO;
+using MassTransit;
+using EGG9000.Bot.Consumers;
 
 namespace EGG9000.Bot.Services {
 
@@ -54,7 +58,7 @@ namespace EGG9000.Bot.Services {
         private IServiceProvider _provider;
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
-        private IHostApplicationLifetime _applicationLifetime;
+        private IPublishEndpoint _publishEndpoint;
         public CommandService(IConfiguration Configuration, 
                 DiscordHostedService discord, 
                 APILink apilink, 
@@ -65,13 +69,13 @@ namespace EGG9000.Bot.Services {
                 ApplicationDbContext context, 
                 IServiceProvider serviceProvider, 
                 ILogger<CommandService> logger,
-                IHostApplicationLifetime applicationLifetime
+                IPublishEndpoint publishEndpoint
             ) {
             _discord = discord;
             _configuration = Configuration;
             _apilink = apilink;
             _words = words;
-            _applicationLifetime = applicationLifetime;
+            _publishEndpoint = publishEndpoint;
 
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
@@ -224,7 +228,16 @@ namespace EGG9000.Bot.Services {
         }
 
         private async Task CreateCommands() {
-            //await _discord.Rest.DeleteAllGlobalCommandsAsync();
+            _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
+            _discord.UserCommandExecuted += _discord_UserCommandExecuted;
+            _discord.MessageReceived += _discord_MessageReceived;
+            _discord.ButtonExecuted += _discord_ButtonExecuted;
+            _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
+            _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
+            _discord.ModalSubmitted += _discord_ModalSubmitted;
+
+            await _publishEndpoint.Publish<ShutdownMessage>(new ShutdownMessage());
+
 
             _logger.LogInformation("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -303,26 +316,7 @@ namespace EGG9000.Bot.Services {
             }
 
             _logger.LogInformation("Slash Commands Created");
-
-
-            _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
-            _discord.UserCommandExecuted += _discord_UserCommandExecuted;
-            _discord.MessageReceived += _discord_MessageReceived;
-            _discord.ButtonExecuted += _discord_ButtonExecuted;
-            _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
-            _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
-            _discord.ModalSubmitted += _discord_ModalSubmitted;
-
-            //Shutdown other intsance if it's running
-#if RELEASE
-            _logger.LogInformation("Creating DM Channel for bot");
-            var botDMChannel = await _discord.GetUser(_discord.CurrentUser.Id).CreateDMChannelAsync();
-            _logger.LogInformation("DM Channel Created, ID: {id}", botDMChannel.Id);
-            await botDMChannel.SendMessageAsync($"TRIGGERSHUTDOWN:{Process.GetCurrentProcess().Id}");
-#endif
-
         }
-
 
 
         private Task _discord_ModalSubmitted(SocketModal arg) {
@@ -415,13 +409,6 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
         private async Task HandleMessageReceived(SocketMessage message) {
-            if(message.Content.StartsWith("TRIGGERSHUTDOWN")) {
-                var processId = Convert.ToInt32(message.Content.Split(":")[1]);
-                if(processId != Process.GetCurrentProcess().Id) {
-                    _logger.LogInformation("Shutting down");
-                    _applicationLifetime.StopApplication();
-                }
-            }
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {

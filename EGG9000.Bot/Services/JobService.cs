@@ -27,7 +27,7 @@ namespace EGG9000.Bot.Services {
             _bugsnag = bugsnag;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken) {
+        public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
 
             _jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
@@ -45,6 +45,7 @@ namespace EGG9000.Bot.Services {
                       .ToList();
 
             _ = Main(cancellationToken);
+            return Task.CompletedTask;
         }
 
         private async Task Main(CancellationToken cancellationToken) {

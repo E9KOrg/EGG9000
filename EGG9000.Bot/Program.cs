@@ -24,6 +24,8 @@ using NLog.Web;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
 using Cronos;
+using MassTransit;
+using EGG9000.Bot.Consumers;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -69,7 +71,7 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<DiscordUserService>();
             //services.AddHostedService<StaffCoopsMessage>();
             //services.AddHostedService<EventUpdater>();
-            services.AddHostedService<CoopReorder>();
+            //services.AddHostedService<CoopReorder>();
             //services.AddHostedService<CoopDeleteChannel>();
 
 
@@ -77,14 +79,14 @@ await Host.CreateDefaultBuilder(args)
             //services.AddSingleton<CoopStatusUpdater>();
             //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
-            //services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.AddSingleton<ContractUpdater>();
-            //services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+            services.AddSingleton<ContractUpdater>();
+            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
             //services.Configure<UpdaterOptions<UserCxpUpdater>>(x => x.DelayStart = TimeSpan.Zero);
             //services.AddHostedService<UserCxpUpdater>();
 
-            //services.AddHostedService<NewContracts>();
+            services.AddHostedService<NewContracts>();
             //services.AddHostedService<CreateCoopChannels>();
             //services.AddHostedService<ShipReturnDM>();
             //services.AddHostedService<UserSnapShots>();
@@ -107,12 +109,19 @@ await Host.CreateDefaultBuilder(args)
 
 
 #else
-    #if RELEASE
+#if RELEASE
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
         services.AddBugsnag(configuration => {
             configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
         });
-    #else
+        services.AddMassTransit(x => {
+            x.AddConsumer<ShutdownConsumer>();
+            x.UsingRabbitMq((context, cfg) => {
+                cfg.ConfigureEndpoints(context);
+            });
+        });
+
+#else
             services.AddBugsnag();
             //services.AddHostedService<TestService>();
 #endif
@@ -188,7 +197,18 @@ public class TestService : IHostedService {
         //var channel = await _client.GetUser(248865520756064257).CreateDMChannelAsync();
         //_client.Rest.
         //await channel.SendMessageAsync("");
-        var scores = await ContractsAPI.Post<Ei.MyContracts, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), "EI4938138406879232");
+        //var scores = await ContractsAPI.Post<Ei.MyContracts, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), "EI4938138406879232");
+
+        var users = await _db.DBUsers.Where(x => x.GuildId == 1113544827750076567).ToListAsync();
+
+        foreach(var user in users) {
+            foreach(var account in user.EggIncAccounts.Where(x => x.Group == 0)) {
+                account.Group = 1;
+            }
+            user.UpdateAccounts();
+        }
+        await _db.SaveChangesAsync();
+
         _ = 1;
         _applicationLifetime.StopApplication();
     }

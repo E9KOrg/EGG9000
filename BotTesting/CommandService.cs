@@ -10,6 +10,8 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 
+using MassTransit;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,12 +23,15 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+
+using TestBot;
 
 using static EGG9000.Common.Services.FauxCommand;
 
@@ -46,17 +51,19 @@ namespace EGG9000.Common.Services {
         private IServiceProvider _provider;
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
+        private IHostApplicationLifetime _applicationLifetime;
+        private IPublishEndpoint _publishEndpoint;
 
-        public CommandService(IConfiguration Configuration, DiscordHostedService discord,Bugsnag.IClient bugsnag, ApplicationDbContext context, IServiceProvider serviceProvider, ILogger<CommandService> logger) {
+        public CommandService(IConfiguration Configuration, DiscordHostedService discord,Bugsnag.IClient bugsnag, ApplicationDbContext context, IServiceProvider serviceProvider, ILogger<CommandService> logger, IHostApplicationLifetime applicationLifetime, IPublishEndpoint publishEndpoint) {
             _discord = discord;
             _configuration = Configuration;
-
-
             _bugsnag = bugsnag;
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
+            _applicationLifetime = applicationLifetime;
+            _publishEndpoint = publishEndpoint;
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -96,7 +103,6 @@ namespace EGG9000.Common.Services {
 
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
-            _ = arg.DeferAsync();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.8))) {
                 try {
                     var parameters = new List<object>();
@@ -193,6 +199,9 @@ namespace EGG9000.Common.Services {
             _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
             _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
             _discord.ModalSubmitted += _discord_ModalSubmitted;
+            _ = SendShutdown();
+
+
 
             _logger.LogInformation("Creating slash commands");
             List<ApplicationCommandProperties> applicationCommandProperties = new();
@@ -233,7 +242,12 @@ namespace EGG9000.Common.Services {
                     applicationCommandProperties.Add(guildCommand.Build());
                 }
                 cpApplicationCommandProperties.Add(guildCommand.Build());
+
+
+
             }
+
+
 
             foreach(var command in _userCommandFunctions) {
                 var guildCommand = new UserCommandBuilder();
@@ -270,7 +284,12 @@ namespace EGG9000.Common.Services {
                 var json = JsonConvert.SerializeObject(exception, Formatting.Indented);
             }
 
-            _logger.LogInformation("Slash Commands Created");
+            _logger.LogInformation("Create Commands Complete");
+        }
+
+
+        private async Task SendShutdown() {
+            await _publishEndpoint.Publish<ShutdownMessage>(new ShutdownMessage() { ProcessId = Process.GetCurrentProcess().Id });
         }
 
         private Task _discord_ModalSubmitted(SocketModal arg) {
@@ -506,7 +525,7 @@ namespace EGG9000.Common.Services {
                       .ToList();
 
             _logger.LogInformation("Creating Commands");
-            CreateCommands().ConfigureAwait(false);
+            _ = CreateCommands();
             return Task.CompletedTask;
         }
 
