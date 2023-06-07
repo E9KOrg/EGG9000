@@ -28,5 +28,6 @@ namespace EGG9000.Common.Contracts {
         public EggIncAccount Account { get; set; }
         public UserCsHistoryEntry UserCsHistoryEntry { get; set; }
         public ulong RoleId { get; set; }
+        public uint Group { get; set; }
     }
 }

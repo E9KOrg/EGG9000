@@ -24,7 +24,8 @@
 						FromGroup = (u.Account.Group != x.Key ? u.Account.Group : 0),
 						EggIncId = isAdmin ? u.Account.Backup.EggIncId : "",
 						DatabaseId = isAdmin ? u.User.Id : Guid.Empty,
-						Guild = u.Account.Guild
+						Guild = u.Account.Guild,
+						Group = u.Account.Group,
 					};
 				}),
 				TotalEB = c.Users.Sum(u => u.Account.Backup.EarningsBonus).ToEggString()
@@ -162,28 +163,44 @@
 					if (confirm("Are you sure you want to start this co-op?")) {
 						coop.Disable = true;
 
-						var prefarms = [];
-						angular.forEach(coop.Users, function (user) {
-							prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
-						});
-						$http.post("/contract/startcoop?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.Identifier&grade=" + grade, prefarms).then(function Success(response) {
-							if (response.data.error) {
-								alert(response.data.message);
-								return;
-							}
-							console.log(response);
+						var newGrade = {
+							Grade: grade.Grade,
+							Coops: [coop]
+						};
 
-							$.each(coops, function (i) {
-								if (coops[i].Users[0].EggIncId == coop.Users[0].EggIncId) {
-									coops.splice(i, 1);
-									return;
-								}
-							});
-							coop.Disable = false;
+						$http.post("/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.Identifier&Grade=" + grade.Grade + "&bg=" + $scope.bg.BoardingGroup.Value + "&count=" + grade.CoopCount, [coop]).then(function Success(response) {
+							console.log(grade.Coops);
+							console.log(response.data);
+							grade.Coops = response.data;
+							grade.Disable = false;
 						}, function Error(response) {
 							alert("Error");
 							console.log(response);
 						});
+
+
+						//var prefarms = [];
+						//angular.forEach(coop.Users, function (user) {
+						//	prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
+						//});
+						//$http.post("/contract/startcoop?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.Identifier&grade=" + grade + "&bg=" + $scope.bg.BoardingGroup.Value, prefarms).then(function Success(response) {
+						//	if (response.data.error) {
+						//		alert(response.data.message);
+						//		return;
+						//	}
+						//	console.log(response);
+
+						//	$.each(coops, function (i) {
+						//		if (coops[i].Users[0].EggIncId == coop.Users[0].EggIncId) {
+						//			coops.splice(i, 1);
+						//			return;
+						//		}
+						//	});
+						//	coop.Disable = false;
+						//}, function Error(response) {
+						//	alert("Error");
+						//	console.log(response);
+						//});
 					}
 				};
 

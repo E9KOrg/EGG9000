@@ -414,7 +414,7 @@ namespace EGG9000.Bot.Commands {
                     User = user
                 } };
                 var guild = _client.GetGuild(command.GuildId.Value);
-                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild);
+                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue);
                 await command.ModifyOriginalResponseAsync("Done");
                 await command.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {command.User.Mention}");
             } else {
@@ -439,7 +439,7 @@ namespace EGG9000.Bot.Commands {
                     User = user
                 } };
             var guild = _client.GetGuild(component.GuildId.Value);
-            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild);
+            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue);
             await component.ModifyOriginalResponseAsync(x => x.Content = "Done");
             await component.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {component.User.Mention}");
         }
