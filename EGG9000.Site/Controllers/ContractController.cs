@@ -135,7 +135,6 @@ namespace EGG9000.Site.Controllers {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
             var guild = _discord.GetGuild(GuildId);
             var t = await _GetGroups(GuildId, ContractID, 0, dbguild, guild, count);
-            
          
             var boardingGroups = t.Item1.GroupBy(x => x.BoardingGroup).Select(x => new
             {
@@ -156,7 +155,8 @@ namespace EGG9000.Site.Controllers {
                                 AccountName = u.Account.Backup.UserName,
                                 FromGroup = (u.Account.Group != x.Key ? u.Account.Group : 0),
                                 EggIncId = u.Account.Backup.EggIncId,
-                                DatabaseId = u.User.Id
+                                DatabaseId = u.User.Id,
+                                Group = u.Account.Group
                             };
                         }),
                         TotalEB = c.Users.Sum(u => u.Account.Backup.EarningsBonus).ToEggString()
@@ -172,14 +172,25 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> StartCoops([FromBody] List<CoopStart> coops, [FromQuery]ulong GuildId, [FromQuery] string ContractID, [FromQuery] int bg, [FromQuery] Ei.Contract.Types.PlayerGrade Grade) {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
             var userIds = coops.SelectMany(x => x.Users.Select(y => y.DatabaseId)).ToList();
-            var users = (await _db.DBUsers.Where(x => userIds.Contains(x.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount { User = x, Account = y })).ToList();
+            var useRoles = dbguild.DisableBG;
+            var roles = useRoles ? dbguild.GroupRoles.Split(",") : new string[0];
+            var users = (await _db.DBUsers.Where(x => userIds.Contains(x.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount { 
+                User = x, 
+                Account = y
+            })).ToList();
             var contract = await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == ContractID);
             var _words = new Words();
+
             await Parallel.ForEachAsync(coops, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coopStart, token) => {
                 
                 try {
-                    var userByAccount = users.Where(x => coopStart.Users.Any(y => y.DatabaseId == x.User.Id && y.EggIncId == x.Account.Id)).ToList();
-                    await CreateCoopsV2.Start(userByAccount, contract, Grade, _discord.GetGuild(GuildId), _words, _provider, dbguild);
+
+                    var userByAccount = new List<UserByAccount>();
+                    foreach(var coopUser in coopStart.Users) {
+                        var user = users.FirstOrDefault(x => coopUser.DatabaseId == x.User.Id && coopUser.EggIncId == x.Account.Id);
+                        user.Group = useRoles ? uint.Parse(roles[coopUser.Group]) : coopUser.Group;
+                    }
+                    await CreateCoopsV2.Start(userByAccount, contract, Grade, _discord.GetGuild(GuildId), _words, _provider, dbguild, (uint)bg);
                 } catch(Exception e) {
                     var frame = (new StackTrace(e, true)).GetFrame(0);
                     Console.WriteLine($"⚠️ERROR: {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()}");
@@ -197,42 +208,8 @@ namespace EGG9000.Site.Controllers {
         public class CoopUser {
             public string EggIncId { get; set; }
             public Guid DatabaseId { get; set; }
+            public uint Group { get; set; }
         }
-        //[Authorize(Roles = "Admin,GuildAdmin")]
-        //public async Task<IActionResult> CreateDay1Coops([FromQuery] ulong GuildId, [FromQuery] string contractid, [FromQuery] int skipbg) {
-        //    Console.WriteLine("Gettings Users");
-        //    var contract = await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid);
-
-        //    var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
-        //    Console.WriteLine("Gettings Coops");
-        //    var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
-        //    Console.WriteLine("Sorting");
-        //    var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg);
-        //    ViewBag.Contract = contract;
-
-        //    var coopsCreated = 0;
-        //    var _words = new Words();
-        //    var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
-        //    foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
-        //        Console.WriteLine($"BG {group.bg}, Grade {group.Grade}, Count {group.PotentialCoops.Count(x => x.Users.Count > 2)}");
-        //        var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 2);
-
-        //        await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
-        //            try {
-        //                await CreateCoopsV2.Start(coop.Users, contract, group.Grade, _discord.GetGuild(GuildId), _words, _provider, dbguild);
-        //            } catch(Exception e) {
-        //                var frame = (new StackTrace(e, true)).GetFrame(0);
-        //                Console.WriteLine($"⚠️ERROR: {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()}");
-        //                _bugsnag.Notify(e);
-        //            }
-
-        //        });
-        //        coopsCreated += coopsToCreate.Count();
-        //        await _db.SaveChangesAsync();
-        //    }
-
-        //    return Content($"Success {coopsCreated} coops created");
-        //}
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] UInt32 League) {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
@@ -281,31 +258,35 @@ namespace EGG9000.Site.Controllers {
             public double? SoulPower { get; set; }
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] Ei.Contract.Types.PlayerGrade grade) {
-            var contract = await _db.Contracts.FirstAsync(x => x.ID == ContractID);
-            var guild = _discord.GetGuild(GuildId);
+        //[Authorize(Roles = "Admin,GuildAdmin")]
+        //public async Task<IActionResult> StartCoop([FromBody] List<UserPreFarm> Users, [FromQuery] ulong GuildId, [FromQuery] String ContractID, [FromQuery] Ei.Contract.Types.PlayerGrade grade, [FromQuery]uint bg) {
+        //    var contract = await _db.Contracts.FirstAsync(x => x.ID == ContractID);
+        //    var guild = _discord.GetGuild(GuildId);
 
-            var eggIncIDs = Users.Select(x => x.EggIncId);
+        //    var eggIncIDs = Users.Select(x => x.EggIncId);
 
-            var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
-            var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
-            var userswithbackups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount { User = x, Account = y }));
-            var userdetails = Users.Select(x => {
-                var user = userswithbackups.FirstOrDefault(y => y.Account.Backup.EggIncId == x.EggIncId);
-                var account = user.User.EggIncAccounts.First(y => y.Id == x.EggIncId);
-                return new UserByAccount {
-                    Account = account,
-                     User = user.User
-                };
-            }).ToList();
-            //(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord, League)).ToList();
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
-            var coop = await CreateCoopsV2.Start(userdetails, contract, grade, guild, new Words(), _provider, dbguild);
-            await _db.SaveChangesAsync();
+        //    var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
+        //    var useRoles = dbguild.DisableBG;
+        //    var roles = useRoles ? dbguild.GroupRoles.Split(",") : new string[0];
 
-            return Json(new { coopName = coop.Name });
-        }
+        //    var dbUserIds = Users.Select(x => x.DatabaseId).ToList();
+        //    var dbusers = await _db.DBUsers.Where(x => dbUserIds.Contains(x.Id)).ToListAsync();
+        //    var userswithbackups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount { User = x, Account = y }));
+        //    var userdetails = Users.Select(x => {
+        //        var user = userswithbackups.FirstOrDefault(y => y.Account.Backup.EggIncId == x.EggIncId);
+        //        var account = user.User.EggIncAccounts.First(y => y.Id == x.EggIncId);
+        //        return new UserByAccount {
+        //            Account = account,
+        //             User = user.User, 
+        //            Group = useRoles ? uint.Parse(roles[x.Group]) : x.Group
+        //    };
+        //    }).ToList();
+        //    //(guildContract.Contract, userswithbackups.First(y => y.Backup.EggIncId == x.EggIncId && y.User.Id == x.DatabaseId), _discord, League)).ToList();
+        //    var coop = await CreateCoopsV2.Start(userdetails, contract, grade, guild, new Words(), _provider, dbguild);
+        //    await _db.SaveChangesAsync();
+
+        //    return Json(new { coopName = coop.Name });
+        //}
 
 
         [Authorize(Roles = "Admin,GuildAdmin")]

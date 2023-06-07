@@ -26,7 +26,8 @@ namespace EGG9000.Common.Contracts {
                 .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
                     Account = a,
                     User = u,
-                    UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created)
+                    UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
+                    Group = a.Group
                 }));
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
 

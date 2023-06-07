@@ -23,7 +23,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
-        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild) {
+        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group) {
             var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             string EIID = null;
@@ -58,6 +58,7 @@ namespace EGG9000.Common.Helpers {
             coop.League = (uint)grade;
             coop.CoopEnds = coopEnds;
             coop.CreatorID = EIID;
+            coop.Group = Group;
 
 
             db.Coops.Add(coop);
@@ -72,7 +73,8 @@ namespace EGG9000.Common.Helpers {
                     WaitingOnStarter = false,
                     UserId = user.User.Id,
                     EggIncId = user.Account.Id,
-                    WasAssigned = true
+                    WasAssigned = true,
+                    Group = user.Group
                 });
             }
 

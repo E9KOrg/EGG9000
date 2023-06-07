@@ -188,7 +188,7 @@ namespace EGG9000.Bot.Automated {
 
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
-                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild);
+                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild, (uint)skipbg + 1);
                     } catch(Exception e) {
                         var frame = (new StackTrace(e, true)).GetFrame(0);
                         _logger.LogError(e, "⚠️ERROR staring co-op");
