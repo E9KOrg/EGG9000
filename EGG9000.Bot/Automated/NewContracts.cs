@@ -62,8 +62,13 @@ namespace EGG9000.Bot.Automated {
                 CheckUpdateInterval(existingContracts);
 
                 foreach(var contractResponse in contracts) {
+                    if(contractResponse.GradeSpecs.Any(x => x.Goals.All(y => y.TargetAmount == 0))) {
+                        continue;
+                    }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+
+                    var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
                         contract = new EGG9000.Common.Database.Entities.Contract {
@@ -81,14 +86,14 @@ namespace EGG9000.Bot.Automated {
                             debug = contractResponse.Debug,
                             length_seconds = contractResponse.LengthSeconds,
                             egg = contractResponse.Egg.ToString(),
-                            _response = JsonConvert.SerializeObject(contractResponse)
+                            _response = json
                         };
                         _db.Contracts.Add(contract);
                         await _db.SaveChangesAsync();
 
                         needsUpdate = true;
-                    } else if(contract.Created < DateTime.Now.AddMonths(-3)) {
-                        contract.Created = DateTime.Now;
+                    } else if(json != contract._response) {
+                        _logger.LogInformation("Contract {0} updated", contract.ID);
                         contract.Description = contractResponse.Description;
                         contract.Name = contractResponse.Name;
                         contract.goals = JsonConvert.SerializeObject(contractResponse.Goals);
@@ -101,9 +106,7 @@ namespace EGG9000.Bot.Automated {
                         contract.debug = contractResponse.Debug;
                         contract.length_seconds = contractResponse.LengthSeconds;
                         contract.egg = contractResponse.Egg.ToString();
-                        contract._response = JsonConvert.SerializeObject(contractResponse);
-                        var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
-                        _db.RemoveRange(guildContracts);
+                        contract._response = json;
                         await _db.SaveChangesAsync();
                     }
 

@@ -74,7 +74,7 @@
 				@if (isAdmin) {
 					<input ng-model="group.CoopCount" style="width: 60px;" />
 					<button class="btn btn-primary" ng-click="ReloadGrade(group)">Update Count</button>
-					<button class="btn btn-primary" ng-click="StartAll(group)">Start All</button>
+					<button class="btn btn-primary" ng-click="StartAll(group)" ng-disabled="group.Disable">Start All</button>
 					<span>
 						Assigned Users: {{Total(group)}}
 					</span>
@@ -99,7 +99,7 @@
 				<div class="card-footer">
 					Total EB {{coop.TotalEB}}
 					@if (isAdmin) {
-						<button ng-click="Start(coop, group.Coops, group.Grade)">Start</button>
+						<button ng-click="Start(coop, group.Coops, group.Grade)" ng-disabled="coop.Disable || group.Disable">Start</button>
 					}
 				</div>
 			</div>
@@ -146,10 +146,12 @@
 				};
 
 				$scope.StartAll = function (grade) {
+					grade.Disable = true;
 					$http.post("/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.Identifier&Grade=" + grade.Grade + "&bg=" + $scope.bg.BoardingGroup.Value + "&count=" + grade.CoopCount, grade.Coops).then(function Success(response) {
 						console.log(grade.Coops);
 						console.log(response.data);
 						grade.Coops = response.data;
+						grade.Disable = false;
 					}, function Error(response) {
 						alert("Error");
 						console.log(response);
@@ -158,7 +160,7 @@
 
 				$scope.Start = function (coop, coops, grade) {
 					if (confirm("Are you sure you want to start this co-op?")) {
-
+						coop.Disable = true;
 
 						var prefarms = [];
 						angular.forEach(coop.Users, function (user) {
@@ -177,6 +179,7 @@
 									return;
 								}
 							});
+							coop.Disable = false;
 						}, function Error(response) {
 							alert("Error");
 							console.log(response);
