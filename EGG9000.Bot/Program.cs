@@ -26,6 +26,7 @@ using EGG9000.Common.Factories;
 using Cronos;
 using MassTransit;
 using EGG9000.Bot.Consumers;
+using EGG9000.Common.Mocks;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -66,6 +67,7 @@ await Host.CreateDefaultBuilder(args)
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+            services.AddSingleton<PublishEndpointMock>();
 
             //services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
@@ -123,6 +125,7 @@ await Host.CreateDefaultBuilder(args)
 
 #else
             services.AddBugsnag();
+            services.AddSingleton<PublishEndpointMock>();
             //services.AddHostedService<TestService>();
 #endif
 
