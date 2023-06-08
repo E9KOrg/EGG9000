@@ -3,7 +3,7 @@ using Bugsnag.AspNet.Core;
 
 using Discord.WebSocket;
 
-using EGG9000.Bot.Automated;
+//using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -20,7 +20,7 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Web;
 
-using TestBot;
+//using TestBot;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
