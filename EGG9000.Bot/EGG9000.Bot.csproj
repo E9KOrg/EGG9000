@@ -6,6 +6,9 @@
     <StartupObject></StartupObject>
     <Configurations>Debug;Release;DEV9002</Configurations>
   </PropertyGroup>
+  <Target Name="RunBotOnHomeControl" AfterTargets="Publish">
+    <Exec Command=".\runbot.bat" />
+  </Target>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>

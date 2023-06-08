@@ -39,7 +39,6 @@ namespace EGG9000.Bot.Jobs {
             foreach(var user in users) {
                 try {
                     foreach(var account in user.EggIncAccounts) {
-                        _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
                         var discorduser = _discord.GetUser(user.DiscordId);
                         if(discorduser is null) {
                             continue;
@@ -50,10 +49,14 @@ namespace EGG9000.Bot.Jobs {
                             continue;
                         }
 
-                        var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
+                        if(!account.SentBreakWarning) {
 
-                        await dmChannel.SendMessageAsync($"Your break for {account.Name} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}.\n\nPlease use the `/mycontractsettings` command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on {DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.");
-                        account.BreakWarningSent(user);
+                            _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
+                            var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
+
+                            await dmChannel.SendMessageAsync($"Your break for {account.Name} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}.\n\nPlease use the `/mycontractsettings` command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on {DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.");
+                            account.BreakWarningSent(user);
+                        }
                     }
                 } catch(Exception e) {
                     _logger.LogError(e, $"Error sending warning to {user.DiscordUsername}");
