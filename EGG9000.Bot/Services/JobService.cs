@@ -63,7 +63,7 @@ namespace EGG9000.Bot.Services {
                 }
                 var nextJob = _jobs.OrderBy(x => x.NextRun).FirstOrDefault();
                 if(nextJob != null) {
-                    var delay = nextJob.NextRun - DateTimeOffset.Now;
+                    var delay = (nextJob.NextRun - DateTimeOffset.Now) + TimeSpan.FromMilliseconds(10);
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
