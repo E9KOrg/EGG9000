@@ -45,12 +45,12 @@ await Host.CreateDefaultBuilder(args)
             options.UseSqlServer(
                 Configuration.GetConnectionString("DefaultConnection")));
 
-        services.AddMassTransit(x => {
-            x.AddConsumer<ShutdownConsumer>();
-            x.UsingRabbitMq((context, cfg) => {
-                cfg.ConfigureEndpoints(context);
-            });
-        });
+        //services.AddMassTransit(x => {
+        //    x.AddConsumer<ShutdownConsumer>();
+        //    x.UsingRabbitMq((context, cfg) => {
+        //        cfg.ConfigureEndpoints(context);
+        //    });
+        //});
         services.AddBugsnag();
         services.AddMemoryCache();
         services.AddSingleton<DiscordHostedService>();
@@ -58,7 +58,7 @@ await Host.CreateDefaultBuilder(args)
         //services.AddSingleton<APILink>();
         //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        services.AddHostedService<CommandService>();
+        //services.AddHostedService<CommandService>();
         //services.AddHostedService<UpcomingContracts>();
 
 
