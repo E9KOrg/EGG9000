@@ -155,8 +155,10 @@ namespace EGG9000.Bot.Automated {
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
                 } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 3) {
-                    var nextLaunch = guildContract.Created.Date.AddHours(guildContract.Created.Hour + guildContract.BoardingGroup * 8);
-                    if(nextLaunch < DateTimeOffset.Now) {
+                    var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
+                    var nextLaunch = (contractDate - contractDate.TimeOfDay) + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
+                    var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
+                    if(nextLaunch < currentTime) {
                         guildContract.BoardingGroup++;
                         await _db.SaveChangesAsync();
                         _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
