@@ -38,6 +38,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 using Ei;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
+using MassTransit.Initializers;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -110,7 +111,7 @@ namespace EGG9000.Bot.Commands {
             } else if(user.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
             } else {
-                await command.RespondAsync($"⚠️ERROR: Unable to find the following EggIncId {eggincid}", embed: AccountsString(db, user, apiLink, false).Result.Build());
+                await command.RespondAsync($"⚠️ERROR: Unable to find the following EggIncId {eggincid}", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray());
                 return;
             }
 
@@ -118,7 +119,7 @@ namespace EGG9000.Bot.Commands {
 
             var json = JsonConvert.SerializeObject(user.EggIncAccounts, Formatting.Indented);
 
-            await command.RespondAsync($"ID removed", embed: AccountsString(db, user, apiLink, false).Result.Build());
+            await command.RespondAsync($"ID removed", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray());
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = true)]
@@ -151,7 +152,7 @@ namespace EGG9000.Bot.Commands {
 
             //if(status.Participants.Count == contract.MaxUsers) {
             //    foreach(var xref in xrefs) {
-                    
+
             //        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
             //            ContractIdentifier = coop.ContractID,
             //            CoopIdentifier = coop.Name.ToLower(),
@@ -198,7 +199,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Command can only be used in a co-op channel");
                 return;
             }
-            
+
             var dbuser = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.DiscordId == command.User.Id)?.User;
             if(dbuser is null) {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user in co-op.");
@@ -376,7 +377,7 @@ namespace EGG9000.Bot.Commands {
             }
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"ID Update", embed: AccountsString(db, user, apiLink, false).Result.Build(), ephemeral: true);
+            await command.RespondAsync($"ID Update", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(), ephemeral: true);
 
         }
 
@@ -570,56 +571,81 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: !showInChannel);
                 return;
             }
-            var builder = await AccountsString(db, dbuser, apiLink, admin);
-            if(builder.Footer == null) builder.WithFooter("");
+
+            var channelGuildId = ((IGuildChannel)command.Channel).GuildId;
+            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == channelGuildId || x.OverflowServersJson.Contains(channelGuildId.ToString()));
+
+            //Get a list of all builders from the AccountsString - see method for why this needs to be a list
+            var builders = await AccountsString(db, dbuser, apiLink, admin);
+
+            //Grab the last builder from the list to add footers to
+            var lastBuilder = builders.LastOrDefault();
+            if(lastBuilder.Footer == null) lastBuilder.WithFooter("");
+
+            if(dbuser.TempDisabled) lastBuilder.Footer.Text += $"\n❗User is disabled";
+
+            if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
+                lastBuilder.Footer.Text += $"\n**Notes:** {dbuser.Notes}";
+            }
 
             if(command.Channel is SocketDMChannel) {
                 if(dbuser.GuildId > 0) {
-                    builder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
+                    lastBuilder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
                 } else {
-                    builder.Footer.Text += $"\nNot registered with a guild";
+                    lastBuilder.Footer.Text += $"\nNot registered with a guild";
                 }
-            } else {
-                var channelGuildId = ((IGuildChannel)command.Channel).GuildId;
-                var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == channelGuildId || x.OverflowServersJson.Contains(channelGuildId.ToString()));
-                if(dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
-                    builder.Footer.Text += $"\nProperly registered with this server";
-                }
-
-                if(dbuser.GuildId != guild.Id) {
-                    builder.Footer.Text += $"\nNot registered with this server, try the </moveserver:1095116354329268366> command";
-                }
+            } else if(dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
+                lastBuilder.Footer.Text += $"\nProperly registered with this server";
+            } else if(dbuser.GuildId != guild.Id) {
+                lastBuilder.Footer.Text += $"\nNot registered with this server, try the /moveserver command";
             }
 
-            if(dbuser.TempDisabled) {
-                builder.Footer.Text += $"\n❗User is disabled";
-            }
+            lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
-                builder.Footer.Text += $"\n**Notes:** {dbuser.Notes}";
-            }
-
-            builder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
-
-            await command.RespondAsync("", embed: builder.Build(), ephemeral: !showInChannel);
+            await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
 
 
-        private static async Task<EmbedBuilder> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
-            var msg = $"Egg Inc Account{(user.EggIncAccounts.Count > 1 ? "s" : "")}";
+        private static async Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, APILink apiLink, bool admin) {
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
 
+            /*
+             Create a new list to store builders in
+             25 Fields per embed, means users with 3+ accounts
+             cause this to error out with one embed
+            */
+            var builderList = new List<EmbedBuilder>();
+
+            //Create storage for footers that will be applied at the end
+            var footers = new List<string>();
+
+            //Header for first embed
             var builder = new EmbedBuilder {
                 Title = "User Status",
                 Url = (admin ? $"https://egg9000.com/MyFarms/ViewUser?discordId={user.DiscordId}" : "")
             };
-            foreach(var account in user.EggIncAccounts) {
+
+            //Get a list of accounts tied to the user, in order of High -> Low EB
+            var accounts = user.EggIncAccounts.OrderBy(u => u.Backup?.EarningsBonus).Reverse();
+
+            //Loop through each account, with the object, and its index
+            foreach(var (account, index) in accounts.Select((value, i) => (value, i))) {
+
+                /*
+                 If the account is a multiple of 2, we should 
+                 add it to the list, and create a new builder instance
+                */
+                if(index % 2 == 0 && index != 0) {
+                    builderList.Add(builder);
+                    builder = new EmbedBuilder();
+                }
+
                 var backup = await apiLink.GetBackup(account.Id);
                 if(backup == null)
                     continue;
 
-                builder.AddField("――――――――――――――――――", $"***{account.Name}***" ?? "(No Name)");
-                builder.AddField("EID", account.Id ?? "None", true);
+                var nameField = ($"***{account.Name}***: " ?? "(No Name): ") + (account.Id ?? "No EID");
+                builder.AddField("――――――――――――――――――", nameField);
                 if(backup?.Farms?.Count > 0) {
                     builder.AddField("Last Backup", DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)), true);
                     builder.AddField("EB", backup.EarningsBonus.ToEggString(), true);
@@ -631,7 +657,7 @@ namespace EGG9000.Bot.Commands {
                 if(!string.IsNullOrEmpty(account.DeviceID)) {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
                 }
-                
+
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
                     var gradeProgressPercent = Math.Round(Math.Round((account.Backup?.GradeProgress ?? 0), 4) * 100, 2);
@@ -648,7 +674,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(dbguild is null || !dbguild.DisableBG) {
-                    builder.AddField("Boarding Group", (account.Group == 0 ? "**None**" : "BG" + account?.Group), true);
+                    builder.AddField("Boarding Group", (account?.Group == 0 ? "**None**" : "BG" + account?.Group), true);
                 }
 
                 var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
@@ -657,7 +683,7 @@ namespace EGG9000.Bot.Commands {
                 var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt.ToString()} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
 
                 builder.AddField("Filter", filterStr == "" ? "None" : filterStr, true);
-                builder.AddField("Break", breakStr  == "" ? "No" : breakStr, true);
+                builder.AddField("Break", breakStr == "" ? "No" : breakStr, true);
                 builder.AddField("Redo Leggacy", redoStr == "" ? "Not Set" : redoStr, true);
 
                 if(dbguild?.AllowGuilds ?? false) {
@@ -665,32 +691,44 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
-                    builder.WithFooter($"⚠️ **Game version is outdated, showing {backup.ClientVersion} but new version is {ContractsAPI.ClientVersion}** ⚠️");
+                    footers.Add($"⚠️ **Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {ContractsAPI.ClientVersion}** ⚠️");
+                }
+
+                /*
+                 If an account is the last the user has, pop it into
+                 the list, as the loop won't run again
+                */
+                if(index + 1 == accounts.Count()) {
+                    foreach(var footer in footers) {
+                        builder.WithFooter(footer);
+                    }
+                    builderList.Add(builder);
                 }
             }
 
             if(admin) {
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
-
+                var lastBuilder = builderList.Last();
                 var infoSeparatorAdded = false;
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
 
                 var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
                 if(coopsString != "") {
-                    builder.AddField("――――――――――――――――――", "User Information");
+                    lastBuilder.AddField("――――――――――――――――――", "User Information");
                     infoSeparatorAdded = true;
-                    builder.AddField("Coops", coopsString);
+                    lastBuilder.AddField("Coops", coopsString);
                 }
 
                 var recentDemeritsString = $"{await DemeritCommands.GetDemerits(user.Id, db)}";
                 if(recentDemeritsString != "") {
                     if(!infoSeparatorAdded) {
-                        builder.AddField("――――――――――――――――――", "User Information");
+                        lastBuilder.AddField("――――――――――――――――――", "User Information");
                         infoSeparatorAdded = true;
                     }
-                    builder.AddField("Recent Demerits", recentDemeritsString);
+                    lastBuilder.AddField("Recent Demerits", recentDemeritsString);
                 }
             }
-            return builder;
+
+            return builderList;
         }
 
         [Obsolete("TakeABreak is deprecated, please use MyContractSettings instead.")]
