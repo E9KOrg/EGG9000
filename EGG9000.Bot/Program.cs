@@ -67,9 +67,9 @@ await Host.CreateDefaultBuilder(args)
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
-            services.AddSingleton<PublishEndpointMock>();
+            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
 
-            //services.AddHostedService<CommandService>();
+            services.AddHostedService<CommandService>();
             //services.AddHostedService<DiscordUserService>();
             //services.AddHostedService<StaffCoopsMessage>();
             //services.AddHostedService<EventUpdater>();
@@ -77,9 +77,9 @@ await Host.CreateDefaultBuilder(args)
             //services.AddHostedService<CoopDeleteChannel>();
 
 
-            //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
-            //services.AddSingleton<CoopStatusUpdater>();
-            //services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
+            services.AddSingleton<CoopStatusUpdater>();
+            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
             services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(1));
             services.AddSingleton<ContractUpdater>();
