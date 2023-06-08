@@ -877,7 +877,7 @@ namespace EGG9000.Site.Controllers {
 
 
         public async Task<ActionResult> AutomatedTasks() {
-            return View(await _db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1)).OrderBy(x => x.StartTime).ToListAsync());
+            return View(await _db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-5)).OrderBy(x => x.StartTime).ToListAsync());
         }
 
         public class BackupWithUser {

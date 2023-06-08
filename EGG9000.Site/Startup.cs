@@ -116,11 +116,16 @@ namespace EGG9000.Site {
                 options.Providers.Add<GzipCompressionProvider>();
                 options.EnableForHttps = true;
             });
-            services.AddBugsnag(configuration => {
+
+
 #if RELEASE
+        services.AddBugsnag(configuration => {
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
+        });
+#else
+        services.AddBugsnag();
 #endif
-            });
+
             services.AddDatabaseDeveloperPageExceptionFilter();
         }
 
