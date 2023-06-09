@@ -587,7 +587,7 @@ namespace EGG9000.Bot.Commands {
 
             lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            _ = await DiscordHelpers.CheckRoles(_client.GetGuild(command.GuildId ?? dbuser.GuildId), (SocketGuildUser)command.User, dbuser, _client, null, new List<LeaderboardUser>());
+            _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
 
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
