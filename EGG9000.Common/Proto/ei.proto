@@ -25,6 +25,10 @@ message Backup {
         optional bool notifications_queried = 5;
         optional bool notifications_on = 6;
         optional bool notify_daily_gift = 11;
+        optional bool low_performance = 10;
+        optional bool auto_stop_fueling = 25;
+        optional bool max_enabled = 26;
+        optional double last_backup_time = 24;
         optional bool coppa_queried = 7;
         optional bool coppa_restricted = 8;
         optional bool gdpr_consent_queried = 12;
@@ -39,9 +43,6 @@ message Backup {
         optional bool user_cloud_enabled = 15 [default = true];
         optional bool user_analytics_enabled = 22 [default = true];
         optional bool user_personalized_ads_enabled = 23 [default = true];
-        optional bool low_performance = 10;
-        optional bool auto_stop_fueling = 25;
-        optional double last_backup_time = 24;
     }
     
     optional Tutorial tutorial = 5;
@@ -221,6 +222,8 @@ message Backup {
         optional bool boost_token_alert = 17;
         optional bool soul_egg_alert = 18;
         optional bool backup_reminder_alert = 19;
+        optional bool max_button_alert = 23;
+        optional bool mission_target_alert = 24;
     }
     
     optional MyContracts contracts = 13;
@@ -542,7 +545,6 @@ message ContractPlayerInfo {
     repeated ContractEvaluation unread_evaluations = 6;
 }
 
-
 message ContractEvaluation {
     optional string contract_identifier = 40;
     optional string coop_identifier = 41;
@@ -564,6 +566,8 @@ message ContractEvaluation {
     optional uint32 chicken_runs_sent = 7;
     optional uint32 gift_tokens_sent = 8;
     optional uint32 gift_tokens_received = 15;
+    optional double gift_token_value_sent = 28;
+    optional double gift_token_value_received = 29;
     optional uint32 boost_token_allotment = 16;
     optional double buff_time_value = 17;
     optional double teamwork_score = 13;
@@ -615,6 +619,7 @@ message CoopCompletionSnapshot {
     message ContributorSnapshot {
         optional double contribution = 1;
         optional double last_contribution_time = 6;
+        optional bool finalized = 7;
         optional double soul_power = 2;
         optional string user_id = 3;
         optional uint32 tokens = 4;
@@ -642,8 +647,11 @@ message ContractSimConfig {
         message GoalParams {
             optional double target_se = 1;
             optional double cps_mult = 2;
+            optional double elr_mult = 7;
             optional double earnings_mult = 3;
             optional double time_efficacy = 4;
+            optional double hab_capacity_mult = 5;
+            optional double epic_research_budget = 6;
         }
     }
 }
@@ -727,6 +735,7 @@ message ContractCoopStatusResponse {
     optional string contract_identifier = 1;
     optional double total_amount = 2;
     optional string coop_identifier = 3;
+    optional Contract.PlayerGrade grade = 17;
     
     repeated ContributionInfo contributors = 4;
     message ContributionInfo {
@@ -859,6 +868,7 @@ message CreateCoopRequest {
     optional string coop_identifier = 2;
     optional bool public = 13;
     optional bool cc_only = 14;
+    optional bool allow_all_grades = 16;
     optional double seconds_remaining = 3;
     optional string user_id = 4;
     optional string user_name = 5;
@@ -1056,6 +1066,7 @@ message LeaderboardAnalysis {
     optional uint32 count = 2;
     optional double high_score = 3;
     optional double low_score = 4;
+    optional string cursor = 5;
 }
 
 message LeaderboardInfo {
@@ -1371,6 +1382,7 @@ message MissionInfo {
     optional double duration_seconds = 5;
     optional uint32 capacity = 9;
     optional double quality_bump = 11;
+    optional ArtifactSpec.Name target_artifact = 13;
     optional double seconds_remaining = 6;
     optional double start_time_derived = 8;
     optional string mission_log = 10;
@@ -1626,7 +1638,7 @@ message ArtifactsDB {
     optional uint64 item_sequence = 2;
     repeated InventorySlot inventory_slots = 3;
     
-    repeated ActiveArtifactSlot active_artifacts = 7;
+    repeated ActiveArtifactSlot active_artifacts_DEPRECATED = 7;
     message ActiveArtifactSlot {
         optional bool occupied = 1;
         optional uint64 item_id = 2;
@@ -1635,7 +1647,10 @@ message ArtifactsDB {
     repeated ActiveArtifactSet active_artifact_sets = 11;
     message ActiveArtifactSet {
         repeated ActiveArtifactSlot slots = 1;
+        optional uint32 uid = 2;
     }
+    
+    repeated ActiveArtifactSet saved_artifact_sets = 13;
     
     repeated CraftableArtifact artifact_status = 12;
     message CraftableArtifact {
