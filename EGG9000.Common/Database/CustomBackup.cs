@@ -7,7 +7,6 @@ using System.Text;
 using EGG9000.Bot.EggIncAPI;
 
 using EGG9000.Common.Helpers;
-using Ei;
 using Google.Protobuf.Collections;
 
 using MessagePack;
@@ -210,7 +209,7 @@ namespace EGG9000.Common.Database {
                     Amount = f.Amount,
                     Egg = f.Egg
                 }).ToList(),
-                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? ArtifactSpec.Types.Name.Unknown : ArtifactSpec.Types.Name.Unknown,
+                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown : Ei.ArtifactSpec.Types.Name.Unknown,
                 Capacity = m.Capacity
             }).ToList();
 
@@ -573,7 +572,7 @@ namespace EGG9000.Common.Database {
         [Key(5)]
         public long StartTime { get; set; }
         [Key(6)]
-        public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = ArtifactSpec.Types.Name.Unknown;
+        public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = Ei.ArtifactSpec.Types.Name.Unknown;
         [Key(7)]
         public uint Capacity { get; set; } = 0;
 
