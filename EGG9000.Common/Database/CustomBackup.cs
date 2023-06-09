@@ -5,7 +5,9 @@ using System.Linq;
 using System.Text;
 
 using EGG9000.Bot.EggIncAPI;
+
 using EGG9000.Common.Helpers;
+
 using Google.Protobuf.Collections;
 
 using MessagePack;
