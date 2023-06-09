@@ -107,7 +107,6 @@ namespace EGG9000.Bot.Helpers {
             await DiscordHelpers.CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
             await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);
             await DiscordHelpers.CheckFreshEggsRole(guild, discordUser, dbUser);
-            await DiscordHelpers.CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
             await DiscordHelpers.CheckBG(_client, guild, discordUser, dbUser);
             await DiscordHelpers.CheckPermitRoles(guild, discordUser, dbUser);
             await DiscordHelpers.CheckGrades(guild, discordUser, dbUser, grades);
@@ -115,6 +114,9 @@ namespace EGG9000.Bot.Helpers {
             await DiscordHelpers.CheckUserOSRole(_client, guild, discordUser, dbUser);
             await DiscordHelpers.CheckUnjoined(guild, discordUser, dbUser);
 
+            if(leaderboardUsers.Count > 0) {
+                await DiscordHelpers.CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
+            }
             return role;
         }
 
