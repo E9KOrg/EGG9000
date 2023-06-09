@@ -65,7 +65,7 @@ namespace EGG9000.Bot.Commands {
             ("PingOnFull", "All assigned members have joined the co-op"),
             ("PingOnHighestEB", "Highest assigned EB has joined"),
             ("PingOnFinished", "Co-op has finished"),
-            ("PingOnEveryoneCheckedIn", "Everyone has checked in after a co-op has finished"),
+            ("PingOnEveryoneCheckedIn", "Co-op is cleared for exit"),
             ("PingOnMessage", "Any non-bot message is sent in channel"),
             ("PingOnCoopCreated", "Additional DM alongside the standard @mention in the co-op channel"),
             ("PingOnTachyonChange", "Get notified when someone adds/removes a Tachyon Deflector"),

@@ -67,8 +67,8 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
-                coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                //coops = coops.Where(x => x.Name.ToLower() == "bookacts41".ToLower()).ToList();
+                //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "kendromehappy81".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -823,8 +823,12 @@ namespace EGG9000.Bot.Automated {
 
                     //New commands list, each is a quick-link to start using the command
                     lastMessage += "__Co-op Commands (click to use):__\n";
+
+
+                    if(dbguild.Id == 656455567858073601) { ///Currently CP only, will give the option to add more guilds later
+                        lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
+                    }
                     lastMessage += "\n</coopsettings:1107809801469173933> Receive DM pings for various events in the co-op";
-                    lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                     lastMessage += "\n</fixfullcooperror:1111043604178276463> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
 
 
@@ -923,7 +927,7 @@ namespace EGG9000.Bot.Automated {
                         await HandlePingOnFull(coopDetails.CoopParticipants, coopChannel);
                     }
 
-                    if(status.AllMembersReporting) {
+                    if(status.ClearedForExit) {
                         await HandlePingOnCheckedIn(coopDetails.CoopParticipants, coopChannel);
                     }
 
@@ -1281,7 +1285,7 @@ namespace EGG9000.Bot.Automated {
                 userStatus.Xref.UpdateCoopSetting();
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
                 try {
-                    await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has finished and everyone is checked in.");
+                    await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.");
                 } catch(Exception) {
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} The co-op {coopChannel.Mention} has finished and everyone is checked in. (User has blocked DMs from bot)");
                 }
