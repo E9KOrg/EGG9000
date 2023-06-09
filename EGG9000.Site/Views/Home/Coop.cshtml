@@ -27,10 +27,7 @@
 	var projectPercentEveryone = Model.CoopDetails.CoopParticipants.Sum(x => x.Projected) / targetAmount * 100;
 	var projectPercentEveryoneStr = PercentString(projectPercentEveryone);
 
-	var discordChannelDeleted = Model.CoopDetails.Coop.DeletedChannel;
-	var discordGuildID = Model.CoopDetails.Coop.OverflowGuildId != default ? Model.CoopDetails.Coop.OverflowGuildId : Model.CoopDetails.Coop.GuildId;
-	var discordChannelID = Model.CoopDetails.Coop.DiscordChannelId;
-	var discordLink = "discord://discordapp.com/channels/" + discordGuildID + "/" + discordChannelID + "/";
+	var discordChannelDeleted = Model.CoopDetails.Coop?.DeletedChannel ?? true;
 
 
 	var projectPercentWidth = Math.Min(projectPercent, 100) - percent;
@@ -48,6 +45,9 @@
 		<!-- If the channel isn't deleted, turn the coop name into a link to the discord channel-->
 		@{
 			if (!discordChannelDeleted){
+				var discordGuildID = Model.CoopDetails.Coop?.OverflowGuildId != default ? Model.CoopDetails.Coop.OverflowGuildId : Model.CoopDetails.Coop.GuildId;
+				var discordChannelID = Model.CoopDetails.Coop?.DiscordChannelId;
+				var discordLink = "discord://discordapp.com/channels/" + discordGuildID + "/" + discordChannelID + "/";
 				<a href="@discordLink" alt="Discord channel link" target="_blank">#@Model.CoopStatus.CoopIdentifier</a>
 			}
 			else {

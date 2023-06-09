@@ -37,7 +37,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(string.IsNullOrEmpty(EIID)) {
-                GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
+                //GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
                 throw new Exception($"Unable to a find user in the grade {grade}");
             }
 

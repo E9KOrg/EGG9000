@@ -92,7 +92,12 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsync();
 
                         needsUpdate = true;
-                    } else if(json != contract._response) {
+                    } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
+                        if(contract.Created < DateTime.Now.AddMonths(-3)) {
+                            contract.Created = DateTimeOffset.Now;
+                            var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
+                            _db.RemoveRange(guildContracts);
+                        }
                         _logger.LogInformation("Contract {0} updated", contract.ID);
                         contract.Description = contractResponse.Description;
                         contract.Name = contractResponse.Name;

@@ -188,7 +188,8 @@ namespace EGG9000.Site.Controllers {
                     var userByAccount = new List<UserByAccount>();
                     foreach(var coopUser in coopStart.Users) {
                         var user = users.FirstOrDefault(x => coopUser.DatabaseId == x.User.Id && coopUser.EggIncId == x.Account.Id);
-                        user.Group = useRoles ? uint.Parse(roles[coopUser.Group]) : coopUser.Group;
+                        user.Group = useRoles ? ulong.Parse(roles[coopUser.Group]) : coopUser.Group;
+                        userByAccount.Add(user);
                     }
                     await CreateCoopsV2.Start(userByAccount, contract, Grade, _discord.GetGuild(GuildId), _words, _provider, dbguild, (uint)bg);
                 } catch(Exception e) {
