@@ -50,7 +50,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool PingOnHighestEB { get; set; }
         public bool PingOnFinished { get; set; }
         public bool CoopFullWarning { get; set; }
-        public uint Group { get; set; }
+        public ulong Group { get; set; }
 
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]

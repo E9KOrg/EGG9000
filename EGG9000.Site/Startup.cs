@@ -29,6 +29,8 @@ using Discord;
 using Bugsnag.AspNet.Core;
 using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Authentication;
+using EGG9000.Common.Factories;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Site {
     public class Startup {
@@ -43,6 +45,8 @@ namespace EGG9000.Site {
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
+
+
 
             services.AddIdentity<IdentityUser, IdentityRole>(options => {
                 options.SignIn.RequireConfirmedAccount = false;
@@ -117,13 +121,12 @@ namespace EGG9000.Site {
                 options.EnableForHttps = true;
             });
 
-
 #if RELEASE
         services.AddBugsnag(configuration => {
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
         });
 #else
-        services.AddBugsnag();
+            services.AddBugsnag();
 #endif
 
             services.AddDatabaseDeveloperPageExceptionFilter();
