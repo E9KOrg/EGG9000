@@ -210,7 +210,8 @@ namespace EGG9000.Common.Database {
                     Amount = f.Amount,
                     Egg = f.Egg
                 }).ToList(),
-                Targeting = m?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown
+                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? ArtifactSpec.Types.Name.Unknown : ArtifactSpec.Types.Name.Unknown,
+                Capacity = m.Capacity
             }).ToList();
 
             FuelAmounts = new Dictionary<Ei.Egg, double>();
@@ -573,6 +574,9 @@ namespace EGG9000.Common.Database {
         public long StartTime { get; set; }
         [Key(6)]
         public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = ArtifactSpec.Types.Name.Unknown;
+        [Key(7)]
+        public uint Capacity { get; set; } = 0;
+
 
         [IgnoreMember]
         public long ReturnTime {
