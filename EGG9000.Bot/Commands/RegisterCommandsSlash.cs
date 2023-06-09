@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Commands {
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
 
-                var role = await DiscordHelpers.SetRole(guild, guildUser, earningsBonus, bugsnag);
+                //var role = await DiscordHelpers.SetRole(guild, guildUser, earningsBonus, bugsnag);
 
 
                 var dbguild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
@@ -80,6 +80,8 @@ namespace EGG9000.Bot.Commands {
                         await guildUser.AddRoleAsync(overflowRole);
                     }
                 }
+
+                var role = await DiscordHelpers.CheckRoles(guild, guildUser, user, _client, null, new List<LeaderboardUser>());
 
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel.Id == command.Channel.Id) {
@@ -461,7 +463,7 @@ namespace EGG9000.Bot.Commands {
             }
 
 
-            var role = await DiscordHelpers.SetRole(guild, socketGuildUser, earningsBonus, bugsnag);
+            var role = await DiscordHelpers.CheckRoles(guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, new List<LeaderboardUser>());
 
             var roleText = "";
             if(dbuser.EggIncAccounts.Count > 1) {
@@ -482,24 +484,6 @@ namespace EGG9000.Bot.Commands {
 
             var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
             await (generalChannel ?? command.Channel).SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}");
-
-
-
-            await DiscordHelpers.CheckSiloResearch(guild, socketGuildUser, dbuser.EggIncAccounts.Select(x => x.Backup).ToList());
-            await DiscordHelpers.CheckHatchlingRole(guild, socketGuildUser, dbuser);
-            await DiscordHelpers.CheckFreshEggsRole(guild, socketGuildUser, dbuser);
-
-            var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
-            if(activeRole != null) {
-                await socketGuildUser.AddRoleAsync(activeRole);
-            }
-
-
-
-            var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
-            if(unjoinedRole != null) {
-                await socketGuildUser.AddRoleAsync(unjoinedRole);
-            }
 
             var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
             if(overflowRole != null) {
@@ -566,6 +550,7 @@ namespace EGG9000.Bot.Commands {
             return _userstatus(command, db, _client, apiLink, command.User, false, false);
         }
         public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = false) {
+            await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
                 await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: !showInChannel);
@@ -601,6 +586,8 @@ namespace EGG9000.Bot.Commands {
             }
 
             lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
+
+            _ = await DiscordHelpers.CheckRoles(_client.GetGuild(command.GuildId ?? dbuser.GuildId), (SocketGuildUser)command.User, dbuser, _client, null, new List<LeaderboardUser>());
 
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
@@ -687,7 +674,7 @@ namespace EGG9000.Bot.Commands {
                 builder.AddField("Redo Leggacy", redoStr == "" ? "Not Set" : redoStr, true);
 
                 if(dbguild?.AllowGuilds ?? false) {
-                    builder.AddField("Guild", account.Guild ?? "None", true);
+                    builder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "None" : account.Guild, true);
                 }
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
