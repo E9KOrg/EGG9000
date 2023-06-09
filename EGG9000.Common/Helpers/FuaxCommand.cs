@@ -46,7 +46,7 @@ namespace EGG9000.Common.Services {
         public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
             if(_socketCommandBase is not null && _socketCommandBase.HasResponded)
                 await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
-            if(_socketCommandBase is not null)
+            else if(_socketCommandBase is not null)
                 await _socketCommandBase.RespondAsync(content, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
             else
                 _message = await _originalMessage.Channel.SendMessageAsync(content, messageReference: new MessageReference(_originalMessage.Id, _originalMessage.Channel.Id));
