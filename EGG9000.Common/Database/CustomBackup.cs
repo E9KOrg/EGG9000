@@ -209,7 +209,9 @@ namespace EGG9000.Common.Database {
                 Fuels = m.Fuel.Select(f => new SpaceMissionFuel {
                     Amount = f.Amount,
                     Egg = f.Egg
-                }).ToList()
+                }).ToList(),
+                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown : Ei.ArtifactSpec.Types.Name.Unknown,
+                Capacity = m.Capacity
             }).ToList();
 
             FuelAmounts = new Dictionary<Ei.Egg, double>();
@@ -570,6 +572,11 @@ namespace EGG9000.Common.Database {
         public long DurationSeconds { get; set; }
         [Key(5)]
         public long StartTime { get; set; }
+        [Key(6)]
+        public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = Ei.ArtifactSpec.Types.Name.Unknown;
+        [Key(7)]
+        public uint Capacity { get; set; } = 0;
+
 
         [IgnoreMember]
         public long ReturnTime {
