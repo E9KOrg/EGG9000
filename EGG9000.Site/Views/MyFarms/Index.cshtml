@@ -298,7 +298,25 @@
 					@foreach (var mission in backup.SpaceMissions ?? new List<SpaceMission>()) {
 						var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
 
-						<div style="display: inline-block;" class="card">
+						var shipEmoji = mission.Ship switch {
+							Ei.MissionInfo.Types.Spaceship.ChickenOne => "807223532747620373",
+							Ei.MissionInfo.Types.Spaceship.ChickenNine => "801748829212508161",
+							Ei.MissionInfo.Types.Spaceship.ChickenHeavy => "801748846455554088",
+							Ei.MissionInfo.Types.Spaceship.Bcr => "801748795498430464",
+							Ei.MissionInfo.Types.Spaceship.MilleniumChicken => "801748939354931200",
+							Ei.MissionInfo.Types.Spaceship.CorellihenCorvette => "801748884061159465",
+							Ei.MissionInfo.Types.Spaceship.Galeggtica => "801748910607171644",
+							Ei.MissionInfo.Types.Spaceship.Chickfiant => "801748897243987978",
+							Ei.MissionInfo.Types.Spaceship.Voyegger => "801748952814845962",
+							Ei.MissionInfo.Types.Spaceship.Henerprise => "801748924146384906",
+							_ => ""
+						};
+						var shipEmojiLink = "https://cdn.discordapp.com/emojis/" + shipEmoji + ".png?v=1";
+
+						<div style="display: inline-block; text-align: center; margin: 10px; padding-top: 10px;" class="card">
+							@if(shipEmoji != "") {
+								<img src="@((shipEmojiLink))" style="max-height: 40px">
+							}
 							<h4 class="card-header">@mission.Ship.ToString().Replace("_", " ")</h4>
 							<div class="card-body">
 								<div>Status: @mission.Status</div>
@@ -307,7 +325,7 @@
 
 										var fuelTargets = Ei.MissionInfo.GetFuelTargets(mission.Ship, mission.Duration);
 										var needsFuel = mission == null || fuelTargets.Any(ft => ft.Value > (mission.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
-										@needsFuel
+										<div>Needs Fuel: @needsFuel</div>
 										foreach (var fuel in mission.Fuels) {
 											var target = fuelTargets[fuel.Egg];
 											var percent = fuel.Amount / target * 100;
@@ -320,12 +338,22 @@
 									case Ei.MissionInfo.Types.Status.Returned:
 										if (returns < DateTimeOffset.Now) {
 											<div>Returned: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime()) ago</div>
-
 										} else {
 											<div>Returns: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime())</div>
 										}
-
 										break;
+								}
+								<div>Capacity: @((mission.Capacity))</div>
+								<!-- Only quintillion (4) and above can be targeted ships-->
+								@if(((int)mission?.Ship >= 4) && mission?.Targeting != null) {
+									@switch(mission?.Targeting) {
+										case Ei.ArtifactSpec.Types.Name.Unknown:
+											<div>Targeting: None</div>
+											break;
+										default:
+											<div>Targeting: @((mission.Targeting))</div>
+											break;
+									}
 								}
 							</div>
 						</div>
