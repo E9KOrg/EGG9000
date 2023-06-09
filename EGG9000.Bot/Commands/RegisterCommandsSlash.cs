@@ -462,7 +462,10 @@ namespace EGG9000.Bot.Commands {
                 await socketGuildUser.AddRoleAsync(registeredRole);
             }
 
-
+            if(dbuser.GuildId != guild.Id) {
+                dbuser.GuildId = guild.Id;
+                await db.SaveChangesAsync();
+            }
             var role = await DiscordHelpers.CheckRoles(guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, new List<LeaderboardUser>());
 
             var roleText = "";
@@ -587,8 +590,10 @@ namespace EGG9000.Bot.Commands {
 
             lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
-
+            if(dbuser.GuildId > 0) {
+                _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
+            }
+            
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
 
