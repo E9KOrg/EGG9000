@@ -313,7 +313,7 @@
 						};
 						var shipEmojiLink = "https://cdn.discordapp.com/emojis/" + shipEmoji + ".png?v=1";
 
-						<div style="display: inline-block; text-align: center; padding-top: 10px;" class="card">
+						<div style="display: inline-block; text-align: center; margin: 10px; padding-top: 10px;" class="card">
 							@if(shipEmoji != "") {
 								<img src="@((shipEmojiLink))" style="max-height: 40px">
 							}
@@ -343,7 +343,9 @@
 										}
 										break;
 								}
-								@if(mission?.Targeting != null) {
+								<div>Capacity: @((mission.Capacity))</div>
+								<!-- Only quintillion (4) and above can be targeted ships-->
+								@if(((int)mission?.Ship >= 4) && mission?.Targeting != null) {
 									@switch(mission?.Targeting) {
 										case Ei.ArtifactSpec.Types.Name.Unknown:
 											<div>Targeting: None</div>
@@ -353,10 +355,6 @@
 											break;
 									}
 								}
-								else {
-									<div>Targeting: None</div>
-								}
-
 							</div>
 						</div>
 					}
