@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "kendromehappy81".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "kendromespeed8".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -1351,7 +1351,7 @@ namespace EGG9000.Bot.Automated {
             if(usersWithStatus.Any(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup.EggIncId)) {
-                    foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting.PingOnHighestEB ?? false)) {
+                    foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsync();
@@ -1378,7 +1378,7 @@ namespace EGG9000.Bot.Automated {
 
         private decimal GetTachyonAmount(IEnumerable<Ei.ContractCoopStatusResponse.Types.ContributionInfo> contributions, string currentUserUuid) {
             var matches = contributions.Where(x => x.Uuid != currentUserUuid && x.BuffHistory.Count > 0);
-            var histories = matches.Select(x => x.BuffHistory.OrderBy(y => y.ServerTimestamp).Last());
+            var histories = matches.Select(x => x.BuffHistory.Last());
             return histories.Sum(x => ((decimal)x.EggLayingRate) - 1);
         }
 
