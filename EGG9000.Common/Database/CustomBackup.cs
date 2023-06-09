@@ -7,7 +7,7 @@ using System.Text;
 using EGG9000.Bot.EggIncAPI;
 
 using EGG9000.Common.Helpers;
-
+using Ei;
 using Google.Protobuf.Collections;
 
 using MessagePack;
@@ -209,7 +209,8 @@ namespace EGG9000.Common.Database {
                 Fuels = m.Fuel.Select(f => new SpaceMissionFuel {
                     Amount = f.Amount,
                     Egg = f.Egg
-                }).ToList()
+                }).ToList(),
+                Targeting = m?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown
             }).ToList();
 
             FuelAmounts = new Dictionary<Ei.Egg, double>();
@@ -570,6 +571,8 @@ namespace EGG9000.Common.Database {
         public long DurationSeconds { get; set; }
         [Key(5)]
         public long StartTime { get; set; }
+        [Key(6)]
+        public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = ArtifactSpec.Types.Name.Unknown;
 
         [IgnoreMember]
         public long ReturnTime {
