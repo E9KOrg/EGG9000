@@ -140,7 +140,7 @@ namespace EGG9000.Common.Helpers
 	{
         ""order"": 19,
 		""id"": ""hold_to_research"",
-		""costs"": [5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000],
+		""costs"": [5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 11315, 12105, 12894, 13684, 14473, 15263, 16052, 16842, 17631, 18421, 19210, 20000],
 		""title"": ""Hold to Research"",
 		""desc"": ""Increase repetition rate when holding down research button by 25%""
 	},
@@ -175,7 +175,7 @@ namespace EGG9000.Common.Helpers
 	{
         ""order"": 24,
 		""id"": ""fuelTank"",
-		""costs"": [50000, 250000, 1000000],
+		""costs"": [50000, 250000, 1000000, 2000000, 3000000, 4000000, 5000000],
 		""title"": ""Fuel Tank"",
 		""desc"": ""Increases the capacity of your fuel tank [Pro Permit Only]""
 	}*/
