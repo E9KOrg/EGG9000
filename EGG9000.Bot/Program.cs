@@ -125,7 +125,7 @@ await Host.CreateDefaultBuilder(args)
 
 #else
             services.AddBugsnag();
-            services.AddSingleton<PublishEndpointMock>();
+            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
             //services.AddHostedService<TestService>();
 #endif
 
