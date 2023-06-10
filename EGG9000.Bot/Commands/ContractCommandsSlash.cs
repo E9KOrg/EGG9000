@@ -368,7 +368,14 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        public class RemoveFromCoopAutoComplete(ApplicationDbContext _db) : AutoCompleteHandler {
+        public class RemoveFromCoopAutoComplete : AutoCompleteHandler {
+
+            private ApplicationDbContext _db;
+
+            public RemoveFromCoopAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername }).ToListAsync();
                 if(users.Count == 0) {

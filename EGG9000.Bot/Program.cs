@@ -60,8 +60,8 @@ await Host.CreateDefaultBuilder(args)
             services.AddMemoryCache();
 
             services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
-//#if DEBUG               // Use to test only specific funcitons
-#if DEBUG || DEV9002  //Use to test as if it was in production
+#if DEBUG               // Use to test only specific funcitons
+//#if DEBUG || DEV9002  //Use to test as if it was in production
             services.AddBugsnag();
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
