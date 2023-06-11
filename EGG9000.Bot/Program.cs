@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
 using MassTransit;
+using EGG9000.Bot.Consumers;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
