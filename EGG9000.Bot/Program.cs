@@ -80,7 +80,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #else
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
             services.AddBugsnag();
-            services.AddSingleton<PublishEndpointMock>();
+            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
 #endif
 
             services.AddSingleton<DiscordHostedService>();

@@ -82,8 +82,8 @@ namespace EGG9000.Bot.Commands
         }
 
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
-        public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Getting backups...", ephemeral: true);
+        public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
+            await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null)
             {
