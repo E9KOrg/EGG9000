@@ -388,7 +388,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
                     var ms1 = new MemoryStream();
                     new Ei.EggIncFirstContactRequest {
-                        ClientVersion = 27,
+                        ClientVersion = ClientVersion,
                         Platform = Aux.Platform.Droid,
                         UserId = UserId
                     }.WriteTo(ms1);
