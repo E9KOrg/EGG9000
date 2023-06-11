@@ -15,6 +15,7 @@ using NLog.Web;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
+using MassTransit;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -78,7 +79,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #else
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
             services.AddBugsnag();
-            services.AddSingleton<PublishEndpointMock>();
+            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
 #endif
 
             services.AddSingleton<DiscordHostedService>();
