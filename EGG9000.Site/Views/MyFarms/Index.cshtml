@@ -159,7 +159,7 @@
 					@if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) { 
 						@string.Join("", "Yes (All)")
 					} else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
-							@string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS")
+							@string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS)")
 					} else { 
 						@string.Join("", "No")
 					}
