@@ -43,12 +43,12 @@ namespace EGG9000.Bot.Commands {
             }
 
             var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = 30,
+                ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = true,
-                RequestingUserId = ContractsAPI.UserId
-            }, ContractsAPI.UserId);
+                RequestingUserId = coop.CreatorID
+            }, coop.CreatorID);
 
             if(response.Success) {
                 await command.RespondAsync($"{coop.Name} is now public.");
@@ -68,12 +68,12 @@ namespace EGG9000.Bot.Commands {
             }
 
             var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = 30,
+                ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = false,
-                RequestingUserId = ContractsAPI.UserId
-            }, ContractsAPI.UserId);
+                RequestingUserId = coop.CreatorID
+            }, coop.CreatorID);
 
             if(response.Success) {
                 await command.RespondAsync($"{coop.Name} is now private.");
