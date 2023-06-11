@@ -24,7 +24,7 @@
 			@foreach (var snapshot in Model.snapshots.Where(x => Model.isAdmin || x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
 				<tr>
 					@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}
-					<td>@snapshot.Date.ToShortDateString()</td>
+				<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
 					<td>@snapshot.EggsOfProphecy</td>
 					<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
 					<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
