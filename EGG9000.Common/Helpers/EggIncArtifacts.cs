@@ -10,29 +10,24 @@ using MessagePack;
 namespace EGG9000.Common.Helpers {
     public class EggIncArtifacts {
         public static double GetMultiple(EggIncBoostTypeEnum boostType, CustomFarm farm) {
-            var rate = 1.0;
             var enlightenment = farm.EggType == Ei.Egg.Enlightenment;
+            return GetMultiple(boostType, farm.Artifacts, enlightenment);
+        }
+        public static double GetMultiple(EggIncBoostTypeEnum boostType, List<EggIncArtifactInstance> artifacts, bool enlightenment) {
+            var rate = 1.0;
 
-            var debug = new List<string>();
-            farm.Artifacts.ToList().ForEach(x => {
+            artifacts.ForEach(x => {
                 if(x.Stones == null)
                     x.Stones = new List<EggIncArtifactInstance>();
                 double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue) ? 0 : 1;
                 farmMultiple += x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Sum(s => s.Value);
-                debug.Add("EStones: " + string.Join(" ", x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Select(s => s.Value)));
                 if(x.Boost == boostType) {
                     rate *= GetEnlightenmentRate(x, farmMultiple);
-                    debug.Add($"{x.Artifact} {GetEnlightenmentRate(x, farmMultiple)}  {farmMultiple}");
                 }
                 foreach(var stone in x.Stones.Where(x => x.Boost == boostType)) {
                     rate *= GetEnlightenmentRate(stone, farmMultiple); //stone.Value * (x.Boost == EggIncBoostTypeEnum.EnlightenmentEggValue ? 1 : farmMutiple);
-                    debug.Add($"{stone.Artifact} {GetEnlightenmentRate(stone, farmMultiple)} {farmMultiple}");
                 }
             });
-
-            //Console.WriteLine("");
-            //Console.WriteLine(boostType.ToString());
-            //Console.WriteLine(string.Join("\r\n", debug));
 
             return rate;
         }
