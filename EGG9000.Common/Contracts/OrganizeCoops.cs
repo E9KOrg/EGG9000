@@ -39,7 +39,9 @@ namespace EGG9000.Common.Contracts {
             //Need 1k soul eggs for contracts
             accounts = accounts.Where(x => x.Account.Backup.SoulEggs >= 1000);
             //Need to have the egg unlocked
-            //accounts = accounts.Where(x => x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg);
+            accounts = accounts.Where(x => 
+                x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg
+            );
 
             accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)));
 
