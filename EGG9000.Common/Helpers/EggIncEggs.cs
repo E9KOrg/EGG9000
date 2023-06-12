@@ -90,6 +90,9 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
                         case EggIncBoostTypeEnum.UnlimitedHatchery:
                             type = $"{boost.Emoji} for {boost.Time.Humanize().ShortenTime()}";
                             break;
+                        default:
+                            type = $"Unknown Boost Type: {goal.RewardSubType}";
+                            break;
                     }
                     return (goal.RewardAmount > 1 ? goal.RewardAmount.ToString() : "") + type;
                 case Ei.RewardType.SoulEggs:
