@@ -125,6 +125,7 @@ namespace EGG9000.Bot.Commands {
                 { Ei.RewardType.PiggyMultiplier, "Piggy Bank" },
                 { Ei.RewardType.ShellScript, "Shell Tickets" },
                 { Ei.RewardType.Gold, "Golden Eggs" },
+                { Ei.RewardType.Boost, "Any Boost" },
                 { Ei.RewardType.EpicResearchItem, "Epic Research" },
                 { Ei.RewardType.UnknownReward, "** Any Reward **" },
             };
