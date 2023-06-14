@@ -252,7 +252,7 @@ namespace EGG9000.Bot.Commands {
             var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
             var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-            await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+            await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
             await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
         }
