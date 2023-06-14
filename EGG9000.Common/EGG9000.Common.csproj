@@ -84,6 +84,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="JsonData\eiafx-data.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Proto\common.proto">
       <GrpcServices>Client</GrpcServices>
     </None>
