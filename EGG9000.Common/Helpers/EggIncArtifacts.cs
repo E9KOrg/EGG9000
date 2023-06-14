@@ -97,6 +97,20 @@ namespace EGG9000.Common.Helpers {
 
             return rarity.slots ?? 0;
         }
+        public static string GetProperNameFromJson(EggIncArtifactInstance instance) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            }
+
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
+            if(tier is null) {
+                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
+            }
+
+            return tier.name;
+        }
 
         public static string GetNameFromJson(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();

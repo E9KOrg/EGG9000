@@ -1,51 +1,54 @@
 ﻿@using Discord.WebSocket;
 @using EGG9000.Site.Controllers;
+@using System.Globalization;
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @inject DiscordSocketClient DiscordClient
 @model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user)
 @{
-    void artifactTemplate(EggIncArtifactInstance artifact) {
+    string artifactTemplate(EggIncArtifactInstance artifact) {
         if (artifact == null) {
-            <td></td>
-        } else if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-            <td>@Math.Round((artifact.Value) * 100)%</td>
-        } else if (artifact.Additive) {
-            <td>+@artifact.Value</td>
-        } else if (+artifact.Value < 2) {
-            <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
-        } else {
-            <td>
-                @(
-                artifact.Value
-                    )x
-            </td>
-        }
-    }
-
-    string artifactImage(EggIncArtifactInstance artifact){
-        if(artifact == null){
             return "";
-        } else{
-            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
-            return "/images/artifacts/" + properName + "/" + properName + "_" + artifact.Tier + ".png";
+        } else if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+            return $"{Math.Round((artifact.Value) * 100)}%";
+        } else if (artifact.Additive) {
+            return $"+{artifact.Value}";
+        } else if (+artifact.Value < 2) {
+            return $"+{Math.Round((artifact.Value - 1) * 100)}%";
+        } else {
+            return $"{artifact.Value}x";
         }
     }
 
-    void artifactBackground(EggIncArtifactInstance artifact){
-        if(artifact == null){
-            <div></div>
-        } else{
+    string artifactImage(EggIncArtifactInstance artifact, bool stone) {
+        if (artifact == null) {
+            return "";
+        } else {
+            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
+            return "/images/artifacts/" + properName + "/" + properName + "_" + (artifact.Tier + (stone ? 1 : 0)) + ".png";
+        }
+    }
 
-            var bgClass = artifact.Rarity switch{
+    void artifactBackground(EggIncArtifactInstance artifact, bool stone) {
+        if (artifact == null) {
+            <div></div>
+        } else {
+
+            var bgClass = artifact.Rarity switch {
                 1 => "bg-common", //Common
                 2 => "bg-rare", //Rare
                 3 => "bg-epic", //Epic
                 4 => "bg-legendary", //Legendary
                 _ => "bg-common" //Default to gray
             };
-
-            <div class="rounded-full @(bgClass)" style="height:50px; width:50px;">
-                <img class="position-absolute" style="width:50px; height:50px;" src="@{artifactImage(artifact);}">
+            if (stone) {
+                bgClass = "";
+            }
+            var image = artifactImage(artifact, stone);
+            var size = stone ? 15 : 70;
+            var textInfo = new CultureInfo("en-US", false).TextInfo;
+            var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
+            <div class="rounded-full @(bgClass)" style="height:@(size)px; width:@(size)px;">
+                <img class="position-absolute" style="width:@(size)px; height:@(size)px;" src="@image" title="@name" />
             </div>
         }
     }
@@ -53,15 +56,22 @@
     List<EggIncArtifactInstance> Sort(List<EggIncArtifactInstance> current, List<EggIncArtifactInstance> toSort) {
         var newList = new List<EggIncArtifactInstance>();
         foreach (var artifact in current) {
-            var newArtifact = toSort.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
-            if (newArtifact is null) {
-                newArtifact = toSort.FirstOrDefault(x => !current.Any(y => y.Artifact.Equals(x.Artifact)));
-
+            var newArtifactIndex = toSort.FindIndex(x => x.Artifact.Equals(artifact.Artifact));
+            if (newArtifactIndex >= 0) {
+                newList.Add(toSort[newArtifactIndex]);
+                toSort.RemoveAt(newArtifactIndex);
+            } else {
+                newList.Add(null);
             }
-            if (newArtifact is not null) {
-                toSort.Remove(newArtifact);
-                newList.Add(newArtifact);
+        }
+        for (var i = 0; i < newList.Count; i++) {
+            if (newList[i] is null) {
+                newList[i] = toSort[0];
+                toSort.RemoveAt(0);
             }
+        }
+        if(toSort.Count > 0){
+            newList.AddRange(toSort);
         }
         return newList;
     }
@@ -80,7 +90,7 @@
         var currentTachyon = farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var newTachyon = newArtifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var tachyonDifference = (newTachyon - 1) - (currentTachyon - 1) + 1;
-        var coopNewRate = (coopDetails.CoopParticipants.Where(x => x.EggIncId != Model.Backup.EggIncId).Sum(x => x.Rate)) * tachyonDifference + stats.CurrentShippingRate;
+        var coopNewRate = coopDetails is null ? stats.CurrentShippingRate : (coopDetails.CoopParticipants.Where(x => x.EggIncId != Model.Backup.EggIncId).Sum(x => x.Rate)) * tachyonDifference + stats.CurrentShippingRate;
         return (stats.CurrentShippingRate, coopNewRate);
     }
 }
@@ -96,102 +106,111 @@
             </ul>
         </div>
     </div>
-    @foreach (var farm in Model.Backup.Farms.Where(x => !x.Cancelled && x.FarmType == Ei.FarmType.Contract)) {
+    @foreach (var farm in Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty)) {
         var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
-        if (coop is not null) {
-            var changeStones = false;
-            var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, changeStones, null));
-            var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, changeStones, null));
+        var isHome = farm.FarmType == Ei.FarmType.Home;
 
-            var farmStats = farm.WithStats(Model.Backup, coop);
+        var changeStones = false;
+        var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, changeStones, null));
 
-            var usersWithBackups = coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
-            var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
-            var currentCoopRate = coopDetails.CoopParticipants.Sum(x => x.Rate);
+        var farmStats = farm.WithStats(Model.Backup, coop);
 
-            var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
-            var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
-            <div style="display: inline-block;" class="card">
-                @if (farm.ContractId != null) {
-                    <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
-                } else {
-                    <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
-                }
-                <table class="table table-sm" style="margin-bottom: 0;">
+        var usersWithBackups = isHome ? new List<UserWithBackup>() : coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
+        var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
+        var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
+
+        var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
+
+        var bestWithTachyon = isHome ? new List<EggIncArtifactInstance>() : Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, changeStones, null));
+        var withTachyon = isHome ? (0, 0) : GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
+
+        <div style="display: inline-block; margin-right: 13px;" class="card">
+        @if(isHome) {
+                <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+            } else {
+                <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+            }
+            <table class="table table-sm" style="margin-bottom: 0;">
+                <thead>
                     <tr>
+                        <th></th>
                         <th>Current</th>
-                        <th></th>
-                        <th>Without Deflector</th>
-                        <th></th>
-                        <th>With Deflector</th>
-                        <th></th>
-                    </tr>
-                    @for (var i = 0; i < 4; i++) {
-                        var current = farm.Artifacts.Count > i ? farm.Artifacts[i] : null;
-                        var artifact = bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null;
-                        var different = current == null ? true : !current.Equals(artifact);
-                        var artifactWithTachyon = bestWithTachyon.Count > i ? bestWithTachyon[i] : null;
-                        var withTachyonDifferent = current == null ? true : !current.Equals(artifactWithTachyon);
-                        <tr>
-                            @{
-                                artifactBackground(current);
-                            }
-                            <td style="padding-left: 5px;">@current?.Artifact</td>
-                            @{
-                                artifactTemplate(current);
-                            }
-                            <td style="padding-left: 5px;" class="@(different ? "different" : "")">@artifact?.Artifact</td>
-                            @{
-                                artifactTemplate(artifact);
-                            }
-                            <td style="padding-left: 5px;" class="@(withTachyonDifferent ? "different" : "")">@artifactWithTachyon?.Artifact</td>
-                            @{
-                                artifactTemplate(artifactWithTachyon);
-                            }
-                        </tr>
-                        @if (artifact?.Stones != null && artifact.Stones.Count > 0) {
-                            for (var s = 0; s < 4; s++) {
-                                var currentStone = current?.Stones.Count > s ? current.Stones[s] : null;
-                                var stone = artifact.Stones.Count > s ? artifact.Stones[s] : null;
-                                var stoneWithTach = artifactWithTachyon?.Stones.Count > s ? artifactWithTachyon.Stones[s] : null;
-                                if (currentStone is not null || stone is not null || stoneWithTach is not null) {
-                                    <tr>
-                                        <td style="padding-left: 15px;">@currentStone?.Artifact</td>
-                                        @{
-                                            artifactTemplate(currentStone);
-                                        }
-                                        <td style="padding-left: 15px;" class="@(different ? "different" : "")">@stone?.Artifact</td>
-                                        @{
-                                            artifactTemplate(stone);
-                                        }
-                                        <td style="padding-left: 15px;" class="@(withTachyonDifferent ? "different" : "")">@stoneWithTach?.Artifact</td>
-                                        @{
-                                            artifactTemplate(stoneWithTach);
-                                        }
-                                    </tr>
-                                }
-                            }
+                        @if (isHome) {
+                            <th>Recommended</th>
+                        } else {
+                            <th>No<br />Deflector</th>
+                            <th>With<br />Deflector</th>
                         }
+                    </tr>
+                </thead>
+                @for (var i = 0; i < 4; i++) {
+                    var current = farm.Artifacts.Count > i ? farm.Artifacts[i] : null;
+                    var artifact = bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null;
+                    var different = current == null ? true : !current.Equals(artifact);
+                    <tr>
+                        <td></td>
+                        <td style="padding-left: 5px;">
+                            @{
+                                artifactBackground(current, false);
+                            }
+                            <div class="Stones">
+                                @for (var s = 0; s < 4; s++) {
+                                    if (current?.Stones.Count > s) {
+                                        artifactBackground(current.Stones[s], true);
+                                    }
+                                }
+                            </div>
+                        </td>
+                        <td style="padding-left: 5px;" class="@(different ? "different" : "")">
+                            @{
+                                artifactBackground(artifact, false);
+                            }
+                            <div class="Stones">
+                                @for (var s = 0; s < 4; s++) {
+                                    if (artifact?.Stones.Count > s) {
+                                        artifactBackground(artifact.Stones[s], true);
+                                    }
+                                }
+                            </div>
+                        </td>
+                        @if (!isHome) {
+                            var artifactWithTachyon = bestWithTachyon.Count > i ? bestWithTachyon[i] : null;
+                            var withTachyonDifferent = current == null ? true : !current.Equals(artifactWithTachyon);
+                            <td style="padding-left: 5px;" class="@(withTachyonDifferent ? "different" : "")">
+                                @{
+                                    artifactBackground(artifactWithTachyon, false);
+                                }
+                                <div class="Stones">
+                                    @for (var s = 0; s < 4; s++) {
+                                        if (artifactWithTachyon?.Stones.Count > s) {
+                                            artifactBackground(artifactWithTachyon.Stones[s], true);
+                                        }
+                                    }
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+                <tr>
+                    <th>Mine</th>
+                    <td class="text-right">@((farmStats.CurrentShippingRate * 60).ToEggString(true))/m</td>
+                    <td class="text-right">@((withoutTachyon.myRate * 60).ToEggString(true))/m</td>
+                    @if (!isHome) {
+
+
+                        <td class="text-right">@((withTachyon.myRate * 60).ToEggString(true))/m</td>
                     }
-                    <tr>
-                        <th>My Rate</th>
-                        <td>@((farmStats.CurrentShippingRate * 60).ToEggString(true))/m</td>
-                        <th>My Rate</th>
-                        <td>@((withoutTachyon.myRate * 60).ToEggString(true))/m</td>
-                        <th>My Rate</th>
-                        <td>@((withTachyon.myRate * 60).ToEggString(true))/m</td>
-                    </tr>
-                    <tr>
-                        <th>Coop Rate</th>
-                        <td>@((currentCoopRate * 60).ToEggString(true))/m</td>
-                        <th>Coop Rate</th>
-                        <td class="@(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")">@((withoutTachyon.coopRate * 60).ToEggString(true))/m</td>
-                        <th>Coop Rate</th>
-                        <td class="@(withoutTachyon.coopRate < withTachyon.coopRate ? "better" : "")">@((withTachyon.coopRate * 60).ToEggString(true))/m</td>
-                    </tr>
-                </table>
-            </div>
-        }
+                </tr>
+                @if(!isHome) {
+                <tr>
+                    <th>Coop</th>
+                    <td class="text-right">@((currentCoopRate * 60).ToEggString(true))/m</td>
+                    <td class="text-right @(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")">@((withoutTachyon.coopRate * 60).ToEggString(true))/m</td>
+                    <td class="text-right @(withoutTachyon.coopRate < withTachyon.coopRate ? "better" : "")">@((withTachyon.coopRate * 60).ToEggString(true))/m</td>
+                </tr>
+                }
+            </table>
+        </div>
     }
     <style>
         .different {
@@ -209,9 +228,27 @@
         .bootstrap-dark .better {
             background-color: #274629;
         }
+
+        .Stones {
+            padding-left: 12px;
+            margin-top: -3px;
+        }
+
+        .card {
+            margin-bottom: 15px;
+        }
+
+        .table td, .table th {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+
+        .table thead th {
+            text-align: center;
+        }
     </style>
 } catch (Exception ex) {
-<div class="alert alert-danger" role="alert">
-    @ex.Message
-</div>
+    <div class="alert alert-danger" role="alert">
+        @ex.Message
+    </div>
 }
