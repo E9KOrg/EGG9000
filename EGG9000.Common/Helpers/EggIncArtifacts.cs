@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 using EGG9000.Common.Database;
 using EGG9000.Common.JsonData.EiAfxData;
 
 using MessagePack;
+
+using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 
 using Newtonsoft.Json;
 
@@ -58,8 +62,17 @@ namespace EGG9000.Common.Helpers {
         private static EiAfxDataRoot _eiAfxDataRoot;
         public static EiAfxDataRoot GetEiAfxData() {
             if(_eiAfxDataRoot == null) {
-                var json = System.IO.File.ReadAllText(@"JsonData\eiafx-data.json");
-                _eiAfxDataRoot = JsonConvert.DeserializeObject<EiAfxDataRoot>(json);
+
+                var assembly = Assembly.GetExecutingAssembly();
+
+                string resourceName = assembly.GetManifestResourceNames()
+                    .Single(str => str.EndsWith("eiafx-data.json"));
+
+                using(Stream stream = assembly.GetManifestResourceStream(resourceName))
+                using(StreamReader reader = new StreamReader(stream)) {
+                    string json = reader.ReadToEnd();
+                    _eiAfxDataRoot = JsonConvert.DeserializeObject<EiAfxDataRoot>(json);
+                }
             }
             return _eiAfxDataRoot;
         }
@@ -75,6 +88,8 @@ namespace EGG9000.Common.Helpers {
             if(tier is null) {
                 throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
             }
+            if(!tier.has_rarities)
+                return 0;
             var rarity = tier.effects.FirstOrDefault(x => x.afx_rarity == instance.Rarity - 1);
             if(rarity is null) {
                 throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}");

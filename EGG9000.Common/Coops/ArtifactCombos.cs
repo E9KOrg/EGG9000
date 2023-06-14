@@ -20,19 +20,70 @@ namespace EGG9000.Common.Coops {
 
                 return Process(available, backup, farm, coop, withTachyon);
             } else {
-                var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone"));
+                var timings = new TimingsFactory(logger).Start();
+
+                var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone")).Select(x => new ArtifactCountWithSlots(x, EggIncArtifacts.SlotCount(x.Artifact)));
 
                 var allCombos = new List<ArtifactInstanceStats>();
 
-                foreach(var artifact in available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate).GroupBy(x => new {x.Artifact.Rarity, x.Artifact.Tier }).Select(x => x.First())) {
-                    var slots = EggIncArtifacts.SlotCount(artifact.Artifact);
-                } 
+                var stones = backup.GetAvailableArtifacts(farm)
+                    .Where(x => x.Artifact.Artifact.Contains("Stone") && (x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate || x.Artifact.Boost == EggIncBoostTypeEnum.EggLayingRate));
 
-                return Process(allCombos, backup, farm, coop, withTachyon);
+                var possibleStones = stones.Select(x => x.Artifact).ToList();
+
+
+                var toProcess = available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate || x.Artifact.Boost == EggIncBoostTypeEnum.EggLayingRate).ToList();
+                available = available.Where(x => x.Artifact.Boost != EggIncBoostTypeEnum.EggShippingRate && x.Artifact.Boost != EggIncBoostTypeEnum.EggLayingRate).ToList();
+                var maxSlots1 = available.MaxBy(x => x.Slots);
+                toProcess.Add(maxSlots1);
+                var maxSlots2 = available.Where(x => x.Artifact.Artifact != maxSlots1.Artifact.Artifact).MaxBy(x => x.Slots);
+                toProcess.Add(maxSlots2);
+
+                foreach(var artifactCount in toProcess.GroupBy(x => new {x.Artifact.Rarity, x.Artifact.Tier, x.Artifact }).Select(x => x.First())) {
+                    var slots = artifactCount.Slots;
+                    var artifact = artifactCount.Artifact;
+                    var combos = FillStones(slots, possibleStones);
+                    foreach(var combo in combos) {
+                        allCombos.Add(new ArtifactInstanceStats(new EggIncArtifactInstance { Additive = artifact.Additive, Artifact = artifact.Artifact, Boost = artifact.Boost, Rarity = artifact.Rarity, Stones = combo, Tier = artifact.Tier, Value = artifact.Value }));
+                    }
+
+                }
+
+                timings.Set("All Combos Generated");
+                var unique = allCombos.GroupBy(x => x.Artifact.Artifact).Select(x => x.First()).ToList();
+
+                var list = Process(allCombos, backup, farm, coop, withTachyon);
+                timings.Finished();
+                return list;
 
             }
         }
 
+        private class ArtifactCountWithSlots : ArtifactCount {
+            public int Slots { get; set; }
+            public ArtifactCountWithSlots(ArtifactCount a, int slots) {
+                Slots = slots;
+                Artifact = a.Artifact;
+                Count = a.Count;
+            }
+        }
+
+        private static List<List<EggIncArtifactInstance>> FillStones(int slots, List<EggIncArtifactInstance> possibleStones) {
+
+            if(slots == 0) {
+                return new List<List<EggIncArtifactInstance>> { new List<EggIncArtifactInstance>() };
+            } 
+            var stonesCombos = FillStones(slots - 1, possibleStones);
+            var newCombos = new List<List<EggIncArtifactInstance>>();
+            foreach(var stoneCombo in stonesCombos) {
+                foreach(var stone in possibleStones) {
+                    var newCombo = new List<EggIncArtifactInstance>(stoneCombo);
+                    newCombo.Add(stone);
+                    newCombos.Add(newCombo);
+                }
+            }
+            return newCombos;
+        }
 
         private static List<EggIncArtifactInstance> Process(IEnumerable<ArtifactInstanceStats> available, CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon) {
             var farmWithoutArtifacts = new CustomFarm {
