@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "kendromespeed8".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "JeepFroth96".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -94,7 +94,7 @@ namespace EGG9000.Bot.Automated {
                         }
                         tasks.Add(Task.Run(async () => {
                             try {
-                                await SendUpdate(coop.Id, guild, users, dbguild, cancellationToken, _db);
+                                await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken, _db);
                             } finally {
                                 throttler.Release();
                             }
@@ -366,7 +366,7 @@ namespace EGG9000.Bot.Automated {
             };
         }
 
-        public async Task SendUpdate(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken, ApplicationDbContext db) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken, ApplicationDbContext db) {
             //var timings = new TimingsFactory(_logger);
             var timings = new TimingsFactory(null);
             timings.Start();
@@ -439,6 +439,33 @@ namespace EGG9000.Bot.Automated {
                         return;
                     }
                     var status = statusReponse.Status;
+
+
+
+                    if(status.SecondsRemaining == coop.Contract.Details.LengthSeconds) {
+                        //Attempt to fix not started co-op
+                        var statusUpdate = new Ei.ContractCoopStatusUpdateRequest {
+                            ContractIdentifier = coop.ContractID,
+                            CoopIdentifier = coop.Name.ToLower(),
+                            Eop = 1, SoulPower = 24, UserId = coop.CreatorID, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = coop.CreatorID, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
+                            ProductionParams = new Ei.FarmProductionParams {
+                                FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
+                            }
+                        };
+
+                        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, true);
+
+
+
+                        var kickPlayer = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+                            ClientVersion = ContractsAPI.ClientVersion,
+                            ContractIdentifier = coop.ContractID,
+                            CoopIdentifier = coop.Name.ToLower(),
+                            PlayerIdentifier = coop.CreatorID,
+                            Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+                            RequestingUserId = coop.CreatorID
+                        }, coop.CreatorID);
+                    }
 
                     bool finalChannelUpdate = false;
 
