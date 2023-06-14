@@ -71,8 +71,9 @@
     @foreach (var farm in Model.Backup.Farms.Where(x => !x.Cancelled && x.FarmType == Ei.FarmType.Contract)) {
         var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
         if (coop is not null) {
-            var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, null));
-            var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, null));
+            var changeStones = false;
+            var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, changeStones, null));
+            var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, changeStones, null));
 
             var farmStats = farm.WithStats(Model.Backup, coop);
 
