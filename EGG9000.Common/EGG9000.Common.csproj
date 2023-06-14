@@ -48,6 +48,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="JsonData\eiafx-data.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="10.1.1" />
     <PackageReference Include="Bugsnag.AspNet.Core" Version="3.1.0" />
     <PackageReference Include="Google.Protobuf" Version="3.23.0" />
@@ -84,9 +88,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="JsonData\eiafx-data.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Proto\common.proto">
       <GrpcServices>Client</GrpcServices>
     </None>
@@ -95,5 +96,11 @@
     </None>
     <Protobuf Include="Proto\ei.proto" GrpcServices="Client" />
     <Protobuf Include="Proto\common.proto" GrpcServices="Client" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="JsonData\eiafx-data.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>
