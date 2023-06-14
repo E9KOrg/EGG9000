@@ -4,8 +4,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 
+using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
-
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 
 using Google.Protobuf.Collections;
@@ -95,7 +97,7 @@ namespace EGG9000.Common.Database {
         public Ei.Egg MaxEggReached { get; set; }
         [Key(32)]
         public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached { get; set; }
-        [Key(33)] 
+        [Key(33)]
         public bool HasDeviceId { get; set; } = false;
         [Key(34)]
         public string DeviceId { get; set; } = string.Empty;
@@ -142,17 +144,27 @@ namespace EGG9000.Common.Database {
             }
         }
 
-        [IgnoreMember]
-        public List<ArtifactCount> GetAvailableArtifacts {
-            get {
-                if(ArtifactHall is null || ArtifactHall.Count == 0) {
-                    return new List<ArtifactCount>();
-                }
-
-                var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-                Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
-                return artifacts.Where(x => x.Count > 0).ToList();
+        public List<ArtifactCount> GetAvailableArtifacts() {
+            if(ArtifactHall is null || ArtifactHall.Count == 0) {
+                return new List<ArtifactCount>();
             }
+
+            var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
+            Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
+            return artifacts.Where(x => x.Count > 0).ToList();
+        }
+
+        public List<ArtifactCount> GetAvailableArtifacts(CustomFarm farm) {
+            if(ArtifactHall is null || ArtifactHall.Count == 0) {
+                return new List<ArtifactCount>();
+            }
+
+            var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
+
+            var farms = Farms.Where(x => x != farm);
+
+            farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty).ToList().ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
+            return artifacts.Where(x => x.Count > 0).ToList();
         }
 
         public CustomBackup() { }
@@ -221,9 +233,9 @@ namespace EGG9000.Common.Database {
             }
 
             MaxFarmSizeReached = new Dictionary<Ei.Egg, ulong>();
-            for(var i = 0; i < backup.Game.MaxFarmSizeReached.Count; i++){
+            for(var i = 0; i < backup.Game.MaxFarmSizeReached.Count; i++) {
                 if(backup.Game.MaxFarmSizeReached[i] > 0)
-                    MaxFarmSizeReached.Add((Ei.Egg)(i+1), backup.Game.MaxFarmSizeReached[i]);
+                    MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
             }
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
@@ -256,7 +268,7 @@ namespace EGG9000.Common.Database {
             var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
     ?? backup.Contracts.Archive.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
 
-            
+
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
                 ContractId = farm.ContractId,
@@ -428,14 +440,26 @@ namespace EGG9000.Common.Database {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null) {
             if(_stats == null) {
+                var eggLayingBuff = 1.0;
+                if(coop != null) {
+                    eggLayingBuff = coop.LastStatusUpdate.Participants.Where(x => x.BuffHistory.Any())
+                        .Sum(x => x.BuffHistory.Last().EggLayingRate - 1);
+                    ignoreBuff = ignoreBuff ?? (this.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1;
+                    if(ignoreBuff.HasValue) {
+                        eggLayingBuff -= ignoreBuff.Value;
+                    }
+                    eggLayingBuff += 1;
+                }
+
+
                 var eggLayingResearch = Research.GetEggLayingRatePerSec(this, backup.EpicResearch);
                 var eggLayingArtifact = EggIncArtifacts.GetEggLayingRateMultiple(this);
 
                 _stats = new CustomFarmStats();
                 _stats.MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this);
-                _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact;
+                _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff;
                 _stats.CurrentShippingRate = Math.Min(_stats.MaxShippingRate, _stats.EggLayingRate);
                 _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch) * EggIncArtifacts.GetEggValueMutiple(this);
                 _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier;
@@ -517,7 +541,7 @@ namespace EGG9000.Common.Database {
         }
         public static implicit operator CustomUniversalFarm(CustomArchivedFarms farm) {
             return new CustomUniversalFarm {
-                CoopId = farm.CoopId, ContractId = farm.ContractId, TimeAccepted = (long)farm.TimeAccepted, Completed = farm.Completed, League = farm.League, ContributionAmount = farm.ContributionAmount, 
+                CoopId = farm.CoopId, ContractId = farm.ContractId, TimeAccepted = (long)farm.TimeAccepted, Completed = farm.Completed, League = farm.League, ContributionAmount = farm.ContributionAmount,
                 Grade = farm.Grade, EvaluationCxp = farm.EvaluationCxp, PEGained = farm.PEGained, PEPossible = farm.PEPossible
             };
         }

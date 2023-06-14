@@ -1,0 +1,167 @@
+﻿@using Discord.WebSocket;
+@using EGG9000.Site.Controllers;
+@using static EGG9000.Common.Coops.ArtifactCombos;
+@inject DiscordSocketClient DiscordClient
+@model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user)
+@{
+    void artifactTemplate(EggIncArtifactInstance artifact) {
+        if(artifact == null) {
+            <td></td>
+        }else if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+            <td>@Math.Round((artifact.Value) * 100)%</td>
+        } else if (artifact.Additive) {
+            <td>+@artifact.Value</td>
+        } else if (+artifact.Value < 2) {
+            <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+        } else {
+            <td>
+                @(
+                artifact.Value
+                    )x
+            </td>
+        }
+    }
+
+    List<EggIncArtifactInstance> Sort(List<EggIncArtifactInstance> current, List<EggIncArtifactInstance> toSort) {
+        var newList = new List<EggIncArtifactInstance>();
+        foreach(var artifact in current) {
+            var newArtifact = toSort.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
+            if(newArtifact is null) {
+                newArtifact = toSort.FirstOrDefault(x => !current.Any(y => y.Artifact.Equals(x.Artifact)));
+
+            } 
+            if (newArtifact is not null) {
+                toSort.Remove(newArtifact);
+                newList.Add(newArtifact);
+            }
+        }
+        return newList;
+    }
+
+    (double myRate, double coopRate) GetChangedRate(CustomFarm farm, List<EggIncArtifactInstance> newArtifacts, Coop coop, CoopDetails coopDetails) {
+        var newFarm = new CustomFarm {
+            CommonResearch = farm.CommonResearch,
+            Habs = farm.Habs,
+            TrainLength = farm.TrainLength,
+            NumChickens = farm.NumChickens,
+            EggType = farm.EggType,
+            Artifacts = newArtifacts,
+            Vehicles = farm.Vehicles
+        };
+        var stats = newFarm.WithStats(Model.Backup, coop);
+        var currentTachyon = farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
+        var newTachyon = newArtifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
+        var tachyonDifference = (newTachyon - 1) - (currentTachyon - 1) + 1;
+        var coopNewRate = (coopDetails.CoopParticipants.Where(x => x.EggIncId != Model.Backup.EggIncId).Sum(x => x.Rate)) * tachyonDifference + stats.CurrentShippingRate;
+        return (stats.CurrentShippingRate ,coopNewRate);
+    }
+}
+<div class="card" style="margin-top:15px">
+    <h4 class="card-header">Artifact Combos</h4>
+    <div class="cart-body">
+        <ul>
+            <li>These are the best artifact combos for each farm with the current chicken population</li>
+            <li>Won't change your Gusset</li>
+            <li>Won't change around stones currently</li>
+            <li>Doesn't verify other co-op members have the shipping capacity yet</li>
+        </ul>
+    </div>
+</div>
+@foreach (var farm in Model.Backup.Farms.Where(x => !x.Cancelled && x.FarmType == Ei.FarmType.Contract)) {
+    var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
+    if (coop is not null) {
+        var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, null));
+        var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, null));
+
+        var farmStats = farm.WithStats(Model.Backup, coop);
+
+        var usersWithBackups = coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
+        var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
+        var currentCoopRate = coopDetails.CoopParticipants.Sum(x => x.Rate);
+
+        var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
+        var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
+        <div style="display: inline-block;" class="card">
+            @if (farm.ContractId != null) {
+                <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+            } else {
+                <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
+            }
+            <table class="table table-sm" style="margin-bottom: 0;">
+                <tr>
+                    <th>Current</th>
+                    <th></th>
+                    <th>Without Deflector</th>
+                    <th></th>
+                    <th>With Deflector</th>
+                    <th></th>
+                </tr>
+                @for (var i = 0; i < 4; i++) {
+                    var current = farm.Artifacts.Count > i ? farm.Artifacts[i] : null;
+                    var artifact = bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null;
+                    var different = current == null ? true : !current.Equals(artifact);
+                    var artifactWithTachyon = bestWithTachyon.Count > i ? bestWithTachyon[i] : null;
+                    var withTachyonDifferent = current == null ? true : !current.Equals(artifactWithTachyon);
+                    <tr>
+                        <td style="padding-left: 5px;">@current?.Artifact</td>
+                        @{artifactTemplate(current);}
+                        <td style="padding-left: 5px;" class="@(different ? "different" : "")">@artifact?.Artifact</td>
+                        @{artifactTemplate(artifact);}
+                        <td style="padding-left: 5px;" class="@(withTachyonDifferent ? "different" : "")">@artifactWithTachyon?.Artifact</td>
+                        @{artifactTemplate(artifactWithTachyon);}
+                    </tr>
+                    @if (artifact?.Stones != null && artifact.Stones.Count > 0) {
+                        for (var s = 0; s < 4; s++) {
+                            var currentStone = current?.Stones.Count > s ? current.Stones[s] : null;
+                            var stone = artifact.Stones.Count > s ? artifact.Stones[s] : null;
+                            var stoneWithTach = artifactWithTachyon?.Stones.Count > s ? artifactWithTachyon.Stones[s] : null;
+                            if (currentStone is not null || stone is not null || stoneWithTach is not null)
+                            {
+                                <tr>
+                                    <td style="padding-left: 15px;">@currentStone?.Artifact</td>
+                                    @{artifactTemplate(currentStone);}
+                                    <td style="padding-left: 15px;" class="@(different ? "different" : "")">@stone?.Artifact</td>
+                                    @{artifactTemplate(stone);}
+                                    <td style="padding-left: 15px;" class="@(withTachyonDifferent ? "different" : "")">@stoneWithTach?.Artifact</td>
+                                    @{artifactTemplate(stoneWithTach);}
+                            </tr>
+                            }
+                        }
+                    }
+                }
+                <tr>
+                    <th>My Rate</th>
+                    <td>@((farmStats.CurrentShippingRate * 60).ToEggString(true))/m</td>
+                    <th>My Rate</th>
+                    <td>@((withoutTachyon.myRate * 60).ToEggString(true))/m</td>
+                    <th>My Rate</th>
+                    <td>@((withTachyon.myRate * 60).ToEggString(true))/m</td>
+                </tr>
+                <tr>
+                    <th>Coop Rate</th>
+                    <td>@((currentCoopRate * 60).ToEggString(true))/m</td>
+                    <th>Coop Rate</th>
+                    <td class="@(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")">@((withoutTachyon.coopRate * 60).ToEggString(true))/m</td>
+                    <th>Coop Rate</th>
+                    <td class="@(withoutTachyon.coopRate < withTachyon.coopRate ? "better" : "")">@((withTachyon.coopRate * 60).ToEggString(true))/m</td>
+                </tr>
+            </table>
+        </div>
+    }
+}
+<style>
+    .different {
+        background-color: #fcffde;
+    }
+
+    .bootstrap-dark .different {
+        background-color: #2f301e;
+    }
+
+    .better {
+        background-color: #deffe0;
+    }
+    .bootstrap-dark .better {
+        background-color: #274629;
+    }
+</style>

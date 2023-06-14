@@ -31,6 +31,8 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account
             _logger = logger;
         }
 
+        public string LoginProvider { get; set; }
+
         [BindProperty]
         public InputModel Input { get; set; }
 
@@ -55,21 +57,25 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account
             public bool RememberMe { get; set; }
         }
 
-        public async Task OnGetAsync(string returnUrl = null)
+        public IActionResult OnGetAsync(string returnUrl = null)
         {
-            if (!string.IsNullOrEmpty(ErrorMessage))
-            {
-                ModelState.AddModelError(string.Empty, ErrorMessage);
-            }
+            var provider = "Discord";
+            var redirectUrl = Url.Page("./ExternalLogin", pageHandler: "Callback", values: new { returnUrl });
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+            return new ChallengeResult(provider, properties);
 
-            returnUrl ??= Url.Content("~/");
+            //if(!string.IsNullOrEmpty(ErrorMessage)) {
+            //    ModelState.AddModelError(string.Empty, ErrorMessage);
+            //}
 
-            // Clear the existing external cookie to ensure a clean login process
-            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+            //returnUrl ??= Url.Content("~/");
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            //// Clear the existing external cookie to ensure a clean login process
+            //await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            ReturnUrl = returnUrl;
+            //ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
+            //ReturnUrl = returnUrl;
         }
 
         //public async Task<IActionResult> OnPostAsync(string returnUrl = null)

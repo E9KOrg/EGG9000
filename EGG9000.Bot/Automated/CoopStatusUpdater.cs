@@ -493,7 +493,7 @@ namespace EGG9000.Bot.Automated {
                             var awayTime = Research.GetTotalSiloCapacity(user.Backup);
                             var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId == coop.Name.ToLower());
                             if(farm != null) {
-                                user.FarmStats = farm.WithStats(user.Backup);
+                                user.FarmStats = farm.WithStats(user.Backup, coop);
                                 user.SiloTime = awayTime * farm.SilosOwned;
                                 var siloTimeHours = user.SiloTime / 60;
                                 if(user.Xref is not null && user.Xref.SiloTimeHours != siloTimeHours) {
@@ -861,7 +861,7 @@ namespace EGG9000.Bot.Automated {
 
 
                     foreach(var u in usersWithStatus.Where(x => x.Xref is not null)) {
-                        u.Xref.HasTachyonDeflector = u.Xref.HasTachyonDeflector || (u.Backup?.GetAvailableArtifacts.Any(a => a.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) ?? false);
+                        u.Xref.HasTachyonDeflector = u.Xref.HasTachyonDeflector || (u.Backup?.GetAvailableArtifacts().Any(a => a.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) ?? false);
                         var farm = u.Backup?.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
                         if(farm == null)
                             continue;
@@ -873,7 +873,7 @@ namespace EGG9000.Bot.Automated {
                     if(!coop.FinishedOrFailed && coop.CoopEnds > DateTimeOffset.Now) {
                         foreach(var user in usersToCheckDeflector) {
                             var farm = user.Backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
-                            if(farm is not null && !farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
+                            if(farm is not null && !farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts().Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
                                 usersNeedToAddDeflector.Add(user);
                             }
                         }

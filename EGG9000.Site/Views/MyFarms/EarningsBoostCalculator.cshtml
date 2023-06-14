@@ -110,7 +110,7 @@
             .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
                 $scope.accounts = @Html.Raw(Json.Serialize(
                            Model.Backups.Select(y => y.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
-                               var farm = x.WithStats(y);
+                               var farm = x.WithStats(y, null);
                                var name = x.FarmType == Ei.FarmType.Home ? "Home" : x.ContractId;
                                return new {
                                    Name = name,
