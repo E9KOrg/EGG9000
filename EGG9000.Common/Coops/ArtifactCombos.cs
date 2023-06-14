@@ -148,7 +148,7 @@ namespace EGG9000.Common.Coops {
                 }
             }
 
-            var order = sets.OrderByDescending(x => x.CurrentShippingRate).ToList();
+            var order = sets.OrderByDescending(x => x.CurrentShippingRate).ThenByDescending(x => x.Shipping).ThenByDescending(x => x.EggLaying).ToList();
             var max = sets.Max(x => x.CurrentShippingRate);
             var maxSets = sets.Where(x => x.CurrentShippingRate == max).ToList();
             return maxSets.Select(x => x.Artifacts.Select(y => y.Artifact).ToList()).First();

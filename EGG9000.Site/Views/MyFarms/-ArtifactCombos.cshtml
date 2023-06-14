@@ -110,7 +110,7 @@
     }
 }
 @try {
-    var farms = Model.Backup.Farms.Where(x => x.FarmType == Ei.FarmType.Contract).ToList();
+    var farms = Model.Backup.Farms.Where(x => x.FarmType == Ei.FarmType.Contract && x.CoopSimulationEndTime == 0).ToList();
     if (farms.Count == 0) {
         <div class="card" style="margin-top:15px">
             <h4 class="card-header">ℹNo Active Contracts</h4>
@@ -135,8 +135,6 @@
                 var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
                 var isHome = farm.FarmType == Ei.FarmType.Home;
 
-                var changeStones = false;
-                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, changeStones, null));
 
                 var farmStats = farm.WithStats(Model.Backup, coop);
 
@@ -144,10 +142,6 @@
                 var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
                 var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
 
-                var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
-
-                var bestWithTachyon = isHome ? new List<EggIncArtifactInstance>() : Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, changeStones, null));
-                var withTachyon = isHome ? (0, 0) : GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
 
                 <div class="card">
                     @if (isHome) {
@@ -170,20 +164,26 @@
                             </td>
                         </tr>
                         <tr>
-                            @if (isHome) {
-                                <th>Suggested</th>
-                            } else {
-                                <th>No<br />Deflector</th>
-                            }
-                            @for (var i = 0; i < 4; i++) {
-                                artifactCell(bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
-                            }
-                            <td>
-                                <b>Mine</b><br />@((withoutTachyon.myRate * 60).ToEggString(true))/m<br />
-                                @if (!isHome) {
-                                    <div class="@(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyon.coopRate * 60).ToEggString(true))/m</div>
+                            @{
+                                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, null));
+                                var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
+                                var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, null));
+                                var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
+                                @if (isHome) {
+                                    <th>Suggested</th>
+                                } else {
+                                    <th>No<br />Deflector</th>
                                 }
-                            </td>
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withoutTachyon.myRate * 60).ToEggString(true))/m<br />
+                                    @if (!isHome) {
+                                        <div class="@(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyon.coopRate * 60).ToEggString(true))/m</div>
+                                    }
+                                </td>
+                            }
                         </tr>
                         @if (!isHome) {
                             <tr>
@@ -194,6 +194,40 @@
                                 <td>
                                     <b>Mine</b><br />@((withTachyon.myRate * 60).ToEggString(true))/m<br />
                                     <div class="@(withoutTachyon.coopRate < withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withTachyon.coopRate * 60).ToEggString(true))/m</div>
+                                </td>
+                            </tr>
+                        }
+                        <tr>
+                            @{
+                                var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, null));
+                                var withoutTachyonS = GetChangedRate(farm, bestWithoutTachyonS, coop, coopDetails);
+                                var bestWithTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, null));
+                                var withTachyonS = GetChangedRate(farm, bestWithTachyonS, coop, coopDetails);
+                                @if (isHome) {
+                                    <th>Suggested</th>
+                                } else {
+                                    <th>No<br />Deflector<br />Stones<br />Changed</th>
+                                }
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithoutTachyonS.Count > i ? bestWithoutTachyonS[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withoutTachyonS.myRate * 60).ToEggString(true))/m<br />
+                                    @if (!isHome) {
+                                        <div class="@(withoutTachyonS.coopRate > withTachyonS.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyonS.coopRate * 60).ToEggString(true))/m</div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                        @if (!isHome) {
+                            <tr>
+                                <th>With<br />Deflector<br />Stones<br />Changed</th>
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithTachyonS.Count > i ? bestWithTachyonS[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withTachyonS.myRate * 60).ToEggString(true))/m<br />
+                                    <div class="@(withoutTachyon.coopRate < withTachyonS.coopRate ? "better" : "")"><b>Coop</b><br />@((withTachyonS.coopRate * 60).ToEggString(true))/m</div>
                                 </td>
                             </tr>
                         }
@@ -216,10 +250,46 @@
                 background-color: #deffe0;
             }
 
-        .bootstrap-dark .better {
-            background-color: #274629;
-        }
-    </style>
+            .bootstrap-dark .better {
+                background-color: #274629;
+            }
+
+            .Stones {
+                padding-left: 12px;
+                margin-top: -3px;
+            }
+
+            .card {
+                margin-bottom: 15px;
+            }
+
+            .table td, .table th {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+
+            .table thead th {
+                text-align: center;
+            }
+
+            .flex {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 15px;
+            }
+
+
+                .flex > div {
+                    flex: 1;
+                }
+
+            tr th:first-child {
+                vertical-align: middle;
+                text-align: center;
+            }
+        </style>
+    }
 } catch (Exception ex) {
     <div class="alert alert-danger" role="alert">
         @ex.Message
