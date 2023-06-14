@@ -294,9 +294,9 @@ namespace EGG9000.Bot.Commands {
                 if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     coops = await _db.Coops.Include(x => x.Contract)
                         .Where(x => x.DiscordChannelId == arg.ChannelId)
-                        .Select(x => new CoopMin { Name =  x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
-                } 
-                
+                        .Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
+                }
+
                 if(coops is null) {
                     coops = await _db.Coops.Include(x => x.Contract)
                         .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.DeletedChannel && x.GuildId == guild.Id)
@@ -373,6 +373,10 @@ namespace EGG9000.Bot.Commands {
                 var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername }).ToListAsync();
                 if(users.Count == 0) {
                     await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
+                }
+
+                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
                 await arg.RespondAsync(users.Select(x => new AutocompleteResult(x.DiscordUsername, x.UserId.ToString())));
