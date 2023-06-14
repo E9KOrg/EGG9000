@@ -115,13 +115,13 @@ namespace EGG9000.Site {
             client.StartAsync().Wait();
             services.AddSingleton(client);
 
-            services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
-            services.AddResponseCompression(options => {
-                options.Providers.Add<GzipCompressionProvider>();
-                options.EnableForHttps = true;
-            });
 
 #if RELEASE
+        services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
+        services.AddResponseCompression(options => {
+            options.Providers.Add<GzipCompressionProvider>();
+            options.EnableForHttps = true;
+        });
         services.AddBugsnag(configuration => {
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
         });

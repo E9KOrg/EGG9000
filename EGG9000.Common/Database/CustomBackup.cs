@@ -150,7 +150,7 @@ namespace EGG9000.Common.Database {
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            Farms.ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
+            Farms.Where(x => x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList().ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
             return artifacts.Where(x => x.Count > 0).ToList();
         }
 
@@ -163,7 +163,7 @@ namespace EGG9000.Common.Database {
 
             var farms = Farms.Where(x => x != farm);
 
-            farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty).ToList().ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
+            farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList().ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
             return artifacts.Where(x => x.Count > 0).ToList();
         }
 
@@ -300,6 +300,7 @@ namespace EGG9000.Common.Database {
                 Grade = contract?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset,
                 EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
                 ContributionFinalized = contract?.CoopContributionFinalized ?? false,
+                CoopSimulationEndTime = contract?.CoopSimulationEndTime ?? 0,
             };
 
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
@@ -436,6 +437,8 @@ namespace EGG9000.Common.Database {
         public double EvaluationCxp { get; set; }
         [Key(37)]
         public bool ContributionFinalized { get; set; }
+        [Key(38)]
+        public double CoopSimulationEndTime { get; set; }
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
