@@ -7,22 +7,39 @@ using EGG9000.Common.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Coops {
     public class ArtifactCombos {
-        public static List<EggIncArtifactInstance> FindBestCombo(CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon, Microsoft.Extensions.Logging.ILogger logger) {
-            var timings = new TimingsFactory(logger).Start();
+        public static List<EggIncArtifactInstance> FindBestCombo(CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon, bool allowChangingStones, Microsoft.Extensions.Logging.ILogger logger) {
+            if(!allowChangingStones) {
+                var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone")).Select(x => new ArtifactInstanceStats(x.Artifact)).Where(x => x.Shipping > 1 || x.EggLaying > 1);
+
+
+                return Process(available, backup, farm, coop, withTachyon);
+            } else {
+                var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone"));
+
+                var allCombos = new List<ArtifactInstanceStats>();
+
+                foreach(var artifact in available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate).GroupBy(x => new {x.Artifact.Rarity, x.Artifact.Tier }).Select(x => x.First())) {
+                    var slots = EggIncArtifacts.SlotCount(artifact.Artifact);
+                } 
+
+                return Process(allCombos, backup, farm, coop, withTachyon);
+
+            }
+        }
+
+
+        private static List<EggIncArtifactInstance> Process(IEnumerable<ArtifactInstanceStats> available, CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon) {
             var farmWithoutArtifacts = new CustomFarm {
                 CommonResearch = farm.CommonResearch,
                 Habs = farm.Habs, TrainLength = farm.TrainLength, NumChickens = farm.NumChickens, EggType = farm.EggType, Artifacts = new List<EggIncArtifactInstance>(), Vehicles = farm.Vehicles
             };
-            timings.Set("Setup Farm");
             var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1);
-            timings.Set("Get Stats");
-
-            var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone")).Select(x => new ArtifactInstanceStats(x.Artifact)).Where(x => x.Shipping > 1 || x.EggLaying > 1);
 
             var keepArtifacts = new List<EggIncArtifactInstance>();
             if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.HabCapacity)) {
@@ -30,14 +47,11 @@ namespace EGG9000.Common.Coops {
             }
             if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && withTachyon) {
                 keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates));
-            } else if (withTachyon) {
+            } else if(withTachyon) {
                 var tachyon = backup.GetAvailableArtifacts(farm).Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates).MaxBy(x => x.Artifact.Value);
                 if(tachyon is not null)
                     keepArtifacts.Add(tachyon.Artifact);
             }
-
-
-
 
             var artifacts = available
                 .GroupBy(x => new { x.Shipping, x.EggLaying })
@@ -46,7 +60,6 @@ namespace EGG9000.Common.Coops {
                 ).First())
                 .ToList();
 
-            timings.Set("Get artifacts");
 
             var sets = new List<ArtifactSet>();
 
@@ -81,13 +94,9 @@ namespace EGG9000.Common.Coops {
                 }
             }
 
-            timings.Set("Create sets");
             var order = sets.OrderByDescending(x => x.CurrentShippingRate).ToList();
             var max = sets.Max(x => x.CurrentShippingRate);
-            timings.Set("Get Max");
             var maxSets = sets.Where(x => x.CurrentShippingRate == max).ToList();
-            timings.Set("Get Max Sets");
-            timings.Finished();
             return maxSets.Select(x => x.Artifacts.Select(y => y.Artifact).ToList()).First();
         }
 

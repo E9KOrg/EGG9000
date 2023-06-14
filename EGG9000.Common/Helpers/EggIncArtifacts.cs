@@ -4,8 +4,11 @@ using System.Linq;
 using System.Text;
 
 using EGG9000.Common.Database;
+using EGG9000.Common.JsonData.EiAfxData;
 
 using MessagePack;
+
+using Newtonsoft.Json;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncArtifacts {
@@ -51,6 +54,44 @@ namespace EGG9000.Common.Helpers {
             return GetMultiple(EggIncBoostTypeEnum.EggValue, farm);
             //return (artifacts.Where(x => x.Boost == EggIncBoostTypeEnum.EggValue).Sum(x => (double?)x.Value - 1) ?? 0) + 1;
         }
+
+        private static EiAfxDataRoot _eiAfxDataRoot;
+        public static EiAfxDataRoot GetEiAfxData() {
+            if(_eiAfxDataRoot == null) {
+                var json = System.IO.File.ReadAllText(@"JsonData\eiafx-data.json");
+                _eiAfxDataRoot = JsonConvert.DeserializeObject<EiAfxDataRoot>(json);
+            }
+            return _eiAfxDataRoot;
+        }
+
+        public static int SlotCount(EggIncArtifactInstance instance) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            }
+
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
+            if(tier is null) {
+                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
+            }
+            var rarity = tier.effects.FirstOrDefault(x => x.afx_rarity == instance.Rarity - 1);
+            if(rarity is null) {
+                throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}");
+            }
+
+            return rarity.slots ?? 0;
+        }
+
+        public static string GetNameFromJson(EggIncArtifactInstance instance) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            }
+            return artifact.id;
+        }
+
 
         public static double GetMaxRunningBonusAdditive(CustomFarm farm) {
             double val = 0;
