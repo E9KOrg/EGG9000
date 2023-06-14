@@ -78,9 +78,9 @@ namespace EGG9000.Site.Controllers {
                     update = true;
                 }
                 //Console.WriteLine(customBackup.SpaceMissions.Count);
-                
+
                 var scores = await ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
-                
+
                 scoring.Add((account.Id, scores));
             }
             if(update) {
@@ -88,16 +88,18 @@ namespace EGG9000.Site.Controllers {
                 await _db.SaveChangesAsync();
             }
             var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
-            ViewBag.Contracts = await _db.Contracts.AsQueryable().ToListAsync();
-            ViewBag.Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            ViewBag.Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            ViewBag.RawBackups = rawBackups;
-            ViewBag.Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            ViewBag.Coops = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.JoinedCoop && !x.Coop.DeletedChannel).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
-            ViewBag.EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
-            ViewBag.Scoring = scoring;
-            ViewBag.DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
-            return View("Index", user);
+            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
+            var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var RawBackups = rawBackups;
+            var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
+            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
+            var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
+            var Scoring = scoring;
+            var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, RawBackups, Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild));
         }
 
         [AllowAnonymous]
@@ -108,16 +110,32 @@ namespace EGG9000.Site.Controllers {
             //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             var rawBackup = await ContractsAPI.FirstContact(eggIncId);
             var backup = new CustomBackup(rawBackup.Backup);
-            ViewBag.RawBackups = new List<Ei.Backup>() { rawBackup.Backup };
+            var RawBackups = new List<Ei.Backup>() { rawBackup.Backup };
             var contractIDs = backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId).ToList();
-            ViewBag.Contracts = await _db.Contracts.AsQueryable().ToListAsync();
+            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             var serialized = MessagePackSerializer.Serialize(backup, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
             backup = MessagePackSerializer.Deserialize<CustomBackup>(serialized, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
-            return View("Index", new DBUser {
-                EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
-                UserCoopXrefs = new List<UserCoopXref>()
-            });
+            return View("Index", new MyFarmsModel(
+                new DBUser {
+                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
+                    UserCoopXrefs = new List<UserCoopXref>()
+                }, Contracts, new List<Demerit>(), new List<Merit>(), RawBackups, new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null
+            ));
         }
+
+        public record MyFarmsModel(
+            DBUser User,
+            List<Common.Database.Entities.Contract> Contracts,
+            List<Demerit> Demerits,
+            List<Merit> Merits,
+            List<Backup> RawBackups,
+            List<UserSnapShot> SnapShots,
+            List<UserCoopXref> UnjoinedCoops,
+            List<Coop> JoinedCoops,
+            List<EpicResearchCalc.EpicResearchDetail> EpicResearchConfig,
+            List<(string EggIncId, MyContracts MyContracts)> Scoring,
+            Guild DBGuild
+        );
 
         public async Task<IActionResult> EarningsBoostCalculator() {
             var loginuser = (await _userManager.GetUserAsync(User));
@@ -169,7 +187,7 @@ namespace EGG9000.Site.Controllers {
             });
         }
 
-        public async Task<IActionResult> GetCustomBackup([FromQuery]string id) {
+        public async Task<IActionResult> GetCustomBackup([FromQuery] string id) {
             //EI5862923193024512
             var rawBackup = await ContractsAPI.FirstContact(id);
             var customBackup = new CustomBackup(rawBackup.Backup);
@@ -202,7 +220,7 @@ namespace EGG9000.Site.Controllers {
             return Redirect(Request.Headers["Referer"].ToString());
         }
 
-        public async Task<IActionResult> SendTestDM([FromQuery]string target, [FromQuery]ulong discorduserid) {
+        public async Task<IActionResult> SendTestDM([FromQuery] string target, [FromQuery] ulong discorduserid) {
             switch(target) {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);
@@ -213,8 +231,13 @@ namespace EGG9000.Site.Controllers {
                     var channel = (SocketTextChannel)_discord.GetChannel(1012791664831639613);
                     await channel.SendMessageAsync($"Testing Ping for <@{discorduserid}>");
                     return Ok();
-            } 
+            }
             return BadRequest();
+        }
+
+        public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
+            var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == CoopId);
+            return View(coop);
         }
     }
 }

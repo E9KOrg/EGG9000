@@ -77,13 +77,13 @@ namespace EGG9000.Common.Helpers {
             if(artifactSpec == null) {
                 return null;
             }
-            var artifact = GetArtifactsDB().FirstOrDefault(x => x.Name == (int)artifactSpec.Name);
+            var artifact = GetArtifactsDB.FirstOrDefault(x => x.Name == (int)artifactSpec.Name);
             if(artifact == null)
                 return null;
             var response = new EggIncArtifactInstance {
                 Additive = artifact.Additive,
                 Artifact = artifact.Artifact,
-                Boost = artifact.Boost, 
+                Boost = artifact.Boost,
                 Tier = (byte)(artifactSpec.Level + 1),
                 Rarity = (byte)(artifactSpec.Rarity + 1),
                 //Spec = artifactSpec
@@ -141,8 +141,7 @@ namespace EGG9000.Common.Helpers {
             return response;
         }
 
-        public static List<EggIncArtifact> GetArtifactsDB() {
-            return new List<EggIncArtifact> {
+        public static List<EggIncArtifact> GetArtifactsDB = new List<EggIncArtifact> {
                 new EggIncArtifact { Name = 21, Artifact = "Aurelian Brooch", Boost = EggIncBoostTypeEnum.DroneRewards,  //done
                     L0R0 = 1.1,
                     L1R0 = 1.25,
@@ -344,10 +343,8 @@ namespace EGG9000.Common.Helpers {
                 new EggIncArtifact { Name = 50, Artifact = "Terra Stone Fragment" },
                 new EggIncArtifact { Name = 51, Artifact = "Life Stone Fragment" },
                 new EggIncArtifact { Name = 52, Artifact = "Clarity Stone Fragment" },
-            };
-        }
+        };
     }
-
     [MessagePackObject]
     public class ArtifactCount {
         [Key(0)]
@@ -375,7 +372,6 @@ namespace EGG9000.Common.Helpers {
         public byte Tier { get; set; }
         [Key(6)]
         public byte Rarity { get; set; }
-
 
         public override bool Equals(Object other) {
             if(other is EggIncArtifactInstance)
