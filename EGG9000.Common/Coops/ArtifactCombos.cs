@@ -104,7 +104,10 @@ namespace EGG9000.Common.Coops {
                     keepArtifacts.Add(tachyon.Artifact);
             }
 
+            
+
             var artifacts = available
+                .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
                 .GroupBy(x => new { x.Shipping, x.EggLaying })
                 .Select(x => 
                     x.OrderBy(y => farm.Artifacts.Any(z => z.Equals(y.Artifact)) ? 0 : 1
