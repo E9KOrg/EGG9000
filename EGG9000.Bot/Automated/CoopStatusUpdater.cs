@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "JeepFroth96".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "PunchWoozy67".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -776,7 +776,7 @@ namespace EGG9000.Bot.Automated {
                                         await coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op.");
                                         xref.OutsideCoop = true;
                                         await _db.SaveChangesAsync();
-                                    } else if(farm.CoopId.Length > 0) {
+                                    } else if(farm.CoopId.Length > 0 && farm.FarmType == Ei.FarmType.Contract) {
                                         var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                         await coopChannel.SendMessageAsync(message);
                                         xref.OutsideCoop = true;
@@ -807,7 +807,7 @@ namespace EGG9000.Bot.Automated {
                     //    if(backup == null)
                     //        return null;
                     //    return new {
-                    //        User = User,
+                    //        User = User,w
                     //        Backup = User.Backups?.First(y => y.EggIncId == x.EggIncId)
                     //    };
                     //}).Where(x => x != null);

@@ -69,6 +69,9 @@
     }
 
     List<EggIncArtifactInstance> Sort(List<EggIncArtifactInstance> current, List<EggIncArtifactInstance> toSort) {
+        if(toSort is null) {
+            return current;
+        }
         var newList = new List<EggIncArtifactInstance>();
         foreach (var artifact in current) {
             var newArtifactIndex = toSort.FindIndex(x => x.Artifact.Equals(artifact.Artifact));

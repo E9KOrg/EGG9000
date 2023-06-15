@@ -446,7 +446,7 @@ namespace EGG9000.Common.Database {
         public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
-                if(coop != null) {
+                if(coop != null && coop.LastStatusUpdate is not null) {
                     eggLayingBuff = coop.LastStatusUpdate.Participants.Where(x => x.BuffHistory.Any())
                         .Sum(x => x.BuffHistory.Last().EggLayingRate - 1);
                     ignoreBuff = ignoreBuff ?? (this.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1;
