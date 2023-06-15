@@ -164,7 +164,9 @@ namespace EGG9000.Site {
             app.UseResponseCaching();
             app.UseAuthentication();
             app.UseAuthorization();
+#if RELEASE
             app.UseResponseCompression();
+#endif
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapControllerRoute(
