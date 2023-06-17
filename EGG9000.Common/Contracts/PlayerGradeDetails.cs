@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Discord;
+using EGG9000.Common.Database;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,6 +23,17 @@ namespace EGG9000.Common.Contracts {
             };
         }
 
+        public static string GetEmojiUnicode(Ei.Contract.Types.PlayerGrade grade) {
+            return grade switch {
+                Ei.Contract.Types.PlayerGrade.GradeAaa => "🇦🇦🇦",
+                Ei.Contract.Types.PlayerGrade.GradeAa => "🇦🇦",
+                Ei.Contract.Types.PlayerGrade.GradeA => "🇦",
+                Ei.Contract.Types.PlayerGrade.GradeB => "🇧",
+                Ei.Contract.Types.PlayerGrade.GradeC => "🇨",
+                _ => "None",
+            };
+        }
+
         public static string GetImage(uint league) {
             return GetImage((Ei.Contract.Types.PlayerGrade)league);
         }
@@ -33,6 +46,10 @@ namespace EGG9000.Common.Contracts {
         }
         public static string GetNameFromLeague(uint league) {
             return GetNameFromLeague((int)league);
+        }
+
+        public static String GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
+            return GetEmojiUnicode(grade) + " - " + GetNameFromLeague((int)grade);
         }
 
         public static string GetNameFromLeague(int league) {
