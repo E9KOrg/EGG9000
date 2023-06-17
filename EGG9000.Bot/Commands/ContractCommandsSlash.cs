@@ -65,7 +65,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, 
             [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] string newgrade) {
             await command.RespondAsync("Please wait...");
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Please use in a co-op channel");
                 return;
@@ -87,7 +87,7 @@ namespace EGG9000.Bot.Commands {
             /* MOVING TO NEW COOP */
             var anySpots = db.Coops.Any(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
             if(!anySpots) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} `{targetCoop.ContractID}`");
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} {targetCoop.Contract.Name}");
                 return;
             }
 
@@ -115,7 +115,7 @@ namespace EGG9000.Bot.Commands {
             db.Remove(xref);
             /* END REMOVING FROM OLD COOP */
 
-            await command.RespondAsync($"Moved {discordUser.Mention} ({account.Name}) to {((ITextChannel)coopChannel).Mention}");
+            await command.RespondAsync($"Removed {discordUser.Mention} ({account.Name}) from {((ITextChannel)command.Channel).Mention}, and moved to {((ITextChannel)coopChannel).Mention}");
             await db.SaveChangesAsync();
         }
 
@@ -412,23 +412,18 @@ namespace EGG9000.Bot.Commands {
                 var coop = await _db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
                 var eidsIn = _db.UserCoopXrefs.Where(uc => uc.CoopId == coop.Id).Select(u => u.EggIncId).ToList();
 
-                if(coop.FinishedOrFailedOrExpired) {
-                    await arg.RespondAsync("Command only works in an active co-op channel.");
+                if(coop.FinishedOrFailedOrExpired) { 
+                    return; //Command only works in an active co-op channel
                 }
 
                 if(eidsIn.Count == 0) {
-                    await arg.RespondAsync("No users found assigned to coop");
+                    return; //No users found assigned to coop
                 }
 
                 var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 var users = await _db.DBUsers
                     .Where(x => x.GuildId == guild.Id && EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
                     .Take(10).ToListAsync();
-
-                Console.WriteLine("Console usercoopxrefs: " + coop.UserCoopsXrefs?.Count);
-
-                //Get the EggIncId of each UserCoopXred in UserCoopsXrefs
-                //var eidsIn = coop.UserCoopsXrefs?.Select(x => x.EggIncId);
 
                 var accounts = users.SelectMany(x => x.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x, Account = y }));
 
@@ -573,27 +568,20 @@ namespace EGG9000.Bot.Commands {
                 _db = db;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var coop = await _db.Coops.FirstAsync(x => x.DiscordChannelId == arg.Channel.Id);
+                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
 
-                if(coop.League == default) {
-                    await arg.RespondAsync("Command only works in a co-op channel and where grade is known.");
+                if(coop.League == default || coop.League == 0) {
+                    return; //Command only works in a co-op channel and where grade is known.
                 }
 
-                var currentGrade = coop.League;
-
-                var grades = new List<string>();
-
-                for(var i = 5; i > 0; i--) {
-                    if(i != currentGrade && Math.Abs(currentGrade - i) < 2) {
-                        grades.Add(PlayerGradeDetails.GetEmojiUnicode((PlayerGrade)i));
-                    }
-                }
-
-                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    grades = grades.Where(x => x.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
-                }
-
-                await arg.RespondAsync(grades.Select(x => new AutocompleteResult(x, x)).ToList());
+                await arg.RespondAsync(
+                    Enumerable.Range(1, 5)
+                    .Where(i => i != coop.League && Math.Abs(coop.League - i) < 2)
+                    .Select(i => PlayerGradeDetails.GetEmojiUnicode((PlayerGrade)i))
+                    .Reverse()
+                    .ToList()
+                    .Select(x => new AutocompleteResult(x, x))
+                );
             }
         }
 
