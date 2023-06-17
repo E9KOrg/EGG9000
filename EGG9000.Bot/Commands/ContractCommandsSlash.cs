@@ -91,7 +91,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var newCoop = await db.Coops.FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
+            var newCoop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
 
             var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = _client.GetChannel(newCoop.DiscordChannelId);
