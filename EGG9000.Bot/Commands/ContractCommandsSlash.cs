@@ -32,8 +32,6 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Bugsnag.Payload;
 using System.Security.Principal;
 using static Ei.Contract.Types;
-using Newtonsoft.Json.Linq;
-using Polly.Caching;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
