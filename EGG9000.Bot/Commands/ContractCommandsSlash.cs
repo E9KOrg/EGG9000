@@ -407,7 +407,12 @@ namespace EGG9000.Bot.Commands {
                 _db = db;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var coop = await _db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+
+                if(coop is null) {
+                    return; //Needs to be used in a coop channel
+                }
+
                 var eidsIn = _db.UserCoopXrefs.Where(uc => uc.CoopId == coop.Id).Select(u => u.EggIncId).ToList();
 
                 if(coop.FinishedOrFailedOrExpired) { 
@@ -568,7 +573,7 @@ namespace EGG9000.Bot.Commands {
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
 
-                if(coop.League == default || coop.League == 0) {
+                if(coop is null || coop.League == 0) {
                     return; //Command only works in a co-op channel and where grade is known.
                 }
 
