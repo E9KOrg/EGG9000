@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "PunchWoozy67".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "CluckinPupil66".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -471,6 +471,12 @@ namespace EGG9000.Bot.Automated {
 
                     if(cancellationToken.IsCancellationRequested) return;
 
+                    
+                    if(coop.League == 0) {
+                        //Fix if grade is set to 0
+                        coop.League = (uint)status.Grade;
+                    }
+
                     var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, _client, statusReponse.Status);
 
 
@@ -697,15 +703,11 @@ namespace EGG9000.Bot.Automated {
 
                         if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                             userStatus.Xref.JoinedCoop = true;
-                            _logger.LogInformation("User Joined Co-op");
                             var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                             if(unjoinedRole != null) {
                                 await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                             }
                             await _db.SaveChangesAsync();
-                            //var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                            //var messagesToDelete = messages.Where(x => x.IsPinned == false && x.Author.IsBot && x.MentionedUserIds.Count == 1 && x.MentionedUserIds.Any(y => y == userStatus.DiscordUser?.Id) && !x.Content.ToLower().Contains("demerit"));
-                            //await coopChannel.DeleteMessagesBatchAsync(messagesToDelete);
                         }
                     }
 

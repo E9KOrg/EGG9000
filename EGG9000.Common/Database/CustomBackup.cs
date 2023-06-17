@@ -301,6 +301,7 @@ namespace EGG9000.Common.Database {
                 EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
                 ContributionFinalized = contract?.CoopContributionFinalized ?? false,
                 CoopSimulationEndTime = contract?.CoopSimulationEndTime ?? 0,
+                NumGoalsAchieved = (byte?)contract?.NumGoalsAchieved ?? (byte)0,
             };
 
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
@@ -439,6 +440,9 @@ namespace EGG9000.Common.Database {
         public bool ContributionFinalized { get; set; }
         [Key(38)]
         public double CoopSimulationEndTime { get; set; }
+        [Key(39)]
+        public byte NumGoalsAchieved { get; set; }
+
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
@@ -507,6 +511,8 @@ namespace EGG9000.Common.Database {
         public Ei.Contract.Types.PlayerGrade Grade { get; set; }
         [Key(9)]
         public double EvaluationCxp { get; set; }
+        [Key(10)]
+        public byte NumGoalsAchieved { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
@@ -529,6 +535,7 @@ namespace EGG9000.Common.Database {
 
             PEPossible += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
             PEGained += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
+            NumGoalsAchieved = (byte)localContract.NumGoalsAchieved;
         }
     }
 
