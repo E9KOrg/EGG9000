@@ -413,22 +413,20 @@ namespace EGG9000.Bot.Commands {
                     return; //Needs to be used in a coop channel
                 }
 
-                var eidsIn = _db.UserCoopXrefs.Where(uc => uc.CoopId == coop.Id).Select(u => u.EggIncId).ToList();
-
-                if(coop.FinishedOrFailedOrExpired) { 
+                if(coop.FinishedOrFailedOrExpired) {
                     return; //Command only works in an active co-op channel
                 }
 
-                if(eidsIn.Count == 0) {
-                    return; //No users found assigned to coop
-                }
+                var usersXrefs = _db.UserCoopXrefs.Include(ux => ux.User).Where(uc => uc.CoopId == coop.Id).ToList();
 
-                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                var users = await _db.DBUsers
-                    .Where(x => x.GuildId == guild.Id && EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
-                    .Take(10).ToListAsync();
-
-                var accounts = users.SelectMany(x => x.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x, Account = y }));
+                var accounts = usersXrefs.Select(x => x.User)
+                    .Where(x => string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)
+                        || EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
+                    .SelectMany(x => x.EggIncAccounts
+                        .Where(a => usersXrefs
+                            .Select(x => x.EggIncId)
+                            .Contains(a.Id))
+                        .Select(y => new { User = x, Account = y }));
 
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts) {
