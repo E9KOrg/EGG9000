@@ -418,7 +418,6 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var usersXrefs = _db.UserCoopXrefs.Include(ux => ux.User).Where(uc => uc.CoopId == coop.Id).ToList();
-
                 var accounts = usersXrefs.Select(x => x.User)
                     .Where(x => string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)
                         || EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
