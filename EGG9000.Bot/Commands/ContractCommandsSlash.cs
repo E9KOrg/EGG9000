@@ -407,7 +407,7 @@ namespace EGG9000.Bot.Commands {
                 _db = db;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+                var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(ux => ux.User).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
 
                 if(coop is null) {
                     return; //Needs to be used in a coop channel
@@ -416,8 +416,12 @@ namespace EGG9000.Bot.Commands {
                 if(coop.FinishedOrFailedOrExpired) {
                     return; //Command only works in an active co-op channel
                 }
+                var usersXrefs = coop.UserCoopsXrefs.Where(uc => uc.CoopId == coop.Id).ToList();
 
-                var usersXrefs = _db.UserCoopXrefs.Include(ux => ux.User).Where(uc => uc.CoopId == coop.Id).ToList();
+                if(usersXrefs is null || usersXrefs.Count == 0) {
+                    return; //Command only works with users in the coop
+                }
+
                 var accounts = usersXrefs.Select(x => x.User)
                     .Where(x => string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)
                         || EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
