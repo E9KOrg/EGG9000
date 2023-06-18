@@ -101,6 +101,7 @@ namespace EGG9000.Bot.Helpers {
                 await discordUser.AddRoleAsync(guildRegisteredRole);
             }
 
+            var existingRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
             var role = await DiscordHelpers.SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser, _client);
 
@@ -121,7 +122,6 @@ namespace EGG9000.Bot.Helpers {
             var EarningsBonus = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus.ToEggString() ?? "";
 
 
-            var existingRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
             if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) {
                 var messages = new List<string> {
