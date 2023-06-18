@@ -407,28 +407,20 @@ namespace EGG9000.Bot.Commands {
                 _db = db;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+                var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
 
-                if(coop is null) {
-                    return; //Needs to be used in a coop channel
+                var eidsIn = coop.UserCoopsXrefs.Select(x => x.ToString()).ToList();
+                if(coop is null || coop.FinishedOrFailedOrExpired || eidsIn.Count == 0) {
+                    return; //Needs to be used in an active coop channel with users in it
                 }
 
-                var eidsIn = _db.UserCoopXrefs.Where(uc => uc.CoopId == coop.Id).Select(u => u.EggIncId).ToList();
+                //Filter users by current search
+                var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ? 
+                    coop.UserCoopsXrefs : 
+                    coop.UserCoopsXrefs.Where(x => EF.Functions.Like(x.User.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"));
 
-                if(coop.FinishedOrFailedOrExpired) { 
-                    return; //Command only works in an active co-op channel
-                }
 
-                if(eidsIn.Count == 0) {
-                    return; //No users found assigned to coop
-                }
-
-                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                var users = await _db.DBUsers
-                    .Where(x => x.GuildId == guild.Id && EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"))
-                    .Take(10).ToListAsync();
-
-                var accounts = users.SelectMany(x => x.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x, Account = y }));
+                var accounts = users.SelectMany(x => x.User.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x.User, Account = y }));
 
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts) {
