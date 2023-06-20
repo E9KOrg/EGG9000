@@ -409,7 +409,7 @@ namespace EGG9000.Bot.Commands {
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
 
-                var eidsIn = coop.UserCoopsXrefs.Select(x => x.ToString()).ToList();
+                var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
                 if(coop is null || coop.FinishedOrFailedOrExpired || eidsIn.Count == 0) {
                     return; //Needs to be used in an active coop channel with users in it
                 }
@@ -417,7 +417,7 @@ namespace EGG9000.Bot.Commands {
                 //Filter users by current search
                 var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ? 
                     coop.UserCoopsXrefs : 
-                    coop.UserCoopsXrefs.Where(x => EF.Functions.Like(x.User.DiscordUsername, $"%{(string)arg.Data.Current.Value}%"));
+                    coop.UserCoopsXrefs.Where(x => x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
 
 
                 var accounts = users.SelectMany(x => x.User.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x.User, Account = y }));
