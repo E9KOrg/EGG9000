@@ -3,7 +3,8 @@
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
-	var isAdmin = Model.isAdmin;
+	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
 	var contracts = Model.contracts;
 
 	var farms = backup.Farms;
@@ -23,7 +24,7 @@
 					<th data-toggle="tooltip" title="# of Chickens" class="text-right">🐔</th>
 					<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
 					<th class="text-right">%</th>
-					@if (isAdmin) {
+					@if (isLesserAdmin) {
 						<th data-toggle="tooltip" title="Time Cheat" class="text-right">🕵</th>
 						<th data-toggle="tooltip" title="Cheat Time Debt" class="text-right">⏲️</th>
 					}
@@ -60,7 +61,7 @@
 									@percent.ToString("P0")
 								}
 							</td>
-							@if (isAdmin) {
+							@if (isLesserAdmin) {
 								<td class="text-right">@farm.TimeCheatsDetected</td>
 								<td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
 							}
