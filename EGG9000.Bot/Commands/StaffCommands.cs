@@ -50,10 +50,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Select X random users with Y role", AdminOnly = true)]
-        public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required = true)] SocketRole role, [SlashParam] int numberOfUsers = 1) {
+        public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, [SlashParam(Required = true)] SocketRole role, [SlashParam(Required = false)] SocketRole role2, [SlashParam(Required = false)] SocketRole role3) {
             try {
                 var guildUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users;
                 var usersWithRole = guildUsers.Where(u => u.Roles.Contains(role));
+                if(role2 is not null) usersWithRole = usersWithRole.Where(u => u.Roles.Contains(role2));
+                if(role3 is not null) usersWithRole = usersWithRole.Where(u => u.Roles.Contains(role3));
                 var rnd = new Random();
                 var randomUsers = usersWithRole.OrderBy(u => rnd.Next()).Take(numberOfUsers);
 
