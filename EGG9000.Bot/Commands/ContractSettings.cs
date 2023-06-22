@@ -81,7 +81,7 @@ namespace EGG9000.Bot.Commands {
                 eBuilder.WithDescription($"For Account {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}");
             }
 
-            eBuilder.AddField("Break", account.OnBreakUntil == default ? "Not on break" : $"Ends <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R>");
+            eBuilder.AddField("Break", MCSBreakMessage(account));
 
             var builder = new ComponentBuilder();
             if(!dbguild.DisableBG) {
@@ -275,9 +275,11 @@ namespace EGG9000.Bot.Commands {
 
         public static string MCSBreakMessage(EggIncAccount account) {
             if(account.OnBreakUntil == default) {
-                return "Not currently on break";
-            } else {
-                return $"\nBreak ends <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
+                return "Not on break";
+            } else if(account.OnBreakUntil < DateTimeOffset.Now) {
+                return $"\nBreak Ended <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
+            } else { 
+                return $"\nEnds <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
             }
         }
 
@@ -287,7 +289,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
-            account.SetBreak((account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1), dbuser);
+            account.SetBreak((account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1), dbuser);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
@@ -300,7 +302,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data);
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
-            account.SetBreak((account.OnBreakUntil == default ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7), dbuser);
+            account.SetBreak((account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7), dbuser);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));

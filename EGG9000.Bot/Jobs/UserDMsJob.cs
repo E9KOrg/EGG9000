@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Jobs {
             _bugsnag = bugsnag;
         }
 
-        [Job("0 */1 * * * *")]
+        [Job("0 */30 * * * *")]
         public async Task WarningBreakExpiring() {
             _logger.LogInformation("Running WarningBreakExpiring");
             var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1) && x.DiscordId > 0 & x.DiscordId > 0 && x.GuildId > 0).ToList();
@@ -45,7 +45,7 @@ namespace EGG9000.Bot.Jobs {
                         }
                         var dmChannel = await discorduser.CreateDMChannelAsync();
                         if(dmChannel is null) {
-                            //_logger.LogWarning($"Could not create DM channel with {user.DiscordUsername}");
+                            _logger.LogWarning($"Could not create DM channel with {user.DiscordUsername}");
                             continue;
                         }
 
@@ -54,7 +54,7 @@ namespace EGG9000.Bot.Jobs {
                             _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
                             var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
 
-                            //await dmChannel.SendMessageAsync($"Your break for {account.Name} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}.\n\nPlease use the `/mycontractsettings` command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on {DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.");
+                            await dmChannel.SendMessageAsync($"Your break for {account.Name} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}.\n\nPlease use the `/mycontractsettings` command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on {DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.");
                             account.BreakWarningSent(user);
                         }
                     }
