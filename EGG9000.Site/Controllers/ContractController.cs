@@ -106,6 +106,7 @@ namespace EGG9000.Site.Controllers {
                 contract.Name = "test";
                 contract.Identifier = "test";
                 contract.MaxCoopSize = 10;
+                contract.Egg = Ei.Egg.Edible;
             } else {
                 contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid)).Details;
             }

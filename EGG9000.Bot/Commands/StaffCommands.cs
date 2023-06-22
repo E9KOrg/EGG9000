@@ -50,10 +50,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Select X random users with Y role", AdminOnly = true)]
-        public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required=true)] SocketRole role, [SlashParam] int numberOfUsers = 1) {
+        public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, [SlashParam(Required = true)] SocketRole role, [SlashParam(Required = false)] SocketRole role2, [SlashParam(Required = false)] SocketRole role3) {
             try {
                 var guildUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users;
                 var usersWithRole = guildUsers.Where(u => u.Roles.Contains(role));
+                if(role2 is not null) usersWithRole = usersWithRole.Where(u => u.Roles.Contains(role2));
+                if(role3 is not null) usersWithRole = usersWithRole.Where(u => u.Roles.Contains(role3));
                 var rnd = new Random();
                 var randomUsers = usersWithRole.OrderBy(u => rnd.Next()).Take(numberOfUsers);
 
@@ -65,7 +67,7 @@ namespace EGG9000.Bot.Commands {
 #endif
 
                 await command.RespondAsync(userList);
-            } catch(Exception ex){
+            } catch(Exception ex) {
                 await command.RespondAsync($"⚠️ERROR: Unable to parse role `{role}`, {ex.Message}");
                 return;
             }
@@ -116,26 +118,26 @@ namespace EGG9000.Bot.Commands {
                     new FixedWidthCell (log.Type),
                     new FixedWidthCell (
                         averages.Any(x => x.Type == log.Type) ?
-                        TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime() 
+                        TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime()
                         : ""),
                     new FixedWidthCell ((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
                     new FixedWidthCell (incompletes.Count.ToString()),
                     new FixedWidthCell (
-                        (service as IUpdaterService).Running() ? 
+                        (service as IUpdaterService).Running() ?
                             (incompletes.Any(x => !x.Skipped) ?
                             $"Current run {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
                             : "Started"
                             )
                         : "Stopped"
                         )
-                }) ;
+                });
             }
 
             await command.RespondAsync($"```\n{FixedWidthTable.GetTable(table)}```");
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
-        public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -155,7 +157,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
-        public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -178,7 +180,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Run automated service now", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
-        public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -200,7 +202,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
-        public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Service Name", Required = true)] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -220,6 +222,21 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
             }
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
+        }
+
+        public class ServiceNameAutoComplete : AutoCompleteHandler {
+            private readonly IServiceProvider _serviceProvider;
+            public ServiceNameAutoComplete(IServiceProvider serviceProvider) {
+                _serviceProvider = serviceProvider;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var services = _serviceProvider.GetServices<IUpdaterService>();
+                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    services = services.Where(x => x.GetType().Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
+                }
+
+                await arg.RespondAsync(null, services.Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToArray());
+            }
         }
     }
 }

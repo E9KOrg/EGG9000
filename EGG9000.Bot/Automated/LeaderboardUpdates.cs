@@ -149,7 +149,6 @@ namespace EGG9000.Bot.Automated {
                         });
 
 
-                        var EarningsBonus = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus.ToEggString() ?? "";
 
 
                         if(!dbUser.showEB && !string.IsNullOrEmpty(discordUser.Nickname) && discordUser.GetCleanName() != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
@@ -160,112 +159,9 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
-                        var role = await DiscordHelpers.CheckRoles(guild, discordUser, dbUser, _client, grades, userAccounts.ToList());
-                        var existingRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
-
-                        if(role != null && existingRole != null && existingRole.Name != role.Name) {
-                            _logger.LogInformation("{user} changing role from {existingRole} to {newRole})", discordUser.Nickname, existingRole.Name, role.Name);
-                        }
-                        if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) {
-                            var messages = new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",                            };
-
-                            switch(role.Name.Split(" ").First()) {
-                                case "Farmer":
-                                    messages.AddRange(new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
-                        });
-                                    break;
-                                case "Kilofarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Wow, {discordUser.Mention}! A {role.Name} already? Your wonders never cease to amaze me! Congrats on the new rank and EB of {EarningsBonus}%!.",
-                        });
-                                    break;
-                                case "Megafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Now you are at least hundreds of millions times stronger than you were since your first chicken. Mega effort to become a {role.Name} with and EB of {EarningsBonus}%! Congratulations on the new rank, {discordUser.Mention}!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",
-                        });
-                                    break;
-                                case "Gigafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Gigafarmer, sweet! Your numbers are increasing along with your eggsperience!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
-                        });
-                                    break;
-                                case "Terafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Keep going, next up: Petafarmer!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Chickens won't hatch themselves, get back to farming!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
-                        $"Choo Choo! All aboard the <:Egg_soul_SE:724341890794913964> train with our new {role.Name}. {discordUser.Mention} is driving the train with an EB of {EarningsBonus}%, jump on now!",
-                        });
-                                    break;
-                                case "Petafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! More chickens, more eggs, higher earnings means more <:Egg_soul_SE:724341890794913964>. Keep hatching!",
-                        $"With great EB comes great responsibility. Congrats on hitting an EB of {EarningsBonus}%, {discordUser.Mention}! This means you are officially a {role.Name}. Now get back out there - those wormholes aren’t going to dampen themselves!",
-                                                        });
-                                    break;
-                                case "Exafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You really like eggs, eh? Eggciting hobby, isnt it?",
-                        $"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}! Wow. It seems like just yesterday you were running your first chickens. Celebrate!",
-                        $"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelets. Anyone have eggs? Congrats on the impressive EB of { EarningsBonus}%!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
-                        $"Choo Choo!All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { EarningsBonus}%, jump on now!",
-                        $"Congrats { discordUser.Mention}, you are a { role.Name} now with an EB of { EarningsBonus}%! How eggciting!",
-                        });
-                                    break;
-                                case "Zettafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. Afraid of heights, {discordUser.Mention}? I hope not, you're climbing higher and higher up the leaderboard!",
-                        $"Did anyone else see that blur go by? I think it was {discordUser.Mention} on their way to LEVELING UP TO THE RANK OF {role.Name} with an EB of {EarningsBonus}%! Awesome!",
-                        $"Is it just me, or does this place smell like an EB of {EarningsBonus}%? Congrats on achieving the level of {role.Name}, {discordUser.Mention}!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%! Eggstraordinary work, there’s no stopping you, {discordUser.Mention}!",
-                        });
-                                    break;
-                                case "Yottafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"What an effort! Make way for {discordUser.Mention} and their eggcellent EB of {EarningsBonus}%! You are now a {role.Name}. Very impressive!",
-                        $"We have a new {role.Name} among us! Congratulations on the rank, and the mighty EB of {EarningsBonus}%, {discordUser.Mention}!",
-                        $"{EarningsBonus}% !That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
-                        });
-                                    break;
-                                case "Xennafarmer":
-                                case "Weccafarmer":
-                                    messages.AddRange(new List<string> {
-                        $"Speechless. Absolutely speechless. The grind is real, {discordUser.Mention}! Congratulations on the very impressive rank of {role.Name} with the incredible EB of {EarningsBonus}%!",
-                        });
-                                    break;
-                            }
+                        _ = await DiscordHelpers.CheckRoles(guild, discordUser, dbUser, _client, grades, userAccounts.ToList());
 
 
-
-                            var random = new Random();
-                            var index = random.Next(messages.Count);
-
-                            //Attempt to find the "separate channel for rankup messages" channel, if it's been set
-                            var altRankupChannel = await _client.GetChannelAsync(GuildChannelType.AltRankup, guild);
-
-                            //If it can't be found, use 'General' instead
-                            if(altRankupChannel == null) {
-                                var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                                await generalChannel.SendMessageAsync(messages[index]);
-                            } else {
-                                await altRankupChannel.SendMessageAsync(messages[index]);
-                            }
-
-                        }
 
                     }
 
@@ -277,6 +173,7 @@ namespace EGG9000.Bot.Automated {
                 _logger.LogError(e, "**************ERROR in LeaderboardUpdater**********")
 ;
             }
+
 
         }
 

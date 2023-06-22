@@ -146,7 +146,8 @@ namespace EGG9000.Common.Services {
             var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
             if(channelDetail == null || channelDetail.Id == 0)
                 return default(T);
-
+            
+            return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
             if(channelType.ToString().Contains("Category"))
                 return (T)Convert.ChangeType(guild.CategoryChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
 

@@ -144,9 +144,11 @@ namespace EGG9000.Bot.Automated {
             try {
                 _logger.LogInformation("STOP: Called");
 
-                _cts.Cancel();
-                _cts.Dispose();
-                _cts = null;
+                if(_cts is not null) {
+                    _cts.Cancel();
+                    _cts.Dispose();
+                    _cts = null;
+                }
                 await _timer.DisposeAsync();
                 _timer = null;
                 await _watchDogTimer.DisposeAsync();

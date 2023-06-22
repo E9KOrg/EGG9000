@@ -1,38 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 using EGG9000.Common.Database;
+using EGG9000.Common.JsonData.EiAfxData;
 
 using MessagePack;
+
+using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
+
+using Newtonsoft.Json;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncArtifacts {
         public static double GetMultiple(EggIncBoostTypeEnum boostType, CustomFarm farm) {
-            var rate = 1.0;
             var enlightenment = farm.EggType == Ei.Egg.Enlightenment;
+            return GetMultiple(boostType, farm.Artifacts, enlightenment);
+        }
+        public static double GetMultiple(EggIncBoostTypeEnum boostType, List<EggIncArtifactInstance> artifacts, bool enlightenment) {
+            var rate = 1.0;
 
-            var debug = new List<string>();
-            farm.Artifacts.ToList().ForEach(x => {
+            artifacts.ForEach(x => {
                 if(x.Stones == null)
                     x.Stones = new List<EggIncArtifactInstance>();
                 double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue) ? 0 : 1;
                 farmMultiple += x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Sum(s => s.Value);
-                debug.Add("EStones: " + string.Join(" ", x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Select(s => s.Value)));
                 if(x.Boost == boostType) {
                     rate *= GetEnlightenmentRate(x, farmMultiple);
-                    debug.Add($"{x.Artifact} {GetEnlightenmentRate(x, farmMultiple)}  {farmMultiple}");
                 }
                 foreach(var stone in x.Stones.Where(x => x.Boost == boostType)) {
                     rate *= GetEnlightenmentRate(stone, farmMultiple); //stone.Value * (x.Boost == EggIncBoostTypeEnum.EnlightenmentEggValue ? 1 : farmMutiple);
-                    debug.Add($"{stone.Artifact} {GetEnlightenmentRate(stone, farmMultiple)} {farmMultiple}");
                 }
             });
-
-            //Console.WriteLine("");
-            //Console.WriteLine(boostType.ToString());
-            //Console.WriteLine(string.Join("\r\n", debug));
 
             return rate;
         }
@@ -56,6 +58,69 @@ namespace EGG9000.Common.Helpers {
             return GetMultiple(EggIncBoostTypeEnum.EggValue, farm);
             //return (artifacts.Where(x => x.Boost == EggIncBoostTypeEnum.EggValue).Sum(x => (double?)x.Value - 1) ?? 0) + 1;
         }
+
+        private static EiAfxDataRoot _eiAfxDataRoot;
+        public static EiAfxDataRoot GetEiAfxData() {
+            if(_eiAfxDataRoot == null) {
+
+                var assembly = Assembly.GetExecutingAssembly();
+
+                string resourceName = assembly.GetManifestResourceNames()
+                    .Single(str => str.EndsWith("eiafx-data.json"));
+
+                using(Stream stream = assembly.GetManifestResourceStream(resourceName))
+                using(StreamReader reader = new StreamReader(stream)) {
+                    string json = reader.ReadToEnd();
+                    _eiAfxDataRoot = JsonConvert.DeserializeObject<EiAfxDataRoot>(json);
+                }
+            }
+            return _eiAfxDataRoot;
+        }
+
+        public static int SlotCount(EggIncArtifactInstance instance) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            }
+
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
+            if(tier is null) {
+                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
+            }
+            if(!tier.has_rarities)
+                return 0;
+            var rarity = tier.effects.FirstOrDefault(x => x.afx_rarity == instance.Rarity - 1);
+            if(rarity is null) {
+                throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}");
+            }
+
+            return rarity.slots ?? 0;
+        }
+        public static string GetProperNameFromJson(EggIncArtifactInstance instance) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            }
+
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
+            if(tier is null) {
+                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
+            }
+
+            return tier.name;
+        }
+
+        public static string GetNameFromJson(EggIncArtifactInstance instance) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            }
+            return artifact.id;
+        }
+
 
         public static double GetMaxRunningBonusAdditive(CustomFarm farm) {
             double val = 0;
@@ -82,13 +147,13 @@ namespace EGG9000.Common.Helpers {
             if(artifactSpec == null) {
                 return null;
             }
-            var artifact = GetArtifactsDB().FirstOrDefault(x => x.Name == (int)artifactSpec.Name);
+            var artifact = GetArtifactsDB.FirstOrDefault(x => x.Name == (int)artifactSpec.Name);
             if(artifact == null)
                 return null;
             var response = new EggIncArtifactInstance {
                 Additive = artifact.Additive,
                 Artifact = artifact.Artifact,
-                Boost = artifact.Boost, 
+                Boost = artifact.Boost,
                 Tier = (byte)(artifactSpec.Level + 1),
                 Rarity = (byte)(artifactSpec.Rarity + 1),
                 //Spec = artifactSpec
@@ -146,8 +211,7 @@ namespace EGG9000.Common.Helpers {
             return response;
         }
 
-        public static List<EggIncArtifact> GetArtifactsDB() {
-            return new List<EggIncArtifact> {
+        public static List<EggIncArtifact> GetArtifactsDB = new List<EggIncArtifact> {
                 new EggIncArtifact { Name = 21, Artifact = "Aurelian Brooch", Boost = EggIncBoostTypeEnum.DroneRewards,  //done
                     L0R0 = 1.1,
                     L1R0 = 1.25,
@@ -349,10 +413,8 @@ namespace EGG9000.Common.Helpers {
                 new EggIncArtifact { Name = 50, Artifact = "Terra Stone Fragment" },
                 new EggIncArtifact { Name = 51, Artifact = "Life Stone Fragment" },
                 new EggIncArtifact { Name = 52, Artifact = "Clarity Stone Fragment" },
-            };
-        }
+        };
     }
-
     [MessagePackObject]
     public class ArtifactCount {
         [Key(0)]
@@ -380,7 +442,6 @@ namespace EGG9000.Common.Helpers {
         public byte Tier { get; set; }
         [Key(6)]
         public byte Rarity { get; set; }
-
 
         public override bool Equals(Object other) {
             if(other is EggIncArtifactInstance)

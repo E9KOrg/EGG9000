@@ -40,9 +40,12 @@ namespace EGG9000.Common.Helpers {
                 new EggIncBoost { Id = "subsidy_application", Type = EggIncBoostTypeEnum.FarmValue, Name = "Subsidy Application", Emoji = "<:B_money_printer:730145142467723367>", Time = TimeSpan.FromMinutes(0), Value = 10, CostGoldenEggs = 150, CostTokens = 1 },
                 new EggIncBoost { Id = "blank_check", Type = EggIncBoostTypeEnum.FarmValue, Name = "Blank Check", Emoji = "<:B_money_printer:730145142467723367>", Time = TimeSpan.FromMinutes(0), Value = 100, CostGoldenEggs = 500, CostTokens = 2 },
                 new EggIncBoost { Id = "money_printer", Type = EggIncBoostTypeEnum.FarmValue, Name = "Money Printer", Emoji = "<:B_money_printer:730145142467723367>", Time = TimeSpan.FromMinutes(0), Value = 500, CostGoldenEggs = 2000, CostTokens = 3 },
-                new EggIncBoost { Id = "soul_mirror_blue", Type = EggIncBoostTypeEnum.SoulMirror, Name = "Soul Mirror", Emoji = "<:Soul_Mirror:798884954670891059> ", Time = TimeSpan.FromMinutes(10), Value = 0, CostGoldenEggs = 100, CostTokens = 5 },
-                new EggIncBoost { Id = "soul_mirror_purple", Type = EggIncBoostTypeEnum.SoulMirror, Name = "Epic Soul Mirror", Emoji = "<:Soul_Mirror:798884954670891059> ", Time = TimeSpan.FromMinutes(60), Value = 0, CostGoldenEggs = 500, CostTokens = 25 },
-                new EggIncBoost { Id = "soul_mirror_orange", Type = EggIncBoostTypeEnum.SoulMirror, Name = "Legendary Soul Mirror", Emoji = "<:Soul_Mirror:798884954670891059> ", Time = TimeSpan.FromMinutes(1440), Value = 0, CostGoldenEggs = 2000, CostTokens = 50 }
+                new EggIncBoost { Id = "soul_mirror_blue", Type = EggIncBoostTypeEnum.SoulMirror, Name = "Soul Mirror", Emoji = "<:Soul_Mirror:798884954670891059>", Time = TimeSpan.FromMinutes(10), Value = 0, CostGoldenEggs = 100, CostTokens = 5 },
+                new EggIncBoost { Id = "soul_mirror_purple", Type = EggIncBoostTypeEnum.SoulMirror, Name = "Epic Soul Mirror", Emoji = "<:Soul_Mirror:798884954670891059>", Time = TimeSpan.FromMinutes(60), Value = 0, CostGoldenEggs = 500, CostTokens = 25 },
+                new EggIncBoost { Id = "soul_mirror_orange", Type = EggIncBoostTypeEnum.SoulMirror, Name = "Legendary Soul Mirror", Emoji = "<:Soul_Mirror:798884954670891059>", Time = TimeSpan.FromMinutes(1440), Value = 0, CostGoldenEggs = 2000, CostTokens = 50 },
+                new EggIncBoost { Id = "dilithium_bulb", Type = EggIncBoostTypeEnum.UnlimitedHatchery, Name = "Dilithium Warming Bulb", Emoji = "<:dili_bulb:1116601590003023882>", Time = TimeSpan.FromMinutes(10), Value = 0, CostGoldenEggs = 1000, CostTokens = 0 }
+
+                
             };
         }
 

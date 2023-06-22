@@ -183,7 +183,7 @@ namespace EGG9000.Bot.Commands {
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                await coopStatusUpdater.SendUpdate(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
@@ -251,7 +251,7 @@ namespace EGG9000.Bot.Commands {
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                await coopStatusUpdater.SendUpdate(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
                 await command.Channel.SendMessageAsync($"Successfully removed {command.User.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
@@ -462,7 +462,10 @@ namespace EGG9000.Bot.Commands {
                 await socketGuildUser.AddRoleAsync(registeredRole);
             }
 
-
+            if(dbuser.GuildId != guild.Id) {
+                dbuser.GuildId = guild.Id;
+                await db.SaveChangesAsync();
+            }
             var role = await DiscordHelpers.CheckRoles(guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, new List<LeaderboardUser>());
 
             var roleText = "";
@@ -587,8 +590,10 @@ namespace EGG9000.Bot.Commands {
 
             lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
-
+            if(dbuser.GuildId > 0 && !dbuser.TempDisabled) {
+                _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
+            }
+            
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
 
