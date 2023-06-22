@@ -59,9 +59,9 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description ="Move a user to a different grade of coop", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, 
-            [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] string newgrade) {
+        [SlashCommand(Description = "Move a user to a different grade of coop", AdminOnly = true, AllowFarmHand = true)]
+        public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
+            [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] uint newgrade) {
             await command.RespondAsync("Please wait...");
             var targetCoop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
@@ -73,24 +73,34 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
 
-            var gradeEnum = newgrade switch {
-                "🇦🇦🇦" => 5,
-                "🇦🇦" => 4,
-                "🇦" => 3,
-                "🇧" => 2,
-                "🇨" => 1,
-                _ => 0
-            };
+            /* Find a new co-op */
+            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == targetCoop.GuildId && x.ContractID == targetCoop.ContractID && x.League == newgrade && x.CurrentUsers < x.MaxUsers).ToListAsync();
 
-            /* MOVING TO NEW COOP */
-            var anySpots = db.Coops.Any(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
-            if(!anySpots) {
+            if(coops.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} {targetCoop.Contract.Name}");
                 return;
             }
 
-            var newCoop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
+            Coop newCoop = null;
+            var contract = await db.Contracts.FirstOrDefaultAsync(x => x.ID == targetCoop.ContractID);
+            foreach(var coop in coops) {
+                var userids = coop.UserCoopsXrefs.Select(x => x.UserId).ToList();
+                var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
+                var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
+                var details = new CoopDetails(coop, contract, newgrade, usersWithBackups, _client, coop.LastStatusUpdate);
+                if(details.HasSpots) {
+                    newCoop = coop;
+                    break;
+                }
+            }
 
+            if(newCoop == null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} {targetCoop.Contract.Name}");
+                return;
+            }
+            /* END Find a new co-op */
+
+            /* MOVING TO NEW COOP */
             var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = _client.GetChannel(newCoop.DiscordChannelId);
 
@@ -415,8 +425,8 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 //Filter users by current search
-                var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ? 
-                    coop.UserCoopsXrefs : 
+                var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ?
+                    coop.UserCoopsXrefs :
                     coop.UserCoopsXrefs.Where(x => x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
 
 
@@ -572,10 +582,9 @@ namespace EGG9000.Bot.Commands {
                 await arg.RespondAsync(
                     Enumerable.Range(1, 5)
                     .Where(i => i != coop.League && Math.Abs(coop.League - i) < 2)
-                    .Select(i => PlayerGradeDetails.GetEmojiUnicode((PlayerGrade)i))
                     .Reverse()
                     .ToList()
-                    .Select(x => new AutocompleteResult(x, x))
+                    .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x))
                 );
             }
         }
