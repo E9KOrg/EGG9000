@@ -90,8 +90,11 @@ namespace EGG9000.Bot.Commands {
                 else return (coop.Contract.ID == contractchannel.ToString());
             };
 
+
+            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == command.GuildId || x.OverflowServersJson.Contains(command.GuildId.ToString()));
+
             //Attempt to find the coop
-            var findCoop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(u => u.User).AsQueryable().FirstOrDefaultAsync(x => x.Name.ToLower() == coopname);
+            var findCoop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(u => u.User).AsQueryable().FirstOrDefaultAsync(x => x.GuildId == guild.Id && x.Name.ToLower() == coopname);
 
             //If it can't be found, error out
             if(findCoop is null) {
