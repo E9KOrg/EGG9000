@@ -31,6 +31,7 @@ using EGG9000.Common.Migrations;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Bugsnag.Payload;
 using System.Security.Principal;
+using static Ei.Contract.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -43,12 +44,12 @@ namespace EGG9000.Bot.Commands {
             }
 
             var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = 30,
+                ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = true,
-                RequestingUserId = ContractsAPI.UserId
-            }, ContractsAPI.UserId);
+                RequestingUserId = coop.CreatorID
+            }, coop.CreatorID);
 
             if(response.Success) {
                 await command.RespondAsync($"{coop.Name} is now public.");
@@ -56,6 +57,64 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"{coop.Name} should now be public.");
                 //await command.RespondAsync($"⚠️ERROR: {response.Message}");
             }
+        }
+
+        [SlashCommand(Description ="Move a user to a different grade of coop", AdminOnly = true, AllowFarmHand = true)]
+        public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, 
+            [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] string newgrade) {
+            await command.RespondAsync("Please wait...");
+            var targetCoop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(targetCoop == null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Please use in a co-op channel");
+                return;
+            }
+
+            var userid = useraccount.Split("|")[0];
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
+
+            var gradeEnum = newgrade switch {
+                "🇦🇦🇦" => 5,
+                "🇦🇦" => 4,
+                "🇦" => 3,
+                "🇧" => 2,
+                "🇨" => 1,
+                _ => 0
+            };
+
+            /* MOVING TO NEW COOP */
+            var anySpots = db.Coops.Any(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
+            if(!anySpots) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} {targetCoop.Contract.Name}");
+                return;
+            }
+
+            var newCoop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.League == gradeEnum && x.CurrentUsers < x.MaxUsers);
+
+            var discordUser = _client.GetUser(dbuser.DiscordId);
+            var coopChannel = _client.GetChannel(newCoop.DiscordChannelId);
+
+            var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Name, discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+            if(newxref == null) {
+                await command.RespondAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
+                return;
+            }
+            db.Add(newxref);
+            /* END MOVING TO NEW COOP */
+
+            /* REMOVING FROM OLD COOP */
+            var userid2 = Guid.Parse(useraccount.Split("|")[0]);
+            var xref = await db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == userid2 && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
+            if(xref == null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unabled to find user in co-op");
+                return;
+            }
+
+            db.Remove(xref);
+            /* END REMOVING FROM OLD COOP */
+
+            await command.RespondAsync($"Removed {discordUser.Mention} ({account.Name}) from {((ITextChannel)command.Channel).Mention}, and moved to {((ITextChannel)coopChannel).Mention}");
+            await db.SaveChangesAsync();
         }
 
         [SlashCommand(Description = "Makes this co-op private", AdminOnly = true)]
@@ -68,12 +127,12 @@ namespace EGG9000.Bot.Commands {
             }
 
             var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = 30,
+                ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = false,
-                RequestingUserId = ContractsAPI.UserId
-            }, ContractsAPI.UserId);
+                RequestingUserId = coop.CreatorID
+            }, coop.CreatorID);
 
             if(response.Success) {
                 await command.RespondAsync($"{coop.Name} is now private.");
@@ -252,7 +311,7 @@ namespace EGG9000.Bot.Commands {
             var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
             var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-            await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+            await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
             await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
         }
@@ -294,9 +353,9 @@ namespace EGG9000.Bot.Commands {
                 if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     coops = await _db.Coops.Include(x => x.Contract)
                         .Where(x => x.DiscordChannelId == arg.ChannelId)
-                        .Select(x => new CoopMin { Name =  x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
-                } 
-                
+                        .Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
+                }
+
                 if(coops is null) {
                     coops = await _db.Coops.Include(x => x.Contract)
                         .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.DeletedChannel && x.GuildId == guild.Id)
@@ -342,6 +401,42 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+        public class UserAccountChannelSpecificAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public UserAccountChannelSpecificAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+
+                var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
+                if(coop is null || coop.FinishedOrFailedOrExpired || eidsIn.Count == 0) {
+                    return; //Needs to be used in an active coop channel with users in it
+                }
+
+                //Filter users by current search
+                var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ? 
+                    coop.UserCoopsXrefs : 
+                    coop.UserCoopsXrefs.Where(x => x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
+
+
+                var accounts = users.SelectMany(x => x.User.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x.User, Account = y }));
+
+                var results = new List<AutocompleteResult>();
+                foreach(var account in accounts) {
+                    if(account.User.EggIncAccounts.Count > 1) {
+                        var name = account.Account.Backup?.UserName;
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Name}", $"{account.User.Id}|{account.Account.Id}"));
+                    } else {
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.Account.Id}"));
+                    }
+                }
+
+                await arg.RespondAsync(null, results.ToArray());
+            }
+        }
+
+
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = true)]
         public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
 
@@ -380,6 +475,10 @@ namespace EGG9000.Bot.Commands {
                 var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername }).ToListAsync();
                 if(users.Count == 0) {
                     await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
+                }
+
+                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
                 await arg.RespondAsync(users.Select(x => new AutocompleteResult(x.DiscordUsername, x.UserId.ToString())));
@@ -465,6 +564,28 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+        public class MoveGradeAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public MoveGradeAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+
+                if(coop is null || coop.League == 0) {
+                    return; //Command only works in a co-op channel and where grade is known.
+                }
+
+                await arg.RespondAsync(
+                    Enumerable.Range(1, 5)
+                    .Where(i => i != coop.League && Math.Abs(coop.League - i) < 2)
+                    .Select(i => PlayerGradeDetails.GetEmojiUnicode((PlayerGrade)i))
+                    .Reverse()
+                    .ToList()
+                    .Select(x => new AutocompleteResult(x, x))
+                );
+            }
+        }
 
         //[SlashCommand(Description = "Makes it so the bot won't notify you for contracts that don't have an Egg of Prophecy (PE)")]
         //public static async Task SkipNoEggOfProphecy(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {

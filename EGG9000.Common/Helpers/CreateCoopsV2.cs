@@ -30,15 +30,17 @@ namespace EGG9000.Common.Helpers {
 
             foreach(var account in accounts) {
                 var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
-                if(r.Grade == grade) {
+                if(r?.Grade == grade) {
                     EIID = account.Account.Id;
                     break;
                 }
             }
 
             if(string.IsNullOrEmpty(EIID)) {
+                var account = accounts.OrderByDescending(x => x.Account.Backup.LastBackupTime).First();
+                EIID = account.Account.Id;
                 //GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
-                throw new Exception($"Unable to a find user in the grade {grade}");
+                //throw new Exception($"Unable to a find user in the grade {grade}");
             }
 
             var secondsRemaining = contract.Details.LengthSeconds;

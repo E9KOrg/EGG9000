@@ -29,7 +29,7 @@ namespace EGG9000.Common.Helpers {
         public UInt32 League { get; set; }
         public EggIncAccount Account { get; set;}
 
-        public UserFarmDetails(UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
             if(coopStatus is null)
                 throw new ArgumentNullException(null, "coopStatus");
             Xref = xref;
@@ -42,7 +42,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup?.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup);
+                FarmStats = Farm?.WithStats(Backup, coop);
                 if(Farm is null)
                     ArchivedFarm = Backup?.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
@@ -50,7 +50,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Coop coop, UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
             if(xref is null)
                 throw new ArgumentNullException(null, "xref");
             if(userWithbackup is null)
@@ -65,7 +65,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup);
+                FarmStats = Farm?.WithStats(Backup, coop);
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
@@ -85,7 +85,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup);
+                FarmStats = Farm?.WithStats(Backup, null);
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;

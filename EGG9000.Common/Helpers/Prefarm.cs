@@ -462,7 +462,7 @@ namespace EGG9000.Common.Helpers {
                         }
                     }
                     var backup = xref is not null ? backups.OrderByDescending(x => x.User.GuildId != 0).FirstOrDefault(b => b.Backup?.EggIncId == xref.EggIncId) : null;
-                    coopParticipants.Add(new UserFarmDetails(xref, participant, contract, backup, discord, league));
+                    coopParticipants.Add(new UserFarmDetails(coop, xref, participant, contract, backup, discord, league));
                 }
             }
 
@@ -479,7 +479,7 @@ namespace EGG9000.Common.Helpers {
                     if(backup is null)
                         backup = backups.FirstOrDefault(b => b.User.Id == xref.UserId);
                     if(backup is not null) {
-                        var participant = new UserFarmDetails(xref, contract, backup, discord, league);
+                        var participant = new UserFarmDetails(coop, xref, contract, backup, discord, league);
                         coopParticipants.Add(participant);
                     }
                 }
@@ -512,7 +512,7 @@ namespace EGG9000.Common.Helpers {
                 }
                 return null;
             }
-            var farmStats = farm?.WithStats(user.Backup);
+            var farmStats = farm?.WithStats(user.Backup, null);
 
             var prefarm = new UserPreFarm {
                 EggIncId = user.Backup.EggIncId,

@@ -327,32 +327,22 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
 
-        private async Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
+        private Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
             var command = _slashCommandFunctions.First(x => x.Name == arg.Data.CommandName);
-            var paremeter = command.Parameters.First(x => x.Name == arg.Data.Current.Name);
 
-            var autocompleteHandler = (AutoCompleteHandler)DependencyInjection(paremeter.GetCustomAttributes<SlashParamAttribute>().First().AutocompleteHandler);
-            await autocompleteHandler.Run(arg);
-
-        }
-
-        private object DependencyInjection(Type T) {
-            var constructor = T.GetConstructors().FirstOrDefault();
-            if(constructor is null) {
-                return Activator.CreateInstance(T);
+            if(command.SubFunctions != null) {
+                command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
             }
 
-            var constructorParameters = constructor.GetParameters();
-            var objectList = new List<object>();
-            foreach(var param in constructorParameters) {
-                switch(param.ParameterType.Name) {
-                    case nameof(ApplicationDbContext):
-                        objectList.Add(_provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>());
-                        break;
-                }
-            }
-            return Activator.CreateInstance(T, objectList.ToArray());
+            var paremeter = command.Parameters.First(x => x.Name.Equals(arg.Data.Current.Name, StringComparison.OrdinalIgnoreCase));
+
+            var handler = paremeter.GetCustomAttributes<SlashParamAttribute>().First().AutocompleteHandler;
+
+            var autocompleteClass = ActivatorUtilities.CreateInstance(_provider, handler);
+            handler.GetMethod("Run").Invoke(autocompleteClass, new object[] { arg });
+            return Task.CompletedTask;
         }
+               
 
         private Task _discord_ButtonExecuted(SocketMessageComponent arg) {
             return _discord_SelectMenuExecuted(arg);

@@ -1,0 +1,13 @@
+﻿@using Discord.WebSocket;
+@model Coop
+@inject DiscordSocketClient DiscordClient
+@{
+    ViewData["Title"] = "Coop Optimizer";
+
+    var usersWithBackups = Model.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
+    var coopDetails = new CoopDetails(Model, Model.Contract, Model.League, usersWithBackups, DiscordClient, Model.LastStatusUpdate);
+}
+
+@foreach(var user in coopDetails.CoopParticipants) {
+
+}

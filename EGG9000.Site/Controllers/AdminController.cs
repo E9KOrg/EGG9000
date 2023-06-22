@@ -495,7 +495,7 @@ namespace EGG9000.Site.Controllers {
                 x._eggIncIds
             }).ToListAsync();
             //var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
-            var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < 1e-3).Select(y => {
+            var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < 1e-2).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
                 if(user == null) {
                     return null;

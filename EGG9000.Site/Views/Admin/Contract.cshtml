@@ -54,7 +54,7 @@
         </thead>
         <tbody>
             @foreach(var farmer in prefarmers.OrderBy(x => Math.Log(x.Farm.BoostTokensReceived, 10))) {
-                var farm = farmer.Farm.WithStats(farmer.Backup);
+                var farm = farmer.Farm.WithStats(farmer.Backup, null);
             <tr class="@(farmer.Backup.EarningsBonus > 10e12 ? "Elite" : "Standard")">
                 <td><a href="/Home/ViewUser/@(farmer.User.Id)">@farmer.User.DiscordUsername</a></td>
                 <td>@farmer.Backup.EarningsBonus.ToEggString() </td>

@@ -35,6 +35,18 @@ namespace EGG9000.Bot.Commands
 {
     public static class MiscCommandsSlash
     {
+        [SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
+        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam(Description = "Quality")] string quality,[SlashParam(Description = "artifact")] string artifact,ApplicationDbContext db, ILogger logger) {
+            await command.RespondAsync("Getting backups...");
+            var data = EggIncArtifacts.GetEiAfxData();
+            var properName = data.artifact_families.FirstOrDefault(x => x.name.Equals("Ship in a bottle", StringComparison.OrdinalIgnoreCase)).id.Replace("-", "_").ToUpper();
+            var builder = new EmbedBuilder();
+            builder.Title = $"For {command.User.Username} to craft {quantity} {quality} {artifact}";
+            builder.ThumbnailUrl = "https://egg9000.com/images/artifacts/" + properName + "/" + properName + "_" + 4 +
+                                   ".png";
+            await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = ""; });
+        }
+
         [SlashCommand(Description = "Track your EB since the last time you ran this command")]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
@@ -82,8 +94,8 @@ namespace EGG9000.Bot.Commands
         }
 
         [SlashCommand(Description = "How many SE/PE needed for next rank up")]
-        public static async Task NextRank(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Getting backups...", ephemeral: true);
+        public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
+            await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null)
             {
@@ -225,7 +237,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                await coopStatusUpdater.SendUpdate(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup {  Backup = y.Backup,User = x})).ToList(), dbguild, default, db);
+                await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup {  Backup = y.Backup,User = x})).ToList(), dbguild, default, db);
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }

@@ -23,9 +23,10 @@ namespace EGG9000.Common.Factories {
             _logger = logger;
         }
 
-        public void Start() {
+        public TimingsFactory Start() {
             stopwatch.Start();
             times = new List<(string name, TimeSpan time)>();
+            return this;
         }
 
         public void Set(int num) {
@@ -40,10 +41,10 @@ namespace EGG9000.Common.Factories {
 
         public List<(string name, TimeSpan time)> Finished() {
             Set("Last");
-            var total = TimeSpan.FromMilliseconds(times.Sum(x => x.time.TotalMilliseconds));
+            var total = TimeSpan.FromTicks(times.Sum(x => x.time.Ticks));
             times.Add(("TOTAL", total));
             if(_logger is not null)
-                _logger.LogTrace("Timing: {name} {time}", "Total", total);
+                _logger.LogTrace("Timing: {name} {time}", "Total", total.Humanize().ShortenTime());
             stopwatch.Stop();
             return times;
         }

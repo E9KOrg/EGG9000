@@ -39,7 +39,9 @@ namespace EGG9000.Common.Contracts {
             //Need 1k soul eggs for contracts
             accounts = accounts.Where(x => x.Account.Backup.SoulEggs >= 1000);
             //Need to have the egg unlocked
-            //accounts = accounts.Where(x => x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg);
+            accounts = accounts.Where(x =>
+                x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg || (int)contract.Egg >= 100
+            );
 
             accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)));
 
@@ -135,12 +137,12 @@ namespace EGG9000.Common.Contracts {
             }
             while(ebGroups.Any(x => x.Value.Count > 0)) {
                 var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
-                var potentionalGuilds = coop.Users.Where(x => !string.IsNullOrWhiteSpace(x.Account.Guild)).Select(x => x.Account.Guild).ToList();
+                var potentionalGuilds = coop.Users.Where(x => !string.IsNullOrWhiteSpace(x.Account.Guild)).Select(x => x.Account.Guild?.Trim()).ToList();
                 UserByAccount user;
                 KeyValuePair<int, List<UserByAccount>> highestEBGroup;
                 if(AllowGuilds) {
-                    highestEBGroup = ebGroups.Where(x => x.Value.Count > 0).OrderBy(g => g.Value.Any(u => potentionalGuilds.Any(pc => pc.Equals(u.Account.Guild, StringComparison.InvariantCultureIgnoreCase))) ? 0 : 1).ThenByDescending(x => x.Key).First();
-                    user = highestEBGroup.Value.OrderBy(x => potentionalGuilds.Any(pc => pc.Equals(x.Account.Guild, StringComparison.InvariantCultureIgnoreCase)) ? 0 : 1).First();
+                    highestEBGroup = ebGroups.Where(x => x.Value.Count > 0).OrderBy(g => g.Value.Any(u => potentionalGuilds.Any(pc => pc.Equals(u.Account.Guild?.Trim(), StringComparison.InvariantCultureIgnoreCase))) ? 0 : 1).ThenByDescending(x => x.Key).First();
+                    user = highestEBGroup.Value.OrderBy(x => potentionalGuilds.Any(pc => pc.Equals(x.Account.Guild?.Trim(), StringComparison.InvariantCultureIgnoreCase)) ? 0 : 1).First();
                 } else {
                     highestEBGroup = ebGroups.Where(x => x.Value.Count > 0).OrderByDescending(x => x.Key).First();
                     user = highestEBGroup.Value.First();
@@ -158,7 +160,7 @@ namespace EGG9000.Common.Contracts {
             //    }
             //}
 
-            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > 1)) {
+            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1,contract.MaxCoopSize / 5))) {
                 coops = new List<PotentialCoop>();
                 includeBG.Add(BoardingGroup);
             } else if(includeBG.Count > 0) {
