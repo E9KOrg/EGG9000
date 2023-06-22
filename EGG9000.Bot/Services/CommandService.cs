@@ -387,8 +387,10 @@ namespace EGG9000.Bot.Services {
                 if(optionResult == null) {
                     return null;
                 }
-                if(parameterInfo.ParameterType == typeof(int)) {
-                    return Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
+                if(parameterInfo.ParameterType == typeof(uint)) {
+                    return Convert.ToUInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
+                } else if(parameterInfo.ParameterType == typeof(int)) {
+                        return Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
                 } else {
                     return FindOption(name, fauxCommand.Data.Options)?.Value;
                 }
@@ -455,6 +457,7 @@ namespace EGG9000.Bot.Services {
 
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
                         {typeof(int), ApplicationCommandOptionType.Integer },
+                        {typeof(uint), ApplicationCommandOptionType.Integer },
                         {typeof(string), ApplicationCommandOptionType.String },
                         {typeof(bool), ApplicationCommandOptionType.Boolean },
                         {typeof(SocketGuildUser), ApplicationCommandOptionType.User },
