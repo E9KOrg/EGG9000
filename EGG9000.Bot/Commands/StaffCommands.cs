@@ -35,6 +35,8 @@ using System.Diagnostics;
 using System.ServiceProcess;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
+using System.Collections;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -73,8 +75,80 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+        [SlashCommand(Description = "Look for a coop with certain search parameters", AdminOnly = true, AllowFarmHand = true )]
+        public static async Task FindCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] string coopname = "", [SlashParam(Required = false)] SocketChannel contractchannel = null) {
+            //Coop name was not passed correctly, error out
+            if(string.IsNullOrEmpty(coopname) || string.IsNullOrWhiteSpace(coopname)) {
+                await command.RespondAsync($"⚠️ERROR: Unable to parse the coop name `{coopname}`. Check you've entered a value?", ephemeral: true);
+                return;
+            } else coopname = coopname.ToLower(); //To-lower it
+
+            //Define a condition for lessening the DB load
+            Func<Coop, bool> rightContract = coop => {
+                if(contractchannel is null) return true;
+                else if(coop?.Contract is null) return false;
+                else return (coop.Contract.ID == contractchannel.ToString());
+            };
+
+            //Attempt to find the coop
+            var findCoop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(u => u.User).AsQueryable().FirstOrDefaultAsync(x => x.Name.ToLower() == coopname);
+
+            //If it can't be found, error out
+            if(findCoop is null) {
+                await command.RespondAsync($"⚠️ERROR: Unable to find a coop named `{coopname + (contractchannel is null ? "" : $"for the contract {contractchannel}")}`", ephemeral: true);
+                return;
+            }
+
+            Color color = Color.DarkGrey;
+            if(!findCoop.Finished && findCoop.FinishedOrFailed) color = Color.Red;
+            else if(findCoop.ProjectedToFinish) color = Color.Green;
+            else color = Color.Blue;
+
+            var builder = new EmbedBuilder()
+                .WithAuthor(new EmbedAuthorBuilder()
+                    .WithName($"{findCoop.Contract.Name} - {findCoop.Name}")
+                    .WithIconUrl(EggIncEggs.GetEggById((int)findCoop.Contract.Details.Egg).Image)
+                    .WithUrl($"https://egg9000.com/coop/{findCoop.Contract.ID}/{findCoop.Name.ToLower()}"))
+                .WithColor(color);
+                
+
+            var assigned = 0;
+            var joined = 0;
+
+            foreach(var u in findCoop?.UserCoopsXrefs) {
+                if(u is null) continue;
+                else if(u.JoinedCoop) {
+                    assigned++;
+                    joined++;
+                } else assigned++;
+            }
+
+            //For each item in coopName.UserCoopsXrefs, append a user mention to a variable
+            var userList = new List<string> {
+                $"**__Coop Users {joined}/{assigned}__:**"
+            };
+            userList.AddRange(findCoop?.UserCoopsXrefs?.Select(u => $"{(u.JoinedCoop ? "✓" : "❌")} <@{u.User.DiscordId}>").ToList());
+            if(userList.Count == 1) {
+                userList.Add("..._No users_");
+            } else if (userList.Count > 10){
+                userList = userList.Take(10).ToList();
+                userList.Add("..._(Trimmed list)_");
+            }
+
+            builder.WithDescription(string.Join("\n", userList));
+
+            builder.AddField("Channel", $"{(findCoop.DeletedChannel ? "**Channel Deleted**" : "<#" + findCoop.DiscordChannelId + ">")}");
+            builder.AddField("League", PlayerGradeDetails.GetEmoji(findCoop.League));
+
+            if(findCoop.Finished) builder.AddField("Status", "**Finished**");
+            else if(findCoop.FinishedOrFailed) builder.AddField("Status", "**Failed**"); 
+            else builder.AddField("Projected to finish?", $"{(findCoop.ProjectedToFinish ? "Yes" : "No")}");
+
+            await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
+        }
+
         [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
+        public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
