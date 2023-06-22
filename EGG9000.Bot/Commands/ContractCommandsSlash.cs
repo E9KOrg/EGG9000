@@ -77,7 +77,7 @@ namespace EGG9000.Bot.Commands {
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == targetCoop.GuildId && x.ContractID == targetCoop.ContractID && x.League == newgrade && x.CurrentUsers < x.MaxUsers).ToListAsync();
 
             if(coops.Count == 0) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} {targetCoop.Contract.Name}");
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)} {targetCoop.Contract.Name}");
                 return;
             }
 
@@ -95,7 +95,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(newCoop == null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)gradeEnum)} {targetCoop.Contract.Name}");
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)} {targetCoop.Contract.Name}");
                 return;
             }
             /* END Find a new co-op */
@@ -579,12 +579,14 @@ namespace EGG9000.Bot.Commands {
                     return; //Command only works in a co-op channel and where grade is known.
                 }
 
-                await arg.RespondAsync(
-                    Enumerable.Range(1, 5)
+                var result = Enumerable.Range(1, 5)
                     .Where(i => i != coop.League && Math.Abs(coop.League - i) < 2)
                     .Reverse()
                     .ToList()
-                    .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x))
+                    .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x));
+
+                await arg.RespondAsync(
+                    result
                 );
             }
         }
