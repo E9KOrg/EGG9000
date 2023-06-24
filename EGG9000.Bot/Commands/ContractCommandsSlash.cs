@@ -74,7 +74,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
 
             /* Find a new co-op */
-            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == targetCoop.GuildId && x.ContractID == targetCoop.ContractID && x.League == newgrade && x.CurrentUsers < x.MaxUsers).ToListAsync();
+            var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == targetCoop.GuildId && x.ContractID == targetCoop.ContractID && x.League == newgrade && x.CurrentUsers < x.MaxUsers && !x.FinishedOrFailedOrExpired).ToListAsync();
 
             if(coops.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)} {targetCoop.Contract.Name}");
