@@ -1027,6 +1027,7 @@ namespace EGG9000.Site.Controllers {
             dbGuild.DisableBG = model.disableBG;
             dbGuild.GroupRoles = model.groupRoles;
             dbGuild.AllowGuilds = model.AllowGuilds;
+            dbGuild.PublicScoreGrid = model.PublicScoreGrid;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1059,6 +1060,7 @@ namespace EGG9000.Site.Controllers {
             public bool disableBG { get; set; }
             public string groupRoles { get; set; }
             public bool AllowGuilds { get; set; }
+            public bool PublicScoreGrid { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {

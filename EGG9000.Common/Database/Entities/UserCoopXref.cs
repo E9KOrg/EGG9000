@@ -114,6 +114,16 @@ namespace EGG9000.Common.Database.Entities {
         public bool WokeUp { get; set; }
         [Key(5)]
         public DateTimeOffset LastChecked { get; set; }
+        [Key(6)]
+        public float Silos { get; set; }
+        [Key(7)]
+        public double EggsShipped { get; set; }
+        [Key(8)]
+        public double Rate { get; set; }
+        [Key(9)]
+        public double Expected { get; set; }
+        [Key(10)]
+        public double Actual { get; set; }
     }
 
     [MessagePackObject]

@@ -113,7 +113,16 @@
 	</div>
 </div>
 
-<button class="btn btn-success" onclick="SaveChannels(this)">Save Channels</button>
+<div class="card">
+	<div class="card-header">Other Settings</div>
+	<div class="card-body">
+		<label>
+			<input type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
+		</label>
+	</div>
+</div>
+
+<button class="btn btn-success" onclick="SaveChannels(this)">Save Settings</button>
 
 
 
@@ -154,7 +163,8 @@
 						finishedCategories: finishedCategories,
 						disableBG: $("#DisableBG").is(":checked"),
 						AllowGuilds: $("#AllowGuilds").is(":checked"),
-						GroupRoles: GetCategoryJoins(".GroupRole")
+						GroupRoles: GetCategoryJoins(".GroupRole"),
+						PublicScoreGrid: $("#PublicScoreGrid").is(":checked")
 					})
 			}, function () {
 				document.location = document.location;

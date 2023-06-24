@@ -140,7 +140,9 @@
 
 
                 var farmStats = farm.WithStats(Model.Backup, coop);
-
+                if(coop is null) {
+                    continue;
+                }
                 var usersWithBackups = isHome ? new List<UserWithBackup>() : coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
                 var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
                 var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
