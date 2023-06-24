@@ -1,12 +1,15 @@
-﻿@model List<EGG9000.Common.Database.Entities.GuildContract>
+﻿@model (List<EGG9000.Common.Database.Entities.GuildContract> Contracts, Guild DbGuild )
 @{
     ViewData["Title"] = "Contracts";
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
 }
 
-
+@if (isAdmin || Model.DbGuild.PublicScoreGrid)
+{
+    <a href="/Contract/RecentScoresGrid" class="btn btn-primary">Recent Scores Grid</a>
+}
 <h2>Recent Contracts</h2>
-@foreach (var contractGroup in Model.OrderBy(x => x.DeletedChannel).Where(x => x.Created > DateTimeOffset.FromUnixTimeSeconds(1682917200)).GroupBy(x => x.Contract))
+@foreach (var contractGroup in Model.Contracts.OrderBy(x => x.DeletedChannel).Where(x => x.Created > DateTimeOffset.FromUnixTimeSeconds(1682917200)).GroupBy(x => x.Contract))
 {
     var contract = contractGroup.Key;
     <div class="card">

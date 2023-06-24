@@ -1,0 +1,76 @@
+﻿@using Discord.WebSocket
+@using System.Drawing;
+@using static EGG9000.Site.Controllers.ContractController;
+@model (ScoreGridContract[] Contracts, ScoreGridItem[] GridItems, SocketRole[] Roles)
+@inject DiscordSocketClient discordClient
+@{
+    Guild dbguild = ViewBag.DBGuild;
+    SocketGuild guild = ViewBag.Guild;
+
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+
+    var green = Color.FromArgb(99, 190, 123);
+    var yellow = Color.FromArgb(255, 235, 132);
+    var red = Color.FromArgb(248, 105, 107);
+}
+
+<div>
+        @for (var i = 1; i <= Model.Contracts.Length; i++) {
+        <span class="contract">@i) @Model.Contracts[i - 1].ContractName &nbsp;&nbsp;</span>
+        }
+
+</div>
+<style>.contract { white-space: nowrap; }</style>
+
+<div class="row scrollable">
+    @foreach (var role in Model.Roles) {
+        var contracts = Model.Contracts.Select(x => new {
+            ContractId = x.ContractId,
+            ContractName = x.ContractName,
+            MaxScore = Model.GridItems.Where(y => (role is null ? true : y.RoleId == role.Id.ToString()) && y.ContractId == x.ContractId).Max(z => z.Score)
+        });
+        <div class="col-sm">
+            @if (role is not null) {
+                <h3>@role.Name</h3>
+            }
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        @for (var i = 1; i <= Model.Contracts.Length; i++) {
+                            <th>@i</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var userGroup in Model.GridItems.Where(x => role is null ? true : x.RoleId == role.Id.ToString()).GroupBy(x => x.Name).OrderBy(x => x.Key)) {
+                        <tr>
+                            <td>@userGroup.Key</td>
+                            @foreach (var contract in contracts) {
+                                var items = userGroup.Where(x => x.ContractId == contract.ContractId);
+                                if (items.Count() == 0) {
+                                    <td class="item"></td>
+                                } else {
+                                    var item = items.MaxBy(x => x.Score);
+                                    var relative = item.Score / contract.MaxScore;
+                                    var color = relative > 0.5 ? Colors.Lerp(green, yellow, (float)(relative - 0.5) * 2) : Colors.Lerp(yellow, red, (float)relative * 2);
+                                    <td style="background-color: @Colors.HexConverter(color)" class="item"></td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+@*                <tfoot>
+                    <tr>
+                        <th></th>
+                        @foreach (var contract in contracts) {
+                            <th>@contract.MaxScore.ToEggString()</th>
+                        }
+
+                    </tr>
+                </tfoot>
+*@            </table>
+
+        </div>
+    }
+</div>

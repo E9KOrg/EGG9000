@@ -72,6 +72,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool DisableBG { get; set; }
         public bool AllowGuilds { get; set; }
         public string GroupRoles { get; set; }
+        public bool PublicScoreGrid { get; set; }
     }
 
     [NotMapped]

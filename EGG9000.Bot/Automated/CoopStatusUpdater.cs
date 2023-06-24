@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "CluckinPupil66".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "TaskMower65".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -768,7 +768,7 @@ namespace EGG9000.Bot.Automated {
                                     }
 
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18) && coopDetails.PercentProjectedForJoined > 100) {
-                                        await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop);
+                                        await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
                                 }
 
@@ -1208,7 +1208,7 @@ namespace EGG9000.Bot.Automated {
             var currentSleep = sleepTracking.FirstOrDefault(x => !x.WokeUp);
 
             if(currentSleep == null && needsAlert) {
-                currentSleep = new SleepTracking { SleepStart = currentSleepStart, LastChecked = DateTimeOffset.Now };
+                currentSleep = new SleepTracking { SleepStart = currentSleepStart, LastChecked = DateTimeOffset.Now, Silos = siloTimeHours, EggsShipped = user.EggsShipped, Rate = user.Rate };
 
                 var messages = BotText.SleepingMessages;
                 var random = new Random();
@@ -1231,7 +1231,9 @@ namespace EGG9000.Bot.Automated {
                 if(currentSleepStart > currentSleep.SleepStart.AddMinutes(10)) { //Adding 10 mins to account for weird time stuff
                     //No longer sleeping
                     currentSleep.WokeUp = true;
-                    currentSleep.TotalHoursEmpty = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours - siloTimeHours;
+                    currentSleep.TotalHoursEmpty = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours -  (currentSleep.Silos > 0 ? currentSleep.Silos : siloTimeHours);
+                    currentSleep.Expected = currentSleep.EggsShipped + currentSleep.Silos * currentSleep.Rate;
+                    currentSleep.Actual = user.EggsShipped;
                     user.Xref.TotalHoursSleeping = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours;
                     user.Xref.HoursSleeping = 0;
                 } else {
@@ -1246,7 +1248,8 @@ namespace EGG9000.Bot.Automated {
                             AdminUserId = Guid.Empty,
                             UserId = user.DBUser.Id,
                             Id = Guid.NewGuid(),
-                            Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}"
+                            Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}",
+                            Details = JsonConvert.SerializeObject(new { FarmTimestemp = user.CoopStatus?.FarmInfo?.Timestamp, Silos = siloTimeHours })
                         };
                         _db.Demerit.Add(demerit);
                         await _db.SaveChangesAsync();
@@ -1291,7 +1294,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-                await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name}", user, _db, userFarmDetail.Xref, userFarmDetail.DiscordUser, coopChannel, dbguild, coop);
+                await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name}", user, _db, userFarmDetail.Xref, userFarmDetail.DiscordUser, coopChannel, dbguild, coop, true);
             }
         }
 
@@ -1345,9 +1348,12 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, ITextChannel coopChannel, Guild dbguild, Coop coop) {
+        public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, ITextChannel coopChannel, Guild dbguild, Coop coop, bool alwaysRemove) {
             var demeritChannel = await GetDemeritChannel(dbguild);
             if(demeritChannel is null) {
+                if(alwaysRemove) {
+                    _db.Remove(xref);
+                }
                 return;
             }
             var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
