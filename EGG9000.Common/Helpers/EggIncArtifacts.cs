@@ -77,6 +77,21 @@ namespace EGG9000.Common.Helpers {
             return _eiAfxDataRoot;
         }
 
+        public static Tier GetTier(int afxId, int tierNumber) {
+            var data = GetEiAfxData();
+            var artifact = data.artifact_families.FirstOrDefault(x => x.afx_id == afxId);
+            if(artifact is null) {
+                throw new Exception("Unable to locate artifact family with afx_id: " + afxId);
+            }
+
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == tierNumber);
+            if(tier is null) {
+                throw new Exception($"Unable to locate tier {tierNumber} for {artifact.name}");
+            }
+
+            return tier;
+        }
+
         public static int SlotCount(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
             var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
