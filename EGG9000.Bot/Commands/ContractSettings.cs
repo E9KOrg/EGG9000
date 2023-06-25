@@ -385,7 +385,6 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInput(label: $"Enter Guild Name (leave blank for none)", value: account.Guild, customId: "name", required: false).Build();
 
             await component.RespondWithModalAsync(modal);
-
         }
 
         [Modal]
