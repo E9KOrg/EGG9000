@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
@@ -29,25 +30,57 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
+using EGG9000.Common.JsonData.EiAfxData;
 using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands
 {
     public static class MiscCommandsSlash
     {
-        [SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam(Description = "Quality")] string quality,[SlashParam(Description = "artifact")] string artifact,ApplicationDbContext db, ILogger logger) {
+        [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
+        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam(Description = "Tier"),MinValue(2), MaxValue(4)] int quality,[SlashParam(Description = "artifact")] string artifact,ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
-            var data = EggIncArtifacts.GetEiAfxData();
-            var properName = data.artifact_families.FirstOrDefault(x => x.name.Equals("Ship in a bottle", StringComparison.OrdinalIgnoreCase)).id.Replace("-", "_").ToUpper();
+            var properName = artifact.Replace("-", "_").ToUpper();
             var builder = new EmbedBuilder();
-            builder.Title = $"For {command.User.Username} to craft {quantity} {quality} {artifact}";
+            builder.Title = $"Craft basket";
             builder.ThumbnailUrl = "https://egg9000.com/images/artifacts/" + properName + "/" + properName + "_" + 4 +
                                    ".png";
-            await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = ""; });
+            var crafter = new Crafter();
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                return;
+            }
+            foreach(var id in user.EggIncAccounts) {
+                var backup = id.Backup;
+                if(backup == null)
+                    continue;
+                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
+
+                var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
+
+                var basket = crafter.GetCraft(quantity, quality, artifact);
+                var stringBuilder = new StringBuilder();
+                stringBuilder.AppendFormat($"{"Name",-30} {"Using",-10} {"Need",-10} {"Cost", -10}\n");
+                var data = EggIncArtifacts.GetEiAfxData();
+                foreach(var ingredient in basket) {
+                    stringBuilder.AppendFormat($"T{ingredient.Value.Tier.tier_number, -2} {ingredient.Value.Tier.family.name,-26} {ingredient.Value.Use, -10} {ingredient.Value.Need,-10}\n");
+                }
+                if(user.EggIncAccounts.Count > 1) {
+                    builder.AddField("――――――――――――――――――", $"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:\n```\n{stringBuilder.ToString()}\n```");
+                } else {
+                    builder.AddField($"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:", $"```\n{stringBuilder.ToString()}\n```");
+                }
+            }
+            user.UpdateAccounts();
+            await db.SaveChangesAsync();
+
+
+            await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = $""; });
+            //await command.ModifyOriginalResponseAsync(x => { x.Content = $"```\n{stringBuilder.ToString()}\n```"; });
         }
 
-        [SlashCommand(Description = "Track your EB since the last time you ran this command")]
+        [Common.Commands.SlashCommand(Description = "Track your EB since the last time you ran this command")]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -93,7 +126,7 @@ namespace EGG9000.Bot.Commands
             await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = ""; });
         }
 
-        [SlashCommand(Description = "How many SE/PE needed for next rank up")]
+        [Common.Commands.SlashCommand(Description = "How many SE/PE needed for next rank up")]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
             await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -152,7 +185,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
         }
 
-        [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
+        [Common.Commands.SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname)
         {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -227,7 +260,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         //    await command.RespondAsync($"Will receive DM ping when co-op is finished and everyone has reported in", ephemeral: true);
         //}
 
-        [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
+        [Common.Commands.SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink)
         {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -261,7 +294,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
         }
 
-        [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
+        [Common.Commands.SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
         public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users)
         {
             DateTimeOffset expireTime;
@@ -295,7 +328,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
-        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
+        [Common.Commands.SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
         public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user)
         {
             DateTimeOffset expireTime;
@@ -318,7 +351,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
 
-        [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
+        [Common.Commands.SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
