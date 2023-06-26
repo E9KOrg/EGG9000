@@ -38,14 +38,15 @@ namespace EGG9000.Bot.Commands
     public static class MiscCommandsSlash
     {
         [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam(Description = "Tier"),MinValue(2), MaxValue(4)] int quality,[SlashParam(Description = "artifact")] string artifact,ApplicationDbContext db, ILogger logger) {
+        public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam(Description = "Tier"),MinValue(2), MaxValue(4)] int quality,[SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var properName = artifact.Replace("-", "_").ToUpper();
             var builder = new EmbedBuilder();
             builder.Title = $"Craft basket";
             builder.ThumbnailUrl = "https://egg9000.com/images/artifacts/" + properName + "/" + properName + "_" + 4 +
                                    ".png";
-            var crafter = new Crafter();
+
+            // TODO: GetCraft returns Basket class (total cost, artifact_family, Dictionnary<string, RequiredIngredient>)
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
@@ -56,9 +57,8 @@ namespace EGG9000.Bot.Commands
                 if(backup == null)
                     continue;
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
-
+                var crafter = new Crafter(backup.ArtifactHall);
                 var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
-
                 var basket = crafter.GetCraft(quantity, quality, artifact);
                 var stringBuilder = new StringBuilder();
                 stringBuilder.AppendFormat($"{"Name",-30} {"Using",-10} {"Need",-10} {"Cost", -10}\n");
