@@ -197,7 +197,7 @@ namespace EGG9000.Bot.EggIncAPI {
                         return default(TResponse);
                     }
                 }
-            } catch(Exception) {
+            } catch(Exception e) {
                 return default(TResponse);
             }
         }

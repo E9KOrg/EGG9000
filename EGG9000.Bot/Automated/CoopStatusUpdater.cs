@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "TaskMower65".ToLower()).ToList();
+                //coops = coops.Where(x => x.Name.ToLower() == "FenceUnion97".ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -444,17 +444,29 @@ namespace EGG9000.Bot.Automated {
 
                     if(status.SecondsRemaining == coop.Contract.Details.LengthSeconds) {
                         //Attempt to fix not started co-op
+                        _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
+
+                        var joinResponse = await ContractsAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+                            ContractIdentifier = coop.ContractID,
+                            CoopIdentifier = coop.Name.ToLower(),
+                            UserId = coop.CreatorID, ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Aux.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
+                        }, coop.CreatorID, false);
+
+
                         var statusUpdate = new Ei.ContractCoopStatusUpdateRequest {
                             ContractIdentifier = coop.ContractID,
                             CoopIdentifier = coop.Name.ToLower(),
                             Eop = 1, SoulPower = 24, UserId = coop.CreatorID, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = coop.CreatorID, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
                             ProductionParams = new Ei.FarmProductionParams {
-                                FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
+                                FarmPopulation = 1, Delivered = 1, Elr = 1, FarmCapacity = 1, Ihr = 1, Sr = 1
                             }
                         };
 
-                        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, true);
+                        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
 
+
+                        await Task.Delay(1000);
+                        var checkStatus = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), cancellationToken, coop.CreatorID);
 
 
                         var kickPlayer = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
