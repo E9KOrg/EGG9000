@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace EGG9000.Common.Helpers {
-    
     public class RequiredIngredient {
         public Tier Tier { get; set; }
         public int Use { get; set; }
@@ -17,23 +16,27 @@ namespace EGG9000.Common.Helpers {
             Need = need;
         }
     }
-    
+
     public class Crafter {
         private EiAfxDataRoot _data;
+        private IList<ArtifactCount> _artifactHall;
 
-        public Crafter() {
+        public Crafter(IList<ArtifactCount> artifactHall) {
             _data = EggIncArtifacts.GetEiAfxData();
+            _artifactHall = artifactHall;
         }
 
-        public Dictionary<string, RequiredIngredient>
-            GetCraft(int howMany, int tierNumber, string artifactFamilyId) {
+        public Dictionary<string, RequiredIngredient> GetCraft(int howMany, int tierNumber, string artifactFamilyId) {
             var artifactFamily = _data.artifact_families.First(af => af.id == artifactFamilyId);
+            if(artifactFamily.type.Equals("Ingredient", StringComparison.OrdinalIgnoreCase) && tierNumber == 4) {
+                tierNumber = 3;
+            }
             var artifactTier = artifactFamily?.tiers.First(t => t.tier_number == tierNumber);
 
             if(artifactTier?.recipe is not null) {
                 var basket = new Dictionary<string, RequiredIngredient>();
-                    GetIngredients(basket, artifactTier.recipe, howMany);
-                    return basket;
+                GetIngredients(basket, artifactTier.recipe, howMany);
+                return basket;
             } else {
                 throw new ArgumentException("Tier number is incorrect!", nameof(tierNumber));
             }
@@ -49,25 +52,56 @@ namespace EGG9000.Common.Helpers {
             return (int)(initialCost - 0.9 * initialCost * Math.Pow(timesCrafted / 300, 0.2));
         }
 
-        private int CheckInventory(Ingredient ingredient) {
-            return 0;
+        private int CheckInventory(Tier tier, int quantity) {
+
+            var artifactCount = _artifactHall.Where(ac => ac.Artifact.Rarity == 1).FirstOrDefault(ac => EggIncArtifacts.GetTierName(ac.Artifact) == tier.name);
+            if(artifactCount is null) {
+                return 0;
+            }
+
+            if(artifactCount.Count == 0) {
+                return 0;
+            }
+
+            if(artifactCount.Count >= quantity) {
+                artifactCount.Count -= quantity;
+                return quantity;
+            } else {
+                var count = artifactCount.Count;
+                artifactCount.Count = 0;
+                return count;
+            }
         }
-        
+
         private void GetIngredients(IDictionary<string, RequiredIngredient> basket, Recipe recipe, int quantity) {
             foreach(var ingredient in recipe.ingredients) {
                 var tier = EggIncArtifacts.GetTier(ingredient.afx_id, ingredient.tier_number);
-                if(tier.recipe is null) {
+                var count = CheckInventory(tier, quantity * ingredient.count);
+                if(count != 0) {
                     if(basket.TryGetValue(tier.id, out var value)) {
-                        value.Need += quantity * ingredient.count;
+                        value.Use += count;
                     } else {
-                        basket.Add(tier.id, new RequiredIngredient(tier,0,quantity * ingredient.count));
+                        basket.Add(tier.id, new RequiredIngredient(tier, count, 0));
+                    }
+                }
+
+                var difference = ingredient.count * quantity - count;
+                if(tier.recipe is null) {
+                    if(difference != 0) {
+                        if(basket.TryGetValue(tier.id, out var value)) {
+                            value.Need += difference;
+                        } else {
+                            basket.Add(tier.id, new RequiredIngredient(tier, 0, quantity * ingredient.count));
+                        }
                     }
                 } else {
-                    GetIngredients(basket, tier.recipe, ingredient.count * quantity);
+                    if(difference != 0) {
+                        GetIngredients(basket, tier.recipe, difference);
+                    }
                 }
             }
         }
-        
+
         private void IngredientRecursion(IDictionary<string, (Ingredient, int, int)> ingredients, Ingredient ingredient,
             int count) {
             var hmaii = HowManyArtifactsInInventory(ingredient.id, ingredient.tier_number);
