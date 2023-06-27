@@ -1443,7 +1443,11 @@ namespace EGG9000.Bot.Automated {
 
             var channel = await _client.GetChannelAsync(GuildChannelType.DemeritLogChannel, dbguild);
             if(channel is not null) {
-                _demeritChannels.Add(dbguild.Id, channel);
+                try {
+                    _demeritChannels.Add(dbguild.Id, channel);
+                } catch (ArgumentException) {
+
+                }
                 return channel;
             }
 
