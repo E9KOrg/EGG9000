@@ -116,9 +116,12 @@
 <div class="card">
 	<div class="card-header">Other Settings</div>
 	<div class="card-body">
+		<div>
 		<label>
 			<input type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
 		</label>
+		</div>
+		<label>Co-op Prefix <input value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
 	</div>
 </div>
 
@@ -164,7 +167,8 @@
 						disableBG: $("#DisableBG").is(":checked"),
 						AllowGuilds: $("#AllowGuilds").is(":checked"),
 						GroupRoles: GetCategoryJoins(".GroupRole"),
-						PublicScoreGrid: $("#PublicScoreGrid").is(":checked")
+						PublicScoreGrid: $("#PublicScoreGrid").is(":checked"),
+						CoopNamePrefix: $("#CoopNamePrefix").val()
 					})
 			}, function () {
 				document.location = document.location;
