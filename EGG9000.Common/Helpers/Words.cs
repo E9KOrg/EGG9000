@@ -53,9 +53,6 @@ namespace EGG9000.Bot
         }
 
         public string GetCoopName(List<UserByAccount> prefarms, SocketGuild discordguild, Guild dbguild) {
-            if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
-                return $"{dbguild.CoopNamePrefix}{GetRandomSecondWord(dbguild.CoopNamePrefix)}{GetRandomNumber()}";
-
             var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User?.CustomCoopName)).GroupBy(x => x.User.Id).ToList();
             var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.Now);
             foreach(var customName in customNamesExpired) {
@@ -76,6 +73,8 @@ namespace EGG9000.Bot
                     return name + GetRandomSecondWord(name) + GetRandomNumber();
                 }
             } else {
+                if(!string.IsNullOrWhiteSpace(dbguild.CoopNamePrefix))
+                    return $"{dbguild.CoopNamePrefix}{GetRandomSecondWord(dbguild.CoopNamePrefix)}{GetRandomNumber()}";
                 var wordOne = GetRandomWord();
                 var wordTwo = GetRandomSecondWord(wordOne);
                 return wordOne + wordTwo + GetRandomNumber();

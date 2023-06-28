@@ -1028,6 +1028,7 @@ namespace EGG9000.Site.Controllers {
             dbGuild.GroupRoles = model.groupRoles;
             dbGuild.AllowGuilds = model.AllowGuilds;
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
+            dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1061,6 +1062,7 @@ namespace EGG9000.Site.Controllers {
             public string groupRoles { get; set; }
             public bool AllowGuilds { get; set; }
             public bool PublicScoreGrid { get; set; }
+            public string CoopNamePrefix { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
