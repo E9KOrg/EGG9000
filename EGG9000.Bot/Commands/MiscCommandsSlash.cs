@@ -32,6 +32,7 @@ using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.JsonData.EiAfxData;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace EGG9000.Bot.Commands
 {
@@ -52,6 +53,7 @@ namespace EGG9000.Bot.Commands
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
+            var stringBuilder = new StringBuilder();
             foreach(var id in user.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)
@@ -60,12 +62,14 @@ namespace EGG9000.Bot.Commands
                 var crafter = new Crafter(backup.ArtifactHall);
                 var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
                 var basket = crafter.GetCraft(quantity, quality, artifact);
-                var stringBuilder = new StringBuilder();
+
                 stringBuilder.AppendFormat($"{"Name",-30} {"Using",-10} {"Need",-10} {"Cost", -10}\n");
                 var data = EggIncArtifacts.GetEiAfxData();
-                foreach(var ingredient in basket) {
-                    stringBuilder.AppendFormat($"T{ingredient.Value.Tier.tier_number, -2} {ingredient.Value.Tier.family.name,-26} {ingredient.Value.Use, -10} {ingredient.Value.Need,-10}\n");
+                foreach(var ingredient in basket.GetIngredients()) {
+                    stringBuilder.AppendFormat($"T{ingredient.Value.Tier.tier_number, -2} {ingredient.Value.Tier.family.name,-26} {ingredient.Value.Use, -10} {ingredient.Value.GetUse(),-10} {ingredient.Value.Cost.ToString("N0",new CultureInfo("en-US")), -10}\n");
                 }
+
+                stringBuilder.Append($"Total Cost: {basket.GetTotalCost()}");
                 if(user.EggIncAccounts.Count > 1) {
                     builder.AddField("――――――――――――――――――", $"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:\n```\n{stringBuilder.ToString()}\n```");
                 } else {
@@ -76,7 +80,7 @@ namespace EGG9000.Bot.Commands
             await db.SaveChangesAsync();
 
 
-            await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.Build(); x.Content = $""; });
+            await command.ModifyOriginalResponseAsync(x => { x.Embed = null; x.Content = $"```\n{stringBuilder.ToString()}\n```"; });
             //await command.ModifyOriginalResponseAsync(x => { x.Content = $"```\n{stringBuilder.ToString()}\n```"; });
         }
 
