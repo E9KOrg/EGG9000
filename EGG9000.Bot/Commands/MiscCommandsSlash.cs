@@ -30,6 +30,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using Microsoft.Extensions.Logging;
+using Bugsnag.Payload;
 
 namespace EGG9000.Bot.Commands
 {
@@ -309,9 +310,18 @@ Last Backup <t:{backup.LastBackupTime}:R>
         [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
+            var infoText = $"Staff has been called ({details})";
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
             await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}");
-            await command.RespondAsync($"Staff has been called ({details})", ephemeral: keepPrivate);
+            await command.RespondAsync(infoText, ephemeral: keepPrivate);
+            if(keepPrivate) {
+                var dmChannel = await command.User.CreateDMChannelAsync();
+                try {
+                    var message = await dmChannel.SendMessageAsync(infoText);
+                } catch(System.Exception) {
+                    await channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
+                }
+            }
         }
     }
 }
