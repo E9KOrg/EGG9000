@@ -310,15 +310,8 @@ Last Backup <t:{backup.LastBackupTime}:R>
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
             var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
-            await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention} called for staff in <#{command.Channel.Id}> with the details: {details}");
-            if(keepPrivate)
-            {
-
-                await command.RespondAsync("Staff has been called.", ephemeral: true);
-            } else
-            {
-                await command.RespondAsync($"Staff has been called ({details})");
-            }
+            await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}");
+            await command.RespondAsync($"Staff has been called ({details})", ephemeral: keepPrivate);
         }
     }
 }
