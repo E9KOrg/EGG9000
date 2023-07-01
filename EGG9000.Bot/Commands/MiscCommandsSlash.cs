@@ -30,7 +30,6 @@ using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using Microsoft.Extensions.Logging;
-using Bugsnag.Payload;
 
 namespace EGG9000.Bot.Commands
 {
@@ -318,7 +317,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 var dmChannel = await command.User.CreateDMChannelAsync();
                 try {
                     var message = await dmChannel.SendMessageAsync(infoText);
-                } catch(System.Exception) {
+                } catch(Exception) {
                     await channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
                 }
             }
