@@ -386,43 +386,42 @@ namespace EGG9000.Site.Controllers {
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
-        public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
-            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
+        public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-                var loginuser = (await _userManager.GetUserAsync(User));
-                var logins = await _userManager.GetLoginsAsync(loginuser);
-                var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            ViewBag.Oldest = oldest;
+            ViewBag.SortBy = sortby;
 
-                ViewBag.Oldest = oldest;
-                ViewBag.SortBy = sortby;
-
-                await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
-
-                var leaderboard = await _getLeaderboard(user.GuildId);
-
-
-                if(oldest) {
-                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
-                } else {
-                    switch(sortby) {
-                        case "se":
-                            leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
-                            break;
-                        case "pe":
-                            leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
-                            break;
-                        case "start":
-                            var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-                            leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
-                            leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
-                            break;
-                    }
-                    return View(leaderboard);
-                }
-            } else {
-                return View("TempDisabled");
+            if(guildid == 0 || !User.IsInRole("Admin")) {
+                guildid = user.GuildId;
             }
-        }
+
+            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
+
+            var leaderboard = await _getLeaderboard(guildid);
+
+
+            if(oldest) {
+                return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
+            } else {
+                switch(sortby) {
+                    case "se":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+                        break;
+                    case "pe":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
+                        break;
+                    case "start":
+                        var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
+                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+                        leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
+                        break;
+                }
+                return View(leaderboard);
+            }
+        } 
 
         public async Task<IActionResult> Results([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
@@ -499,7 +498,7 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize]
         public async Task<IActionResult> Comparison() {
-            
+
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
@@ -507,12 +506,11 @@ namespace EGG9000.Site.Controllers {
             await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
 
             var leaderboard = await _getLeaderboard(user.GuildId);
-            
+
             var myEbsWithRole = new List<Tuple<double, string>>();
             var allEbData = new List<Tuple<double, string>>();
 
-            foreach(var u in leaderboard)
-            {
+            foreach(var u in leaderboard) {
                 // Add all users data.
                 allEbData.Add(new Tuple<double, string>(
                     u.Backup.EarningsBonus,
@@ -520,8 +518,7 @@ namespace EGG9000.Site.Controllers {
                     ));
 
                 // Add logged in users data.
-                if(u.User.Id == user.Id)
-                {
+                if(u.User.Id == user.Id) {
                     myEbsWithRole.Add(new Tuple<double, string>(
                         u.Backup.EarningsBonus,
                         SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank

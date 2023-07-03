@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                //coops = coops.Where(x => x.Name.ToLower() == "FenceUnion97".ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "GooeyPolka14 ".Trim().ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -442,7 +442,7 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                    if(status.SecondsRemaining == coop.Contract.Details.LengthSeconds) {
+                    if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
                         //Attempt to fix not started co-op
                         _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
 
