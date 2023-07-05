@@ -149,8 +149,23 @@ namespace EGG9000.Common.Contracts {
                 }
 
                 coop.Users.Add(user);
+
+                //Remove user from group so they don't get added to another coop
                 highestEBGroup.Value.Remove(user);
 
+                //Look through all groups to find other accounts for this user
+                var otherAccounts = ebGroups.SelectMany(x => x.Value.Where(y => y.User.Id == user.User.Id).Select(y => new { Group = x, Account = y })).ToList();
+                if(otherAccounts.Count() > 0) {
+                    var count = otherAccounts.Count();
+                    if(count < contract.MaxCoopSize - 1) {
+                        foreach(var otherAccount in otherAccounts) {
+                            coop.Users.Add(otherAccount.Account);
+
+                            //Remove user from group so they don't get added to another coop
+                            otherAccount.Group.Value.Remove(otherAccount.Account);
+                        }
+                    }
+                }
             }
 
             //foreach(var ebGroup in ebGroups.OrderByDescending(x => x.Key)) {
