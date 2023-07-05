@@ -53,8 +53,8 @@
                                 } else {
                                     var item = items.MaxBy(x => x.Score);
                                     var relative = item.Score / contract.MaxScore;
-                                    var color = relative > 0.5 ? Colors.Lerp(green, yellow, (float)(relative - 0.5) * 2) : Colors.Lerp(yellow, red, (float)relative * 2);
-                                    <td style="background-color: @Colors.HexConverter(color)" class="item"></td>
+                                    var color = relative > 0.5 ? Colors.Lerp(yellow, green, (float)(relative - 0.5) * 2) : Colors.Lerp(red, yellow, (float)relative * 2);
+                                    <td style="background-color: @Colors.HexConverter(color)" class="item" title="@contract.ContractName - Score: @item.Score.ToEggString() of max @contract.MaxScore.ToEggString() (@relative)"></td>
                                 }
                             }
                         </tr>
