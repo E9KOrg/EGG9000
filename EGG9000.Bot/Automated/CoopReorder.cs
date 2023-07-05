@@ -22,7 +22,7 @@ namespace EGG9000.Bot.Automated {
     public class CoopReorder : _UpdaterBase<CoopReorder> {
         public CoopReorder(
             IServiceProvider provider
-        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, provider) {
+        ) : base(TimeSpan.FromMinutes(30), TimeSpan.Zero, provider) {
         }
         public override async Task Run(object state, CancellationToken cancellationToken) {
             try

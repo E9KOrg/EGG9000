@@ -154,11 +154,11 @@ namespace EGG9000.Common.Services {
             _logger.LogInformation("Backups from cache {count}", backups.Count);
 
             if(backupsNeeded.Count > 0) {
-                var throttler = new SemaphoreSlim(3);
+                var throttler = new SemaphoreSlim(2);
                 var tasks = new List<Task>();
                 var responses = new ConcurrentQueue<ApiResponse<List<Ei.EggIncFirstContactResponse>>>();
                 var url = $"{urlBase}GetBackups";
-                var partitions = Partition(backupsNeeded, 500);
+                var partitions = Partition(backupsNeeded, 250);
                 var i = 1;
                 foreach(var partition in partitions) {
                     if(token.IsCancellationRequested)

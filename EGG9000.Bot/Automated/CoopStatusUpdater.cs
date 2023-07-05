@@ -29,6 +29,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
 using static Ei.Backup.Types;
+using Microsoft.AspNetCore.Http;
 
 namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -47,7 +48,7 @@ namespace EGG9000.Bot.Automated {
 
         public CoopStatusUpdater(
             IServiceProvider provider
-            ) : base(TimeSpan.FromMinutes(8), delay, provider) {
+            ) : base(TimeSpan.FromMinutes(15), delay, provider) {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
@@ -63,12 +64,12 @@ namespace EGG9000.Bot.Automated {
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
 
-                var throttler = new SemaphoreSlim(10);
+                var throttler = new SemaphoreSlim(3);
 
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "GooeyPolka14 ".Trim().ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "cluckinstate98 ".Trim().ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
 #endif
 
@@ -441,6 +442,10 @@ namespace EGG9000.Bot.Automated {
                     var status = statusReponse.Status;
 
 
+                    if(coop.League != (uint)status.Grade) {
+                        _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
+                        coop.League = (uint)status.Grade;
+                    }
 
                     if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
                         //Attempt to fix not started co-op
