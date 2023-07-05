@@ -156,14 +156,15 @@ namespace EGG9000.Common.Contracts {
                 //Look through all groups to find other accounts for this user
                 var otherAccounts = ebGroups.SelectMany(x => x.Value.Where(y => y.User.Id == user.User.Id).Select(y => new { Group = x, Account = y })).ToList();
                 if(otherAccounts.Count() > 0) {
-                    var count = otherAccounts.Count();
-                    if(count < contract.MaxCoopSize - 1) {
-                        foreach(var otherAccount in otherAccounts) {
-                            coop.Users.Add(otherAccount.Account);
+                    //Find out how many other accounts we can add to this coop
+                    while(coop.Users.Count + otherAccounts.Count > contract.MaxCoopSize  && otherAccounts.Count > 0) {
+                        otherAccounts.RemoveAt(otherAccounts.Count - 1);
+                    }
+                    foreach(var otherAccount in otherAccounts) {
+                        coop.Users.Add(otherAccount.Account);
 
-                            //Remove user from group so they don't get added to another coop
-                            otherAccount.Group.Value.Remove(otherAccount.Account);
-                        }
+                        //Remove user from group so they don't get added to another coop
+                        otherAccount.Group.Value.Remove(otherAccount.Account);
                     }
                 }
             }
@@ -175,7 +176,7 @@ namespace EGG9000.Common.Contracts {
             //    }
             //}
 
-            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1,contract.MaxCoopSize / 5))) {
+            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1, contract.MaxCoopSize / 5))) {
                 coops = new List<PotentialCoop>();
                 includeBG.Add(BoardingGroup);
             } else if(includeBG.Count > 0) {
