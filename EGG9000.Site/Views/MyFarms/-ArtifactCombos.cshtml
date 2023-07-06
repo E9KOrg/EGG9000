@@ -47,7 +47,7 @@
         if (artifact == null) {
             <div></div>
         } else {
-
+            var subClass = "afx-img";
             var bgClass = artifact.Rarity switch {
                 1 => "bg-common afx-bg", //Common
                 2 => "bg-rare afx-bg", //Rare
@@ -57,13 +57,14 @@
             };
             if (stone) {
                 bgClass = "afx-stone";
+                subClass = "afx-stone";
             }
             var image = artifactImage(artifact, stone);
             var size = stone ? 15 : 70;
             var textInfo = new CultureInfo("en-US", false).TextInfo;
             var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
             <div class="rounded-full @(bgClass)">
-                <img class="position-absolute afx-img" src="@image" title="@name" />
+                <img class="position-absolute (@subClass)" src="@image" title="@name" />
             </div>
         }
     }
