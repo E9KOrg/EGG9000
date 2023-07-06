@@ -318,7 +318,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 try {
                     var message = await dmChannel.SendMessageAsync(infoText);
                 } catch(Exception) {
-                    await channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
+                    await command.Channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
                 }
             }
         }
