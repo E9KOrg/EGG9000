@@ -150,9 +150,9 @@
 
                 <div class="card">
                     @if (isHome) {
-                        <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
                     } else {
-                        <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
                     }
 
                     <table class="table table-sm" style="margin-bottom: 0;">
