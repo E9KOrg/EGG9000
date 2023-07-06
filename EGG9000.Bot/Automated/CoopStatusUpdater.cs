@@ -489,7 +489,7 @@ namespace EGG9000.Bot.Automated {
 
                     if(cancellationToken.IsCancellationRequested) return;
 
-                    
+
                     if(coop.League == 0) {
                         //Fix if grade is set to 0
                         coop.League = (uint)status.Grade;
@@ -1163,16 +1163,13 @@ namespace EGG9000.Bot.Automated {
                                     embedBuilder.AddField("\u17B5", "\u17B5");
                                 }
                             } else if(!status.Finished()) {
+                                await CheckCompleteOnCheckIn(coop, usersWithStatus, coopChannel, _db);
                                 embedBuilder.AddField("Time To Complete", "Once everyone checks in", inline: true);
                             }
 
                             embedBuilder.AddField("Projected Amount", $"{coopDetails.Projected.ToEggString()} of {targetAmount.ToEggString()} {Math.Round(coopDetails.PercentProjectedForJoined)}%", inline: true);
                             embedBuilder.AddField("Current Amount", status.TotalAmount.ToEggString(), inline: true);
                             embedBuilder.AddField("Current With Offline", amountWithOffline.ToEggString(), inline: true);
-                            //embedBuilder.AddField("Egg Laying Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
-                            if(coopDetails.CoopParticipants.Any(x => x.CoopStatus is null)) {
-                                embedBuilder.AddField("Everyone Joins", $"Projected {Math.Round(coopDetails.PercentProjected)}%", inline: true);
-                            }
                         } else if(coop.Status == CoopStatusEnum.Completed) {
                             embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
                             embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
@@ -1249,7 +1246,7 @@ namespace EGG9000.Bot.Automated {
                 if(currentSleepStart > currentSleep.SleepStart.AddMinutes(10)) { //Adding 10 mins to account for weird time stuff
                     //No longer sleeping
                     currentSleep.WokeUp = true;
-                    currentSleep.TotalHoursEmpty = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours -  (currentSleep.Silos > 0 ? currentSleep.Silos : siloTimeHours);
+                    currentSleep.TotalHoursEmpty = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours - (currentSleep.Silos > 0 ? currentSleep.Silos : siloTimeHours);
                     currentSleep.Expected = currentSleep.EggsShipped + currentSleep.Silos * currentSleep.Rate;
                     currentSleep.Actual = user.EggsShipped;
                     user.Xref.TotalHoursSleeping = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours;
@@ -1360,7 +1357,7 @@ namespace EGG9000.Bot.Automated {
         public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             try {
                 var dmChannel = await discordUser.CreateDMChannelAsync();
-                await dmChannel.SendMessageAsync($"{Message} {coopChannel.Mention} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name}");
+                await dmChannel.SendMessageAsync($"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");
             } catch(HttpException) {
                 await coopChannel.SendMessageAsync($"{Message} (User has blocked DMs from bot)");
             }
@@ -1414,6 +1411,19 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
+        public async Task CheckCompleteOnCheckIn(Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel, ApplicationDbContext _db) {
+            var anybodyWithPingSetting = usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnCompleteOnCheckIn ?? false);
+
+            if(anybodyWithPingSetting.Any()) {
+                foreach(var user in anybodyWithPingSetting) {
+                    user.Xref.CoopSetting.PingOnCompleteOnCheckIn = false;
+                    user.Xref.UpdateCoopSetting();
+                    await _db.SaveChangesAsync();
+                    await SendDMWarning(user.DiscordUser, coopChannel, $"Your co-op will complete once everyone checks in.", coop);
+                }
+            }
+        }
+
         public async Task CheckDeflectorChange(Ei.ContractCoopStatusResponse prevStatus, Ei.ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel) {
             if(prevStatus == null || coop.FinishedOrFailed || coop.CoopEnds < DateTimeOffset.Now) {
                 return;
@@ -1451,7 +1461,7 @@ namespace EGG9000.Bot.Automated {
             if(channel is not null) {
                 try {
                     _demeritChannels.Add(dbguild.Id, channel);
-                } catch (ArgumentException) {
+                } catch(ArgumentException) {
 
                 }
                 return channel;

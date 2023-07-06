@@ -69,6 +69,7 @@ namespace EGG9000.Bot.Commands {
             ("PingOnMessage", "Any non-bot message is sent in channel"),
             ("PingOnCoopCreated", "Additional DM alongside the standard @mention in the co-op channel"),
             ("PingOnTachyonChange", "Get notified when someone adds/removes a Tachyon Deflector"),
+            ("PingOnCompleteOnCheckIn", "Get notified when your co-op will complete as soon as everyone checks in"),
         };
         public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix ,string title, bool coopOnly) {
             var props = new MessageProperties();
