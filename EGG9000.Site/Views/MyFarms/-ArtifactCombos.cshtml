@@ -49,21 +49,21 @@
         } else {
 
             var bgClass = artifact.Rarity switch {
-                1 => "bg-common", //Common
-                2 => "bg-rare", //Rare
-                3 => "bg-epic", //Epic
-                4 => "bg-legendary", //Legendary
-                _ => "bg-common" //Default to gray
+                1 => "bg-common afx-bg", //Common
+                2 => "bg-rare afx-bg", //Rare
+                3 => "bg-epic afx-bg", //Epic
+                4 => "bg-legendary afx-bg", //Legendary
+                _ => "bg-common afx-bg" //Default to gray
             };
             if (stone) {
-                bgClass = "";
+                bgClass = "afx-stone";
             }
             var image = artifactImage(artifact, stone);
             var size = stone ? 15 : 70;
             var textInfo = new CultureInfo("en-US", false).TextInfo;
             var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
-            <div class="rounded-full @(bgClass)" style="height:@(size)px; width:@(size)px;">
-                <img class="position-absolute" style="width:@(size)px; height:@(size)px;" src="@image" title="@name" />
+            <div class="rounded-full @(bgClass)">
+                <img class="position-absolute afx-img" src="@image" title="@name" />
             </div>
         }
     }
