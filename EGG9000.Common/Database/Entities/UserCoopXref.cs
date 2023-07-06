@@ -142,6 +142,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool PingOnCoopCreated { get; set; }
         [Key(6)]
         public bool PingOnTachyonChange { get; set; }
+        [Key(7)]
+        public bool PingOnCompleteOnCheckIn { get; set; }
 
         [IgnoreMember]
         public bool this[string propertyName] {
@@ -172,6 +174,7 @@ namespace EGG9000.Common.Database.Entities {
             PingOnMessage = user.CoopSetting.PingOnMessage;
             PingOnCoopCreated = user.CoopSetting.PingOnCoopCreated;
             PingOnTachyonChange = user.CoopSetting.PingOnTachyonChange;
+            PingOnCompleteOnCheckIn = user.CoopSetting.PingOnCompleteOnCheckIn;
         }
     }
 }

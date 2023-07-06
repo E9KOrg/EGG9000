@@ -81,7 +81,14 @@ body {
 .afx-stone {
     height: 1vh;
     width: 1vh;
+    position: relative;
 }
+
+.afx-stone .afx-img {
+    width: 100%;
+    height: 100%;
+}
+
 
 .bg-common {
     background: radial-gradient(#d3d3d3,#d3d3d3,#9e9e9e);

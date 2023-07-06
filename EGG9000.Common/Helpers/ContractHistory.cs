@@ -45,7 +45,7 @@ namespace EGG9000.Common.Helpers {
                         skipped++;
                         continue; 
                     }
-                    
+
                     histories.Add(new UserContractScore {
                         UserId = xref.UserId,
                         UserName = xref.User?.DiscordUsername,
@@ -54,7 +54,7 @@ namespace EGG9000.Common.Helpers {
                         EggsShipped = Math.Min(lastStatus.ContributionAmount, maxAmount),
                         TokensSpent = lastStatus.BoostTokensSpent,
                         Joined = DateTimeOffset.Now - (xref.User?.Registered ?? DateTimeOffset.Now),
-                        Elite = coop.League == 0,
+                        League = coop.League,
                         xref = xref,
                     });
                     //}
@@ -62,25 +62,28 @@ namespace EGG9000.Common.Helpers {
             }
             histories = histories.GroupBy(x => x.UserId).Select(x => x.OrderBy(y => y.EggsShipped).First()).ToList();
 
+            var historiesByGrade = histories.GroupBy(x => x.League).ToList();
 
-            var historiesOrderedBySoulPower = histories.OrderBy(x => x.SoulPower).ToArray();
-            for(var currentIndex = 0; currentIndex < historiesOrderedBySoulPower.Length; currentIndex++) {
-                double averageEggs = 0;
-                var startAverage = Math.Max(0, currentIndex - 25);
-                var endAverage = Math.Min(historiesOrderedBySoulPower.Length, currentIndex + 25);
-                var count = 0;
-                for(var averageIndex = startAverage; averageIndex < endAverage; averageIndex++) {
-                    if(averageIndex == currentIndex)
-                        continue;
-                    averageEggs += historiesOrderedBySoulPower[averageIndex].EggsShipped;
-                    count++;
+            foreach(var grade in historiesByGrade) {
+                var historiesOrderedBySoulPower = grade.OrderBy(x => x.SoulPower).ToArray();
+                for(var currentIndex = 0; currentIndex < historiesOrderedBySoulPower.Length; currentIndex++) {
+                    double averageEggs = 0;
+                    var startAverage = Math.Max(0, currentIndex - 25);
+                    var endAverage = Math.Min(historiesOrderedBySoulPower.Length, currentIndex + 25);
+                    var count = 0;
+                    for(var averageIndex = startAverage; averageIndex < endAverage; averageIndex++) {
+                        if(averageIndex == currentIndex)
+                            continue;
+                        averageEggs += historiesOrderedBySoulPower[averageIndex].EggsShipped;
+                        count++;
+                    }
+                    averageEggs = averageEggs / count;
+
+                    historiesOrderedBySoulPower[currentIndex].Score = (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
                 }
-                averageEggs = averageEggs / count;
-
-                historiesOrderedBySoulPower[currentIndex].Score = (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
             }
 
-            return historiesOrderedBySoulPower.OrderBy(x => x.Score).ToList();
+            return histories.OrderBy(x => x.Score).ToList();
         }
         public class UserContractScore {
             public Guid UserId;
@@ -91,7 +94,7 @@ namespace EGG9000.Common.Helpers {
             public uint TokensSpent;
             public TimeSpan Joined;
             public float Score;
-            public bool Elite;
+            public uint League;
             public UserCoopXref xref;
         }
     }
