@@ -130,35 +130,26 @@
             </li>
         }
     </ul>
-} else {
-    <!-- <img src="@PlayerGradeDetails.GetImage(Model.User.EggIncAccounts.First().GetGrade())" style="max-height: 30px;" /> -->
-    <img src="@PlayerGradeDetails.GetImage(Model.User.EggIncAccounts.First().GetGrade())" style="max-height: 30px;" />
-    var backup = Model.User.EggIncAccounts.First().Backup;
-    @if (backup.PermitLevel == 0) {
-        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 30px;"/>
-    } else {
-        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 30px;"/>
-    }
 }
+
 <div class="tab-content">
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
         var backup = account.Backup;
         var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
-            <div style="padding-bottom: 10px; padding-top: 10px;" class="nobreak">
-                <!-- <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 30px;" />
-                if (backup.PermitLevel == 0) {
-                    <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 30px;" /><br>
-                } else {
-                    <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 30px;" /><br>
-                } -->
-            </div>
             <div style="padding-bottom: 10px;" class="nobreak">
-                <span style="margin-right:5px;"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
                 @if (Model.User.EggIncAccounts.Count == 1){
-                    @:<span style="margin: 5px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
+                    @:<span style="margin-right: 5px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
+                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;"/>
+                    @if (backup.PermitLevel == 0){
+                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                    }
+                    else{
+                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                    }
                 }
+                <span style="margin-right: 5px;"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
                 <span style="margin: 5px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
                 @if (!dbguild.DisableBG) {
                     if(account.Group == 0){
