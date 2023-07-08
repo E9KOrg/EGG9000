@@ -18,7 +18,7 @@
 			<tr>
 				<th></th>
 				<th>Soul Power</th>
-				<th>Elite</th>
+				<th>Grade</th>
 				<th>Eggs Shipped</th>
 				<th>Tokens Spent</th>
 				<th>Joined</th>
@@ -31,7 +31,7 @@
 				<tr>
 					<td><a href="/Home/ViewUser/@(score.UserId)">@score.UserName</a></td>
 					<td>@score.SoulPower </td>
-					<td>@score.Elite</td>
+					<td>@((Ei.Contract.Types.PlayerGrade)score.League)</td>
 					<td>@score.EggsShipped.ToEggString()</td>
 					<td>@score.TokensSpent</td>
 					<td>@score.Joined.Humanize()</td>
