@@ -505,7 +505,7 @@ namespace EGG9000.Site.Controllers {
                 return new ScoreUser {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
-                    RunningScore = y.xref.RunningScore.Value
+                    RunningScore = y.xref.RunningScore.Value, Grade = (Ei.Contract.Types.PlayerGrade)y.League
                 };
             });
 
@@ -528,36 +528,36 @@ namespace EGG9000.Site.Controllers {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
                     Score = y.Score,
-                    DiscordUser = discordUser,
+                    DiscordUser = discordUser, Grade = (Ei.Contract.Types.PlayerGrade)y.League
                 };
             })).Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
 
 
 
 
-            foreach(var topxref in topXrefs) {
-                if(topxref.DiscordUser == null)
-                    topxref.DiscordUser = await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
-                var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
-                if(tempRole == null) {
-                    tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
-                    _db.Add(tempRole);
-                    try {
-                        await topxref.DiscordUser.AddRoleAsync(beastModeRole);
-                        Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
-                        await Task.Delay(600);
-                    } finally { }
-                }
-                tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
-                tempRole.Expires = DateTimeOffset.Now.AddDays(7);
+            //foreach(var topxref in topXrefs) {
+            //    if(topxref.DiscordUser == null)
+            //        topxref.DiscordUser = await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
+            //    var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
+            //    if(tempRole == null) {
+            //        tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
+            //        _db.Add(tempRole);
+            //        try {
+            //            await topxref.DiscordUser.AddRoleAsync(beastModeRole);
+            //            Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
+            //            await Task.Delay(600);
+            //        } finally { }
+            //    }
+            //    tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
+            //    tempRole.Expires = DateTimeOffset.Now.AddDays(7);
 
-            }
+            //}
 
-            await _db.SaveChangesAsync();
+            //await _db.SaveChangesAsync();
 
-            var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
+            //var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
 
-            await guild.GetTextChannel(656455568353132546).SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}");
+            //await guild.GetTextChannel(656455568353132546).SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}");
 
 
             return View(new ScoreResult {
@@ -604,6 +604,7 @@ namespace EGG9000.Site.Controllers {
             public float RunningScore { get; set; }
             public float Score { get; set; }
             public IGuildUser DiscordUser { get; set; }
+            public Ei.Contract.Types.PlayerGrade Grade { get; set; }
         }
 
         public async Task<IActionResult> Sleepers() {
