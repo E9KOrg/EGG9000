@@ -136,6 +136,9 @@
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
         var backup = account.Backup;
+        //Remove existing "tank" and "hyperloop" options
+        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Hyperloop"));
+        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Fuel Tank"));
         var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
