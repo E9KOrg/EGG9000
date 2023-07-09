@@ -9,22 +9,22 @@
 	if(!Model.epicResearchConfig.Any(o => o.Title == "Hyperloop"))  
 	{
 		Model.epicResearchConfig.Add(new EpicResearchDetail {
-				Costs = new int[] { 50_000 },
-				Desc = "One time purchase to allow use of hyperloop trains",
-				Title = "Hyperloop",
-				Order = 99,
-				MappedBackupResearch = new CustomResearch { Level = Model.backup.HyperloopPurchased ? (uint)1 : (uint)0 }
-			});
+			Costs = new int[] { 50_000 },
+			Desc = "One time purchase to allow use of hyperloop trains",
+			Title = "Hyperloop",
+			Order = 99,
+			MappedBackupResearch = new CustomResearch { Level = Model.backup.HyperloopPurchased ? (uint)1 : (uint)0 }
+		});
 	}
 	if(!Model.epicResearchConfig.Any(o => o.Title == "Fuel Tank"))
 	{
 		Model.epicResearchConfig.Add(new EpicResearchDetail {
-				Costs = new int[] { 50_000, 250_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000 },
-				Desc = "Store extra eggs to be used as fuel for rockets",
-				Title = "Fuel Tank",
-				Order = 99,
-				MappedBackupResearch = new CustomResearch { Level = Model.backup.TankLevel }
-			});
+			Costs = new int[] { 50_000, 250_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000 },
+			Desc = "Store extra eggs to be used as fuel for rockets",
+			Title = "Fuel Tank",
+			Order = 99,
+			MappedBackupResearch = new CustomResearch { Level = Model.backup.TankLevel }
+		});
 	}
 }
 <div class="card" style="margin-top:15px" ng-controller="EpicResearch@(Model.backup.EggIncId)">
