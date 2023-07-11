@@ -3,15 +3,10 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using Microsoft.EntityFrameworkCore.Query.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 using static EGG9000.Common.Coops.ArtifactCombos;
-using static Ei.Backup.Types;
 
 namespace EGG9000.Common.Coops {
     public class ArtifactCombos {
@@ -115,8 +110,6 @@ namespace EGG9000.Common.Coops {
                     keepArtifacts.Add(tachyon.Artifact);
             }
 
-
-
             var artifacts = available
                 .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
                 .GroupBy(x => new { x.Shipping, x.EggLaying })
@@ -124,7 +117,6 @@ namespace EGG9000.Common.Coops {
                     x.OrderBy(y => farm.Artifacts.Any(z => z.Equals(y.Artifact)) ? 0 : 1
                 ).First())
                 .ToList();
-
 
             var sets = new List<ArtifactSet>();
 
@@ -185,18 +177,20 @@ namespace EGG9000.Common.Coops {
                     // test for similarity between shipping and egg laying between artifact sets
                     if(artifact.Shipping == matchingArtifact.Shipping) {
                         similarity++;
-                    }
+                    } else similarity--;
                     if(artifact.EggLaying == matchingArtifact.EggLaying) {
                         similarity++;
-                    }
+                    } else similarity--;
                     if(artifact.Shipping != 0 && artifact.EggLaying != 0) {
                         if(artifact.Shipping == matchingArtifact.Shipping && artifact.EggLaying == matchingArtifact.EggLaying) {
                             similarity++;
-                        }
+                        } else similarity--;
                     }
-                } else similarity-=2;
+                } else {
+                    //If a matching artifact cannot be found, very hurtful
+                    similarity -= 2;
+                }
             }
-
             return similarity;
         }
 
