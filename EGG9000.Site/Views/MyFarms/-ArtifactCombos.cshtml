@@ -170,6 +170,9 @@
                             </td>
                         </tr>
                         <tr>
+                        <td colspan="99">Without changing stones:</td>
+                        </tr>
+                        <tr>
                             @{
                                 var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, null));
                                 var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
@@ -203,6 +206,7 @@
                                 </td>
                             </tr>
                         }
+                        <td colspan="99">If you change stones:</td>
                         <tr>
                             @{
                                 var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, null));
