@@ -26,7 +26,7 @@ namespace EGG9000.Common.Helpers {
             Cost = 0;
         }
 
-        public string GetUse() {
+        public string GetNeed() {
             if(Tier.tier_number == 1) {
                 return Need.ToString();
             }

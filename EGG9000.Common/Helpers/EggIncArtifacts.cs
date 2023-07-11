@@ -76,6 +76,46 @@ namespace EGG9000.Common.Helpers {
             return _eiAfxDataRoot;
         }
 
+        public static string GetFamilyShorthand(Family family) {
+            return family.id switch {
+                "puzzle-cube" => "cube",
+                "lunar-totem" => "totem",
+                "demeters-necklace" => "necklace",
+                "vial-of-martian-dust" => "vial",
+                "aurelian-brooch" => "brooch",
+                "tungsten-ankh" => "ankh",
+                "gusset" => "gusset",
+                "neodymium-medallion" => "medallion",
+                "mercurys-lens" => "lens",
+                "beak-of-midas" => "beak",
+                "carved-rainstick" => "rainstick",
+                "interstellar-compass" => "compass",
+                "the-chalice" => "chalice",
+                "phoenix-feather" => "feather",
+                "quantum-metronome" => "metronome",
+                "dilithium-monocle" => "monocle",
+                "titanium-actuator" => "actuator",
+                "ship-in-a-bottle" => "ship",
+                "tachyon-deflector" => "deflector",
+                "book-of-basan" => "book",
+                "light-of-eggendil" => "light",
+                /*"lunar-stone" => "",
+                "shell-stone" => "",
+                "tachyon-stone" => "",
+                "terra-stone" => "",
+                "soul-stone" => "",
+                "dilithium-stone" => "",
+                "quantum-stone" => "",
+                "life-stone" => "",
+                "clarity-stone" => "",
+                "prophecy-stone" => "",*/
+                "gold-meteorite" => "meteorite",
+                "tau-ceti-geode" => "geode",
+                "solar-titanium" => "titanium",
+                _ => family.name
+            };
+        }
+
         public static Tier GetTier(int afxId, int tierNumber) {
             var data = GetEiAfxData();
             // Should be do so, because stone fragment tiers have a different afx_id.
