@@ -30,8 +30,10 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using System.Globalization;
 
 namespace EGG9000.Bot.Commands
@@ -41,46 +43,51 @@ namespace EGG9000.Bot.Commands
         [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
         public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam(Description = "Tier"),MinValue(2), MaxValue(4)] int quality,[SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
-            var properName = artifact.Replace("-", "_").ToUpper();
-            var builder = new EmbedBuilder();
-            builder.Title = $"Craft basket";
-            builder.ThumbnailUrl = "https://egg9000.com/images/artifacts/" + properName + "/" + properName + "_" + 4 +
-                                   ".png";
-
-            // TODO: GetCraft returns Basket class (total cost, artifact_family, Dictionnary<string, RequiredIngredient>)
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
             var stringBuilder = new StringBuilder();
-            foreach(var id in user.EggIncAccounts) {
+            for(var i = 0; i < user.EggIncAccounts.Count; i++) {
+                var id = user.EggIncAccounts[i];
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
+                if(i == 0) {
+                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:");
+                    stringBuilder.AppendLine();
+                } else {
+                    stringBuilder.Append("――――――――――――――――――");
+                    stringBuilder.AppendLine();
+                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:");
+                    stringBuilder.AppendLine();
+                }
+
                 var crafter = new Crafter(backup.ArtifactHall);
-                var backupDate = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
                 var basket = crafter.GetCraft(quantity, quality, artifact);
 
-                stringBuilder.AppendFormat($"{"Name",-30} {"Using",-10} {"Need",-10} {"Cost", -10}\n");
-                var data = EggIncArtifacts.GetEiAfxData();
+                stringBuilder.AppendFormat($"```{"Name",-24} {"Using",-8} {"Need",-8} {"Cost",-8}");
+                stringBuilder.AppendLine();
+                
                 foreach(var ingredient in basket.GetIngredients()) {
-                    stringBuilder.AppendFormat($"T{ingredient.Value.Tier.tier_number, -2} {ingredient.Value.Tier.family.name,-26} {ingredient.Value.Use, -10} {ingredient.Value.GetUse(),-10} {ingredient.Value.Cost.ToString("N0",new CultureInfo("en-US")), -10}\n");
+                    stringBuilder.AppendFormat($"T{ingredient.Value.Tier.tier_number,-2} {ingredient.Value.Tier.family.name,-20} {ingredient.Value.Use,-8} {ingredient.Value.GetUse(),-8} {ingredient.Value.Cost.Format(),-8}");
+                    stringBuilder.AppendLine();
                 }
 
-                stringBuilder.Append($"Total Cost: {basket.GetTotalCost()}");
-                if(user.EggIncAccounts.Count > 1) {
-                    builder.AddField("――――――――――――――――――", $"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:\n```\n{stringBuilder.ToString()}\n```");
-                } else {
-                    builder.AddField($"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:", $"```\n{stringBuilder.ToString()}\n```");
-                }
+                stringBuilder.AppendLine("```");
+                stringBuilder.Append($"Total Cost: **{basket.GetTotalCost().ToString("#,0", new CultureInfo("en-US"))} GE**");
+                stringBuilder.AppendLine();
+                var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
+                stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "You have enough GE!" : "You do not have enough GE!");
             }
+
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
 
-            await command.ModifyOriginalResponseAsync(x => { x.Embed = null; x.Content = $"```\n{stringBuilder.ToString()}\n```"; });
+            await command.ModifyOriginalResponseAsync(x => { x.Embed = null; x.Content = $"\n{stringBuilder.ToString()}\n"; });
             //await command.ModifyOriginalResponseAsync(x => { x.Content = $"```\n{stringBuilder.ToString()}\n```"; });
         }
 
