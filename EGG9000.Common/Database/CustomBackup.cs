@@ -462,7 +462,7 @@ namespace EGG9000.Common.Database {
 
                 var shipCapPerc = 1.0;
                 var eggLayRatePerc = 1.0;
-                if(coop is not null && (coop.Contract is not null || contract is not null)) {
+                if(coop is not null && (coop.Contract is not null || contract is not null) && coop.League > 1) {
                     //Very uncommon, but contracts may have nerfs/buffs associated with them
                     var modifiers = (coop.Contract ?? contract).Details.GradeSpecs[(int)coop.League - 1].Modifiers;
                     var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == Ei.GameModifier.Types.GameDimension.EggLayingRate);

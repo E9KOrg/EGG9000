@@ -154,6 +154,8 @@ namespace EGG9000.Common.Coops {
             return maxSets.Select(x => x.Artifacts.Select(y => y.Artifact).ToList()).FirstOrDefault();
         }
 
+
+
         public class ArtifactSet {
             public List<ArtifactInstanceStats> Artifacts;
             public double Shipping;
