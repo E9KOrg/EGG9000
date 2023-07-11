@@ -97,15 +97,15 @@
 
     (double myRate, double coopRate) GetChangedRate(CustomFarm farm, List<EggIncArtifactInstance> newArtifacts, Coop coop, CoopDetails coopDetails) {
         var newFarm = new CustomFarm {
-                    CommonResearch = farm.CommonResearch,
-                    Habs = farm.Habs,
-                    TrainLength = farm.TrainLength,
-                    NumChickens = farm.NumChickens,
-                    EggType = farm.EggType,
-                    Artifacts = newArtifacts,
-                    Vehicles = farm.Vehicles
-                };
-        var stats = newFarm.WithStats(Model.Backup, coop);
+            CommonResearch = farm.CommonResearch,
+            Habs = farm.Habs,
+            TrainLength = farm.TrainLength,
+            NumChickens = farm.NumChickens,
+            EggType = farm.EggType,
+            Artifacts = newArtifacts,
+            Vehicles = farm.Vehicles
+        };
+        var stats = newFarm.WithStats(Model.Backup, coop, null, Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId));
         var currentTachyon = farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var newTachyon = newArtifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var tachyonDifference = (newTachyon - 1) - (currentTachyon - 1) + 1;
