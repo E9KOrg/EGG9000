@@ -64,7 +64,7 @@
             var textInfo = new CultureInfo("en-US", false).TextInfo;
             var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
             <div class="rounded-full @(bgClass)">
-                <img class="position-absolute (@subClass)" src="@image" title="@name" />
+                <img class="position-absolute @subClass" src="@image" title="@name" />
             </div>
         }
     }
