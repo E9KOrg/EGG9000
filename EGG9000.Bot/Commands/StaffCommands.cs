@@ -307,12 +307,14 @@ namespace EGG9000.Bot.Commands {
                 _serviceProvider = serviceProvider;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var services = _serviceProvider.GetServices<IUpdaterService>();
+                var services = _serviceProvider.GetServices<IHostedService>().Where(x => x is IUpdaterService).OrderBy(x => x.GetType().Name).ToList();
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    services = services.Where(x => x.GetType().Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
+                    services = services.Where(x => x.GetType().Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
-                await arg.RespondAsync(null, services.Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToArray());
+
+                var results = services.Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToArray();
+                await arg.RespondAsync(null, results);
             }
         }
     }
