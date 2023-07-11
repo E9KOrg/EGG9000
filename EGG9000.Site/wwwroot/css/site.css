@@ -74,15 +74,16 @@ body {
 ------------------------------------------- */
 
 .afx-bg, .afx-img {
-    height: 5vh;
-    width: 5vh;
+    height: 5em;
+    width: 5em;
 }
 
 .afx-stone {
-    height: 1vh;
-    width: 1vh;
+    height: 1em;
+    width: 1em;
     position: relative;
 }
+
 
 .afx-stone .afx-img {
     width: 100%;
