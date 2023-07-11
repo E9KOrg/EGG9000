@@ -3,7 +3,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-
+using Microsoft.EntityFrameworkCore.Query.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -115,12 +115,12 @@ namespace EGG9000.Common.Coops {
                     keepArtifacts.Add(tachyon.Artifact);
             }
 
-            
+
 
             var artifacts = available
                 .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
                 .GroupBy(x => new { x.Shipping, x.EggLaying })
-                .Select(x => 
+                .Select(x =>
                     x.OrderBy(y => farm.Artifacts.Any(z => z.Equals(y.Artifact)) ? 0 : 1
                 ).First())
                 .ToList();
@@ -176,23 +176,28 @@ namespace EGG9000.Common.Coops {
 
             var currentSet = current.Artifacts;
             var againstSet = against.Artifacts;
+            // check for equivalent artifacts in both sets
+            foreach(var artifact in currentSet) {
+                var matchingArtifact = againstSet.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
 
-            foreach (var artifact in currentSet) {
-                //Try to find the corresponding artifact in the against
-                var corr = againstSet.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
-                if (corr != null) {
+                if(matchingArtifact != null) {
                     similarity++;
-                    //If the current has stones, test similarity there
-                    if(artifact.Shipping != 0 || artifact.EggLaying != 0) {
-                        if(artifact.Shipping == corr.Shipping) similarity++;
-                        if(artifact.EggLaying == corr.EggLaying) similarity++;
+                    // test for similarity between shipping and egg laying between artifact sets
+                    if(artifact.Shipping == matchingArtifact.Shipping) {
+                        similarity++;
                     }
-                }
+                    if(artifact.EggLaying == matchingArtifact.EggLaying) {
+                        similarity++;
+                    }
+                    if(artifact.Shipping != 0 && artifact.EggLaying != 0) {
+                        if(artifact.Shipping == matchingArtifact.Shipping && artifact.EggLaying == matchingArtifact.EggLaying) {
+                            similarity++;
+                        }
+                    }
+                } else similarity-=2;
             }
 
-            var score = (int)(similarity / (double)Math.Max(currentSet.Count, againstSet.Count) * 100);
-
-            return score;
+            return similarity;
         }
 
         public class ArtifactSet {
