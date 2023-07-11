@@ -133,7 +133,7 @@ namespace EGG9000.Bot.Automated {
                         var farms = account.Backup.Farms.Where(x =>
                             x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset &&
                             !x.Completed &&
-                            !coops.Any(c => c.Name.ToLower() == x.CoopId) &&
+                            !coops.Any(c => c.Name.Equals(x.CoopId, StringComparison.OrdinalIgnoreCase)) &&
                             !string.IsNullOrWhiteSpace(x.CoopId) && x.TimeAccepted > DateTimeOffset.Now.AddDays(-7).ToUnixTimeSeconds()
                         );
 
@@ -151,8 +151,13 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 foreach(var pCoop in potentialCoops.Where(x => x.userids.Count > 1)) {
-                    _logger.LogInformation("Adding co-op {coopname} from backups", pCoop.coopname);
                     var contract = contracts.First(x => x.ID == pCoop.contractid);
+                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.ContractID == pCoop.contractid && EF.Functions.Like(x.Name, pCoop.coopname));
+                    if(exisitingCoop is not null) {
+                        _logger.LogInformation("Co-op {coopname} already exists, skipping", pCoop.coopname);
+                        continue;
+                    }
+                    _logger.LogInformation("Adding co-op {coopname} from backups", pCoop.coopname);
                     var coop = new Coop {
                         ContractID = pCoop.contractid, Created = DateTimeOffset.Now, GuildId = pCoop.guildid, Name = pCoop.coopname,
                         MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnAssigned, League = pCoop.grade,
