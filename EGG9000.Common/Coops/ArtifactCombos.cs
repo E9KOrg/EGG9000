@@ -10,6 +10,8 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using static EGG9000.Common.Coops.ArtifactCombos;
+using static Ei.Backup.Types;
 
 namespace EGG9000.Common.Coops {
     public class ArtifactCombos {
@@ -92,6 +94,15 @@ namespace EGG9000.Common.Coops {
             };
             var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1);
 
+            var currentSet = new ArtifactSet(
+                new List<ArtifactInstanceStats> {
+                    new ArtifactInstanceStats(farm.Artifacts[0]),
+                    new ArtifactInstanceStats(farm.Artifacts[1]),
+                    new ArtifactInstanceStats(farm.Artifacts[2]),
+                    new ArtifactInstanceStats(farm.Artifacts[3])
+                }, statsWithoutArtifacts
+            );
+
             var keepArtifacts = new List<EggIncArtifactInstance>();
             if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.HabCapacity)) {
                 keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.HabCapacity));
@@ -151,10 +162,38 @@ namespace EGG9000.Common.Coops {
             var order = sets.OrderByDescending(x => x.CurrentShippingRate).ThenByDescending(x => x.Shipping).ThenByDescending(x => x.EggLaying).ToList();
             var max = sets.Any() ? sets.Max(x => x.CurrentShippingRate) : 0;
             var maxSets = sets.Where(x => x.CurrentShippingRate == max).ToList();
-            return maxSets.Select(x => x.Artifacts.Select(y => y.Artifact).ToList()).FirstOrDefault();
+
+            var maxSetsScored = new List<ScoredSet>();
+            foreach(var compSet in maxSets) {
+                maxSetsScored.Add(new ScoredSet(compSet, SimilarityScoring(currentSet, compSet)));
+            }
+
+            return maxSetsScored.OrderByDescending(s => s.Score).FirstOrDefault().ArtiList;
         }
 
+        private static int SimilarityScoring(ArtifactSet current, ArtifactSet against) {
+            var similarity = 0;
 
+            var currentSet = current.Artifacts;
+            var againstSet = against.Artifacts;
+
+            foreach (var artifact in currentSet) {
+                //Try to find the corresponding artifact in the against
+                var corr = againstSet.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
+                if (corr != null) {
+                    similarity++;
+                    //If the current has stones, test similarity there
+                    if(artifact.Shipping != 0 || artifact.EggLaying != 0) {
+                        if(artifact.Shipping == corr.Shipping) similarity++;
+                        if(artifact.EggLaying == corr.EggLaying) similarity++;
+                    }
+                }
+            }
+
+            var score = (int)(similarity / (double)Math.Max(currentSet.Count, againstSet.Count) * 100);
+
+            return score;
+        }
 
         public class ArtifactSet {
             public List<ArtifactInstanceStats> Artifacts;
@@ -182,6 +221,23 @@ namespace EGG9000.Common.Coops {
                 EggLaying = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.EggLayingRate, new List<EggIncArtifactInstance> { instance }, false);
                 //ShippingPlusEgg = $"{Shipping}{EggLaying}";
             }
+        }
+    }
+
+    class ScoredSet {
+        public List<EggIncArtifactInstance> ArtiList;
+        public ArtifactSet Set;
+        public int Score;
+
+        public ScoredSet(ArtifactSet set, int score) { 
+            Set = set;
+            Score = score;
+            ArtiList = new List<EggIncArtifactInstance> {
+                Set.Artifacts[0].Artifact,
+                Set.Artifacts[1].Artifact,
+                Set.Artifacts[2].Artifact,
+                Set.Artifacts[3].Artifact
+            };
         }
     }
 }
