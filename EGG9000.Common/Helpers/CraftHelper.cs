@@ -8,16 +8,16 @@ using System.Linq;
 namespace EGG9000.Common.Helpers {
     public class RequiredIngredient {
         public Tier Tier { get; set; }
-        public int Use { get; set; }
-        public int Need { get; set; }
+        public uint Use { get; set; }
+        public uint Need { get; set; }
         
-        public int ShadowNeed { get; set; }
+        public uint ShadowNeed { get; set; }
         
         public uint TimesCrafted { get; set; }
         
-        public int Cost { get; set; }
+        public uint Cost { get; set; }
 
-        public RequiredIngredient(Tier tier, int use, int need, int shadowNeed, uint timesCrafted) {
+        public RequiredIngredient(Tier tier, uint use, uint need, uint shadowNeed, uint timesCrafted) {
             Tier = tier;
             Use = use;
             Need = need;
@@ -29,17 +29,19 @@ namespace EGG9000.Common.Helpers {
         public string GetUse() {
             if(Tier.tier_number == 1) {
                 return Need.ToString();
-            } else if(Need == 0 && ShadowNeed == 0) {
-                return 0.ToString();
-            } else {
-                return $"({ShadowNeed.ToString()})";
             }
+
+            if(Need == 0 && ShadowNeed == 0) {
+                return 0.ToString();
+            }
+
+            return $"({ShadowNeed.ToString()})";
         }
     }
 
     public class Crafter {
-        private EiAfxDataRoot _data;
-        private IList<ArtifactCount> _artifactHall;
+        private readonly EiAfxDataRoot _data;
+        private readonly IList<ArtifactCount> _artifactHall;
 
         public Crafter(IList<ArtifactCount> artifactHall) {
             _data = EggIncArtifacts.GetEiAfxData();
@@ -64,10 +66,6 @@ namespace EGG9000.Common.Helpers {
             } else {
                 throw new ArgumentException("Tier number is incorrect!", nameof(tierNumber));
             }
-        }
-        
-        static int GetDiscountedPrice(double timesCrafted, double initialCost) {
-            return (int)(initialCost - 0.9 * initialCost * Math.Pow(timesCrafted / 300, 0.2));
         }
 
         private int CheckInventory(Tier tier, int quantity, ref uint timesCrafted) {
@@ -119,35 +117,44 @@ namespace EGG9000.Common.Helpers {
     }
 
     public class Basket {
-        private Dictionary<string, RequiredIngredient> _ingredients;
-        private int _totalCost;
-
-        public Basket(int cost) {
+        private readonly Dictionary<string, RequiredIngredient> _ingredients;
+        private uint _totalCost;
+        public Basket(uint cost) {
             _ingredients = new Dictionary<string, RequiredIngredient>();
             _totalCost = cost;
         }
 
         public void AddIngredient(Tier tier, int use, int need, uint timesCrafted, int shadowNeed = 0) {
             if(_ingredients.TryGetValue(tier.id, out var value)) {
-                value.Use += use;
-                value.Need += need;
-                value.ShadowNeed += shadowNeed;
+                value.Use += (uint)use;
+                value.Need += (uint)need;
+                value.ShadowNeed +=  (uint)shadowNeed;
             } else {
-                _ingredients.Add(tier.id, new RequiredIngredient(tier, use, need,  shadowNeed, timesCrafted));
+                _ingredients.Add(tier.id, new RequiredIngredient(tier, (uint)use, (uint)need,   (uint)shadowNeed, timesCrafted));
             }
         }
 
-        public uint Fx(uint x) {
-            return x > 300 ? 300 : x;
+        public static uint GetDiscountedPrice(double timesCrafted, double initialCost, uint shadowNeed) {
+            if(timesCrafted >= 300) {
+                return (uint)(initialCost - 0.9 * initialCost * Math.Pow(1, 0.2)) * shadowNeed;
+            } else {
+                uint cost = 0;
+                for(var i = 0; i < shadowNeed; i++) {
+                    cost += (uint)(initialCost - 0.9 * initialCost * Math.Pow((timesCrafted >= 300 ? 1 : (timesCrafted / 300)), 0.2));
+                    timesCrafted++;
+                }
+
+                return cost;
+            }
         }
         
-        public static int GetDiscountedPrice(double timesCrafted, double initialCost, int ShadowNeed) {
+        public static uint GetDiscountedPrice(double timesCrafted, double initialCost, int shadowNeed) {
             if(timesCrafted >= 300) {
-                return (int)(initialCost - 0.9 * initialCost * Math.Pow(1, 0.2)) * ShadowNeed;
+                return (uint)((initialCost - 0.9 * initialCost * Math.Pow(1, 0.2)) * shadowNeed);
             } else {
-                var cost = 0;
-                for(var i = 0; i < ShadowNeed; i++) {
-                    cost += (int)(initialCost - 0.9 * initialCost * Math.Pow((timesCrafted >= 300 ? 1 : (timesCrafted / 300)), 0.2));
+                uint cost = 0;
+                for(var i = 0; i < shadowNeed; i++) {
+                    cost += (uint)(initialCost - 0.9 * initialCost * Math.Pow((timesCrafted >= 300 ? 1 : (timesCrafted / 300)), 0.2));
                     timesCrafted++;
                 }
 
@@ -168,8 +175,10 @@ namespace EGG9000.Common.Helpers {
             return _ingredients;
         }
 
-        public int GetTotalCost() {
+        public uint GetTotalCost() {
             return _totalCost;
         }
     }
+    
+    
 }
