@@ -23,7 +23,7 @@ namespace EGG9000.Common.Coops {
 
                 var allStoneCombos = new List<ArtifactInstanceStats>();
 
-                var stones = backup.GetAvailableArtifacts(farm)
+                var stones = backup.ArtifactHall
                     .Where(x => x.Artifact.Artifact.Contains("Stone") && (x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate || x.Artifact.Boost == EggIncBoostTypeEnum.EggLayingRate));
 
                 var possibleStones = stones.Select(x => x.Artifact).ToList();
@@ -210,6 +210,8 @@ namespace EGG9000.Common.Coops {
                 }
             }
             return similarity;
+        }
+
         public static bool CheckSet(ArtifactSet set, bool withTachyon) {
             return !withTachyon || set.Artifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
         }
