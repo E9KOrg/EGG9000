@@ -34,6 +34,9 @@ using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
     public class AdminController : Controller {
+        public static double scoreThreshold = 1e-2;
+
+
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly DiscordSocketClient _discord;
@@ -211,7 +214,7 @@ namespace EGG9000.Site.Controllers {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
-
+#if RELEASE
             Dictionary<DateTimeOffset, int[]> days;
             var adminDaysCacheKey = $"AdminDays{guildId}";
             if(!_cache.TryGetValue(adminDaysCacheKey, out days)) {
@@ -242,9 +245,10 @@ namespace EGG9000.Site.Controllers {
                 }
                 _cache.Set(adminDaysCacheKey, days, TimeSpan.FromDays(1));
             }
+
+#endif
             var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3)).OrderBy(x => x.Created).ToListAsync();
             var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.DeletedChannel && !y.HasScores)).Select(x => x.First().Contract).ToList();
-
 
             return View(new IndexViewModel {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
@@ -254,7 +258,9 @@ namespace EGG9000.Site.Controllers {
                     ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && !c.Category.Name.Contains("finished")),
                     FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
                 }).ToList(),
+#if RELEASE
                 Days = days,
+#endif
                 ContractsToScore = contractsToScore
             });
         }
@@ -385,7 +391,6 @@ namespace EGG9000.Site.Controllers {
             return View(scores);
         }
 
-        public static double scoreThreshold = 5e-3;
         public async Task<IActionResult> Slackers() {
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
@@ -495,7 +500,7 @@ namespace EGG9000.Site.Controllers {
                 x._eggIncIds
             }).ToListAsync();
             //var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
-            var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < 1e-2).Select(y => {
+            var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < scoreThreshold).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
                 if(user == null) {
                     return null;
@@ -535,29 +540,29 @@ namespace EGG9000.Site.Controllers {
 
 
 
-            //foreach(var topxref in topXrefs) {
-            //    if(topxref.DiscordUser == null)
-            //        topxref.DiscordUser = await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
-            //    var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
-            //    if(tempRole == null) {
-            //        tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
-            //        _db.Add(tempRole);
-            //        try {
-            //            await topxref.DiscordUser.AddRoleAsync(beastModeRole);
-            //            Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
-            //            await Task.Delay(600);
-            //        } finally { }
-            //    }
-            //    tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
-            //    tempRole.Expires = DateTimeOffset.Now.AddDays(7);
+            foreach(var topxref in topXrefs) {
+                if(topxref.DiscordUser == null)
+                    topxref.DiscordUser = await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
+                var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
+                if(tempRole == null) {
+                    tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
+                    _db.Add(tempRole);
+                    try {
+                        await topxref.DiscordUser.AddRoleAsync(beastModeRole);
+                        Console.WriteLine($"Role added to {topxref.DiscordUser.Nickname}");
+                        await Task.Delay(600);
+                    } finally { }
+                }
+                tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
+                tempRole.Expires = DateTimeOffset.Now.AddDays(7);
 
-            //}
+            }
 
-            //await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync();
 
-            //var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
+            var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
 
-            //await guild.GetTextChannel(656455568353132546).SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}");
+            await guild.GetTextChannel(656455568353132546).SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}");
 
 
             return View(new ScoreResult {

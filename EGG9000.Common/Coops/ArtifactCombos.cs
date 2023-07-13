@@ -37,7 +37,7 @@ namespace EGG9000.Common.Coops {
 
                 for(var i = 0; i < 3; i++) {
                     var maxSlot = currentNonBoostArtifacts.MaxBy(x => x.Slots);
-                    if(maxSlot.Slots >= nonBoostArtifacts.First().Slots) {
+                    if(maxSlot is not null && maxSlot.Slots >= (nonBoostArtifacts.FirstOrDefault()?.Slots ?? 0)) {
                         currentNonBoostArtifacts.Remove(maxSlot);
                     } else {
                         maxSlot = nonBoostArtifacts.First();
@@ -126,7 +126,7 @@ namespace EGG9000.Common.Coops {
 
             var artifacts = available
                 .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
-                .GroupBy(x => new { x.Shipping, x.EggLaying })
+                .GroupBy(x => new { x.Shipping, x.EggLaying, isTach = x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates })
                 .Select(x =>
                     x.OrderBy(y => farm.Artifacts.Any(z => z.Equals(y.Artifact)) ? 0 : 1
                 ).First())
@@ -178,7 +178,7 @@ namespace EGG9000.Common.Coops {
                 maxSetsScored.Add(new ScoredSet(compSet, SimilarityScoring(currentSet, compSet)));
             }
 
-            return maxSetsScored.OrderByDescending(s => s.Score).FirstOrDefault().ArtiList;
+            return maxSetsScored.OrderByDescending(s => s.Score).FirstOrDefault()?.ArtiList;
         }
 
         private static int SimilarityScoring(ArtifactSet current, ArtifactSet against) {
