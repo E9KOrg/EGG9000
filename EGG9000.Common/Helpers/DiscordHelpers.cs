@@ -103,20 +103,22 @@ namespace EGG9000.Bot.Helpers {
 
             var existingRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
-            var role = await DiscordHelpers.SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser, _client);
+            var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser, _client);
 
-            await DiscordHelpers.CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
-            await DiscordHelpers.CheckHatchlingRole(guild, discordUser, dbUser);
-            await DiscordHelpers.CheckFreshEggsRole(guild, discordUser, dbUser);
-            await DiscordHelpers.CheckBG(_client, guild, discordUser, dbUser);
-            await DiscordHelpers.CheckPermitRoles(guild, discordUser, dbUser);
-            await DiscordHelpers.CheckGrades(guild, discordUser, dbUser, grades);
-            await DiscordHelpers.CheckOudatedGameRole(_client, guild, discordUser, dbUser);
-            await DiscordHelpers.CheckUserOSRole(_client, guild, discordUser, dbUser);
-            await DiscordHelpers.CheckUnjoined(guild, discordUser, dbUser);
+            await CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
+            await CheckHatchlingRole(guild, discordUser, dbUser);
+            await CheckFreshEggsRole(guild, discordUser, dbUser);
+            await CheckBG(_client, guild, discordUser, dbUser);
+            await CheckPermitRoles(guild, discordUser, dbUser);
+            await CheckGrades(guild, discordUser, dbUser, grades);
+            await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
+            await CheckUserOSRole(_client, guild, discordUser, dbUser);
+            await CheckUnjoined(guild, discordUser, dbUser);
+            await CheckEnDRole(_client, guild, discordUser, dbUser);
+            await CheckNAHRole(_client, guild, discordUser, dbUser);
 
             if(leaderboardUsers.Count > 0) {
-                await DiscordHelpers.CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
+                await CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
             }
 
             var EarningsBonus = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus.ToEggString() ?? "";
@@ -353,7 +355,7 @@ namespace EGG9000.Bot.Helpers {
             }
         }
         private static async Task CheckOudatedGameRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
-            var gameOutdatedRole = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild); ;
+            var gameOutdatedRole = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild);
             if(gameOutdatedRole != null) {
                 var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < ContractsAPI.ClientVersion);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == gameOutdatedRole.Id);
@@ -367,6 +369,39 @@ namespace EGG9000.Bot.Helpers {
                     GetLogger<DiscordHelpers>().LogInformation("Removing outdated role for {user}", DiscordUser.GetName());
                 }
 
+            }
+        }
+
+        private static async Task CheckEnDRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var endRole = await _client.GetRoleAsync(GuildChannelType.EnDRole, Guild);
+            if(endRole is not null) {
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 10000000000);
+                var hasRole = DiscordUser.RoleIds.Any(x => x == endRole.Id);
+
+                if(!hasRole && needsRole) {
+                    await DiscordUser.AddRoleAsync(endRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding EnD role for {user}", DiscordUser.GetName());
+                }
+                if(hasRole && !needsRole) {
+                    await DiscordUser.RemoveRoleAsync(endRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing EnD role for {user}", DiscordUser.GetName());
+                }
+            }
+        }
+        private static async Task CheckNAHRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var nahRole = await _client.GetRoleAsync(GuildChannelType.NAHRole, Guild);
+            if(nahRole is not null) {
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 19845000000);
+                var hasRole = DiscordUser.RoleIds.Any(x => x == nahRole.Id);
+
+                if(!hasRole && needsRole) {
+                    await DiscordUser.AddRoleAsync(nahRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding NAH role for {user}", DiscordUser.GetName());
+                }
+                if(hasRole && !needsRole) {
+                    await DiscordUser.RemoveRoleAsync(nahRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing NAH role for {user}", DiscordUser.GetName());
+                }
             }
         }
 

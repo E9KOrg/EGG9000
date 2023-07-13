@@ -129,6 +129,10 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: 'Android' Role")]
         AndroidRole = 24,
         [Description("Optional: 'iOS/Apple' Role")]
-        IosRole = 25
+        IosRole = 25,
+        [Description("Optional: 'Enlightenment Diamond' Role")]
+        EnDRole = 26,
+        [Description("Optional: 'Nobel prize in Animal Husbandry' Role")]
+        NAHRole = 27
     }
 }
