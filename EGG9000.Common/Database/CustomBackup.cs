@@ -101,6 +101,9 @@ namespace EGG9000.Common.Database {
         public bool HasDeviceId { get; set; } = false;
         [Key(34)]
         public string DeviceId { get; set; } = string.Empty;
+        [Key(35)]
+        public Dictionary<Ei.MissionInfo.Types.Spaceship, uint>
+        ShipStars { get; set; } = new Dictionary<Ei.MissionInfo.Types.Spaceship, uint>();
 
 
         [IgnoreMember]
@@ -237,6 +240,8 @@ namespace EGG9000.Common.Database {
                 if(backup.Game.MaxFarmSizeReached[i] > 0)
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
             }
+
+            ShipStars = MissionHelpers.GetShipLevels(backup.ArtifactsDb);
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 

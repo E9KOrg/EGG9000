@@ -133,6 +133,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: 'Enlightenment Diamond' Role")]
         EnDRole = 26,
         [Description("Optional: 'Nobel prize in Animal Husbandry' Role")]
-        NAHRole = 27
+        NAHRole = 27,
+        [Description("Optional: 'All-Star Club' Role")]
+        ASCRole = 28
     }
 }
