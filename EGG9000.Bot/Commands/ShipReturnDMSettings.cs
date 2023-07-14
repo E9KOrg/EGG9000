@@ -32,8 +32,9 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 namespace EGG9000.Bot.Commands {
     public class ShipReturnDMSettings {
         [ComponentCommand]
-        public static async Task SRDMenu(SocketMessageComponent component, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+        public static async Task SRDMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var props = MainMenu(dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
@@ -51,7 +52,7 @@ namespace EGG9000.Bot.Commands {
             var builder = new ComponentBuilder();
 
             if(!user.DMOnShipReturn) {
-                builder.WithButton("Enable Ship DMs", "SRDEnable");
+                builder.WithButton("Enable Ship DMs", $"SRDEnable:{user.DiscordId}");
             } else {
                 eBuilder.Description += "\n\nYou will receive a DM a set number of minutes before a ship is set to return depending on whether the next ship is fully fueled or not. You have the option for a second DM for ships that need fueling, one sent at the 'Needs Fueling' time and a second sent at the 'Full Ship' time.";
                 eBuilder.AddField("If Ship Is Fully Fueled", $"DM sent {user.ShipReturnMinutes} mins before ship is set to return");
@@ -62,12 +63,12 @@ namespace EGG9000.Bot.Commands {
                 }
                 eBuilder.AddField("Or If Ship Needs Fueling", needsFueling);
 
-                builder.WithButton("Disable Ship DMs", "SRDDisable");
-                builder.WithButton("Set Time For Full Ship", "SRDSetFueledTime");
-                builder.WithButton("Set Time For Ship Needs Fueling", "SRDSetNotFueledTime");
-                builder.WithButton($"{(user.ShipReturnDMAfterFuel ? "Disable" : "Receive")} Second DM For Ship Needs Fueling", "SRDSecondDM");
+                builder.WithButton("Disable Ship DMs", $"SRDDisable:{user.DiscordId}");
+                builder.WithButton("Set Time For Full Ship", $"SRDSetFueledTime:{user.DiscordId}");
+                builder.WithButton("Set Time For Ship Needs Fueling", $"SRDSetNotFueledTime:{user.DiscordId}");
+                builder.WithButton($"{(user.ShipReturnDMAfterFuel ? "Disable" : "Receive")} Second DM For Ship Needs Fueling", $"SRDSecondDM:{user.DiscordId}");
             }
-            builder.WithButton("↵ Contract Settings", "MCSAccounts", ButtonStyle.Secondary);
+            builder.WithButton("↵ Contract Settings", $"MCSAccounts:{user.DiscordId}", ButtonStyle.Secondary);
 
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();
@@ -77,7 +78,8 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task SRDEnable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = true;
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser);
@@ -86,7 +88,8 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task SRDDisable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = false;
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser);
@@ -95,7 +98,8 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task SRDSecondDM(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.ShipReturnDMAfterFuel = !dbuser.ShipReturnDMAfterFuel;
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser);
@@ -103,22 +107,25 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task SRDSetFueledTime(SocketMessageComponent component, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-
-            var modal = GetModal("Set Time For Full Ship", "SRDFueledTime", "Number of Minutes", (dbuser.ShipReturnMinutes > 0 ? dbuser.ShipReturnMinutes : 1).ToString(), "mins");
+        public static async Task SRDSetFueledTime(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var modal = GetModal("Set Time For Full Ship", $"SRDFueledTime:{data}", "Number of Minutes", (dbuser.ShipReturnMinutes > 0 ? dbuser.ShipReturnMinutes : 1).ToString(), "mins");
             await component.RespondWithModalAsync(modal);
         }
 
         [Modal]
-        public static async Task SRDFueledTime(SocketModal modal, ApplicationDbContext db) {
+        public static async Task SRDFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
             var isNum = int.TryParse(minsText, out int mins);
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
+
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+
             if(!isNum || mins < 0) {
                 var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", "SRDSetFueledTime").WithButton("Cancel", "SRDMenu").Build();
+                var components = new ComponentBuilder().WithButton("Re-enter", $"SRDSetFueledTime:{data}").WithButton("Cancel", $"SRDMenu:{data}").Build();
                 await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 dbuser.ShipReturnMinutes = mins;
@@ -129,26 +136,30 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task SRDSetNotFueledTime(SocketMessageComponent component, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+        public static async Task SRDSetNotFueledTime(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
-            var modal = GetModal("Set Time For Ship Needs Fueling", "SRDNotFueledTime", "Number of Minutes", (dbuser.ShipReturnStillFuelingMinutes > 0 ? dbuser.ShipReturnStillFuelingMinutes : 10).ToString(), "mins");
+            var modal = GetModal("Set Time For Ship Needs Fueling", $"SRDNotFueledTime:{data}", "Number of Minutes", (dbuser.ShipReturnStillFuelingMinutes > 0 ? dbuser.ShipReturnStillFuelingMinutes : 10).ToString(), "mins");
             await component.RespondWithModalAsync(modal);
         }
 
         [Modal]
-        public static async Task SRDNotFueledTime(SocketModal modal, ApplicationDbContext db) {
+        public static async Task SRDNotFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
             var isNum = int.TryParse(minsText, out int mins);
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
+
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+
             if(!isNum || mins < 0) {
                 var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", "SRDSetNotFueledTime").WithButton("Cancel", "SRDMenu").Build();
+                var components = new ComponentBuilder().WithButton("Re-enter", $"SRDSetNotFueledTime:{data}").WithButton("Cancel", $"SRDMenu:{data}").Build();
                 await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else if(mins < dbuser.ShipReturnMinutes) {
                 var embedBuilder = new EmbedBuilder().WithTitle($"⚠️Input needs to be greater or equal to Ship Fueled Time of {dbuser.ShipReturnMinutes} mins").WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", "SRDSetNotFueledTime").WithButton("Cancel", "SRDMenu").Build();
+                var components = new ComponentBuilder().WithButton("Re-enter", $"SRDSetNotFueledTime:{data}").WithButton("Cancel", $"SRDMenu:{data}").Build();
                 await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 dbuser.ShipReturnStillFuelingMinutes = mins;
