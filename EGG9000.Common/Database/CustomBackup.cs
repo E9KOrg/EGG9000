@@ -241,7 +241,8 @@ namespace EGG9000.Common.Database {
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
             }
 
-            ShipStars = MissionHelpers.GetShipLevels(backup.ArtifactsDb);
+            if(backup.ArtifactsDb is not null)
+                ShipStars = MissionHelpers.GetShipLevels(backup.ArtifactsDb);
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 
