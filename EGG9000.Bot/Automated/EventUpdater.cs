@@ -238,7 +238,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task CheckShells(ApplicationDbContext db) {
-            var config = await ContractsAPI.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsEnabled = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, ContractsAPI.UserId, true);
+            var config = await ContractsAPI.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, ContractsAPI.UserId, true);
 
 
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
