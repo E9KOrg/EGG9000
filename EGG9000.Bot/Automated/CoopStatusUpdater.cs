@@ -48,7 +48,7 @@ namespace EGG9000.Bot.Automated {
 
         public CoopStatusUpdater(
             IServiceProvider provider
-            ) : base(TimeSpan.FromMinutes(15), delay, provider) {
+            ) : base(TimeSpan.FromMinutes(30), delay, provider) {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {

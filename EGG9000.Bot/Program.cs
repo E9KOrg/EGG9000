@@ -88,26 +88,28 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-            services.AddHostedService<LeaderboardUpdater>();
+            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
+            //services.AddHostedService<LeaderboardUpdater>();
 
             services.AddHostedService<StaffCoopsMessage>();
-            services.AddHostedService<EventUpdater>();
+            //services.AddHostedService<EventUpdater>();
             services.AddHostedService<CoopReorder>();
             services.AddHostedService<CoopDeleteChannel>();
 
-            services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
+            services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromHours(12));
+            //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
             services.AddSingleton<CoopStatusUpdater>();
             services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
 
+            services.Configure<UpdaterOptions<ContractUpdater>>(x => x.DelayStart = TimeSpan.FromHours(12)); 
             services.AddSingleton<ContractUpdater>();
             services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
 
             services.AddHostedService<UserCxpUpdater>();
-            services.AddHostedService<NewContracts>();
+            //services.AddHostedService<NewContracts>();
             services.AddHostedService<CreateCoopChannels>();
             services.AddHostedService<ShipReturnDM>();
-            services.AddHostedService<UserSnapShots>();
-            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
+            //services.AddHostedService<UserSnapShots>();
             services.AddHostedService<ManageOverflow>();
             services.AddHostedService<RemoveTempRoles>();
             services.AddHostedService<HandleGradeChanges>();
