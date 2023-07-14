@@ -83,8 +83,6 @@ namespace EGG9000.Bot.Commands {
 
             var builder = new ComponentBuilder();
 
-            Console.WriteLine("Prefix: " + prefix);
-
             foreach(var option in options) {
                 if(coopOnly && option.Property == "PingOnCoopCreated")
                     continue;
