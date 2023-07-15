@@ -1,4 +1,5 @@
 ﻿
+using Bugsnag.Payload;
 using Discord;
 using Discord.WebSocket;
 
@@ -43,6 +44,18 @@ namespace EGG9000.Bot.Commands {
             (3, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
         };
 
+        #region AdminBypass
+        [SlashCommand(Description ="Set another user's settings", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbuser == null) {
+                await command.RespondAsync("ERROR: Unable to find user, are you registered?", ephemeral: !System.Diagnostics.Debugger.IsAttached);
+            } else {
+                await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+            }
+        }
+        #endregion
+
         #region MainMenu
         [SlashCommand(Description = "My Contract Settings")]
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
@@ -55,8 +68,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task MCSAccounts(SocketMessageComponent component, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+        public static async Task MCSAccounts(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             await component.UpdateAsync(x => { x.Content = ""; x.Components = GetAccountButtons(dbuser, "MCSMenu"); x.Embed = null; });
         }
 
@@ -64,11 +78,11 @@ namespace EGG9000.Bot.Commands {
             var builder = new ComponentBuilder();
             for(var i = 0; i < dbuser.EggIncAccounts.Count; i++) {
                 var account = dbuser.EggIncAccounts[i];
-                builder.WithButton($"Manage {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i}");
+                builder.WithButton($"Manage {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i},{dbuser.DiscordId}");
             }
 
-            builder.WithButton("Coop Settings", "CSAccountMenu");
-            builder.WithButton("Ship Return DM", "SRDMenu");
+            builder.WithButton("Coop Settings", $"CSAccountMenu:{dbuser.DiscordId},true");
+            builder.WithButton("Ship Return DM", $"SRDMenu:{dbuser.DiscordId}");
             return builder.Build();
         }
         public static MessageProperties MainMenu(DBUser dbuser, EggIncAccount account, int index, Guild dbguild) {
@@ -86,8 +100,8 @@ namespace EGG9000.Bot.Commands {
             var builder = new ComponentBuilder();
             if(!dbguild.DisableBG) {
                 eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
-                builder.WithButton("Boarding Group", $"MCSBg:{index}");
-                builder.WithButton("Rewards Filter", $"MCSRewards:{index}");
+                builder.WithButton("Boarding Group", $"MCSBg:{index},{dbuser.DiscordId}");
+                builder.WithButton("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}");
 
                 var rDict = GetRewardDictionary();
                 if(account.AutoRegisterRewards is null)
@@ -95,7 +109,7 @@ namespace EGG9000.Bot.Commands {
                 eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
             }
 
-            builder.WithButton("Set Break", $"MCSBreak:{index}");
+            builder.WithButton("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}");
 
             var redoText = account.RedoLeggacySelection switch {
                 RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
@@ -104,14 +118,14 @@ namespace EGG9000.Bot.Commands {
                 _ => "No (Will still be assigned to incomplete leggacies)"
             };
             eBuilder.AddField("Redo Completed Leggacies", redoText);
-            builder.WithButton("Redo Completed Leggacies", $"MCSRL:{index}");
+            builder.WithButton("Redo Completed Leggacies", $"MCSRL:{index},{dbuser.DiscordId}");
 
             if(dbguild.AllowGuilds) {
                 eBuilder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "Not Set" : account.Guild.Truncate(100));
-                builder.WithButton("Set Guild", $"MCSGuild:{index}");
+                builder.WithButton("Set Guild", $"MCSGuild:{index},{dbuser.DiscordId}");
             }
 
-            builder.WithButton("Return", $"MCSAccounts", ButtonStyle.Secondary);
+            builder.WithButton("Return", $"MCSAccounts:{dbuser.DiscordId}", ButtonStyle.Secondary);
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();
 
@@ -133,8 +147,9 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
@@ -144,23 +159,25 @@ namespace EGG9000.Bot.Commands {
         #region Boarding Group
         [ComponentCommand]
         public static async Task MCSBg(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            var builder = new ComponentBuilder().WithSelectMenu($"MCSBoardingGroup:{index}", new List<SelectMenuOptionBuilder> {
+            var builder = new ComponentBuilder().WithSelectMenu($"MCSBoardingGroup:{index},{dbuser.DiscordId}", new List<SelectMenuOptionBuilder> {
                 new SelectMenuOptionBuilder("Group 1 (Contract Launch)", "1", isDefault: account.Group == 1),
                 new SelectMenuOptionBuilder("Group 2", "2", isDefault: account.Group == 2),
                 new SelectMenuOptionBuilder("Group 3", "3", isDefault: account.Group == 3),
             });
-            builder.WithButton("Cancel", $"MCSMenu:{index}");
+            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
             var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out.Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\n BG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Select(x => $" BG{x.bg} <t:{x.time}:t>"))}";
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
         }
 
         [ComponentCommand]
         public static async Task MCSBoardingGroup(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             account.Group = byte.Parse(component.Data.Values.First());
             dbuser.UpdateAccounts();
@@ -177,36 +194,38 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task MCSRL(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
             var mainMenu = MainMenu(dbuser, account, index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
         }
 
-        private static MessageComponent GetRlButtons(int index, EggIncAccount account) {
-            var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index}", new List<SelectMenuOptionBuilder> {
+        private static MessageComponent GetRlButtons(int index, EggIncAccount account, DBUser dbuser) {
+            var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index},{dbuser.DiscordId}", new List<SelectMenuOptionBuilder> {
                 new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesAll),
                 new SelectMenuOptionBuilder($"Yes (If your previous score was under a threshold you set)", "2", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold),
                 new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.No)
             });
             if(account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
                 builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
-                builder.WithButton("Change CS Threshold", $"RLThreshModal:{index}");
+                builder.WithButton("Change CS Threshold", $"RLThreshModal:{index},{dbuser.DiscordId}");
             }
 
-            builder.WithButton("Return", $"MCSMenu:{index}", ButtonStyle.Secondary);
+            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}", ButtonStyle.Secondary);
             return builder.Build();
         }
 
         [ComponentCommand]
         public static async Task RLThreshModal(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            var modal = new ModalBuilder().WithTitle("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index}")
+            var modal = new ModalBuilder().WithTitle("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index},{dbuser.DiscordId}")
                 .AddTextInput(label: $"Enter CS Threshold between 0 and {maxThresh}", value: account.RedoScoreThreshold.ToString(), customId: "num", required: true).Build();
 
             await component.RespondWithModalAsync(modal);
@@ -219,12 +238,15 @@ namespace EGG9000.Bot.Commands {
             var isNum = double.TryParse((numText.Last() == 'k' ? numText.Remove(numText.Length - 1) : numText), out var num);
             //If there was a k, multiply by 1000
             if(isNum && (numText.Last() == 'k')) num *= 1000;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
-            var index = int.Parse(data);
+
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+
             if(!isNum || (num <= 0 || num > maxThresh)) {
                 var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : $"less than {maxThresh}");
                 var embedBuilder = new EmbedBuilder().WithTitle(errMsg).WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index}").WithButton("Cancel", $"MCSRL:{index}").Build();
+                var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index},{dbuser.DiscordId}").WithButton("Cancel", $"MCSRL:{index},{dbuser.DiscordId}").Build();
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 var account = dbuser.EggIncAccounts[index];
@@ -233,14 +255,15 @@ namespace EGG9000.Bot.Commands {
                 await db.SaveChangesAsync();
 
                 var mainMenu = MainMenu(dbuser, account, index, await GetGuild(dbuser.GuildId, db));
-                await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+                await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
             }
         }
 
         [ComponentCommand]
         public static async Task MCSRedoLeggacies(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             account.RedoLeggacySelection = component.Data.Values.First() switch {
                 "1" => RedoLeggacyOption.YesAll,
@@ -252,22 +275,23 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
 
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
         #endregion
 
         #region Break
         [ComponentCommand]
         public static async Task MCSBreak(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
             var row = new ActionRowBuilder()
-                .WithButton("Add 1 Day to Break", $"BreakAddDay:{index}")
-                .WithButton("Add 1 Week to Break", $"BreakAddWeek:{index}")
-                .WithButton("Stop Break Early", $"StopBreakEarly:{index}")
-                .WithButton("Return", $"MCSMenu:{index}");
+                .WithButton("Add 1 Day to Break", $"BreakAddDay:{index},{dbuser.DiscordId}")
+                .WithButton("Add 1 Week to Break", $"BreakAddWeek:{index},{dbuser.DiscordId}")
+                .WithButton("Stop Break Early", $"StopBreakEarly:{index},{dbuser.DiscordId}")
+                .WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
             builder.AddRow(row);
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = props.Embed.GetValueOrDefault(null); });
@@ -285,8 +309,9 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task BreakAddDay(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
             account.SetBreak((account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1), dbuser);
@@ -298,8 +323,9 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task BreakAddWeek(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
             account.SetBreak((account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7), dbuser);
@@ -311,8 +337,9 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task StopBreakEarly(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //default OnBreakUntil
             account.SetBreak(default, dbuser);
@@ -326,30 +353,32 @@ namespace EGG9000.Bot.Commands {
         #region Rewards
         [ComponentCommand]
         public static async Task MCSRewards(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
             if(reg.AutoRegisterRewards is null)
                 reg.AutoRegisterRewards = new List<Ei.RewardType>();
 
             var select2 = new SelectMenuBuilder()
-                .WithCustomId($"MCSRewardsSet:{index}")
+                .WithCustomId($"MCSRewardsSet:{index},{dbuser.DiscordId}")
                 .WithPlaceholder("Rewards Filter")
                 .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count());
             foreach(var item in GetRewardDictionary()) {
                 select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: reg.AutoRegisterRewards.Any(x => x == item.Key));
             }
             builder.WithSelectMenu(select2);
-            builder.WithButton("Clear Filter (Do all contracts)", $"MCSRewardsClear:{index}");
+            builder.WithButton("Clear Filter (Do all contracts)", $"MCSRewardsClear:{index},{dbuser.DiscordId}");
             var content = $"If you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = null; x.Content = content; });
         }
 
         [ComponentCommand]
         public static async Task MCSRewardsSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
 
             reg.AutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
@@ -363,8 +392,9 @@ namespace EGG9000.Bot.Commands {
         }
         [ComponentCommand]
         public static async Task MCSRewardsClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
             reg.AutoRegisterRewards = new List<Ei.RewardType>();
             dbuser.UpdateAccounts();
@@ -377,11 +407,12 @@ namespace EGG9000.Bot.Commands {
         #region Guild
         [ComponentCommand]
         public static async Task MCSGuild(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            var modal = new ModalBuilder().WithTitle("Enter Guild Name (leave blank for none)").WithCustomId($"MCSGuildUpdate:{index}")
+            var modal = new ModalBuilder().WithTitle("Enter Guild Name (leave blank for none)").WithCustomId($"MCSGuildUpdate:{index},{dbuser.DiscordId}")
                 .AddTextInput(label: $"Enter Guild Name (leave blank for none)", value: account.Guild, customId: "name", required: false).Build();
 
             await component.RespondWithModalAsync(modal);
@@ -391,8 +422,9 @@ namespace EGG9000.Bot.Commands {
         [Modal]
         public static async Task MCSGuildUpdate(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
             var name = modal.Data.Components.First(x => x.CustomId == "name").Value;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == modal.User.Id);
-            var index = int.Parse(data);
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
 
             var account = dbuser.EggIncAccounts[index];
             account.Guild = name.Truncate(100);
