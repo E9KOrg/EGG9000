@@ -39,6 +39,9 @@ using Stripe;
 using System.Threading;
 using System.Security.Claims;
 using System.Security.Principal;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Factories;
+using Microsoft.Data.SqlClient;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -421,7 +424,112 @@ namespace EGG9000.Site.Controllers {
                 }
                 return View(leaderboard);
             }
-        } 
+        }
+
+        [Authorize]
+        public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
+
+
+            var timings = new TimingsFactory(_logger).Start();
+
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            ViewBag.Oldest = oldest;
+            ViewBag.SortBy = sortby;
+
+            if(guildid == 0 || !User.IsInRole("Admin")) {
+                guildid = user.GuildId;
+            }
+
+            
+
+
+            var users = await _db.DBUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).ToListAsync();
+
+            timings.Set("Users");
+            var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
+                User = u,
+                Account = a,
+            })).ToList();
+
+
+            var eggincids = accounts.Select(x => x.Account.Id).ToList();
+
+
+            var eggDayDate = new DateTime(2023, 07, 14, 11, 0, 0);
+            var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+            timings.Set("postEggDaySnapshots");
+            var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+            timings.Set("preEggDaySnapshots");
+
+
+            var results = postEggDaySnapshots.Select(x => {
+                var user = accounts.First(y => y.Account.Id == x.EggIncID);
+                var pre = preEggDaySnapshots.First(y => y.EggIncID == x.EggIncID);
+
+
+                return new EggDayResults {
+                    UserAccount = user,
+                    EBGain = user.Account.Backup.EarningsBonus - pre.EarningsBonus,
+                    EBGainPercent = (user.Account.Backup.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
+                    SEGain = user.Account.Backup.SoulEggs - pre.SoulEggs,
+                    SEGainPercent = (user.Account.Backup.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
+                    PrestigeCount = user.Account.Backup.NumPrestiges - pre.Prestiges,
+                };
+            });
+
+            results = results = results.OrderByDescending(x => x.EBGain).ToList();
+
+
+            switch(sortby) {
+                  case "se":
+                    results = results.OrderByDescending(x => x.SEGain).ToList();
+                    break;
+                case "seper":
+                    results = results.OrderByDescending(x => x.SEGainPercent).ToList();
+                    break;
+                case "ebper":
+                    results = results.OrderByDescending(x => x.EBGainPercent).ToList();
+                    break;
+                default:
+                    results = results.OrderByDescending(x => x.EBGain).ToList();
+                    break;
+            }
+
+            return View(results.ToList());
+
+            //if(oldest) {
+            //    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
+            //} else {
+            //    switch(sortby) {
+            //        case "se":
+            //            leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+            //            break;
+            //        case "pe":
+            //            leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
+            //            break;
+            //        case "start":
+            //            var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
+            //            leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+            //            leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
+            //            break;
+            //    }
+            //    return View(leaderboard);
+            //}
+        }
+
+        public class EggDayResults {
+            public UserByAccount UserAccount { get; set; }
+            public double EBGain { get; set; }
+            public double SEGain { get; set; }
+            public double EBGainPercent { get; set; }
+            public double SEGainPercent { get; set; }   
+            public double FinishEB { get; set; }
+            public double FinishSE { get; set; }
+            public ulong PrestigeCount { get; set; }
+        }
 
         public async Task<IActionResult> Results([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
