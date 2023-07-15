@@ -21,6 +21,7 @@ using System.Data;
 using Microsoft.Extensions.Logging;
 using Google.Protobuf.WellKnownTypes;
 using MassTransit.Caching.Internals;
+using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpersExt {
@@ -116,6 +117,7 @@ namespace EGG9000.Bot.Helpers {
             await CheckUnjoined(guild, discordUser, dbUser);
             await CheckEnDRole(_client, guild, discordUser, dbUser);
             await CheckNAHRole(_client, guild, discordUser, dbUser);
+            await CheckASCRole(_client, guild, discordUser, dbUser);
 
             if(leaderboardUsers.Count > 0) {
                 await CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
@@ -401,6 +403,23 @@ namespace EGG9000.Bot.Helpers {
                 if(hasRole && !needsRole) {
                     await DiscordUser.RemoveRoleAsync(nahRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing NAH role for {user}", DiscordUser.GetName());
+                }
+            }
+        }
+
+        private static async Task CheckASCRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var ascRole = await _client.GetRoleAsync(GuildChannelType.ASCRole, Guild);
+            if(ascRole is not null) {
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipStars is not null).Any(x => MissionHelpers.MaxShipLevels.Equals(x.Backup.ShipStars));
+                var hasRole = DiscordUser.RoleIds.Any(x => x == ascRole.Id);
+
+                if(!hasRole && needsRole) {
+                    await DiscordUser.AddRoleAsync(ascRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Adding ASC role for {user}", DiscordUser.GetName());
+                }
+                if(hasRole && !needsRole) {
+                    await DiscordUser.RemoveRoleAsync(ascRole);
+                    GetLogger<DiscordHelpers>().LogInformation("Removing ASC role for {user}", DiscordUser.GetName());
                 }
             }
         }
