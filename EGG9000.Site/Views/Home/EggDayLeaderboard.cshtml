@@ -9,6 +9,8 @@
 
 	var myAccounts = Model.Where(x => x.UserAccount.User.DiscordId.ToString() == discordId);
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+
+	//var guild = discord.GetGuild(Model.First().UserAccount.User.GuildId);
 }
 
 
@@ -60,11 +62,19 @@
 				width: auto;
 			}
 </style>
+<div>
 Sort by
-<a href="?sortby=eb"><button class="btn btn-primary">EB Gain</button></a>
-<a href="?sortby=ebper"><button class="btn btn-primary">EB% Gain</button></a>
-<a href="?sortby=se"><button class="btn btn-primary">SE Gain</button></a>
-<a href="?sortby=seper"><button class="btn btn-primary">SE% Gain</button></a>
+<a href="?sortby=eb&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">EB Gain</button></a>
+<a href="?sortby=se&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">SE Gain</button></a>
+<a href="?sortby=seper&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">% Gain</button></a>
+<a href="?sortby=prestige&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">Prestiges</button></a>
+</div>
+<div>
+	Filter by
+@foreach(var prefix in SIPrefix.Prefixes) {
+    <a href="?sortby=@(ViewBag.sortby)&prefix=@prefix.Base"><button class="btn btn-primary">@prefix.Name</button></a>
+}
+</div>
 <div class="row">
 	<div class="col">
 		<table class="table table-striped table-sm">
@@ -77,13 +87,14 @@ Sort by
 					<th>EB</th>
 *@					<th>EB Gain</th>
 					<th>SE Gain</th>
+					<th>% Gain</th>
 					<th>Prestiges</th>
 				</tr>
 			</thead>
 			<tbody>
 				@{
 					var i = 0;
-					foreach (var account in Model) {
+					foreach (var account in Model.Where(x => x.EBGain > 0 && x.PrestigeCount > 0)) {
 						i++;
 						RowTemplate(account, i);
 					}
@@ -102,6 +113,10 @@ Sort by
 	}
 	void RowTemplate(EggDayResults account, int i) {
 		var isMe = account.UserAccount.User.DiscordId.ToString() == discordId;
+		
+		var ebrgx = new Regex(@"\(.+?\)");
+		var name = ebrgx.Replace(account.UserAccount.User.DiscordUsername, "").Trim();
+
 
 		<tr id="@account.UserAccount.Account.Id" class="@(isMe ? "Me" : "")">
 
@@ -111,14 +126,15 @@ Sort by
 				@if (isMe) {
 					<div id="@account.UserAccount.Account.Id" style="position: relative; top: -40px;"></div>
 				}
-				@account.UserAccount.User.DiscordUsername
+				@name
 			</td>
 			<td>
-				@account.EBGain.ToEggString() :
-				@account.EBGainPercent.ToString("P0")
+				@account.EBGain.ToEggString()
 			</td>
 			<td>
-				@account.SEGain.ToEggString() :
+				@account.SEGain.ToEggString()
+			</td>
+			<td>
 				@account.SEGainPercent.ToString("P0")
 			</td>
 			<td>@account.PrestigeCount</td>

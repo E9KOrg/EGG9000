@@ -105,10 +105,10 @@ namespace EGG9000.Common.Coops {
 
             var currentSet = new ArtifactSet(
                 new List<ArtifactInstanceStats> {
-                    new ArtifactInstanceStats(farm.Artifacts[0]),
-                    new ArtifactInstanceStats(farm.Artifacts[1]),
-                    new ArtifactInstanceStats(farm.Artifacts[2]),
-                    new ArtifactInstanceStats(farm.Artifacts[3])
+                    new ArtifactInstanceStats(farm.Artifacts.FirstOrDefault()),
+                    new ArtifactInstanceStats(farm.Artifacts.Skip(1).FirstOrDefault()),
+                    new ArtifactInstanceStats(farm.Artifacts.Skip(2).FirstOrDefault()),
+                    new ArtifactInstanceStats(farm.Artifacts.Skip(3).FirstOrDefault())
                 }, statsWithoutArtifacts
             );
 

@@ -427,7 +427,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize]
-        public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
+        public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0, [FromQuery] int prefix = 0) {
 
 
             var timings = new TimingsFactory(_logger).Start();
@@ -443,48 +443,56 @@ namespace EGG9000.Site.Controllers {
                 guildid = user.GuildId;
             }
 
+
+            if(!_cache.TryGetValue($"EGL{guildid}", out List<EggDayResults> results)) {
+                var users = await _db.DBUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).ToListAsync();
+
+                timings.Set("Users");
+                var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
+                    User = u,
+                    Account = a,
+                })).ToList();
+
+
+                var eggincids = accounts.Select(x => x.Account.Id).ToList();
+
+
+                var eggDayDate = new DateTime(2023, 07, 14, 11, 0, 0);
+                var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
+                timings.Set("postEggDaySnapshots");
+                var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+                timings.Set("preEggDaySnapshots");
+
+
+                results = postEggDaySnapshots.Select(x => {
+                    var user = accounts.First(y => y.Account.Id == x.EggIncID);
+                    var pre = preEggDaySnapshots.FirstOrDefault(y => y.EggIncID == x.EggIncID);
+                    if(pre is null)
+                        return null;
+
+                    return new EggDayResults {
+                        UserAccount = user,
+                        EBGain = x.EarningsBonus - pre.EarningsBonus,
+                        EBGainPercent = (x.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
+                        SEGain = x.SoulEggs - pre.SoulEggs,
+                        SEGainPercent = (x.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
+                        PrestigeCount = x.Prestiges - pre.Prestiges,
+                        StartEB = pre.EarningsBonus
+                    };
+                }).Where(x => x is not null).ToList();
+                _cache.Set($"EGL{guildid}", results, TimeSpan.FromMinutes(5));
+            }
+
+
             
-
-
-            var users = await _db.DBUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).ToListAsync();
-
-            timings.Set("Users");
-            var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
-                User = u,
-                Account = a,
-            })).ToList();
-
-
-            var eggincids = accounts.Select(x => x.Account.Id).ToList();
-
-
-            var eggDayDate = new DateTime(2023, 07, 14, 11, 0, 0);
-            var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
-            timings.Set("postEggDaySnapshots");
-            var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
-            timings.Set("preEggDaySnapshots");
-
-
-            var results = postEggDaySnapshots.Select(x => {
-                var user = accounts.First(y => y.Account.Id == x.EggIncID);
-                var pre = preEggDaySnapshots.First(y => y.EggIncID == x.EggIncID);
-
-
-                return new EggDayResults {
-                    UserAccount = user,
-                    EBGain = user.Account.Backup.EarningsBonus - pre.EarningsBonus,
-                    EBGainPercent = (user.Account.Backup.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
-                    SEGain = user.Account.Backup.SoulEggs - pre.SoulEggs,
-                    SEGainPercent = (user.Account.Backup.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
-                    PrestigeCount = user.Account.Backup.NumPrestiges - pre.Prestiges,
-                };
-            });
-
-            results = results = results.OrderByDescending(x => x.EBGain).ToList();
+            results = results.OrderByDescending(x => x.EBGain).ToList();
 
 
             switch(sortby) {
-                  case "se":
+                case "prestige":
+                    results = results.OrderByDescending(x => x.PrestigeCount).ToList();
+                    break;
+                case "se":
                     results = results.OrderByDescending(x => x.SEGain).ToList();
                     break;
                 case "seper":
@@ -497,6 +505,14 @@ namespace EGG9000.Site.Controllers {
                     results = results.OrderByDescending(x => x.EBGain).ToList();
                     break;
             }
+
+
+            if(prefix > 0) {
+                results = results.Where(x => SIPrefix.GetPrefixFromEB(x.StartEB).Base == prefix).ToList();
+            }
+
+            ViewBag.sortby = sortby;
+            ViewBag.prefix = prefix;
 
             return View(results.ToList());
 
@@ -526,8 +542,7 @@ namespace EGG9000.Site.Controllers {
             public double SEGain { get; set; }
             public double EBGainPercent { get; set; }
             public double SEGainPercent { get; set; }   
-            public double FinishEB { get; set; }
-            public double FinishSE { get; set; }
+            public double StartEB { get; set; }
             public ulong PrestigeCount { get; set; }
         }
 

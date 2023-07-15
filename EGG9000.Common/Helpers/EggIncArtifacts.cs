@@ -24,6 +24,9 @@ namespace EGG9000.Common.Helpers {
             var rate = 1.0;
 
             artifacts.ForEach(x => {
+                if(x is null) {
+                    return;
+                }
                 if(x.Stones == null)
                     x.Stones = new List<EggIncArtifactInstance>();
                 double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue) ? 0 : 1;
