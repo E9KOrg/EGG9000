@@ -79,8 +79,9 @@ namespace EGG9000.Bot.Automated {
 
                     if(currentEvent.Ended) {
                         currentEvent.Ended = false;
-                    } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).Seconds) > 60) {
+                    } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds) > 60) {
                         timeChange = true;
+                        currentEvent.Ends = DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining);
                     } 
 
                     if(currentEvent.Type != evt.Type) {
