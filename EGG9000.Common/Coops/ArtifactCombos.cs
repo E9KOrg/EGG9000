@@ -194,14 +194,14 @@ namespace EGG9000.Common.Coops {
                     similarity++;
                     // test for similarity between shipping and egg laying between artifact sets
                     if(artifact.Shipping == matchingArtifact.Shipping) {
-                        similarity++;
+                        similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
                     } else similarity--;
                     if(artifact.EggLaying == matchingArtifact.EggLaying) {
-                        similarity++;
+                        similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
                     } else similarity--;
                     if(artifact.Shipping != 0 && artifact.EggLaying != 0) {
                         if(artifact.Shipping == matchingArtifact.Shipping && artifact.EggLaying == matchingArtifact.EggLaying) {
-                            similarity++;
+                            similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
                         } else similarity--;
                     }
                 } else {
