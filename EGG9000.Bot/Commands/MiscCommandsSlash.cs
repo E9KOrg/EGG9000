@@ -306,12 +306,39 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
 
-        [SlashCommand(Description = "Get help from staff, please give details", CPOnly = true)]
+        [SlashCommand(Description = "Get help from staff, please give details")]
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
+            var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
+
+            if(guildFind is null) {
+                await command.RespondAsync("Callstaff cannot be sent, guild not found.");
+                return;
+            }
+
+            var socketGuild = client.Guilds.First(x => x.Id == guildFind.Id);
+
+            if(guildFind is null) {
+                await command.RespondAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
+                return;
+            } else if(!guildFind.HasChannel(GuildChannelType.CallStaffChannel)) {
+                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
+                return;
+            }
+
+            var channel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffChannel).Id);
+
+            if(channel is null) {
+                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
+                return;
+            }
+
+            var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
+            var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
+
             var infoText = $"Staff has been called ({details})";
-            var channel = client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 940777970111488050);
-            await channel.SendMessageAsync($"<@&904799345122091018>: {command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}");
+
+            await channel.SendMessageAsync($"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}");
             await command.RespondAsync(infoText, ephemeral: keepPrivate);
             if(keepPrivate) {
                 var dmChannel = await command.User.CreateDMChannelAsync();

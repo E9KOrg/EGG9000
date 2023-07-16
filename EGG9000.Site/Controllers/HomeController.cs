@@ -421,6 +421,9 @@ namespace EGG9000.Site.Controllers {
                         leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
                         leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
                         break;
+                    case "permit":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.PermitLevel).ToList();
+                        break;
                 }
                 return View(leaderboard);
             }
