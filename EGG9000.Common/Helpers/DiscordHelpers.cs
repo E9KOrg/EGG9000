@@ -377,7 +377,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckEnDRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var endRole = await _client.GetRoleAsync(GuildChannelType.EnDRole, Guild);
             if(endRole is not null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 10000000000);
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null && x.Backup.MaxFarmSizeReached.ContainsKey(Ei.Egg.Enlightenment)).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 10000000000);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == endRole.Id);
 
                 if(!hasRole && needsRole) {
@@ -393,7 +393,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckNAHRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var nahRole = await _client.GetRoleAsync(GuildChannelType.NAHRole, Guild);
             if(nahRole is not null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 19845000000);
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null && x.Backup.MaxFarmSizeReached.ContainsKey(Ei.Egg.Enlightenment)).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 19845000000);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == nahRole.Id);
 
                 if(!hasRole && needsRole) {
