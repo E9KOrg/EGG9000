@@ -786,7 +786,8 @@ namespace EGG9000.Bot.Automated {
                                     }
 
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18) && coopDetails.PercentProjectedForJoined > 100) {
-                                        await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
+                                        var accountName = xref.User.EggIncAccounts.Count > 1 ? $" ({xref.User.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
+                                        await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
                                 }
 
