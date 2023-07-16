@@ -67,7 +67,13 @@ namespace EGG9000.Common.Services {
         private DiscordSocketClient _discord;
         private ILogger<APILink> _logger;
         private APILinkOptions _settings;
+
+#if DEBUG
         private string urlBase => _configuration.GetConnectionString("APILinkURL");
+        //private string urlBase => "http://localhost:5014/Home/";
+#else
+        private string urlBase => _configuration.GetConnectionString("APILinkURL");
+#endif
 
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
