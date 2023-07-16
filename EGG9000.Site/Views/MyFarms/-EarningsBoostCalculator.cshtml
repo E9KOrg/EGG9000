@@ -10,11 +10,6 @@
 </style>
 <div ng-controller="EarningsBoostCalcModel@(Model.Backup.EggIncId)">
     <div class="form-inline">
-        <div class="form-group" ng-show="">
-            <label>Account</label>
-            <select class="form-control" ng-model="selectedAccount" ng-options="accounts.name for farm in farms"></select>
-        </div>
-        &nbsp;&nbsp;
         <div class="form-group">
             <label>Farm</label>
             <select class="form-control" ng-model="selectedFarm" ng-options="farm.name for farm in farms"></select>
@@ -106,7 +101,8 @@
         window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
 
         window.egg9000module.controller('EarningsBoostCalcModel@(Model.Backup.EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-            $scope.accounts = @Html.Raw(
+            $scope.BoostValue = @(Model.Event?.Multiplier ?? 1);
+            $scope.farms = @Html.Raw(
                 Json.Serialize(
                     Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
                         var farm = x.WithStats(Model.Backup, null);
@@ -119,9 +115,6 @@
                     }
                 ))
             );
-            $scope.BoostValue = @(Model.Event?.Multiplier ?? 1);
-            $scope.selectedAccount = $scope.accounts[0];
-            $scope.farms = $scope.selectedAccount;
             $scope.selectedFarm = $scope.farms[0];
             var allBoosts = [
                 { A: 2, T: 60, C: 1, img: '/images/boosts/Jimbos_Excellent_Bird_Feed.png' },
@@ -147,10 +140,6 @@
             $scope.twoBoost = false;
             //StartCalculate();
 
-            $scope.$watch('selectedAccount', function () {
-                $scope.farms = $scope.selectedAccount;
-                $scope.selectedFarm = $scope.farms[0];
-            });
 
             $scope.$watchGroup(['maxTokens', 'hide8Hour', 'selectedFarm', 'includeRunning', 'twoBoost'], StartCalculate)
 
