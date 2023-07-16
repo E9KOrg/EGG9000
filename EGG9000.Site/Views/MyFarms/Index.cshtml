@@ -220,7 +220,7 @@
                     <a class="nav-link" data-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" asp-action="EarningsBoostCalculator" role="tab" aria-selected="false">Earnings Boost Calculator</a>
+                    <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calculator</a>
                 </li>
             </ul>
 
@@ -522,6 +522,14 @@
                 <div class="tab-pane" id="externaltools@(index)" role="tabpanel">
                     @{
                         await Html.RenderPartialAsync("-ExternalTools", (backup, Model.User));
+                    }
+                </div>
+
+                <div class="tab-pane" id="earningsboostcalc@(index)" role="tabpanel">
+                    @{
+                        var newModel = new EarningsBoostCalculatorModel();
+                        newModel.Backup = backup;
+                        await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
                 </div>
 
