@@ -314,15 +314,15 @@ Last Backup <t:{backup.LastBackupTime}:R>
             if(guildFind is null) {
                 await command.RespondAsync("Callstaff cannot be sent, guild not found.");
                 return;
+            } else if(!guildFind.HasChannel(GuildChannelType.CallStaffChannel)) {
+                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
+                return;
             }
 
             var socketGuild = client.Guilds.First(x => x.Id == guildFind.Id);
 
-            if(guildFind is null) {
+            if(socketGuild is null) {
                 await command.RespondAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
-                return;
-            } else if(!guildFind.HasChannel(GuildChannelType.CallStaffChannel)) {
-                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
                 return;
             }
 
