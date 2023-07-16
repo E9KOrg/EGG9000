@@ -8,7 +8,7 @@
         max-height: 20px;
     }
 </style>
-<div ng-controller="Page">
+<div ng-controller="EarningsBoostCalcModel@(Model.Backup.EggIncId)">
     <div class="form-inline">
         <div class="form-group" ng-show="">
             <label>Account</label>
@@ -105,7 +105,7 @@
     function scriptToExecute() {
         window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
 
-        window.egg9000module.controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+        window.egg9000module.controller('EarningsBoostCalcModel@(Model.Backup.EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
             $scope.accounts = @Html.Raw(
                 Json.Serialize(
                     Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
