@@ -9,7 +9,7 @@
     }
 </style>
 <div ng-controller="EarningsBoostCalcModel@(Model.Backup.EggIncId)">
-    <div class="form-inline">
+    <div class="form-inline" style="padding-top:10px">
         <div class="form-group">
             <label>Farm</label>
             <select class="form-control" ng-model="selectedFarm" ng-options="farm.name for farm in farms"></select>
@@ -106,7 +106,7 @@
                 Json.Serialize(
                     Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
                         var farm = x.WithStats(Model.Backup, null);
-                        var name = x.FarmType == Ei.FarmType.Home ? "Home" : x.ContractId;
+                        var name = x.FarmType == Ei.FarmType.Home ? "Home" : $"{x.ContractId} ({x.CoopId})";
                         return new {
                             Name = name,
                             Income = farm.Income * (Model.Event?.Multiplier ?? 1),
@@ -134,11 +134,9 @@
             var maxTime = 40099;
 
             $scope.maxTokens = 75;
-            //$scope.earningsPerSecond = 1;
             $scope.hide8Hour = true;
             $scope.includeRunning = true;
             $scope.twoBoost = false;
-            //StartCalculate();
 
 
             $scope.$watchGroup(['maxTokens', 'hide8Hour', 'selectedFarm', 'includeRunning', 'twoBoost'], StartCalculate)
@@ -150,10 +148,7 @@
             }
 
             function CalculateAll() {
-                console.log("Calculating");
-
                 var boosts = _.filter(allBoosts, function (item) {
-                    console.log(!$scope.hide8Hour || item.T < 480, !$scope.hide8Hour, item.T < 480, item.T);
                     return !$scope.hide8Hour || item.T < 480
                 });
 
@@ -226,11 +221,9 @@
                     var earnings = _.filter(combo.boosts, function (item) { return item.A > 0 && item.T > m; });
                     var boost = _.filter(combo.boosts, function (item) { return item.B > 0 && item.T > m; });
                     multiplier += _.sumBy(earnings, "A") * Math.max(_.sumBy(boost, "B"), 1);
-                    //console.log(combo, earnings, Math.max(_.sumBy(boost, "B"), 1));
                 }
                 combo.multiplier = multiplier;
                 combo.pertoken = Math.round(multiplier / combo.cost);
-                //console.log($scope.selectedFarm);
                 combo.total = multiplier * ($scope.includeRunning ? $scope.selectedFarm.incomeRunning : $scope.selectedFarm.income) * 60;
             }
             $scope.ToEggString = ToEggString;
@@ -266,7 +259,6 @@
                 };
 
                 for (var i = 78; i > 0; i = i - 3) {
-                    console.log(i);
                     var ibig = i//BigInt(i);
                     if (number >= 10 ** ibig) {
                         var o = number / (10 ** ibig);
