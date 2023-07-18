@@ -651,6 +651,10 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
                 }
 
+                if(account.SubscriptionLevel > 0) {
+                    builder.AddField("Subscription", $"ULTRA {(UserSubscriptionInfo.Types.Level)account.SubscriptionLevel}");
+                }
+
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
                     var gradeProgressPercent = Math.Round(Math.Round((account.Backup?.GradeProgress ?? 0), 4) * 100, 2);

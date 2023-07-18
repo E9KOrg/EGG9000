@@ -34,6 +34,7 @@ using System.Diagnostics.Contracts;
 using Contract = EGG9000.Common.Database.Entities.Contract;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Microsoft.Extensions.Logging;
+using System.Formats.Asn1;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
@@ -111,6 +112,7 @@ namespace EGG9000.Bot.Automated {
                         contract.debug = contractResponse.Debug;
                         contract.length_seconds = contractResponse.LengthSeconds;
                         contract.egg = contractResponse.Egg.ToString();
+                        contract.cc_only = contractResponse.CcOnly;
                         contract._response = json;
                         await _db.SaveChangesAsync();
                     }
@@ -138,7 +140,9 @@ namespace EGG9000.Bot.Automated {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 0);
                 if(guildContract == null) {
-                    var contractCategory = await _client.GetCategoryAsync(GuildChannelType.EliteCategory, guild);
+
+                    var subscriptionContractCategory = await _client.GetCategoryAsync(GuildChannelType.SubscriptionContractCategory, guild);
+                    var contractCategory = (contract.cc_only && subscriptionContractCategory is not null) ? subscriptionContractCategory : await _client.GetCategoryAsync(GuildChannelType.ContractCategory, guild);
                     var contractChannel = await guild.CreateTextChannelAsync((contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier, x => { x.CategoryId = contractCategory.Id; x.Topic = ""; });
 
                     guildContract = new GuildContract {
@@ -180,6 +184,7 @@ namespace EGG9000.Bot.Automated {
 
             await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild);
         }
+
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG}", guild.Name, skipbg + 1);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();

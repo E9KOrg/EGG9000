@@ -190,6 +190,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task HandleRoleSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            if(guild.RolesToSync is null) return;
             var roleids = guild.RolesToSync.Split(",");
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
