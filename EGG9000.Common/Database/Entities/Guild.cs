@@ -139,6 +139,10 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Channel for /callstaff messages")]
         CallStaffChannel = 29,
         [Description("Optional: Role for staff to ping in /callstaff instances")]
-        CallStaffTagRole = 30
+        CallStaffTagRole = 30,
+        [Description("Optional: Role for standard subscriptions")]
+        StandardSubscription = 31,
+        [Description("Optional: Role for pro subscriptions")]
+        ProSubscription = 32
     }
 }

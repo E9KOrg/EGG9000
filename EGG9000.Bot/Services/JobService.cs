@@ -2,6 +2,8 @@
 
 using EGG9000.Common.Commands;
 
+using Humanizer;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -55,7 +57,9 @@ namespace EGG9000.Bot.Services {
                     foreach(var job in jobs) {
                         job.NextRun = GetNextRun(job.Details.Cron);
                         _logger.LogInformation($"Running Job {job.DeclaringType.Name}.{job.Name}, Current time: {DateTimeOffset.Now.ToString("h:mm:ss:ff")}, next run at {job.NextRun.ToString("h:mm:ss:ff")}");
+                        var timer = System.Diagnostics.Stopwatch.StartNew();
                         await RunJobAsync(job);
+                        _logger.LogInformation($"{job.DeclaringType.Name}.{job.Name} took {timer.Elapsed.Humanize()}");
                     }
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
@@ -82,10 +86,10 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
 
-        private Task RunJobAsync(Job job) {
+        private async Task RunJobAsync(Job job) {
             var jobClass = ActivatorUtilities.CreateInstance(_provider, job.DeclaringType);
-            job.DeclaringType.GetMethod(job.Name).Invoke(jobClass, null);
-            return Task.CompletedTask;
+            Task result = (Task)job.DeclaringType.GetMethod(job.Name).Invoke(jobClass, null);
+            await result;
         }
 
         private DateTimeOffset GetNextRun(string cron) {
