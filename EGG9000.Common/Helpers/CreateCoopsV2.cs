@@ -89,7 +89,7 @@ namespace EGG9000.Common.Helpers {
 
             //var id = prefarms.FirstOrDefault(x => x.Backup is not null)?.Backup.EggIncId;
 
-            await CreateCoopViaApi(contract.ID, grade, coop, secondsRemaining, EIID);
+            await CreateCoopViaApi(contract.ID, grade, coop, secondsRemaining, EIID, contract.cc_only);
 
             await db.SaveChangesAsync();
             return coop;
@@ -97,7 +97,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool subOnly = false) {
             userid = userid ?? ContractsAPI.UserId;
             //userid = ContractsAPI.UserId;
             var policy = Policy
@@ -110,7 +110,7 @@ namespace EGG9000.Common.Helpers {
               });
 
             try {
-                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coop, secondsRemaining, userid));
+                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coop, secondsRemaining, userid, subOnly));
             } catch(Exception) {
                 return false;
             }
@@ -146,7 +146,7 @@ namespace EGG9000.Common.Helpers {
 
             return true;
         }
-        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid) {
+        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool subOnly = false) {
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(new Ei.CreateCoopRequest {
                 ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = ContractID,
@@ -160,7 +160,8 @@ namespace EGG9000.Common.Helpers {
                 UserId = userid,
                 UserName = "EK9",
                 League = 0,
-                CcOnly = false,
+                CcOnly = subOnly,
+                AllowAllGrades = subOnly,
                 Public = false,
             }, userid);
             if(response == null) {
@@ -190,18 +191,18 @@ namespace EGG9000.Common.Helpers {
                 mention += $"({eggIncName})";
             }
             try {
-                await ((SocketTextChannel)targetChannel).AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
             } catch(Exception) {
                 try {
-                    await ((SocketTextChannel)commandChannel).SendMessageAsync(commandChannel.Guild.Id != targetChannel.Guild.Id ? $"{mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**." : "Looks like an error happened, please use /callstaff");
+                    await commandChannel.SendMessageAsync(commandChannel.Guild.Id != targetChannel.Guild.Id ? $"{mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**." : "Looks like an error happened, please use /callstaff");
                 } catch(Exception) {
-                    await ((SocketTextChannel)targetChannel).SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
+                    await targetChannel.SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
                     return newxref;
                 }
             }
 
 
-            await ((SocketTextChannel)targetChannel).SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
+            await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
             return newxref;
         }
     }

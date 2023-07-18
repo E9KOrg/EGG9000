@@ -31,8 +31,7 @@ namespace EGG9000.Common.Contracts {
                 }));
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
 
-            accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract)
-            );
+            accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract));
 
             accounts = accounts.Where(x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.Identifier && y.FarmType == Ei.FarmType.Contract));
 
@@ -42,6 +41,9 @@ namespace EGG9000.Common.Contracts {
             accounts = accounts.Where(x =>
                 x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Egg || (int)contract.Egg >= 100
             );
+
+            //If the contract is Subscription only, filter further
+            accounts = accounts.Where(x => !contract.CcOnly || x.Account.SubscriptionLevel > 0);
 
             accounts = accounts.Where(x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)));
 
