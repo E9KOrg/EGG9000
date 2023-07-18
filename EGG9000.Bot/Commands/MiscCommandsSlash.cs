@@ -31,7 +31,7 @@ using System.Globalization;
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
-        public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam(Description = "Tier"), MinValue(2), MaxValue(4)] int quality, [SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
+        public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [Choice("T2", 2), Choice("T3", 3), Choice("T4", 4)] int quality, [SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {

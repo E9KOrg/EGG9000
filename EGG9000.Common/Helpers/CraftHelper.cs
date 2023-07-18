@@ -179,6 +179,13 @@ namespace EGG9000.Common.Helpers {
             return _totalCost;
         }
     }
-    
-    
+
+    public enum TierInput {
+        [ChoiceDisplay("T2")]
+        Tier2 = 2,
+        [ChoiceDisplay("T3")]
+        Tier3 = 3,
+        [ChoiceDisplay("T4")]
+        Tier4 = 4
+    }
 }
