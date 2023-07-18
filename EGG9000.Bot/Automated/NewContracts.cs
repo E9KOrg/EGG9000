@@ -34,7 +34,6 @@ using System.Diagnostics.Contracts;
 using Contract = EGG9000.Common.Database.Entities.Contract;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Microsoft.Extensions.Logging;
-using System.Formats.Asn1;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
