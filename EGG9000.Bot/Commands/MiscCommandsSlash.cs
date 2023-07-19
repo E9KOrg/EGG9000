@@ -31,7 +31,7 @@ using System.Globalization;
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
-        public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam]TierInput quality, [SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
+        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam]TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
@@ -40,20 +40,20 @@ namespace EGG9000.Bot.Commands {
             }
 
             var stringBuilder = new StringBuilder();
-            for(var i = 0; i < 3; i++) {
+            for(var i = 0; i < user.EggIncAccounts.Count; i++) {
                 var id = user.EggIncAccounts[0];
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
                 if(i == 0) {
-                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:");
+                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {artifact}:");
                     stringBuilder.AppendLine();
                 } else {
                     stringBuilder.AppendLine();
                     stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――");
                     stringBuilder.AppendLine();
-                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{quality} {artifact}:");
+                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {artifact}:");
                     stringBuilder.AppendLine();
                 }
 

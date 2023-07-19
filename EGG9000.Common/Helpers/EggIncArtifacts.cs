@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Common.Commands;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +11,9 @@ using EGG9000.Common.Database;
 using EGG9000.Common.JsonData.EiAfxData;
 using MessagePack;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncArtifacts {
@@ -114,6 +119,21 @@ namespace EGG9000.Common.Helpers {
                 "solar-titanium" => "titanium",
                 _ => family.name
             };
+        }
+        
+        public class ArtifactNameAutoComplete : AutoCompleteHandler {
+            private readonly EiAfxDataRoot _eiAfxData;
+            public ArtifactNameAutoComplete() {
+                _eiAfxData = GetEiAfxData();
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                IEnumerable<ArtifactFamily> artifactFamilies = _eiAfxData.artifact_families.ToList();
+                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    artifactFamilies = artifactFamilies.Where(x => x.name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
+                }
+
+                await arg.RespondAsync(null, artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).ToArray());
+            }
         }
 
         public static Tier GetTier(int afxId, int tierNumber) {
