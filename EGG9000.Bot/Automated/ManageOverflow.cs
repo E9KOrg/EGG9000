@@ -105,7 +105,11 @@ namespace EGG9000.Bot.Automated {
 
                 var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == registeredRoleID));
 
-                var role = mainServer.Roles.First(x => x.Id == overflowRoleID);
+                var role = mainServer.Roles.FirstOrDefault(x => x.Id == overflowRoleID);
+                if(role is null) {
+                    _logger.LogWarning("Unable to find overflow role for {guild}", guild.Name);
+                    continue;
+                }
 
 
                 foreach(var u in onlyMainWithoutRole) {
@@ -190,6 +194,8 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task HandleRoleSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            if(guild.RolesToSync is null)
+                return;
             var roleids = guild.RolesToSync.Split(",");
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
