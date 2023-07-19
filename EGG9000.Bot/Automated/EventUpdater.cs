@@ -221,7 +221,7 @@ namespace EGG9000.Bot.Automated {
                 .WithDescription(CrossOut ? $"~~{description}~~" : description);
 
             if(e.CcOnly) {
-                embed.WithAuthor("Egg, Inc ULTRA-Only Event", "https://cdn.discordapp.com/emojis/1131018983118741595.webp");
+                embed.WithAuthor("Egg, Inc ULTRA-Only Event", "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless");
             } else {
                 embed.WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751");
             }
