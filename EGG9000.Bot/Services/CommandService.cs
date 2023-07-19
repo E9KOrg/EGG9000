@@ -382,7 +382,9 @@ namespace EGG9000.Bot.Services {
                     }
                     return users.ToArray();
                 }
-
+                if(parameterInfo.ParameterType.IsEnum) {
+                    return Enum.Parse(parameterInfo.ParameterType, FindOption(name, fauxCommand.Data.Options)?.Value.ToString());
+                }
                 var optionResult = FindOption(name, fauxCommand.Data.Options);
                 if(optionResult == null) {
                     return null;
@@ -463,8 +465,20 @@ namespace EGG9000.Bot.Services {
                         {typeof(SocketRole), ApplicationCommandOptionType.Role },
                     };
 
+
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
                 AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
+                return;
+            }
+            if(parameterInfo.ParameterType.IsEnum) {
+                List<ApplicationCommandOptionChoiceProperties> choices = new List<ApplicationCommandOptionChoiceProperties>();
+                foreach(var value in Enum.GetValues(parameterInfo.ParameterType)) {
+                    var choice = new ApplicationCommandOptionChoiceProperties();
+                    choice.Name = value.ToString();
+                    choice.Value = Convert.ToInt32(value);
+                    choices.Add(choice);
+                }
+                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand, choices.ToArray());
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
@@ -476,11 +490,12 @@ namespace EGG9000.Bot.Services {
             throw new NotImplementedException($"Parameter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
         }
 
-        private void AddOption(String name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null) {
+        private void AddOption(String name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices) {
             if(guildCommand != null) {
-                guildCommand.AddOption(name, type, description, isRequired, isAutocomplete: isAutocomplete);
+
+                guildCommand.AddOption(name, type, description, isRequired, null, isAutocomplete: isAutocomplete, null, null, null, null, null, null, null, null, choices);
             } else {
-                subCommand.AddOption(name, type, description, isRequired, isAutocomplete: isAutocomplete);
+                subCommand.AddOption(name, type, description, isRequired, false,  isAutocomplete: isAutocomplete, null, null, null, null,null,null,null,null, choices);
             }
 
         }
