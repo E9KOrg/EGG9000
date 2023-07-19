@@ -182,10 +182,10 @@ namespace EGG9000.Common.Helpers {
 
     public enum TierInput {
         [ChoiceDisplay("T2")]
-        Tier2 = 2,
+        T2 = 2,
         [ChoiceDisplay("T3")]
-        Tier3 = 3,
+        T3 = 3,
         [ChoiceDisplay("T4")]
-        Tier4 = 4
+        T4 = 4
     }
 }
