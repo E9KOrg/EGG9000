@@ -50,7 +50,7 @@ namespace EGG9000.Common.Contracts {
             var accountList = accounts.ToList();
 
 
-            if(dbguild is not null && dbguild.DisableBG) {
+            if((dbguild is not null && dbguild.DisableBG) || contract.CcOnly) {
                 await guild.DownloadUsersAsync();
                 foreach(var account in accountList) {
                     var role = guild.GetUser(account.User.DiscordId)?.Roles.FirstOrDefault(x => dbguild.GroupRoles.Contains(x.Id.ToString()));
@@ -59,42 +59,57 @@ namespace EGG9000.Common.Contracts {
             }
 
 
-            foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
-                if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
-                    continue;
-                var includeBg = new List<int>();
-                if(dbguild is not null && dbguild.DisableBG) {
-                    for(var i = 0; i < dbguild.GroupRoles.Split(",").Count(); i++) {
-                        var group = new PotentialCoopGroup {
-                            Grade = grade,
-                            BoardingGroup = i
-                        };
-                        groups.Add(group);
-                        var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i])).Id;
+            if(contract.CcOnly) {
+                for(var i = 0; i < dbguild.GroupRoles.Split(",").Length; i++) {
+                    var group = new PotentialCoopGroup {
+                        Grade = Ei.Contract.Types.PlayerGrade.GradeUnset,
+                        BoardingGroup = 0
+                    };
+                    groups.Add(group);
+                    var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i])).Id;
 
-                        group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
-                    }
-                } else {
-                    for(var bg = 3; bg >= 1; bg--) {
-                        var group = new PotentialCoopGroup {
-                            BoardingGroup = bg, Grade = grade
-                        };
-                        groups.Add(group);
+                    group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, Ei.Contract.Types.PlayerGrade.GradeAaa, contract, new List<int>(), true, true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
+                }
+            } else {
+                foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                    if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
+                        continue;
+                    var includeBg = new List<int>();
+                    if(dbguild is not null && dbguild.DisableBG) {
+                        for(var i = 0; i < dbguild.GroupRoles.Split(",").Count(); i++) {
+                            var group = new PotentialCoopGroup {
+                                Grade = Ei.Contract.Types.PlayerGrade.GradeAaa,
+                                BoardingGroup = i
+                            };
+                            groups.Add(group);
+                            var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i])).Id;
 
-                        var dontMergeDown = false;
-                        if(SkipBG > 0 && SkipBG == bg - 1) {
-                            for(var i = SkipBG; i > 0; i--) {
-                                includeBg.Add(i);
-                            }
-                            dontMergeDown = true;
+                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
                         }
+                    } else {
+                        for(var bg = 3; bg >= 1; bg--) {
+                            var group = new PotentialCoopGroup {
+                                BoardingGroup = bg, Grade = grade
+                            };
+                            groups.Add(group);
 
-                        if(bg > SkipBG) {
-                            group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown, false, AllowGuilds: dbguild.AllowGuilds);
+                            var dontMergeDown = false;
+                            if(SkipBG > 0 && SkipBG == bg - 1) {
+                                for(var i = SkipBG; i > 0; i--) {
+                                    includeBg.Add(i);
+                                }
+                                dontMergeDown = true;
+                            }
+
+                            if(bg > SkipBG) {
+                                group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, bg, grade, contract, includeBg, dontMergeDown, false, AllowGuilds: dbguild.AllowGuilds);
+                            }
                         }
                     }
                 }
             }
+
+            
 
             return groups;
         }
@@ -108,7 +123,12 @@ namespace EGG9000.Common.Contracts {
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool ignoreRewards, bool AllowGuilds, int overrideNumber = 0, ulong roleid = 0) {
             IEnumerable<UserByAccount> matchingAccounts;
 
-            if(roleid > 0) {
+            if(contract.CcOnly) {
+                matchingAccounts = Accounts.Where(x =>
+                    x.Account.SubscriptionLevel > 0)
+                ;
+            }
+            else if(roleid > 0) {
                 matchingAccounts = Accounts.Where(x =>
                     x.Account.GetGrade() == Grade &&
                     x.RoleId == roleid
