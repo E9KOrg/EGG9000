@@ -146,7 +146,10 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+
+                var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
+                var channel = (newEvent.CcOnly && ccEventChannel is not null) ? ccEventChannel : await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+
                 RestUserMessage message;
                 var notification = customization.Settings.Notifications?
                     .OrderByDescending(x => x.MinValue)
@@ -215,10 +218,13 @@ namespace EGG9000.Bot.Automated {
             var embed = new EmbedBuilder()
                 .WithTitle(CrossOut ? $"~~{title}~~" : title)
                 .WithColor(color)
-                .WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
                 .WithDescription(CrossOut ? $"~~{description}~~" : description);
-                /*.WithFooter("Last Updated")
-                .WithTimestamp(DateTimeOffset.Now);*/
+
+            if(e.CcOnly) {
+                embed.WithAuthor("Egg, Inc ULTRA-Only Event", "https://cdn.discordapp.com/emojis/1131018983118741595.webp");
+            } else {
+                embed.WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751");
+            }
 
             if(!string.IsNullOrWhiteSpace(eventC.ThumbnailURL)) {
                 embed.WithThumbnailUrl(eventC.ThumbnailURL);
