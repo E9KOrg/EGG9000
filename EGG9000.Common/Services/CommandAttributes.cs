@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord.Interactions;
+using Discord.WebSocket;
 
 using System;
 using System.Collections.Generic;

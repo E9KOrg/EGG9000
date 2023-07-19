@@ -31,7 +31,7 @@ using System.Globalization;
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
-        public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [Choice("T2", 2), Choice("T3", 3), Choice("T4", 4)] int quality, [SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
+        public static async Task CraftArtifact(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam]TierInput quality, [SlashParam(Description = "artifact")] string artifact, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
@@ -58,7 +58,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var crafter = new Crafter(backup.ArtifactHall);
-                var basket = crafter.GetCraft(quantity, quality, artifact);
+                var basket = crafter.GetCraft(quantity, (int)quality, artifact);
 
                 stringBuilder.AppendFormat($"```{"Name",-15}{"Using",-8}{"Need",-8}{"Cost",-8}");
                 stringBuilder.AppendLine();
