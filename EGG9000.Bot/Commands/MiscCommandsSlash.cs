@@ -380,7 +380,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
             double result = (91 * (Math.Log10(seQ)) + 200 - pe) / 10;
             result = Math.Round(result, 1);
-            await command.RespondAsync($"The **MER** for **{username}** is `{result}`(:PE:`{pe}` and:SE:`{se}`)\n*Some witty text here*");
+            await command.RespondAsync($"The **MER** for **{username}** is `{result}`(<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{se}`)\nPE needed for MER 30");
         }
     }
 }
