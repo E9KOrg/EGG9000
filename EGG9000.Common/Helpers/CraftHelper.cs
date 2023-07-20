@@ -1,4 +1,5 @@
 ﻿using Discord.Interactions;
+using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
 using Ei;
 using System;
@@ -28,14 +29,14 @@ namespace EGG9000.Common.Helpers {
 
         public string GetNeed() {
             if(Tier.tier_number == 1) {
-                return Need.ToString();
+                return Need.Format();
             }
 
             if(Need == 0 && ShadowNeed == 0) {
                 return 0.ToString();
             }
 
-            return $"({ShadowNeed.ToString()})";
+            return $"({ShadowNeed.Format()})";
         }
     }
 
