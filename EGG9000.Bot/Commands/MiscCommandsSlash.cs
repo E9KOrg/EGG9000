@@ -349,6 +349,39 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 }
             }
         }
+
+        [SlashCommand(Description = "Calculate various fan-made formulae across the game")]
+        public static async Task Formulae(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Which formula?", Required = true)] string formula) {
+            if(formula.ToUpper() != "MER") {
+                await command.RespondAsync($"Invalid parameter {formula} for the command /formulae.");
+                return;
+            }
+
+            await command.RespondAsync("Calculating MER...");
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.RespondAsync("⚠️ERROR: Unable to find user");
+                return;
+            }
+
+            string se = "";
+            double seQ = 0;
+            double pe = 0;
+            string username = "";
+            foreach(var id in user.EggIncAccounts) {
+                var backup = id.Backup;
+                if(backup == null)
+                    continue;
+                
+                se = backup.SoulEggs.ToEggString();
+                seQ = backup.SoulEggs / 1e18; // Convert to quintillions
+                pe = backup.EggsOfProphecy;
+                username = user.DiscordUsername;
+            }
+            double result = (91 * (Math.Log10(seQ)) + 200 - pe) / 10;
+            result = Math.Round(result, 1);
+            await command.RespondAsync($"The **MER** for **{username}** is `{result}`(:PE:`{pe}` and:SE:`{se}`)\n*Some witty text here*");
+        }
     }
 }
 
