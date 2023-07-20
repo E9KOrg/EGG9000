@@ -503,7 +503,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Create a co-op with the selected contract for you")]
-        public static async Task CreateCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, Words _words, IServiceProvider _provider, CoopStatusUpdater coopStatusUpdater, [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid) {
+        public static async Task CreateCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, Words _words, IServiceProvider _provider, CoopStatusUpdater coopStatusUpdater, [SlashParam(AutocompleteHandler = typeof(CreateCoopContractAutoComplete))] string contractid) {
             await command.RespondAsync("Working...", ephemeral: true);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user is null) {
@@ -512,15 +512,18 @@ namespace EGG9000.Bot.Commands {
             }
             var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
 
-            var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
-            if(user.EggIncAccounts.Count == 1) {
-                if(user.EggIncAccounts.Count == 0) {
-                    await command.ModifyOriginalResponseAsync("⚠️ERROR: User doesn't contain a backup");
-                    return;
+            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Count();
 
+            var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
+            if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
+
+                EggIncAccount subAccountBypass = null;
+                if(contract.cc_only) {
+                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.SubscriptionLevel > 0);
                 }
+
                 var userList = new List<UserByAccount> { new UserByAccount {
-                    Account = user.EggIncAccounts.First(),
+                    Account = subAccountBypass ?? user.EggIncAccounts.First(),
                     User = user
                 } };
                 var guild = _client.GetGuild(command.GuildId.Value);
@@ -529,7 +532,12 @@ namespace EGG9000.Bot.Commands {
                 await command.Channel.SendMessageAsync($"Co-op created {coop.Name} {PlayerGradeDetails.GetEmoji(coop.League)} for {command.User.Mention}");
             } else {
                 var builder = new ComponentBuilder();
-                foreach(var account in user.EggIncAccounts) {
+                var userList = user.EggIncAccounts;
+                if(contract.cc_only) {
+                    userList = userList.Where(x => x.SubscriptionLevel > 0).ToList();
+                }
+
+                foreach(var account in userList) {
                     Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
                     builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
                 }
@@ -561,10 +569,35 @@ namespace EGG9000.Bot.Commands {
                 _db = db;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var contracts = await _db.Contracts.Where(x => x.GoodUntil > DateTimeOffset.Now).Select(x => new { x.ID, x.Name }).ToListAsync();
+                var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
+                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Any();
 
+                var contracts = await _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).Select(x => new { x.ID, x.Name }).ToListAsync();
 
                 await arg.RespondAsync(null, contracts.Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
+            }
+        }
+
+        public class CreateCoopContractAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public CreateCoopContractAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var guild = _db.Guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
+                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Any();
+
+                var contracts = _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).ToList();
+
+                if(guild is not null && !guild.DisableBG) {
+                    //Limit contracts to those that have had longer than 16 hours to launch (i.e. all three boarding groups)
+                    contracts = contracts.Where(x => (DateTimeOffset.Now - x.Created).TotalHours > 17).ToList();
+                }
+
+                var contractObjs = contracts.Select(x => new { x.ID, x.Name }).ToList();
+
+                await arg.RespondAsync(null, contractObjs.Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
             }
         }
 
