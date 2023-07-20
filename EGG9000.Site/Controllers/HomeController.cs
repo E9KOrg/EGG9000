@@ -180,8 +180,6 @@ namespace EGG9000.Site.Controllers {
             //var rawBackup = await ContractsAPI.FirstContact(ei);
             //var backup = new CustomBackup(rawBackup.Backup);
             var backup = await _apiLink.GetBackup(ei);
-            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
-            //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
 
@@ -189,16 +187,12 @@ namespace EGG9000.Site.Controllers {
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
             var backup = await _apiLink.GetBackup(ei);
-            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
-            //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
             var backup = await ContractsAPI.FirstContact(ei);
-            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
-            //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
 

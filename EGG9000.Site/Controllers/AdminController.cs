@@ -845,13 +845,13 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<ActionResult> DuplicateChannels() {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            //var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            //var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
 
 
-            var coops = await _db.Coops.AsQueryable().Where(x => x.GuildId == guildId && x.DeletedChannel == false).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.DeletedChannel == false).ToListAsync();
 
-            var coopChannels = _discord.Guilds.Where(x => x.Id == guildId || dbguild.OverflowServers.Any(y => y == x.Id)).SelectMany(x => x.TextChannels);
+            var coopChannels = _discord.Guilds.SelectMany(x => x.TextChannels);
 
             var coopsWithChannels = coops.Select(c => new CoopWithChannels { Coop = c, MainChannel = coopChannels.FirstOrDefault(x => x.Id == c.DiscordChannelId), ExtraChannels = coopChannels.Where(x => x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList() }).ToList();
 

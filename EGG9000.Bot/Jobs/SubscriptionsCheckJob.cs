@@ -39,8 +39,9 @@ namespace EGG9000.Bot.Jobs {
         //[Job("0 * * * * *")]
         public async Task CheckSubscriptions() {
             _logger.LogInformation("Checking subscriptions");
-            var users = _db.DBUsers.Where(x => !x.TempDisabled).ToList();
+            var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
             foreach(var guildGroup in users.GroupBy(x => x.GuildId)) {
+                //foreach(var guildGroup in users.GroupBy(x => x.GuildId).Where(x => x.Key != 656455567858073601)) {
                 var dbguild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
                 if(dbguild is null)
                     continue;
