@@ -62,7 +62,6 @@ namespace EGG9000.Bot.Automated {
         }
 
 
-
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var times = new TimingsFactory(_logger);
             times.Start();
@@ -171,16 +170,7 @@ namespace EGG9000.Bot.Automated {
 
             }
 
-
-
             await _db.SaveChangesAsync();
-
-
-
-
-
- 
-
         }
 
         public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, FauxCommand slashCommand = null) {
@@ -214,17 +204,18 @@ namespace EGG9000.Bot.Automated {
                 var newMsgs = new List<string>();
 
                 var description = "";
+
+                if(guildContract.CcOnly) {
+                    description += "**<:ultra:1131045418319495369> Subscriber-Only Contract**\n";
+                }
                 description += $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
                 description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.TimeStamper(validFor)}";
-                //description += $"**{(validFor > TimeSpan.Zero ? "Expires" : "Expired")}** {validFor.Humanize(precision: 2).ShortenTime()}";
                 //description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&League={guildContract.League})";
                 if(guildContract.BoardingGroup < 3)
                     description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
 
                 var embedBuilder = new EmbedBuilder()
                     .WithDescription(description)
-                    //.WithTimestamp(DateTimeOffset.Now)
-                    //.WithFooter($"Updates Every {_updateInterval.TotalMinutes} Minutes - Last Updated")
                     .WithAuthor(
                         new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
                         .WithIconUrl(EggIncEggs.GetEggById((int)guildContract.Contract.Details.Egg).Image));
@@ -233,11 +224,11 @@ namespace EGG9000.Bot.Automated {
                 for(int i = 5; i >=  1; i--) {
                     var gradeSpec = guildContract.Contract.Details.GradeSpecs[i - 1];
                     var maxTargetLength = gradeSpec.Goals.Select(x => x.TargetAmount.ToEggString()).Max(x => x.Length);
-                    var goals = String.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncEggs.GetReward(x)}"));
+                    var goals = string.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncEggs.GetReward(x)}"));
                     var length = TimeSpan.FromSeconds(gradeSpec.LengthSeconds);
                     goals += $"\n**Length**: {length.Humanize(precision: 2).ShortenTime()}";
                     if(gradeSpec.Modifiers.Any()) {
-                        goals += "\n**Modifiers:**\n" + String.Join("\n", gradeSpec.Modifiers.Select(x => $"{x.Dimension} {(x.Value < 1 ? $"{x.Value * 100}%" : $"{x.Value}x")}"));
+                        goals += "\n**Modifiers:**\n" + string.Join("\n", gradeSpec.Modifiers.Select(x => $"{x.Dimension} {(x.Value < 1 ? $"{x.Value * 100}%" : $"{x.Value}x")}"));
                     }
                     embedBuilder.AddField(PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)i), goals, inline: true);
                 }
@@ -255,7 +246,6 @@ namespace EGG9000.Bot.Automated {
                             var index = Math.Max(cmsg.LastIndexOf('\n', 2000), cmsg.LastIndexOf(',', 2000));
                             condensedMsgs.Add(cmsg.Substring(0, index));
                             cmsg = cmsg.Substring(index);
-
                         }
                     }
                     currentMsg += cmsg;
@@ -295,7 +285,7 @@ namespace EGG9000.Bot.Automated {
                 guildContract.Status = ContractStatus.Completed;
             }
 
-            for(int i = 1; i <= coopsDetails.Count; i++) {
+            for(var i = 1; i <= coopsDetails.Count; i++) {
                 var coopDetails = coopsDetails[i - 1];
 
                 if(coopDetails.Coop.DeletedChannel || !coopDetails.HasSpots || coopDetails.Coop.Finished)
@@ -335,7 +325,7 @@ namespace EGG9000.Bot.Automated {
 
         }
 
-        public string GetLinkToMessage(IMessage message, IGuild guild, ITextChannel channel, string text) {
+        public static string GetLinkToMessage(IMessage message, IGuild guild, ITextChannel channel, string text) {
             if(message == null)
                 return "";
             return $"[{text}](https://discord.com/channels/{guild.Id}/{channel.Id}/{message.Id})\n";
@@ -348,14 +338,15 @@ namespace EGG9000.Bot.Automated {
         }
 
         private List<string> ShowCoopStatus(CoopDetails coop, string coopName, double target, uint size, bool alreadyInCoop = false) {
-            var table = new List<List<FixedWidthCell>>();
-            table.Add(new List<FixedWidthCell> {
-                            new FixedWidthCell("Name", CellAlignment.Center),
-                            new FixedWidthCell("🐔", CellAlignment.Center),
-                            new FixedWidthCell("🥚", CellAlignment.Center),
-                            new FixedWidthCell("📈", CellAlignment.Center, true),
-                            new FixedWidthCell(coop.CoopParticipants.All(x => string.IsNullOrEmpty(x.Farm?.CoopId)) ? "🟡" : "")
-                        });
+            var table = new List<List<FixedWidthCell>> {
+                new List<FixedWidthCell> {
+                    new FixedWidthCell("Name", CellAlignment.Center),
+                    new FixedWidthCell("🐔", CellAlignment.Center),
+                    new FixedWidthCell("🥚", CellAlignment.Center),
+                    new FixedWidthCell("📈", CellAlignment.Center, true),
+                    new FixedWidthCell(coop.CoopParticipants.All(x => string.IsNullOrEmpty(x.Farm?.CoopId)) ? "🟡" : "")
+                }
+            };
             table.AddRange(coop.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
                 var timeleft = "";
                 if(x.TimeLeft.TotalSeconds > 0) {
@@ -368,50 +359,50 @@ namespace EGG9000.Bot.Automated {
                     emoji = "🆕";
                 }
                 return new List<FixedWidthCell> {
-                            new FixedWidthCell(Truncate($"{emoji}{x.Name}", 12)),
-                            //new FixedWidthCell(x.EggsPaidFor.ToEggString()),
-                            new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
-                            new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
-                            new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
-                            //new FixedWidthCell(x.Tokens.ToString()),
-                            //new FixedWidthCell(x.BoostTokensSpent.ToString()),
-                            //new FixedWidthCell(x.TimeSinceUpdate.Humanize(1, minUnit: Humanizer.Localisation.TimeUnit.Minute).ShortenTime()),
-                            new FixedWidthCell(GetCoopStatus(coop.Coop, x, alreadyInCoop))
-                    };
+                    new FixedWidthCell(Truncate($"{emoji}{x.Name}", 12)),
+                    //new FixedWidthCell(x.EggsPaidFor.ToEggString()),
+                    new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
+                    new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
+                    new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
+                    //new FixedWidthCell(x.Tokens.ToString()),
+                    //new FixedWidthCell(x.BoostTokensSpent.ToString()),
+                    //new FixedWidthCell(x.TimeSinceUpdate.Humanize(1, minUnit: Humanizer.Localisation.TimeUnit.Minute).ShortenTime()),
+                    new FixedWidthCell(GetCoopStatus(coop.Coop, x, alreadyInCoop))
+                };
             }));
 
             if(coopName != "Expired Farms" && coopName != "Already in coop") {
                 var percent = $"{coop.PercentProjected / 100:P0}".Replace(",", ""); //$"{coop.Users.Sum(x => x.Projected) / target:P0}";
 
                 table.Add(new List<FixedWidthCell> {
-                            new FixedWidthCell($"{coop.CoopParticipants.Count}/{size}"),
-                            new FixedWidthCell(""),
-                            new FixedWidthCell(ArgumentsHelper.NumberToString(coop.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false, -1) + "/h", CellAlignment.Right),
+                    new FixedWidthCell($"{coop.CoopParticipants.Count}/{size}"),
+                    new FixedWidthCell(""),
+                    new FixedWidthCell(ArgumentsHelper.NumberToString(coop.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false, -1) + "/h", CellAlignment.Right),
 //                            new FixedWidthCell(""),
-                            new FixedWidthCell(coop.CoopParticipants.Sum(x => x.Projected).ToEggString(), CellAlignment.Right),
-                            new FixedWidthCell(percent, CellAlignment.Right),
-                            new FixedWidthCell(""),
-                            new FixedWidthCell(""),
-                            new FixedWidthCell("")
-                        });
+                    new FixedWidthCell(coop.CoopParticipants.Sum(x => x.Projected).ToEggString(), CellAlignment.Right),
+                    new FixedWidthCell(percent, CellAlignment.Right),
+                    new FixedWidthCell(""),
+                    new FixedWidthCell(""),
+                    new FixedWidthCell("")
+                });
             }
 
 
 
-            var tableString = $"{coopName}\n```{FixedWidthTable.GetTable(table)}```\n";
+            var tableString = $"{coopName}\n```{GetTable(table)}```\n";
             //var startLength = tableString.Length;
             //tableString = tableString.Replace("  ", "\t");
             var msgs = new List<string>();
             while(tableString.Length > 2000) {
                 var index = tableString.LastIndexOf('\n', 2000);
-                msgs.Add(tableString.Substring(0, index) + "```");
-                tableString = "```" + tableString.Substring(index);
+                msgs.Add(tableString[..index] + "```");
+                tableString = "```" + tableString[index..];
             }
             msgs.Add(tableString);
             return msgs;
         }
 
-        private string GetCoopStatus(Coop coop, UserFarmDetails user, bool alreadyInCoop) {
+        private static string GetCoopStatus(Coop coop, UserFarmDetails user, bool alreadyInCoop) {
             if(alreadyInCoop)
                 return $"[{user.Farm?.CoopId ?? user.ArchivedFarm?.CoopId}] Joined {(DateTimeOffset.Now - user.DBUser.Registered.Value).Humanize().ShortenTime()} ago";
             if(coop is not null && user.InCoop && user.DBUser is null)
@@ -428,15 +419,16 @@ namespace EGG9000.Bot.Automated {
         }
 
         private List<string> ShowSoloStatus(CoopsBreakdown coopsBreakdown, Ei.Contract contract, double target) {
-            var table = new List<List<FixedWidthCell>>();
-            table.Add(new List<FixedWidthCell> {
-                            new FixedWidthCell("Name", CellAlignment.Center),
-                            new FixedWidthCell("🐔", CellAlignment.Center),
-                            new FixedWidthCell("🥚", CellAlignment.Center),
-                            new FixedWidthCell("📈", CellAlignment.Center, true),
-                            new FixedWidthCell(""),
-                            new FixedWidthCell("⏲️", CellAlignment.Center)
-                        });
+            var table = new List<List<FixedWidthCell>> {
+                new List<FixedWidthCell> {
+                    new FixedWidthCell("Name", CellAlignment.Center),
+                    new FixedWidthCell("🐔", CellAlignment.Center),
+                    new FixedWidthCell("🥚", CellAlignment.Center),
+                    new FixedWidthCell("📈", CellAlignment.Center, true),
+                    new FixedWidthCell(""),
+                    new FixedWidthCell("⏲️", CellAlignment.Center)
+                }
+            };
 
             var participants = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).ToList();
             participants.AddRange(coopsBreakdown.ExpiredFarms);
@@ -466,21 +458,10 @@ namespace EGG9000.Bot.Automated {
         }
 
         public static async Task UpdateContractChannelName(GuildContract guildContract, SocketTextChannel channel) {
-            var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");// + "_" +  guildContract.ContractID;
+            var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");
             var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
 
-            string emoji = "";
-
-            if(DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime)) {
-                emoji += "⛔";
-            }
-            if(guildContract.Contract.Details.MaxCoopSize <= 1) {
-                emoji += "👤";
-            } else {
-                emoji += "🐣";
-            }
-
-                
+            var emoji = DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : "✅";     
 
             channelName = emoji + channelName;
 
