@@ -349,38 +349,73 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 }
             }
         }
-
+        
         [SlashCommand(Description = "Calculate various fan-made formulae across the game")]
-        public static async Task Formulae(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Which formula?", Required = true)] string formula) {
-            if(formula.ToUpper() != "MER") {
+        public static async Task Formulae(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Which formula?", Required = true)] string formula, [SlashParam(Description = "30/40/50", Required = false)] int parameter = 0) { //change to choices after craft is pushed to main
+            if(formula.ToUpper() == "MER") {
+                string seStr = "";
+                double seQ = 0;
+                long pe = 0;
+                string username = "";
+                double MER = 0;
+                string seMER = "";
+                long goalMER = 0;
+
+                await command.RespondAsync("Calculating MER...");
+                var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+                if(user == null) {
+                    await command.RespondAsync("⚠️ERROR: Unable to find user");
+                    return;
+                }
+
+                var validParameters = new[] { 0, 30, 40, 50 };
+                if(!validParameters.Contains(parameter)) {
+                    await command.RespondAsync("⚠️ERROR: Invalid parameter");
+                    return;
+                }
+
+                double calculateMER(double se, long pe) {
+                    double result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
+                    return result;
+                }
+
+                string calculateNeeded(long MER, long pe) {
+                    double result = Math.Pow(10,((10 * MER - 200 + pe) / 91.0)) * 1e18;
+                    return result.ToEggString();
+                }
+
+                foreach(var id in user.EggIncAccounts) {
+                    var backup = id.Backup;
+                    if(backup == null)
+                        continue;
+
+                    seStr = backup.SoulEggs.ToEggString();
+                    seQ = backup.SoulEggs / 1e18; // Convert to quintillions
+                    pe = backup.EggsOfProphecy;
+                    username = user.DiscordUsername;
+                    MER = Math.Round(calculateMER(seQ, pe), 1);
+                }
+
+                if(parameter != 0) {
+                    goalMER = parameter;
+                } else {
+                    double value = Math.Round(calculateMER(seQ, pe), 1);
+                    if(value < 30) {
+                        goalMER = 30;
+                    } else if(value < 40) {
+                        goalMER = 40;
+                    } else {
+                        goalMER = 50;
+                    }
+                }
+                Trace.WriteLine($"{goalMER} and {pe}");
+                seMER = calculateNeeded(goalMER, pe);
+
+                await command.RespondAsync($"The **MER** for **{username}** is `{MER}`(<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nSE for MER {goalMER}: {seMER}<:Soul_Egg_SE:724341890794913964>");
+            } else {
                 await command.RespondAsync($"Invalid parameter {formula} for the command /formulae.");
                 return;
             }
-
-            await command.RespondAsync("Calculating MER...");
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find user");
-                return;
-            }
-
-            string se = "";
-            double seQ = 0;
-            double pe = 0;
-            string username = "";
-            foreach(var id in user.EggIncAccounts) {
-                var backup = id.Backup;
-                if(backup == null)
-                    continue;
-                
-                se = backup.SoulEggs.ToEggString();
-                seQ = backup.SoulEggs / 1e18; // Convert to quintillions
-                pe = backup.EggsOfProphecy;
-                username = user.DiscordUsername;
-            }
-            double result = (91 * (Math.Log10(seQ)) + 200 - pe) / 10;
-            result = Math.Round(result, 1);
-            await command.RespondAsync($"The **MER** for **{username}** is `{result}`(<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{se}`)\nPE needed for MER 30");
         }
     }
 }
