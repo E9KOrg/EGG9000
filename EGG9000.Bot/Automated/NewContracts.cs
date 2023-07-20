@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
                     var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
-                        contract = new EGG9000.Common.Database.Entities.Contract {
+                        contract = new Contract {
                             ID = contractResponse.Identifier,
                             Created = DateTime.Now,
                             Description = contractResponse.Description,
@@ -86,6 +86,7 @@ namespace EGG9000.Bot.Automated {
                             debug = contractResponse.Debug,
                             length_seconds = contractResponse.LengthSeconds,
                             egg = contractResponse.Egg.ToString(),
+                            cc_only = contractResponse.CcOnly,
                             _response = json
                         };
                         _db.Contracts.Add(contract);
@@ -152,7 +153,8 @@ namespace EGG9000.Bot.Automated {
                         DiscordChannelId = contractChannel.Id,
                         League = 0,
                         Created = DateTimeOffset.Now,
-                        BoardingGroup = 1
+                        BoardingGroup = 1,
+                        CcOnly = contract.cc_only
                     };
 
                     _db.GuildContracts.Add(guildContract);
@@ -185,6 +187,17 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
+
+            /**
+            * TODO: REMOVE THIS EVENTUALLY
+            *
+            * FOR NOW, SKIP CREATING COOPS FOR CC_ONLY CONTRACTS UNTIL WE CAN VET IT'S WORKING CORRECLTY
+            */
+            if(contract.cc_only) {
+                _logger.LogInformation("Skipping creating Subscriber co-ops for {guild} for Contract {contract}", guild.Name, contract.Name);
+                return;
+            }
+
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG}", guild.Name, skipbg + 1);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
