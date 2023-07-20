@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Commands {
 
             var stringBuilder = new StringBuilder();
             for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                var id = user.EggIncAccounts[0];
+                var id = user.EggIncAccounts[i];
                 var backup = id.Backup;
                 if(backup == null) {
                     continue;
