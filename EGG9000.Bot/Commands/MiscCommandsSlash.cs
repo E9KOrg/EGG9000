@@ -30,9 +30,17 @@ using System.Globalization;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
-        [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested aritfact.")]
+        [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested artifact.")]
         public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam]TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
+            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
+            
+            if(requestedArtifact is null) {
+                await command.RespondAsync($"Unable to locate an artifact with the name {artifact}");
+                return;
+            }
+            
             await command.RespondAsync("Getting backups...");
+
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
@@ -43,34 +51,36 @@ namespace EGG9000.Bot.Commands {
             for(var i = 0; i < user.EggIncAccounts.Count; i++) {
                 var id = user.EggIncAccounts[0];
                 var backup = id.Backup;
-                if(backup == null)
+                if(backup == null) {
                     continue;
+                }
+
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
                 if(i == 0) {
-                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {artifact}:");
+                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
                     stringBuilder.AppendLine();
                 } else {
                     stringBuilder.AppendLine();
-                    stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――");
+                    stringBuilder.Append("――――――――――――――――――――――――――――――――――――――――――――");
                     stringBuilder.AppendLine();
-                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {artifact}:");
+                    stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
                     stringBuilder.AppendLine();
                 }
 
                 var crafter = new Crafter(backup.ArtifactHall);
-                var basket = crafter.GetCraft(quantity, (int)quality, artifact);
+                var basket = crafter.GetCraft(quantity, (int)quality, requestedArtifact.id);
 
-                stringBuilder.AppendFormat($"```{"Name",-15}{"Using",-8}{"Need",-8}{"Cost",-8}");
+                stringBuilder.AppendFormat($"```{"Name",-20}{"Using",-8}{"Need",-8}{"Cost",-8}");
                 stringBuilder.AppendLine();
-                stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――");
+                stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――――――");
                 stringBuilder.AppendLine();
 
                 var ingredients = from kvp in basket.GetIngredients()
                     orderby EggIncArtifacts.GetFamilyShorthand(kvp.Value.Tier.family) ascending, kvp.Value.Tier.tier_number descending
                     select kvp;
                 foreach(var ingredient in ingredients) {
-                    stringBuilder.AppendFormat($"{$"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}",-15}");
-                    stringBuilder.AppendFormat($"{ingredient.Value.Use,-8}");
+                    stringBuilder.AppendFormat($"{$"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}",-20}");
+                    stringBuilder.AppendFormat($"{ingredient.Value.Use.Format(),-8}");
                     stringBuilder.AppendFormat($"{ingredient.Value.GetNeed(),-8}");
                     stringBuilder.AppendFormat($"{ingredient.Value.Cost.Format(),-8}");
                     stringBuilder.AppendLine();
@@ -91,7 +101,6 @@ namespace EGG9000.Bot.Commands {
                 x.Embed = null;
                 x.Content = $"\n{stringBuilder.ToString()}\n";
             });
-            //await command.ModifyOriginalResponseAsync(x => { x.Content = $"```\n{stringBuilder.ToString()}\n```"; });
         }
 
         [Common.Commands.SlashCommand(Description = "Track your EB since the last time you ran this command")]
