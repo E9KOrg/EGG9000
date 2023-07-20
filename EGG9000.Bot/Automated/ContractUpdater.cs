@@ -255,7 +255,6 @@ namespace EGG9000.Bot.Automated {
                             var index = Math.Max(cmsg.LastIndexOf('\n', 2000), cmsg.LastIndexOf(',', 2000));
                             condensedMsgs.Add(cmsg.Substring(0, index));
                             cmsg = cmsg.Substring(index);
-
                         }
                     }
                     currentMsg += cmsg;
@@ -466,21 +465,10 @@ namespace EGG9000.Bot.Automated {
         }
 
         public static async Task UpdateContractChannelName(GuildContract guildContract, SocketTextChannel channel) {
-            var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");// + "_" +  guildContract.ContractID;
+            var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");
             var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
 
-            string emoji = "";
-
-            if(DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime)) {
-                emoji += "⛔";
-            }
-            if(guildContract.Contract.Details.MaxCoopSize <= 1) {
-                emoji += "👤";
-            } else {
-                emoji += "🐣";
-            }
-
-                
+            var emoji = DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : "✅";     
 
             channelName = emoji + channelName;
 

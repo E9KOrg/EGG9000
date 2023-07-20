@@ -29,7 +29,7 @@ namespace EGG9000.Common.Database.Entities {
             Multiplier = e.Multiplier;
             Subtitle = e.Subtitle;
             Ends = DateTimeOffset.Now.AddSeconds(e.SecondsRemaining);
-            CcOnly = e.CcOnly
+            CcOnly = e.CcOnly;
         }
     }
 }
