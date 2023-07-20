@@ -592,7 +592,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(guild is not null && !guild.DisableBG) {
                     //Limit contracts to those that have had longer than 16 hours to launch (i.e. all three boarding groups)
-                    contracts = contracts.Where(x => (DateTimeOffset.Now - x.Created).TotalHours > 16).ToList();
+                    contracts = contracts.Where(x => (DateTimeOffset.Now - x.Created).TotalHours > 17).ToList();
                 }
 
                 var contractObjs = contracts.Select(x => new { x.ID, x.Name }).ToList();
