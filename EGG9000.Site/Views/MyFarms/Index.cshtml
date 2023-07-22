@@ -94,17 +94,23 @@
 }
 
 <div>
-
-    <a asp-action="EarningsBoostCalculator">Earnings Boost Calculator </a>
-
     @if (isLesserAdmin) {
         if (Model.User.TempDisabled) {
-            <span>User is disabled</span>
+            <span style="color: #FF0000">❗User is disabled</span>
         }
     }
 </div>
 
-
+<div style="padding-bottom: 10px;">
+    <span style="margin-right:5px;"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
+    <span style="margin:5px;"><b><u>Discord ID</u></b>: @Model.User.DiscordId</span>
+    @if (Model.User.GuildId == 0){
+        <span style="margin:5px; color: #FFAA33;">⚠️ Not currently a member of a Discord server, might need to run /moveserver if you are supposed to be</span>
+    }
+    else{
+        <span style="margin:5px;"><b><u>Member of</u></b>: @(discordClient.Guilds.FirstOrDefault(x => x.Id == Model.User.GuildId)?.Name ?? "unknown")</span>
+    }
+</div>
 
 
 @if (Model.User.EggIncAccounts.Count > 1) {
@@ -114,50 +120,57 @@
             <li class="nav-item">
                 <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
                     @account.Backup.UserName
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 30px;" />
+                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
+                    @if (account.Backup.PermitLevel == 0) {
+                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                    } else {
+                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                    }
                 </a>
             </li>
         }
     </ul>
-} else {
-    <img src="@PlayerGradeDetails.GetImage(Model.User.EggIncAccounts.First().GetGrade())" style="max-height: 30px;" />
 }
+
 <div class="tab-content">
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
-        //var index = Model.EggIncAccounts.IndexOf(account);
         var account = Model.User.EggIncAccounts[index];
         var backup = account.Backup;
+        //Remove existing "tank" and "hyperloop" options
+        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Hyperloop"));
+        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Fuel Tank"));
         var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
-                @if (backup.PermitLevel == 0) {
-                    <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 30px;" />
-                } else {
-                    <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 30px;" />
+                @if (Model.User.EggIncAccounts.Count == 1){
+                    @:<span style="margin-right: 5px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
+                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;"/>
+                    @if (backup.PermitLevel == 0){
+                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                    }
+                    else{
+                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                    }
                 }
-                [<span>EggIncId: @backup.EggIncId</span>]
-                @if (Model.User.EggIncAccounts.Count == 1) {
-                    @:[<span>In-Game Name: @backup.UserName</span>]
-                }
-                [<span>Last Backup: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span>]
-                [@if (Model.User.GuildId == 0) {
-                    <span>Not currently a member of a Discord server, might need to run /moveserver if you are supposed to be</span>
-                } else {
-                    <span>Member of discord server: @(discordClient.Guilds.FirstOrDefault(x => x.Id == Model.User.GuildId)?.Name ?? "unknown")</span>
-                }]
+                <span style="margin-right: 5px;"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
+                <span style="margin: 5px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
                 @if (!dbguild.DisableBG) {
-                    @:[BG @account.Group]
+                    if(account.Group == 0){
+                        <span style="margin-right:5px; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
+                    } else {
+                        <span style="margin-right:5px;"><b><u>Boarding Group @account.Group</u></b></span>
+                    }
                 }
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
-                    <span>[OnBreak @account.OnBreakUntil.ToString()]</span>
+                    <span style="margin:5px;"><b><u>OnBreak @account.OnBreakUntil.ToString()</u></b></span>
                 }
                 @if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span>[Filter @string.Join(",", account.AutoRegisterRewards)]</span>
+                    <span style="margin:5px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
                 } else {
-                    <span>[Filter All]</span>
+                    <span style="margin:5px;"><b><u>Filter</u></b>: All</span>
                 }
-                <span>
-                    Redo Leggacies:
+                <span style="margin:5px;">
+                    <b><u>Redo Leggacies</u></b>:
                     @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
                     } else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
@@ -205,6 +218,9 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calculator</a>
                 </li>
             </ul>
 
@@ -276,12 +292,16 @@
                                     </div>
                                     @if (coop is not null) {
                                         <div>
-                                            Coop: @coop.Name
+                                            Coop: 								
+                                            <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+                                                @(farm.CoopId ?? coop?.Name)
+                                            </a>
+                                            @if (coop is not null && !coop.DeletedChannel)
+                                            {
+                                                <a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                                            }
                                         </div>
                                     }
-                                    @farm.CoopId
-                                    <br />
-                                    @String.Join(",",Model.JoinedCoops.Select(x => x.Name))
                                 </div>
                                 <div class="card-body" style="padding-bottom: 0;">
                                     <h6>Artifacts</h6>
@@ -502,6 +522,14 @@
                 <div class="tab-pane" id="externaltools@(index)" role="tabpanel">
                     @{
                         await Html.RenderPartialAsync("-ExternalTools", (backup, Model.User));
+                    }
+                </div>
+
+                <div class="tab-pane" id="earningsboostcalc@(index)" role="tabpanel">
+                    @{
+                        var newModel = new EarningsBoostCalculatorModel();
+                        newModel.Backup = backup;
+                        await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
                 </div>
 

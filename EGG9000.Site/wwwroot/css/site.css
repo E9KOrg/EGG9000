@@ -73,20 +73,38 @@ body {
 /* Artifact Backgrounds 
 ------------------------------------------- */
 
+.afx-bg, .afx-img {
+    height: 5em;
+    width: 5em;
+}
+
+.afx-stone {
+    height: 1em;
+    width: 1em;
+    position: relative;
+}
+
+
+.afx-stone .afx-img {
+    width: 100%;
+    height: 100%;
+}
+
+
 .bg-common {
-    background: radial-gradient(#d3d3d3,#d3d3d3,#9e9e9e)
+    background: radial-gradient(#d3d3d3,#d3d3d3,#9e9e9e);
 }
 
 .bg-rare {
-    background: radial-gradient(#b3ffff,#b3ffff,#6ab6ff)
+    background: radial-gradient(#b3ffff,#b3ffff,#6ab6ff);
 }
 
 .bg-epic {
-    background: radial-gradient(#ff40ff,#ff40ff,#c03fe2)
+    background: radial-gradient(#ff40ff,#ff40ff,#c03fe2);
 }
 
 .bg-legendary {
-    background: radial-gradient(#fffe41,#fffe41,#eeab42)
+    background: radial-gradient(#fffe41,#fffe41,#eeab42);
 }
 
 .rounded-full {
@@ -94,6 +112,15 @@ body {
     display: inline-block;
 }
 
+.ei-egg {
+    transform: scale(0.75, 0.75);
+}
+
 .card > table thead tr th {
     border-top: none !important;
+}
+@media (max-width: 768px) {
+    .afx-card-container {
+        flex-direction: column; /* Change to a vertical layout */
+    }
 }

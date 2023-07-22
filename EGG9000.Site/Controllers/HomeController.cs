@@ -39,6 +39,9 @@ using Stripe;
 using System.Threading;
 using System.Security.Claims;
 using System.Security.Principal;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Factories;
+using Microsoft.Data.SqlClient;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -177,8 +180,6 @@ namespace EGG9000.Site.Controllers {
             //var rawBackup = await ContractsAPI.FirstContact(ei);
             //var backup = new CustomBackup(rawBackup.Backup);
             var backup = await _apiLink.GetBackup(ei);
-            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
-            //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
 
@@ -186,16 +187,12 @@ namespace EGG9000.Site.Controllers {
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
             var backup = await _apiLink.GetBackup(ei);
-            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
-            //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
             var backup = await ContractsAPI.FirstContact(ei);
-            //var xs = new System.Xml.Serialization.XmlSerializer(backup.GetType());
-            //return new ObjectResult("Message me");
             return new ObjectResult(backup);
         }
 
@@ -386,42 +383,164 @@ namespace EGG9000.Site.Controllers {
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
-        public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
-            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
+        public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-                var loginuser = (await _userManager.GetUserAsync(User));
-                var logins = await _userManager.GetLoginsAsync(loginuser);
-                var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            ViewBag.Oldest = oldest;
+            ViewBag.SortBy = sortby;
 
-                ViewBag.Oldest = oldest;
-                ViewBag.SortBy = sortby;
-
-                await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
-
-                var leaderboard = await _getLeaderboard(user.GuildId);
-
-
-                if(oldest) {
-                    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
-                } else {
-                    switch(sortby) {
-                        case "se":
-                            leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
-                            break;
-                        case "pe":
-                            leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
-                            break;
-                        case "start":
-                            var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-                            leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
-                            leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
-                            break;
-                    }
-                    return View(leaderboard);
-                }
-            } else {
-                return View("TempDisabled");
+            if(guildid == 0 || !User.IsInRole("Admin")) {
+                guildid = user.GuildId;
             }
+
+            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
+
+            var leaderboard = await _getLeaderboard(guildid);
+
+
+            if(oldest) {
+                return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
+            } else {
+                switch(sortby) {
+                    case "se":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+                        break;
+                    case "pe":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
+                        break;
+                    case "start":
+                        var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
+                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+                        leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
+                        break;
+                    case "permit":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.PermitLevel).ToList();
+                        break;
+                }
+                return View(leaderboard);
+            }
+        }
+
+        [Authorize]
+        public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0, [FromQuery] int prefix = 0) {
+
+
+            var timings = new TimingsFactory(_logger).Start();
+
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            ViewBag.Oldest = oldest;
+            ViewBag.SortBy = sortby;
+
+            if(guildid == 0 || !User.IsInRole("Admin")) {
+                guildid = user.GuildId;
+            }
+
+
+            if(!_cache.TryGetValue($"EGL{guildid}", out List<EggDayResults> results)) {
+                var users = await _db.DBUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).ToListAsync();
+
+                timings.Set("Users");
+                var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
+                    User = u,
+                    Account = a,
+                })).ToList();
+
+
+                var eggincids = accounts.Select(x => x.Account.Id).ToList();
+
+
+                var eggDayDate = new DateTime(2023, 07, 14, 11, 0, 0);
+                var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
+                timings.Set("postEggDaySnapshots");
+                var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+                timings.Set("preEggDaySnapshots");
+
+
+                results = postEggDaySnapshots.Select(x => {
+                    var user = accounts.First(y => y.Account.Id == x.EggIncID);
+                    var pre = preEggDaySnapshots.FirstOrDefault(y => y.EggIncID == x.EggIncID);
+                    if(pre is null)
+                        return null;
+
+                    return new EggDayResults {
+                        UserAccount = user,
+                        EBGain = x.EarningsBonus - pre.EarningsBonus,
+                        EBGainPercent = (x.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
+                        SEGain = x.SoulEggs - pre.SoulEggs,
+                        SEGainPercent = (x.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
+                        PrestigeCount = x.Prestiges - pre.Prestiges,
+                        StartEB = pre.EarningsBonus
+                    };
+                }).Where(x => x is not null).ToList();
+                _cache.Set($"EGL{guildid}", results, TimeSpan.FromMinutes(5));
+            }
+
+
+            
+            results = results.OrderByDescending(x => x.EBGain).ToList();
+
+
+            switch(sortby) {
+                case "prestige":
+                    results = results.OrderByDescending(x => x.PrestigeCount).ToList();
+                    break;
+                case "se":
+                    results = results.OrderByDescending(x => x.SEGain).ToList();
+                    break;
+                case "seper":
+                    results = results.OrderByDescending(x => x.SEGainPercent).ToList();
+                    break;
+                case "ebper":
+                    results = results.OrderByDescending(x => x.EBGainPercent).ToList();
+                    break;
+                default:
+                    results = results.OrderByDescending(x => x.EBGain).ToList();
+                    break;
+            }
+
+
+            if(prefix > 0) {
+                results = results.Where(x => SIPrefix.GetPrefixFromEB(x.StartEB).Base == prefix).ToList();
+            }
+
+            ViewBag.sortby = sortby;
+            ViewBag.prefix = prefix;
+
+            return View(results.ToList());
+
+            //if(oldest) {
+            //    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
+            //} else {
+            //    switch(sortby) {
+            //        case "se":
+            //            leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+            //            break;
+            //        case "pe":
+            //            leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
+            //            break;
+            //        case "start":
+            //            var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
+            //            leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+            //            leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
+            //            break;
+            //    }
+            //    return View(leaderboard);
+            //}
+        }
+
+        public class EggDayResults {
+            public UserByAccount UserAccount { get; set; }
+            public double EBGain { get; set; }
+            public double SEGain { get; set; }
+            public double EBGainPercent { get; set; }
+            public double SEGainPercent { get; set; }   
+            public double StartEB { get; set; }
+            public ulong PrestigeCount { get; set; }
         }
 
         public async Task<IActionResult> Results([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
@@ -499,7 +618,7 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize]
         public async Task<IActionResult> Comparison() {
-            
+
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
@@ -507,12 +626,11 @@ namespace EGG9000.Site.Controllers {
             await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
 
             var leaderboard = await _getLeaderboard(user.GuildId);
-            
+
             var myEbsWithRole = new List<Tuple<double, string>>();
             var allEbData = new List<Tuple<double, string>>();
 
-            foreach(var u in leaderboard)
-            {
+            foreach(var u in leaderboard) {
                 // Add all users data.
                 allEbData.Add(new Tuple<double, string>(
                     u.Backup.EarningsBonus,
@@ -520,8 +638,7 @@ namespace EGG9000.Site.Controllers {
                     ));
 
                 // Add logged in users data.
-                if(u.User.Id == user.Id)
-                {
+                if(u.User.Id == user.Id) {
                     myEbsWithRole.Add(new Tuple<double, string>(
                         u.Backup.EarningsBonus,
                         SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank

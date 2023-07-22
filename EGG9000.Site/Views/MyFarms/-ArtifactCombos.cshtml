@@ -47,23 +47,24 @@
         if (artifact == null) {
             <div></div>
         } else {
-
+            var subClass = "afx-img";
             var bgClass = artifact.Rarity switch {
-                1 => "bg-common", //Common
-                2 => "bg-rare", //Rare
-                3 => "bg-epic", //Epic
-                4 => "bg-legendary", //Legendary
-                _ => "bg-common" //Default to gray
+                1 => "bg-common afx-bg", //Common
+                2 => "bg-rare afx-bg", //Rare
+                3 => "bg-epic afx-bg", //Epic
+                4 => "bg-legendary afx-bg", //Legendary
+                _ => "bg-common afx-bg" //Default to gray
             };
             if (stone) {
-                bgClass = "";
+                bgClass = "afx-stone";
+                subClass = "afx-stone";
             }
             var image = artifactImage(artifact, stone);
             var size = stone ? 15 : 70;
             var textInfo = new CultureInfo("en-US", false).TextInfo;
             var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
-            <div class="rounded-full @(bgClass)" style="height:@(size)px; width:@(size)px;">
-                <img class="position-absolute" style="width:@(size)px; height:@(size)px;" src="@image" title="@name" />
+            <div class="rounded-full @(bgClass)">
+                <img class="position-absolute @subClass" src="@image" title="@name" />
             </div>
         }
     }
@@ -96,15 +97,15 @@
 
     (double myRate, double coopRate) GetChangedRate(CustomFarm farm, List<EggIncArtifactInstance> newArtifacts, Coop coop, CoopDetails coopDetails) {
         var newFarm = new CustomFarm {
-                    CommonResearch = farm.CommonResearch,
-                    Habs = farm.Habs,
-                    TrainLength = farm.TrainLength,
-                    NumChickens = farm.NumChickens,
-                    EggType = farm.EggType,
-                    Artifacts = newArtifacts,
-                    Vehicles = farm.Vehicles
-                };
-        var stats = newFarm.WithStats(Model.Backup, coop);
+            CommonResearch = farm.CommonResearch,
+            Habs = farm.Habs,
+            TrainLength = farm.TrainLength,
+            NumChickens = farm.NumChickens,
+            EggType = farm.EggType,
+            Artifacts = newArtifacts,
+            Vehicles = farm.Vehicles
+        };
+        var stats = newFarm.WithStats(Model.Backup, coop, null, Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId));
         var currentTachyon = farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var newTachyon = newArtifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var tachyonDifference = (newTachyon - 1) - (currentTachyon - 1) + 1;
@@ -140,17 +141,31 @@
 
 
                 var farmStats = farm.WithStats(Model.Backup, coop);
-
+                if(coop is null) {
+                    continue;
+                }
                 var usersWithBackups = isHome ? new List<UserWithBackup>() : coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
                 var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
                 var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
 
 
+                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, null));
+                var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
+                var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, null));
+                var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
+
+
+                var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, null));
+                var withoutTachyonS = GetChangedRate(farm, bestWithoutTachyonS, coop, coopDetails);
+                var bestWithTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, null));
+                var withTachyonS = GetChangedRate(farm, bestWithTachyonS, coop, coopDetails);
+
+
                 <div class="card">
                     @if (isHome) {
-                        <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
                     } else {
-                        <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
                     }
 
                     <table class="table table-sm" style="margin-bottom: 0;">
@@ -167,11 +182,10 @@
                             </td>
                         </tr>
                         <tr>
+                        <td colspan="99">Without changing stones:</td>
+                        </tr>
+                        <tr>
                             @{
-                                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, null));
-                                var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
-                                var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, null));
-                                var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
                                 @if (isHome) {
                                     <th>Suggested</th>
                                 } else {
@@ -200,12 +214,9 @@
                                 </td>
                             </tr>
                         }
+                        <td colspan="99">If you change stones:</td>
                         <tr>
                             @{
-                                var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, null));
-                                var withoutTachyonS = GetChangedRate(farm, bestWithoutTachyonS, coop, coopDetails);
-                                var bestWithTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, null));
-                                var withTachyonS = GetChangedRate(farm, bestWithTachyonS, coop, coopDetails);
                                 @if (isHome) {
                                     <th>Suggested</th>
                                 } else {

@@ -106,8 +106,10 @@ namespace EGG9000.Bot.Automated {
                 var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == registeredRoleID));
 
                 var role = mainServer.Roles.FirstOrDefault(x => x.Id == overflowRoleID);
-                if(role is null)
+                if(role is null) {
+                    _logger.LogWarning("Unable to find overflow role for {guild}", guild.Name);
                     continue;
+                }
 
 
                 foreach(var u in onlyMainWithoutRole) {

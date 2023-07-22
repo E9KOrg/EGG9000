@@ -158,32 +158,8 @@ namespace EGG9000.Site.Controllers {
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.Now).FirstOrDefaultAsync();
 
             return View(new EarningsBoostCalculatorModel {
-                Backups = user.EggIncAccounts.Select(x => x.Backup).ToList(),
+                Backup = user.EggIncAccounts.First().Backup,
                 Event = boostEvent
-            });
-        }
-
-
-        public async Task<IActionResult> Bob4() {
-            var loginuser = (await _userManager.GetUserAsync(User));
-
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
-
-            //Get fresh backups
-            foreach(var account in user.EggIncAccounts) {
-                var backup = await _apiLink.GetBackup(account.Id);
-                if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
-                    account.Backup = backup;
-                }
-            }
-
-            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
-            ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
-            //user.Backups.ForEach(b => b.Contracts.Contracts.ToList().ForEach(c => c.Contract.Name = contracts.FirstOrDefault(x => x.ID == c.Contract.Identifier)?.Name));
-
-            return View(new EarningsBoostCalculatorModel {
-                Backups = user.EggIncAccounts.Select(x => x.Backup).ToList(),
             });
         }
 
@@ -195,7 +171,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public class EarningsBoostCalculatorModel {
-            public List<CustomBackup> Backups { get; set; }
+            public CustomBackup Backup { get; set; }
             public Event Event { get; set; }
         }
 

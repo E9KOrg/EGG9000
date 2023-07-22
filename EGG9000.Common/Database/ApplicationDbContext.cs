@@ -68,8 +68,9 @@ namespace EGG9000.Common.Database {
 
         public ApplicationDbContext(IConfiguration configuration) : base(GetOptions(configuration)) {
         }
-        //public ApplicationDbContext(string connstring) : base(GetOptions(connstring)) {
-        //}
+
+        public ApplicationDbContext(string connstring) : base(GetOptions(connstring)) {
+        }
 
         private static DbContextOptions GetOptions(IConfiguration configuration) {
             //        var Configuration = new ConfigurationBuilder()
@@ -80,11 +81,11 @@ namespace EGG9000.Common.Database {
             return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), configuration["ConnectionStrings:DefaultConnection"], options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
         }
 
-        //private static DbContextOptions GetOptions(string connString) {
-        //    //if(connString == null)
-        //    //return GetOptions();
-        //    return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), connString, options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
-        //}
+        private static DbContextOptions GetOptions(string connString) {
+            //if(connString == null)
+            //return GetOptions();
+            return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), connString, options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
+        }
 
 
 

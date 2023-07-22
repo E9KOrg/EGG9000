@@ -20,6 +20,7 @@ namespace EGG9000.Common.Database.Entities {
         public int min_client_version { get; set; }
         public bool debug { get; set; }
         public double length_seconds { get; set; }
+        public bool cc_only { get; set; } //Subscription needed
 
         public string _response { get; set; }
 

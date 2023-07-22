@@ -67,7 +67,13 @@ namespace EGG9000.Common.Services {
         private DiscordSocketClient _discord;
         private ILogger<APILink> _logger;
         private APILinkOptions _settings;
+
+#if DEBUG
         private string urlBase => _configuration.GetConnectionString("APILinkURL");
+        //private string urlBase => "http://localhost:5014/Home/";
+#else
+        private string urlBase => _configuration.GetConnectionString("APILinkURL");
+#endif
 
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
@@ -154,11 +160,11 @@ namespace EGG9000.Common.Services {
             _logger.LogInformation("Backups from cache {count}", backups.Count);
 
             if(backupsNeeded.Count > 0) {
-                var throttler = new SemaphoreSlim(3);
+                var throttler = new SemaphoreSlim(2);
                 var tasks = new List<Task>();
                 var responses = new ConcurrentQueue<ApiResponse<List<Ei.EggIncFirstContactResponse>>>();
                 var url = $"{urlBase}GetBackups";
-                var partitions = Partition(backupsNeeded, 500);
+                var partitions = Partition(backupsNeeded, 250);
                 var i = 1;
                 foreach(var partition in partitions) {
                     if(token.IsCancellationRequested)

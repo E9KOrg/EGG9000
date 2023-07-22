@@ -140,19 +140,24 @@ namespace EGG9000.Common.Services {
             return guild.GetRole(channelDetail.Id);
         }
         private async Task<T> GetChannelOrCategory<T>(GuildChannelType channelType, SocketGuild guild) where T : IGuildChannel {
-            var dbguild = await GetDbGuild(guild);
+            try {
+                var dbguild = await GetDbGuild(guild);
 
-            var channelDetails = dbguild.ChannelDetails;
-            var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
-            if(channelDetail == null || channelDetail.Id == 0)
+                var channelDetails = dbguild.ChannelDetails;
+                var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
+                if(channelDetail == null || channelDetail.Id == 0)
+                    return default(T);
+
+                return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
+                if(channelType.ToString().Contains("Category"))
+                    return (T)Convert.ChangeType(guild.CategoryChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
+
+                return (T)Convert.ChangeType(guild.TextChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
+            }catch (Exception e) {
+                _logger.LogError(e, "Error getting channel or category");
                 return default(T);
-            
-            return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
-            if(channelType.ToString().Contains("Category"))
-                return (T)Convert.ChangeType(guild.CategoryChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
-
-            return (T)Convert.ChangeType(guild.TextChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
-        }
+            }
+        } 
 
 
     }

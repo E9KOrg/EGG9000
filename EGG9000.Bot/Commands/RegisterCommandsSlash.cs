@@ -278,58 +278,59 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync("Unable to find server, please run this command in a server");
                 return;
             }
-            if(user == null) {
-                user = new DBUser {
-                    DiscordId = targetUser.Id,
-                    DiscordUsername = targetUser.Username,
-                    AcceptedRules = true,
-                    CreateOn = DateTimeOffset.Now,
-                    GuildId = guild.Id,
-                    showEB = true
-                };
-                db.DBUsers.Add(user);
-            }
-
-            if(user.AcceptedRules && user.GuildId == command.GuildId && user.EggIncAccounts.Count > 0) {
-                if(user.TempDisabled) {
-                    await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
-                } else {
-                    await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Your roles should show up during the next leaderboard update.");
-                }
-            } else if(user.AcceptedRules && user.GuildId == command.GuildId && user.EggIncAccounts.Count == 0) {
-                await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
-            } else if(user.EggIncAccounts.Count > 0 && user.GuildId > 0 & !user.TempDisabled) {
-                await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the </moveserver:1095116354329268366> command");
-            } else {
-                string channelText = "";
-                var talkChannel = guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
-                if(talkChannel != null) {
-                    channelText = $"If you have questions about this, feel free to message us in {talkChannel.Mention}";
-                }
-                if(user.EggIncAccounts.Count > 0 && !user.TempDisabled) {
+            if(user is not null) {
+                if(user.GuildId == command.GuildId && user.EggIncAccounts.Count > 0) {
                     if(user.TempDisabled) {
-                        await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
-                    } else if(user.GuildId != guild.Id) {
-                        await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:1095116354329268366> command");
-                    } else if(user.TempDisabled) {
+                        await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
+                        return;
                     } else {
-                        var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                        await generalChannel.SendMessageAsync($"Welcome back {targetUser.Mention}!");
+                        await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Your roles should show up during the next leaderboard update.");
+                        return;
+                    }
+                } else if(user.GuildId == command.GuildId && user.EggIncAccounts.Count == 0) {
+                    await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
+                    return;
+                } else if(user.EggIncAccounts.Count > 0 && user.GuildId > 0 & !user.TempDisabled) {
+                    await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the </moveserver:1095116354329268366> command");
+                    return;
+                } else if(user.TempDisabled) {
+                    await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
+                    return;
+                } else if(user.GuildId != guild.Id) {
+                    await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:1095116354329268366> command");
+                    return;
+                } else {
+                    var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
+                    await generalChannel.SendMessageAsync($"Welcome back {targetUser.Mention}!");
 
 
-                        var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
-                        if(activeRole != null) {
-                            await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
-                        }
-
-                        await CleanWelcomeChannel(guild, _client, targetUser);
+                    var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                    if(activeRole != null) {
+                        await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
                     }
 
-                } else {
-                    await command.RespondAsync($"{targetUser.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops. The bot only reads certain parts of the info and does not make any changes. {channelText}");
+                    await CleanWelcomeChannel(guild, _client, targetUser);
+                    return;
                 }
-
             }
+
+            user = new DBUser {
+                DiscordId = targetUser.Id,
+                DiscordUsername = targetUser.Username,
+                AcceptedRules = true,
+                CreateOn = DateTimeOffset.Now,
+                GuildId = guild.Id,
+                showEB = true
+            };
+            db.DBUsers.Add(user);
+
+            string channelText = "";
+            var talkChannel = guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
+            if(talkChannel != null) {
+                channelText = $"If you have questions about this, feel free to message us in {talkChannel.Mention}";
+            }
+            await command.RespondAsync($"{targetUser.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track pre-farming and create balanced co-ops. The bot only reads certain parts of the info and does not make any changes. {channelText}");
+
 
             await db.SaveChangesAsync();
         }
@@ -593,7 +594,7 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.GuildId > 0 && !dbuser.TempDisabled) {
                 _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
             }
-            
+
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
 
@@ -648,6 +649,10 @@ namespace EGG9000.Bot.Commands {
 
                 if(!string.IsNullOrEmpty(account.DeviceID)) {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
+                }
+
+                if(account.SubscriptionLevel > 0) {
+                    builder.AddField("Subscription", $"ULTRA {(UserSubscriptionInfo.Types.Level)account.SubscriptionLevel}");
                 }
 
                 if(account.GetGrade() != default) {

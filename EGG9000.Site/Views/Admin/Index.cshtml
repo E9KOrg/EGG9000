@@ -1,8 +1,8 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
 @{
 	ViewData["Title"] = "Admin";
-	var days = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
-	var days2 = Model.Days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
+	var days = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
+	var days2 = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
 }
 
 @if (User.IsInRole("Admin")) {
