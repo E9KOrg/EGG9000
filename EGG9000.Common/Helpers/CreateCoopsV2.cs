@@ -145,8 +145,8 @@ namespace EGG9000.Common.Helpers {
                 UserId = userid,
                 UserName = "EK9",
                 League = 0,
-                CcOnly = subOnly,
-                AllowAllGrades = subOnly,
+                //CcOnly = subOnly,
+                //AllowAllGrades = subOnly,
                 Public = false,
             }, userid);
             if(response == null) {

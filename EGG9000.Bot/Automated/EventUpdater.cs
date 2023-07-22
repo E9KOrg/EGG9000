@@ -323,7 +323,7 @@ namespace EGG9000.Bot.Automated {
                     var messageIDs = JsonConvert.DeserializeObject<List<(ulong, ulong)>>(shell.MessageIds);
                     foreach(var message in messageIDs) {
                         var channel = _client.GetChannel(message.Item1);
-                        var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel.Id));
+                        var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel?.Id));
                         ulong? ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
                         if(channel is not null) {
                             await (channel as SocketTextChannel).ModifyMessageAsync(message.Item2, msg => { msg.Embed = embed; msg.Content = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null; });
