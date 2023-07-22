@@ -3,13 +3,10 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
+using static EGG9000.Common.Coops.ArtifactCombos;
 
 namespace EGG9000.Common.Coops {
     public class ArtifactCombos {
@@ -24,35 +21,44 @@ namespace EGG9000.Common.Coops {
 
                 var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone")).Select(x => new ArtifactCountWithSlots(x, EggIncArtifacts.SlotCount(x.Artifact)));
 
-                var allCombos = new List<ArtifactInstanceStats>();
+                var allStoneCombos = new List<ArtifactInstanceStats>();
 
-                var stones = backup.GetAvailableArtifacts(farm)
+                var stones = backup.ArtifactHall
                     .Where(x => x.Artifact.Artifact.Contains("Stone") && (x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate || x.Artifact.Boost == EggIncBoostTypeEnum.EggLayingRate));
 
                 var possibleStones = stones.Select(x => x.Artifact).ToList();
 
 
-                var toProcess = available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate || x.Artifact.Boost == EggIncBoostTypeEnum.EggLayingRate).ToList();
-                available = available.Where(x => x.Artifact.Boost != EggIncBoostTypeEnum.EggShippingRate && x.Artifact.Boost != EggIncBoostTypeEnum.EggLayingRate).ToList();
-                var maxSlots1 = available.MaxBy(x => x.Slots);
-                toProcess.Add(maxSlots1);
-                var maxSlots2 = available.Where(x => x.Artifact.Artifact != maxSlots1.Artifact.Artifact).MaxBy(x => x.Slots);
-                toProcess.Add(maxSlots2);
+                var toProcess = available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.EggShippingRate || x.Artifact.Boost == EggIncBoostTypeEnum.EggLayingRate || x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+                
+                
+                var nonBoostArtifacts = available.Where(x => x.Artifact.Boost != EggIncBoostTypeEnum.EggShippingRate && x.Artifact.Boost != EggIncBoostTypeEnum.EggLayingRate && x.Artifact.Boost != EggIncBoostTypeEnum.CoopMembersEggLayingRates).OrderByDescending(x => x.Slots).ToList();
+                var currentNonBoostArtifacts = farm.Artifacts.Where(x => x.Boost != EggIncBoostTypeEnum.EggShippingRate && x.Boost != EggIncBoostTypeEnum.EggLayingRate && x.Boost != EggIncBoostTypeEnum.CoopMembersEggLayingRates).Select(x => new ArtifactCountWithSlots(x, EggIncArtifacts.SlotCount(x))).ToList();
+
+                for(var i = 0; i < 3; i++) {
+                    var maxSlot = currentNonBoostArtifacts.MaxBy(x => x.Slots);
+                    if(maxSlot is not null && maxSlot.Slots >= (nonBoostArtifacts.FirstOrDefault()?.Slots ?? 0)) {
+                        currentNonBoostArtifacts.Remove(maxSlot);
+                    } else {
+                        maxSlot = nonBoostArtifacts.First();
+                        nonBoostArtifacts.Remove(maxSlot);
+                    }
+                    toProcess.Add(maxSlot);
+                }
 
                 foreach(var artifactCount in toProcess.GroupBy(x => new {x.Artifact.Rarity, x.Artifact.Tier, x.Artifact }).Select(x => x.First())) {
                     var slots = artifactCount.Slots;
                     var artifact = artifactCount.Artifact;
                     var combos = FillStones(slots, possibleStones);
                     foreach(var combo in combos) {
-                        allCombos.Add(new ArtifactInstanceStats(new EggIncArtifactInstance { Additive = artifact.Additive, Artifact = artifact.Artifact, Boost = artifact.Boost, Rarity = artifact.Rarity, Stones = combo, Tier = artifact.Tier, Value = artifact.Value }));
+                        allStoneCombos.Add(new ArtifactInstanceStats(new EggIncArtifactInstance { Additive = artifact.Additive, Artifact = artifact.Artifact, Boost = artifact.Boost, Rarity = artifact.Rarity, Stones = combo, Tier = artifact.Tier, Value = artifact.Value }));
                     }
 
                 }
 
                 timings.Set("All Combos Generated");
-                var unique = allCombos.GroupBy(x => x.Artifact.Artifact).Select(x => x.First()).ToList();
 
-                var list = Process(allCombos, backup, farm, coop, withTachyon);
+                var list = Process(allStoneCombos, backup, farm, coop, withTachyon);
                 timings.Finished();
                 return list;
 
@@ -65,6 +71,11 @@ namespace EGG9000.Common.Coops {
                 Slots = slots;
                 Artifact = a.Artifact;
                 Count = a.Count;
+            }
+            public ArtifactCountWithSlots(EggIncArtifactInstance a, int slots) {
+                Slots = slots;
+                Artifact = a;
+                Count = 1;
             }
         }
 
@@ -92,28 +103,34 @@ namespace EGG9000.Common.Coops {
             };
             var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1);
 
+            var currentSet = new ArtifactSet(
+                new List<ArtifactInstanceStats> {
+                    new ArtifactInstanceStats(farm.Artifacts.FirstOrDefault()),
+                    new ArtifactInstanceStats(farm.Artifacts.Skip(1).FirstOrDefault()),
+                    new ArtifactInstanceStats(farm.Artifacts.Skip(2).FirstOrDefault()),
+                    new ArtifactInstanceStats(farm.Artifacts.Skip(3).FirstOrDefault())
+                }, statsWithoutArtifacts
+            );
+
             var keepArtifacts = new List<EggIncArtifactInstance>();
             if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.HabCapacity)) {
                 keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.HabCapacity));
             }
-            if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && withTachyon) {
-                keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates));
-            } else if(withTachyon) {
-                var tachyon = backup.GetAvailableArtifacts(farm).Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates).MaxBy(x => x.Artifact.Value);
-                if(tachyon is not null)
-                    keepArtifacts.Add(tachyon.Artifact);
-            }
-
-            
+            //if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && withTachyon) {
+            //    keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates));
+            //} else if(withTachyon) {
+            //    var tachyon = available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates).MaxBy(x => x.Artifact.Value);
+            //    if(tachyon is not null)
+            //        keepArtifacts.Add(tachyon.Artifact);
+            //}
 
             var artifacts = available
                 .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
-                .GroupBy(x => new { x.Shipping, x.EggLaying })
-                .Select(x => 
+                .GroupBy(x => new { x.Shipping, x.EggLaying, isTach = x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates })
+                .Select(x =>
                     x.OrderBy(y => farm.Artifacts.Any(z => z.Equals(y.Artifact)) ? 0 : 1
                 ).First())
                 .ToList();
-
 
             var sets = new List<ArtifactSet>();
 
@@ -123,7 +140,8 @@ namespace EGG9000.Common.Coops {
                         continue;
                     if(keepArtifacts.Count == 2) {
                         var set = new ArtifactSet(new List<ArtifactInstanceStats> { new ArtifactInstanceStats(keepArtifacts[0]), new ArtifactInstanceStats(keepArtifacts[1]), artifacts[i], artifacts[j] }, statsWithoutArtifacts);
-                        sets.Add(set);
+                        if(CheckSet(set, withTachyon)) 
+                            sets.Add(set);
                         continue;
                     }
                     for(var k = j + 1; k < artifacts.Count; k++) {
@@ -132,7 +150,8 @@ namespace EGG9000.Common.Coops {
                             continue;
                         if(keepArtifacts.Count == 1) {
                             var set = new ArtifactSet(new List<ArtifactInstanceStats> { new ArtifactInstanceStats(keepArtifacts[0]), artifacts[i], artifacts[j], artifacts[k] }, statsWithoutArtifacts);
-                            sets.Add(set);
+                            if(CheckSet(set, withTachyon)) 
+                                sets.Add(set);
                             continue;
                         }
                         for(var l = k + 1; l < artifacts.Count; l++) {
@@ -142,16 +161,59 @@ namespace EGG9000.Common.Coops {
                                 )
                                 continue;
                             var set = new ArtifactSet(new List<ArtifactInstanceStats> { artifacts[i], artifacts[j], artifacts[k], artifacts[l] }, statsWithoutArtifacts);
-                            sets.Add(set);
+                            if(CheckSet(set, withTachyon)) 
+                                sets.Add(set);
                         }
                     }
                 }
             }
 
+
             var order = sets.OrderByDescending(x => x.CurrentShippingRate).ThenByDescending(x => x.Shipping).ThenByDescending(x => x.EggLaying).ToList();
             var max = sets.Any() ? sets.Max(x => x.CurrentShippingRate) : 0;
             var maxSets = sets.Where(x => x.CurrentShippingRate == max).ToList();
-            return maxSets.Select(x => x.Artifacts.Select(y => y.Artifact).ToList()).FirstOrDefault();
+
+            var maxSetsScored = new List<ScoredSet>();
+            foreach(var compSet in maxSets) {
+                maxSetsScored.Add(new ScoredSet(compSet, SimilarityScoring(currentSet, compSet)));
+            }
+
+            return maxSetsScored.OrderByDescending(s => s.Score).FirstOrDefault()?.ArtiList;
+        }
+
+        private static int SimilarityScoring(ArtifactSet current, ArtifactSet against) {
+            var similarity = 0;
+
+            var currentSet = current.Artifacts;
+            var againstSet = against.Artifacts;
+            // check for equivalent artifacts in both sets
+            foreach(var artifact in currentSet) {
+                var matchingArtifact = againstSet.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
+
+                if(matchingArtifact != null) {
+                    similarity++;
+                    // test for similarity between shipping and egg laying between artifact sets
+                    if(artifact.Shipping == matchingArtifact.Shipping) {
+                        similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
+                    } else similarity--;
+                    if(artifact.EggLaying == matchingArtifact.EggLaying) {
+                        similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
+                    } else similarity--;
+                    if(artifact.Shipping != 0 && artifact.EggLaying != 0) {
+                        if(artifact.Shipping == matchingArtifact.Shipping && artifact.EggLaying == matchingArtifact.EggLaying) {
+                            similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
+                        } else similarity--;
+                    }
+                } else {
+                    //If a matching artifact cannot be found, very hurtful
+                    similarity -= 2;
+                }
+            }
+            return similarity;
+        }
+
+        public static bool CheckSet(ArtifactSet set, bool withTachyon) {
+            return !withTachyon || set.Artifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
         }
 
         public class ArtifactSet {
@@ -180,6 +242,23 @@ namespace EGG9000.Common.Coops {
                 EggLaying = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.EggLayingRate, new List<EggIncArtifactInstance> { instance }, false);
                 //ShippingPlusEgg = $"{Shipping}{EggLaying}";
             }
+        }
+    }
+
+    class ScoredSet {
+        public List<EggIncArtifactInstance> ArtiList;
+        public ArtifactSet Set;
+        public int Score;
+
+        public ScoredSet(ArtifactSet set, int score) { 
+            Set = set;
+            Score = score;
+            ArtiList = new List<EggIncArtifactInstance> {
+                Set.Artifacts[0].Artifact,
+                Set.Artifacts[1].Artifact,
+                Set.Artifacts[2].Artifact,
+                Set.Artifacts[3].Artifact
+            };
         }
     }
 }

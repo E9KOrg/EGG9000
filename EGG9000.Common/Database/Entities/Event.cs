@@ -18,6 +18,7 @@ namespace EGG9000.Common.Database.Entities {
         public string Subtitle { get; set; }
         public string MessageIds { get; set; }
         public bool Ended { get; set; }
+        public bool CcOnly { get; set; } = false;
 
         public Event() {
         }
@@ -28,7 +29,7 @@ namespace EGG9000.Common.Database.Entities {
             Multiplier = e.Multiplier;
             Subtitle = e.Subtitle;
             Ends = DateTimeOffset.Now.AddSeconds(e.SecondsRemaining);
-                
+            CcOnly = e.CcOnly;
         }
     }
 }

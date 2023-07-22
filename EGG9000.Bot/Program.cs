@@ -88,6 +88,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<APILink>();
             services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
+            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<LeaderboardUpdater>();
 
             services.AddHostedService<StaffCoopsMessage>();
@@ -107,7 +108,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddHostedService<CreateCoopChannels>();
             services.AddHostedService<ShipReturnDM>();
             services.AddHostedService<UserSnapShots>();
-            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<ManageOverflow>();
             services.AddHostedService<RemoveTempRoles>();
             services.AddHostedService<HandleGradeChanges>();

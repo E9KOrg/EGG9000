@@ -101,6 +101,9 @@ namespace EGG9000.Common.Database {
         public bool HasDeviceId { get; set; } = false;
         [Key(34)]
         public string DeviceId { get; set; } = string.Empty;
+        [Key(35)]
+        public Dictionary<Ei.MissionInfo.Types.Spaceship, uint>
+        ShipStars { get; set; } = new Dictionary<Ei.MissionInfo.Types.Spaceship, uint>();
 
 
         [IgnoreMember]
@@ -237,6 +240,9 @@ namespace EGG9000.Common.Database {
                 if(backup.Game.MaxFarmSizeReached[i] > 0)
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
             }
+
+            if(backup.ArtifactsDb is not null)
+                ShipStars = MissionHelpers.GetShipLevels(backup.ArtifactsDb);
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 
@@ -447,7 +453,7 @@ namespace EGG9000.Common.Database {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Contract contract = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
                 if(coop != null && coop.LastStatusUpdate is not null) {
@@ -460,13 +466,24 @@ namespace EGG9000.Common.Database {
                     eggLayingBuff += 1;
                 }
 
+                var shipCapPerc = 1.0;
+                var eggLayRatePerc = 1.0;
+                if(coop is not null && (coop.Contract is not null || contract is not null) && coop.League > 1) {
+                    //Very uncommon, but contracts may have nerfs/buffs associated with them
+                    var modifiers = (coop.Contract ?? contract).Details.GradeSpecs[(int)coop.League - 1].Modifiers;
+                    var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == Ei.GameModifier.Types.GameDimension.EggLayingRate);
+                    eggLayRatePerc = eggLayRateMod is not null ? (double)eggLayRateMod.Value : 1.0;
+
+                    var shipCapMod = modifiers.FirstOrDefault(x => x.Dimension == Ei.GameModifier.Types.GameDimension.ShippingCapacity);
+                    shipCapPerc = shipCapMod is not null ? (double)shipCapMod.Value : 1.0;
+                }
 
                 var eggLayingResearch = Research.GetEggLayingRatePerSec(this, backup.EpicResearch);
                 var eggLayingArtifact = EggIncArtifacts.GetEggLayingRateMultiple(this);
 
                 _stats = new CustomFarmStats();
-                _stats.MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this);
-                _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff;
+                _stats.MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this) * shipCapPerc;
+                _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff * eggLayRatePerc;
                 _stats.CurrentShippingRate = Math.Min(_stats.MaxShippingRate, _stats.EggLayingRate);
                 _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch) * EggIncArtifacts.GetEggValueMutiple(this);
                 _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier;

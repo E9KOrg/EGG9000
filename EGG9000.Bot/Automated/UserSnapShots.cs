@@ -18,6 +18,7 @@ using Ei;
 using Humanizer;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
     public class UserSnapShots : _UpdaterBase<UserSnapShots> {
@@ -33,18 +34,17 @@ namespace EGG9000.Bot.Automated {
             var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date);
 
             if(!hasSnapshots) {
-                var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0 && x._CustomBackups != null).ToListAsync();
+                var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync();
                 var snapshots = 0;
                 foreach(var user in users) {
                     try {
                         foreach(var account in user.EggIncAccounts) {
                             var backup = account.Backup;
-                            var lastSnapshot = await _db.UserSnapShots.AsQueryable().FirstOrDefaultAsync(x => x.UserId == user.Id &&
-                            x.Prestiges == backup.NumPrestiges &&
-                            x.EarningsBonus == backup.EarningsBonus &&
-                            x.EggIncID == backup.EggIncId &&
-                            x.EggsOfProphecy == backup.EggsOfProphecy &&
-                            x.SoulEggs == backup.SoulEggs);
+                            var lastSnapshot = await _db.UserSnapShots.AsQueryable().FirstOrDefaultAsync(x => 
+                                x.UserId == user.Id &&
+                                x.Date == DateTime.Now.Date && 
+                                x.EggIncID == account.Id
+                            );
                             if(lastSnapshot == null) {
                                 _db.UserSnapShots.Add(new UserSnapShot {
                                     Date = DateTime.Now.Date,
@@ -56,6 +56,7 @@ namespace EGG9000.Bot.Automated {
                                     SoulEggs = backup.SoulEggs
 
                                 });
+                                _logger.LogTrace("Adding Snapshot for {0}", user.Id);
                                 if(snapshots++ >= 50) {
                                     snapshots = 0;
                                     await _db.SaveChangesAsync();

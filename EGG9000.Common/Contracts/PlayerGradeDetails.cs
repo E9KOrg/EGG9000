@@ -21,13 +21,13 @@ namespace EGG9000.Common.Contracts {
             };
         }
 
-        public static string GetEmojiUnicode(Ei.Contract.Types.PlayerGrade grade) {
+        public static string GetText(Ei.Contract.Types.PlayerGrade grade) {
             return grade switch {
-                Ei.Contract.Types.PlayerGrade.GradeAaa => "🇦🇦🇦",
-                Ei.Contract.Types.PlayerGrade.GradeAa => "🇦🇦",
-                Ei.Contract.Types.PlayerGrade.GradeA => "🇦",
-                Ei.Contract.Types.PlayerGrade.GradeB => "🇧",
-                Ei.Contract.Types.PlayerGrade.GradeC => "🇨",
+                Ei.Contract.Types.PlayerGrade.GradeAaa => "AAA",
+                Ei.Contract.Types.PlayerGrade.GradeAa => "AA",
+                Ei.Contract.Types.PlayerGrade.GradeA => "A",
+                Ei.Contract.Types.PlayerGrade.GradeB => "B",
+                Ei.Contract.Types.PlayerGrade.GradeC => "C",
                 _ => "None",
             };
         }
@@ -47,7 +47,7 @@ namespace EGG9000.Common.Contracts {
         }
 
         public static String GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
-            return GetEmojiUnicode(grade) + " - " + GetNameFromLeague((int)grade);
+            return GetText(grade) + " - " + GetNameFromLeague((int)grade);
         }
 
         public static string GetNameFromLeague(int league) {

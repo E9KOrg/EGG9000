@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20230622195212_DemeritDetails")]
+    partial class DemeritDetails
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -86,9 +88,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("_response")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("cc_only")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("coop_allowed")
                         .HasColumnType("bit");
 
@@ -123,9 +122,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("AnyLeague")
-                        .HasColumnType("bit");
 
                     b.Property<string>("ContractID")
                         .HasColumnType("nvarchar(450)");
@@ -367,9 +363,6 @@ namespace EGG9000.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<bool>("CcOnly")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("Ended")
                         .HasColumnType("bit");
 
@@ -585,9 +578,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("OverflowServersJson")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("PublicScoreGrid")
-                        .HasColumnType("bit");
-
                     b.Property<string>("RolesToSync")
                         .HasColumnType("nvarchar(max)");
 
@@ -615,9 +605,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<int>("BoardingGroup")
                         .HasColumnType("int");
-
-                    b.Property<bool>("CcOnly")
-                        .HasColumnType("bit");
 
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("datetimeoffset");

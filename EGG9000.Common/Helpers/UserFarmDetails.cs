@@ -159,7 +159,11 @@ namespace EGG9000.Common.Helpers {
 
         public TimeSpan OfflineTime {
             get {
-                if(CoopStatus?.FarmInfo is not null) {
+                if(CoopStatus?.FarmInfo is not null && Farm is not null) {
+                    var farmInfoTime = 0 - CoopStatus.FarmInfo.Timestamp;
+                    var farmTime = DateTimeOffset.Now.ToUnixTimeSeconds() - Farm.LastStepTime;
+                    return TimeSpan.FromSeconds(Math.Min(farmInfoTime, farmTime));
+                } else if(CoopStatus?.FarmInfo is not null) {
                     return TimeSpan.FromSeconds(0 - CoopStatus.FarmInfo.Timestamp);
                 } else if(Farm is not null) {
                     return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);

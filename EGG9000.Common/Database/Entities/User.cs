@@ -364,6 +364,10 @@ namespace EGG9000.Common.Database.Entities {
         public string Guild { get; set; }
         [Key(18)]
         public string DeviceID { get; set; } = string.Empty;
+        [Key(19)]
+        public double SubscriptionEnds { get; set; }
+        [Key(20)]
+        public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; }
 
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;

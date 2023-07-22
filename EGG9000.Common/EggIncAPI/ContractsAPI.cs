@@ -28,12 +28,13 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
-        public const uint ClientVersion = 50;
+        
+        public const uint ClientVersion = 53;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.27.0",
+                Version = "1.27.5",
                 Build = "111244",
                 Platform = "ANDROID",
                 Country = "US",
@@ -99,6 +100,27 @@ namespace EGG9000.Bot.EggIncAPI {
             }
         }
 
+        public static async Task<UserSubscriptionInfo> GetUserSubscription(string UserId) {
+            var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
+            using(var client = new HttpClient(handler)) {
+                client.BaseAddress = new Uri(BaseAddressNew);
+                client.DefaultRequestHeaders.Add("User-Agent", "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0");
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+
+                var response = await client.PostAsync($"ei_srv/subscription_status/{UserId}", null);
+
+                if(response.IsSuccessStatusCode) {
+                    var r = await response.Content.ReadAsStringAsync();
+                    var responseString = System.Convert.FromBase64String(r);
+
+                        return GetFromAuthenticatedMessage<UserSubscriptionInfo>(responseString);
+                } else {
+                    return default(UserSubscriptionInfo);
+                }
+            }
+        }
+
         public static async Task<TResponse> Post<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : Google.Protobuf.IMessage {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
@@ -110,11 +132,11 @@ namespace EGG9000.Bot.EggIncAPI {
                     var url = "";
                     switch(data) {
                         case Ei.JoinCoopRequest e: {
-                            url = "ei/join_coop";
-                            e.Rinfo = GetInfo(UserId);
-                            e.WriteTo(ms1);
-                            break;
-                        }
+                                url = "ei/join_coop";
+                                e.Rinfo = GetInfo(UserId);
+                                e.WriteTo(ms1);
+                                break;
+                            }
                         case Ei.GetPeriodicalsRequest e:
                             url = "ei/get_periodicals";
                             e.Rinfo = GetInfo(UserId, true);
@@ -197,22 +219,22 @@ namespace EGG9000.Bot.EggIncAPI {
                         return default(TResponse);
                     }
                 }
-            } catch(Exception) {
+            } catch(Exception e) {
                 return default(TResponse);
             }
         }
 
         public static async Task<Ei.PeriodicalsResponse> GetPeriodicalsAsync() {
             return await ContractsAPI.Post<Ei.PeriodicalsResponse, Ei.GetPeriodicalsRequest>(new Ei.GetPeriodicalsRequest {
-                UserId = ContractsAPI.UserId,
+                UserId = "EI4765194876354560",
                 PiggyFull = false,
                 PiggyFoundFull = false,
                 SecondsFullRealtime = 2339576.17448521,
                 SecondsFullGametime = 391564.659540082,
                 SoulEggs = 570149167.28294,
                 CurrentClientVersion = ClientVersion,
-                Debug = false,
-            }, ContractsAPI.UserId, true);
+                Debug = false, 
+            }, "EI4765194876354560", true);
         }
 
         //public static async Task<Ei.PeriodicalsResponse> GetContracts() {

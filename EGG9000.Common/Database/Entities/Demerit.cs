@@ -13,6 +13,7 @@ namespace EGG9000.Common.Database.Entities {
         public string Reason { get; set; }
         public bool Permanent { get; set; }
         public string ContractID { get; set; }
+        public string Details { get; set; }
     }
 
 }
