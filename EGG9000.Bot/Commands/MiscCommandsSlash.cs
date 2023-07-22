@@ -92,7 +92,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup);
-            stringBuilder.Append($"For **{backup.UserName}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
+            stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
             stringBuilder.AppendLine();
 
             var crafter = new Crafter(backup.ArtifactHall);
