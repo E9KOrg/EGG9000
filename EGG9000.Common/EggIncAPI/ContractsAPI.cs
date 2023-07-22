@@ -28,6 +28,7 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
+        
         public const uint ClientVersion = 53;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
@@ -225,15 +226,15 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public static async Task<Ei.PeriodicalsResponse> GetPeriodicalsAsync() {
             return await ContractsAPI.Post<Ei.PeriodicalsResponse, Ei.GetPeriodicalsRequest>(new Ei.GetPeriodicalsRequest {
-                UserId = ContractsAPI.UserId,
+                UserId = "EI4765194876354560",
                 PiggyFull = false,
                 PiggyFoundFull = false,
                 SecondsFullRealtime = 2339576.17448521,
                 SecondsFullGametime = 391564.659540082,
                 SoulEggs = 570149167.28294,
                 CurrentClientVersion = ClientVersion,
-                Debug = false,
-            }, ContractsAPI.UserId, true);
+                Debug = false, 
+            }, "EI4765194876354560", true);
         }
 
         //public static async Task<Ei.PeriodicalsResponse> GetContracts() {

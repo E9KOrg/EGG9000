@@ -69,9 +69,9 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                //coops = coops.Where(x => x.Name.ToLower() == "cluckinstate98 ".Trim().ToLower()).ToList();
+                coops = coops.Where(x => x.Name.ToLower() == "EraseMusic1 ".Trim().ToLower()).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
-                coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
+                //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
@@ -786,7 +786,7 @@ namespace EGG9000.Bot.Automated {
                                     }
 
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18) && coopDetails.PercentProjectedForJoined > 100) {
-                                        var accountName = xref.User.EggIncAccounts.Count > 1 ? $" ({xref.User.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
+                                        var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
                                         await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
                                 }

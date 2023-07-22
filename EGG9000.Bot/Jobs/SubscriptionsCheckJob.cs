@@ -35,7 +35,7 @@ namespace EGG9000.Bot.Jobs {
             _bugsnag = bugsnag;
         }
 
-        [Job("0 0 */6 * * *")]
+        [Job("0 0 */1 * * *")]
         //[Job("0 * * * * *")]
         public async Task CheckSubscriptions() {
             _logger.LogInformation("Checking subscriptions");
