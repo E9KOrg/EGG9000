@@ -873,9 +873,7 @@ namespace EGG9000.Bot.Automated {
                     lastMessage += "__Co-op Commands (click to use):__\n";
 
 
-                    if(dbguild.Id == 656455567858073601) { ///Currently CP only, will give the option to add more guilds later
-                        lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
-                    }
+                    lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                     lastMessage += "\n</coopsettings:1107809801469173933> Receive DM pings for various events in the co-op";
                     lastMessage += "\n</fixfullcooperror:1111043604178276463> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
 
