@@ -399,10 +399,10 @@ namespace EGG9000.Bot.Commands {
 
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
-            var bannedUsers = db.DBUsers.Where(x => x.GuildId == command.GuildId && x.Banned).SelectMany(u => u.EggIncAccounts).ToList();
+
+            var bannedUsers = db.DBUsers.Where(x => x.Banned).ToList().SelectMany(u => u.EggIncAccounts).ToList();
             if(bannedUsers is not null) {
                 if(bannedUsers.Select(e => e.Id.ToUpper()).ToList().Contains(eggincid)) {
-
                     //1132753030022975499 - dev server banned thread
                     var bannedUserThread = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.BannedUserThread);
                     if(bannedUserThread is not null) {
@@ -410,6 +410,7 @@ namespace EGG9000.Bot.Commands {
                         if(thread is not null) {
                             await thread.SendMessageAsync($"{user.Mention} attempted to register with a banned EggInc ID `{eggincid}` in <#{command.Channel.Id}>");
                         }
+                        await command.ModifyOriginalResponseAsync(m => m.Content = $"{user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
                     } else {
                         var staffMention = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.CallStaffTagRole).Id.ToString() ?? "";
                         await command.ModifyOriginalResponseAsync(m => m.Content = $" {(staffMention is not null ? "<@&" + staffMention + ">" : "")} {user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
@@ -871,7 +872,6 @@ namespace EGG9000.Bot.Commands {
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();
                 var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
-                var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
                 if(banaccount) {
                     var userObj = db.DBUsers.FirstOrDefault(x => x.DiscordId == targetUser.Id);
                     if(userObj is not null) {
