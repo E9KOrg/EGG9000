@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
@@ -33,7 +32,7 @@ using static Ei.Backup.Types;
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested artifact.")]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity"), MinValue(1)] int quantity, [SlashParam]TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
+        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity"), Discord.Interactions.MinValue(1)] int quantity, [SlashParam]TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
             
             if(requestedArtifact is null) {
