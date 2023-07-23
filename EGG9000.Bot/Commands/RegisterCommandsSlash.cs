@@ -395,11 +395,23 @@ namespace EGG9000.Bot.Commands {
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, string eggincid, IUser user, ILogger logger) {
             await command.RespondAsync("Processing...");
             eggincid = eggincid.ToUpper();
+
+            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
+            var bannedUsers = db.DBUsers.Where(x => x.GuildId == command.GuildId && x.Banned).SelectMany(u => u.EggIncAccounts).ToList();
+            if(bannedUsers is not null) {
+                if(bannedUsers.Select(e => e.Id.ToUpper()).ToList().Contains(eggincid)) {
+                    var staffMention = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.CallStaffTagRole).Id.ToString() ?? "";
+                    await command.ModifyOriginalResponseAsync(m => m.Content = $" {(staffMention is not null ? "<@&" + staffMention + ">" : "")} {user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+                    return;
+                }
+            }
+
             var Response = await apiLink.GetBackup(eggincid);
             if(Response?.Farms == null || Response.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
                 if(eggincid.StartsWith("E1")) {
-                    id = id.Substring(1);
+                    id = id[1..];
                 }
                 if(id.Length > 7) {
                     Response = await apiLink.GetBackup(eggincid);
@@ -437,7 +449,6 @@ namespace EGG9000.Bot.Commands {
             if(!dbuser.Registered.HasValue) {
                 dbuser.Registered = DateTimeOffset.Now;
             }
-            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
 
 
             var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
@@ -853,8 +864,8 @@ namespace EGG9000.Bot.Commands {
                 if(banaccount) {
                     var userObj = db.DBUsers.FirstOrDefault(x => x.DiscordId == targetUser.Id);
                     if(userObj is not null) {
-                        foreach(var account in userObj.EggIncAccounts)
-                            if(!guildObj.BannedAccounts.Contains(account)) guildObj.BannedAccounts.Add(account);
+                        userObj.Banned = true;
+                        await db.SaveChangesAsync();
                     }
                 }
                 await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
