@@ -845,10 +845,18 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = true)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason) {
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam] bool banaccount = false) {
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();
                 var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+                var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
+                if(banaccount) {
+                    var userObj = db.DBUsers.FirstOrDefault(x => x.DiscordId == targetUser.Id);
+                    if(userObj is not null) {
+                        foreach(var account in userObj.EggIncAccounts)
+                            if(!guildObj.BannedAccounts.Contains(account)) guildObj.BannedAccounts.Add(account);
+                    }
+                }
                 await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
                 await targetUser.KickAsync();
                 await command.RespondAsync("Kicked with DM");
