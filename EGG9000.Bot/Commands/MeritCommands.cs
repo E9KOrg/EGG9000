@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Commands {
             }
             await command.DeleteResponseFix();
         }
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, IMessageChannel messageChannel, FauxCommand command = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, IMessageChannel channel, FauxCommand command = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -58,19 +58,23 @@ namespace EGG9000.Bot.Commands {
             var count = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).CountAsync();
             count++;
 
-            //if(message.Reference?.MessageId != null) {
-            //    merit.Reason += $" {(await _client.GetGuild(message.Reference.GuildId.Value).GetTextChannel(message.Reference.ChannelId).GetMessageAsync(message.Reference.MessageId.Value)).Content}";
-            //}
-
-            if(user.GuildId == 656455567858073601) {
-                var meritChannel = _client.Guilds.First(x => x.Id == 656455567858073601).TextChannels.First(x => x.Id == 833016587891376128);
-                await meritChannel.SendMessageAsync($"{target.Mention}: {merit.Reason} (Merits: {count})");
+            if(command is not null) {
+                var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
+                if(guildFind is not null) {
+                    var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
+                    if(socketGuild is not null) {
+                        var meritChannel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.MeritLogChannel).Id);
+                        if(meritChannel is not null) {
+                            await meritChannel.SendMessageAsync($"{target.Mention}: {merit.Reason} (Merits: {count})");
+                        }
+                    }
+                }
             }
 
             if(command != null) {
                 await command.Channel.SendMessageAsync($"Merit Added {target.Mention}: {merit.Reason} (Merits: {count})");
             }
-            
+
             await db.SaveChangesAsync();
         }
 

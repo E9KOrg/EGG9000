@@ -147,6 +147,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Subscription-Only Contract Category, adding this will prevent sub-only contracts from appearing elsewhere.")]
         SubscriptionContractCategory = 33,
         [Description("Optional: Subscription-Only Event Channel, adding this will prevent sub-only events from appearing elsewhere.")]
-        SubscriptionGameEvents = 34
+        SubscriptionGameEvents = 34,
+        [Description("Optional: Merit Log, all merits added to users will appear in this channel")]
+        MeritLogChannel = 35
     }
 }
