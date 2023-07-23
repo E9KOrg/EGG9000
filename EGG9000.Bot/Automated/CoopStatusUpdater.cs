@@ -872,8 +872,7 @@ namespace EGG9000.Bot.Automated {
                     //New commands list, each is a quick-link to start using the command
                     lastMessage += "__Co-op Commands (click to use):__\n";
 
-
-                    if(dbguild.Id == 656455567858073601) { ///Currently CP only, will give the option to add more guilds later
+                    if(_client.GetChannelAsync(GuildChannelType.CallStaffChannel, guild) != null) {
                         lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                     }
                     lastMessage += "\n</coopsettings:1107809801469173933> Receive DM pings for various events in the co-op";
