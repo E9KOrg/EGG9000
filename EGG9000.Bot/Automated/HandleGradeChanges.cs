@@ -21,7 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated {
-    public class HandleGradeChanges : _UpdaterBase<UserSnapShots> {
+    public class HandleGradeChanges : _UpdaterBase<HandleGradeChanges> {
 
         public HandleGradeChanges(
             IServiceProvider provider
