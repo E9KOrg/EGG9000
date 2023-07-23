@@ -39,6 +39,7 @@ using Ei;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
 using MassTransit.Initializers;
+using Bugsnag;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -401,8 +402,18 @@ namespace EGG9000.Bot.Commands {
             var bannedUsers = db.DBUsers.Where(x => x.GuildId == command.GuildId && x.Banned).SelectMany(u => u.EggIncAccounts).ToList();
             if(bannedUsers is not null) {
                 if(bannedUsers.Select(e => e.Id.ToUpper()).ToList().Contains(eggincid)) {
-                    var staffMention = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.CallStaffTagRole).Id.ToString() ?? "";
-                    await command.ModifyOriginalResponseAsync(m => m.Content = $" {(staffMention is not null ? "<@&" + staffMention + ">" : "")} {user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+
+                    //1132753030022975499 - dev server banned thread
+                    var bannedUserThread = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.BannedUserThread);
+                    if(bannedUserThread is not null) {
+                        var thread = guild.GetThreadChannel(bannedUserThread.Id);
+                        if(thread is not null) {
+                            await thread.SendMessageAsync($"{user.Mention} attempted to register with a banned EggInc ID `{eggincid}` in <#{command.Channel.Id}>");
+                        }
+                    } else {
+                        var staffMention = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.CallStaffTagRole).Id.ToString() ?? "";
+                        await command.ModifyOriginalResponseAsync(m => m.Content = $" {(staffMention is not null ? "<@&" + staffMention + ">" : "")} {user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+                    }
                     return;
                 }
             }
