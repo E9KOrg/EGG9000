@@ -105,6 +105,7 @@ namespace EGG9000.Common.Database.Entities {
                 _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
             }
         }
+        public bool Banned { get; set; } = false;
 
 
         [NotMapped]

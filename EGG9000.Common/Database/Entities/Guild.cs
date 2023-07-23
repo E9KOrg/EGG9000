@@ -73,7 +73,6 @@ namespace EGG9000.Common.Database.Entities {
         public bool AllowGuilds { get; set; }
         public string GroupRoles { get; set; }
         public bool PublicScoreGrid { get; set; }
-        public List<EggIncAccount> BannedAccounts { get; set; }
     }
 
     [NotMapped]
@@ -150,6 +149,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Subscription-Only Event Channel, adding this will prevent sub-only events from appearing elsewhere.")]
         SubscriptionGameEvents = 34,
         [Description("Optional: Merit Log, all merits added to users will appear in this channel")]
-        MeritLogChannel = 35
+        MeritLogChannel = 35,
+        [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
+        BannedUserThread = 36
     }
 }
