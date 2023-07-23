@@ -148,14 +148,31 @@ namespace EGG9000.Bot.Automated {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
 
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
-                var channel = (newEvent.CcOnly && ccEventChannel is not null) ? ccEventChannel : await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+                var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
 
                 RestUserMessage message;
                 var notification = customization.Settings.Notifications?
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
-                message = await channel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
 
+                //If the event is subscriber-only
+                if(newEvent.CcOnly) {
+                    
+                    //Send to non-CCs without ping
+                    message = await eventChannel.SendMessageAsync(null, embed: embed);
+
+                    //If the CC event channel was found, that's where we'll ping for CC events
+                    if(ccEventChannel != null) {
+                        var ccMessage = await ccEventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        //Add the CC event channel message to the IDs
+                        messageIds.Add(ccMessage.Id);
+                    }
+                } else {
+                    //Only send to non-CC channel, with ping
+                    message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                }
+
+                //Always add the message id
                 messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
@@ -167,11 +184,32 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
-                if(channel != null) {
+
+                var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+                if(eventChannel != null) {
                     foreach(var mid in messageIds) {
                         try {
-                            var message = ((RestUserMessage)await channel.GetMessageAsync(mid));
+                            var message = (RestUserMessage)await eventChannel.GetMessageAsync(mid);
+                            if(message != null) {
+                                var notification = customization.Settings.Notifications?
+                                    .OrderByDescending(x => x.MinValue)
+                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                                await message.ModifyAsync(msg => {
+                                    msg.Embed = embed;
+                                    msg.Content = (notification != null && !currentEvent.CcOnly) ? $"<@&{notification.RoleID}>" : null;
+                                });
+                            }
+                        } catch(Exception) {
+                            _logger.LogWarning("Error Updating Messages for {guild}", guild.Name);
+                        }
+                    }
+                }
+
+                var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
+                if(ccEventChannel != null && currentEvent.CcOnly) {
+                    foreach(var mid in messageIds) {
+                        try {
+                            var message = (RestUserMessage)await eventChannel.GetMessageAsync(mid);
                             if(message != null) {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
