@@ -39,6 +39,7 @@ using Ei;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
 using MassTransit.Initializers;
+using Bugsnag;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -395,11 +396,34 @@ namespace EGG9000.Bot.Commands {
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, string eggincid, IUser user, ILogger logger) {
             await command.RespondAsync("Processing...");
             eggincid = eggincid.ToUpper();
+
+            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
+
+            var bannedUsers = db.DBUsers.Where(x => x.Banned).ToList().SelectMany(u => u.EggIncAccounts).ToList();
+            if(bannedUsers is not null) {
+                if(bannedUsers.Select(e => e.Id.ToUpper()).ToList().Contains(eggincid)) {
+                    //1132753030022975499 - dev server banned thread
+                    var bannedUserThread = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.BannedUserThread);
+                    if(bannedUserThread is not null) {
+                        var thread = guild.GetThreadChannel(bannedUserThread.Id);
+                        if(thread is not null) {
+                            await thread.SendMessageAsync($"{user.Mention} attempted to register with a banned EggInc ID `{eggincid}` in <#{command.Channel.Id}>");
+                        }
+                        await command.ModifyOriginalResponseAsync(m => m.Content = $"{user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+                    } else {
+                        var staffMention = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.CallStaffTagRole).Id.ToString() ?? "";
+                        await command.ModifyOriginalResponseAsync(m => m.Content = $" {(staffMention is not null ? "<@&" + staffMention + ">" : "")} {user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+                    }
+                    return;
+                }
+            }
+
             var Response = await apiLink.GetBackup(eggincid);
             if(Response?.Farms == null || Response.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
                 if(eggincid.StartsWith("E1")) {
-                    id = id.Substring(1);
+                    id = id[1..];
                 }
                 if(id.Length > 7) {
                     Response = await apiLink.GetBackup(eggincid);
@@ -437,7 +461,6 @@ namespace EGG9000.Bot.Commands {
             if(!dbuser.Registered.HasValue) {
                 dbuser.Registered = DateTimeOffset.Now;
             }
-            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
 
 
             var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
@@ -845,10 +868,17 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = true)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason) {
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam] bool banaccount = false) {
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();
                 var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+                if(banaccount) {
+                    var userObj = db.DBUsers.FirstOrDefault(x => x.DiscordId == targetUser.Id);
+                    if(userObj is not null) {
+                        userObj.Banned = true;
+                        await db.SaveChangesAsync();
+                    }
+                }
                 await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
                 await targetUser.KickAsync();
                 await command.RespondAsync("Kicked with DM");
