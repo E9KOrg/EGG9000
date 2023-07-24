@@ -151,7 +151,7 @@
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1){
-                    @:<span style="margin-right: 5px; user-select: contain"><b><u>In-Game Name</u></b>: @backup.UserName</span>
+                    @:<span style="margin-right: 5px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
                     <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;"/>
                     @if (backup.PermitLevel == 0){
                         <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
@@ -160,24 +160,24 @@
                         <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 }
-                <span style="margin-right:5px; user-select: contain" onclick="copyIdToClipboard('@backup.EggIncId')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
-                <span style="margin-right:5px; user-select: contain"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
+                <span style="margin-right:5px;" onclick="copyIdToClipboard('@backup.EggIncId')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
+                <span style="margin-right:5px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
                 @if (!dbguild.DisableBG) {
                     if(account.Group == 0){
-                        <span style="margin-right:5px; user-select: contain; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
+                        <span style="margin-right:5px;; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
                     } else {
-                        <span style="margin-right:5px; user-select: contain"><b><u>Boarding Group @account.Group</u></b></span>
+                        <span style="margin-right:5px;"><b><u>Boarding Group @account.Group</u></b></span>
                     }
                 }
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
-                    <span style="margin-right:5px; user-select: contain"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToString()</span>
+                    <span style="margin-right:5px;"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToString()</span>
                 }
                 @if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:5px; user-select: contain"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
+                    <span style="margin-right:5px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
                 } else {
-                    <span style="margin-right:5px; user-select: contain"><b><u>Filter</u></b>: All</span>
+                    <span style="margin-right:5px;"><b><u>Filter</u></b>: All</span>
                 }
-                <span style="margin-right:5px; user-select: contain">
+                <span style="margin-right:5px;">
                     <b><u>Redo Leggacies</u></b>:
                     @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
