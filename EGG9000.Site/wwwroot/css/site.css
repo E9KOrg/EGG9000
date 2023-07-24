@@ -124,15 +124,3 @@ body {
         flex-direction: column; /* Change to a vertical layout */
     }
 }
-
-div .hoverText {
-    display: none;
-    border: 1px solid #000;
-    height: 30px;
-    width: 290px;
-    margin-left: 10px;
-}
-
-a:hover + div {
-    display: block;
-}
