@@ -14,6 +14,10 @@
     var contract = contractGroup.Key;
     <div class="card">
         <h5 class="card-header">
+            @if (contract.cc_only)
+            {
+                <a><img alt="Subcriber Only Contract" src="https://cdn.discordapp.com/emojis/1131045418319495369.webp" style="width: 30px; height: auto"></a>
+            }
             @contract.Name
             @if (contract.GoodUntil < DateTimeOffset.Now)
             {
