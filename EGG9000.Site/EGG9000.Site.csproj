@@ -15,6 +15,7 @@
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
 

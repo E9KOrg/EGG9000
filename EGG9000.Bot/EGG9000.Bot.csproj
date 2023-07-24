@@ -29,6 +29,14 @@
     <DebugType>embedded</DebugType>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="version.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="version.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Bugsnag.AspNet.Core" Version="3.1.0" />
     <PackageReference Include="Cronos" Version="0.7.1" />
     <PackageReference Include="Discord.Net" Version="3.10.0" />
@@ -75,4 +83,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" />
+  </Target>
 </Project>
