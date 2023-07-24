@@ -248,7 +248,7 @@ namespace EGG9000.Bot.Automated {
                 condensedMsgs.Add(currentMsg);
 
 
-                var rawTextMessageAspect = guildContract.CcOnly ? "__**:ultra: Subscriber-Only Contract:**__\r\n\r\nThis contract will only appear in-game for Egg, Inc. ULTRA Standard, and ULTRA Pro players." : "";
+                var rawTextMessageAspect = guildContract.CcOnly ? "__**<:ultra:1131045418319495369> Subscriber-Only Contract:**__\r\n\r\nThis contract will only appear in-game for Egg, Inc. ULTRA Standard, and ULTRA Pro players." : "";
 
                 var existingMessages = (await channel.GetMessagesAsync(limit: 1000).FlattenAsync()).ToList();
 
