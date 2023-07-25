@@ -136,14 +136,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = true, AllowFarmHand = true)]
-        public static async Task FindCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
-            [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid, [SlashParam]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
+        public static async Task FindCoopForUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
+            [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid, [SlashParam(Required = false)]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
             var guildRef = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString())); 
-            var contract = await db.Contracts.Include(c => c.Name).FirstOrDefaultAsync(c => c.ID == contractid);
+            var contract = await db.Contracts.FirstOrDefaultAsync(c => c.ID == contractid);
             var userid = useraccount.Split("|")[0];
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
-            var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).ThenInclude(x => x.DiscordChannelId).Where(x => x.EggIncId == account.Id).ToListAsync();
+            var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
 
             var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract);
 
