@@ -379,7 +379,12 @@ namespace EGG9000.Site.Controllers {
             var users = await _db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
             times.Set("Get Users");
 
-            var groupRoles = dbguild.DisableBG ? dbguild.GroupRoles.Split(",").Select(x => ulong.Parse(x)).ToArray() : new ulong[0];
+            if(dbguild.DisableBG && !dbguild.GroupRoles.Any()) {
+                _logger.LogError("Boarding group disabled, and group roles not found. Unable to continue peacefully.");
+                return View();
+            }
+
+            var groupRoles = dbguild.DisableBG ? dbguild.GroupRoles?.Split(",").Select(x => ulong.Parse(x)).ToArray() : Array.Empty<ulong>();
 
             var guild = _discord.GetGuild(guildid);
             await guild.DownloadUsersAsync();
