@@ -114,7 +114,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var newName = "game-events";
+                var newName = "subscriber-game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";
 
@@ -142,7 +142,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 //"Reset" vars
-                newName = "game-events";
+                newName = "sub-game-events";
                 singleEmoji = "";
                 stackedEmoji = "";
 
