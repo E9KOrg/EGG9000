@@ -11,12 +11,12 @@
 <div ng-controller="EarningsBoostCalcModel@(Model.Backup.EggIncId)">
     <div class="form-inline" style="padding-top:10px">
         <div class="form-group">
-            <label>Farm</label>
+            <label style="margin-right:5px;">Farm</label>
             <select class="form-control" ng-model="selectedFarm" ng-options="farm.name for farm in farms"></select>
         </div>
         &nbsp;&nbsp;
         <div class="form-group">
-            <label>Max Tokens</label>
+            <label style="margin-right:5px;">Max Tokens</label>
             <input type="number" ng-model="maxTokens" class="form-control" style="width: 70px" />
         </div>
         &nbsp;&nbsp;
@@ -38,9 +38,11 @@
                 Include Running Bonus
             </label>
         </div>
-        Earning: {{ToEggString(selectedFarm.income)}}/s
-        &nbsp;&nbsp;
-        WithRunning {{ToEggString(selectedFarm.incomeRunning)}}/s (This includes 2x from video<span ng-if="BoostValue > 1"> and {{BoostValue}}x from current event</span>))
+        <br />
+        <div style="margin-top: 10px; margin-bottom: 10px;">
+            <span style="display:inline-block">Earning: <b>{{ToEggString(selectedFarm.income)}}/s</b></span><br />
+            <span style="display:inline-block">With Running <b>{{ToEggString(selectedFarm.incomeRunning)}}/s</b> <i>(This includes 2x from video<span ng-if="BoostValue > 1"> and {{BoostValue}}x from current event</span>)</i></span>
+        </div>
     </div>
     <table class="table table-striped">
         <thead>
