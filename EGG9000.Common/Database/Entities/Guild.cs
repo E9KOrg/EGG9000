@@ -97,7 +97,7 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: FAQ Channel linked to when announcing new registered users")]
         FaqChannel = 5,
         [Description("Required: Category for contract channels")]
-        EliteCategory = 6,
+        ContractCategory = 6,
         [Description("Optional: Category for failed co-ops")]
         FailedCategory = 8,
         [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
@@ -143,6 +143,14 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Role for standard subscriptions")]
         StandardSubscription = 31,
         [Description("Optional: Role for pro subscriptions")]
-        ProSubscription = 32
+        ProSubscription = 32,
+        [Description("Optional: Subscription-Only Contract Category, adding this will prevent sub-only contracts from appearing elsewhere.")]
+        SubscriptionContractCategory = 33,
+        [Description("Optional: Subscription-Only Event Channel, adding this will prevent sub-only events from appearing elsewhere.")]
+        SubscriptionGameEvents = 34,
+        [Description("Optional: Merit Log, all merits added to users will appear in this channel")]
+        MeritLogChannel = 35,
+        [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
+        BannedUserThread = 36
     }
 }
