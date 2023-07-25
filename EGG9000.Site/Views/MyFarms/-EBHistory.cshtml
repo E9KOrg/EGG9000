@@ -4,7 +4,7 @@
 	<table class="table table-striped">
 		<thead>
 			<tr>
-				@if(Model.isAdmin){<th>EggIncID</th>}
+				@*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
 				<th>Date</th>
 				<th>Eggs of Prophecy</th>
 				<th style="text-align: right !important;">Soul Eggs</th>
@@ -14,17 +14,17 @@
 		</thead>
 		<tbody>
 			<tr>
-				@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}
+				@*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
 				<td>Latest</td>
 				<td>@Model.backup.EggsOfProphecy</td>
 				<td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
 				<td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
 				<td>@Model.backup.NumPrestiges</td>
 			</tr>
-			@foreach (var snapshot in Model.snapshots.Where(x => Model.isAdmin || x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
+			@foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
 				<tr>
-					@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}
-				<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
+					@*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
+					<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
 					<td>@snapshot.EggsOfProphecy</td>
 					<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
 					<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
