@@ -114,30 +114,58 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
-                if(channel == default)
-                    continue;
                 var newName = "game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";
 
-                var eventsWithCustom = recentEvents.Where(x => !x.Ended).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
+                /* 'Normal' Game Events channel*/
+                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+                if(channel != default) {
+                    var eventsWithCustom = recentEvents.Where(x => !x.Ended && !x.CcOnly).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
 
-                foreach(var e in eventsWithCustom) {
-                    if(e.Custom.Priority > 0 || true) {
-                        stackedEmoji += e.Custom.Emoji ?? "";
-                    } else {
-                        singleEmoji = e.Custom.Emoji ?? "";
+                    foreach(var e in eventsWithCustom) {
+                        if(e.Custom.Priority > 0 || true) {
+                            stackedEmoji += e.Custom.Emoji ?? "";
+                        } else {
+                            singleEmoji = e.Custom.Emoji ?? "";
+                        }
+                    }
+                    if(stackedEmoji.Length > 0) {
+                        newName = stackedEmoji + newName;
+                    } else if(singleEmoji.Length > 0) {
+                        newName = singleEmoji + newName;
+                    }
+
+                    if(channel.Name != newName && channel != null) {
+                        await channel.ModifyAsync(x => x.Name = newName);
                     }
                 }
-                if(stackedEmoji.Length > 0) {
-                    newName = stackedEmoji + newName;
-                } else if(singleEmoji.Length > 0) {
-                    newName = singleEmoji + newName;
-                } 
 
-                if(channel.Name != newName && channel != null) {
-                    await channel.ModifyAsync(x => x.Name = newName);
+                //"Reset" vars
+                newName = "game-events";
+                singleEmoji = "";
+                stackedEmoji = "";
+
+                /* Subscriber-Only Game Events channel */
+                var ccChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
+                if(ccChannel != null) {
+                    var ccEventsWithCustom = recentEvents.Where(x => !x.Ended && x.CcOnly).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
+                    foreach(var se in ccEventsWithCustom) {
+                        if(se.Custom.Priority > 0 || true) {
+                            stackedEmoji += se.Custom.Emoji ?? "";
+                        } else {
+                            singleEmoji = se.Custom.Emoji ?? "";
+                        }
+                    }
+                    if(stackedEmoji.Length > 0) {
+                        newName = stackedEmoji + newName;
+                    } else if(singleEmoji.Length > 0) {
+                        newName = singleEmoji + newName;
+                    }
+
+                    if(ccChannel.Name != newName && ccChannel != null) {
+                        await ccChannel.ModifyAsync(x => x.Name = newName);
+                    }
                 }
             }
         }
