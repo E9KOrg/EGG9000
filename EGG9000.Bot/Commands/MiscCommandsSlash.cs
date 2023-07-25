@@ -28,10 +28,13 @@ using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using Google.Protobuf.WellKnownTypes;
 using static Ei.Backup.Types;
+using Humanizer.Localisation;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using System.Runtime.ConstrainedExecution;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
-        [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested artifact.")]
+        [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.")]
         public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam]TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 
@@ -121,7 +124,7 @@ namespace EGG9000.Bot.Commands {
             return stringBuilder.ToString();
         }
 
-        [Common.Commands.SlashCommand(Description = "Track your EB since the last time you ran this command")]
+        [SlashCommand(Description = "Track your EB since the last time you ran this command")]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -174,7 +177,7 @@ namespace EGG9000.Bot.Commands {
             });
         }
 
-        [Common.Commands.SlashCommand(Description = "How many SE/PE needed for next rank up")]
+        [SlashCommand(Description = "How many SE/PE needed for next rank up")]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
             await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -239,7 +242,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             });
         }
 
-        [Common.Commands.SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
+        [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
@@ -312,7 +315,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         //    await command.RespondAsync($"Will receive DM ping when co-op is finished and everyone has reported in", ephemeral: true);
         //}
 
-        [Common.Commands.SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
+        [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
@@ -344,7 +347,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
         }
 
-        [Common.Commands.SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
         public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
             DateTimeOffset expireTime;
             try {
@@ -375,7 +378,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
-        [Common.Commands.SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
+        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
         public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {
@@ -440,63 +443,92 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
         }
 
-        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)")] // ParentCommand = "formulae"
-        public static async Task MER(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "30/40/50", Required = false)] int MERvalue = 0) {
-            string seStr = "";
+
+        public enum MERChoice {
+            [Discord.Interactions.ChoiceDisplay("Current")] Current = 0,
+            [Discord.Interactions.ChoiceDisplay("20")] Twenty = 20,
+            [Discord.Interactions.ChoiceDisplay("30")] Thirty = 30,
+            [Discord.Interactions.ChoiceDisplay("40")] Forty = 40
+        };
+
+        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", AdminOnly = true, ParentCommand = "formulae")]
+        public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] MERChoice MERValue) {
+            await command.RespondAsync("Getting account backups...");
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
+                return;
+            }
+
+            var contentString = "";
+
+            if(user.EggIncAccounts.Count == 1) {
+                contentString = await MERCalculate(user.EggIncAccounts.FirstOrDefault(), user.DiscordUsername, (int)MERValue);
+                await command.ModifyOriginalResponseAsync(x => {
+                    x.Embed = null;
+                    x.Content = $"\n{contentString}\n";
+                });
+            } else {
+                var builder = new ComponentBuilder();
+                foreach(var account in user.EggIncAccounts) {
+                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"MERAccountButton:{account.Id}|{user.DiscordUsername} - {account.Name}|{(int)MERValue}");
+                }
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to check the MER of."; x.Components = builder.Build(); });
+            }
+        }
+
+        [ComponentCommand]
+        public static async Task MERAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            if(user is null) return;
+            var dataObjs = data.Split("|");
+            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
+            var discordUsername = dataObjs[1];
+            var MERValue = dataObjs[2] == "Current" ? 0 : int.Parse(dataObjs[2]);
+
+            var contentString = await MERCalculate(account, discordUsername, MERValue);
+            await component.UpdateAsync(x => { x.Content = contentString; x.Components = null; });
+        }
+
+        private static async Task<string> MERCalculate(EggIncAccount account, string userName, int MERValue) {
+            var seStr = "";
             double seQ = 0;
             double seTotal = 0;
             long pe = 0;
-            string username = "";
             double MER = 0;
-            string MERse = "";
+            var MERse = "";
             double MERpe = 0;
             long MERgoal = 0;
 
-            await command.RespondAsync("Calculating MER...");
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find user");
-                return;
-            }
-
-            var validParameters = new[] { 0, 30, 40, 50 };
-            if(!validParameters.Contains(MERvalue)) {
-                await command.RespondAsync("⚠️ERROR: Invalid parameter");
-                return;
-            }
-
             double calculateMER(double se, long pe) {
-                double result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
+                var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
                 return result;
             }
 
             string calculateNeededSE(long MER, double se, long pe) {
-                double result = Math.Pow(10, ((10 * MER - 200 + pe) / 91.0)) * 1e18;
-                result = result - se;
+                var result = Math.Pow(10, ((10 * MER - 200 + pe) / 91.0)) * 1e18;
+                result -= se;
                 return result.ToEggString();
             }
 
             double calculateNeededPE(long MER, double se, long pe) {
-                double result = (-10 * MER) + (91 * Math.Log10(seQ)) + 200;
-                result = result - pe;
+                var result = (-10 * MER) + (91 * Math.Log10(seQ)) + 200;
+                result -= pe;
                 return result;
             }
 
-            foreach(var id in user.EggIncAccounts) {
-                var backup = id.Backup;
-                if(backup == null)
-                    continue;
-
-                seStr = backup.SoulEggs.ToEggString();
-                seQ = backup.SoulEggs / 1e18; // Convert to quintillions
-                seTotal = backup.SoulEggs;
-                pe = backup.EggsOfProphecy;
-                username = user.DiscordUsername;
-                MER = Math.Round(calculateMER(seQ, pe), 2);
+            var backup = account.Backup;
+            if(backup is null) {
+                return $"Backup not found for user `{account.Name}`";
             }
+            seStr = backup.SoulEggs.ToEggString();
+            seQ = backup.SoulEggs / 1e18; // Convert to quintillions
+            seTotal = backup.SoulEggs;
+            pe = backup.EggsOfProphecy;
+            MER = Math.Round(calculateMER(seQ, pe), 2);
 
-            if(MERvalue != 0) {
-                MERgoal = MERvalue;
+            if(MERValue != 0) {
+                MERgoal = MERValue;
             } else {
                 double value = Math.Round(calculateMER(seQ, pe), 1);
                 if(value < 30) {
@@ -510,15 +542,15 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             if(MERgoal > MER) {
                 MERse = calculateNeededSE(MERgoal, seTotal, pe);
-                await command.RespondAsync($"The **MER** for **{username}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
+                return($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
             } else {
                 MERpe = Math.Round(calculateNeededPE(MERgoal, seQ, pe), 1);
-                await command.RespondAsync($"The **MER** for **{username}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nYou're able to maintain MER {MERgoal} for another <:Egg_of_Prophecy_PE:669981330477547580>`{MERpe}`");
+                return ($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nYou're able to maintain MER {MERgoal} for another <:Egg_of_Prophecy_PE:669981330477547580>`{MERpe}`");
             }
         }
 
-        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)")] // ParentCommand = "formulae"
-        public static async Task LLC(FauxCommand command, ApplicationDbContext db) {
+        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", AdminOnly = true, ParentCommand = "formulae")]
+        public static async Task LLC(FauxCommand command, ApplicationDbContext db, [SlashParam] string test) {
             await command.RespondAsync("Calculating LLC... (this command does nothing currently)");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
