@@ -454,21 +454,30 @@ namespace EGG9000.Bot.Services {
                 slashParamDetails.Description = name;
             }
 
-
-
-
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
-                        {typeof(int), ApplicationCommandOptionType.Integer },
-                        {typeof(uint), ApplicationCommandOptionType.Integer },
-                        {typeof(string), ApplicationCommandOptionType.String },
-                        {typeof(bool), ApplicationCommandOptionType.Boolean },
-                        {typeof(SocketGuildUser), ApplicationCommandOptionType.User },
-                        {typeof(SocketUser), ApplicationCommandOptionType.User },
-                        {typeof(SocketChannel), ApplicationCommandOptionType.Channel },
-                        {typeof(SocketRole), ApplicationCommandOptionType.Role },
-                    };
+                {typeof(int), ApplicationCommandOptionType.Integer },
+                {typeof(uint), ApplicationCommandOptionType.Integer },
+                {typeof(string), ApplicationCommandOptionType.String },
+                {typeof(bool), ApplicationCommandOptionType.Boolean },
+                {typeof(SocketGuildUser), ApplicationCommandOptionType.User },
+                {typeof(SocketUser), ApplicationCommandOptionType.User },
+                {typeof(SocketChannel), ApplicationCommandOptionType.Channel },
+                {typeof(SocketRole), ApplicationCommandOptionType.Role },
+            };
 
 
+            if(parameterInfo.ParameterType.Equals(typeof(MiscCommandsSlash.MERChoice))) {
+                List<ApplicationCommandOptionChoiceProperties> choices = new List<ApplicationCommandOptionChoiceProperties>();
+                foreach(var value in Enum.GetValues(typeof(MiscCommandsSlash.MERChoice)).Cast<MiscCommandsSlash.MERChoice>().ToList()) {
+                    Console.WriteLine(value.ToString() + ": " + Convert.ToInt32(value).ToString());
+                    choices.Add(new ApplicationCommandOptionChoiceProperties {
+                        Name = value.ToString() == "Current" ? "Current" : ((int)value).ToString(),
+                        Value = Convert.ToInt32((int)value)
+                    });
+                }
+                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand, choices.ToArray());
+                return;
+            }
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
                 AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
                 return;
