@@ -32,6 +32,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Bugsnag.Payload;
 using System.Security.Principal;
 using static Ei.Contract.Types;
+using Ei;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -125,6 +126,81 @@ namespace EGG9000.Bot.Commands {
             /* END REMOVING FROM OLD COOP */
 
             await command.RespondAsync($"Removed {discordUser.Mention} ({account.Name}) from {((ITextChannel)command.Channel).Mention}, and moved to {((ITextChannel)coopChannel).Mention}");
+            await db.SaveChangesAsync();
+        }
+
+        public enum FindCoopPrioritization {
+            FinishTimeLow = 0,
+            FinishTimeHigh = 1,
+            LowPlayerCount = 2
+        }
+
+        [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = true, AllowFarmHand = true)]
+        public static async Task FindCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
+            [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid, [SlashParam]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
+            var guildRef = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString())); 
+            var contract = await db.Contracts.Include(c => c.Name).FirstOrDefaultAsync(c => c.ID == contractid);
+            var userid = useraccount.Split("|")[0];
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
+            var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).ThenInclude(x => x.DiscordChannelId).Where(x => x.EggIncId == account.Id).ToListAsync();
+
+            var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract);
+
+            if(contract.cc_only && account.SubscriptionLevel == 0) {
+                await command.RespondAsync($"⚠️ERROR: Non-subscribed account cannot be assigned to subscriber-only contract");
+                return;
+            } else if(existingCoop is not null) {
+                await command.RespondAsync($"⚠️ERROR: User is already assigned a coop for contract {contract.Name}: <#{existingCoop.Coop.DiscordChannelId}>");
+                return;
+            } else if(account.GetGrade() is PlayerGrade.GradeUnset) {
+                await command.RespondAsync($"⚠️ERROR: User does not have a grade set, and cannot be moved into a coop");
+                return;
+            }
+
+            var coops = await db.Coops.Include(c => c.Contract).Include(c => c.UserCoopsXrefs).Where(c => c.Contract == contract && c.GuildId == guildRef.Id && c.League == (uint)account.GetGrade()
+             && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now).ToListAsync();
+
+            if(!coops.Any()) {
+                await command.RespondAsync($"⚠️ERROR: No open Grade {account.GetGrade()} coop spots found for {contract.Name}");
+                return;
+            }
+
+            _ = priority switch {
+                FindCoopPrioritization.FinishTimeLow => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
+                FindCoopPrioritization.FinishTimeHigh => coops = coops.OrderByDescending(c => c.CoopEnds).ToList(),
+                FindCoopPrioritization.LowPlayerCount => coops = coops.OrderBy(c => c.UserCoopsXrefs.Count()).ToList(),
+                _ => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
+            };
+
+            Coop newCoop = null;
+            foreach(var coop in coops) {
+                var userids = coop.UserCoopsXrefs.Select(x => x.UserId).ToList();
+                var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
+                var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
+                var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);
+                if(details.HasSpots) {
+                    newCoop = coop;
+                    break;
+                }
+            }
+
+            if(newCoop is null) {
+                await command.RespondAsync($"⚠️ERROR: No open Grade {account.GetGrade()} coop spots found for {contract.Name}");
+                return;
+            }
+
+            var discordUser = _client.GetUser(dbuser.DiscordId);
+            var coopChannel = _client.GetChannel(newCoop.DiscordChannelId);
+
+            var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Name, discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+            if(newxref == null) {
+                await command.RespondAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
+                return;
+            }
+            db.Add(newxref);
+
+            await command.RespondAsync($"Sucessfully moved {discordUser.Mention} ({account.Name}) to {((ITextChannel)coopChannel).Mention}");
             await db.SaveChangesAsync();
         }
 
