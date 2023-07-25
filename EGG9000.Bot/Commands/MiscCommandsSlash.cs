@@ -408,7 +408,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                         goalMER = 50;
                     }
                 }
-                Trace.WriteLine($"{goalMER} and {pe}");
+
                 seMER = calculateNeeded(goalMER, pe);
 
                 await command.RespondAsync($"The **MER** for **{username}** is `{MER}`(<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nSE for MER {goalMER}: {seMER}<:Soul_Egg_SE:724341890794913964>");
