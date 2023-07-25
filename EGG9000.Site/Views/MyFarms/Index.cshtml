@@ -109,7 +109,7 @@
 </div>
 
 <div style="padding-bottom: 10px;">
-    <span style="margin-right:5px;"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
+    <span style="margin-right:10px;"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
     <span style="margin:5px;" title="Click to copy" onclick="copyIdToClipboard('@Model.User.DiscordId')"><b><u>Discord ID</u></b>: @Model.User.DiscordId</span>
     @if (Model.User.GuildId == 0){
         <span style="margin:5px; color: #FFAA33;">⚠️ Not currently a member of a Discord server, might need to run /moveserver if you are supposed to be</span>
@@ -146,12 +146,11 @@
         //Remove existing "tank" and "hyperloop" options
         epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Hyperloop"));
         epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Fuel Tank"));
-
         var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1){
-                    @:<span style="margin-right: 5px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
+                    @:<span style="margin-right:10px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
                     <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;"/>
                     @if (backup.PermitLevel == 0){
                         <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
@@ -160,24 +159,24 @@
                         <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 }
-                <span style="margin-right:5px;" onclick="copyIdToClipboard('@backup.EggIncId')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
-                <span style="margin-right:5px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
+                <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
+                <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
                 @if (!dbguild.DisableBG) {
                     if(account.Group == 0){
-                        <span style="margin-right:5px;; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
+                        <span style="margin-right:10px;; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
                     } else {
-                        <span style="margin-right:5px;"><b><u>Boarding Group @account.Group</u></b></span>
+                        <span style="margin-right:10px;"><b><u>Boarding Group @account.Group</u></b></span>
                     }
                 }
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
-                    <span style="margin-right:5px;"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToString()</span>
+                    <span style="margin-right:10px;" title="Date/Time displayed in local time"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToLocalTime().ToString("yyyy-MM-dd h:mm:ss tt")</span>
                 }
                 @if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:5px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
+                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
                 } else {
-                    <span style="margin-right:5px;"><b><u>Filter</u></b>: All</span>
+                    <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
-                <span style="margin-right:5px;">
+                <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
                     @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
@@ -233,7 +232,7 @@
             </ul>
 
             <div class="tab-content">
-                <div class="tab-pane" id="farms@(index)" role="tabpanel">
+                <div class="tab-pane" style="margin-top:20px" id="farms@(index)" role="tabpanel">
                     @for (var i = 0; i < backup.Farms.Count; i++) {
                         var farm = backup.Farms[i];
 
@@ -336,7 +335,7 @@
                     }
                 </div>
 
-                <div class="tab-pane" id="spacemissions@(index)" role="tabpanel">
+                <div class="tab-pane" style="margin-top: 20px" id="spacemissions@(index)" role="tabpanel">
                     @foreach (var mission in backup.SpaceMissions ?? new List<SpaceMission>()) {
                         var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
 
@@ -416,25 +415,76 @@
                 @if (inDB) {
                     <div class="tab-pane" id="merits@(index)" role="tabpanel">
                         @{
-                            foreach (var merit in merits) {
-                                <div>
-                                    @merit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))
-                                    @if (isAdmin) {
-                                        <a href="/myfarms/removemerit?id=@merit.Id">X</a>
-                                    }
+                            if (merits.Count > 0)
+                            {
+                                <div class="card" style="margin-top:20px">
+                                    <table class="table table-striped">
+                                        <tr>
+                                            <th class="text-left">Date</th>
+                                            <th>Reason</th>
+                                            @if(isAdmin){
+                                                <th>Remove</th>
+                                            }
+                                        </tr>
+                                        @foreach (var merit in merits)
+                                        {
+                                            <tr>
+                                                <td>@merit.When.ToString("yyyy-MM-dd")</td>
+                                                <td> @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))</td>
+                                                @if(isAdmin){
+                                                    <td><a href="/myfarms/removemerit?id=@merit.Id">X</a></td>
+                                                }
+                                            </tr>
+                                        }
+                                    </table>
                                 </div>
                             }
+                            else
+                            {
+                                <div class="card" style="padding: 20px; margin-top:20px; text-align: center">
+                                    <span style="display: inline-block;">No merits for user.</span>
+                                </div>
+                            }
+
                         }
                     </div>
                     @if (isAdmin) {
                         <div class="tab-pane" id="demerits@(index)" role="tabpanel">
                             @{
                                 List<Demerit> demerits = Model.Demerits;
-                                foreach (var demerit in demerits) {
-                                    <div>
-                                        @demerit.When.ToString("yyyy-M-d") @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage)) <a href="/myfarms/removedemerit?id=@demerit.Id">X</a>
+                                if(demerits.Count > 0)
+                                {
+                                    <div class="card" style="margin-top:20px">
+                                        <table class="table table-striped">
+                                            <tr>
+                                                <th class="text-left">Date</th>
+                                                <th>Reason</th>
+                                                @if (isAdmin)
+                                                {
+                                                    <th>Remove</th>
+                                                }
+                                            </tr>
+                                            @foreach (var demerit in demerits)
+                                            {
+                                                <tr>
+                                                    <td>@demerit.When.ToString("yyyy-MM-dd"))</td>
+                                                    <td> @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage))</td>
+                                                    @if (isAdmin)
+                                                    {
+                                                        <td><a href="/myfarms/removedemerit?id=@demerit.Id">X</a></td>
+                                                    }
+                                                </tr>
+                                            }
+                                        </table>
                                     </div>
                                 }
+                                else
+                                {
+                                    <div class="card" style="padding: 20px; margin-top:20px; text-align: center">
+                                        <span style="display: inline-block;">No demerits for user.</span>
+                                    </div>
+                                }
+
                             }
                         </div>
                     }
