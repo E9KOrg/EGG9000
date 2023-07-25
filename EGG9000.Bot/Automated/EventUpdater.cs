@@ -114,30 +114,58 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
-                if(channel == default)
-                    continue;
-                var newName = "game-events";
+                var newName = "subscriber-game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";
 
-                var eventsWithCustom = recentEvents.Where(x => !x.Ended).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
+                /* 'Normal' Game Events channel*/
+                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+                if(channel != default) {
+                    var eventsWithCustom = recentEvents.Where(x => !x.Ended && !x.CcOnly).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
 
-                foreach(var e in eventsWithCustom) {
-                    if(e.Custom.Priority > 0 || true) {
-                        stackedEmoji += e.Custom.Emoji ?? "";
-                    } else {
-                        singleEmoji = e.Custom.Emoji ?? "";
+                    foreach(var e in eventsWithCustom) {
+                        if(e.Custom.Priority > 0 || true) {
+                            stackedEmoji += e.Custom.Emoji ?? "";
+                        } else {
+                            singleEmoji = e.Custom.Emoji ?? "";
+                        }
+                    }
+                    if(stackedEmoji.Length > 0) {
+                        newName = stackedEmoji + newName;
+                    } else if(singleEmoji.Length > 0) {
+                        newName = singleEmoji + newName;
+                    }
+
+                    if(channel.Name != newName && channel != null) {
+                        await channel.ModifyAsync(x => x.Name = newName);
                     }
                 }
-                if(stackedEmoji.Length > 0) {
-                    newName = stackedEmoji + newName;
-                } else if(singleEmoji.Length > 0) {
-                    newName = singleEmoji + newName;
-                } 
 
-                if(channel.Name != newName && channel != null) {
-                    await channel.ModifyAsync(x => x.Name = newName);
+                //"Reset" vars
+                newName = "sub-game-events";
+                singleEmoji = "";
+                stackedEmoji = "";
+
+                /* Subscriber-Only Game Events channel */
+                var ccChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
+                if(ccChannel != null) {
+                    var ccEventsWithCustom = recentEvents.Where(x => !x.Ended && x.CcOnly).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
+                    foreach(var se in ccEventsWithCustom) {
+                        if(se.Custom.Priority > 0 || true) {
+                            stackedEmoji += se.Custom.Emoji ?? "";
+                        } else {
+                            singleEmoji = se.Custom.Emoji ?? "";
+                        }
+                    }
+                    if(stackedEmoji.Length > 0) {
+                        newName = stackedEmoji + newName;
+                    } else if(singleEmoji.Length > 0) {
+                        newName = singleEmoji + newName;
+                    }
+
+                    if(ccChannel.Name != newName && ccChannel != null) {
+                        await ccChannel.ModifyAsync(x => x.Name = newName);
+                    }
                 }
             }
         }
@@ -146,13 +174,33 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+
+                var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
+                var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+
                 RestUserMessage message;
                 var notification = customization.Settings.Notifications?
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
-                message = await channel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
 
+                //If the event is subscriber-only
+                if(newEvent.CcOnly) {
+                    
+                    //Send to non-CCs without ping
+                    message = await eventChannel.SendMessageAsync(null, embed: embed);
+
+                    //If the CC event channel was found, that's where we'll ping for CC events
+                    if(ccEventChannel != null) {
+                        var ccMessage = await ccEventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        //Add the CC event channel message to the IDs
+                        messageIds.Add(ccMessage.Id);
+                    }
+                } else {
+                    //Only send to non-CC channel, with ping
+                    message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                }
+
+                //Always add the message id
                 messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
@@ -164,11 +212,32 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
-                if(channel != null) {
+
+                var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
+                if(eventChannel != null) {
                     foreach(var mid in messageIds) {
                         try {
-                            var message = ((RestUserMessage)await channel.GetMessageAsync(mid));
+                            var message = (RestUserMessage)await eventChannel.GetMessageAsync(mid);
+                            if(message != null) {
+                                var notification = customization.Settings.Notifications?
+                                    .OrderByDescending(x => x.MinValue)
+                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                                await message.ModifyAsync(msg => {
+                                    msg.Embed = embed;
+                                    msg.Content = (notification != null && !currentEvent.CcOnly) ? $"<@&{notification.RoleID}>" : null;
+                                });
+                            }
+                        } catch(Exception) {
+                            _logger.LogWarning("Error Updating Messages for {guild}", guild.Name);
+                        }
+                    }
+                }
+
+                var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
+                if(ccEventChannel != null && currentEvent.CcOnly) {
+                    foreach(var mid in messageIds) {
+                        try {
+                            var message = (RestUserMessage)await eventChannel.GetMessageAsync(mid);
                             if(message != null) {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
@@ -215,10 +284,13 @@ namespace EGG9000.Bot.Automated {
             var embed = new EmbedBuilder()
                 .WithTitle(CrossOut ? $"~~{title}~~" : title)
                 .WithColor(color)
-                .WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
                 .WithDescription(CrossOut ? $"~~{description}~~" : description);
-                /*.WithFooter("Last Updated")
-                .WithTimestamp(DateTimeOffset.Now);*/
+
+            if(e.CcOnly) {
+                embed.WithAuthor("Egg, Inc ULTRA-Only Event", "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless");
+            } else {
+                embed.WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751");
+            }
 
             if(!string.IsNullOrWhiteSpace(eventC.ThumbnailURL)) {
                 embed.WithThumbnailUrl(eventC.ThumbnailURL);
@@ -317,7 +389,7 @@ namespace EGG9000.Bot.Automated {
                     var messageIDs = JsonConvert.DeserializeObject<List<(ulong, ulong)>>(shell.MessageIds);
                     foreach(var message in messageIDs) {
                         var channel = _client.GetChannel(message.Item1);
-                        var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel.Id));
+                        var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel?.Id));
                         ulong? ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
                         if(channel is not null) {
                             await (channel as SocketTextChannel).ModifyMessageAsync(message.Item2, msg => { msg.Embed = embed; msg.Content = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null; });
