@@ -446,9 +446,9 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
         public enum MERChoice {
             [Discord.Interactions.ChoiceDisplay("Current")] Current = 0,
-            [Discord.Interactions.ChoiceDisplay("20")] Twenty = 20,
-            [Discord.Interactions.ChoiceDisplay("30")] Thirty = 30,
-            [Discord.Interactions.ChoiceDisplay("40")] Forty = 40
+            [Discord.Interactions.ChoiceDisplay("30")] Twenty = 30,
+            [Discord.Interactions.ChoiceDisplay("40")] Thirty = 40,
+            [Discord.Interactions.ChoiceDisplay("50")] Forty = 50
         };
 
         [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", AdminOnly = false, ParentCommand = "formulae")]
@@ -484,7 +484,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var dataObjs = data.Split("|");
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var discordUsername = dataObjs[1];
-            var MERValue = dataObjs[2] == "Current" ? 0 : int.Parse(dataObjs[2]);
+            var MERValue = dataObjs[1] == "Current" ? 0 : int.Parse(dataObjs[1]);
 
             var contentString = await MERCalculate(account, discordUsername, MERValue);
             await component.UpdateAsync(x => { x.Content = contentString; x.Components = null; });
