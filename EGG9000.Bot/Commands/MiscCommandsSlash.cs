@@ -451,7 +451,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             [Discord.Interactions.ChoiceDisplay("40")] Forty = 40
         };
 
-        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", AdminOnly = true, ParentCommand = "formulae")]
+        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", AdminOnly = false, ParentCommand = "formulaetesttwo")]
         public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] MERChoice MERValue) {
             await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -549,7 +549,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
         }
 
-        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", AdminOnly = true, ParentCommand = "formulae")]
+        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", AdminOnly = false, ParentCommand = "formulaetesttwo")]
         public static async Task LLC(FauxCommand command, ApplicationDbContext db, [SlashParam] string test) {
             await command.RespondAsync("Calculating LLC... (this command does nothing currently)");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);

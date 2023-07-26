@@ -18,10 +18,10 @@ namespace EGG9000.Common.Commands {
     [AttributeUsage(AttributeTargets.Method)]
     public class SlashCommandAttribute : System.Attribute {
         public string Description = "";
-        public bool AdminOnly;
-        public bool AllowFarmHand;
-        public bool CPOnly;
-        public string ParentCommand { get; set; }
+        public bool AdminOnly = false;
+        public bool AllowFarmHand = false;
+        public bool CPOnly = false;
+        public string ParentCommand { get; set; } = "";
     }
     [AttributeUsage(AttributeTargets.Method)]
     public class ComponentCommandAttribute : System.Attribute {
