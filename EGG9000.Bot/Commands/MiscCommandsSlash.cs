@@ -451,7 +451,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             [Discord.Interactions.ChoiceDisplay("50")] Forty = 50
         };
 
-        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", AdminOnly = false, ParentCommand = "formulae")]
+        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae")]
         public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] MERChoice MERValue) {
             await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -491,15 +491,6 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         private static async Task<string> MERCalculate(EggIncAccount account, string userName, int MERValue) {
-            var seStr = "";
-            double seQ = 0;
-            double seTotal = 0;
-            long pe = 0;
-            double MER = 0;
-            var MERse = "";
-            double MERpe = 0;
-            long MERgoal = 0;
-
             double calculateMER(double se, long pe) {
                 var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
                 return result;
@@ -511,6 +502,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 return result.ToEggString();
             }
 
+            double seQ;
             double calculateNeededPE(long MER, double se, long pe) {
                 var result = (-10 * MER) + (91 * Math.Log10(seQ)) + 200;
                 result -= pe;
@@ -521,12 +513,13 @@ Last Backup <t:{backup.LastBackupTime}:R>
             if(backup is null) {
                 return $"Backup not found for user `{account.Name}`";
             }
-            seStr = backup.SoulEggs.ToEggString();
+            var seStr = backup.SoulEggs.ToEggString();
             seQ = backup.SoulEggs / 1e18; // Convert to quintillions
-            seTotal = backup.SoulEggs;
-            pe = backup.EggsOfProphecy;
-            MER = Math.Round(calculateMER(seQ, pe), 2);
+            var seTotal = backup.SoulEggs;
+            long pe = backup.EggsOfProphecy;
+            var MER = Math.Round(calculateMER(seQ, pe), 2);
 
+            long MERgoal;
             if(MERValue != 0) {
                 MERgoal = MERValue;
             } else {
@@ -541,22 +534,61 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
 
             if(MERgoal > MER) {
-                MERse = calculateNeededSE(MERgoal, seTotal, pe);
-                return($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
+                var MERse = calculateNeededSE(MERgoal, seTotal, pe);
+                return ($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
             } else {
-                MERpe = Math.Round(calculateNeededPE(MERgoal, seQ, pe), 1);
+                var MERpe = Math.Round(calculateNeededPE(MERgoal, seQ, pe), 1);
                 return ($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nYou're able to maintain MER {MERgoal} for another <:Egg_of_Prophecy_PE:669981330477547580>`{MERpe}`");
             }
         }
 
-        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", AdminOnly = false, ParentCommand = "formulae")]
-        public static async Task LLC(FauxCommand command, ApplicationDbContext db, [SlashParam] string test) {
-            await command.RespondAsync("Calculating LLC... (this command does nothing currently)");
+        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae")]
+        public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
+            await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find user");
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
+
+            var contentString = "";
+
+            if(user.EggIncAccounts.Count == 1) {
+                contentString = await LLCCalculate(user.EggIncAccounts.FirstOrDefault(), user.DiscordUsername);
+                await command.ModifyOriginalResponseAsync(x => {
+                    x.Embed = null;
+                    x.Content = $"\n{contentString}\n";
+                });
+            } else {
+                var builder = new ComponentBuilder();
+                foreach(var account in user.EggIncAccounts) {
+                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"LLCAccountButton:{account.Id}|{user.DiscordUsername} - {account.Name}");
+                }
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to check the LLC of."; x.Components = builder.Build(); });
+            }
+        }
+
+        [ComponentCommand]
+        public static async Task LLCAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            if(user is null) return;
+            var dataObjs = data.Split("|");
+            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
+            var discordUsername = dataObjs[1];
+
+            var contentString = await LLCCalculate(account, discordUsername);
+            await component.UpdateAsync(x => { x.Content = contentString; x.Components = null; });
+        }
+        private static async Task<string> LLCCalculate(EggIncAccount account, string userName) {
+            var stringBuilder = new StringBuilder();
+            var backup = account.Backup;
+            if(backup == null) {
+                return null;
+            }
+
+            stringBuilder.Append($"The **LLC** for **{userName}** is ``");
+            stringBuilder.AppendLine();
+            return stringBuilder.ToString();
         }
     }
 }
