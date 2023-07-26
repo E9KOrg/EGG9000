@@ -245,7 +245,7 @@ namespace EGG9000.Bot.Services {
 
             foreach(var command in _slashCommandFunctions) {
                 var guildCommand = new SlashCommandBuilder();
-                guildCommand.DefaultMemberPermissions = command.Details.AdminOnly ? GuildPermission.Administrator : GuildPermission.UseApplicationCommands;
+                guildCommand.DefaultMemberPermissions = GuildPermission.UseApplicationCommands;
                 guildCommand.WithName(command.Name);
                 if(command.Details.AdminOnly) {
                     command.Details.Description = $"(Admin Only) {command.Details.Description}";
@@ -253,7 +253,7 @@ namespace EGG9000.Bot.Services {
                 guildCommand.WithDescription(command.Details.Description);
                 //guildCommand.Description += "~";
 
-                if(command.Details.AdminOnly) {
+                if(command.Details.AdminOnly == true) {
                     guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
                 }
 
@@ -530,7 +530,7 @@ namespace EGG9000.Bot.Services {
                     .Select(x => new SlashCommandFunction {
                         Name = x.Key,
                         SubFunctions = x.ToList(),
-                        Details = new SlashCommandAttribute { Description = "", AdminOnly = x.Any(y => y.Details.AdminOnly) }
+                        Details = new SlashCommandAttribute { Description = "Bruh?", AdminOnly = x.Any(y => y.Details.AdminOnly == true)},
                     })
                 );
 
