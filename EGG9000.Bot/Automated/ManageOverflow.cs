@@ -168,7 +168,15 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private async Task _client_RoleUpdated(SocketRole originalRole, SocketRole updatedRole) {
+        private Task _client_RoleUpdated(SocketRole originalRole, SocketRole updatedRole) {
+            _ = Task.Run(async () => {
+                await UpdateRoles(originalRole, updatedRole);
+            });
+
+            return Task.CompletedTask;
+        }
+
+        private async Task UpdateRoles(SocketRole originalRole, SocketRole updatedRole) { 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
             if(!guild.OverflowServers.Any() || guild.RolesToSync is null)
@@ -191,6 +199,11 @@ namespace EGG9000.Bot.Automated {
                     });
                 }
             }
+        }
+
+        private async Task HandleCommandPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            if(guild.RolesToSync is null)
+                return;
         }
 
         private async Task HandleRoleSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
