@@ -29,7 +29,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public const string UserId = "EI5223299518300160";
         
-        public const uint ClientVersion = 53;
+        public const uint ClientVersion = 54;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
