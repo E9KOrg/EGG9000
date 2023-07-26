@@ -138,6 +138,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = true, AllowFarmHand = true)]
         public static async Task FindCoopForUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
             [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid, [SlashParam(Required = false)]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
+            await command.DeferAsync();
             var guildRef = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString())); 
             var contract = await db.Contracts.FirstOrDefaultAsync(c => c.ID == contractid);
             var userid = useraccount.Split("|")[0];
