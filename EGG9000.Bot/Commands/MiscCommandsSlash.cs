@@ -28,9 +28,6 @@ using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using Google.Protobuf.WellKnownTypes;
 using static Ei.Backup.Types;
-using Humanizer.Localisation;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using System.Runtime.ConstrainedExecution;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
