@@ -201,9 +201,73 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private async Task HandleCommandPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
-            if(guild.RolesToSync is null)
-                return;
+        private class RoleMap {
+            public ulong RoleID { get; set; }
+            public List<(ulong GuildId, ulong RoleId)> Values { get; set; }
+        }
+
+
+
+        public class Permission {
+            public string id { get; set; }
+            public int type { get; set; }
+            public bool permission { get; set; }
+        }
+
+        public class GuildApplicationCommandPermissions {
+            public string id { get; set; }
+            public string application_id { get; set; }
+            public string guild_id { get; set; }
+            public List<Permission> permissions { get; set; }
+        }
+
+        private async Task HandleCommandPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken, List<RoleMap> roleMaps) {
+            //if(guild.RolesToSync is null)
+            //    return;
+
+
+            //var commands = await mainServer.GetApplicationCommandsAsync();
+
+            //foreach(var command in commands.Where(x => x.Name == "findcoopforuser")) {
+            //    var permissions = await ContractsAPI.DiscordRestGet<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", "NTE0MjU3MTkyODAzODkzMjcy.G0GncW.DdPT2JoY-y_eS6NODRkKKRk-Clc-csd4Qm6AMM");
+
+            //    if(permissions.permissions is null)
+            //        continue;
+            //    foreach(var overflowServer in overflowServers) {
+            //        var overflowPermissions = new GuildApplicationCommandPermissions {
+            //            permissions = new List<Permission>()
+            //        };
+
+            //        foreach(var p in permissions.permissions) {
+            //            var np = new Permission {
+            //                id = p.type == 1 && p.id != mainServer.EveryoneRole.Id.ToString() ? roleMaps.First(y => y.RoleID.ToString() == p.id).Values.First(y => y.GuildId == overflowServer.Id).RoleId.ToString() : p.id,
+            //                permission = p.permission,
+            //                type = p.type
+            //            };
+            //            overflowPermissions.permissions.Add(np);
+            //        }
+
+            //        var currentOverflowPermissions = await ContractsAPI.DiscordRestGet<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", "NTE0MjU3MTkyODAzODkzMjcy.G0GncW.DdPT2JoY-y_eS6NODRkKKRk-Clc-csd4Qm6AMM");
+
+
+            //        var match = true;
+            //        if(overflowPermissions.permissions.Count == currentOverflowPermissions.permissions.Count) {
+            //            foreach(var permission in overflowPermissions.permissions) {
+            //                if(!currentOverflowPermissions.permissions.Any(x => x.id == permission.id && x.permission == permission.permission && x.type == permission.type)) {
+            //                    match = false;
+            //                    break;
+            //                }
+            //            }
+            //        } else {
+            //            match = false;
+            //        }
+
+            //        if(match == false) {
+            //            var response = await ContractsAPI.DiscordRestPut<GuildApplicationCommandPermissions, GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{command.Id}/permissions", "NTE0MjU3MTkyODAzODkzMjcy.G0GncW.DdPT2JoY-y_eS6NODRkKKRk-Clc-csd4Qm6AMM", overflowPermissions);
+            //        }
+            //    }
+            //}
+            //mainServer.GetApplicationCommandsAsync();
         }
 
         private async Task HandleRoleSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
@@ -211,6 +275,15 @@ namespace EGG9000.Bot.Automated {
                 return;
             var roleids = guild.RolesToSync.Split(",");
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
+
+            var roleMaps = rolesToSync.Select(x => {
+                var map = new RoleMap {
+                    RoleID = x.Id,
+                    Values = new List<(ulong GuildId, ulong RoleId)>()
+                };
+                return map;
+            }).ToList();
+
 
             foreach(var overflowServer in overflowServers) {
                 StillAlive();
@@ -220,9 +293,9 @@ namespace EGG9000.Bot.Automated {
                 foreach(var role in rolesToSync.OrderByDescending(x => x.Position)) {
                     if(cancellationToken.IsCancellationRequested) break;
 
-                    var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                    IRole overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
                     if(overflowRole is null) {
-                        var newRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Color);
+                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Color);
                         //if(!string.IsNullOrEmpty(role.Icon)) {
                         //    await newRole.ModifyAsync(async x => x.Icon = new Image(await DownloadImage(role.GetIconUrl())));
                         //}
@@ -230,47 +303,50 @@ namespace EGG9000.Bot.Automated {
                         //var image = new Image(await DownloadImage(role.GetIconUrl()));
                         //await overflowRole.ModifyAsync(x => x.Icon = image);
                     }
-
+                    roleMaps.First(x => x.RoleID == role.Id).Values.Add((overflowServer.Id, overflowRole.Id));
                 }
 
                 //Sync user roles
-                for(var i = 0; i < overflowServer.Users.Count; i++) {
-                    StillAlive();
-                    var overflowUser = overflowServer.Users.ElementAt(i);
-                    //foreach(var overflowUser in overflowServer.Users) {
-                    if(cancellationToken.IsCancellationRequested) {
-                        break;
-                    }
-                    var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
-                    if(mainServerUser == null)
-                        continue;
+                //for(var i = 0; i < overflowServer.Users.Count; i++) {
+                //    StillAlive();
+                //    var overflowUser = overflowServer.Users.ElementAt(i);
+                //    //foreach(var overflowUser in overflowServer.Users) {
+                //    if(cancellationToken.IsCancellationRequested) {
+                //        break;
+                //    }
+                //    var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
+                //    if(mainServerUser == null)
+                //        continue;
 
-                    var neededRoles = new List<SocketRole>();
-                    var removeRoles = new List<SocketRole>();
-                    foreach(var role in rolesToSync) {
-                        StillAlive();
-                        var hasRoleInMain = mainServerUser.Roles.Any(x => x.Name == role.Name);
-                        var hasRoleInOverflow = overflowUser.Roles.Any(x => x.Name == role.Name);
-                        var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
-                        if(hasRoleInMain && !hasRoleInOverflow && overflowRole is not null) {
-                            neededRoles.Add(overflowRole);
-                        }
-                        if(!hasRoleInMain && hasRoleInOverflow && overflowRole is not null) {
-                            removeRoles.Add(overflowRole);
-                        }
-                    }
-                    if(neededRoles.Count > 0) {
-                        _logger.LogInformation("Adding overflow roles ({roles}) to {user} in {overflowServer}",
-                            String.Join(",", neededRoles.Select(x => x.Name)), overflowUser.GetCleanName(), overflowServer.Name);
-                        await overflowUser.AddRolesAsync(neededRoles);
-                    }
-                    if(removeRoles.Count > 0) {
-                        _logger.LogInformation("Removing overflow roles ({roles}) to {user}", String.Join(",", removeRoles.Select(x => x.Name)), overflowUser.GetCleanName());
-                        await overflowUser.RemoveRolesAsync(removeRoles);
-                    }
-                }
+                //    var neededRoles = new List<SocketRole>();
+                //    var removeRoles = new List<SocketRole>();
+                //    foreach(var role in rolesToSync) {
+                //        StillAlive();
+                //        var hasRoleInMain = mainServerUser.Roles.Any(x => x.Name == role.Name);
+                //        var hasRoleInOverflow = overflowUser.Roles.Any(x => x.Name == role.Name);
+                //        var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                //        if(hasRoleInMain && !hasRoleInOverflow && overflowRole is not null) {
+                //            neededRoles.Add(overflowRole);
+                //        }
+                //        if(!hasRoleInMain && hasRoleInOverflow && overflowRole is not null) {
+                //            removeRoles.Add(overflowRole);
+                //        }
+                //    }
+                //    if(neededRoles.Count > 0) {
+                //        _logger.LogInformation("Adding overflow roles ({roles}) to {user} in {overflowServer}",
+                //            String.Join(",", neededRoles.Select(x => x.Name)), overflowUser.GetCleanName(), overflowServer.Name);
+                //        await overflowUser.AddRolesAsync(neededRoles);
+                //    }
+                //    if(removeRoles.Count > 0) {
+                //        _logger.LogInformation("Removing overflow roles ({roles}) to {user}", String.Join(",", removeRoles.Select(x => x.Name)), overflowUser.GetCleanName());
+                //        await overflowUser.RemoveRolesAsync(removeRoles);
+                //    }
+                //}
 
             }
+
+            //Update role maps
+            await HandleCommandPermissionSyncs(guild, mainServer, overflowServers, cancellationToken, roleMaps);
         }
 
         private async Task<MemoryStream> DownloadImage(string url) {

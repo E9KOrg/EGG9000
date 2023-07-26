@@ -16,6 +16,7 @@ using System.IO.Compression;
 using ComponentAce.Compression.Libs.zlib;
 using Ei;
 using Newtonsoft.Json;
+using System.Net.Http.Json;
 
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
@@ -645,6 +646,24 @@ namespace EGG9000.Bot.EggIncAPI {
             } catch(Exception) {
                 //return new Ei.EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
                 return null;
+            }
+        }
+
+        public static async Task<T> DiscordRestGet<T>(string path, string DiscordToken) {
+            using(var client = new HttpClient()) {
+                client.BaseAddress = new Uri("https://discordapp.com/api/");
+                client.DefaultRequestHeaders.Add("Authorization", "Bot " + DiscordToken);
+                var response = await client.GetAsync(path);
+                return await response.Content.ReadFromJsonAsync<T>();
+            }
+        }
+
+        public static async Task<T> DiscordRestPut<T,U>(string path, string DiscordToken,U Params) {
+            using(var client = new HttpClient()) {
+                client.BaseAddress = new Uri("https://discordapp.com/api/");
+                client.DefaultRequestHeaders.Add("Authorization", "Bot " + DiscordToken);
+                var response = await client.PutAsJsonAsync(path, Params);
+                return await response.Content.ReadFromJsonAsync<T>();
             }
         }
 
