@@ -146,7 +146,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
             var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
 
-            var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract);
+            var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.Now);
 
             if(contract.cc_only && account.SubscriptionLevel == 0) {
                 await command.RespondAsync($"⚠️ERROR: Non-subscribed account cannot be assigned to subscriber-only contract");
