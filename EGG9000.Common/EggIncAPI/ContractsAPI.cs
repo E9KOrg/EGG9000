@@ -34,8 +34,8 @@ namespace EGG9000.Bot.EggIncAPI {
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.27.5",
-                Build = "111244",
+                Version = "1.27.6",
+                Build = "111250",
                 Platform = "ANDROID",
                 Country = "US",
                 Language = "en", Debug = false
@@ -144,7 +144,7 @@ namespace EGG9000.Bot.EggIncAPI {
                             break;
                         case Ei.CreateCoopRequest e:
                             url = "ei/create_coop";
-                            e.Rinfo = GetInfo(UserId);
+                            //e.Rinfo = GetInfo(UserId);
                             e.WriteTo(ms1);
                             break;
                         case Ei.QueryCoopRequest e:

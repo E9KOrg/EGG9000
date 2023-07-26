@@ -47,7 +47,7 @@ namespace EGG9000.Common.Helpers {
                 Name = words.GetCoopName(accounts, guild, dbguild),
                 MaxUsers = contract.MaxUsers,
                 Status = CoopStatusEnum.WaitingOnAssigned,
-                League = contract.cc_only ? (uint)Ei.Contract.Types.PlayerGrade.GradeAaa : (uint)grade,
+                League = (uint)grade,
                 AnyLeague = contract.cc_only,
                 CoopEnds = coopEnds,
                 CreatorID = EIID,
@@ -133,22 +133,18 @@ namespace EGG9000.Common.Helpers {
             return true;
         }
         private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool subOnly = false) {
-            var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(new Ei.CreateCoopRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
+            var request = new Ei.CreateCoopRequest {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
-                Grade = grade,
-                Platform = Aux.Platform.Ios,
-                SecondsRemaining = secondsRemaining,
-                SoulPower = 26.24559831915049,
-                Eop = 206,
                 UserId = userid,
-                UserName = "EK9",
-                League = 0,
-                //CcOnly = subOnly,
-                //AllowAllGrades = subOnly,
-                Public = false,
-            }, userid);
+                Grade = grade,
+                SecondsRemaining = secondsRemaining
+            };
+            //if(subOnly) {
+            //    request.AllowAllGrades = true;
+            //    //request.CcOnly = true;
+            //}
+            var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
             if(response == null) {
                 throw new Exception();
             }
