@@ -30,7 +30,7 @@ namespace TestProxy {
                 // Use self-issued generic certificate on all https requests
                 // Optimizes performance by not creating a certificate for each https-enabled domain
                 // Useful when certificate trust is not required by proxy clients
-                //GenericCertificate = new X509Certificate2(@"d:\websites\discordcoopcodes\testproxy\proxy.pfx", "test")
+                GenericCertificate = new X509Certificate2(@"D:\Websites\EGG9000\TestProxy\proxy.crt", "joshtrek")
             };
 
             // Fired when a CONNECT request is received
@@ -42,8 +42,7 @@ namespace TestProxy {
             proxyServer.Start();
 
 
-            var response = ContractsAPI.FirstContact("EI5575686489636864");
-            response.Wait();
+            Console.WriteLine("Proxy server listening on 8000");
             while(true) { }
         }
 

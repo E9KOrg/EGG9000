@@ -17,6 +17,7 @@ using ComponentAce.Compression.Libs.zlib;
 using Ei;
 using Newtonsoft.Json;
 using System.Net.Http.Json;
+using System.Text.Unicode;
 
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
@@ -24,8 +25,8 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
     public class ContractsAPI {
-        public const string BaseAddressNew = "https://ctx-dot-auxbrainhome.appspot.com/";
-        //public const string BaseAddressNew = "https://www.auxbrain.com/";
+        //public const string BaseAddressNew = "https://ctx-dot-auxbrainhome.appspot.com/";
+        public const string BaseAddressNew = "https://www.auxbrain.com/";
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
 
         public const string UserId = "EI5223299518300160";
@@ -36,10 +37,11 @@ namespace EGG9000.Bot.EggIncAPI {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
                 Version = "1.27.6",
-                Build = "111250",
-                Platform = "ANDROID",
+                Build = "1.27.6.0",
+                Platform = "IOS",
                 Country = "US",
-                Language = "en", Debug = false
+                Language = "en", 
+                Debug = false
             };
             if(!noUserID) {
                 info.EiUserId = UserId;
@@ -127,82 +129,96 @@ namespace EGG9000.Bot.EggIncAPI {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
                     client.BaseAddress = new Uri(BaseAddressNew);
-                    var ms1 = new MemoryStream();
-                    var outCodedStream = new CodedOutputStream(ms1);
+                    //var ms1 = new MemoryStream();
+                    //var outCodedStream = new CodedOutputStream(ms1);
 
                     var url = "";
+                    var base64 = "";
                     switch(data) {
                         case Ei.JoinCoopRequest e: {
                                 url = "ei/join_coop";
                                 e.Rinfo = GetInfo(UserId);
-                                e.WriteTo(ms1);
+                                //e.WriteTo(ms1);
+                                base64 = e.ToByteString().ToBase64();
                                 break;
                             }
                         case Ei.GetPeriodicalsRequest e:
                             url = "ei/get_periodicals";
                             e.Rinfo = GetInfo(UserId, true);
-                            e.WriteTo(ms1);
+                            //e.WriteTo(ms1);
+                            base64 = e.ToByteString().ToBase64();
                             break;
-                        case Ei.CreateCoopRequest e:
-                            url = "ei/create_coop";
-                            //e.Rinfo = GetInfo(UserId);
-                            e.WriteTo(ms1);
-                            break;
+                        case Ei.CreateCoopRequest e: {
+                                url = "ei/create_coop";
+                                e.Rinfo = GetInfo(UserId);
+
+                                //var memorySteam = new MemoryStream();
+                                //e.WriteTo(memorySteam);
+                                //memorySteam.Position = 0;
+                                //var messageData = memorySteam.ToArray();
+                                //var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData) };
+                                //message.WriteTo(ms1);
+                                //e.WriteTo(ms1);
+                                base64 = e.ToByteString().ToBase64();
+                                var b64 = e.ToByteString().ToBase64();
+                                break;
+                            }
                         case Ei.QueryCoopRequest e:
                             url = "ei/query_coop";
                             e.Rinfo = GetInfo(UserId);
-                            e.WriteTo(ms1);
+                            //e.WriteTo(ms1);
+                            base64 = e.ToByteString().ToBase64();
                             break;
                         case Ei.UpdateCoopPermissionsRequest e:
                             url = "ei/update_coop_permissions";
                             e.Rinfo = GetInfo(UserId);
-                            e.WriteTo(ms1);
+                            //e.WriteTo(ms1);
+                            base64 = e.ToByteString().ToBase64();
                             break;
                         case Ei.ContractCoopStatusUpdateRequest e:
                             url = "ei/update_coop_status";
                             e.Rinfo = GetInfo(UserId);
-                            e.WriteTo(ms1);
+                            base64 = e.ToByteString().ToBase64();
                             break;
                         case Ei.ConfigRequest e:
                             url = "ei/get_config";
                             e.Rinfo = GetInfo(UserId);
-                            e.WriteTo(ms1);
+                            base64 = e.ToByteString().ToBase64();
                             break;
-                        case Ei.BasicRequestInfo e:
-                            if(typeof(TResponse) == typeof(ContractPlayerInfo)) {
-                                url = "ei_ctx/get_contract_player_info";
-                                var memorySteam = new MemoryStream();
-                                e = GetInfo(UserId);
-                                e.WriteTo(memorySteam);
-                                memorySteam.Position = 0;
-                                var messageData = memorySteam.ToArray();
-                                var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
-                                message.WriteTo(ms1);
-                                authenticated = true;
-                            } else if(typeof(TResponse) == typeof(MyContracts)) {
-                                url = "ei_ctx/get_contracts_archive";
-                                e = GetInfo(UserId);
-                                e.WriteTo(ms1);
-                                authenticated = true;
+                        case Ei.BasicRequestInfo e: {
+                                if(typeof(TResponse) == typeof(ContractPlayerInfo)) {
+                                    url = "ei_ctx/get_contract_player_info";
+                                    var memorySteam = new MemoryStream();
+                                    e = GetInfo(UserId);
+                                    e.WriteTo(memorySteam);
+                                    memorySteam.Position = 0;
+                                    var messageData = memorySteam.ToArray();
+                                    var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                                    base64 = message.ToByteString().ToBase64();
+                                    authenticated = true;
+                                } else if(typeof(TResponse) == typeof(MyContracts)) {
+                                    url = "ei_ctx/get_contracts_archive";
+                                    e = GetInfo(UserId);
+                                    base64 = e.ToByteString().ToBase64();
+                                    authenticated = true;
+                                }
+                                break;
                             }
-                            break;
-                        //case Ei.EggIncFirstContactResponse e:
-                        //    url = "ei/first_contact";
-                        //    e.Rinfo = GetInfo(UserId);
-                        //    e.WriteTo(ms1);
-                        //    break;
                         default:
                             throw new Exception($"Missing Info for {typeof(TRequest).Name}");
                     }
                     var json = JsonConvert.SerializeObject(data);
-                    ms1.Position = 0;
-                    var sr = new StreamReader(ms1);
-                    var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
+                    //ms1.Position = 0;
+                    //var sr = new StreamReader(ms1);
+                    //var bytes = ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd());
+                    //var base64 = Convert.ToBase64String(bytes);
                     var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
                     client.DefaultRequestHeaders.Add("User-Agent", "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0");
                     client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
                     client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                     bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+
+
 
                     var response = await client.PostAsync(url, bac);
 
@@ -237,63 +253,6 @@ namespace EGG9000.Bot.EggIncAPI {
                 Debug = false, 
             }, "EI4765194876354560", true);
         }
-
-        //public static async Task<Ei.PeriodicalsResponse> GetContracts() {
-        //    try {
-        //        var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
-        //        using(var client = new HttpClient(handler)) {
-        //            client.BaseAddress = new Uri("http://www.auxbrain.com/");
-        //            var ms1 = new MemoryStream();
-        //            Serializer.Serialize<GetPeriodicalsRequest>(ms1, new GetPeriodicalsRequest {
-        //                /*user_id = "3216497321658",
-        //                piggy_full = 1,
-        //                piggy_found_full = 0,
-        //                seconds_full_gametime = 1,
-        //                seconds_full_realtime = 1,
-        //                soul_eggs = 3216546461,*/
-        //                soul_eggs = 4916605850998073131,
-        //                current_client_version = 27,
-        //                debug = 0
-        //            });
-        //            ms1.Position = 0;
-        //            var sr = new StreamReader(ms1);
-        //            var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
-        //            var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
-        //            client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-        //            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-        //            client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-        //            bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-
-        //            var response = await client.PostAsync("ei/get_periodicals", bac);
-
-        //            if(response.IsSuccessStatusCode) {
-        //                var r = await response.Content.ReadAsStringAsync();
-        //                var responseString = System.Convert.FromBase64String(r);
-
-        //                var ms = new MemoryStream();
-        //                ms.Write(responseString);
-        //                ms.Position = 0;
-
-        //                //var c = Serializer.Deserialize<PeriodicalsResponse>(ms);
-        //                //c.contracts.Success = true;
-
-
-        //                //using(StreamWriter file = new StreamWriter("rawproto.txt")) {
-        //                //    file.Write(r);
-        //                //    file.Close();
-        //                //}
-
-        //                var c = Ei.PeriodicalsResponse.Parser.ParseFrom(ms);
-
-        //                return c;
-        //            } else {
-        //                return null;// new ContractsResponse { Success = false, Error = "Error response from API" };
-        //            }
-        //        }
-        //    } catch(Exception e) {
-        //        return null; // new ContractsResponse { Success = false, Error = "Bot Exception: " + e.Message };
-        //    }
-        //}
 
         public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, CancellationToken cancellationToken = default, string EIID = null) {
             try {
