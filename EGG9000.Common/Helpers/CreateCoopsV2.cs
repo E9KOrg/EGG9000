@@ -133,16 +133,32 @@ namespace EGG9000.Common.Helpers {
             return true;
         }
         private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool subOnly = false) {
+            //var request = new Ei.CreateCoopRequest {
+            //    ContractIdentifier = ContractID,
+            //    CoopIdentifier = coop.Name.ToLower(),
+            //    UserId = userid,
+            //    Grade = grade,
+            //    SecondsRemaining = secondsRemaining
+            //};
             var request = new Ei.CreateCoopRequest {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
+                SecondsRemaining = secondsRemaining,
                 UserId = userid,
+                UserName = userid,
+                Platform = Aux.Platform.Droid,
+                ClientVersion = 54,
+                SoulPower = 4624103542699216300,
+                Eop = 4632655904192331776,
                 Grade = grade,
-                SecondsRemaining = secondsRemaining
+                Public = false,
+                CcOnly = false,
+                PointsReplay = true,
+                AllowAllGrades = true,
             };
             //if(subOnly) {
             //    request.AllowAllGrades = true;
-            //    //request.CcOnly = true;
+            //    request.CcOnly = true;
             //}
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
             if(response == null) {

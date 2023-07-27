@@ -35,8 +35,10 @@ namespace EGG9000.Bot.Automated {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
 #if DEBUG
         private static TimeSpan delay = TimeSpan.FromMinutes(0);
+        private static TimeSpan interval = TimeSpan.FromMinutes(20);
 #else
         private static TimeSpan delay = TimeSpan.FromMinutes(2);
+        private static TimeSpan interval = TimeSpan.FromMinutes(20);
 #endif
         private Dictionary<ulong, SocketTextChannel> _demeritChannels = new Dictionary<ulong, SocketTextChannel>();
 
@@ -48,7 +50,7 @@ namespace EGG9000.Bot.Automated {
 
         public CoopStatusUpdater(
             IServiceProvider provider
-            ) : base(TimeSpan.FromMinutes(30), delay, provider) {
+            ) : base(interval, delay, provider) {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
@@ -69,7 +71,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.ToLower() == "EraseMusic1 ".Trim().ToLower()).ToList();
+                //coops = coops.Where(x => x.Name.Equals("GenreRug36", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
@@ -433,7 +435,7 @@ namespace EGG9000.Bot.Automated {
                                 }
                             }
 
-                            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, coop.Contract.Details.LengthSeconds, EIID);
+                            var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, coop.Contract.Details.LengthSeconds, EIID);
                         } else {
                             _logger.LogWarning("Status is null for co-op: {coopName}", coop.Name);
                         }
@@ -950,7 +952,7 @@ namespace EGG9000.Bot.Automated {
                         try {
                             var coopFailedCategory = await _client.GetCategoryAsync(GuildChannelType.FailedCategory, guild);
                             if(coopFailedCategory is null)
-                                coopFailedCategory = guild.CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("failed") && x.Name.ToLower().Contains("coops"));
+                                coopFailedCategory = _client.GetGuild(coop.OverflowGuildId).CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("failed") && x.Name.ToLower().Contains("coops"));
                             await coopChannel.ModifyAsync(x => { x.CategoryId = coopFailedCategory.Id; });
                         } catch(Exception) {
 
