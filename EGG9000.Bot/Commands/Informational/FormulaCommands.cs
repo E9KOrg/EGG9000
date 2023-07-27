@@ -128,7 +128,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae")]
+        /*[SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae")]
         public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
             await command.RespondAsync("Getting account backups...", ephemeral: true);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -174,6 +174,6 @@ namespace EGG9000.Bot.Commands {
             stringBuilder.Append($"The **LLC** for **{userName}** is ``");
             stringBuilder.AppendLine();
             return stringBuilder.ToString();
-        }
+        }*/
     }
 }
