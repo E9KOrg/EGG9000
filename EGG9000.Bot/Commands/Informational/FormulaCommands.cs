@@ -40,43 +40,28 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae")]
         public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] MERChoice MERValue) {
-            await command.RespondAsync("Getting account backups...", ephemeral: true);
+            await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
+            if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
                 await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
 
-            var contentString = "";
 
-            if(user.EggIncAccounts.Count == 1) {
-                contentString = await MERCalculate(user.EggIncAccounts.FirstOrDefault(), user.DiscordUsername, (int)MERValue);
-                await command.ModifyOriginalResponseAsync(x => { x.Components = null; x.Content = "Success"; });
-                await command.Channel.SendMessageAsync(contentString);
-            } else {
-                var builder = new ComponentBuilder();
-                foreach(var account in user.EggIncAccounts) {
-                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"MERAccountButton:{account.Id}|{user.DiscordUsername} - {account.Name}|{(int)MERValue}");
-                }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to check the MER of."; x.Components = builder.Build(); });
+            var sb = new StringBuilder();
+            
+
+            foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
+                if(user.EggIncAccounts.Count > 1)
+                    sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
+                MERCalculate(account, sb, user.DiscordUsername, (int)MERValue);
             }
+
+
+            await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
         }
 
-        [ComponentCommand]
-        public static async Task MERAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(user is null) return;
-            var dataObjs = data.Split("|");
-            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
-            var discordUsername = dataObjs[1];
-            var MERValue = int.Parse(dataObjs[2]);
-
-            var contentString = await MERCalculate(account, discordUsername, MERValue);
-            await component.UpdateAsync(x => { x.Components = null; x.Content = "Success"; });
-            await component.Channel.SendMessageAsync(contentString);
-        }
-
-        private static async Task<string> MERCalculate(EggIncAccount account, string userName, int MERValue) {
+        private static void MERCalculate(EggIncAccount account, StringBuilder sb, string userName, int MERValue) {
             double calculateMER(double se, long pe) {
                 var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
                 return result;
@@ -96,9 +81,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var backup = account.Backup;
-            if(backup is null) {
-                return $"Backup not found for user `{account.Name}`";
-            }
+
             var seStr = backup.SoulEggs.ToEggString();
             seQ = backup.SoulEggs / 1e18; // Convert to quintillions
             var seTotal = backup.SoulEggs;
@@ -121,10 +104,10 @@ namespace EGG9000.Bot.Commands {
 
             if(MERgoal > MER) {
                 var MERse = calculateNeededSE(MERgoal, seTotal, pe);
-                return ($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
+                sb.AppendLine($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
             } else {
                 var MERpe = Math.Round(calculateNeededPE(MERgoal, seQ, pe), 1);
-                return ($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nYou're able to maintain MER {MERgoal} for another <:Egg_of_Prophecy_PE:669981330477547580>`{MERpe}`");
+                sb.AppendLine($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nYou're able to maintain MER {MERgoal} for another <:Egg_of_Prophecy_PE:669981330477547580>`{MERpe}`");
             }
         }
 
