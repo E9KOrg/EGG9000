@@ -114,6 +114,19 @@ namespace EGG9000.Site.Controllers {
                 contract.Identifier = "test";
                 contract.MaxCoopSize = 10;
                 contract.Egg = Ei.Egg.Edible;
+            } else if(contractid == "sub") {
+                contract = new Ei.Contract();
+                foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                    var gradeSpec = new Ei.Contract.Types.GradeSpec();
+                    gradeSpec.Grade = grade;
+                    gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
+                    contract.GradeSpecs.Add(gradeSpec);
+                }
+                contract.Name = "test";
+                contract.Identifier = "test";
+                contract.MaxCoopSize = 10;
+                contract.Egg = Ei.Egg.Edible;
+                contract.CcOnly = true;
             } else {
                 contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid)).Details;
             }
