@@ -237,7 +237,7 @@ namespace EGG9000.Bot.Automated {
                 if(ccEventChannel != null && currentEvent.CcOnly) {
                     foreach(var mid in messageIds) {
                         try {
-                            var message = (RestUserMessage)await eventChannel.GetMessageAsync(mid);
+                            var message = (RestUserMessage)await ccEventChannel.GetMessageAsync(mid);
                             if(message != null) {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
