@@ -37,6 +37,7 @@ using System.IO.Pipes;
 using System.IO;
 using MassTransit;
 using EGG9000.Bot.Consumers;
+using EGG9000.Common.Extensions;
 
 namespace EGG9000.Bot.Services {
 
@@ -245,7 +246,7 @@ namespace EGG9000.Bot.Services {
 
             foreach(var command in _slashCommandFunctions) {
                 var guildCommand = new SlashCommandBuilder();
-                guildCommand.DefaultMemberPermissions = command.Details.AdminOnly ? GuildPermission.Administrator : GuildPermission.UseApplicationCommands;
+                guildCommand.DefaultMemberPermissions = GuildPermission.UseApplicationCommands;
                 guildCommand.WithName(command.Name);
                 if(command.Details.AdminOnly) {
                     command.Details.Description = $"(Admin Only) {command.Details.Description}";
@@ -253,7 +254,7 @@ namespace EGG9000.Bot.Services {
                 guildCommand.WithDescription(command.Details.Description);
                 //guildCommand.Description += "~";
 
-                if(command.Details.AdminOnly) {
+                if(command.Details.AdminOnly == true) {
                     guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
                 }
 
@@ -454,20 +455,16 @@ namespace EGG9000.Bot.Services {
                 slashParamDetails.Description = name;
             }
 
-
-
-
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
-                        {typeof(int), ApplicationCommandOptionType.Integer },
-                        {typeof(uint), ApplicationCommandOptionType.Integer },
-                        {typeof(string), ApplicationCommandOptionType.String },
-                        {typeof(bool), ApplicationCommandOptionType.Boolean },
-                        {typeof(SocketGuildUser), ApplicationCommandOptionType.User },
-                        {typeof(SocketUser), ApplicationCommandOptionType.User },
-                        {typeof(SocketChannel), ApplicationCommandOptionType.Channel },
-                        {typeof(SocketRole), ApplicationCommandOptionType.Role },
-                    };
-
+                {typeof(int), ApplicationCommandOptionType.Integer },
+                {typeof(uint), ApplicationCommandOptionType.Integer },
+                {typeof(string), ApplicationCommandOptionType.String },
+                {typeof(bool), ApplicationCommandOptionType.Boolean },
+                {typeof(SocketGuildUser), ApplicationCommandOptionType.User },
+                {typeof(SocketUser), ApplicationCommandOptionType.User },
+                {typeof(SocketChannel), ApplicationCommandOptionType.Channel },
+                {typeof(SocketRole), ApplicationCommandOptionType.Role },
+            };
 
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
                 AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
@@ -477,7 +474,7 @@ namespace EGG9000.Bot.Services {
                 List<ApplicationCommandOptionChoiceProperties> choices = new List<ApplicationCommandOptionChoiceProperties>();
                 foreach(var value in Enum.GetValues(parameterInfo.ParameterType)) {
                     var choice = new ApplicationCommandOptionChoiceProperties();
-                    choice.Name = value.ToString();
+                    choice.Name = Enums.GetAttribute<Discord.Interactions.ChoiceDisplayAttribute>(value)?.Name ?? value.ToString();
                     choice.Value = Convert.ToInt32(value);
                     choices.Add(choice);
                 }
@@ -521,7 +518,7 @@ namespace EGG9000.Bot.Services {
                     .Select(x => new SlashCommandFunction {
                         Name = x.Key,
                         SubFunctions = x.ToList(),
-                        Details = new SlashCommandAttribute { Description = "", AdminOnly = x.Any(y => y.Details.AdminOnly) }
+                        Details = new SlashCommandAttribute { Description = "Bruh?", AdminOnly = x.Any(y => y.Details.AdminOnly == true)},
                     })
                 );
 
