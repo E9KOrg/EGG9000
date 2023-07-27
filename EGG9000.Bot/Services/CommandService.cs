@@ -37,6 +37,7 @@ using System.IO.Pipes;
 using System.IO;
 using MassTransit;
 using EGG9000.Bot.Consumers;
+using EGG9000.Common.Extensions;
 
 namespace EGG9000.Bot.Services {
 
@@ -465,19 +466,6 @@ namespace EGG9000.Bot.Services {
                 {typeof(SocketRole), ApplicationCommandOptionType.Role },
             };
 
-
-            if(parameterInfo.ParameterType.Equals(typeof(MiscCommandsSlash.MERChoice))) {
-                List<ApplicationCommandOptionChoiceProperties> choices = new List<ApplicationCommandOptionChoiceProperties>();
-                foreach(var value in Enum.GetValues(typeof(MiscCommandsSlash.MERChoice)).Cast<MiscCommandsSlash.MERChoice>().ToList()) {
-                    Console.WriteLine(value.ToString() + ": " + Convert.ToInt32(value).ToString());
-                    choices.Add(new ApplicationCommandOptionChoiceProperties {
-                        Name = value.ToString() == "Current" ? "Current" : ((int)value).ToString(),
-                        Value = Convert.ToInt32((int)value)
-                    });
-                }
-                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand, choices.ToArray());
-                return;
-            }
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
                 AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
                 return;
@@ -486,7 +474,7 @@ namespace EGG9000.Bot.Services {
                 List<ApplicationCommandOptionChoiceProperties> choices = new List<ApplicationCommandOptionChoiceProperties>();
                 foreach(var value in Enum.GetValues(parameterInfo.ParameterType)) {
                     var choice = new ApplicationCommandOptionChoiceProperties();
-                    choice.Name = value.ToString();
+                    choice.Name = Enums.GetAttribute<Discord.Interactions.ChoiceDisplayAttribute>(value)?.Name ?? value.ToString();
                     choice.Value = Convert.ToInt32(value);
                     choices.Add(choice);
                 }
