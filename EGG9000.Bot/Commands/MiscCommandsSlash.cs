@@ -31,97 +31,7 @@ using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
-        [Common.Commands.SlashCommand(Description = "Show you required artifacts to craft the requested artifact.")]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam]TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
-            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
-            
-            if(requestedArtifact is null) {
-                await command.RespondAsync($"Unable to locate an artifact with the name {artifact}");
-                return;
-            }
-            
-            await command.RespondAsync("Getting backups...");
-
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
-                return;
-            }
-
-            var contentString = "";
-
-            if(user.EggIncAccounts.Count == 1) {
-                contentString = await CraftStringBuilder(user.EggIncAccounts.First(), quantity, quality, requestedArtifact);
-                await command.ModifyOriginalResponseAsync(x => {
-                    x.Embed = null;
-                    x.Content = $"\n{contentString}\n";
-                });
-            } else {
-                var builder = new ComponentBuilder();
-                foreach(var account in user.EggIncAccounts) {
-                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{((int)quality)}|{quantity}|{artifact}");
-                }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Components = builder.Build(); });
-            }
-
-            user.UpdateAccounts();
-            await db.SaveChangesAsync();
-        }
-
-        [ComponentCommand]
-        public static async Task CraftAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            //await component.UpdateAsync(x => { x.Content = "Working..."; x.Components = null; });
-            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(user is null) return;
-            var dataObjs = data.Split("|");
-            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
-            var quality = (TierInput)int.Parse(dataObjs[1]);
-            var quantity = int.Parse(dataObjs[2]);
-            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[3]);
-
-            var contentString = await CraftStringBuilder(account, quantity, quality, requestedArtifact);
-            await component.UpdateAsync(x => { x.Content = contentString; x.Components = null; });
-        }
-
-        private async static Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
-            var stringBuilder = new StringBuilder();
-            var backup = account.Backup;
-            if(backup == null) {
-                return null;
-            }
-
-            backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup);
-            stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
-            stringBuilder.AppendLine();
-
-            var crafter = new Crafter(backup.ArtifactHall);
-            var basket = crafter.GetCraft(quantity, (int)quality, requestedArtifact.id);
-
-            stringBuilder.AppendFormat($"```{"Name",-20}{"Using",-8}{"Need",-8}{"Cost",-8}");
-            stringBuilder.AppendLine();
-            stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――――――");
-            stringBuilder.AppendLine();
-
-            var ingredients = from kvp in basket.GetIngredients()
-                              orderby EggIncArtifacts.GetFamilyShorthand(kvp.Value.Tier.family) ascending, kvp.Value.Tier.tier_number descending
-                              select kvp;
-            foreach(var ingredient in ingredients) {
-                stringBuilder.AppendFormat($"{$"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}",-20}");
-                stringBuilder.AppendFormat($"{ingredient.Value.Use.Format(),-8}");
-                stringBuilder.AppendFormat($"{ingredient.Value.GetNeed(),-8}");
-                stringBuilder.AppendFormat($"{ingredient.Value.Cost.Format(),-8}");
-                stringBuilder.AppendLine();
-            }
-
-            stringBuilder.AppendLine("```");
-            stringBuilder.Append($"Total Cost: **{basket.GetTotalCost().ToString("#,0", new CultureInfo("en-US"))} GE**");
-            stringBuilder.AppendLine();
-            var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
-            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "You have enough GE!" : "You do not have enough GE!");
-            return stringBuilder.ToString();
-        }
-
-        [Common.Commands.SlashCommand(Description = "Track your EB since the last time you ran this command")]
+        [SlashCommand(Description = "Track your EB since the last time you ran this command")]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -174,7 +84,7 @@ namespace EGG9000.Bot.Commands {
             });
         }
 
-        [Common.Commands.SlashCommand(Description = "How many SE/PE needed for next rank up")]
+        [SlashCommand(Description = "How many SE/PE needed for next rank up")]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
             await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -239,7 +149,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             });
         }
 
-        [Common.Commands.SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
+        [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = true)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
@@ -312,7 +222,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         //    await command.RespondAsync($"Will receive DM ping when co-op is finished and everyone has reported in", ephemeral: true);
         //}
 
-        [Common.Commands.SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
+        [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
@@ -344,7 +254,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
         }
 
-        [Common.Commands.SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = true, AllowFarmHand = true)]
         public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
             DateTimeOffset expireTime;
             try {
@@ -375,7 +285,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
-        [Common.Commands.SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
+        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
         public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {
