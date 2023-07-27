@@ -63,9 +63,12 @@ namespace EGG9000.Bot.Commands {
                 if(guildFind is not null) {
                     var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
                     if(socketGuild is not null) {
-                        var meritChannel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.MeritLogChannel).Id);
-                        if(meritChannel is not null) {
-                            await meritChannel.SendMessageAsync($"{target.Mention}: {merit.Reason} (Merits: {count})");
+                        var meritChannelObj = guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.MeritLogChannel);
+                        if(meritChannelObj is not null) {
+                            var meritChannel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == meritChannelObj.Id);
+                            if(meritChannel is not null) {
+                                await meritChannel.SendMessageAsync($"{target.Mention}: {merit.Reason} (Merits: {count})");
+                            }
                         }
                     }
                 }

@@ -193,10 +193,10 @@ namespace EGG9000.Bot.Automated {
             *
             * FOR NOW, SKIP CREATING COOPS FOR CC_ONLY CONTRACTS UNTIL WE CAN VET IT'S WORKING CORRECLTY
             */
-            if(contract.cc_only) {
-                _logger.LogInformation("Skipping creating Subscriber co-ops for {guild} for Contract {contract}", guild.Name, contract.Name);
-                return;
-            }
+            //if(contract.cc_only) {
+            //    _logger.LogInformation("Skipping creating Subscriber co-ops for {guild} for Contract {contract}", guild.Name, contract.Name);
+            //    return;
+            //}
 
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG}", guild.Name, skipbg + 1);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
