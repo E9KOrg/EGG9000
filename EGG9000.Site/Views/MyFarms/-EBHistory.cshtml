@@ -1,36 +1,68 @@
-﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin)
+﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs)
 
+@if(Model.uncompletePEs.Count > 0)
+{
+	@foreach(var c in Model.uncompletePEs[Model.backup.EggIncId])
+	{
+		<span>EID: @Model.backup.EggIncId Contract ID: @c.ID</span>
+		<br />
+	}
+}
 
-	<table class="table table-striped">
+<div class="table-responsive">
+	<table class="table table-sm align-middle">
+		<caption style="caption-side: top; text-align: center; font-weight: bold;"><u>Egg of Prophecy Progress</u></caption>
 		<thead>
 			<tr>
-				@*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
-				<th>Date</th>
-				<th>Eggs of Prophecy</th>
-				<th style="text-align: right !important;">Soul Eggs</th>
-				<th style="text-align: right !important;">EB</th>
-				<th>Prestiges</th>
+				<th style="text-align: left">From Contracts</th>
+				<th style="text-align: left">From Daily Gifts</th>
+				<th style="text-align: left">From Trophies</th>
+				<th style="text-align: left">Total</th>
 			</tr>
 		</thead>
 		<tbody>
 			<tr>
-				@*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
-				<td>Latest</td>
+				<td>@Model.backup.ArchivedFarms.Sum(x => x.PEGained)</td>
+				<td>@Model.backup.PEFromDailyGifts of 24</td>
+				<td>@Model.backup.PEFromTrophies of 40</td>
 				<td>@Model.backup.EggsOfProphecy</td>
-				<td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
-				<td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
-				<td>@Model.backup.NumPrestiges</td>
 			</tr>
-			@foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
-				<tr>
-					@*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
-					<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
-					<td>@snapshot.EggsOfProphecy</td>
-					<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
-					<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
-					<td>@snapshot.Prestiges</td>
-				</tr>
-			}
+
 		</tbody>
 	</table>
+</div>
+
+<table class="table table-striped">
+	<caption style="caption-side: top; text-align: center; font-weight: bold;"><u>Earnings Boost History</u></caption>
+	<thead>
+		<tr>
+			@*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
+			<th>Date</th>
+			<th>Eggs of Prophecy</th>
+			<th style="text-align: right !important;">Soul Eggs</th>
+			<th style="text-align: right !important;">EB</th>
+			<th>Prestiges</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			@*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
+			<td>Latest</td>
+			<td>@Model.backup.EggsOfProphecy</td>
+			<td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
+			<td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
+			<td>@Model.backup.NumPrestiges</td>
+		</tr>
+		@foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
+			<tr>
+				@*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
+				<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
+				<td>@snapshot.EggsOfProphecy</td>
+				<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
+				<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
+				<td>@snapshot.Prestiges</td>
+			</tr>
+		}
+	</tbody>
+</table>
 

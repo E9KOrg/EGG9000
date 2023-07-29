@@ -124,3 +124,30 @@ body {
         flex-direction: column; /* Change to a vertical layout */
     }
 }
+
+.copy-notification {
+    display: none;
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background-color: rgba(51, 51, 51, 0.8); /* Lighter background color with some transparency */
+    color: #4caf50; /* Green text color */
+    border-radius: 4px;
+    opacity: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Adding a subtle box-shadow */
+    transition: opacity 0.3s ease-in-out;
+    z-index: 9999;
+}
+
+.ship-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%; /* Or specify a fixed width if needed */
+}
+
+.ship-item {
+    flex: 1;
+    margin: 0 10px; /* Adjust the margin to create space between items */
+}
