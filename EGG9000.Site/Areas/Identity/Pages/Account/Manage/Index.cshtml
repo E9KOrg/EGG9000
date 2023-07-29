@@ -76,6 +76,11 @@
         function setCookie(n, v) {
             document.cookie = n + "=" + v + "; samesite=none; secure; max-age=31536000; path=/";
         }
+        function setCookieMaxExpiry(n, v){
+            const d = new Date();
+            d.setTime(d.getTime() + (24 * 60 * 60 * 1000));
+            document.cookie = n + "=" + v + "; samesite=none;" + "expires=" + d.toUTCString() + ";" + "secure; max-age=31536000; path=/";
+        }
 
       $(function() {
         // Check darkmode checkbox if cookie is found.
@@ -85,16 +90,15 @@
 
         // Set cookie for dark/light on checkbox changed.
         $('#darkModeEnable').change(function() {
-            console.log("Trigged.")
             if ($('#darkModeEnable').is(":checked")) {
                 $('body').addClass("bootstrap-dark");
                 $('body').removeClass("bootstrap");
-                setCookie('Egg9000Theme', 'bootstrap-dark');
+                setCookieMaxExpiry('Egg9000Theme', 'bootstrap-dark');
             }
             else {
                 $('body').addClass("bootstrap");
                 $('body').removeClass("bootstrap-dark");
-                setCookie('Egg9000Theme', 'bootstrap');
+                setCookieMaxExpiry('Egg9000Theme', 'bootstrap');
             }
         })
       })
