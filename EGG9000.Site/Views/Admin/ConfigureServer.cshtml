@@ -96,7 +96,7 @@
 			@foreach (var roleid in (Model.GroupRoles ?? "").Split(",").Where(x => x.Length > 0)) {
 				var role = guild.GetRole(ulong.Parse(roleid));
 				<div>
-					<input class="GroupRole" value="@roleid" />@role.Name
+					<input class="GroupRole" value="@roleid" />@(role?.Name ?? "**Missing Role**")
 				</div>
 			}
 			<button class="btn btn-primary" onclick="InsertGroupRole(this)">Add Role</button>

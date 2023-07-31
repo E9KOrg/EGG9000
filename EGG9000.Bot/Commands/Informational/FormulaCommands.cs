@@ -38,7 +38,7 @@ namespace EGG9000.Bot.Commands {
             [Discord.Interactions.ChoiceDisplay("50")] Forty = 50
         };
 
-        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae")]
+        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] MERChoice MERValue) {
             await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        /*[SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae")]
+        /*[SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
             await command.RespondAsync("Getting account backups...", ephemeral: true);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);

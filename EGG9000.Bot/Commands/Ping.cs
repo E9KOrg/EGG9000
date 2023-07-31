@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
     public class PingCommands {
-        [SlashCommand(Description = "Test to see if bot is alive")]
+        [SlashCommand(Description = "Test to see if bot is alive", AllowInDMs = true)]
         public static async Task Ping(FauxCommand command) {
             await command.RespondAsync("Pong!", ephemeral: false);
         }

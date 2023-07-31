@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Commands {
         #endregion
 
         #region MainMenu
-        [SlashCommand(Description = "My Contract Settings")]
+        [SlashCommand(Description = "My Contract Settings", AllowInDMs = true)]
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {

@@ -31,7 +31,7 @@ using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
-        [SlashCommand(Description = "Track your EB since the last time you ran this command")]
+        [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -84,7 +84,7 @@ namespace EGG9000.Bot.Commands {
             });
         }
 
-        [SlashCommand(Description = "How many SE/PE needed for next rank up")]
+        [SlashCommand(Description = "How many SE/PE needed for next rank up", AllowInDMs = true)]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
             await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -163,65 +163,6 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync($"Co-op renamed to {correctcoopname}");
         }
 
-        //[SlashCommand(Description = "Get a ping from the bot via DM and all assigned members have joined")]
-        //public static async Task PingOnFull(FauxCommand command, ApplicationDbContext db)
-        //{
-        //    var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-        //    if(targetCoop == null)
-        //    {
-        //        await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
-        //        return;
-        //    }
-        //    var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
-
-        //    var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
-
-        //    xref.PingOnFull = !xref.PingOnFull;
-        //    await db.SaveChangesAsync();
-        //    if(xref.PingOnFull)
-        //    {
-        //        await command.RespondAsync($"Will receive DM ping when everyone has joined", ephemeral: true);
-        //    } else
-        //    {
-        //        await command.RespondAsync($"Will no longer receive ping", ephemeral: true);
-        //    }
-        //}
-
-        //[SlashCommand(Description = "Get a ping from the bot via DM on Highest EB Joined")]
-        //public static async Task PingOnHighestEB(FauxCommand command, ApplicationDbContext db) {
-        //    var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-        //    if(targetCoop == null) {
-        //        await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
-        //        return;
-        //    }
-        //    var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
-
-        //    var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
-
-        //    xref.PingOnHighestEB = !xref.PingOnHighestEB;
-        //    await db.SaveChangesAsync();
-        //    if(xref.PingOnHighestEB) {
-        //        await command.RespondAsync($"Will receive DM ping when the highest EB has joined", ephemeral: true);
-        //    } else {
-        //        await command.RespondAsync($"Will no longer receive a ping when the highest EB has joined", ephemeral: true);
-        //    }
-        //}
-        //[SlashCommand(Description = "Get a ping from the bot via DM when co-op is finished")]
-        //public static async Task PingOnFinished(FauxCommand command, ApplicationDbContext db) {
-        //    var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-        //    if(targetCoop == null) {
-        //        await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels", ephemeral: true);
-        //        return;
-        //    }
-        //    var user = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == command.User.Id);
-
-        //    var xref = await db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == user.Id && x.Coop.DiscordChannelId == command.Channel.Id);
-
-        //    xref.PingOnFinished = true;
-        //    await db.SaveChangesAsync();
-        //    await command.RespondAsync($"Will receive DM ping when co-op is finished and everyone has reported in", ephemeral: true);
-        //}
-
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = true)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -285,7 +226,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
-        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a", CPOnly = true)]
+        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = true, ParentCommand = "a")]
         public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {

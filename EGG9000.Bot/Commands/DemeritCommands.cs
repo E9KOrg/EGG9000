@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "List your demerits")]
+        [SlashCommand(Description = "List your demerits", AllowInDMs = true)]
         public static async Task Demerits(FauxCommand command, ApplicationDbContext db) {
             try {
                 IUser socketUser = command.User;

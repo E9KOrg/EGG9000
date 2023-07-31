@@ -460,9 +460,8 @@ namespace EGG9000.Bot.Automated {
 
             if(guildContract.CcOnly) {
                 var subCategory = await _client.GetCategoryAsync(GuildChannelType.SubscriptionContractCategory, guild);
-                emoji += subCategory is null ? "💰" : "";
             }
-            emoji += DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : "✅";     
+            emoji += DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : ( guildContract.CcOnly ? "💰" : "✅");     
 
             channelName = emoji + channelName;
 

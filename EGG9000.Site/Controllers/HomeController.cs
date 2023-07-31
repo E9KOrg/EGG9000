@@ -481,7 +481,7 @@ namespace EGG9000.Site.Controllers {
             }
 
 
-            
+
             results = results.OrderByDescending(x => x.EBGain).ToList();
 
 
@@ -538,7 +538,7 @@ namespace EGG9000.Site.Controllers {
             public double EBGain { get; set; }
             public double SEGain { get; set; }
             public double EBGainPercent { get; set; }
-            public double SEGainPercent { get; set; }   
+            public double SEGainPercent { get; set; }
             public double StartEB { get; set; }
             public ulong PrestigeCount { get; set; }
         }
@@ -679,10 +679,19 @@ namespace EGG9000.Site.Controllers {
             CoopId = CoopId.ToLower();
             ContractId = ContractId.ToLower();
             var model = new CoopModel {
-                CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower()),
+                
                 DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && x.Name == CoopId),
+                Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId)
             };
-            model.Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId);
+            model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop.UserCoopsXrefs);
+
+            if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
+                var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+
+                var missing = cd.CoopParticipants.Where(x => !x.Joined).ToList();
+                var departed = model.CoopStatus.Participants.Where(x => x.UserName == "[departed]").ToList();
+            }
 
             model.UserInfos = new List<CoopUserInfo>();
 
