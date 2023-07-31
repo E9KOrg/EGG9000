@@ -25,6 +25,7 @@ using Stripe;
 using System.Security.Principal;
 using Event = EGG9000.Common.Database.Entities.Event;
 using System.Diagnostics.Contracts;
+using static EGG9000.Site.Controllers.HomeController;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -99,7 +100,7 @@ namespace EGG9000.Site.Controllers {
             var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
-            var uncompletedPes = await GetUncompletedPEContracts(user, Contracts);
+            var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, RawBackups, Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
         }
@@ -121,7 +122,7 @@ namespace EGG9000.Site.Controllers {
                 EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
                 UserCoopXrefs = new List<UserCoopXref>()
             };
-            var uncompletedPes = await GetUncompletedPEContracts(newDbUser, Contracts);
+            var uncompletedPes = GetUncompletedPEContracts(newDbUser, Contracts);
             return View("Index", new MyFarmsModel(
                 newDbUser, Contracts, new List<Demerit>(), new List<Merit>(), RawBackups, new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null,
                 uncompletedPes
@@ -194,33 +195,15 @@ namespace EGG9000.Site.Controllers {
             return Redirect(Request.Headers["Referer"].ToString());
         }
 
-        public async Task<Dictionary<string, List<Common.Database.Entities.Contract>>> GetUncompletedPEContracts(DBUser user, List<Common.Database.Entities.Contract> contracts) {
-            //Get a list of all PE Contracts
-            var peContracts = contracts.Where(c => c.Details.GradeSpecs[0].Goals.Any(g => g.RewardType == Ei.RewardType.EggsOfProphecy));
-            //Get all xrefs for PE contracts
-            var peXrefs = await _db.UserCoopXrefs.Include(x => x.Coop).Where(x => peContracts.Select(pe => pe.ID).ToList().Contains(x.Coop.ContractID)).ToListAsync();
-            //Get a list of all user references belonging to PE Contracts, that belong to one of this user's accounts
-            var userXrefs = peXrefs.Where(x => user.EggIncAccounts.Select(a => a.Id).ToList().Contains(x.EggIncId));
-            //Create a new dictionary
-            var uncompletedDic = new Dictionary<string, List<Common.Database.Entities.Contract>>();
-            foreach(var account in user.EggIncAccounts) {
-
-                List<Common.Database.Entities.Contract> uncompletedPerAcc = new();
-
-                var accountXrefs = userXrefs.Where(x => x.EggIncId == account.Id).ToList();
-                var latestAccXrefs = accountXrefs.GroupBy(x => x.Coop.ContractID).Select(g => g.OrderBy(x => x.CreatedOn).Last());
-                foreach(var contract in contracts) {
-                    if(!latestAccXrefs.Any(x => x.Coop.ContractID == contract.ID)) uncompletedPerAcc.Add(contract);
-                    else {
-                        var latestXref = latestAccXrefs.FirstOrDefault(x => x.Coop.ContractID == contract.ID);
-                        if(latestXref.Coop.LastStatusUpdate.TotalAmount < contract.Details.GradeSpecs[(int)latestXref.Coop.League - 1].Goals.First(x => x.RewardType == RewardType.EggsOfProphecy).TargetAmount)
-                            uncompletedPerAcc.Add(contract);
-                    }
-                }
-
-                uncompletedDic.Add(account.Id, uncompletedPerAcc);
-            }
-            return uncompletedDic;
+        public Dictionary<string, List<Common.Database.Entities.Contract>> GetUncompletedPEContracts(DBUser user,  List<Common.Database.Entities.Contract> contracts) {
+            return user.EggIncAccounts.ToDictionary(
+                account => account.Id,
+                account => account.Backup.ArchivedFarms
+                    .Where(f => f.PEPossible > 0 && f.PEGained < f.PEPossible)
+                        .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
+                    .Concat(contracts.Where(c => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(c.goals).Any(g => g.RewardType == RewardType.EggsOfProphecy) && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
+                    .ToList()
+            );
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
