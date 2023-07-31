@@ -173,12 +173,12 @@ namespace EGG9000.Common.Helpers {
 
 
             public double GetProjectedShare(UserFarmDetails ufd) {
-                var share = (ufd.EggsShipped + ufd.OfflineEggs + ufd.Rate * TimeRemaining.TotalSeconds) / TargetAmount * 100;
+                var share = (ufd.EggsShipped + ufd.OfflineEggs + ufd.Rate * Math.Max(0, TimeRemaining.TotalSeconds)) / TargetAmount * 100;
                 if(share > 99)
                     share = Math.Floor(share);
-                return share;
+                return Math.Max(0, share);
             }
-        }
+        }   
 
         public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract, DiscordSocketClient discord, UInt32 league) {
             var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildContract.GuildID).ToListAsync();

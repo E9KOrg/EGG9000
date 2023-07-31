@@ -336,7 +336,7 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
         }
 
-        [SlashCommand(Description = "Update your EggIncID if it has changed")]
+        [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
             await _UpdateID(command, db, _client, apiLink, eggincid, (SocketGuildUser)command.User, accountnumber);
         }
@@ -577,7 +577,7 @@ namespace EGG9000.Bot.Commands {
             return _userstatus(command, db, _client, apiLink, user, true, ShowInChannel);
         }
 
-        [SlashCommand(Description = "Get your status")]
+        [SlashCommand(Description = "Get your status", AllowInDMs = true)]
         public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
             return _userstatus(command, db, _client, apiLink, command.User, false, false);
         }
@@ -589,8 +589,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var channelGuildId = ((IGuildChannel)command.Channel).GuildId;
-            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == channelGuildId || x.OverflowServersJson.Contains(channelGuildId.ToString()));
+            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
 
             //Get a list of all builders from the AccountsString - see method for why this needs to be a list
             var builders = await AccountsString(db, dbuser, apiLink, admin);
@@ -619,7 +618,7 @@ namespace EGG9000.Bot.Commands {
 
             lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
 
-            if(dbuser.GuildId > 0 && !dbuser.TempDisabled) {
+            if(dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser) {
                 _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
             }
 
@@ -756,11 +755,6 @@ namespace EGG9000.Bot.Commands {
             return builderList;
         }
 
-        [Obsolete("TakeABreak is deprecated, please use MyContractSettings instead.")]
-        [SlashCommand(Description = "Please use the `mycontractsettings` command instead")]
-        public static async Task TakeABreak(FauxCommand command) {
-            await command.RespondAsync("Please use the </mycontractsettings:1100476258518839336> command to take a break.", ephemeral: true);
-        }
 
         [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = true)]
         public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {

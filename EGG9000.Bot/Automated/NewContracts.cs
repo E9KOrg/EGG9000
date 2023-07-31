@@ -198,7 +198,7 @@ namespace EGG9000.Bot.Automated {
             //    return;
             //}
 
-            _logger.LogInformation("Starting co-ops for {guild} for BG{BG}", guild.Name, skipbg + 1);
+            _logger.LogInformation("Starting co-ops for {guild} for BG{BG} for Contract {contract}", guild.Name, skipbg + 1, contract.Name);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
@@ -207,7 +207,7 @@ namespace EGG9000.Bot.Automated {
             var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg, userCsHistoryEntries, dbguild);
 
             foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
-                _logger.LogInformation("BG{bg}, Grade {grade}, Count {count}", group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2));
+                _logger.LogInformation("{guild} BG{bg}, Grade {grade}, Count {count} for Contract {contract}", guild.Name, group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2), contract.Name);
                 var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
 
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {

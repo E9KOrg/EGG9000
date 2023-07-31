@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                //coops = coops.Where(x => x.Name.Equals("GenreRug36", StringComparison.OrdinalIgnoreCase)).ToList();
+                coops = coops.Where(x => x.Name.Equals("OmenWing85", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
@@ -1357,6 +1357,8 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
+            if(discordUser is null)
+                return;
             try {
                 var dmChannel = await discordUser.CreateDMChannelAsync();
                 await dmChannel.SendMessageAsync($"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");

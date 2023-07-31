@@ -60,15 +60,15 @@ namespace EGG9000.Bot.Services {
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
         private IPublishEndpoint _publishEndpoint;
-        public CommandService(IConfiguration Configuration, 
-                DiscordHostedService discord, 
-                APILink apilink, 
-                Words words, 
-                Bugsnag.IClient bugsnag, 
-                ContractUpdater contractUpdater, 
-                CoopStatusUpdater coopStatusUpdater, 
-                ApplicationDbContext context, 
-                IServiceProvider serviceProvider, 
+        public CommandService(IConfiguration Configuration,
+                DiscordHostedService discord,
+                APILink apilink,
+                Words words,
+                Bugsnag.IClient bugsnag,
+                ContractUpdater contractUpdater,
+                CoopStatusUpdater coopStatusUpdater,
+                ApplicationDbContext context,
+                IServiceProvider serviceProvider,
                 ILogger<CommandService> logger,
                 IPublishEndpoint publishEndpoint
             ) {
@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Services {
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
-            logger.LogInformation($"Initiating CommandService");    
+            logger.LogInformation($"Initiating CommandService");
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -182,6 +182,7 @@ namespace EGG9000.Bot.Services {
                         }
                     }
 
+                    _logger.LogInformation("Running command {command}", command.Name);
                     await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
                 } catch(Exception e) {
                     try {
@@ -241,8 +242,8 @@ namespace EGG9000.Bot.Services {
 
 
             _logger.LogInformation("Creating slash commands");
-            List<ApplicationCommandProperties> applicationCommandProperties = new();
-            List<ApplicationCommandProperties> cpApplicationCommandProperties = new();
+            List<ApplicationCommandProperties> guildCommandProperties = new();
+            List<ApplicationCommandProperties> globalCommandProperties = new();
 
             foreach(var command in _slashCommandFunctions) {
                 var guildCommand = new SlashCommandBuilder();
@@ -274,11 +275,11 @@ namespace EGG9000.Bot.Services {
                         AddCommandParams(parameterInfo, guildCommand, null);
                     }
                 }
-
-                if(!command.Details.CPOnly) {
-                    applicationCommandProperties.Add(guildCommand.Build());
+                if(command.Details.AllowInDMs || (command.SubFunctions?.All(x => x.Details.AllowInDMs) ?? false)) {
+                    globalCommandProperties.Add(guildCommand.Build());
+                } else {
+                    guildCommandProperties.Add(guildCommand.Build());
                 }
-                cpApplicationCommandProperties.Add(guildCommand.Build());
             }
 
             foreach(var command in _userCommandFunctions) {
@@ -295,10 +296,8 @@ namespace EGG9000.Bot.Services {
                     }
                 }
 
-                if(!command.Details.CPOnly) {
-                    applicationCommandProperties.Add(guildCommand.Build());
-                }
-                cpApplicationCommandProperties.Add(guildCommand.Build());
+
+                guildCommandProperties.Add(guildCommand.Build());
             }
 
             try {
@@ -307,9 +306,10 @@ namespace EGG9000.Bot.Services {
 
                     var isCPGuild = guild.Id == _cpGuild?.Id || (_cpGuild?.OverflowServers.Contains(guild.Id) ?? false);
 
-                    var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((isCPGuild ? cpApplicationCommandProperties : applicationCommandProperties).ToArray());
+                    var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((guildCommandProperties).ToArray());
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
+                await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
             } catch(Exception exception) {
                 _bugsnag.Notify(exception);
 
@@ -343,7 +343,7 @@ namespace EGG9000.Bot.Services {
             handler.GetMethod("Run").Invoke(autocompleteClass, new object[] { arg });
             return Task.CompletedTask;
         }
-               
+
 
         private Task _discord_ButtonExecuted(SocketMessageComponent arg) {
             return _discord_SelectMenuExecuted(arg);
@@ -393,7 +393,7 @@ namespace EGG9000.Bot.Services {
                 if(parameterInfo.ParameterType == typeof(uint)) {
                     return Convert.ToUInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
                 } else if(parameterInfo.ParameterType == typeof(int)) {
-                        return Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
+                    return Convert.ToInt32((Int64)FindOption(name, fauxCommand.Data.Options)?.Value);
                 } else {
                     return FindOption(name, fauxCommand.Data.Options)?.Value;
                 }
@@ -495,7 +495,7 @@ namespace EGG9000.Bot.Services {
 
                 guildCommand.AddOption(name, type, description, isRequired, null, isAutocomplete: isAutocomplete, null, null, null, null, null, null, null, null, choices);
             } else {
-                subCommand.AddOption(name, type, description, isRequired, false,  isAutocomplete: isAutocomplete, null, null, null, null,null,null,null,null, choices);
+                subCommand.AddOption(name, type, description, isRequired, false, isAutocomplete: isAutocomplete, null, null, null, null, null, null, null, null, choices);
             }
 
         }
@@ -518,7 +518,7 @@ namespace EGG9000.Bot.Services {
                     .Select(x => new SlashCommandFunction {
                         Name = x.Key,
                         SubFunctions = x.ToList(),
-                        Details = new SlashCommandAttribute { Description = "Bruh?", AdminOnly = x.Any(y => y.Details.AdminOnly == true)},
+                        Details = new SlashCommandAttribute { Description = "Bruh?", AdminOnly = x.Any(y => y.Details.AdminOnly == true) },
                     })
                 );
 

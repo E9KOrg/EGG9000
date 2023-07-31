@@ -151,9 +151,9 @@ namespace EGG9000.Common.Helpers {
                 SoulPower = 4624103542699216300,
                 Eop = 4632655904192331776,
                 Grade = grade,
-                Public = false,
-                CcOnly = false,
-                PointsReplay = true,
+                //Public = false,
+                //CcOnly = false,
+                //PointsReplay = true,
                 AllowAllGrades = true,
             };
             //if(subOnly) {

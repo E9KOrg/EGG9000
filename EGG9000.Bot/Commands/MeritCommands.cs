@@ -129,7 +129,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "List your merits")]
+        [SlashCommand(Description = "List your merits", AllowInDMs = true)]
         public static async Task Merits(FauxCommand command, ApplicationDbContext db) {
             try {
                 IUser socketUser = command.User;

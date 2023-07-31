@@ -18,6 +18,8 @@ using Ei;
 using Newtonsoft.Json;
 using System.Net.Http.Json;
 using System.Text.Unicode;
+using EGG9000.Common.Database.Entities;
+using System.Collections.Generic;
 
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 
@@ -254,7 +256,7 @@ namespace EGG9000.Bot.EggIncAPI {
             }, "EI4765194876354560", true);
         }
 
-        public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, CancellationToken cancellationToken = default, string EIID = null) {
+        public static async Task<Ei.ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, CancellationToken cancellationToken = default, string EIID = null, List<UserCoopXref> xrefs = null) {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using(var client = new HttpClient(handler)) {
@@ -286,6 +288,13 @@ namespace EGG9000.Bot.EggIncAPI {
 
                         var coopStatus = GetFromAuthenticatedMessage<Ei.ContractCoopStatusResponse>(responseString);
                         coopStatus.Success = true;
+                        if(xrefs != null && coopStatus.Participants.Any(x => x.UserName == "[departed]")) {
+                            var departed = coopStatus.Participants.First(x => x.UserName == "[departed]");
+                            var matchingUser = xrefs.Where(x => !string.IsNullOrEmpty(x.Status)).Select(x => JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(x.Status)).FirstOrDefault(x => x.ContributionAmount == departed.ContributionAmount);
+                            if(matchingUser is not null) {
+                                departed.UserName = matchingUser.UserName;
+                            }
+                        }
                         return coopStatus;
                     } else {
                         return null;

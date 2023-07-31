@@ -13,15 +13,14 @@ namespace EGG9000.Common.Commands {
         public string Name = "";
         public bool AdminOnly;
         public bool AllowFarmHand;
-        public bool CPOnly;
     }
     [AttributeUsage(AttributeTargets.Method)]
     public class SlashCommandAttribute : System.Attribute {
         public string Description = "";
         public bool AdminOnly = false;
         public bool AllowFarmHand = false;
-        public bool CPOnly = false;
         public string ParentCommand { get; set; } = "";
+        public bool AllowInDMs;
     }
     [AttributeUsage(AttributeTargets.Method)]
     public class ComponentCommandAttribute : System.Attribute {

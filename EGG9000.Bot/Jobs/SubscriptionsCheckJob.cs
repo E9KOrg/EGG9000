@@ -35,13 +35,22 @@ namespace EGG9000.Bot.Jobs {
             _bugsnag = bugsnag;
         }
 
+
+#if DEBUG
+        //[Job("0 0 */1 * * *")]
+        [Job("0 * * * * *")]
+#else
         [Job("0 0 */1 * * *")]
-        //[Job("0 * * * * *")]
+#endif
         public async Task CheckSubscriptions() {
             _logger.LogInformation("Checking subscriptions");
+#if DEBUG
             var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
+            //var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0 && x.DiscordId == 491603295220006913).ToList();
+#else
+            var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
+#endif
             foreach(var guildGroup in users.GroupBy(x => x.GuildId)) {
-                //foreach(var guildGroup in users.GroupBy(x => x.GuildId).Where(x => x.Key != 656455567858073601)) {
                 var dbguild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
                 if(dbguild is null)
                     continue;
@@ -54,18 +63,18 @@ namespace EGG9000.Bot.Jobs {
                         foreach(var account in user.EggIncAccounts) {
 
                             var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                            if(!subscriptionStatus.HasSubscriptionLevel) {
-                                if(account.SubscriptionLevel.HasValue) {
-                                    account.SubscriptionLevel = null;
-                                    user.UpdateAccounts();
-                                }
-                            } else {
+                            if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod ) {
                                 if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
                                     account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                                     user.UpdateAccounts();
                                 }
                                 if(account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
                                     account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
+                                    user.UpdateAccounts();
+                                }
+                            } else {
+                                if(account.SubscriptionLevel.HasValue) {
+                                    account.SubscriptionLevel = null;
                                     user.UpdateAccounts();
                                 }
                             }
