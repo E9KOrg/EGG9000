@@ -1,68 +1,113 @@
 ﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs)
 
-@if(Model.uncompletePEs.Count > 0)
-{
-	@foreach(var c in Model.uncompletePEs[Model.backup.EggIncId])
-	{
-		<span>EID: @Model.backup.EggIncId Contract ID: @c.ID</span>
-		<br />
+<script>
+	function toggleRows() {
+		var el = document.getElementById('content-collapse');
+		if(el.style.display == 'table-row-group'){
+			el.style.display = 'none';
+			document.getElementById('collapsePE').innerHTML = "Show";
+			document.getElementById('altNotShownBody').style.display = 'table-row-group';
+		} else {
+			el.style.display = 'table-row-group';
+			document.getElementById('collapsePE').innerHTML = "Hide";
+			document.getElementById('altNotShownBody').style.display = 'none';
+		}
 	}
+</script>
+
+@if (Model.uncompletePEs[Model.backup.EggIncId].Count() > 0)
+{
+	<div class="card" style="margin-top:15px;">
+		<h4 class="card-header" style="text-align: center"> <button class="btn-sm btn btn-outline-primary" id="collapsePE" onclick="toggleRows()">Show</button> Unobtained Contract Eggs of Prophecy</h4>
+		<table class="table table-sm align-middle collapsible-table table-striped">
+			<thead>
+				<tr class="collapsible-row">
+					<th style="text-align: left">Contract Name</th>
+					<th style="text-align: left">Contract ID</th>
+					<th style="text-align: left">Last Leggacied</th>
+				</tr>
+			</thead>
+			<tbody id="content-collapse" style="display: none">
+				@foreach (var contract in Model.uncompletePEs[Model.backup.EggIncId].OrderBy(c => c.Created).ToList())
+				{
+					<tr class="collapsible-row">
+						<td>@contract.Name</td>
+						<td>@contract.ID</td>
+						<td>@contract.Created.ToString("yyyy-MM-dd")</td>
+					</tr>
+				}
+			</tbody>
+			<tbody id="altNotShownBody">
+				<tr>
+					<td colspan="3" style="text-align: center; color:coral">
+						<b>@Model.uncompletePEs[Model.backup.EggIncId].Count() rows hidden</b>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
 }
 
-<div class="table-responsive">
-	<table class="table table-sm align-middle">
-		<caption style="caption-side: top; text-align: center; font-weight: bold;"><u>Egg of Prophecy Progress</u></caption>
-		<thead>
-			<tr>
-				<th style="text-align: left">From Contracts</th>
-				<th style="text-align: left">From Daily Gifts</th>
-				<th style="text-align: left">From Trophies</th>
-				<th style="text-align: left">Total</th>
-			</tr>
-		</thead>
-		<tbody>
-			<tr>
-				<td>@Model.backup.ArchivedFarms.Sum(x => x.PEGained)</td>
-				<td>@Model.backup.PEFromDailyGifts of 24</td>
-				<td>@Model.backup.PEFromTrophies of 40</td>
-				<td>@Model.backup.EggsOfProphecy</td>
-			</tr>
-
-		</tbody>
-	</table>
+<div class="card">
+	<h4 class="card-header" style="text-align: center">Egg of Prophecy Progress</h4>
+	<div class="table-responsive">
+		<table class="table align-middle table-striped">
+			<thead>
+				<tr>
+					<th style="text-align: left">From Contracts</th>
+					<th style="text-align: left">From Daily Gifts</th>
+					<th style="text-align: left">From Trophies</th>
+					<th style="text-align: left">Total</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>@Model.backup.ArchivedFarms.Sum(x => x.PEGained)</td>
+					<td>@Model.backup.PEFromDailyGifts of 24</td>
+					<td>@Model.backup.PEFromTrophies of 40</td>
+					<td>@Model.backup.EggsOfProphecy</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
 </div>
 
-<table class="table table-striped">
-	<caption style="caption-side: top; text-align: center; font-weight: bold;"><u>Earnings Boost History</u></caption>
-	<thead>
-		<tr>
-			@*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
-			<th>Date</th>
-			<th>Eggs of Prophecy</th>
-			<th style="text-align: right !important;">Soul Eggs</th>
-			<th style="text-align: right !important;">EB</th>
-			<th>Prestiges</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			@*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
-			<td>Latest</td>
-			<td>@Model.backup.EggsOfProphecy</td>
-			<td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
-			<td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
-			<td>@Model.backup.NumPrestiges</td>
-		</tr>
-		@foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
-			<tr>
-				@*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
-				<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
-				<td>@snapshot.EggsOfProphecy</td>
-				<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
-				<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
-				<td>@snapshot.Prestiges</td>
-			</tr>
-		}
-	</tbody>
-</table>
+<div class="card" style="margin-top:15px;">
+	<h4 class="card-header" style="text-align: center;">Earnings Bonus History</h4>
+	<div class="table-responsive">
+		<table class="table table-striped">
 
+			<thead>
+				<tr>
+					@*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
+					<th>Date</th>
+					<th>Eggs of Prophecy</th>
+					<th style="text-align: right !important;">Soul Eggs</th>
+					<th style="text-align: right !important;">EB</th>
+					<th>Prestiges</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					@*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
+					<td>Latest</td>
+					<td>@Model.backup.EggsOfProphecy</td>
+					<td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
+					<td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
+					<td>@Model.backup.NumPrestiges</td>
+				</tr>
+				@foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date))
+				{
+					<tr>
+						@*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
+						<td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
+						<td>@snapshot.EggsOfProphecy</td>
+						<td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
+						<td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
+						<td>@snapshot.Prestiges</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+</div>
