@@ -98,6 +98,10 @@ namespace Ei {
             else
                 return this.Goals.ToList();
         }
+
+        public int GetPossiblePE() {
+            return (int)((this.GradeSpecs?.FirstOrDefault()?.Goals ?? this.GoalSets?.FirstOrDefault()?.Goals ?? this.Goals).FirstOrDefault(x => x.RewardType == Ei.RewardType.EggsOfProphecy)?.RewardAmount ?? 0);
+        }
     }
 
     public partial class LocalContract {
