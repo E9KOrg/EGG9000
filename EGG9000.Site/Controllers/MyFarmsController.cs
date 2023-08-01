@@ -24,6 +24,8 @@ using Ei;
 using Stripe;
 using System.Security.Principal;
 using Event = EGG9000.Common.Database.Entities.Event;
+using System.Diagnostics.Contracts;
+using static EGG9000.Site.Controllers.HomeController;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -98,8 +100,9 @@ namespace EGG9000.Site.Controllers {
             var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+            var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, RawBackups, Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, RawBackups, Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
         }
 
         [AllowAnonymous]
@@ -115,11 +118,14 @@ namespace EGG9000.Site.Controllers {
             var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             var serialized = MessagePackSerializer.Serialize(backup, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
             backup = MessagePackSerializer.Deserialize<CustomBackup>(serialized, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
+            var newDbUser = new DBUser {
+                EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
+                UserCoopXrefs = new List<UserCoopXref>()
+            };
+            var uncompletedPes = GetUncompletedPEContracts(newDbUser, Contracts);
             return View("Index", new MyFarmsModel(
-                new DBUser {
-                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
-                    UserCoopXrefs = new List<UserCoopXref>()
-                }, Contracts, new List<Demerit>(), new List<Merit>(), RawBackups, new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null
+                newDbUser, Contracts, new List<Demerit>(), new List<Merit>(), RawBackups, new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null,
+                uncompletedPes
             ));
         }
 
@@ -134,7 +140,8 @@ namespace EGG9000.Site.Controllers {
             List<Coop> JoinedCoops,
             List<EpicResearchCalc.EpicResearchDetail> EpicResearchConfig,
             List<(string EggIncId, MyContracts MyContracts)> Scoring,
-            Guild DBGuild
+            Guild DBGuild,
+            Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts
         );
 
         public async Task<IActionResult> EarningsBoostCalculator() {
@@ -186,6 +193,19 @@ namespace EGG9000.Site.Controllers {
             _db.Remove(demerit);
             await _db.SaveChangesAsync();
             return Redirect(Request.Headers["Referer"].ToString());
+        }
+
+        public Dictionary<string, List<Common.Database.Entities.Contract>> GetUncompletedPEContracts(DBUser user,  List<Common.Database.Entities.Contract> contracts) {
+            return user.EggIncAccounts.ToDictionary(
+                account => account.Id,
+                account => account.Backup.ArchivedFarms
+                    .Where(f => 
+                        f.PEPossible > 0 && f.PEGained < f.PEPossible
+                    )
+                    .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
+                    .Concat(contracts.Where(c => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(c.goals).Any(g => g.RewardType == RewardType.EggsOfProphecy) && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
+                    .ToList()
+            );
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
