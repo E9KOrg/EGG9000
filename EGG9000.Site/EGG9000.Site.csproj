@@ -4,6 +4,12 @@
     <TargetFramework>net6.0</TargetFramework>
     <Configurations>Debug;Release;DEV9002</Configurations>
   </PropertyGroup>
+  <Target Name="PrePublish" BeforeTargets="Publish">
+    <Exec Command=".\prepublish.bat" />
+  </Target>
+  <Target Name="PostPublish" AfterTargets="Publish">
+    <Exec Command=".\postpublish.bat" />
+  </Target>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>

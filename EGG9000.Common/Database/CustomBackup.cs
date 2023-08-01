@@ -205,14 +205,14 @@ namespace EGG9000.Common.Database {
             MaxEggReached = backup.Game.MaxEggReached;
 
             Farms = new List<CustomFarm>();
-            foreach(var farm in backup.Farms) {
+            foreach(var farm in backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty)) {
                 AddFarm(farm, backup);
             }
 
             //CompleteContracts = new List<string>();
             ArchivedFarms = new List<CustomArchivedFarms>();
-            CheckForCompleteContracts(backup.Contracts.Contracts);
-            CheckForCompleteContracts(backup.Contracts.Archive);
+            AddContracts(backup.Contracts.Contracts);
+            AddContracts(backup.Contracts.Archive);
 
 
             SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(m => new SpaceMission {
@@ -334,15 +334,9 @@ namespace EGG9000.Common.Database {
             Farms.Add(customFarm);
         }
 
-        private void CheckForCompleteContracts(RepeatedField<Ei.LocalContract> contracts) {
+        private void AddContracts(RepeatedField<Ei.LocalContract> contracts) {
             foreach(var contract in contracts) {
-                //if(!Farms.Any(f => f.ContractId == contract.Contract.Identifier)) {
                 ArchivedFarms.Add(new CustomArchivedFarms(contract));
-                //}
-                //RepeatedField<Ei.Contract.Types.Goal> goals = contract.Contract.GoalSets.Count == 0 ? contract.Contract.Goals : contract.Contract.GoalSets[(int)contract.League].Goals;
-                //if(contract.NumGoalsAchieved == goals.Count) {
-                //    CompleteContracts.Add(contract.Contract.Identifier);
-                //}
             }
         }
 
@@ -549,7 +543,8 @@ namespace EGG9000.Common.Database {
             var goals = localContract.Contract.Goals;
             if(localContract.Contract.GoalSets is not null && localContract.Contract.GoalSets.Count > localContract.League)
                 goals = localContract.Contract.GoalSets[(int)localContract.League].Goals;
-
+            if(localContract.Contract.GradeSpecs is not null && localContract.Contract.GradeSpecs.Count > 0 && localContract.Grade > 0)
+                goals = localContract.Contract.GradeSpecs[(int)localContract.Grade - 1].Goals;
             PEPossible += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
             PEGained += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
             NumGoalsAchieved = (byte)localContract.NumGoalsAchieved;

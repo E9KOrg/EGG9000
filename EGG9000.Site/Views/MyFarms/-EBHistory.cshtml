@@ -1,4 +1,4 @@
-﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs)
+﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts)
 <div class="container">
     <div class="row">
         <div class="col-sm">
@@ -16,7 +16,11 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>@Model.backup.ArchivedFarms.Sum(x => x.PEGained)</td>
+                                @{
+                                    var goalsWithPE = Model.contracts.Select(x => (x.Details.GradeSpecs?.FirstOrDefault()?.Goals ?? x.Details.GoalSets?.FirstOrDefault()?.Goals ?? x.Details.Goals).FirstOrDefault(y => y.RewardType == Ei.RewardType.EggsOfProphecy)).Where(x => x is not null);
+                                    <td>
+                                         @Model.backup.ArchivedFarms.Sum(x => x.PEGained) of @goalsWithPE.Sum(x => x.RewardAmount) </td>
+                                }
                                 <td>@Model.backup.PEFromDailyGifts of 24</td>
                                 <td>@Model.backup.PEFromTrophies of 40</td>
                                 <td>@Model.backup.EggsOfProphecy</td>
@@ -39,6 +43,7 @@
                                 <th style="text-align: left">Contract Name</th>
                                 <th style="text-align: left">Contract ID</th>
                                 <th style="text-align: left">Last Seen</th>
+                                <th>PE</th>
                             </tr>
                         </thead>
                         <tbody id="content-collapse">
@@ -47,13 +52,14 @@
                                     <td>@contract.Name</td>
                                     <td>@contract.ID</td>
                                     <td>@contract.Created.ToString("yyyy-MM-dd")</td>
+                                    <td>@contract.Details.GetPossiblePE()</td>
                                 </tr>
                             }
                         </tbody>
                         <tbody id="altNotShownBody">
                             <tr class="collapsible-row toggleHide">
                                 <td colspan="3" style="text-align: center; color:coral">
-                                    <b>@Model.uncompletePEs[Model.backup.EggIncId].Count() rows hidden</b>
+                                    <b>@Model.uncompletePEs[Model.backup.EggIncId].Count() contracts hidden (@Model.uncompletePEs[Model.backup.EggIncId].Sum(x => x.Details.GetPossiblePE()) PEs)</b>
                                 </td>
                             </tr>
                         </tbody>
@@ -72,7 +78,7 @@
                             <tr>
                                 @*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
                                 <th>Date</th>
-                                <th>Eggs of Prophecy</th>
+                                <th>PE</th>
                                 <th style="text-align: right !important;">Soul Eggs</th>
                                 <th style="text-align: right !important;">EB</th>
                                 <th>Prestiges</th>

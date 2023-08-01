@@ -203,7 +203,7 @@ namespace EGG9000.Site.Controllers {
                         f.PEPossible > 0 && f.PEGained < f.PEPossible
                     )
                     .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
-                    .Concat(contracts.Where(c => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(c.goals).Any(g => g.RewardType == RewardType.EggsOfProphecy) && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
+                    .Concat(contracts.Where(c => c.Details.GetPossiblePE() > 0 && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
                     .ToList()
             );
         }

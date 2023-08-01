@@ -70,19 +70,26 @@ namespace EGG9000.Bot.Automated {
 
                 _logger.LogInformation("Getting Users for Leaderboard");
 
-                var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && !x.TempDisabled).ToListAsync(cancellationToken);
-                timings.Set("dbusers");
-                if(cancellationToken.IsCancellationRequested)
-                    return;
-
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
                 timings.Set("dbguilds");
 
 
+                var userQuery = _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled);
+
 #if DEBUG
-                //                dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
-                //                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
+                userQuery = userQuery.Where(x => x.DiscordId == 760856957011230760);
+                //dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
+                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
 #endif
+
+
+                var dbusers = await userQuery.ToListAsync(cancellationToken);
+                timings.Set("dbusers");
+                if(cancellationToken.IsCancellationRequested)
+                    return;
+
+
+
 
                 _logger.LogInformation("Getting User Backups for Leaderboard");
 
@@ -138,9 +145,6 @@ namespace EGG9000.Bot.Automated {
 
                         var dbUser = userAccounts.First().User;
                         var discordUser = guild.GetUser(dbUser.DiscordId);
-                        if(userAccounts.Count() > 1) {
-
-                        }
                         if(discordUser == null || userAccounts.All(x => x.Backup?.Farms == null || x.Backup?.Farms.Count == 0))
                             continue;
                         userAccounts.ToList().ForEach(y => {

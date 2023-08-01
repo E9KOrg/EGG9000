@@ -323,30 +323,6 @@
                                     <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
                                 }
                                 <div class="card-body">
-                                    @*<div>
-                        Egg Rate: @((farm.EggLayingRate * 60).ToEggString(true))
-                        </div>
-                        <div>
-                        Max Shipping Rate: @((farm.MaxShippingRate * 60).ToEggString(true))
-                        </div>
-                        <div>
-                        Current Shipping Rate: @((farm.CurrentShippingRate * 60).ToEggString(true))
-                        </div>
-                        <div>
-                        Egg Value: @((farm.EggValue).ToEggString(true))
-                        </div>
-                        <div>
-                        Income: @((farm.Income).ToEggString(true))
-                        </div>
-                        <div>
-                        Mystical Egg Bonus: @(backup.EarningsBonus.ToEggString(true))
-                        </div>
-                        <div>
-                        Max Running Bonus: @(farm.MaxRunningBonus)
-                        </div>
-                        <div>
-                        Income w/Running: @((farm.MaxRunningBonus * farm.Income).ToEggString(true))
-                        </div>*@
                                     <div style="display: inline-block;">
                                         Chickens: @farm.NumChickens.ToEggString()
                                     </div>
@@ -510,7 +486,7 @@
                     @if (snapshots != null) {
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs));
+                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts));
                             }
                         </div>
                     }
