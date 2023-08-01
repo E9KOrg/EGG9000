@@ -41,6 +41,20 @@ using System.Collections;
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
 
+        [SlashCommand(Description = "Determine your artifact fairness score", AdminOnly = true)]
+        public static async Task AFS(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync();
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+
+            var sb = new StringBuilder();
+
+            foreach(var account in user.EggIncAccounts.Where(a => a.Backup is not null).ToList()) {
+                sb.Append($"For {account.Name}: {account.Backup.GetArtifactFairnessScore()}\n");
+            }
+
+            await command.RespondAsync(sb.ToString());
+        }
+
         [SlashCommand(Description = "Log a Message", AdminOnly = true, AllowFarmHand = true)]
         public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null) {
             if(channel == null) {

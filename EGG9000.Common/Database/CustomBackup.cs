@@ -156,6 +156,17 @@ namespace EGG9000.Common.Database {
             Farms.Where(x => x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList().ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
             return artifacts.Where(x => x.Count > 0).ToList();
         }
+        
+        public string GetArtifactFairnessScore() {
+            if(ArtifactHall is null || ArtifactHall.Count == 0) return "Null Arti Hall: 0";
+            else {
+                long score = 0;
+                foreach(var aCount in ArtifactHall) {
+                    score += aCount.Artifact.FairnessScore * aCount.Count;
+                }
+                return "Calced: " + score;
+            }
+        }
 
         public List<ArtifactCount> GetAvailableArtifacts(CustomFarm farm) {
             if(ArtifactHall is null || ArtifactHall.Count == 0) {
