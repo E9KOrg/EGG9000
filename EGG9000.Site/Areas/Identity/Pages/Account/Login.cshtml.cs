@@ -59,9 +59,14 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account
 
         public IActionResult OnGetAsync(string returnUrl = null)
         {
+            if(Request.Headers["User-Agent"].ToString().Contains("Discordbot")) {
+                return Redirect("/Home/Embed?returnUrl=" + returnUrl);
+            }
+            
             var provider = "Discord";
             var redirectUrl = Url.Page("./ExternalLogin", pageHandler: "Callback", values: new { returnUrl });
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+
             return new ChallengeResult(provider, properties);
 
             //if(!string.IsNullOrEmpty(ErrorMessage)) {
