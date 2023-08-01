@@ -199,8 +199,10 @@ namespace EGG9000.Site.Controllers {
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,
                 account => account.Backup.ArchivedFarms
-                    .Where(f => f.PEPossible > 0 && f.PEGained < f.PEPossible)
-                        .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
+                    .Where(f => 
+                        f.PEPossible > 0 && f.PEGained < f.PEPossible
+                    )
+                    .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
                     .Concat(contracts.Where(c => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(c.goals).Any(g => g.RewardType == RewardType.EggsOfProphecy) && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
                     .ToList()
             );

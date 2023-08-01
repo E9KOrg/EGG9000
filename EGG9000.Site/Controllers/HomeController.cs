@@ -675,6 +675,10 @@ namespace EGG9000.Site.Controllers {
             return Json(user.EggIncAccounts.Select(x => x.Backup));
         }
 
+        public IActionResult Embed(string returnUrl) {
+            return View((object)returnUrl);
+        }
+
         public async Task<IActionResult> Coop([FromRoute] string ContractId, [FromRoute] string CoopId) {
             CoopId = CoopId.ToLower();
             ContractId = ContractId.ToLower();
