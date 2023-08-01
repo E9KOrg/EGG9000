@@ -162,7 +162,7 @@ namespace EGG9000.Common.Database {
             else {
                 long score = 0;
                 foreach(var aCount in ArtifactHall) {
-                    score += aCount.Artifact.FairnessScore * aCount.Count;
+                    score += aCount.Artifact.Tier * aCount.Artifact.Rarity * aCount.Count;
                 }
                 return "Calced: " + score;
             }
