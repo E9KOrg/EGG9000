@@ -1117,7 +1117,7 @@ namespace EGG9000.Bot.Automated {
                                 var time = "";
                                 var goalRemaingAmount = goal.TargetAmount - amountWithOffline;
                                 var goalRemaingTime = goalRemaingAmount / totalRate;
-                                time = $"\nTime: {Prefarm.GetTimeRemaining(goal.TargetAmount, totalRate, amountWithOffline)}";
+                                time = $"\nTime: {GetTimeRemaining(goal.TargetAmount, totalRate, amountWithOffline)}";
                                 if(status.TotalAmount > goal.TargetAmount) {
                                     title += "✅";
                                     time = "";
@@ -1141,9 +1141,10 @@ namespace EGG9000.Bot.Automated {
                             if(remainingAmount > 0) {
                                 var remainingTime = remainingAmount / totalRate;
                                 if(remainingTime < TimeSpan.MaxValue.TotalSeconds) {
+                                    coop.ProjectedFinish = new DateTimeOffset().AddSeconds(GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).Seconds);
                                     try {
                                         var timeSpan = TimeSpan.FromSeconds(remainingTime);
-                                        embedBuilder.AddField("Time To Complete", Prefarm.GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
+                                        embedBuilder.AddField("Time To Complete", GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
                                         if(status.SecondsRemaining > remainingTime) {
                                             embedBuilder.AddField("Ahead By", TimeSpan.FromSeconds(status.SecondsRemaining - remainingTime).Humanize(2).ShortenTime(), inline: true);
                                         } else {
@@ -1398,6 +1399,7 @@ namespace EGG9000.Bot.Automated {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup.EggIncId)) {
                     foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
+                        if(user.User.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsync();
