@@ -99,7 +99,7 @@ namespace EGG9000.Common.Contracts {
                 }
 
                 if(contract.CcOnly) {
-                    var coops = groups.SelectMany(x => x.PotentialCoops.Select(y => new { BG = x.BoardingGroup, Coop = y })).ToList();
+                    var coops = groups.Where(x => x.PotentialCoops is not null).SelectMany(x => x.PotentialCoops.Select(y => new { BG = x.BoardingGroup, Coop = y })).ToList();
 
                     groups = coops.GroupBy(x => new { x.BG, x.Coop.Grade }).Select(x => new PotentialCoopGroup {
                         BoardingGroup = x.Key.BG,
