@@ -151,6 +151,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Merit Log, all merits added to users will appear in this channel")]
         MeritLogChannel = 35,
         [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
-        BannedUserThread = 36
+        BannedUserThread = 36,
+        [Description("Optional: Thread ID where artifact cheaters will be outed.")]
+        ArtifactCheaterThread = 37
     }
 }
