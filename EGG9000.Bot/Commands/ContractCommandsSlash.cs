@@ -130,10 +130,11 @@ namespace EGG9000.Bot.Commands {
         }
 
         public enum FindCoopPrioritization {
-            FinishTimeLow = 0,
-            FinishTimeHigh = 1,
-            LowPlayerCount = 2
-        }
+            [Discord.Interactions.ChoiceDisplay("Low finish time (default)")] FinishTimeLow = 0,
+            [Discord.Interactions.ChoiceDisplay("High finish time")] FinishTimeHigh = 1,
+            [Discord.Interactions.ChoiceDisplay("Low player count")] LowPlayerCount = 2,
+            [Discord.Interactions.ChoiceDisplay("High player count")] HighPlayerCount = 3,
+        };
 
         [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = true, AllowFarmHand = true)]
         public static async Task FindCoopForUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
@@ -160,7 +161,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var coops = await db.Coops.Include(c => c.Contract).Include(c => c.UserCoopsXrefs).Where(c => c.Contract == contract && c.GuildId == guildRef.Id && c.League == (uint)account.GetGrade()
-             && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now).ToListAsync();
+             && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now && c.ProjectedFinish > DateTimeOffset.Now).ToListAsync();
 
             if(!coops.Any()) {
                 await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}");
@@ -168,10 +169,11 @@ namespace EGG9000.Bot.Commands {
             }
 
             _ = priority switch {
-                FindCoopPrioritization.FinishTimeLow => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
-                FindCoopPrioritization.FinishTimeHigh => coops = coops.OrderByDescending(c => c.CoopEnds).ToList(),
-                FindCoopPrioritization.LowPlayerCount => coops = coops.OrderBy(c => c.UserCoopsXrefs.Count()).ToList(),
-                _ => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
+                FindCoopPrioritization.FinishTimeLow => coops = coops.OrderBy(c => c.ProjectedFinish).ToList(),
+                FindCoopPrioritization.FinishTimeHigh => coops = coops.OrderByDescending(c => c.ProjectedFinish).ToList(),
+                FindCoopPrioritization.LowPlayerCount => coops = coops.OrderBy(c => c.UserCoopsXrefs.Count).ToList(),
+                FindCoopPrioritization.HighPlayerCount => coops = coops.OrderByDescending(c => c.UserCoopsXrefs.Count).ToList(),
+                _ => coops = coops.OrderBy(c => c.ProjectedFinish).ToList(),
             };
 
             Coop newCoop = null;
