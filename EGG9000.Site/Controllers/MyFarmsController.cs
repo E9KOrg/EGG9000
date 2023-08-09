@@ -204,6 +204,7 @@ namespace EGG9000.Site.Controllers {
                     )
                     .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
                     .Concat(contracts.Where(c => c.Details.GetPossiblePE() > 0 && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
+                    .Where(x => x is not null)
                     .ToList()
             );
         }

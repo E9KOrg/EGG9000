@@ -64,6 +64,10 @@
     .nobreak span {
         white-space: nowrap;
     }
+
+    .tab-pane .container {
+        padding: 0px;
+    }
 </style>
 
 <script>
@@ -410,7 +414,7 @@
                                                             <th class="text-left">Date</th>
                                                             <th>Reason</th>
                                                             @if (isAdmin) {
-                                                                <th>Remove</th>
+                                                                <th></th>
                                                             }
                                                         </tr>
                                                     </tbody>
@@ -420,15 +424,15 @@
                                                                 <td>@merit.When.ToString("yyyy-MM-dd")</td>
                                                                 <td> @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))</td>
                                                                 @if (isAdmin) {
-                                                                    <td><a href="/myfarms/removemerit?id=@merit.Id">X</a></td>
+                                                                    <td><a href="/myfarms/removemerit?id=@merit.Id" title="Remove Merit">X</a></td>
                                                                 }
                                                             </tr>
                                                         }
                                                     </tbody>
                                                 } else {
-                                                    <div class="card" style="padding: 20px; margin-top:20px; text-align: center">
-                                                        <span style="display: inline-block;">No merits for user.</span>
-                                                    </div>
+                                                    <tr style="padding: 20px; margin-top:20px; text-align: center">
+                                                        <td>No merits for user.</td>
+                                                    </tr>
                                                 }
                                             </table>
                                         </div>
@@ -449,7 +453,7 @@
                                                             <th class="text-left">Date</th>
                                                             <th>Reason</th>
                                                             @if (isAdmin) {
-                                                                <th>Remove</th>
+                                                                <th></th>
                                                             }
                                                         </tr>
                                                     </thead>
@@ -459,7 +463,7 @@
                                                                 <td>@demerit.When.ToString("yyyy-MM-dd")</td>
                                                                 <td> @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage))</td>
                                                                 @if (isAdmin) {
-                                                                    <td><a href="/myfarms/removedemerit?id=@demerit.Id">X</a></td>
+                                                                    <td><a href="/myfarms/removedemerit?id=@demerit.Id" title="Remove Demerit">X</a></td>
                                                                 }
                                                             </tr>
                                                         }

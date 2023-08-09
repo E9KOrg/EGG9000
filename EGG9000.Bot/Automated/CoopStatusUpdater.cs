@@ -699,14 +699,6 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    foreach(var userStatus in usersWithStatus.Where(x => x.DiscordUser is not null)) {
-                        if(!coopDiscordUsers.Any(x => x.Id == userStatus.DiscordUser.Id)) {
-                            await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                            _logger.LogInformation("Added Permission for {user}", userStatus.User.DiscordUsername);
-                        }
-                    }
-
-
                     var msgs = GetStatusStringAsync(coopDetails, coop.Contract);
                     var lastMessage = "";
 
