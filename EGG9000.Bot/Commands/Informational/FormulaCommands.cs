@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Commands {
         };
 
         [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae", AllowInDMs = true)]
-        public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] MERChoice MERValue) {
+        public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] MERChoice MERValue = MERChoice.Current) {
             await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
