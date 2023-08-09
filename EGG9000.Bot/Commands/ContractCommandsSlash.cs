@@ -130,10 +130,11 @@ namespace EGG9000.Bot.Commands {
         }
 
         public enum FindCoopPrioritization {
-            FinishTimeLow = 0,
-            FinishTimeHigh = 1,
-            LowPlayerCount = 2
-        }
+            [Discord.Interactions.ChoiceDisplay("Low finish time (default)")] FinishTimeLow = 0,
+            [Discord.Interactions.ChoiceDisplay("High finish time")] FinishTimeHigh = 1,
+            [Discord.Interactions.ChoiceDisplay("Low player count")] LowPlayerCount = 2,
+            [Discord.Interactions.ChoiceDisplay("High player count")] HighPlayerCount = 3,
+        };
 
         [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = true, AllowFarmHand = true)]
         public static async Task FindCoopForUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
@@ -171,7 +172,8 @@ namespace EGG9000.Bot.Commands {
                 FindCoopPrioritization.FinishTimeLow => coops = coops.OrderBy(c => c.ProjectedFinish).ToList(),
                 FindCoopPrioritization.FinishTimeHigh => coops = coops.OrderByDescending(c => c.ProjectedFinish).ToList(),
                 FindCoopPrioritization.LowPlayerCount => coops = coops.OrderBy(c => c.UserCoopsXrefs.Count).ToList(),
-                _ => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
+                FindCoopPrioritization.HighPlayerCount => coops = coops.OrderByDescending(c => c.UserCoopsXrefs.Count).ToList(),
+                _ => coops = coops.OrderBy(c => c.ProjectedFinish).ToList(),
             };
 
             Coop newCoop = null;
