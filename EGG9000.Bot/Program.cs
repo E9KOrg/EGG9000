@@ -91,6 +91,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<LeaderboardUpdater>();
 
+            services.AddHostedService<ArtifactCheaters>();
+
             services.AddHostedService<StaffCoopsMessage>();
             services.AddHostedService<EventUpdater>();
             services.AddHostedService<CoopReorder>();
