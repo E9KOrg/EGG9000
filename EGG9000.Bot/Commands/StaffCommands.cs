@@ -37,22 +37,33 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using System.Collections;
+using System.Numerics;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
 
+        [SlashCommand(Description = "Determine a user's artifact fairness score", AdminOnly = true, ParentCommand = "a")]
+        public static Task AFS(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
+            return _afs(command, db, user, ShowInChannel);
+        }
+
+        /*[SlashCommand(Description = "Determine your artifact fairness score")]
+        public static Task AFS(FauxCommand command, ApplicationDbContext db) {
+            return _userstatus(command, db, command.User, false);
+        }*/
+
         [SlashCommand(Description = "Determine your artifact fairness score", AdminOnly = true)]
-        public static async Task AFS(FauxCommand command, ApplicationDbContext db) {
-            await command.DeferAsync();
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        public static async Task _afs(FauxCommand command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
+            await command.DeferAsync(ephemeral: !showInChannel);
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discUser.Id);
 
             var sb = new StringBuilder();
 
             foreach(var account in user.EggIncAccounts.Where(a => a.Backup is not null).ToList()) {
-                sb.Append($"For {account.Name}: {account.Backup.GetArtifactFairnessScore()}\n");
+                sb.Append($"For {account.Name}: {ArtifactHelpers.GetArtifactFairnessScoreString(account.Backup.ArtifactHall)}\n");
             }
 
-            await command.RespondAsync(sb.ToString());
+            await command.RespondAsync(sb.ToString(), ephemeral: !showInChannel);
         }
 
         [SlashCommand(Description = "Log a Message", AdminOnly = true, AllowFarmHand = true)]

@@ -123,7 +123,7 @@ namespace EGG9000.Common.Helpers {
                 _ => family.name
             };
         }
-        
+
         public class ArtifactNameAutoComplete : AutoCompleteHandler {
             private readonly EiAfxDataRoot _eiAfxData;
             public ArtifactNameAutoComplete() {
@@ -191,7 +191,7 @@ namespace EGG9000.Common.Helpers {
 
             return tier.name;
         }
-        
+
         public static string GetTierName(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
             var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
@@ -206,7 +206,7 @@ namespace EGG9000.Common.Helpers {
                 throw new Exception("Unable to locate artifact family: " + instance.Artifact);
             }
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number ==  instance.Tier + (artifact.type.Equals("Stone", StringComparison.OrdinalIgnoreCase) && !isFragment ? 1: 0));
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier + (artifact.type.Equals("Stone", StringComparison.OrdinalIgnoreCase) && !isFragment ? 1 : 0));
             if(tier is null) {
                 throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
             }
@@ -262,7 +262,6 @@ namespace EGG9000.Common.Helpers {
                 Boost = artifact.Boost,
                 Tier = (byte)(artifactSpec.Level + 1),
                 Rarity = (byte)(artifactSpec.Rarity + 1),
-                FairnessScore = artifact.FairnessScore[(int)artifactSpec.Level] * (int)artifactSpec.Rarity
                 //Spec = artifactSpec
             };
             switch((int)artifactSpec.Level) {
@@ -329,124 +328,108 @@ namespace EGG9000.Common.Helpers {
                 L0R0 = 1.1,
                 L1R0 = 1.25,
                 L2R0 = 1.5, L2R1 = 1.6, L2R2 = 1.7,
-                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3,
-                FairnessScore = new long[]{ 0, 1186, 13827, 58753}
+                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3
             },
             new EggIncArtifact {
                 Name = 4, Artifact = "Beak of Midas", Boost = EggIncBoostTypeEnum.DroneRewards, //done
                 L0R0 = 1.2,
                 L1R0 = 1.5,
                 L2R0 = 2, L2R1 = 3,
-                L3R0 = 6, L3R1 = 11, L3R3 = 9999,
-                FairnessScore = new long[]{ 0, 6075, 23885, 86083}
+                L3R0 = 6, L3R1 = 11, L3R3 = 9999
             },
             new EggIncArtifact {
                 Name = 10, Artifact = "Book of Basan", Boost = EggIncBoostTypeEnum.EggsOfProphecyEffect, //done
                 L0R0 = 1.0025,
                 L1R0 = 1.005,
                 L2R0 = 1.0075, L2R2 = 1.008,
-                L3R0 = 1.01, L3R2 = 1.1, L3R3 = 1.2,
-                FairnessScore = new long[]{ 0, 114405, 360427, 934701}
+                L3R0 = 1.01, L3R2 = 1.1, L3R3 = 1.2
             },
             new EggIncArtifact {
                 Name = 22, Artifact = "Carved Rainstick", Boost = EggIncBoostTypeEnum.CashGiftChance, //done
                 L0R0 = 1.2,
                 L1R0 = 1.5,
                 L2R2 = 2,
-                L3R0 = 5, L3R2 = 10, L3R3 = 9999,
-                FairnessScore = new long[]{ 0, 10082, 39572, 168121}
+                L3R0 = 5, L3R2 = 10, L3R3 = 9999
             },
             new EggIncArtifact {
                 Name = 40, Artifact = "Clarity Stone", Boost = EggIncBoostTypeEnum.HostArtifactsOnElightenment, //done
                 L0R0 = 0.25,
                 L1R0 = 0.50,
-                L2R0 = 1,
-                FairnessScore = new long[]{ 0, 36603, 185026, 774986}
+                L2R0 = 1
             },
             new EggIncArtifact {
                 Name = 6, Artifact = "Demeters Necklace", Boost = EggIncBoostTypeEnum.EggValue, //done
                 L0R0 = 1.1,
                 L1R0 = 1.25, L1R1 = 1.35,
                 L2R0 = 1.5, L2R1 = 1.6, L2R2 = 1.75,
-                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3,
-                FairnessScore = new long[]{ 0, 383, 7628, 41267}
+                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3
             },
             new EggIncArtifact {
                 Name = 28, Artifact = "Dilithium Monocle", Boost = EggIncBoostTypeEnum.BoostEffectiveness, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1,
                 L2R0 = 1.14,
-                L3R0 = 1.2, L3R2 = 1.25, L3R3 = 1.3,
-                FairnessScore = new long[]{ 0, 24487, 80590, 271970}
+                L3R0 = 1.2, L3R2 = 1.25, L3R3 = 1.3
             },
             new EggIncArtifact {
                 Name = 31, Artifact = "Dilithium Stone", Boost = EggIncBoostTypeEnum.BoostDuration, //done
                 L0R0 = 1.03,
                 L1R0 = 1.06,
-                L2R0 = 1.08,
-                FairnessScore = new long[]{ 0, 19671, 82572, 459362}
+                L2R0 = 1.08
             },
             new EggIncArtifact {
                 Name = 8, Artifact = "Gusset", Boost = EggIncBoostTypeEnum.HabCapacity, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1, L1R2 = 1.12,
                 L2R0 = 1.14, L2R1 = 1.15,
-                L3R0 = 1.2, L3R2 = 1.22, L3R3 = 1.25,
-                FairnessScore = new long[]{ 0, 5167, 28986, 163774}
+                L3R0 = 1.2, L3R2 = 1.22, L3R3 = 1.25
             },
             new EggIncArtifact {
                 Name = 27, Artifact = "Interstellar Compass", Boost = EggIncBoostTypeEnum.EggShippingRate, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1,
                 L2R0 = 1.2, L2R1 = 1.22,
-                L3R0 = 1.3, L3R1 = 1.35, L3R2 = 1.4, L3R3 = 1.5,
-                FairnessScore = new long[]{ 0, 9425, 37923, 226570}
+                L3R0 = 1.3, L3R1 = 1.35, L3R2 = 1.4, L3R3 = 1.5
             },
             new EggIncArtifact {
                 Name = 38, Artifact = "Life Stone", Boost = EggIncBoostTypeEnum.InternalHatchery, //done
                 L0R0 = 1.02,
                 L1R0 = 1.03,
-                L2R0 = 1.04,
-                FairnessScore = new long[]{ 0, 10507, 63177, 325027}
+                L2R0 = 1.04
             },
             new EggIncArtifact {
                 Name = 5, Artifact = "Light of Eggendil", Boost = EggIncBoostTypeEnum.EnlightenmentEggValue, //done
                 L0R0 = 1.5,
                 L1R0 = 2, L1R1 = 2.2,
                 L2R0 = 10, L2R1 = 15,
-                L3R0 = 101, L3R2 = 151, L3R3 = 251,
-                FairnessScore = new long[]{ 0, 67892, 168121, 330068}
+                L3R0 = 101, L3R2 = 151, L3R3 = 251
             },
             new EggIncArtifact {
                 Name = 33, Artifact = "Lunar Stone", Boost = EggIncBoostTypeEnum.AwayEarnings, //done
                 L0R0 = 1.2,
                 L1R0 = 1.3,
-                L2R0 = 1.4,
-                FairnessScore = new long[]{ 0, 406, 12447, 155125}
+                L2R0 = 1.4
             },
             new EggIncArtifact {
                 Name = 0, Artifact = "Lunar Totem", Boost = EggIncBoostTypeEnum.AwayEarnings, //done
                 L0R0 = 1.5,
                 L1R0 = 2, L1R1 = 2.5,
                 L2R0 = 4, L2R1 = 5,
-                L3R0 = 6, L3R1 = 8, L3R2 = 10,
-                FairnessScore = new long[]{ 1, 1, 4749, 28986}
+                L3R0 = 6, L3R1 = 8, L3R2 = 10
             },
             new EggIncArtifact {
                 Name = 30, Artifact = "Mercury's Lens", Boost = EggIncBoostTypeEnum.FarmValue, //done
                 L0R0 = 1.1,
                 L1R0 = 1.2, L1R1 = 1.22,
                 L2R0 = 1.5, L2R1 = 1.55,
-                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3,
-                FairnessScore = new long[]{ 0, 7084, 30365, 295510}
+                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3
             },
             new EggIncArtifact {
                 Name = 3, Artifact = "Neodymium Medallion", Boost = EggIncBoostTypeEnum.DroneFrequency, //done
                 L0R0 = 1.1,
                 L1R0 = 1.25, L1R1 = 1.3,
                 L2R0 = 1.5, L2R2 = 1.6,
-                L3R0 = 2, L3R1 = 2.1, L3R2 = 2.2, L3R3 = 2.29,
-                FairnessScore = new long[]{ 0, 3982, 16466, 58753}
+                L3R0 = 2, L3R1 = 2.1, L3R2 = 2.2, L3R3 = 2.29
             },
             new EggIncArtifact {
                 Name = 11, Artifact = "Phoenix Feather", Boost = EggIncBoostTypeEnum.SoulEggCollectionRate, //done
@@ -455,114 +438,99 @@ namespace EGG9000.Common.Helpers {
                 L2R0 = 5, L2R1 = 6,
                 L3R0 = 10,
                 L3R1 = 12,
-                L3R3 = 15,
-                FairnessScore = new long[]{ 0, 16466, 50473, 237296}
+                L3R3 = 15
             },
             new EggIncArtifact {
                 Name = 39, Artifact = "Prophecy Stone", Boost = EggIncBoostTypeEnum.EggsOfProphecyEffect, //done
                 L0R0 = 1.0005,
                 L1R0 = 1.001,
-                L2R0 = 1.0015,
-                FairnessScore = new long[]{ 0, 50259, 246536, 731674}
+                L2R0 = 1.0015
             },
             new EggIncArtifact {
                 Name = 23, Artifact = "Puzzle Cube", Boost = EggIncBoostTypeEnum.ResearchCost, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1, L1R2 = 1.15,
                 L2R0 = 1.2, L2R1 = 1.22,
-                L3R0 = 1.5, L3R1 = 1.53, L3R2 = 1.55, L3R3 = 1.6,
-                FairnessScore = new long[]{ 0, 90, 14672, 110353}
+                L3R0 = 1.5, L3R1 = 1.53, L3R2 = 1.55, L3R3 = 1.6
             },
             new EggIncArtifact {
                 Name = 24, Artifact = "Quantum Metronome", Boost = EggIncBoostTypeEnum.EggLayingRate, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1, L1R1 = 1.12,
                 L2R0 = 1.14999, L2R1 = 1.17, L2R2 = 1.2,
-                L3R0 = 1.25, L3R1 = 1.27, L3R2 = 1.3, L3R3 = 1.35,
-                FairnessScore = new long[]{ 0, 18400, 67892, 306621}
+                L3R0 = 1.25, L3R1 = 1.27, L3R2 = 1.3, L3R3 = 1.35
             },
             new EggIncArtifact {
                 Name = 36, Artifact = "Quantum Stone", Boost = EggIncBoostTypeEnum.EggShippingRate, //done
                 L0R0 = 1.02,
                 L1R0 = 1.04,
-                L2R0 = 1.05,
-                FairnessScore = new long[]{ 0, 7252, 25118, 228278}
+                L2R0 = 1.05
             },
             new EggIncArtifact {
                 Name = 32, Artifact = "Shell Stone", Boost = EggIncBoostTypeEnum.EggValue, //done
                 L0R0 = 1.05,
                 L1R0 = 1.08,
-                L2R0 = 1.10,
-                FairnessScore = new long[]{ 0, 262, 18048, 183125}
+                L2R0 = 1.10
             },
             new EggIncArtifact {
                 Name = 25, Artifact = "Ship in a Bottle", Boost = EggIncBoostTypeEnum.CoopMembersEarnings, //done
                 L0R0 = 1.2,
                 L1R0 = 1.3,
                 L2R0 = 1.5, L2R1 = 1.6,
-                L3R0 = 1.7, L3R1 = 1.8, L3R2 = 1.9, L3R3 = 2,
-                FairnessScore = new long[]{ 0, 36322, 113895, 442510}
+                L3R0 = 1.7, L3R1 = 1.8, L3R2 = 1.9, L3R3 = 2
             },
             new EggIncArtifact {
                 Name = 34, Artifact = "Soul Stone", Boost = EggIncBoostTypeEnum.SoulEggBonus, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1,
-                L2R0 = 1.25,
-                FairnessScore = new long[]{ 0, 5196, 64770, 250022}
+                L2R0 = 1.25
             },
             new EggIncArtifact {
                 Name = 26, Artifact = "Tachyon Deflector", Boost = EggIncBoostTypeEnum.CoopMembersEggLayingRates, //done
                 L0R0 = 1.05,
                 L1R0 = 1.08,
                 L2R0 = 1.12, L2R1 = 1.12,
-                L3R0 = 1.14, L3R1 = 1.17, L3R2 = 1.19, L3R3 = 1.2,
-                FairnessScore = new long[]{ 0, 77412, 259516, 1220591}
+                L3R0 = 1.14, L3R1 = 1.17, L3R2 = 1.19, L3R3 = 1.2
             },
             new EggIncArtifact {
                 Name = 1, Artifact = "Tachyon Stone", Boost = EggIncBoostTypeEnum.EggLayingRate, //done
                 L0R0 = 1.02,
                 L1R0 = 1.04,
-                L2R0 = 1.05,
-                FairnessScore = new long[]{ 0, 495, 18048, 236946}
+                L2R0 = 1.05
             },
             new EggIncArtifact {
                 Name = 37, Artifact = "Terra Stone", Boost = EggIncBoostTypeEnum.RunningChickenBonus, Additive = true, //done
                 L0R0 = 10,
                 L1R0 = 50,
-                L2R0 = 100,
-                FairnessScore = new long[]{ 0, 5196, 29988, 303837}
+                L2R0 = 100
             },
             new EggIncArtifact {
                 Name = 9, Artifact = "The Chalice", Boost = EggIncBoostTypeEnum.InternalHatchery, //done
                 L0R0 = 1.05,
                 L1R0 = 1.1, L1R2 = 1.14,
                 L2R0 = 1.2, L2R1 = 1.23, L2R2 = 1.25,
-                L3R0 = 1.3, L3R2 = 1.35, L3R3 = 1.4,
-                FairnessScore = new long[]{ 0, 8798, 30365, 139253}
+                L3R0 = 1.3, L3R2 = 1.35, L3R3 = 1.4
             },
             new EggIncArtifact {
                 Name = 29, Artifact = "Titanium Actuator", Boost = EggIncBoostTypeEnum.HoldToHatch, Additive = true, //done
                 L0R0 = 1,
                 L1R0 = 4,
                 L2R0 = 6, L2R1 = 7,
-                L3R0 = 10, L3R2 = 12, L3R3 = 15,
-                FairnessScore = new long[]{ 0, 26353, 88920, 215900}
+                L3R0 = 10, L3R2 = 12, L3R3 = 15
             },
             new EggIncArtifact {
                 Name = 12, Artifact = "Tungsten Ankh", Boost = EggIncBoostTypeEnum.EggValue, //done
                 L0R0 = 1.1,
                 L1R0 = 1.25, L1R1 = 1.28,
                 L2R0 = 1.5, L2R1 = 1.75, L2R3 = 2,
-                L3R0 = 2, L3R1 = 2.25, L3R3 = 2.5,
-                FairnessScore = new long[]{ 0, 3982, 25099, 110546}
+                L3R0 = 2, L3R1 = 2.25, L3R3 = 2.5
             },
             new EggIncArtifact {
                 Name = 7, Artifact = "Vial of Martian Dust", Boost = EggIncBoostTypeEnum.MaxRunningChickenBonus, Additive = true, //done
                 L0R0 = 10,
                 L1R0 = 50, L1R1 = 60,
                 L2R0 = 100, L2R2 = 150,
-                L3R0 = 200, L3R1 = 300, L3R3 = 500,
-                FairnessScore = new long[]{ 0, 3302, 26353, 139253}
+                L3R0 = 200, L3R1 = 300, L3R3 = 500
             },
             new EggIncArtifact { Name = 13, Artifact = "Extraterrestrial Aluminum" },
             new EggIncArtifact { Name = 14, Artifact = "Ancient Tungsten" },
@@ -594,7 +562,6 @@ namespace EGG9000.Common.Helpers {
         [Key(0)] public int Count { get; set; }
         [Key(1)] public EggIncArtifactInstance Artifact { get; set; }
         [Key(2)] public uint NumberCrafted { get; set; }
-        [Key(3)] public long FairnessScore { get; set; }
     }
 
     [MessagePackObject]
@@ -609,7 +576,6 @@ namespace EGG9000.Common.Helpers {
         [Key(4)] public List<EggIncArtifactInstance> Stones { get; set; }
         [Key(5)] public byte Tier { get; set; }
         [Key(6)] public byte Rarity { get; set; }
-        [Key(7)] public long FairnessScore { get; set; }
 
         public override bool Equals(Object other) {
             if(other is EggIncArtifactInstance)
@@ -674,7 +640,6 @@ namespace EGG9000.Common.Helpers {
         public double L3R2 { get; set; }
         public double L3R3 { get; set; }
         public bool Additive { get; set; }
-        public long[] FairnessScore { get; set; }
     }
 }
 
