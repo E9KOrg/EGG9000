@@ -60,8 +60,9 @@ namespace EGG9000.Bot.Automated {
             foreach(var evt in events) {
                 var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == evt.Identifier);
                 var customization = eventCustomizations.FirstOrDefault(x => x.Type == evt.Type);
-                if(customization is null)
-                    return;
+                if(customization is null) {
+                    continue;
+                }
                 if(currentEvent == null) {
                     var newEvent = new Event(evt);
                     _db.Add(newEvent);
