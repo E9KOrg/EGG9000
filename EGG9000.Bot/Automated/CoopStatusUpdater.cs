@@ -1399,6 +1399,7 @@ namespace EGG9000.Bot.Automated {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup.EggIncId)) {
                     foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
+                        if(user.User.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsync();
