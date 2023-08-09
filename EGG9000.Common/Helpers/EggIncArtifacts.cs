@@ -123,7 +123,7 @@ namespace EGG9000.Common.Helpers {
                 _ => family.name
             };
         }
-        
+
         public class ArtifactNameAutoComplete : AutoCompleteHandler {
             private readonly EiAfxDataRoot _eiAfxData;
             public ArtifactNameAutoComplete() {
@@ -191,7 +191,7 @@ namespace EGG9000.Common.Helpers {
 
             return tier.name;
         }
-        
+
         public static string GetTierName(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
             var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
@@ -206,7 +206,7 @@ namespace EGG9000.Common.Helpers {
                 throw new Exception("Unable to locate artifact family: " + instance.Artifact);
             }
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number ==  instance.Tier + (artifact.type.Equals("Stone", StringComparison.OrdinalIgnoreCase) && !isFragment ? 1: 0));
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier + (artifact.type.Equals("Stone", StringComparison.OrdinalIgnoreCase) && !isFragment ? 1 : 0));
             if(tier is null) {
                 throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
             }
