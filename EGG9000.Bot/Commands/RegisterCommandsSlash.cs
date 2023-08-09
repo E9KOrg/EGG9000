@@ -867,7 +867,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = true)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam] bool banaccount = false) {
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam(Required = false)] bool banaccount = false) {
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();
                 var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
