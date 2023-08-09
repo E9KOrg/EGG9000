@@ -168,9 +168,9 @@ namespace EGG9000.Bot.Commands {
             }
 
             _ = priority switch {
-                FindCoopPrioritization.FinishTimeLow => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
-                FindCoopPrioritization.FinishTimeHigh => coops = coops.OrderByDescending(c => c.CoopEnds).ToList(),
-                FindCoopPrioritization.LowPlayerCount => coops = coops.OrderBy(c => c.UserCoopsXrefs.Count()).ToList(),
+                FindCoopPrioritization.FinishTimeLow => coops = coops.OrderBy(c => c.ProjectedFinish).ToList(),
+                FindCoopPrioritization.FinishTimeHigh => coops = coops.OrderByDescending(c => c.ProjectedFinish).ToList(),
+                FindCoopPrioritization.LowPlayerCount => coops = coops.OrderBy(c => c.UserCoopsXrefs.Count).ToList(),
                 _ => coops = coops.OrderBy(c => c.CoopEnds).ToList(),
             };
 

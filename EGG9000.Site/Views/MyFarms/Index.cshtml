@@ -178,8 +178,8 @@
                         <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 }
-                <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
-                <div class="copy-notification" id="copy-notification-eid">EID copied!</div>
+                <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
+                <div class="copy-notification" id="copy-notification-eid-@index">EID copied!</div>
                 <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
                 @if (!dbguild.DisableBG) {
                     if (account.Group == 0) {
