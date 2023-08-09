@@ -19,6 +19,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public DateTimeOffset? CoopEnds { get; set; }
         public DateTimeOffset? CoopCompleted { get; set; }
+        public DateTimeOffset? ProjectedFinish { get; set; } = DateTimeOffset.MaxValue;
 
         public DateTimeOffset Created { get; set; }
 
