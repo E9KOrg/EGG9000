@@ -75,7 +75,7 @@ namespace EGG9000.Bot.Automated {
                 var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
                 var messages = await thread.GetMessagesAsync(100).FlattenAsync();
 
-                if(!messages.Any(m => m.Content == messageContent)) await thread.SendMessageAsync(messageContent);
+                if(!messages.Any(m => m.Content.ToString().Contains(outlier.Name) && m.Content.ToString().Contains(user.DiscordId.ToString()))) await thread.SendMessageAsync(messageContent);
                 else {
                     _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
                 }
