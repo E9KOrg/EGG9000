@@ -31,7 +31,9 @@ namespace EGG9000.Bot.Automated {
 
             foreach(var user in dbusers) {
                 foreach(var account in user.EggIncAccounts) {
-                    scoreSet.Add(account, (double)ArtifactHelpers.GetArtifactFairnessScore(account.Backup.ArtifactHall));
+                    var score = (double)ArtifactHelpers.GetArtifactFairnessScore(account.Backup?.ArtifactHall ?? null);
+                    if(account is null || score is 0) continue;
+                    scoreSet.Add(account, score);
                 }
             }
 
