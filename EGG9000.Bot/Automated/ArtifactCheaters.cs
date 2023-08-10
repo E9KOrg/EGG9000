@@ -63,7 +63,13 @@ namespace EGG9000.Bot.Automated {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
                 if(guild is null) continue;
 
-                var thread = guild.GetThreadChannel(dbguilds.FirstOrDefault(x => x.Id == guild.Id).ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.ArtifactCheaterThread).Id);
+                var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
+                if(clientGuild is null) continue;
+
+                var threadobj = clientGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.ArtifactCheaterThread);
+                if(threadobj is null) continue;
+
+                var thread = guild.GetThreadChannel(threadobj.Id);
                 if(thread is null) continue;
 
                 var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
