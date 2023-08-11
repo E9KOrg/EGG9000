@@ -56,7 +56,7 @@ namespace EGG9000.Bot.Automated {
             var upperThreshold = averageScore + (zScoreCutoff * standardDeviation);
             var upperOutliers = scoreSet
                 .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
-                .Where(pair => !pair.Key.AFSWarningSent && !pair.Key.AFSMarkedClean)
+                .Where(pair => !pair.Key.AFSMarkedClean)
                 .Where(pair => (pair.Value - averageScore) / standardDeviation > zScoreCutoff)
                 .Select(pair => pair.Key)
                 .ToList();
@@ -78,14 +78,13 @@ namespace EGG9000.Bot.Automated {
                     var thread = guild.GetThreadChannel(threadobj.Id);
                     if(thread is null) continue;
 
-                    var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
-                    var messages = await thread.GetMessagesAsync(100).FlattenAsync();
-
-                    if(!messages.Any(m => m.Content.ToString().Contains(outlier.Name) && m.Content.ToString().Contains(user.DiscordId.ToString()))) await thread.SendMessageAsync(messageContent);
+                    if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
                     else {
                         _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
                     }
+                    outlier.AFSWarningSent = true;
                 }
+                await _db.SaveChangesAsync();
             }
 
             return returnScoreset ? scoreSet : new();
