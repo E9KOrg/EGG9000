@@ -25,7 +25,7 @@
 						EggIncId = isAdmin ? u.Account.Backup.EggIncId : "",
 						DatabaseId = isAdmin ? u.User.Id : Guid.Empty,
 						Guild = u.Account.Guild,
-						Group = u.Account.Group,
+						Group = c.CcOnly ? u.Account?.UltraGroup ?? u.Account.Group : u.Account.Group,
 					};
 				}),
 				TotalEB = c.Users.Sum(u => u.Account.Backup.EarningsBonus).ToEggString()
