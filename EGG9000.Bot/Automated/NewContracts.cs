@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 3) {
+                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4) {
                     var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
                     var nextLaunch = (contractDate - contractDate.TimeOfDay) + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
                     var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
@@ -187,16 +187,6 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
-
-            /**
-            * TODO: REMOVE THIS EVENTUALLY
-            *
-            * FOR NOW, SKIP CREATING COOPS FOR CC_ONLY CONTRACTS UNTIL WE CAN VET IT'S WORKING CORRECLTY
-            */
-            //if(contract.cc_only) {
-            //    _logger.LogInformation("Skipping creating Subscriber co-ops for {guild} for Contract {contract}", guild.Name, contract.Name);
-            //    return;
-            //}
 
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG} for Contract {contract}", guild.Name, skipbg + 1, contract.Name);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();

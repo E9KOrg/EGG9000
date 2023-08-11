@@ -27,8 +27,10 @@ namespace EGG9000.Common.Contracts {
                     Account = a,
                     User = u,
                     UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
-                    Group = a.Group
+                    //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
+                    Group = contract.CcOnly ? a?.UltraGroup ?? a.Group : a.Group
                 }));
+
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
 
             accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract));
@@ -78,7 +80,8 @@ namespace EGG9000.Common.Contracts {
                         group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
                     }
                 } else {
-                    for(var bg = 3; bg >= 1; bg--) {
+                    var bgLimit = contract.CcOnly ? 4 : 3;
+                    for(var bg = bgLimit; bg >= 1; bg--) {
                         var group = new PotentialCoopGroup {
                             BoardingGroup = bg, Grade = grade
                         };
@@ -147,7 +150,7 @@ namespace EGG9000.Common.Contracts {
 
             var coops = new List<PotentialCoop>();
             for(var i = 0; i < numberOfCoops; i++) {
-                coops.Add(new PotentialCoop { Users = new List<UserByAccount>() });
+                coops.Add(new PotentialCoop { Users = new List<UserByAccount>(), CcOnly = contract.CcOnly });
             }
             while(ebGroups.Any(x => x.Value.Count > 0)) {
                 var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();

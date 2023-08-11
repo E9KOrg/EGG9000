@@ -22,6 +22,7 @@ namespace EGG9000.Common.Contracts {
     public class PotentialCoop {
         public List<UserByAccount> Users { get; set; }
         public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+        public bool CcOnly { get; set; }
     }
 
     public class UserByAccount {

@@ -369,6 +369,8 @@ namespace EGG9000.Common.Database.Entities {
         public double SubscriptionEnds { get; set; }
         [Key(20)]
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; }
+        [Key(23)]
+        public byte UltraGroup { get; set; }
 
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
