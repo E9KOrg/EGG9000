@@ -2,8 +2,29 @@
 @{
 }
 
+<script>
+    function copyIdToClipboard(id, notifId) {
+        // If the passed parameter is an HTML element, get its inner text
+        const content = (typeof id === "object") ? id.innerText : id.toString();
+        navigator.clipboard.writeText(content);
+
+        if (notifId) {
+            // Show the notification
+            var notification = document.getElementById(notifId);
+            notification.style.display = "block";
+            notification.style.opacity = "1";
+
+            // Hide the notification after 2 seconds (adjust the duration as needed)
+            setTimeout(function () {
+                notification.style.opacity = "0";
+            }, 2000);
+        }
+    }
+</script>
 
 <h3>Users Below Threshold</h3>
+<div class="copy-notification" id="low-copy-notification-name">Username copied!</div>
+<div class="copy-notification" id="low-copy-notification-discord">Discord ID copied!</div>
 <table class="table table-striped table-sm" style="width: auto;">
     <thead>
         <tr>
@@ -17,22 +38,24 @@
         @foreach (var user in Model.UsersBelowThreshold.OrderBy(x => x.RunningScore)) {
             <tr>
                 <td><img class="thumbnail" src="@PlayerGradeDetails.GetImage(user.Grade)" /></td>
-                <td>@user.DiscordUsername</td>
+                <td onclick="copyIdToClipboard('@user.DiscordUsername', 'low-copy-notification-name')" title="Click to copy">@user.DiscordUsername</td>
                 <td>@user.RunningScore.ToString("G3")</td>
-                <td>@user.DiscordId</td>
+                <td onclick="copyIdToClipboard('@user.DiscordId', 'low-copy-notification-discord')" title="Click to copy">@user.DiscordId</td>
             </tr>
         }
     </tbody>
 </table>
 
 <h3>Top 10 Scores</h3>
+<div class="copy-notification" id="high-copy-notification-name">Username copied!</div>
+<div class="copy-notification" id="high-copy-notification-discord">Discord ID copied!</div>
 <table class="table table-striped table-sm" style="width: auto;">
     @foreach (var user in Model.TopScore) {
         <tr>
             <td><img class="thumbnail" src="@PlayerGradeDetails.GetImage(user.Grade)" /></td>
-            <td>@user.DiscordUsername</td>
+            <td onclick="copyIdToClipboard('@user.DiscordUsername', 'high-copy-notification-name')" title="Click to copy">@user.DiscordUsername</td>
             <td>@user.Score.ToString("G3")</td>
-            <td>@user.DiscordId</td>
+            <td onclick="copyIdToClipboard('@user.DiscordId', 'high-copy-notification-discord')" title="Click to copy">@user.DiscordId</td>
         </tr>
     }
 </table>
