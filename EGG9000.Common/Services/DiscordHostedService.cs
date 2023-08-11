@@ -149,10 +149,6 @@ namespace EGG9000.Common.Services {
                     return default(T);
 
                 return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
-                if(channelType.ToString().Contains("Category"))
-                    return (T)Convert.ChangeType(guild.CategoryChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
-
-                return (T)Convert.ChangeType(guild.TextChannels.FirstOrDefault(x => x.Id == channelDetail.Id), typeof(T));
             }catch (Exception e) {
                 _logger.LogError(e, "Error getting channel or category");
                 return default(T);
