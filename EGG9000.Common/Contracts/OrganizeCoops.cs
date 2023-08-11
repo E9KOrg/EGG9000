@@ -27,8 +27,10 @@ namespace EGG9000.Common.Contracts {
                     Account = a,
                     User = u,
                     UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
-                    Group = a.Group
+                    //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
+                    Group = contract.CcOnly ? a.UltraGroup : a.Group
                 }));
+
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
 
             accounts = accounts.Where(x => CheckOnPreviousComplete(x, contract));

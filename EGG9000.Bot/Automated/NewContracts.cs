@@ -188,16 +188,6 @@ namespace EGG9000.Bot.Automated {
 
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
 
-            /**
-            * TODO: REMOVE THIS EVENTUALLY
-            *
-            * FOR NOW, SKIP CREATING COOPS FOR CC_ONLY CONTRACTS UNTIL WE CAN VET IT'S WORKING CORRECLTY
-            */
-            //if(contract.cc_only) {
-            //    _logger.LogInformation("Skipping creating Subscriber co-ops for {guild} for Contract {contract}", guild.Name, contract.Name);
-            //    return;
-            //}
-
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG} for Contract {contract}", guild.Name, skipbg + 1, contract.Name);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
