@@ -14,7 +14,7 @@ using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public class NewCode {
-        [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly =true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task NewCoopCode(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var words = new Words();
             var wordOne = words.GetRandomWord();
@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync(code);
         }
 
-        [SlashCommand(Description = "Delete co-op channel from discord and database ", AdminOnly = true)]
+        [SlashCommand(Description = "Delete co-op channel from discord and database ", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
