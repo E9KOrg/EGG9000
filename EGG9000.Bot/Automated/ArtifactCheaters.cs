@@ -22,6 +22,10 @@ namespace EGG9000.Bot.Automated {
         public ArtifactCheaters(IServiceProvider provider) : base(interval, delay, provider) { }
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
+            await RunFairnessScores(true, false);
+        }
+
+        public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
@@ -52,35 +56,39 @@ namespace EGG9000.Bot.Automated {
             var upperThreshold = averageScore + (zScoreCutoff * standardDeviation);
             var upperOutliers = scoreSet
                 .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
+                .Where(pair => !pair.Key.AFSWarningSent && !pair.Key.AFSMarkedClean)
                 .Where(pair => (pair.Value - averageScore) / standardDeviation > zScoreCutoff)
                 .Select(pair => pair.Key)
                 .ToList();
 
-            foreach(var outlier in upperOutliers) {
-                var user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
-                var outlierScore = scoreSet[outlier];
+            if(sendMessages) {
+                foreach(var outlier in upperOutliers) {
+                    var user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
+                    var outlierScore = scoreSet[outlier];
 
-                var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                if(guild is null) continue;
+                    var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                    if(guild is null) continue;
 
-                var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
-                if(clientGuild is null) continue;
+                    var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
+                    if(clientGuild is null) continue;
 
-                var threadobj = clientGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.ArtifactCheaterThread);
-                if(threadobj is null) continue;
+                    var threadobj = clientGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.ArtifactCheaterThread);
+                    if(threadobj is null) continue;
 
-                var thread = guild.GetThreadChannel(threadobj.Id);
-                if(thread is null) continue;
+                    var thread = guild.GetThreadChannel(threadobj.Id);
+                    if(thread is null) continue;
 
-                var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
-                var messages = await thread.GetMessagesAsync(100).FlattenAsync();
+                    var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
+                    var messages = await thread.GetMessagesAsync(100).FlattenAsync();
 
-                if(!messages.Any(m => m.Content.ToString().Contains(outlier.Name) && m.Content.ToString().Contains(user.DiscordId.ToString()))) await thread.SendMessageAsync(messageContent);
-                else {
-                    _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
+                    if(!messages.Any(m => m.Content.ToString().Contains(outlier.Name) && m.Content.ToString().Contains(user.DiscordId.ToString()))) await thread.SendMessageAsync(messageContent);
+                    else {
+                        _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
+                    }
                 }
             }
 
+            return returnScoreset ? scoreSet : new();
         }
     }
 }
