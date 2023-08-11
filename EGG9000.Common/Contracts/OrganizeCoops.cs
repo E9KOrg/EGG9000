@@ -80,7 +80,8 @@ namespace EGG9000.Common.Contracts {
                         group.PotentialCoops = _SortUsersIntoDay1Coops(accountList, 0, grade, contract, new List<int>(), true, true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
                     }
                 } else {
-                    for(var bg = 3; bg >= 1; bg--) {
+                    var bgLimit = contract.CcOnly ? 4 : 3;
+                    for(var bg = bgLimit; bg >= 1; bg--) {
                         var group = new PotentialCoopGroup {
                             BoardingGroup = bg, Grade = grade
                         };
