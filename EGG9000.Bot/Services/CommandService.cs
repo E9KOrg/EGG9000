@@ -295,9 +295,7 @@ namespace EGG9000.Bot.Services {
                 guildCommand.WithName(command.Details.Name ?? command.Name);
                 command.Name = command.Details.Name ?? command.Name;
 
-
                 if(command.Details.AdminOnly != StaffOnlyLevel.None) {
-                    _logger.Log(LogLevel.Information, "Command {CommandName} has AdminOnly of {AdminOnlyLevel}", command.Details.Name, command.Details.AdminOnly.ToString());
                     guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
                         StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
                         StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
