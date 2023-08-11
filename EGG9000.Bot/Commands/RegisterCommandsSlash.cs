@@ -684,7 +684,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
-                    var gradeProgressPercent = Math.Round(Math.Round((account.Backup?.GradeProgress ?? 0), 4) * 100, 2);
+                    var gradeProgressPercent = Math.Round(Math.Round(account.Backup?.GradeProgress ?? 0, 4) * 100, 2);
                     builder.AddField("Grade", PlayerGradeDetails.GetEmoji(pGrade), true);
 
                     if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
@@ -698,13 +698,16 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(dbguild is null || !dbguild.DisableBG) {
-                    builder.AddField("Boarding Group", (account?.Group == 0 ? "**None**" : "BG" + account?.Group), true);
+                    builder.AddField("Boarding Group", account?.Group == 0 ? "**None**" : "BG" + account?.Group, true);
+                    if(account.SubscriptionLevel is not null) {
+                        builder.AddField("Ultra Boarding Group", account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup, true);
+                    }
                 }
 
-                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
+                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<RewardType>()) ?? "No Filter";
                 var breakStr = account.OnBreakUntil == default ? "No" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>";
                 var redoOpt = account.RedoLeggacySelection == default ? RedoLeggacyOption.NotSet : account.RedoLeggacySelection;
-                var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt.ToString()} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
+                var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
 
                 builder.AddField("Filter", filterStr == "" ? "None" : filterStr, true);
                 builder.AddField("Break", breakStr == "" ? "No" : breakStr, true);

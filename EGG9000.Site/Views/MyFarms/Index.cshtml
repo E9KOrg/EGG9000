@@ -181,9 +181,17 @@
                 <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
                 @if (!dbguild.DisableBG) {
                     if (account.Group == 0) {
-                        <span style="margin-right:10px;; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
+                        <span style="margin-right:10px; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
                     } else {
                         <span style="margin-right:10px;"><b><u>Boarding Group @account.Group</u></b></span>
+                    }
+                    if(account.SubscriptionLevel is not null) {
+                        if (account.UltraGroup == 0) {
+                            <span style="margin-right:10px; color: #FFAA33"><b>⚠️Ultra Boarding Group Not Set</b></span>
+                        }
+                        else {
+                            <span style="margin-right:10px;"><b><u>Ultra Boarding Group @account.UltraGroup</u></b></span>
+                        }
                     }
                 }
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
