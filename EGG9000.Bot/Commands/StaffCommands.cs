@@ -174,7 +174,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
         }
 
-        [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = StaffOnlyLevel.FarmHand)]
+        [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
             try {

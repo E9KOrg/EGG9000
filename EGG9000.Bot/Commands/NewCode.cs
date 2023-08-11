@@ -14,7 +14,7 @@ using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public class NewCode {
-        [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly = StaffOnlyLevel.FarmHand)]
+        [SlashCommand(Description = "Generate a new co-op code, a channel will be created for the co-op", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task NewCoopCode(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             var words = new Words();
             var wordOne = words.GetRandomWord();
