@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 3) {
+                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4) {
                     var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
                     var nextLaunch = (contractDate - contractDate.TimeOfDay) + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
                     var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
