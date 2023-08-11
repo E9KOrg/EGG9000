@@ -28,7 +28,7 @@ namespace EGG9000.Common.Contracts {
                     User = u,
                     UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
                     //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
-                    Group = contract.CcOnly ? a.UltraGroup : a.Group
+                    Group = contract.CcOnly ? a?.UltraGroup ?? a.Group : a.Group
                 }));
 
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
@@ -149,7 +149,7 @@ namespace EGG9000.Common.Contracts {
 
             var coops = new List<PotentialCoop>();
             for(var i = 0; i < numberOfCoops; i++) {
-                coops.Add(new PotentialCoop { Users = new List<UserByAccount>() });
+                coops.Add(new PotentialCoop { Users = new List<UserByAccount>(), CcOnly = contract.CcOnly });
             }
             while(ebGroups.Any(x => x.Value.Count > 0)) {
                 var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
