@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Commands {
              && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now && c.ProjectedFinish > DateTimeOffset.Now).ToListAsync();
 
             if(!coops.Any()) {
-                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}");
+                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name} (I1)");
                 return;
             }
 
@@ -189,7 +189,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(newCoop is null) {
-                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}");
+                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name} (I2)");
                 return;
             }
 
