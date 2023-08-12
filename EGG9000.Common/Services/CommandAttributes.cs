@@ -8,17 +8,24 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Commands {
+
+    public enum StaffOnlyLevel {
+        None = 0,
+        ChickenTender = 1,
+        FarmHand = 2,
+        CluckingCoordinator = 3,
+        Admin = 4
+    };
+
     [AttributeUsage(AttributeTargets.Method)]
     public class UserCommandAttribute : System.Attribute {
         public string Name = "";
-        public bool AdminOnly;
-        public bool AllowFarmHand;
+        public StaffOnlyLevel AdminOnly;
     }
     [AttributeUsage(AttributeTargets.Method)]
     public class SlashCommandAttribute : System.Attribute {
         public string Description = "";
-        public bool AdminOnly = false;
-        public bool AllowFarmHand = false;
+        public StaffOnlyLevel AdminOnly = StaffOnlyLevel.None;
         public string ParentCommand { get; set; } = "";
         public bool AllowInDMs;
     }
