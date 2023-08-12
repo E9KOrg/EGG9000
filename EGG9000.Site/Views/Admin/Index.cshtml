@@ -44,10 +44,10 @@
 						int available;
 						if (first) {
 							first = false;
-							available = 450 - guild.ChannelCount;
+							available = Math.Max(450 - guild.ChannelCount, 0);
 
 						} else {
-							available = 500 - guild.ChannelCount;
+							available = Math.Max(500 - guild.ChannelCount, 0);
 
 						}
 						availableSum += available;

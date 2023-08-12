@@ -372,6 +372,12 @@ namespace EGG9000.Common.Database.Entities {
         [Key(23)]
         public byte UltraGroup { get; set; }
 
+        public byte GetGroup(bool Ultra) {
+            if(Ultra && UltraGroup > 0)
+                return UltraGroup;
+            return Group;
+        }
+
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
             SentBreakWarning = false;
