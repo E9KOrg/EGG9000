@@ -149,7 +149,7 @@ namespace EGG9000.Bot.Commands {
 
             var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.Now);
 
-            if(contract.cc_only && account.SubscriptionLevel == 0) {
+            if(contract.cc_only && account.SubscriptionLevel is null) {
                 await command.RespondAsync($"⚠️ERROR: Non-subscribed account cannot be assigned to subscriber-only contract");
                 return;
             } else if(existingCoop is not null) {
