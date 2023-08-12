@@ -25,17 +25,17 @@ using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public static class ContextUserCommands {
-        [UserCommand(Name = "Userstatus", AdminOnly = true, AllowFarmHand = true)]
+        [UserCommand(Name = "Userstatus", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
             await RegisterCommandsSlash._userstatus(command, db, _client, apiLink, command.Data.Member, true, false);
         }
 
-        [UserCommand(Name = "EGG9000.com", AdminOnly = true, AllowFarmHand = true)]
+        [UserCommand(Name = "EGG9000.com", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task WebsiteLink(SocketUserCommand command) {
             await command.RespondAsync($"<https://egg9000.com/MyFarms/ViewUser?discordId={command.Data.Member.Id}>", ephemeral: true);
         }
 
-        [UserCommand(Name = "Rockets Tracker", AdminOnly = true, AllowFarmHand = true)]
+        [UserCommand(Name = "Rockets Tracker", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RocketsTrackerLinks(SocketUserCommand command, ApplicationDbContext db)
         {
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);

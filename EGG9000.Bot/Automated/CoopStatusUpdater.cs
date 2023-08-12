@@ -1133,6 +1133,8 @@ namespace EGG9000.Bot.Automated {
                             }
                         }
 
+                        //Estimate the time the coop is projected to finish
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds);
 
                         var totalRatePerHour = totalRate * 60 * 60;
                         if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
@@ -1141,7 +1143,6 @@ namespace EGG9000.Bot.Automated {
                             if(remainingAmount > 0) {
                                 var remainingTime = remainingAmount / totalRate;
                                 if(remainingTime < TimeSpan.MaxValue.TotalSeconds) {
-                                    coop.ProjectedFinish = new DateTimeOffset().AddSeconds(GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).Seconds);
                                     try {
                                         var timeSpan = TimeSpan.FromSeconds(remainingTime);
                                         embedBuilder.AddField("Time To Complete", GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
@@ -1187,8 +1188,6 @@ namespace EGG9000.Bot.Automated {
                     var times = timings.Finished();
 
                     //_logger.LogInformation("Co-op timings {timings} - {coop}", String.Join(",", times.Select(x => $"{x.name}:{x.time.Humanize().ShortenTime()}")), coop.Name);
-
-
                 }
             } catch(Exception e) {
                 _logger.LogError(e, "Error in co-op {coopid}", coopid);

@@ -249,14 +249,20 @@ namespace EGG9000.Bot.Services {
                 var guildCommand = new SlashCommandBuilder();
                 guildCommand.DefaultMemberPermissions = GuildPermission.UseApplicationCommands;
                 guildCommand.WithName(command.Name);
-                if(command.Details.AdminOnly) {
+                if(command.Details.AdminOnly != StaffOnlyLevel.None) {
                     command.Details.Description = $"(Admin Only) {command.Details.Description}";
                 }
                 guildCommand.WithDescription(command.Details.Description);
                 //guildCommand.Description += "~";
 
-                if(command.Details.AdminOnly == true) {
-                    guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
+                if(command.Details.AdminOnly != StaffOnlyLevel.None) {
+                    guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
+                        StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
+                        StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                        StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                        StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                        _ => GuildPermission.UseApplicationCommands
+                    };
                 }
 
                 if(command.SubFunctions != null) {
@@ -283,17 +289,20 @@ namespace EGG9000.Bot.Services {
             }
 
             foreach(var command in _userCommandFunctions) {
-                var guildCommand = new UserCommandBuilder();
-                guildCommand.DefaultMemberPermissions = command.Details.AdminOnly ? GuildPermission.Administrator : GuildPermission.UseApplicationCommands;
+                var guildCommand = new UserCommandBuilder {
+                    DefaultMemberPermissions = GuildPermission.UseApplicationCommands
+                };
                 guildCommand.WithName(command.Details.Name ?? command.Name);
                 command.Name = command.Details.Name ?? command.Name;
 
-
-                if(command.Details.AdminOnly) {
-                    guildCommand.DefaultMemberPermissions = GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles;
-                    if(command.Details.AllowFarmHand) {
-                        guildCommand.DefaultMemberPermissions |= GuildPermission.ModerateMembers;
-                    }
+                if(command.Details.AdminOnly != StaffOnlyLevel.None) {
+                    guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
+                        StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
+                        StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                        StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                        StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                        _ => GuildPermission.UseApplicationCommands
+                    };
                 }
 
 
@@ -493,7 +502,7 @@ namespace EGG9000.Bot.Services {
             throw new NotImplementedException($"Parameter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
         }
 
-        private void AddOption(String name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices) {
+        private void AddOption(string name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices) {
             if(guildCommand != null) {
 
                 guildCommand.AddOption(name, type, description, isRequired, null, isAutocomplete: isAutocomplete, null, null, null, null, null, null, null, null, choices);
@@ -521,7 +530,7 @@ namespace EGG9000.Bot.Services {
                     .Select(x => new SlashCommandFunction {
                         Name = x.Key,
                         SubFunctions = x.ToList(),
-                        Details = new SlashCommandAttribute { Description = "Bruh?", AdminOnly = x.Any(y => y.Details.AdminOnly == true) },
+                        Details = new SlashCommandAttribute { Description = "?", AdminOnly = x.Min(y => y.Details.AdminOnly) },
                     })
                 );
 
