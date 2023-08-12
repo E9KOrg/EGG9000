@@ -28,7 +28,7 @@ namespace EGG9000.Common.Contracts {
                     User = u,
                     UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
                     //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
-                    Group = contract.CcOnly ? a?.UltraGroup ?? a.Group : a.Group
+                    Group = a.GetGroup(contract.CcOnly)
                 }));
 
             accounts = accounts.Where(x => x.Account.OnBreakUntil < DateTimeOffset.Now && x.Account.Backup is not null);
@@ -127,12 +127,12 @@ namespace EGG9000.Common.Contracts {
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool ignoreRewards, bool AllowGuilds, int overrideNumber = 0, ulong roleid = 0) {
             IEnumerable<UserByAccount> matchingAccounts = Accounts.Where(x =>
                     x.Account.GetGrade() == Grade  || contract.CcOnly 
-                ); 
+                );
 
             if(roleid > 0) {
                 matchingAccounts = matchingAccounts.Where(x => x.RoleId == roleid);
             } else {
-                matchingAccounts = matchingAccounts.Where(x => (x.Account.Group == BoardingGroup || includeBG.Any(y => x.Account.Group == y)));
+                matchingAccounts = matchingAccounts.Where(x => x.Account.GetGroup(contract.CcOnly) == BoardingGroup || includeBG.Any(y => x.Account.GetGroup(contract.CcOnly) == y));
             }
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
             matchingAccounts = matchingAccounts.Where(x =>
@@ -196,7 +196,7 @@ namespace EGG9000.Common.Contracts {
             //    }
             //}
 
-            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1, contract.MaxCoopSize / 5))) {
+            if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1, contract.MaxCoopSize / 2))) {
                 coops = new List<PotentialCoop>();
                 includeBG.Add(BoardingGroup);
             } else if(includeBG.Count > 0) {

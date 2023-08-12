@@ -410,7 +410,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckASCRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var ascRole = await _client.GetRoleAsync(GuildChannelType.ASCRole, Guild);
             if(ascRole is not null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipStars is not null).Any(x => MissionHelpers.MaxShipLevels.Equals(x.Backup.ShipStars));
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipsSent is not null).Any(x => MissionHelpers.HasMaxedShips(x.Backup));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == ascRole.Id);
 
                 if(!hasRole && needsRole) {

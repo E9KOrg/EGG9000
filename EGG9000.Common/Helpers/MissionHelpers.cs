@@ -1,4 +1,8 @@
-﻿using Ei;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.JsonData.EiAfxConfig;
+
+using Ei;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,6 +40,63 @@ namespace EGG9000.Common.Helpers {
                 newDic.Add(l.Ship, l.Level);
             });
             return newDic;
+        }
+
+        public static int GetShipLevel(this CustomBackup backup, Ei.MissionInfo.Types.Spaceship ship) {
+            if(backup.ShipsSent == null)
+                return 0;
+
+            var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
+
+            var levelMissionRequirements = Root.Get().missionParameters.First(x => ship.ToString().Equals(x.ship.Replace("_", ""), StringComparison.CurrentCultureIgnoreCase)).levelMissionRequirements;
+
+            for(var i = levelMissionRequirements.Count; i > 0; i--) {
+                var sum = levelMissionRequirements.Take(i).Sum();
+                if(points >= sum) {
+                    return i;
+                }
+            }
+
+            return 0;
+        }
+
+        public static double GetShipProgress(this CustomBackup backup, Ei.MissionInfo.Types.Spaceship ship) {
+            if(backup.ShipsSent == null)
+                return 0;
+
+            var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count  +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8 ;
+
+            var levelMissionRequirements = Root.Get().missionParameters.First(x => ship.ToString().Equals(x.ship.Replace("_", ""), StringComparison.CurrentCultureIgnoreCase)).levelMissionRequirements;
+
+            for(var i = levelMissionRequirements.Count; i > 0; i--) {
+                var sum = levelMissionRequirements.Take(i).Sum();
+                if(points >= sum) {
+                    if(levelMissionRequirements.Count > i) {
+                        double numLaunchedCurrentLevel = points - sum;
+                        double numForNextLevel = levelMissionRequirements[i];
+                        return numLaunchedCurrentLevel / numForNextLevel;
+                    } else {
+                        return 1;
+                    }
+                    
+                }
+            }
+
+            return 0;
+        }
+
+        public static bool HasMaxedShips(CustomBackup backup) {
+            return MissionHelpers.MaxShipLevels.All(x => {
+                var currentStars = backup.GetShipLevel(x.Key);
+                if(currentStars == x.Value) {
+                    return true;
+                }
+                return false;
+            });
         }
     }
 }

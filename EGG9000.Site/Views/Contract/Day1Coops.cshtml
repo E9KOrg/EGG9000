@@ -4,6 +4,7 @@
 @{
 	Guild dbguild = ViewBag.DBGuild;
 	SocketGuild guild = ViewBag.Guild;
+	var contract = (Ei.Contract)ViewBag.Contract;
 
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
 	var boardingGroups = Model.GroupBy(x => x.BoardingGroup).Select(x => new {
@@ -21,11 +22,11 @@
 						Name = discordUser?.GetCleanName() ?? u.User.DiscordUsername,
 						MultipleAccounts = u.User.EggIncAccounts.Count > 1,
 						AccountName = u.Account.Backup.UserName,
-						FromGroup = (u.Account.Group != x.Key ? u.Account.Group : 0),
+						FromGroup = (u.Account.GetGroup(contract.CcOnly) != x.Key ? u.Account.GetGroup(contract.CcOnly) : 0),
 						EggIncId = isAdmin ? u.Account.Backup.EggIncId : "",
 						DatabaseId = isAdmin ? u.User.Id : Guid.Empty,
 						Guild = u.Account.Guild,
-						Group = c.CcOnly ? u.Account?.UltraGroup ?? u.Account.Group : u.Account.Group,
+						Group = u.Account.GetGroup(contract.CcOnly),
 					};
 				}),
 				TotalEB = c.Users.Sum(u => u.Account.Backup.EarningsBonus).ToEggString()
@@ -36,7 +37,6 @@
 
 
 	var grades = Model.GroupBy(x => x.Grade).Where(x => x.Count() > 0);
-	var contract = (Ei.Contract)ViewBag.Contract;
 
 }
 <style>
