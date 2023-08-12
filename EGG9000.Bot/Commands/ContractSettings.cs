@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Commands {
         };
 
         #region AdminBypass
-        [SlashCommand(Description ="Set another user's settings", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description ="Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
