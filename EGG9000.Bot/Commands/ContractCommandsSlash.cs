@@ -598,14 +598,14 @@ namespace EGG9000.Bot.Commands {
             }
             var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
 
-            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Count();
+            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Count();
 
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
 
                 EggIncAccount subAccountBypass = null;
                 if(contract.cc_only) {
-                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.SubscriptionLevel > 0);
+                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.SubscriptionLevel is not null);
                 }
 
                 var userList = new List<UserByAccount> { new UserByAccount {
@@ -620,7 +620,7 @@ namespace EGG9000.Bot.Commands {
                 var builder = new ComponentBuilder();
                 var userList = user.EggIncAccounts;
                 if(contract.cc_only) {
-                    userList = userList.Where(x => x.SubscriptionLevel > 0).ToList();
+                    userList = userList.Where(x => x.SubscriptionLevel is not null).ToList();
                 }
 
                 foreach(var account in userList) {
@@ -656,7 +656,7 @@ namespace EGG9000.Bot.Commands {
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
-                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Any();
+                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Any();
 
                 var contracts = await _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).Select(x => new { x.ID, x.Name }).ToListAsync();
 
@@ -672,7 +672,7 @@ namespace EGG9000.Bot.Commands {
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var guild = _db.Guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
-                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Any();
+                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Any();
 
                 var contracts = _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).ToList();
 
