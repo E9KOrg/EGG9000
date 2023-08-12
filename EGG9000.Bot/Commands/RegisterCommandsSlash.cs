@@ -664,15 +664,8 @@ namespace EGG9000.Bot.Commands {
                 if(backup == null)
                     continue;
 
-                var nameField = ($"***{account.Name}***: " ?? "(No Name): ") + (account.Id ?? "No EID");
-                builder.AddField("――――――――――――――――――", nameField);
-                if(backup?.Farms?.Count > 0) {
-                    builder.AddField("Last Backup", DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)), true);
-                    builder.AddField("EB", backup.EarningsBonus.ToEggString(), true);
-                } else {
-                    builder.AddField("Last Backup", "Empty - Check EID", true);
-                    builder.AddField("EB", "None", true);
-                }
+                builder.AddField("――――――――――――――――――", ($"{((account.GetGrade() != default) ? PlayerGradeDetails.GetEmoji(account.GetGrade()) : "")} ***{account.Name} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
+                builder.AddField("Last Backup", (backup?.Farms?.Count > 0) ? DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)) : "Empty - Check EID", true);
 
                 if(!string.IsNullOrEmpty(account.DeviceID)) {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
@@ -685,7 +678,6 @@ namespace EGG9000.Bot.Commands {
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
                     var gradeProgressPercent = Math.Round(Math.Round(account.Backup?.GradeProgress ?? 0, 4) * 100, 2);
-                    builder.AddField("Grade", PlayerGradeDetails.GetEmoji(pGrade), true);
 
                     if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
                         var percentageString = $"{gradeProgressPercent}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))} :chart_with_upwards_trend:";
@@ -697,10 +689,11 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                if(dbguild is null || !dbguild.DisableBG) {
-                    builder.AddField("Boarding Group", account?.Group == 0 ? "**None**" : "BG" + account?.Group, true);
+                if(dbguild is null || !dbguild.DisableBG) { 
                     if(account.SubscriptionLevel is not null) {
-                        builder.AddField("Ultra Boarding Group", account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup, true);
+                        builder.AddField("Boarding Groups", $"{(account?.Group == 0 ? "**None**" : "BG" + account?.Group)}/{(account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup, true)}");
+                    } else {
+                        builder.AddField("Boarding Group", account?.Group == 0 ? "**None**" : "BG" + account?.Group, true);
                     }
                 }
 
