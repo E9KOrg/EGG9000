@@ -133,7 +133,7 @@
                 </ul>
             </div>
         </div>
-        <div class="flex" style="">
+        <div class="flex afx-card-container">
             @foreach (var farm in farms) {
                 var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
                 var isHome = farm.FarmType == Ei.FarmType.Home;
