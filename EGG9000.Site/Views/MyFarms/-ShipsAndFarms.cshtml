@@ -197,9 +197,9 @@
                                 <span class="tooltiptext-custom">
                                     @{
                                         var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
-                                        var shortsToNext = shipsToNext[Ei.MissionInfo.Types.DurationType.Short];
-                                        var standardsToNext = shipsToNext[Ei.MissionInfo.Types.DurationType.Long];
-                                        var extendedsToNext = shipsToNext[Ei.MissionInfo.Types.DurationType.Epic];
+                                        var shortsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                        var standardsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                        var extendedsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Epic] : 0;
                                     }
                                     <span class="blue-text">@shortsToNext Short</span><span class="gray-text-half-margin">or</span>
                                     <span class="purple-text">@standardsToNext Standard</span><span class="gray-text-half-margin">or</span>
@@ -217,9 +217,9 @@
                                 <span class="tooltiptext-custom">
                                     @{
                                         var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
-                                        var shortsToMax = shipsToMax[Ei.MissionInfo.Types.DurationType.Short];
-                                        var standardsToMax = shipsToMax[Ei.MissionInfo.Types.DurationType.Long];
-                                        var extendedsToMax = shipsToMax[Ei.MissionInfo.Types.DurationType.Epic];
+                                        var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                        var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                        var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Epic] : 0;
                                     }
                                     <span class="blue-text">@shortsToMax Short</span><span class="gray-text-half-margin">or</span>
                                     <span class="purple-text">@standardsToMax Standard</span><span class="gray-text-half-margin">or</span>

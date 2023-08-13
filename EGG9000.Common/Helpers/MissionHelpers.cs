@@ -6,7 +6,9 @@ using Ei;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using static Ei.MissionInfo.Types;
@@ -14,7 +16,7 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
-        public static Dictionary<Spaceship, uint> MaxShipLevels = new Dictionary<Spaceship, uint> {
+        public readonly static Dictionary<Spaceship, uint> MaxShipLevels = new() {
             { Spaceship.ChickenOne, 0 },
             { Spaceship.ChickenNine, 2 },
             { Spaceship.ChickenHeavy, 3 },
@@ -45,6 +47,9 @@ namespace EGG9000.Common.Helpers {
         public static int GetShipLevel(this CustomBackup backup, Spaceship ship) {
             if(backup.ShipsSent == null)
                 return 0;
+
+            //If they don't have the ship unlocked
+            if(!backup.ShipsSent.Any(x => x.ship == ship)) return 0;
 
             var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
@@ -79,7 +84,9 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static Dictionary<DurationType, int> LaunchShipsToNext(this CustomBackup backup, Spaceship ship) {
-            var points = backup.ShipsSent is null ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+            if(backup.ShipsSent is null) return new();
+
+            var points = (!backup.ShipsSent.Any(x => x.ship == ship)) ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
             backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
             backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
 
@@ -90,11 +97,14 @@ namespace EGG9000.Common.Helpers {
                     return ShipsFromPoints(levelMissionRequirements.Take(i + 1).Sum() - points);
                 }
             }
-            return ShipsFromPoints(0);
+            if(points == 0) return ShipsFromPoints(levelMissionRequirements[0]);
+            else return ShipsFromPoints(0);
         }
 
         public static Dictionary<DurationType, int> LaunchShipsToMax(this CustomBackup backup, Spaceship ship) {
-            var points = backup.ShipsSent is null ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+            if(backup.ShipsSent is null) return new();
+
+            var points = (!backup.ShipsSent.Any(x => x.ship == ship)) ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
 
@@ -120,7 +130,7 @@ namespace EGG9000.Common.Helpers {
             //No stars, always maxed
             if(ship == Spaceship.ChickenOne) return 1;
 
-            var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count  +
+            var points = (!backup.ShipsSent.Any(x => x.ship == ship)) ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count  +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8 ;
 
@@ -146,7 +156,7 @@ namespace EGG9000.Common.Helpers {
             if(backup.ShipsSent == null)
                 return 0;
 
-            var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+            var points = (!backup.ShipsSent.Any(x => x.ship == ship)) ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
 
@@ -158,7 +168,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static bool HasMaxedShips(CustomBackup backup) {
-            return MissionHelpers.MaxShipLevels.All(x => {
+            return MaxShipLevels.All(x => {
                 var currentStars = backup.GetShipLevel(x.Key);
                 if(currentStars == x.Value) {
                     return true;
