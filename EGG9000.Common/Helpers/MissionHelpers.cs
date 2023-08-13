@@ -86,13 +86,8 @@ namespace EGG9000.Common.Helpers {
             var levelMissionRequirements = Root.Get().missionParameters.First(x => ship.ToString().Equals(x.ship.Replace("_", ""), StringComparison.CurrentCultureIgnoreCase)).levelMissionRequirements;
 
             for(var i = levelMissionRequirements.Count; i > 0; i--) {
-                var sum = levelMissionRequirements.Take(i).Sum();
-                if(points >= sum) {
-                    if(levelMissionRequirements.Count > i) {
-                        double numLaunchedCurrentLevel = points - sum;
-                        double numForNextLevel = levelMissionRequirements[i];
-                        return ShipsFromPoints(numForNextLevel);
-                    }
+                if(points >= levelMissionRequirements.Take(i).Sum()) {
+                    return ShipsFromPoints(levelMissionRequirements.Take(i + 1).Sum() - points);
                 }
             }
             return ShipsFromPoints(0);
