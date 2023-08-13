@@ -42,7 +42,7 @@ namespace EGG9000.Common.Helpers {
             return newDic;
         }
 
-        public static int GetShipLevel(this CustomBackup backup, Ei.MissionInfo.Types.Spaceship ship) {
+        public static int GetShipLevel(this CustomBackup backup, Spaceship ship) {
             if(backup.ShipsSent == null)
                 return 0;
 
@@ -62,9 +62,28 @@ namespace EGG9000.Common.Helpers {
             return 0;
         }
 
-        public static double GetShipProgress(this CustomBackup backup, Ei.MissionInfo.Types.Spaceship ship) {
+        public static string GetProperShipName(Spaceship ship) {
+            return ship switch {
+                Spaceship.ChickenOne => "Chicken One",
+                Spaceship.ChickenNine => "Chicken Nine",
+                Spaceship.ChickenHeavy => "Chicken Heavy",
+                Spaceship.Bcr => "BCR",
+                Spaceship.MilleniumChicken => "Quintillion Chicken",
+                Spaceship.CorellihenCorvette => "Cornish-Hen Corbette",
+                Spaceship.Galeggtica => "Galleggtica",
+                Spaceship.Chickfiant => "Defihent",
+                Spaceship.Voyegger => "Voyegger",
+                Spaceship.Henerprise => "Henerprise",
+                _ => "How did you get here?"
+            };
+        }
+
+        public static double GetShipProgressNextLevel(this CustomBackup backup, Spaceship ship) {
             if(backup.ShipsSent == null)
                 return 0;
+
+            //No stars, always maxed
+            if(ship == Spaceship.ChickenOne) return 1;
 
             var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count  +
                 backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
@@ -85,8 +104,22 @@ namespace EGG9000.Common.Helpers {
                     
                 }
             }
-
             return 0;
+        }
+
+        public static double GetShipProgressTotal(this CustomBackup backup, Spaceship ship) {
+            if(backup.ShipsSent == null)
+                return 0;
+
+            var points = backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
+
+            var levelMissionRequirements = Root.Get().missionParameters.First(x => ship.ToString().Equals(x.ship.Replace("_", ""), StringComparison.CurrentCultureIgnoreCase)).levelMissionRequirements;
+
+            var sum = levelMissionRequirements.Sum();
+
+            return (points == 0 ? 0 : (points / sum > 1 ? 1 : points / sum));
         }
 
         public static bool HasMaxedShips(CustomBackup backup) {
