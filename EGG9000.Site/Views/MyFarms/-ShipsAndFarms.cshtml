@@ -48,10 +48,58 @@
     .GoldenStar {
         color: gold;
     }
+
     .GrayStar {
         color: gray;
     }
+
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+
+        .tooltip-custom:hover .tooltiptext-custom {
+            display: inline-block;
+            z-index: 2; /* Make sure the tooltip is above other elements on hover */
+            top: -100%; /* Adjust this value as needed */
+            left: -200px;
+        }
+
+    .tooltiptext-custom {
+        display: none;
+        position: absolute;
+        background-color: rgba(255, 255, 255, 0.9); /* Adjust opacity here */
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: nowrap; /* Prevent the tooltip from wrapping */
+    }
+
+    .gray-text {
+        color: lightgray
+    }
+
+    .orange-text {
+        color: darkorange;
+    }
+
+    .purple-text {
+        color: purple;
+    }
+
+    .blue-text {
+        color: blue;
+    }
+
+    .gray-text,
+    .orange-text,
+    .purple-text,
+    .blue-text {
+        display: inline-block; /* Display spans horizontally */
+        margin-right: 10px; /* Add spacing between spans */
+    }
 </style>
+
 <div id="shipsDiv" class="ship-container">
     @foreach (var mission in Model.Backup.SpaceMissions ?? new List<SpaceMission>()) {
         var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
@@ -111,7 +159,8 @@
             <tr>
                 <th style="text-align: center;">Ship</th>
                 <th>Stars</th>
-                <th>Progress</th>
+                <th>Progress to Next Level</th>
+                <th>Progress to Max Level</th>
                 <th>Launches</th>
             </tr>
         </thead>
@@ -122,7 +171,7 @@
                 <tr>
                     <td align="center">
                         @if (shipEmojiLink != "") {
-                            <img src="@((shipEmojiLink))" style="max-height: 20px">
+                            <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height: 20px">
                         }
                     </td>
                     <td>
@@ -136,10 +185,30 @@
                         }
                     </td>
                     <td>
-                        @Model.Backup.GetShipProgress(ship.Key).ToString("P0")
+                        @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
                     </td>
                     <td>
-                        @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
+                        @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                    </td>
+                    <td>
+                        <span class="tooltip-custom">
+                            @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
+                            <span class="tooltiptext-custom">
+                                @{
+                                    var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
+                                    var tutorialShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Tutorial);
+                                    var extendedShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Epic);
+                                    var standardShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Long);
+                                    var shortShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Short);
+                                }
+                                @if(ship.Key == Ei.MissionInfo.Types.Spaceship.ChickenOne){
+                                    <span class="gray-text">@tutorialShips.count Tutorial</span>
+                                }
+                                <span class="blue-text">@shortShips.count Short</span>
+                                <span class="purple-text">@standardShips.count Standard</span>
+                                <span class="orange-text">@extendedShips.count Extended</span>
+                            </span>
+                        </span>
                     </td>
                 </tr>
             }
