@@ -78,6 +78,46 @@ namespace EGG9000.Common.Helpers {
             };
         }
 
+        public static Dictionary<DurationType, int> LaunchShipsToNext(this CustomBackup backup, Spaceship ship) {
+            var points = backup.ShipsSent is null ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+            backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
+            backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
+
+            var levelMissionRequirements = Root.Get().missionParameters.First(x => ship.ToString().Equals(x.ship.Replace("_", ""), StringComparison.CurrentCultureIgnoreCase)).levelMissionRequirements;
+
+            for(var i = levelMissionRequirements.Count; i > 0; i--) {
+                var sum = levelMissionRequirements.Take(i).Sum();
+                if(points >= sum) {
+                    if(levelMissionRequirements.Count > i) {
+                        double numLaunchedCurrentLevel = points - sum;
+                        double numForNextLevel = levelMissionRequirements[i];
+                        return ShipsFromPoints(numForNextLevel);
+                    }
+                }
+            }
+            return ShipsFromPoints(0);
+        }
+
+        public static Dictionary<DurationType, int> LaunchShipsToMax(this CustomBackup backup, Spaceship ship) {
+            var points = backup.ShipsSent is null ? 0 : backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Short).count +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Long).count * 1.4 +
+                backup.ShipsSent.FirstOrDefault(x => x.ship == ship && x.type == DurationType.Epic).count * 1.8;
+
+            var levelMissionRequirements = Root.Get().missionParameters.First(x => ship.ToString().Equals(x.ship.Replace("_", ""), StringComparison.CurrentCultureIgnoreCase)).levelMissionRequirements;
+            return ShipsFromPoints(levelMissionRequirements.Sum() - points);
+        }
+
+        public static Dictionary<DurationType, int> ShipsFromPoints(double neededPoints) {
+            Dictionary<DurationType, int> newDic = new();
+            if(neededPoints == 0) return newDic;
+
+            newDic.Add(DurationType.Short, (int)Math.Ceiling(neededPoints / 1));
+            newDic.Add(DurationType.Long, (int)Math.Ceiling(neededPoints / 1.4));
+            newDic.Add(DurationType.Epic, (int)Math.Ceiling(neededPoints / 1.8));
+
+            return newDic;
+        }
+
         public static double GetShipProgressNextLevel(this CustomBackup backup, Spaceship ship) {
             if(backup.ShipsSent == null)
                 return 0;
