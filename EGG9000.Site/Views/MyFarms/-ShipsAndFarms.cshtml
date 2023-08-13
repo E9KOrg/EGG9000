@@ -75,6 +75,7 @@
         white-space: nowrap; /* Prevent the tooltip from wrapping */
     }
 
+    .gray-text-half-margin,
     .gray-text {
         color: lightgray
     }
@@ -97,6 +98,11 @@
     .blue-text {
         display: inline-block; /* Display spans horizontally */
         margin-right: 10px; /* Add spacing between spans */
+    }
+
+    .gray-text-half-margin {
+        display: inline-block; /* Display spans horizontally */
+        margin-right: 5px; /* Add spacing between spans */
     }
 </style>
 
@@ -159,8 +165,8 @@
             <tr>
                 <th style="text-align: center;">Ship</th>
                 <th>Stars</th>
-                <th>Progress to Next Level</th>
-                <th>Progress to Max Level</th>
+                <th>Next Level</th>
+                <th>Max Level</th>
                 <th>Launches</th>
             </tr>
         </thead>
@@ -185,10 +191,42 @@
                         }
                     </td>
                     <td>
-                        @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
+                        @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                            <span class="tooltip-custom">
+                            @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
+                                <span class="tooltiptext-custom">
+                                    @{
+                                        var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
+                                        var shortsToNext = shipsToNext[Ei.MissionInfo.Types.DurationType.Short];
+                                        var standardsToNext = shipsToNext[Ei.MissionInfo.Types.DurationType.Long];
+                                        var extendedsToNext = shipsToNext[Ei.MissionInfo.Types.DurationType.Epic];
+                                    }
+                                    <span class="blue-text">@shortsToNext Short</span><span class="gray-text-half-margin">or</span>
+                                    <span class="purple-text">@standardsToNext Standard</span><span class="gray-text-half-margin">or</span>
+                                    <span class="orange-text">@extendedsToNext Extended</span>
+                                </span>
+                            </span>
+                        }else{
+                            @("--")
+                        }
                     </td>
                     <td>
-                        @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                        <span class="tooltip-custom">
+                            @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                            @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                                <span class="tooltiptext-custom">
+                                    @{
+                                        var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                                        var shortsToMax = shipsToMax[Ei.MissionInfo.Types.DurationType.Short];
+                                        var standardsToMax = shipsToMax[Ei.MissionInfo.Types.DurationType.Long];
+                                        var extendedsToMax = shipsToMax[Ei.MissionInfo.Types.DurationType.Epic];
+                                    }
+                                    <span class="blue-text">@shortsToMax Short</span><span class="gray-text-half-margin">or</span>
+                                    <span class="purple-text">@standardsToMax Standard</span><span class="gray-text-half-margin">or</span>
+                                    <span class="orange-text">@extendedsToMax Extended</span>
+                                </span>
+                            }
+                        </span>
                     </td>
                     <td>
                         <span class="tooltip-custom">
