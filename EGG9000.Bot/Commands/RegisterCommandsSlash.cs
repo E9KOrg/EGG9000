@@ -691,7 +691,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(dbguild is null || !dbguild.DisableBG) { 
                     if(account.SubscriptionLevel is not null) {
-                        builder.AddField("Boarding Groups", $"{(account?.Group == 0 ? "**None**" : "BG" + account?.Group)}/{(account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup, true)}");
+                        builder.AddField("Boarding Groups", $"{(account?.Group == 0 ? "**None**" : "BG" + account?.Group)}/{(account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup)}", true);
                     } else {
                         builder.AddField("Boarding Group", account?.Group == 0 ? "**None**" : "BG" + account?.Group, true);
                     }
