@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.Equals("OmenWing85", StringComparison.OrdinalIgnoreCase)).ToList();
+                //coops = coops.Where(x => x.Name.Equals("OmenWing85", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
@@ -1134,7 +1134,7 @@ namespace EGG9000.Bot.Automated {
                         }
 
                         //Estimate the time the coop is projected to finish
-                        coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds);
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
 
                         var totalRatePerHour = totalRate * 60 * 60;
                         if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
