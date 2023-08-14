@@ -779,7 +779,7 @@ namespace EGG9000.Bot.Automated {
                                         await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
                                     }
 
-                                    if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18) && coopDetails.PercentProjectedForJoined > 100) {
+                                    if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18)) {
                                         var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
                                         await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
