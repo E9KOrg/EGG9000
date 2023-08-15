@@ -775,7 +775,9 @@ namespace EGG9000.Bot.Commands {
             dbuser.TempDisabled = false;
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops from now on.");
+            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.Now) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
+
+            await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
 
         private static async Task _cleanWelcome(FauxCommand command, DiscordHostedService _client) {
