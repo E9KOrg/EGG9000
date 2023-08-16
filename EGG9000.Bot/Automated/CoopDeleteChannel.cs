@@ -44,11 +44,12 @@ namespace EGG9000.Bot.Automated {
                 if(coopChannel != null) {
                     try {
                         await coopChannel.DeleteAsync();
+                        _logger.LogInformation("Deleting co-op channel for {coopName}", coop.Name);
+                        coop.DeletedChannel = true;
                     } catch(Exception e) {
                         _bugsnag.Notify(e);
+                        _logger.LogError("Error deleting co-op channel for {coopName}: {error}", coop.Name, e.Message);
                     }
-                    coop.DeletedChannel = true;
-                    _logger.LogInformation("Deleting co-op channel for {coopName}", coop.Name);
                 } else {
                     coop.DeletedChannel = true;
                     _logger.LogWarning("Unable to find co-op channel for {coopName}", coop.Name);

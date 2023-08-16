@@ -36,7 +36,7 @@ using Ei;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
-        [SlashCommand(Description = "Makes a co-op public", AdminOnly = true)]
+        [SlashCommand(Description = "Makes a co-op public", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task MakePublic(FauxCommand command, ApplicationDbContext db) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Move a user to a different grade of coop", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Move a user to a different grade of coop", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
             [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] uint newgrade) {
             await command.RespondAsync("Please wait...");
@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Commands {
             [Discord.Interactions.ChoiceDisplay("High player count")] HighPlayerCount = 3,
         };
 
-        [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task FindCoopForUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
             [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid, [SlashParam(Required = false)]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
             await command.DeferAsync();
@@ -149,7 +149,7 @@ namespace EGG9000.Bot.Commands {
 
             var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.Now);
 
-            if(contract.cc_only && account.SubscriptionLevel == 0) {
+            if(contract.cc_only && account.SubscriptionLevel is null) {
                 await command.RespondAsync($"⚠️ERROR: Non-subscribed account cannot be assigned to subscriber-only contract");
                 return;
             } else if(existingCoop is not null) {
@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Commands {
              && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now && c.ProjectedFinish > DateTimeOffset.Now).ToListAsync();
 
             if(!coops.Any()) {
-                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}");
+                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name} (I1)");
                 return;
             }
 
@@ -189,7 +189,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(newCoop is null) {
-                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}");
+                await command.RespondAsync($"⚠️ERROR: No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name} (I2)");
                 return;
             }
 
@@ -207,7 +207,7 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
         }
 
-        [SlashCommand(Description = "Makes this co-op private", AdminOnly = true)]
+        [SlashCommand(Description = "Makes this co-op private", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task MakePrivate(FauxCommand command, ApplicationDbContext db) {
             var name = new Regex(@"\w+").Match(command.Channel.Name.ToLower()).Value;
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -256,7 +256,7 @@ namespace EGG9000.Bot.Commands {
         //}
 
 
-        [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname, [SlashParam] string grade) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
             if(guildContract == null) {
@@ -359,7 +359,7 @@ namespace EGG9000.Bot.Commands {
 
 
 
-        [SlashCommand(Description = "Fix a users reference in a co-op when they are showing as an alien", AdminOnly = true)]
+        [SlashCommand(Description = "Fix a users reference in a co-op when they are showing as an alien", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FixReference(FauxCommand command, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ApplicationDbContext db, [SlashParam] SocketGuildUser targetuser, [SlashParam(Description = "Egg Inc Name, will match partial name")] string eggincname) {
             //var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id && !x.JoinedCoop);
@@ -406,7 +406,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
         }
 
-        [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = true)]
+        [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(AutocompleteHandler = typeof(MoveToCoopCoopNameAutoComplete))] string coopid) {
             var coop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == Guid.Parse(coopid));
             var userid = useraccount.Split("|")[0];
@@ -527,7 +527,7 @@ namespace EGG9000.Bot.Commands {
         }
 
 
-        [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = true)]
+        [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
 
             await command.RespondAsync("Please wait...");
@@ -575,7 +575,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = true)]
+        [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
@@ -598,14 +598,14 @@ namespace EGG9000.Bot.Commands {
             }
             var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
 
-            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Count();
+            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Count();
 
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
 
                 EggIncAccount subAccountBypass = null;
                 if(contract.cc_only) {
-                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.SubscriptionLevel > 0);
+                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.SubscriptionLevel is not null);
                 }
 
                 var userList = new List<UserByAccount> { new UserByAccount {
@@ -620,7 +620,7 @@ namespace EGG9000.Bot.Commands {
                 var builder = new ComponentBuilder();
                 var userList = user.EggIncAccounts;
                 if(contract.cc_only) {
-                    userList = userList.Where(x => x.SubscriptionLevel > 0).ToList();
+                    userList = userList.Where(x => x.SubscriptionLevel is not null).ToList();
                 }
 
                 foreach(var account in userList) {
@@ -656,7 +656,7 @@ namespace EGG9000.Bot.Commands {
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
-                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Any();
+                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Any();
 
                 var contracts = await _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).Select(x => new { x.ID, x.Name }).ToListAsync();
 
@@ -672,7 +672,7 @@ namespace EGG9000.Bot.Commands {
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var guild = _db.Guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
-                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel > 0).Any();
+                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Any();
 
                 var contracts = _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).ToList();
 

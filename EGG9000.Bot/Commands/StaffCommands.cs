@@ -42,7 +42,6 @@ using System.Numerics;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
-
         [SlashCommand(Description = "Mark a potential artifact cheater as clean", AdminOnly = true, ParentCommand = "a")]
         public static async Task MarkAFSClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
             await command.DeferAsync(ephemeral: false);
@@ -60,13 +59,12 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Determine a user's artifact fairness score", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Determine a user's artifact fairness score", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task AFS(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
             return _afs(command, db, user, ShowInChannel);
         }
 
-        [SlashCommand(Description = "Determine your artifact fairness score", AdminOnly = true)]
-        public static async Task _afs(FauxCommand command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
+        private static async Task _afs(FauxCommand command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discUser.Id);
 
@@ -79,7 +77,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync(sb.ToString(), ephemeral: !showInChannel);
         }
 
-        [SlashCommand(Description = "Log a Message", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Log a Message", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null) {
             if(channel == null) {
                 await command.Channel.SendMessageAsync(message);
@@ -89,7 +87,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Sent", ephemeral: true);
         }
 
-        [SlashCommand(Description = "Select X random users with Y role", AdminOnly = true)]
+        [SlashCommand(Description = "Select X random users with Y role", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, [SlashParam(Required = true)] SocketRole role, [SlashParam(Required = false)] SocketRole role2, [SlashParam(Required = false)] SocketRole role3) {
             try {
                 var guildUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users;
@@ -113,7 +111,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Look for a coop with certain search parameters", AdminOnly = true, AllowFarmHand = true )]
+        [SlashCommand(Description = "Look for a coop with certain search parameters", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task FindCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] string coopname = "", [SlashParam(Required = false)] SocketChannel contractchannel = null) {
             //Coop name was not passed correctly, error out
             if(string.IsNullOrEmpty(coopname) || string.IsNullOrWhiteSpace(coopname)) {
@@ -188,7 +186,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
         }
 
-        [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = true, AllowFarmHand = true)]
+        [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
             try {
@@ -212,7 +210,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time.");
         }
 
-        [SlashCommand(Description = "Get the bot's status", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Get the bot's status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task Status(FauxCommand command, ApplicationDbContext db, IServiceProvider serviceProvider) {
             var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
             var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
@@ -248,10 +246,10 @@ namespace EGG9000.Bot.Commands {
                 });
             }
 
-            await command.RespondAsync($"```\n{FixedWidthTable.GetTable(table)}```");
+            await command.RespondAsync($"```\n{GetTable(table)}```");
         }
 
-        [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
@@ -271,7 +269,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
         }
 
-        [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
@@ -289,12 +287,12 @@ namespace EGG9000.Bot.Commands {
             } catch(Exception e) {
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
             }
             await command.ModifyOriginalResponseAsync($"Stopped {serviceName}");
         }
 
-        [SlashCommand(Description = "Run automated service now", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Run automated service now", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
@@ -312,11 +310,11 @@ namespace EGG9000.Bot.Commands {
             } catch(Exception e) {
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
             }
         }
 
-        [SlashCommand(Description = "Restart an automated service", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
@@ -334,7 +332,7 @@ namespace EGG9000.Bot.Commands {
             } catch(Exception e) {
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
             }
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
         }

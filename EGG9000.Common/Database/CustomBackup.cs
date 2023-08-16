@@ -101,9 +101,8 @@ namespace EGG9000.Common.Database {
         public bool HasDeviceId { get; set; } = false;
         [Key(34)]
         public string DeviceId { get; set; } = string.Empty;
-        [Key(35)]
-        public Dictionary<Ei.MissionInfo.Types.Spaceship, uint>
-        ShipStars { get; set; } = new Dictionary<Ei.MissionInfo.Types.Spaceship, uint>();
+        [Key(36)]
+        public List<(Ei.MissionInfo.Types.Spaceship ship, Ei.MissionInfo.Types.DurationType type, int count)> ShipsSent { get; set; }
 
 
         [IgnoreMember]
@@ -241,8 +240,23 @@ namespace EGG9000.Common.Database {
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
             }
 
-            if(backup.ArtifactsDb is not null)
-                ShipStars = MissionHelpers.GetShipLevels(backup.ArtifactsDb);
+
+            var temp = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => x.Ship);
+            if(backup.ArtifactsDb is not null) {
+                ShipsSent = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count())).ToList();
+                foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5) ) {
+                    var shipInfo = ShipsSent.FirstOrDefault(x => x.ship == ship.Ship && x.type == ship.DurationType);
+                    if(shipInfo != default) {
+                        shipInfo.count++;
+                        ShipsSent.RemoveAll(x => x.ship == ship.Ship && x.type == ship.DurationType);
+                        ShipsSent.Add(shipInfo);
+                    } else {
+                        ShipsSent.Add((ship.Ship, ship.DurationType, 1));
+                    }
+                }
+            }
+
+            
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 

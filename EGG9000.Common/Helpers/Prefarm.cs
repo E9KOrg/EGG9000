@@ -99,7 +99,7 @@ namespace EGG9000.Common.Helpers {
                 return "-∞";
             }
             
-            return DiscordHelpers.TimeStamper(TimeSpan.FromSeconds(remainingSeconds), DiscordHelpers.DiscordTimestampFormat.Relative);
+            return  DiscordHelpers.TimeStamper(Double.IsNaN(remainingSeconds) ? TimeSpan.MaxValue : TimeSpan.FromSeconds(remainingSeconds), DiscordHelpers.DiscordTimestampFormat.Relative);
             //return TimeSpan.FromSeconds(remainingSeconds).Humanize(precision: 2).ShortenTime();
         }
 
@@ -112,7 +112,7 @@ namespace EGG9000.Common.Helpers {
             if(remainingSeconds <= TimeSpan.MinValue.TotalSeconds) {
                 return TimeSpan.MinValue;
             }
-            return TimeSpan.FromSeconds(remainingSeconds);
+            return Double.IsNaN(remainingSeconds) ? TimeSpan.MaxValue :  TimeSpan.FromSeconds(remainingSeconds);
         }
 
         public static TimeSpan GetTimeRemainingValue(double targetAmount, List<UserPreFarm> userPreFarms) {

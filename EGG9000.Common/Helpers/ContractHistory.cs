@@ -43,7 +43,7 @@ namespace EGG9000.Common.Helpers {
                     xrefcount++;
                     if(lastStatus is null) {
                         skipped++;
-                        continue; 
+                        continue;
                     }
 
                     histories.Add(new UserContractScore {
@@ -79,7 +79,7 @@ namespace EGG9000.Common.Helpers {
                     }
                     averageEggs = averageEggs / count;
 
-                    historiesOrderedBySoulPower[currentIndex].Score = (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
+                    historiesOrderedBySoulPower[currentIndex].Score = count == 0 ? 1 : (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
                 }
             }
 

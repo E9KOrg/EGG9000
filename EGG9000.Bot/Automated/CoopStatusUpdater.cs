@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.Equals("OmenWing85", StringComparison.OrdinalIgnoreCase)).ToList();
+                //coops = coops.Where(x => x.Name.Equals("OmenWing85", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
@@ -779,7 +779,7 @@ namespace EGG9000.Bot.Automated {
                                         await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
                                     }
 
-                                    if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18) && coopDetails.PercentProjectedForJoined > 100) {
+                                    if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18)) {
                                         var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
                                         await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
@@ -1133,6 +1133,8 @@ namespace EGG9000.Bot.Automated {
                             }
                         }
 
+                        //Estimate the time the coop is projected to finish
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
 
                         var totalRatePerHour = totalRate * 60 * 60;
                         if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
@@ -1141,7 +1143,6 @@ namespace EGG9000.Bot.Automated {
                             if(remainingAmount > 0) {
                                 var remainingTime = remainingAmount / totalRate;
                                 if(remainingTime < TimeSpan.MaxValue.TotalSeconds) {
-                                    coop.ProjectedFinish = new DateTimeOffset().AddSeconds(GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).Seconds);
                                     try {
                                         var timeSpan = TimeSpan.FromSeconds(remainingTime);
                                         embedBuilder.AddField("Time To Complete", GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
@@ -1187,8 +1188,6 @@ namespace EGG9000.Bot.Automated {
                     var times = timings.Finished();
 
                     //_logger.LogInformation("Co-op timings {timings} - {coop}", String.Join(",", times.Select(x => $"{x.name}:{x.time.Humanize().ShortenTime()}")), coop.Name);
-
-
                 }
             } catch(Exception e) {
                 _logger.LogError(e, "Error in co-op {coopid}", coopid);

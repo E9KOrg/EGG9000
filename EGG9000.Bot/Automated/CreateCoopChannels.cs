@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Automated {
 
         private async Task<List<OverflowServer>> GetOverflowGuildsCounts(SocketGuild guild, ApplicationDbContext db) {
             var servers = new List<OverflowServer>();
-            servers.Add(new OverflowServer(guild) { ChannelsLeft = 500 - guild.Channels.Count - 50 });
+            servers.Add(new OverflowServer(guild) { ChannelsLeft = 500 - guild.Channels.Where(x => x is not SocketThreadChannel).Count() - 50 });
 
             var dbguild = await db.Guilds.AsAsyncEnumerable().FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
             if(dbguild == null) {
@@ -144,7 +144,7 @@ namespace EGG9000.Bot.Automated {
             }
             foreach(var overflow in dbguild.OverflowServers) {
                 var overflowGuild = _client.Guilds.First(x => x.Id == overflow);
-                servers.Add(new OverflowServer(overflowGuild) { ChannelsLeft = 500 - overflowGuild.Channels.Count });
+                servers.Add(new OverflowServer(overflowGuild) { ChannelsLeft = 500 - overflowGuild.Channels.Where(x => x is not SocketThreadChannel).Count() });
             }
             return servers;
         }

@@ -42,7 +42,7 @@ namespace EGG9000.Bot.Automated {
             }
 
             //Change this to actually relate how far above the average someone has to be to get flagged
-            const double zScoreCutoff = 2.0;
+            const double zScoreCutoff = 1.0;
 
             // Calculate the average score
             var sumScores = scoreSet.Values.Sum();
