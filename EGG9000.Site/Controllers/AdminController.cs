@@ -522,7 +522,7 @@ namespace EGG9000.Site.Controllers {
             var beastModeRole = guild.GetRole(938563459812049008);
 
             //var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
-            var xrefs = scores.Select(y => {
+            var allTopXrefs = scores.Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
                 if(user == null) {
                     return null;
@@ -539,8 +539,8 @@ namespace EGG9000.Site.Controllers {
                 };
             });
                 
-            var topXrefs = xrefs.Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
-            var topEachGrade = xrefs.Where(x => x != null).GroupBy(x => x.Grade).Where(g => g.Key <= Ei.Contract.Types.PlayerGrade.GradeA).Select(g => g.OrderByDescending(u => u.Score).First()).ToList();
+            var topXrefs = allTopXrefs.Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
+            var topEachGrade = allTopXrefs.Where(x => x != null).GroupBy(x => x.Grade).Where(g => g.Key <= Ei.Contract.Types.PlayerGrade.GradeA).Select(g => g.OrderByDescending(u => u.Score).First()).ToList();
             var usersForRole = topXrefs.Union(topEachGrade);
 
             foreach(var topxref in usersForRole) {
