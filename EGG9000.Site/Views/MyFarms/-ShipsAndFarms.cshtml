@@ -1,0 +1,333 @@
+﻿@using Discord.WebSocket;
+@using EGG9000.Site.Controllers;
+@using System.Globalization;
+@using static EGG9000.Common.Coops.ArtifactCombos;
+@inject DiscordSocketClient DiscordClient
+@model (CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
+
+@{
+    void artifactTemplate(EggIncArtifactInstance artifact) {
+        <tr>
+            <td>@artifact.Artifact</td>
+            @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+                <td>@Math.Round((artifact.Value) * 100)%</td>
+            } else if (artifact.Additive) {
+                <td>+@artifact.Value</td>
+            } else if (+artifact.Value < 2) {
+                <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+            } else {
+                <td>@(artifact.Value)x</td>
+            }
+            <td>@artifact.Boost</td>
+        </tr>
+    }
+
+    string getShipEmoji(Ei.MissionInfo.Types.Spaceship ship) {
+        var shipEmoji = ship switch {
+            Ei.MissionInfo.Types.Spaceship.ChickenOne => "807223532747620373",
+            Ei.MissionInfo.Types.Spaceship.ChickenNine => "801748829212508161",
+            Ei.MissionInfo.Types.Spaceship.ChickenHeavy => "801748846455554088",
+            Ei.MissionInfo.Types.Spaceship.Bcr => "801748795498430464",
+            Ei.MissionInfo.Types.Spaceship.MilleniumChicken => "801748939354931200",
+            Ei.MissionInfo.Types.Spaceship.CorellihenCorvette => "801748884061159465",
+            Ei.MissionInfo.Types.Spaceship.Galeggtica => "801748910607171644",
+            Ei.MissionInfo.Types.Spaceship.Chickfiant => "801748897243987978",
+            Ei.MissionInfo.Types.Spaceship.Voyegger => "801748952814845962",
+            Ei.MissionInfo.Types.Spaceship.Henerprise => "801748924146384906",
+            _ => ""
+        };
+        if(shipEmoji == "") {
+            return shipEmoji;
+        }
+        var shipEmojiLink = "https://cdn.discordapp.com/emojis/" + shipEmoji + ".png?v=1";
+        return shipEmojiLink;
+    }
+}
+
+<style>
+    .GoldenStar {
+        color: gold;
+    }
+
+    .GrayStar {
+        color: gray;
+    }
+
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+
+        .tooltip-custom:hover .tooltiptext-custom {
+            display: inline-block;
+            z-index: 2; /* Make sure the tooltip is above other elements on hover */
+            top: -100%; /* Adjust this value as needed */
+            left: -200px;
+        }
+
+    .tooltiptext-custom {
+        display: none;
+        position: absolute;
+        background-color: rgba(255, 255, 255, 0.9); /* Adjust opacity here */
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: nowrap; /* Prevent the tooltip from wrapping */
+    }
+
+    .gray-text-half-margin,
+    .gray-text {
+        color: lightgray
+    }
+
+    .orange-text {
+        color: darkorange;
+    }
+
+    .purple-text {
+        color: purple;
+    }
+
+    .blue-text {
+        color: blue;
+    }
+
+    .gray-text,
+    .orange-text,
+    .purple-text,
+    .blue-text {
+        display: inline-block; /* Display spans horizontally */
+        margin-right: 10px; /* Add spacing between spans */
+    }
+
+    .gray-text-half-margin {
+        display: inline-block; /* Display spans horizontally */
+        margin-right: 5px; /* Add spacing between spans */
+    }
+</style>
+
+<div id="shipsDiv" class="ship-container">
+    @foreach (var mission in Model.Backup.SpaceMissions ?? new List<SpaceMission>()) {
+        var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
+
+
+        var shipEmojiLink = getShipEmoji(mission.Ship);
+        <div class="ship-item card" style="display: inline-block; text-align: center; margin: 10px; padding-top: 10px">
+            @if (shipEmojiLink != "") {
+                <img src="@((shipEmojiLink))" style="max-height: 40px">
+            }
+            <h4 class="card-header">@mission.Ship.ToString().Replace("_", " ")</h4>
+            <div class="card-body">
+                <div>Status: @mission.Status</div>
+                @switch (mission.Status) {
+                    case Ei.MissionInfo.Types.Status.Fueling:
+
+                        var fuelTargets = Ei.MissionInfo.GetFuelTargets(mission.Ship, mission.Duration);
+                        var needsFuel = mission == null || fuelTargets.Any(ft => ft.Value > (mission.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
+                        <div>Needs Fuel: @needsFuel</div>
+                        foreach (var fuel in mission.Fuels) {
+                            var target = fuelTargets[fuel.Egg];
+                            var percent = fuel.Amount / target * 100;
+                            <div>
+                                @fuel.Egg.ToString(): @Math.Round(percent)% full
+                            </div>
+                        }
+                        break;
+                    case Ei.MissionInfo.Types.Status.Exploring:
+                    case Ei.MissionInfo.Types.Status.Returned:
+                        if (returns < DateTimeOffset.Now) {
+                            <div>Returned: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime()) ago</div>
+                        } else {
+                            <div>Returns: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime())</div>
+                        }
+                        break;
+                }
+                <div>Capacity: @((mission.Capacity))</div>
+                <!-- Only quintillion (4) and above can be targeted ships-->
+                @if (((int)mission?.Ship >= 4) && mission?.Targeting != null) {
+                    @switch (mission?.Targeting) {
+                        case Ei.ArtifactSpec.Types.Name.Unknown:
+                            <div>Targeting: None</div>
+                            break;
+                        default:
+                            <div>Targeting: @((mission.Targeting))</div>
+                            break;
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<div>
+    <table class="table table-sm" style="width: auto;">
+        <thead>
+            <tr>
+                <th style="text-align: center;">Ship</th>
+                <th>Stars</th>
+                <th>Next Level</th>
+                <th>Max Level</th>
+                <th>Launches</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var ship in MissionHelpers.MaxShipLevels) {
+                var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                var shipEmojiLink = getShipEmoji(ship.Key);
+                <tr>
+                    <td align="center">
+                        @if (shipEmojiLink != "") {
+                            <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height: 20px">
+                        }
+                    </td>
+                    <td>
+                        @for(var i = 0; i < ship.Value; i++) {
+                            if (i < currentStars) {
+                                <span class="GoldenStar">★</span>
+                                
+                            } else {
+                                <span class="GrayStar">★</span>
+                            }
+                        }
+                    </td>
+                    <td>
+                        @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                            <span class="tooltip-custom">
+                            @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
+                                <span class="tooltiptext-custom">
+                                    @{
+                                        var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
+                                        var shortsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                        var standardsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                        var extendedsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+                                    }
+                                    <span class="blue-text">@shortsToNext Short</span><span class="gray-text-half-margin">or</span>
+                                    <span class="purple-text">@standardsToNext Standard</span><span class="gray-text-half-margin">or</span>
+                                    <span class="orange-text">@extendedsToNext Extended</span>
+                                </span>
+                            </span>
+                        }else{
+                            @("--")
+                        }
+                    </td>
+                    <td>
+                        <span class="tooltip-custom">
+                            @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                            @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                                <span class="tooltiptext-custom">
+                                    @{
+                                        var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                                        var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                        var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                        var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+                                    }
+                                    <span class="blue-text">@shortsToMax Short</span><span class="gray-text-half-margin">or</span>
+                                    <span class="purple-text">@standardsToMax Standard</span><span class="gray-text-half-margin">or</span>
+                                    <span class="orange-text">@extendedsToMax Extended</span>
+                                </span>
+                            }
+                        </span>
+                    </td>
+                    <td>
+                        <span class="tooltip-custom">
+                            @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
+                            <span class="tooltiptext-custom">
+                                @{
+                                    var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
+                                    var tutorialShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Tutorial);
+                                    var extendedShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Epic);
+                                    var standardShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Long);
+                                    var shortShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Short);
+                                }
+                                @if(ship.Key == Ei.MissionInfo.Types.Spaceship.ChickenOne){
+                                    <span class="gray-text">@tutorialShips.count Tutorial</span>
+                                }
+                                <span class="blue-text">@shortShips.count Short</span>
+                                <span class="purple-text">@standardShips.count Standard</span>
+                                <span class="orange-text">@extendedShips.count Extended</span>
+                            </span>
+                        </span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<br />
+<hr />
+<br />
+@for (var i = 0; i < Model.Backup.Farms.Count; i++) {
+    var farm = Model.Backup.Farms[i];
+
+
+    if (farm.FarmType != Ei.FarmType.Empty) {
+        var coop = Model.JoinedCoops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.InvariantCultureIgnoreCase));
+        var farmStats = farm.WithStats(Model.Backup, coop);
+        <div style="display: inline-block;" class="card">
+            @if (farm.FarmType == Ei.FarmType.Home) {
+                <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+            } else if (farm.ContractId != null) {
+                <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+            } else {
+                <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
+            }
+            <div class="card-body">
+                <div style="display: inline-block;">
+                    Chickens: @farm.NumChickens.ToEggString()
+                </div>
+                <div>
+                    Egg Rate: @((farmStats.EggLayingRate * 60).ToEggString(true))/m
+                </div>
+                <div>
+                    Max Shipping Rate: @((farmStats.MaxShippingRate * 60).ToEggString(true))/m
+                </div>
+                <div>
+                    Current Shipping Rate: @((farmStats.CurrentShippingRate * 60).ToEggString(true))/m (@((farmStats.CurrentShippingRate).ToEggString(true, 3))/s)
+                </div>
+                <div>
+                    Hab Space: @farmStats.HabSpace.ToEggString()
+                </div>
+                <div>
+                    Base Internal Hatchery: @Research.InternalHatchery(farm, Model.Backup.EpicResearch)
+                </div>
+                <div id="@Model.Backup.EggIncId">
+                    Internal Hatchery: @farmStats.InternalHatchery/m
+                </div>
+                <div>
+                    Silo Time: @(Research.GetTotalSiloCapacity(Model.Backup) * farm.SilosOwned / 60)
+                </div>
+                @if (coop is not null) {
+                    <div>
+                        Coop:
+                        <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+                            @(farm.CoopId ?? coop?.Name)
+                        </a>
+                        @if (coop is not null && !coop.DeletedChannel) {
+                            <a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="card-body" style="padding-bottom: 0;">
+                <h6>Artifacts</h6>
+            </div>
+            <table class="table table-sm" style="margin-bottom: 0;">
+                @if (farm.Artifacts.Count == 0) {
+                    <tr><td><i>No Artifacts</i></td></tr>
+                }
+                @foreach (var artifact in farm.Artifacts) {
+                    artifactTemplate(artifact);
+                    @if (artifact.Stones != null && artifact.Stones.Count > 0) {
+                        <td colspan="99" style="padding-left: 10px; ">
+                            <table>
+                                @foreach (var stone in artifact.Stones) {
+                                    artifactTemplate(stone);
+                                }
+                            </table>
+                        </td>
+                    }
+                }
+            </table>
+        </div>
+    }
+}

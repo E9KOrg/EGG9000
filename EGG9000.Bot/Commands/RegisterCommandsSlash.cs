@@ -97,7 +97,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Removed registered EggInc ID from your account", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Removed registered EggInc ID from your account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketGuildUser targetUser) {
             return _RemoveID(command, db, apiLink, eggincid, targetUser.Id);
         }
@@ -125,7 +125,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"ID removed", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray());
         }
 
-        [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = true)]
+        [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
             await command.RespondAsync("Working...");
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -268,7 +268,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client) {
             await _Accept(command, db, _client, command.User);
         }
-        [SlashCommand(Description = "Accept the rules of this discord server", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Accept the rules of this discord server", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser) {
             await _Accept(command, db, _client, targetUser);
         }
@@ -340,7 +340,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
             await _UpdateID(command, db, _client, apiLink, eggincid, (SocketGuildUser)command.User, accountnumber);
         }
-        [SlashCommand(Description = "EggIncID someones ID", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
             await _UpdateID(command, db, _client, apiLink, eggincid, targetUser, accountnumber);
         }
@@ -385,7 +385,7 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, user, logger);
         }
@@ -572,7 +572,7 @@ namespace EGG9000.Bot.Commands {
         }
 
 
-        [SlashCommand(Description = "Get a users status", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Get a users status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
             return _userstatus(command, db, _client, apiLink, user, true, ShowInChannel);
         }
@@ -664,15 +664,8 @@ namespace EGG9000.Bot.Commands {
                 if(backup == null)
                     continue;
 
-                var nameField = ($"***{account.Name}***: " ?? "(No Name): ") + (account.Id ?? "No EID");
-                builder.AddField("――――――――――――――――――", nameField);
-                if(backup?.Farms?.Count > 0) {
-                    builder.AddField("Last Backup", DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)), true);
-                    builder.AddField("EB", backup.EarningsBonus.ToEggString(), true);
-                } else {
-                    builder.AddField("Last Backup", "Empty - Check EID", true);
-                    builder.AddField("EB", "None", true);
-                }
+                builder.AddField("――――――――――――――――――", ($"{((account.GetGrade() != default) ? PlayerGradeDetails.GetEmoji(account.GetGrade()) : "")} ***{account.Name} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
+                builder.AddField("Last Backup", (backup?.Farms?.Count > 0) ? DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)) : "Empty - Check EID", true);
 
                 if(!string.IsNullOrEmpty(account.DeviceID)) {
                     builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
@@ -684,8 +677,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
-                    var gradeProgressPercent = Math.Round(Math.Round((account.Backup?.GradeProgress ?? 0), 4) * 100, 2);
-                    builder.AddField("Grade", PlayerGradeDetails.GetEmoji(pGrade), true);
+                    var gradeProgressPercent = Math.Round(Math.Round(account.Backup?.GradeProgress ?? 0, 4) * 100, 2);
 
                     if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
                         var percentageString = $"{gradeProgressPercent}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))} :chart_with_upwards_trend:";
@@ -697,14 +689,18 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                if(dbguild is null || !dbguild.DisableBG) {
-                    builder.AddField("Boarding Group", (account?.Group == 0 ? "**None**" : "BG" + account?.Group), true);
+                if(dbguild is null || !dbguild.DisableBG) { 
+                    if(account.SubscriptionLevel is not null) {
+                        builder.AddField("Boarding Groups", $"{(account?.Group == 0 ? "**None**" : "BG" + account?.Group)}/{(account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup)}", true);
+                    } else {
+                        builder.AddField("Boarding Group", account?.Group == 0 ? "**None**" : "BG" + account?.Group, true);
+                    }
                 }
 
-                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<Ei.RewardType>()) ?? "No Filter";
+                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<RewardType>()) ?? "No Filter";
                 var breakStr = account.OnBreakUntil == default ? "No" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>";
                 var redoOpt = account.RedoLeggacySelection == default ? RedoLeggacyOption.NotSet : account.RedoLeggacySelection;
-                var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt.ToString()} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
+                var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
 
                 builder.AddField("Filter", filterStr == "" ? "None" : filterStr, true);
                 builder.AddField("Break", breakStr == "" ? "No" : breakStr, true);
@@ -756,7 +752,7 @@ namespace EGG9000.Bot.Commands {
         }
 
 
-        [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = true)]
+        [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -769,7 +765,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"{user.Mention} is disabled.");
         }
 
-        [SlashCommand(Description = "Re-enable user", AdminOnly = true)]
+        [SlashCommand(Description = "Re-enable user", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -779,7 +775,9 @@ namespace EGG9000.Bot.Commands {
             dbuser.TempDisabled = false;
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops from now on.");
+            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.Now) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
+
+            await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
 
         private static async Task _cleanWelcome(FauxCommand command, DiscordHostedService _client) {
@@ -797,7 +795,7 @@ namespace EGG9000.Bot.Commands {
 
 
 
-        [SlashCommand(Description = "Removes any unpinned messages from the channel", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Removes any unpinned messages from the channel", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task Clean(FauxCommand command, DiscordHostedService _client) {
             await command.RespondAsync("Cleaning...");
             var channel = (SocketTextChannel)command.Channel;
@@ -866,7 +864,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"{command.User.Mention} will no longer be updated with their EB.", ephemeral: true);
         }
 
-        [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = true)]
+        [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam(Required=false)] bool banaccount = false) {
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();

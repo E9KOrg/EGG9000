@@ -42,10 +42,11 @@ namespace EGG9000.Bot.Commands {
             (1, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
             (2, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
             (3, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
+            (4, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(24).ToUnixTimeSeconds())
         };
 
         #region AdminBypass
-        [SlashCommand(Description ="Set another user's settings", AdminOnly = true, AllowFarmHand = true, ParentCommand = "a")]
+        [SlashCommand(Description ="Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -101,6 +102,10 @@ namespace EGG9000.Bot.Commands {
             if(!dbguild.DisableBG) {
                 eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
                 builder.WithButton("Boarding Group", $"MCSBg:{index},{dbuser.DiscordId}");
+                if(account.SubscriptionLevel is not null) {
+                    eBuilder.AddField("Ultra Boarding Group", account.UltraGroup != default ? $"UG{account.UltraGroup} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.UltraGroup).time}:t>" : "Not Set (please select below)");
+                    builder.WithButton("Ultra Boarding Group", $"MCSUBg:{index},{dbuser.DiscordId}");
+                }
                 builder.WithButton("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}");
 
                 var rDict = GetRewardDictionary();
@@ -169,7 +174,7 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Group 3", "3", isDefault: account.Group == 3),
             });
             builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
-            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out.Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\n BG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Select(x => $" BG{x.bg} <t:{x.time}:t>"))}";
+            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out.Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\n BG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Where(x => x.bg != 4).ToList().Select(x => $" BG{x.bg} <t:{x.time}:t>"))}";
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
         }
 
@@ -180,6 +185,38 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             account.Group = byte.Parse(component.Data.Values.First());
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+        #endregion
+
+        #region Ultra Boarding Group
+        [ComponentCommand]
+        public static async Task MCSUBg(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            var builder = new ComponentBuilder().WithSelectMenu($"MCSUBoardingGroup:{index},{dbuser.DiscordId}", new List<SelectMenuOptionBuilder> {
+                new SelectMenuOptionBuilder("Ultra Group 1 (Contract Launch)", "1", isDefault: account.UltraGroup == 1),
+                new SelectMenuOptionBuilder("Ultra Group 2", "2", isDefault: account.UltraGroup == 2),
+                new SelectMenuOptionBuilder("Ultra Group 3", "3", isDefault: account.UltraGroup == 3),
+                new SelectMenuOptionBuilder("Ultra Group 4 (24h After Contract Launch)", "4", isDefault: account.UltraGroup == 4),
+            });
+            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
+            var content = $"Ultra Groups (UG) set when your co-op will be launched when an ultra contract comes out. Select which UG will allow you to be most active after a co-op is launched at that time.\n\nHere are UG times in your local timezone:\n UG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Where(x => x.bg != 4).ToList().Select(x => $" UG{x.bg} <t:{x.time}:t>"))}\n UG4 <t:{BoardingGroupTimes[3].time}:t>  (24 hours after contracts launch)";
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
+        }
+
+        [ComponentCommand]
+        public static async Task MCSUBoardingGroup(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            account.UltraGroup = byte.Parse(component.Data.Values.First());
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));

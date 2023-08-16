@@ -28,7 +28,7 @@ using EGG9000.Common.Commands;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
-        [SlashCommand(Description = "Add demerit to user", AdminOnly = true)]
+        [SlashCommand(Description = "Add demerit to user", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task AddDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -62,7 +62,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Remove latest demerit from user", AdminOnly = true)]
+        [SlashCommand(Description = "Remove latest demerit from user", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task RemoveDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -116,7 +116,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
         }
-        [SlashCommand(Description = "List demerits for user", AdminOnly = true)]
+        [SlashCommand(Description = "List demerits for user", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task DemeritsForUser(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             try {
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -146,7 +146,7 @@ namespace EGG9000.Bot.Commands {
             return demeritDesc;
         }
 
-        [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = true)]
+        [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             UserCoopXref xref;
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
