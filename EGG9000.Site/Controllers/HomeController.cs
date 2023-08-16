@@ -684,10 +684,10 @@ namespace EGG9000.Site.Controllers {
             ContractId = ContractId.ToLower();
             var model = new CoopModel {
                 
-                DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && x.Name == CoopId),
+                DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.Like(x.Name, CoopId)),
                 Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId)
             };
-            model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop.UserCoopsXrefs);
+            model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? new List<UserCoopXref>());
 
             if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                 var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
@@ -717,7 +717,7 @@ namespace EGG9000.Site.Controllers {
                 backupsNeeded = backupsNeeded.Where(x => !existingBackups.Any(y => y.Contribution?.UserId == x.UserId)).ToList();
                 model.League = model.DbCoop.League;
             } else {
-                model.League = GetLeague(model.UserInfos, CoopId, ContractId);
+                model.League = (uint)model.CoopStatus.Grade;
             }
             var backups = await _apiLink.GetUserBackups(backupsNeeded.Select(x => x.UserId), new CancellationToken(), true);
             model.UserInfos.AddRange(backups.Select(b => new CoopUserInfo {

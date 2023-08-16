@@ -97,6 +97,7 @@ namespace EGG9000.Common.Helpers {
                     return ShipsFromPoints(levelMissionRequirements.Take(i + 1).Sum() - points);
                 }
             }
+            if(levelMissionRequirements.Count == 0) return new();
             if(points == 0) return ShipsFromPoints(levelMissionRequirements[0]);
             else return ShipsFromPoints(0);
         }

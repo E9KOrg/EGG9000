@@ -178,7 +178,12 @@
                 }
                 <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
                 <div class="copy-notification" id="copy-notification-eid-@index">EID copied!</div>
-                <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span><br>
+                <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span>
+                @if (backup.MaxEggReached < Ei.Egg.Enlightenment)
+                {
+                    <span style="margin-right:10px;"><b><u>Highest Egg</u></b>: @backup.MaxEggReached</span>
+                }
+                <br>
                 @if (!dbguild.DisableBG) {
                     if (account.Group == 0) {
                         <span style="margin-right:10px; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
