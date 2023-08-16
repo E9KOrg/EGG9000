@@ -11,6 +11,8 @@ using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -520,7 +522,7 @@ namespace EGG9000.Site.Controllers {
             var beastModeRole = guild.GetRole(938563459812049008);
 
             //var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
-            var topXrefs = scores.Select((y => {
+            var xrefs = scores.Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
                 if(user == null) {
                     return null;
@@ -535,12 +537,13 @@ namespace EGG9000.Site.Controllers {
                     Score = y.Score,
                     DiscordUser = discordUser, Grade = (Ei.Contract.Types.PlayerGrade)y.League
                 };
-            })).Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
+            });
+                
+            var topXrefs = xrefs.Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
+            var topEachGrade = xrefs.Where(x => x != null).GroupBy(x => x.Grade).Where(g => g.Key <= Ei.Contract.Types.PlayerGrade.GradeA).Select(g => g.OrderByDescending(u => u.Score).First()).ToList();
+            var usersForRole = topXrefs.Union(topEachGrade);
 
-
-
-
-            foreach(var topxref in topXrefs) {
+            foreach(var topxref in usersForRole) {
                 if(topxref.DiscordUser == null)
                     topxref.DiscordUser = await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
                 var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
@@ -555,20 +558,21 @@ namespace EGG9000.Site.Controllers {
                 }
                 tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
                 tempRole.Expires = DateTimeOffset.Now.AddDays(7);
-
             }
 
             await _db.SaveChangesAsync();
 
             var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
+            var topEachGradeMentions = topEachGrade.Select(x => $"{PlayerGradeDetails.GetEmoji(x.Grade)}: {Math.Round(x.Score)} <@{x.DiscordId}>");
 
-            await guild.GetTextChannel(656455568353132546).SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}");
+            await guild.GetTextChannel(656455568353132546)
+                .SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}" +
+                $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f>:\n{string.Join("\n", topEachGradeMentions)}");
 
 
             return View(new ScoreResult {
                 UsersBelowThreshold = xrefsBelowThreshold.Where(x => x != null).OrderBy(x => x.DiscordUsername).ToList(),
                 TopScore = topXrefs.ToList()
-
             });
         }
         public async Task<IActionResult> ReCalculateRunningScore() {
