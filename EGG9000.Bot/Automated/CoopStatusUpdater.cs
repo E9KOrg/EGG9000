@@ -945,6 +945,8 @@ namespace EGG9000.Bot.Automated {
                             var coopFailedCategory = await _client.GetCategoryAsync(GuildChannelType.FailedCategory, guild);
                             if(coopFailedCategory is null)
                                 coopFailedCategory = _client.GetGuild(coop.OverflowGuildId).CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("failed") && x.Name.ToLower().Contains("coops"));
+                            if(coopFailedCategory is null)
+                                coopFailedCategory = _client.GetGuild(coop.OverflowGuildId).CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops"));
                             await coopChannel.ModifyAsync(x => { x.CategoryId = coopFailedCategory.Id; });
                         } catch(Exception) {
 
