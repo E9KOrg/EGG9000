@@ -135,12 +135,25 @@ namespace EGG9000.Common.Contracts {
                 matchingAccounts = matchingAccounts.Where(x => x.Account.GetGroup(contract.CcOnly) == BoardingGroup || includeBG.Any(y => x.Account.GetGroup(contract.CcOnly) == y));
             }
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
-            matchingAccounts = matchingAccounts.Where(x =>
-                   ignoreRewards
-                || x.Account.AutoRegisterRewards == null
-                || x.Account.AutoRegisterRewards.Count == 0
-                || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
-            );
+
+            if(contract.Leggacy) {
+                matchingAccounts = matchingAccounts.Where(x =>
+                    ignoreRewards
+                        || (
+                            x.Account.LeggacyAutoRegisterRewards == null || x.Account.LeggacyAutoRegisterRewards.Count == 0)
+                            && (x.Account.AutoRegisterRewards == null || x.Account.AutoRegisterRewards.Count == 0 || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
+                        )
+                        || x.Account.LeggacyAutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
+                    );
+            } else {
+                matchingAccounts = matchingAccounts.Where(x =>
+                       ignoreRewards
+                    || x.Account.AutoRegisterRewards == null
+                    || x.Account.AutoRegisterRewards.Count == 0
+                    || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
+                );
+            }
+
             matchingAccounts = matchingAccounts.ToList();
 
             var rng = new Random();

@@ -371,6 +371,8 @@ namespace EGG9000.Common.Database.Entities {
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; }
         [Key(23)]
         public byte UltraGroup { get; set; }
+        [Key(25)]
+        public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
