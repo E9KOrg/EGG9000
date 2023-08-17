@@ -85,6 +85,7 @@ namespace EGG9000.Site {
                         return Task.FromResult(0);
                     }
                 };
+                options.SaveTokens = true;
             });
 
 
