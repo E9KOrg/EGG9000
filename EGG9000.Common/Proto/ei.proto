@@ -1263,6 +1263,7 @@ message PeriodicalsResponse {
     optional ContractsResponse contracts = 3;
     repeated ContractEvaluation evaluations = 8;
     repeated ServerGift gifts = 4;
+    repeated CompleteMissionResponse artifact_cases = 9;
     optional LiveConfig live_config = 5;
     optional MailDB mail_bag = 6;
     optional ContractPlayerInfo contract_player_info = 7;
@@ -2105,6 +2106,10 @@ message UserVerificationAnalysis {
     optional double artifacts_collected = 9;
     optional double artifacts_consumed = 10;
     optional double artifacts_in_inventory = 11;
+    optional uint64 rare_artifacts_in_inventory = 33;
+    optional uint64 rare_artifacts_on_server = 34;
+    optional uint64 legendary_artifacts_in_inventory = 35;
+    optional uint64 legendary_artifacts_on_server = 36;
     optional double gold_spent_crafting = 21;
     optional bool excessive_consumes = 24;
     optional bool excessive_inventory = 25;
