@@ -17,6 +17,7 @@ using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
 using MassTransit;
 using EGG9000.Bot.Consumers;
+using EGG9000.Common.Helpers;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -116,6 +117,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
             services.AddHostedService<JobService>();
 
+            FAQHelper.Populate(); //Necessary precursor to CommandService
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();
         }
