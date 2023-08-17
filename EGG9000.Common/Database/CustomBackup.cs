@@ -316,13 +316,20 @@ namespace EGG9000.Common.Database {
                 TimeCheatsDetected = (ushort)farm.TimeCheatsDetected,
                 Habs = farm.Habs.Select(x => (ushort)x).ToList(),
                 LastStepTime = (float)farm.LastStepTime,
-                ReportedUUIDs = contract?.ReportedUuids.ToList(),
+                //ReportedUUIDs = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.UserId).Select(y => y.Uuid)).ToList(), //  contract?.ReportedUuids.ToList(),
                 Grade = contract?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset,
                 EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
                 ContributionFinalized = contract?.CoopContributionFinalized ?? false,
                 CoopSimulationEndTime = contract?.CoopSimulationEndTime ?? 0,
                 NumGoalsAchieved = (byte?)contract?.NumGoalsAchieved ?? (byte)0,
             };
+
+            var coops = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier);
+
+            var uuids = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.EiUserId).Select(y => y.Uuid)).ToList();
+
+            customFarm.ReportedUUIDs = uuids;
+
 
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
             var farmIndex = backup.Farms.IndexOf(farm);

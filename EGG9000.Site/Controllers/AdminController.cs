@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Policy;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+
 
 using Discord;
 using Discord.Rest;
@@ -15,17 +19,22 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Migrations;
 
 using Humanizer;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Build.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Net.Http.Headers;
 
 using Newtonsoft.Json;
 
@@ -42,16 +51,18 @@ namespace EGG9000.Site.Controllers {
         private readonly DiscordSocketClient _discord;
         private readonly IMemoryCache _cache;
         private readonly ILogger<AdminController> _logger;
+        private readonly IConfiguration _configuration;
 
         public AdminController(
             UserManager<IdentityUser> userManager,
             DiscordSocketClient discord,
-            ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger) {
+            ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration) {
             _db = db;
             _userManager = userManager;
             _discord = discord;
             _cache = cache;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public class PrestigeGain {
@@ -1127,5 +1138,57 @@ namespace EGG9000.Site.Controllers {
             await _db.SaveChangesAsync();
             return Content("Success");
         }
+
+        public async Task<IActionResult> Sync() {
+            string url = Url.ActionLink("DiscordReturn");
+
+            return Redirect($"https://discordapp.com/api/oauth2/authorize?response_type=code&client_id={_configuration.GetConnectionString("ClientId")}&scope=identify%20guilds.join%20applications.commands.permissions.update&state=15773059ghq9183habn&redirect_uri={url}");
+                
+        }
+
+        public async Task<IActionResult> DiscordReturn() {
+            string code = Request.Query["code"];
+
+            /*Get Access Token from authorization code by making http post request*/
+
+            HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create("https://discordapp.com/api/oauth2/token");
+            webRequest.Method = "POST";
+            string url = Url.ActionLink("DiscordReturn");
+            string parameters = "client_id=" + _configuration.GetConnectionString("ClientId") + "&client_secret=" + _configuration.GetConnectionString("ClientSecret") + "&grant_type=authorization_code&code=" + code + "&redirect_uri=" + url + "";
+            byte[] byteArray = Encoding.UTF8.GetBytes(parameters);
+            webRequest.ContentType = "application/x-www-form-urlencoded";
+            webRequest.ContentLength = byteArray.Length;
+            Stream postStream = webRequest.GetRequestStream();
+
+            postStream.Write(byteArray, 0, byteArray.Length);
+            postStream.Close();
+            WebResponse response = webRequest.GetResponse();
+            postStream = response.GetResponseStream();
+            StreamReader reader = new StreamReader(postStream);
+            string responseFromServer = reader.ReadToEnd();
+            dynamic jsonObject = JsonConvert.DeserializeObject(responseFromServer);
+            string access_token = jsonObject.access_token;
+
+            return await SyncCommandPermissions(access_token);
+        }
+
+        public async Task<IActionResult> SyncCommandPermissions(string access_token) {
+            var guild = await _db.Guilds.FirstAsync(x => x.Id == GetGuildID());
+            if(guild.RolesToSync is null)
+                return Content("No roles found to sync");
+            var roleids = guild.RolesToSync.Split(",");
+            var mainServer = _discord.Guilds.First(x => x.Id == guild.Id);
+            var overflowServers = _discord.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
+            var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
+
+            var roleMaps = await OverflowSyncing.GetRoleMaps(rolesToSync.ToList(), overflowServers);
+
+            var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(guild, mainServer, overflowServers, roleMaps, access_token, _configuration.GetConnectionString("Token"));
+
+            return Content(output);
+        }
+
+     
+
     }
 }
