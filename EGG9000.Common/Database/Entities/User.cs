@@ -322,6 +322,8 @@ namespace EGG9000.Common.Database.Entities {
 
     [MessagePackObject]
     public class EggIncAccount {
+        [Key(0)]
+        public string Name { get; set; }
         [Key(1)]
         public string Id { get; set; }
         [Key(2)]
