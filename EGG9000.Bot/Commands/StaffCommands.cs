@@ -42,7 +42,7 @@ using System.Numerics;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
-        [SlashCommand(Description = "Mark a potential artifact cheater as clean", AdminOnly = true, ParentCommand = "a")]
+        [SlashCommand(Description = "Mark a potential artifact cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
         public static async Task MarkAFSClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
