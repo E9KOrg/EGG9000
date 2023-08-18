@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Commands {
             if(userid is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: User id could not be found from param");
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             if(dbuser is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: DB user could not be found from user ID {userid}");
-            var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
+            var account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])];
 
             if(account is null) await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
             else {
