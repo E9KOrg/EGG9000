@@ -622,6 +622,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.BaseAddress = new Uri("https://discordapp.com/api/");
                 client.DefaultRequestHeaders.Add("Authorization", "Bot " + DiscordToken);
                 var response = await client.GetAsync(path);
+                await Task.Delay(500);
                 return await response.Content.ReadFromJsonAsync<T>();
             }
         }
@@ -631,6 +632,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.BaseAddress = new Uri("https://discordapp.com/api/");
                 client.DefaultRequestHeaders.Add("Authorization", "Bot " + DiscordToken);
                 var response = await client.PutAsJsonAsync(path, Params);
+                await Task.Delay(500);
                 return await response.Content.ReadFromJsonAsync<T>();
             }
         }
@@ -640,6 +642,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.BaseAddress = new Uri("https://discordapp.com/api/");
                 client.DefaultRequestHeaders.Add("Authorization", "Bearer " + DiscordToken);
                 var response = await client.GetAsync(path);
+                await Task.Delay(500);
                 return await response.Content.ReadFromJsonAsync<T>();
             }
         }
@@ -649,6 +652,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.BaseAddress = new Uri("https://discordapp.com/api/");
                 client.DefaultRequestHeaders.Add("Authorization", "Bearer " + DiscordToken);
                 var response = await client.PutAsJsonAsync(path, Params);
+                await Task.Delay(500);
                 return await response.Content.ReadFromJsonAsync<T>();
             }
         }

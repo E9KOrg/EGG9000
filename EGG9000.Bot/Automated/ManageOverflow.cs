@@ -194,6 +194,7 @@ namespace EGG9000.Bot.Automated {
                     await overflowRole.ModifyAsync(x => {
                         x.Name = updatedRole.Name;
                         x.Color = updatedRole.Color;
+                        x.Permissions = updatedRole.Permissions;
                         //if(updatedRole.Icon != originalRole.Icon) {
                         //    x.Icon = new Image(await DownloadImage(updatedRole.GetIconUrl()));
                         //}
@@ -231,9 +232,16 @@ namespace EGG9000.Bot.Automated {
                         //if(!string.IsNullOrEmpty(role.Icon)) {
                         //    await newRole.ModifyAsync(async x => x.Icon = new Image(await DownloadImage(role.GetIconUrl())));
                         //}
-                    } else if(overflowRole.Icon is null && role.Icon is not null) {
+                    }/* else if(overflowRole.Icon is null && role.Icon is not null) {
                         //var image = new Image(await DownloadImage(role.GetIconUrl()));
                         //await overflowRole.ModifyAsync(x => x.Icon = image);
+                    }*/
+                    else if(!role.Permissions.Equals(overflowRole.Permissions)) {
+                        await overflowRole.ModifyAsync(x => {
+                            x.Name = role.Name;
+                            x.Color = role.Color;
+                            x.Permissions = role.Permissions;
+                        });
                     }
                 }
 
