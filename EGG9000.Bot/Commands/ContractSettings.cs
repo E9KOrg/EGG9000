@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Commands {
             var builder = new ComponentBuilder();
             for(var i = 0; i < dbuser.EggIncAccounts.Count; i++) {
                 var account = dbuser.EggIncAccounts[i];
-                builder.WithButton($"Manage {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i},{dbuser.DiscordId}");
+                builder.WithButton($"Manage {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i},{dbuser.DiscordId}");
             }
 
             builder.WithButton("Coop Settings", $"CSAccountMenu:{dbuser.DiscordId},true");
@@ -93,7 +93,7 @@ namespace EGG9000.Bot.Commands {
                 .WithTitle($"Main Menu");
 
             if(dbuser.EggIncAccounts.Count > 1) {
-                eBuilder.WithDescription($"For Account {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}");
+                eBuilder.WithDescription($"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}");
             }
 
             eBuilder.AddField("Break", MCSBreakMessage(account));

@@ -106,7 +106,7 @@ namespace EGG9000.Bot.Commands {
             var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = _client.GetChannel(newCoop.DiscordChannelId);
 
-            var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Name, discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+            var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
             if(newxref == null) {
                 await command.RespondAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
                 return;
@@ -125,7 +125,7 @@ namespace EGG9000.Bot.Commands {
             db.Remove(xref);
             /* END REMOVING FROM OLD COOP */
 
-            await command.RespondAsync($"Removed {discordUser.Mention} ({account.Name}) from {((ITextChannel)command.Channel).Mention}, and moved to {((ITextChannel)coopChannel).Mention}");
+            await command.RespondAsync($"Removed {discordUser.Mention} ({account.Backup?.UserName}) from {((ITextChannel)command.Channel).Mention}, and moved to {((ITextChannel)coopChannel).Mention}");
             await db.SaveChangesAsync();
         }
 
@@ -196,14 +196,14 @@ namespace EGG9000.Bot.Commands {
             var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = _client.GetChannel(newCoop.DiscordChannelId);
 
-            var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Name, discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+            var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
             if(newxref == null) {
                 await command.RespondAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
                 return;
             }
             db.Add(newxref);
 
-            await command.RespondAsync($"Sucessfully moved {discordUser.Mention} ({account.Name}) to {((ITextChannel)coopChannel).Mention}");
+            await command.RespondAsync($"Sucessfully moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}");
             await db.SaveChangesAsync();
         }
 
@@ -416,7 +416,7 @@ namespace EGG9000.Bot.Commands {
             var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = _client.GetChannel(coop.DiscordChannelId);
 
-            var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Name, discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+            var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
 
             if(newxref == null) {
                 await command.RespondAsync($"⚠️ERROR: Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}");
@@ -425,7 +425,7 @@ namespace EGG9000.Bot.Commands {
 
             db.Add(newxref);
 
-            await command.RespondAsync($"Moved {discordUser.Mention} ({account.Name}) to {((ITextChannel)coopChannel).Mention}");
+            await command.RespondAsync($"Moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}");
             await db.SaveChangesAsync();
         }
 
@@ -479,7 +479,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var account in accounts) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Name}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     } else {
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     }
@@ -514,7 +514,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var account in accounts) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Name}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     } else {
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     }
@@ -623,7 +623,7 @@ namespace EGG9000.Bot.Commands {
 
                 foreach(var account in userList) {
                     Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to create the co-op with."; x.Components = builder.Build(); });
             }
