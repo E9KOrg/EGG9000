@@ -361,7 +361,7 @@ namespace EGG9000.Bot.Commands {
             if(user.EggIncAccounts.Count > 1) {
                 if(accountnumber == 0) {
                     var count = 1;
-                    var accounts = String.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
+                    var accounts = string.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
                     await command.RespondAsync($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}", ephemeral: true);
                     return;
                 }
@@ -370,14 +370,14 @@ namespace EGG9000.Bot.Commands {
                 var eggIncIDs = new List<EggIncAccount>();
                 for(var i = 0; i < user.EggIncAccounts.Count; i++) {
                     if(i == account)
-                        eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName });
+                        eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
                     else
                         eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
 
                 user.EggIncAccounts = eggIncIDs;
             } else {
-                user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName } };
+                user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
             }
             await db.SaveChangesAsync();
 
@@ -445,7 +445,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName, Backup = Response, Group = 1 } },
+                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Backup = Response, Group = 1 } },
                     CreateOn = DateTimeOffset.Now,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -460,7 +460,7 @@ namespace EGG9000.Bot.Commands {
                 if(dbuser.EggIncAccounts.Count == 0) {
                     addedUser = true;
                 }
-                dbuser.EggIncAccounts.Add(new EggIncAccount { Id = Response.EggIncId, Name = Response.UserName, Backup = Response, Group = 1 });
+                dbuser.EggIncAccounts.Add(new EggIncAccount { Id = Response.EggIncId, Backup = Response, Group = 1 });
                 dbuser.UpdateAccounts();
             }
             if(!dbuser.Registered.HasValue) {
@@ -664,7 +664,7 @@ namespace EGG9000.Bot.Commands {
                 if(backup == null)
                     continue;
 
-                builder.AddField("――――――――――――――――――", ($"{((account.GetGrade() != default) ? PlayerGradeDetails.GetEmoji(account.GetGrade()) : "")} ***{account.Name} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
+                builder.AddField("――――――――――――――――――", ($"{((account.GetGrade() != default) ? PlayerGradeDetails.GetEmoji(account.GetGrade()) : "")} ***{account.Backup?.UserName} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
                 builder.AddField("Last Backup", (backup?.Farms?.Count > 0) ? DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)) : "Empty - Check EID", true);
 
                 if(!string.IsNullOrEmpty(account.DeviceID)) {
@@ -731,7 +731,7 @@ namespace EGG9000.Bot.Commands {
                 var infoSeparatorAdded = false;
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Name})" : "")}"))}";
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     lastBuilder.AddField("――――――――――――――――――", "User Information");
                     infoSeparatorAdded = true;
