@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Automated {
                                 continue;
                             }
                             if(r?.Grade != account.LastGrade) {
-                                _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Name, account.LastGrade, r.Grade);
+                                _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Backup?.UserName, account.LastGrade, r.Grade);
                                 account.PromotionTime = DateTimeOffset.Now;
                                 account.LastGrade = r.Grade;
                                 user.UpdateAccounts();

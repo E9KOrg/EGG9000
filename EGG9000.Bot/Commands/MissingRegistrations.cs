@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Commands {
                     var mention = client.GetUser(x.DiscordId)?.Mention;
                     if (mention == null)
                         return null;
-                    return mention + $" EggIncName: **{string.Join(",", x.EggIncAccounts.Select(y => y.Name))}**";
+                    return mention + $" EggIncName: **{string.Join(",", x.EggIncAccounts.Select(y => y.Backup?.UserName ?? "(No Name)"))}**";
                 }).Where(x => x != null);
                 msg += $"The following users are registered but have not been seen in a coop (possibly wrong EggInc name): \n{string.Join("\n", list)}";
             }

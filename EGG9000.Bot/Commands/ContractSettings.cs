@@ -38,7 +38,7 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        public static List<(int bg, long time)> BoardingGroupTimes = new List<(int bg, long time)> {
+        public static List<(int bg, long time)> BoardingGroupTimes = new(){
             (1, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
             (2, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
             (3, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Commands {
             var builder = new ComponentBuilder();
             for(var i = 0; i < dbuser.EggIncAccounts.Count; i++) {
                 var account = dbuser.EggIncAccounts[i];
-                builder.WithButton($"Manage {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i},{dbuser.DiscordId}");
+                builder.WithButton($"Manage {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i},{dbuser.DiscordId}");
             }
 
             builder.WithButton("Coop Settings", $"CSAccountMenu:{dbuser.DiscordId},true");
@@ -93,7 +93,7 @@ namespace EGG9000.Bot.Commands {
                 .WithTitle($"Main Menu");
 
             if(dbuser.EggIncAccounts.Count > 1) {
-                eBuilder.WithDescription($"For Account {(string.IsNullOrWhiteSpace(account.Name) ? "[unnamed]" : account.Name)} {account.Backup?.EarningsBonus.ToEggString()}");
+                eBuilder.WithDescription($"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}");
             }
 
             eBuilder.AddField("Break", MCSBreakMessage(account));
@@ -107,11 +107,18 @@ namespace EGG9000.Bot.Commands {
                     builder.WithButton("Ultra Boarding Group", $"MCSUBg:{index},{dbuser.DiscordId}");
                 }
                 builder.WithButton("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}");
+                builder.WithButton("Leggacy Rewards Filter", $"MCSLeggacyRewards:{index},{dbuser.DiscordId}");
 
                 var rDict = GetRewardDictionary();
                 if(account.AutoRegisterRewards is null)
                     account.AutoRegisterRewards = new List<Ei.RewardType>();
                 eBuilder.AddField("Rewards Filter", account.AutoRegisterRewards.Any() ? string.Join(",", account.AutoRegisterRewards.Select(x => rDict[x])) : "All Contracts");
+
+                if(account.LeggacyAutoRegisterRewards is null)
+                    account.LeggacyAutoRegisterRewards = new List<Ei.RewardType>();
+                if(account.LeggacyAutoRegisterRewards != null && account.LeggacyAutoRegisterRewards.Any()) {
+                    eBuilder.AddField("Leggacy Rewards Filter", string.Join(",", account.LeggacyAutoRegisterRewards.Select(x => rDict[x])));
+                }
             }
 
             builder.WithButton("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}");
@@ -159,6 +166,7 @@ namespace EGG9000.Bot.Commands {
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
+
         #endregion
 
         #region Boarding Group
@@ -401,13 +409,14 @@ namespace EGG9000.Bot.Commands {
             var select2 = new SelectMenuBuilder()
                 .WithCustomId($"MCSRewardsSet:{index},{dbuser.DiscordId}")
                 .WithPlaceholder("Rewards Filter")
-                .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count());
+                .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count);
             foreach(var item in GetRewardDictionary()) {
                 select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: reg.AutoRegisterRewards.Any(x => x == item.Key));
             }
             builder.WithSelectMenu(select2);
             builder.WithButton("Clear Filter (Do all contracts)", $"MCSRewardsClear:{index},{dbuser.DiscordId}");
-            var content = $"If you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
+            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
+            var content = $"**This filter will apply to New Contracts & Leggacy Contracts by default. To set a filter specific for leggacies, use `Leggacy Rewards Filter`.**\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = null; x.Content = content; });
         }
 
@@ -434,6 +443,61 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
             reg.AutoRegisterRewards = new List<Ei.RewardType>();
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+        #endregion
+
+        #region LeggacyRewards
+        [ComponentCommand]
+        public static async Task MCSLeggacyRewards(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var reg = dbuser.EggIncAccounts[index];
+            var builder = new ComponentBuilder();
+            if(reg.LeggacyAutoRegisterRewards is null)
+                reg.LeggacyAutoRegisterRewards = new List<Ei.RewardType>();
+
+            var select2 = new SelectMenuBuilder()
+                .WithCustomId($"MCSLeggacyRewardsSet:{index},{dbuser.DiscordId}")
+                .WithPlaceholder("Leggacy Rewards Filter")
+                .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count);
+            foreach(var item in GetRewardDictionary()) {
+                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: reg.LeggacyAutoRegisterRewards.Any(x => x == item.Key));
+            }
+            builder.WithSelectMenu(select2);
+            builder.WithButton("Clear Filter (Follow main filter)", $"MCSLeggacyRewardsClear:{index},{dbuser.DiscordId}");
+            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
+            var content = $"**This filter applies _only_ to Leggacy Contracts. If it is empty, your normal filter will be applied instead**.\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = null; x.Content = content; });
+        }
+
+        [ComponentCommand]
+        public static async Task MCSLeggacyRewardsSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var reg = dbuser.EggIncAccounts[index];
+
+            reg.LeggacyAutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
+            if(reg.LeggacyAutoRegisterRewards.Any(x => x == Ei.RewardType.UnknownReward)) {
+                reg.LeggacyAutoRegisterRewards = new List<Ei.RewardType>();
+            }
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+        [ComponentCommand]
+        public static async Task MCSLeggacyRewardsClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var reg = dbuser.EggIncAccounts[index];
+            reg.LeggacyAutoRegisterRewards = new List<Ei.RewardType>();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
