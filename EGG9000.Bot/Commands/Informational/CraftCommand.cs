@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Commands {
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in user.EggIncAccounts) {
-                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{((int)quality)}|{quantity}|{artifact}");
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{((int)quality)}|{quantity}|{artifact}");
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Components = builder.Build(); });
             }

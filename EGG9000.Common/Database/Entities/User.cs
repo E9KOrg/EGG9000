@@ -251,22 +251,17 @@ namespace EGG9000.Common.Database.Entities {
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
         public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            return EggIncAccounts.Any(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
+            return EggIncAccounts.Any(x => x.Id == proto.UserId);
         }
 
 
         public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
             var eggIncIds = EggIncAccounts;
-            var nameId = eggIncIds.First(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
+            var nameId = eggIncIds.First(x => x.Id == proto.UserId);
 
             var update = false;
             if(string.IsNullOrEmpty(nameId.Id)) {
                 nameId.Id = proto.UserId;
-                update = true;
-            }
-            if(nameId.Name != proto.UserName) {
-                nameId
-                    .Name = proto.UserName;
                 update = true;
             }
             if(update) {
@@ -278,7 +273,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public void AddName(string Name, CustomBackup backup, string Id = null) {
             var eggIncIds = EggIncAccounts;
-            eggIncIds.Add(new EggIncAccount { Name = Name, Id = Id, Backup = backup });
+            eggIncIds.Add(new EggIncAccount { Id = Id, Backup = backup });
             UpdateAccounts();//Force JSON Update
         }
 
@@ -327,8 +322,6 @@ namespace EGG9000.Common.Database.Entities {
 
     [MessagePackObject]
     public class EggIncAccount {
-        [Key(0)]
-        public string Name { get; set; }
         [Key(1)]
         public string Id { get; set; }
         [Key(2)]

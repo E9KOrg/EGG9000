@@ -747,7 +747,7 @@ namespace EGG9000.Bot.Automated {
                                 } else if(user.EggIncAccounts.Count > 1) {
                                     var eggaccount = user.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId);
                                     if(eggaccount != null)
-                                        mention = $"{discordUser.Mention} ({eggaccount.Name})";
+                                        mention = $"{discordUser.Mention} ({eggaccount.Backup?.UserName ?? "No Name"})";
                                 } else {
                                     mention = discordUser?.Mention;
                                 }
@@ -780,7 +780,7 @@ namespace EGG9000.Bot.Automated {
                                     }
 
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18)) {
-                                        var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
+                                        var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Backup?.UserName})" : "";
                                         await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
                                 }
