@@ -20,7 +20,7 @@ namespace EGG9000.Common.Helpers.Discord {
             var sb = new StringBuilder();
             var commands = await mainServer.GetApplicationCommandsAsync();
 
-            var overflowCommands = overflowServers.SelectMany(x => x.GetApplicationCommandsAsync().Result);
+            var overflowCommands = overflowServers.SelectMany(x => x.GetApplicationCommandsAsync().Result).ToList();
 
             foreach(var command in commands) {
                 var permissions = await ContractsAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", client_secret);
@@ -38,10 +38,12 @@ namespace EGG9000.Common.Helpers.Discord {
                             permission = p.permission,
                             type = p.type
                         };
+                        if(np.type == 3)
+                            continue;
                         overflowPermissions.permissions.Add(np);
                     }
 
-                    var overflowCommand = overflowCommands.FirstOrDefault(x => x.Name == command.Name);
+                    var overflowCommand = overflowCommands.FirstOrDefault(x => x.Guild.Id == overflowServer.Id && x.Name == command.Name);
 
                     var currentOverflowPermissions = await ContractsAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", client_secret);
 
@@ -60,7 +62,9 @@ namespace EGG9000.Common.Helpers.Discord {
 
                     if(match == false) {
                         var response = await ContractsAPI.DiscordRestPutUser<GuildApplicationCommandPermissions, GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", user_access_token, overflowPermissions);
-                        sb.AppendLine("Permissions for " + command.Name + " updated for " + overflowServer.Name);
+                        sb.AppendLine("Permissions for " + command.Name + " on " + overflowServer.Name);
+                    } else {
+                        sb.AppendLine("Skipping permissions for " + command.Name + " on " + overflowServer.Name);
                     }
                 }
             }
