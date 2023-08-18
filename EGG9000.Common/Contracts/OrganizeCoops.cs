@@ -136,6 +136,16 @@ namespace EGG9000.Common.Contracts {
             }
             var gradeSpec = contract.GradeSpecs.First(x => x.Grade == Grade);
 
+
+            matchingAccounts = matchingAccounts.Where(x => {
+                var registerRewards = contract.Leggacy && x.Account.LeggacyAutoRegisterRewards != null ?  x.Account.LeggacyAutoRegisterRewards : x.Account.AutoRegisterRewards;
+                return ignoreRewards
+                    || registerRewards == null
+                    || registerRewards.Count == 0
+                    || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
+            });
+
+
             if(contract.Leggacy) {
                 matchingAccounts = matchingAccounts.Where(x =>
                     ignoreRewards
@@ -146,12 +156,6 @@ namespace EGG9000.Common.Contracts {
                         || x.Account.LeggacyAutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
                     );
             } else {
-                matchingAccounts = matchingAccounts.Where(x =>
-                       ignoreRewards
-                    || x.Account.AutoRegisterRewards == null
-                    || x.Account.AutoRegisterRewards.Count == 0
-                    || x.Account.AutoRegisterRewards.Any(r => DBUser.MatchRewards(gradeSpec, r))
-                );
             }
 
             matchingAccounts = matchingAccounts.ToList();
