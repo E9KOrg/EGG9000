@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                //coops = coops.Where(x => x.Name.Equals("OmenWing85", StringComparison.OrdinalIgnoreCase)).ToList();
+                coops = coops.Where(x => x.Name.Equals("flossgoal32", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
@@ -747,7 +747,7 @@ namespace EGG9000.Bot.Automated {
                                 } else if(user.EggIncAccounts.Count > 1) {
                                     var eggaccount = user.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId);
                                     if(eggaccount != null)
-                                        mention = $"{discordUser.Mention} ({eggaccount.Name})";
+                                        mention = $"{discordUser.Mention} ({eggaccount.Backup?.UserName ?? "No Name"})";
                                 } else {
                                     mention = discordUser?.Mention;
                                 }
@@ -780,7 +780,7 @@ namespace EGG9000.Bot.Automated {
                                     }
 
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18)) {
-                                        var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Name})" : "";
+                                        var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Backup?.UserName})" : "";
                                         await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within 18 hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);
                                     }
                                 }

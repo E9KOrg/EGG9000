@@ -33,7 +33,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public const string UserId = "EI5223299518300160";
         
-        public const uint ClientVersion = 54;
+        public const uint ClientVersion = 55;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
@@ -617,20 +617,42 @@ namespace EGG9000.Bot.EggIncAPI {
             }
         }
 
-        public static async Task<T> DiscordRestGet<T>(string path, string DiscordToken) {
+        public static async Task<T> DiscordRestGetBot<T>(string path, string DiscordToken) {
             using(var client = new HttpClient()) {
                 client.BaseAddress = new Uri("https://discordapp.com/api/");
                 client.DefaultRequestHeaders.Add("Authorization", "Bot " + DiscordToken);
                 var response = await client.GetAsync(path);
+                await Task.Delay(500);
                 return await response.Content.ReadFromJsonAsync<T>();
             }
         }
 
-        public static async Task<T> DiscordRestPut<T,U>(string path, string DiscordToken,U Params) {
+        public static async Task<T> DiscordRestPutBot<T, U>(string path, string DiscordToken, U Params) {
             using(var client = new HttpClient()) {
                 client.BaseAddress = new Uri("https://discordapp.com/api/");
                 client.DefaultRequestHeaders.Add("Authorization", "Bot " + DiscordToken);
                 var response = await client.PutAsJsonAsync(path, Params);
+                await Task.Delay(500);
+                return await response.Content.ReadFromJsonAsync<T>();
+            }
+        }
+
+        public static async Task<T> DiscordRestGetUser<T>(string path, string DiscordToken) {
+            using(var client = new HttpClient()) {
+                client.BaseAddress = new Uri("https://discordapp.com/api/");
+                client.DefaultRequestHeaders.Add("Authorization", "Bearer " + DiscordToken);
+                var response = await client.GetAsync(path);
+                await Task.Delay(500);
+                return await response.Content.ReadFromJsonAsync<T>();
+            }
+        }
+
+        public static async Task<T> DiscordRestPutUser<T, U>(string path, string DiscordToken, U Params) {
+            using(var client = new HttpClient()) {
+                client.BaseAddress = new Uri("https://discordapp.com/api/");
+                client.DefaultRequestHeaders.Add("Authorization", "Bearer " + DiscordToken);
+                var response = await client.PutAsJsonAsync(path, Params);
+                await Task.Delay(500);
                 return await response.Content.ReadFromJsonAsync<T>();
             }
         }

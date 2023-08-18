@@ -207,6 +207,9 @@
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
+                @if((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
+                    <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.LeggacyAutoRegisterRewards)</span>
+                }
                 <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
                     @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
