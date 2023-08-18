@@ -616,7 +616,7 @@ namespace EGG9000.Bot.Commands {
                 lastBuilder.Footer.Text += $"\nNot registered with this server, try the /moveserver command";
             }
 
-            lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value.ToString("MMM dd, yyyy")}";
+            lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value:MMM dd, yyyy}";
 
             if(dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser && guild.Id == (user as SocketGuildUser).Guild.Id) {
                 _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
