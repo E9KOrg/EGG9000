@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Common.Services;
 using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,16 +42,27 @@ using System.Numerics;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
+        [SlashCommand(Description = "Mark a potential artifact cheater as clean", AdminOnly = true, ParentCommand = "a")]
+        public static async Task MarkAFSClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
+            await command.DeferAsync(ephemeral: false);
+            var userid = useraccount.Split("|")[0];
+            if(userid is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: User id could not be found from param");
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbuser is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: DB user could not be found from user ID {userid}");
+            var account = dbuser.EggIncAccounts.FirstOrDefault(x => x.Id == useraccount.Split("|")[1]);
+
+            if(account is null) await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
+            else {
+                await command.RespondAsync($"User account {userid} marked as having clean artifacts.");
+                account.AFSMarkedClean = true;
+                await db.SaveChangesAsync();
+            }
+        }
 
         [SlashCommand(Description = "Determine a user's artifact fairness score", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task AFS(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
             return _afs(command, db, user, ShowInChannel);
         }
-
-        /*[SlashCommand(Description = "Determine your artifact fairness score")]
-        public static Task AFS(FauxCommand command, ApplicationDbContext db) {
-            return _userstatus(command, db, command.User, false);
-        }*/
 
         private static async Task _afs(FauxCommand command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
             await command.DeferAsync(ephemeral: !showInChannel);
