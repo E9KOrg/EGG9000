@@ -362,6 +362,10 @@ namespace EGG9000.Common.Database.Entities {
         public double SubscriptionEnds { get; set; }
         [Key(20)]
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; }
+        [Key(21)]
+        public bool AFSWarningSent { get; set; } = false;
+        [Key(22)]
+        public bool AFSMarkedClean { get; set; } = false;
         [Key(23)]
         public byte UltraGroup { get; set; }
         [Key(25)]
