@@ -59,7 +59,7 @@ namespace EGG9000.Bot.Commands {
             var sb = new StringBuilder();
 
             foreach(var account in user.EggIncAccounts.Where(a => a.Backup is not null).ToList()) {
-                sb.Append($"For {account.Name}: {ArtifactHelpers.GetArtifactFairnessScoreString(account.Backup.ArtifactHall)}\n");
+                sb.Append($"For {account.Backup?.UserName ?? "(No Name)"}: {ArtifactHelpers.GetArtifactFairnessScoreString(account.Backup.ArtifactHall)}\n");
             }
 
             await command.RespondAsync(sb.ToString(), ephemeral: !showInChannel);

@@ -51,13 +51,13 @@ namespace EGG9000.Bot.Automated {
             // Calculate the Z-score for each account and find upper outliers
             var upperThreshold = averageScore + (zScoreCutoff * standardDeviation);
             var upperOutliers = scoreSet
-                .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
+                .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Id == pair.Key.Id)).GuildId))
                 .Where(pair => (pair.Value - averageScore) / standardDeviation > zScoreCutoff)
                 .Select(pair => pair.Key)
                 .ToList();
 
             foreach(var outlier in upperOutliers) {
-                var user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
+                var user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
                 var outlierScore = scoreSet[outlier];
 
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
@@ -72,12 +72,12 @@ namespace EGG9000.Bot.Automated {
                 var thread = guild.GetThreadChannel(threadobj.Id);
                 if(thread is null) continue;
 
-                var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
+                var messageContent = $"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Backup?.UserName}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
                 var messages = await thread.GetMessagesAsync(100).FlattenAsync();
 
-                if(!messages.Any(m => m.Content.ToString().Contains(outlier.Name) && m.Content.ToString().Contains(user.DiscordId.ToString()))) await thread.SendMessageAsync(messageContent);
+                if(!messages.Any(m => m.Content.ToString().Contains(outlier.Backup?.UserName) && m.Content.ToString().Contains(user.DiscordId.ToString()))) await thread.SendMessageAsync(messageContent);
                 else {
-                    _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
+                    _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Backup?.UserName);
                 }
             }
 
