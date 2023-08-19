@@ -33,9 +33,102 @@ using Bugsnag.Payload;
 using System.Security.Principal;
 using static Ei.Contract.Types;
 using Ei;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
+
+        [SlashCommand(Description = "Fix a user getting full co-op error", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ILogger logger, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount) {
+            await command.RespondAsync("Please wait...");
+            var userid = useraccount.Split("|")[0];
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbuser is null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user in co-op.");
+                return;
+            }
+
+            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(coop == null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Command can only be used in a co-op channel");
+                return;
+            }
+
+            await _fixFullCoopError(command, db, _client, coopStatusUpdater, logger, dbuser, coop);
+        }
+
+        [SlashCommand(Description = "Fix for getting full co-op error")]
+        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
+            await command.RespondAsync("Please wait...");
+            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(coop == null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Command can only be used in a co-op channel");
+                return;
+            }
+
+            var dbuser = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.DiscordId == command.User.Id)?.User;
+            if(dbuser is null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user in co-op.");
+            }
+
+            await _fixFullCoopError(command, db, _client, coopStatusUpdater, logger, dbuser, coop);
+        }
+
+        private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ILogger logger, DBUser dbuser, Coop coop) {
+            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+
+            var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
+
+            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser?.DiscordId == command.User.Id && x.EggsShipped == 0);
+
+            if(xref is null) {
+                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user with zero production.");
+                return;
+            }
+
+            //logger.LogInformation("Attempting to fix {user} in {coop} by submitting leave request", dbuser.DiscordUsername, coop.Name);
+            //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
+            //    ClientVersion = 24,
+            //    ContractIdentifier = coop.ContractID,
+            //    CoopIdentifier = coop.Name,
+            //    PlayerIdentifier = xref.EggIncId,
+            //}, xref.EggIncId);
+            logger.LogInformation("Attempting to fix {user} in {coop} by creating temp co-op", dbuser.DiscordUsername, coop.Name);
+            var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
+
+            await Task.Delay(2);
+            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+
+            if(status.Participants.Count == contract.MaxUsers) {
+                logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
+                var res3 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+                    ClientVersion = 24,
+                    ContractIdentifier = coop.ContractID,
+                    CoopIdentifier = coop.Name,
+                    PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
+                }, coop.CreatorID);
+
+                await Task.Delay(2);
+                status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            }
+
+
+            if(status.Participants.Count < contract.MaxUsers) {
+                logger.LogInformation("Successfully remove {user} from {coop}", dbuser.DiscordUsername, coop.Name);
+                var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
+                var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
+                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
+                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+
+                await command.Channel.SendMessageAsync($"Successfully removed {command.User.Mention} from co-op, they should be able to rejoin now.");
+                await command.DeleteOriginalResponseAsync();
+            } else {
+                logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
+                await command.ModifyOriginalResponseAsync($"Attempted to remove {command.User.Mention} from co-op, please check again in a few minutes.");
+            }
+        }
+
         [SlashCommand(Description = "Makes a co-op public", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task MakePublic(FauxCommand command, ApplicationDbContext db) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
@@ -452,7 +545,7 @@ namespace EGG9000.Bot.Commands {
 
 
 
-                await arg.RespondAsync(null, coops.Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
+                await arg.RespondAsync(null, coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
             }
 
             public class CoopMin {
@@ -476,7 +569,7 @@ namespace EGG9000.Bot.Commands {
                 var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
 
                 var results = new List<AutocompleteResult>();
-                foreach(var account in accounts) {
+                foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
@@ -507,11 +600,10 @@ namespace EGG9000.Bot.Commands {
                     coop.UserCoopsXrefs :
                     coop.UserCoopsXrefs.Where(x => x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
 
-
                 var accounts = users.SelectMany(x => x.User.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x.User, Account = y }));
 
                 var results = new List<AutocompleteResult>();
-                foreach(var account in accounts) {
+                foreach(var account in accounts.DistinctBy(a => a.Account.Id)) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
@@ -569,7 +661,7 @@ namespace EGG9000.Bot.Commands {
                     users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
-                await arg.RespondAsync(users.Select(x => new AutocompleteResult(x.DiscordUsername, x.UserId.ToString())));
+                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).ToList().Select(x => new AutocompleteResult(x.DiscordUsername, x.UserId.ToString())));
             }
         }
 
@@ -658,7 +750,7 @@ namespace EGG9000.Bot.Commands {
 
                 var contracts = await _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).Select(x => new { x.ID, x.Name }).ToListAsync();
 
-                await arg.RespondAsync(null, contracts.Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
+                await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
             }
         }
 
