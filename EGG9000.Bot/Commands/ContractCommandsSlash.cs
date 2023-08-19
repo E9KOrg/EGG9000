@@ -37,6 +37,7 @@ using Microsoft.Extensions.Logging;
 using Exception = System.Exception;
 using Microsoft.Extensions.Logging;
 using Exception = System.Exception;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
