@@ -231,7 +231,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description="Attempt to find a coop for a user, move user to said coop", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task FindCoopForUser(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
-            [SlashParam(AutocompleteHandler = typeof(ContractAutoComplete))] string contractid, [SlashParam(Required = false)]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
+            [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contractid, [SlashParam(Required = false)]FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
             await command.DeferAsync();
             var guildRef = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString())); 
             var contract = await db.Contracts.FirstOrDefaultAsync(c => c.ID == contractid);
@@ -739,6 +739,11 @@ namespace EGG9000.Bot.Commands {
         }
 
 
+        /*
+         *  Currently un-used. If we open up `/findcoopforuser` to useres in the future, this is what we should use.
+         *  Was previously being used in `/findcoopforuser` as the staff only command, but was limiting the staff
+         *  that could move users to ultra coops to "staff who have ultra"
+         */
         public class ContractAutoComplete : AutoCompleteHandler {
             private readonly ApplicationDbContext _db;
             public ContractAutoComplete(ApplicationDbContext db) {
@@ -749,6 +754,21 @@ namespace EGG9000.Bot.Commands {
                 var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Any();
 
                 var contracts = await _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).Select(x => new { x.ID, x.Name }).ToListAsync();
+
+                await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
+            }
+        }
+
+        /*
+         *  Clone of ContractAutoComplete with no limitation on who can select Ultra coops
+         */
+        public class StaffContractAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public StaffContractAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var contracts = await _db.Contracts.Where(x => x.GoodUntil > DateTimeOffset.Now ).Select(x => new { x.ID, x.Name }).ToListAsync();
 
                 await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
             }
