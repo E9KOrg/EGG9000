@@ -42,12 +42,6 @@ namespace EGG9000.Common.Contracts {
             accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
             accounts = FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 
-            accounts = FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
-
-            accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
-
-            accounts = FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
-
             accounts = FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
 
             //Need 1k soul eggs for contracts
