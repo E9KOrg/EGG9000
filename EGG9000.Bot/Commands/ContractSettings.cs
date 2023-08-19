@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Security.Principal;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
@@ -126,6 +127,7 @@ namespace EGG9000.Bot.Commands {
             var redoText = account.RedoLeggacySelection switch {
                 RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
                 RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.RedoScoreThreshold} score)",
+                RedoLeggacyOption.YesAccountMatch => "Yes (If any other of your accounts get assigned)",
                 RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
                 _ => "No (Will still be assigned to incomplete leggacies)"
             };
@@ -248,12 +250,21 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
         }
 
-        private static MessageComponent GetRlButtons(int index, EggIncAccount account, DBUser dbuser) {
-            var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index},{dbuser.DiscordId}", new List<SelectMenuOptionBuilder> {
+        private static List<SelectMenuOptionBuilder> GetRedoLeggacyOptions(EggIncAccount account, DBUser dbuser) {
+            var list = new List<SelectMenuOptionBuilder>() {
                 new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesAll),
                 new SelectMenuOptionBuilder($"Yes (If your previous score was under a threshold you set)", "2", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold),
-                new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.No)
-            });
+            };
+            if(dbuser.EggIncAccounts.Count > 1) {
+                list.Add(new SelectMenuOptionBuilder("Yes (If any other of your accounts get assigned)", "4", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesAccountMatch));
+            }
+            list.Add(new SelectMenuOptionBuilder("No (Will still be assigned to incomplete leggacies)", "3", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.No));
+            return list;
+        }
+
+        private static MessageComponent GetRlButtons(int index, EggIncAccount account, DBUser dbuser) {
+            var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index},{dbuser.DiscordId}", GetRedoLeggacyOptions(account, dbuser));
+
             if(account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
                 builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
                 builder.WithButton("Change CS Threshold", $"RLThreshModal:{index},{dbuser.DiscordId}");
@@ -310,12 +321,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            account.RedoLeggacySelection = component.Data.Values.First() switch {
-                "1" => RedoLeggacyOption.YesAll,
-                "2" => RedoLeggacyOption.YesThreshold,
-                "3" => RedoLeggacyOption.No,
-                _ => RedoLeggacyOption.No
-            };
+            account.RedoLeggacySelection = (RedoLeggacyOption)Enum.Parse(typeof(RedoLeggacyOption), component.Data.Values.First()); 
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));

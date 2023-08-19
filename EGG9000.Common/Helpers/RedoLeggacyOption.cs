@@ -9,6 +9,7 @@ namespace EGG9000.Common.Helpers {
         NotSet = 0,
         YesAll = 1,
         YesThreshold = 2,
-        No = 3
+        No = 3,
+        YesAccountMatch = 4
     }
 }
