@@ -83,8 +83,8 @@ namespace EGG9000.Bot.Automated {
                 foreach(var server in overflowServers) {
                     await server.DownloadUsersAsync();
                 }
-                await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
-                await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
+                //await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
+                //await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
                 _client.RoleUpdated += _client_RoleUpdated;
 
 #if DEBUG
