@@ -54,7 +54,7 @@ namespace EGG9000.Bot.Automated {
                             coopGroup.GuildId = dbguild.Id;
                         }
                     }
-                    var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && x.Status == CoopStatusEnum.Completed).OrderBy(x => x.CoopCompleted).ToListAsync();
+                    var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync();
                     _logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
                     foreach(var coop in coopGroups) {
                         if(cancellationToken.IsCancellationRequested) return;
@@ -98,9 +98,9 @@ namespace EGG9000.Bot.Automated {
             if(completedCoops.Count() > 0) {
                 var completedCoop = completedCoops.First();
                 completedCoops.Remove(completedCoop);
-                var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
-                if(coopChannel == null && coop.DiscordChannelId > 0) {
-                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId, options: new RequestOptions { CancelToken = cancellationToken }));
+                var coopChannel = (ITextChannel)_client.GetChannel(completedCoop.DiscordChannelId);
+                if(coopChannel == null && completedCoop.DiscordChannelId > 0) {
+                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(completedCoop.DiscordChannelId, options: new RequestOptions { CancelToken = cancellationToken }));
                 }
                 if(coopChannel != null) {
                     try {
@@ -108,7 +108,7 @@ namespace EGG9000.Bot.Automated {
                     } catch(Exception) {
 
                     }
-                    coop.DeletedChannel = true;
+                    completedCoop.DeletedChannel = true;
                     _logger.LogInformation("Deleting co-op channel for {coop} to free up a channel", completedCoop.Name);
 
                     var server = servers.Where(x => x.Guild.Id == completedCoop.GuildId).FirstOrDefault();
@@ -123,7 +123,7 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                 } else {
-                    coop.DeletedChannel = true;
+                    //coop.DeletedChannel = true;
                     _logger.LogWarning("Unable to find co-op channel for {coop} to be able to free up space, setting as deleted", completedCoop.Name);
                     completedCoops.Remove(completedCoop);
                     return await CreateTextChannelAsync(guild, coop, servers, completedCoops, cancellationToken);

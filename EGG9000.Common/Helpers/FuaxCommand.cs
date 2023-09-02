@@ -65,7 +65,7 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task DeferAsync(bool ephemeral = false, RequestOptions options = null) {
-            if(_socketCommandBase is not null)
+            if(_socketCommandBase is not null && !_socketCommandBase.HasResponded)
                 await _socketCommandBase.DeferAsync(ephemeral, options);
         }
 

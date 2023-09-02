@@ -144,7 +144,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             Color color = Color.DarkGrey;
-            if(!findCoop.Finished && findCoop.FinishedOrFailed) color = Color.Red;
+            if(!findCoop.Finished && findCoop.FinishedOrFailed()) color = Color.Red;
             else if(findCoop.ProjectedToFinish) color = Color.Green;
             else color = Color.Blue;
 
@@ -185,7 +185,7 @@ namespace EGG9000.Bot.Commands {
             builder.AddField("League", PlayerGradeDetails.GetEmoji(findCoop.League));
 
             if(findCoop.Finished) builder.AddField("Status", "**Finished**");
-            else if(findCoop.FinishedOrFailed) builder.AddField("Status", "**Failed**"); 
+            else if(findCoop.FinishedOrFailed()) builder.AddField("Status", "**Failed**"); 
             else builder.AddField("Projected to finish?", $"{(findCoop.ProjectedToFinish ? "Yes" : "No")}");
 
             await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
