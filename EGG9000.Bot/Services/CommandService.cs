@@ -125,7 +125,7 @@ namespace EGG9000.Bot.Services {
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
             //_ = arg.DeferAsync();
-            if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.8))) {
+            if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5))) {
                 try {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {

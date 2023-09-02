@@ -78,11 +78,11 @@ namespace EGG9000.Bot.Automated {
                     var thread = guild.GetThreadChannel(threadobj.Id);
                     if(thread is null) continue;
 
-                    if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
-                    else {
-                        _logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
-                    }
-                    outlier.AFSWarningSent = true;
+                    //if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    //else {
+                        //_logger.LogInformation("Skipping sending thread message for {user} - {outlier} due to it already existing", user.DiscordUsername, outlier.Name);
+                    //}
+                  outlier.AFSWarningSent = true;
                 }
                 await _db.SaveChangesAsync();
             }

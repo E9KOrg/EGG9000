@@ -34,6 +34,7 @@ using System.Security.Principal;
 using static Ei.Contract.Types;
 using Ei;
 using Microsoft.Extensions.Logging;
+using Exception = System.Exception;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -502,8 +503,14 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(AutocompleteHandler = typeof(MoveToCoopCoopNameAutoComplete))] string coopid) {
             var coop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == Guid.Parse(coopid));
-            var userid = useraccount.Split("|")[0];
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            Guid userid;
+            try {
+                userid = Guid.Parse(useraccount.Split("|")[0]);
+            } catch(Exception e) {
+                  await command.RespondAsync($"⚠️ERROR: Unable to parse user account, please use the autocomplete dropdown. (DEBUG: Value for useraccount is `{useraccount}`)");
+                return;
+            }
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == userid);
             var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
 
             var discordUser = _client.GetUser(dbuser.DiscordId);
@@ -572,7 +579,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup.EarningsBonus.ToEggString()}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     } else {
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     }
@@ -591,7 +598,7 @@ namespace EGG9000.Bot.Commands {
                 var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
 
                 var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
-                if(coop is null || coop.FinishedOrFailedOrExpired || eidsIn.Count == 0) {
+                if(coop is null || coop.FinishedOrFailedOrExpired() || eidsIn.Count == 0) {
                     return; //Needs to be used in an active coop channel with users in it
                 }
 

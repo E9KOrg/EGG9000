@@ -108,49 +108,60 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+@section Scripts {
 <script>
-	var options = {
-		chart: {
-			type: 'area',
-			stacked: false,
-			zoom: {
-				autoScaleYaxis: true
-			}
-		},
-		dataLabels: {
-			enabled: false
-		},
-		series: [{
-			name: "Number of Co-ops",
-			data: @Html.Raw(JsonConvert.SerializeObject(days))
+	$.ajax({
+        url: "/admin/getgraphs",
+        success: function (data) {
+            CreateChart(data.days, data.days2);
+        }
+    });
+
+	function CreateChart(days, days2) {
+		var options = {
+			chart: {
+				type: 'area',
+				stacked: false,
+				zoom: {
+					autoScaleYaxis: true
+				}
+			},
+			dataLabels: {
+				enabled: false
+			},
+			series: [{
+				name: "Number of Co-ops",
+				data: days// @Html.Raw(JsonConvert.SerializeObject(days))
+				}, {
+				name: "Number of Active Users",
+				data: days2//@Html.Raw(JsonConvert.SerializeObject(days2))
+				}],
+			yaxis: [{
+				opposite: true,
+				title: { text: "Number of Co-ops" }
 			}, {
-			name: "Number of Active Users",
-			data: @Html.Raw(JsonConvert.SerializeObject(days2))
+				title: { text: "Number of Active Users" }
 			}],
-		yaxis: [{
-			opposite: true,
-			title: { text: "Number of Co-ops" }
-		}, {
-			title: { text: "Number of Active Users" }
-		}],
-		xaxis: {
-			type: 'datetime'
-		},
-		tooltip: {
-			x: {
-				format: 'dd MMM yyyy'
+			xaxis: {
+				type: 'datetime'
+			},
+			tooltip: {
+				x: {
+					format: 'dd MMM yyyy'
+				}
+			},
+			dataLabels: {
+				enabled: false
+			},
+			stroke: {
+				width: 2
 			}
-		},
-		dataLabels: {
-			enabled: false
-		},
-		stroke: {
-			width: 2
 		}
+
+		var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+		chart.render();
 	}
-
-	var chart = new ApexCharts(document.querySelector("#chart"), options);
-
-	chart.render();
 </script>
 
+}
