@@ -44,6 +44,19 @@
         }
     </tbody>
 </table>
+@{
+    var count = 0;
+}
+<pre>
+    @foreach(var ghost in Model.Where(x => !x.Mentioned && !x.CoopFinished && !x.MissingFromMain)) {
+        @:<@@@ghost.DiscordId>
+        if(++count == 50) {
+            count = 0;
+            @: -=-=-=-=-=-=-=-=-=-
+        }
+    }
+    ))
+</pre>
 <style>
     tr.NotMentioned td {
         background-color: lightgoldenrodyellow;

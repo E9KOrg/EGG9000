@@ -8,6 +8,8 @@ using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
+using Ei;
+
 using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +17,7 @@ using Microsoft.Extensions.Logging;
 
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,12 +26,12 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Jobs {
 
     public class SubscriptionsCheckJob {
-        private readonly ILogger<UserDMsJob> _logger;
+        private readonly ILogger<SubscriptionsCheckJob> _logger;
         private readonly ApplicationDbContext _db;
         private readonly DiscordSocketClient _discord;
         private readonly Bugsnag.IClient _bugsnag;
 
-        public SubscriptionsCheckJob(ILogger<UserDMsJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord, Bugsnag.IClient bugsnag) {
+        public SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord, Bugsnag.IClient bugsnag) {
             _logger = logger;
             _db = applicationDbContext;
             _discord = discord;
@@ -50,6 +53,7 @@ namespace EGG9000.Bot.Jobs {
 #else
             var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
 #endif
+            ConcurrentBag<UserSubscriptionInfo> list = new ConcurrentBag<UserSubscriptionInfo>();
             foreach(var guildGroup in users.GroupBy(x => x.GuildId)) {
                 var dbguild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
                 if(dbguild is null)
@@ -58,12 +62,14 @@ namespace EGG9000.Bot.Jobs {
                 var standardRoleId = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == Common.Database.Entities.GuildChannelType.StandardSubscription)?.Id;
                 var proRoleId = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == Common.Database.Entities.GuildChannelType.ProSubscription)?.Id;
 
+
                 await Parallel.ForEachAsync(guildGroup, new ParallelOptions { MaxDegreeOfParallelism = 5 }, async (user, cancellationToken) => {
                     try {
                         foreach(var account in user.EggIncAccounts) {
 
                             var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                            if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod ) {
+                            list.Add(subscriptionStatus);
+                            if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                                 if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
                                     account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                                     user.UpdateAccounts();
@@ -89,6 +95,9 @@ namespace EGG9000.Bot.Jobs {
                     }
                 });
             }
+
+            var groups = list.GroupBy(x => x.Status).ToList();
+
             await _db.SaveChangesAsync();
             _logger.LogInformation("Finished checking subscriptions");
         }

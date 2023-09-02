@@ -248,6 +248,10 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset CreateOn { get; set; }
         public DateTimeOffset? Registered { get; set; }
 
+        public bool IsFreshEgg() { 
+            return Registered is not null && Registered.Value > DateTimeOffset.UtcNow.AddDays(-7);
+        }
+
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
         public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
