@@ -56,6 +56,7 @@ namespace EGG9000.Bot.Automated {
                 membersMissing.ForEach(x => {
                     x.GuildId = 0; x.LastGuild = guild.Id;
                     _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
+                    this.StillAlive();
                 });
 
                 var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
@@ -63,6 +64,7 @@ namespace EGG9000.Bot.Automated {
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
                     _logger.LogInformation("Return member to the guild {name}", x.DiscordUsername);
+                    this.StillAlive();
                 });
 
                 await _db.SaveChangesAsync();
@@ -82,8 +84,8 @@ namespace EGG9000.Bot.Automated {
                 foreach(var server in overflowServers) {
                     await server.DownloadUsersAsync();
                 }
-                await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
-                await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
+                //await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
+                //await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
                 _client.RoleUpdated += _client_RoleUpdated;
 
 #if DEBUG
@@ -113,12 +115,13 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-                foreach(var u in onlyMainWithoutRole) {
+               foreach(var u in onlyMainWithoutRole) {
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
                     await u.AddRoleAsync(role);
                     _logger.LogInformation("Adding overflow role for {user}", u.GetName());
+                    this.StillAlive();
                 }
 
                 foreach(var u in mainServer.Users.Where(x => x.Roles.Count == 1 && x.Roles.Any(y => y.Id == overflowRoleID) && !x.IsBot)) {
@@ -127,6 +130,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     await u.RemoveRoleAsync(role);
                     _logger.LogInformation("Removing overflow role for {user}, it was the only role", u.GetName());
+                    this.StillAlive();
                 }
 
                 foreach(var u in bothAllWithRole) {
@@ -135,6 +139,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     await u.RemoveRoleAsync(role);
                     _logger.LogInformation("Removing overflow role for {user}, they were in all servers.", u.GetName());
+                    this.StillAlive();
                 }
 
 
@@ -146,6 +151,7 @@ namespace EGG9000.Bot.Automated {
                     foreach(var u in onlyOverflow) {
                         await u.KickAsync("No longer in main server");
                         _logger.LogInformation("Kicking {user}, no longer in main server", u.GetName());
+                        this.StillAlive();
                     }
 
                     foreach(var overflowUser in overflowServer.Users) {
@@ -162,6 +168,7 @@ namespace EGG9000.Bot.Automated {
                             } catch(Exception) {
                                 _logger.LogWarning("Unable to change nickname for {user}", mainServerUser.GetName());
                             }
+                            this.StillAlive();
                         }
                     }
                 }
@@ -200,6 +207,7 @@ namespace EGG9000.Bot.Automated {
                         //}
                     });
                 }
+                this.StillAlive();
             }
         }
 
@@ -215,7 +223,7 @@ namespace EGG9000.Bot.Automated {
             var roleids = guild.RolesToSync.Split(",");
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
-            var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync.ToList(), overflowServers);
+            //var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync.ToList(), overflowServers);
 
 
             foreach(var overflowServer in overflowServers) {

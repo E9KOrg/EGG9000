@@ -184,7 +184,7 @@
                     <span style="margin-right:10px;"><b><u>Highest Egg</u></b>: @backup.MaxEggReached</span>
                 }
                 <br>
-                @if (!dbguild.DisableBG) {
+                @if (dbguild is not null && !dbguild.DisableBG) {
                     if (account.Group == 0) {
                         <span style="margin-right:10px; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
                     } else {

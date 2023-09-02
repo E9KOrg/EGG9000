@@ -223,11 +223,8 @@ namespace EGG9000.Site.Controllers {
         //    return Content(userCoopStats.ToQueryString());
         //}
 
-        public async Task<IActionResult> Index() {
+        public async Task<IActionResult> GetGraphs() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
-
-#if RELEASE
             Dictionary<DateTimeOffset, int[]> days;
             var adminDaysCacheKey = $"AdminDays{guildId}";
             if(!_cache.TryGetValue(adminDaysCacheKey, out days)) {
@@ -237,29 +234,28 @@ namespace EGG9000.Site.Controllers {
                 days = new Dictionary<DateTimeOffset, int[]>();
                 coops = coops.Where(x => x.Created != DateTimeOffset.MinValue).ToList();
 
-                //var xrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).Select(x => new { x.EggIncId, x.CreatedOn }).OrderBy(x => x.CreatedOn).ToListAsync();
-                //var eggIncIdGroups = xrefs.GroupBy(x => x.EggIncId).Select(x => new {
-                //    Start = x.First().CreatedOn,
-                //    End = x.Last().CreatedOn
-                //});
+                var userDates = await _db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.JoinedCoop)).Select(x => new { Start = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderBy(y => y.CreatedOn).First().CreatedOn, End = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderByDescending(y => y.CreatedOn).First().CreatedOn }).ToListAsync();
 
-                var query = _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.Coop.GuildId == guildId).GroupBy(x => x.EggIncId).Select(x => new {
-                    Start = x.OrderBy(y => y.CreatedOn).First(),
-                    End = x.OrderByDescending(y => y.CreatedOn).First(),
-                });
-                var sql = query.ToQueryString();
-                //var eggIncIdGroups = await query.ToListAsync();
+
 
                 for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.Now; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
                     //var accountsCount = eggIncIdGroups.Count(x => x.Start.CreatedOn < start && x.End.CreatedOn > start.AddDays(-14));
-                    //days.Add(start, new[] { count, accountsCount });
-                    days.Add(start, new[] { count, 0 });
+                    var accountsCount = userDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
+                    days.Add(start, new[] { count, accountsCount });
+                    //days.Add(start, new[] { count, 0 });
                 }
-                _cache.Set(adminDaysCacheKey, days, TimeSpan.FromDays(1));
+                _cache.Set(adminDaysCacheKey, days, TimeSpan.FromHours(1));
             }
 
-#endif
+
+            return Json(new { days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }), days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }) });
+        }
+
+        public async Task<IActionResult> Index() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
             var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3)).OrderBy(x => x.Created).ToListAsync();
             var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.DeletedChannel && !y.HasScores)).Select(x => x.First().Contract).ToList();
 
@@ -271,9 +267,6 @@ namespace EGG9000.Site.Controllers {
                     ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && !c.Category.Name.Contains("finished")),
                     FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
                 }).ToList(),
-#if RELEASE
-                Days = days,
-#endif
                 ContractsToScore = contractsToScore
             });
         }
@@ -1173,7 +1166,7 @@ namespace EGG9000.Site.Controllers {
             dynamic jsonObject = JsonConvert.DeserializeObject(responseFromServer);
             string access_token = jsonObject.access_token;
 
-            return await SyncCommandPermissions(access_token);
+            return Redirect("/admin/SyncCommandPermissions?access_token=" + access_token);
         }
 
         public async Task<IActionResult> SyncCommandPermissions(string access_token) {

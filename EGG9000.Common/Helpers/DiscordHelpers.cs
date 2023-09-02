@@ -114,7 +114,7 @@ namespace EGG9000.Bot.Helpers {
             await CheckGrades(guild, discordUser, dbUser, grades);
             await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
             await CheckUserOSRole(_client, guild, discordUser, dbUser);
-            await CheckUnjoined(guild, discordUser, dbUser);
+            await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
             await CheckEnDRole(_client, guild, discordUser, dbUser);
             await CheckNAHRole(_client, guild, discordUser, dbUser);
             await CheckASCRole(_client, guild, discordUser, dbUser);
@@ -424,16 +424,18 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        private static async Task CheckUnjoined(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+        private static async Task CheckUnjoined(SocketGuild Guild, IGuildUser DiscordUser, LeaderboardUser luser) {
+            if(luser?.RecentXrefs is null)
+                return;
             var unjoinedRole = Guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
             if(unjoinedRole != null) {
                 var hasUnjoined = DiscordUser.RoleIds.Any(x => x == unjoinedRole.Id);
-                var needsUnjoined = user.GuildCoops <= 0;
+                var needsUnjoined = luser.RecentXrefs.Count == 0 || luser.RecentXrefs.All(x => !x.Joined);
 
-                if(!hasUnjoined && needsUnjoined) {
-                    await DiscordUser.AddRoleAsync(unjoinedRole);
-                    GetLogger<DiscordHelpers>().LogInformation("Adding unjoined Role for {user}", DiscordUser.GetName());
-                }
+                //if(!hasUnjoined && needsUnjoined) {
+                //    await DiscordUser.AddRoleAsync(unjoinedRole);
+                //    GetLogger<DiscordHelpers>().LogInformation("Adding unjoined Role for {user}", DiscordUser.GetName());
+                //}
                 if(hasUnjoined && !needsUnjoined) {
                     await DiscordUser.RemoveRoleAsync(unjoinedRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing outdated unjoined Role for {user}", DiscordUser.GetName());
@@ -475,7 +477,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckFreshEggsRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var freshEggRole = Guild.Roles.FirstOrDefault(x => x.Id == 761005564615983152);
             if(freshEggRole != null) {
-                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-7);
+                var needsRole = user.Registered is not null && user.Registered > DateTimeOffset.Now.AddDays(-7);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == freshEggRole.Id);
 
                 if(!hasRole && needsRole) {
