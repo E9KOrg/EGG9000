@@ -43,7 +43,6 @@
     string emojiDelegage(Match match) {
         return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
     };
-    List<Merit> merits = Model.Merits;
     var inDB = Model.User.DiscordId > 0;
 
 }
@@ -67,6 +66,10 @@
 
     .tab-pane .container {
         padding: 0px;
+    }
+
+    .Expired td {
+        opacity: 60%;
     }
 </style>
 
@@ -179,8 +182,7 @@
                 <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
                 <div class="copy-notification" id="copy-notification-eid-@index">EID copied!</div>
                 <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span>
-                @if (backup.MaxEggReached < Ei.Egg.Enlightenment)
-                {
+                @if (backup.MaxEggReached < Ei.Egg.Enlightenment) {
                     <span style="margin-right:10px;"><b><u>Highest Egg</u></b>: @backup.MaxEggReached</span>
                 }
                 <br>
@@ -190,11 +192,10 @@
                     } else {
                         <span style="margin-right:10px;"><b><u>Boarding Group @account.Group</u></b></span>
                     }
-                    if(account.SubscriptionLevel is not null) {
+                    if (account.SubscriptionLevel is not null) {
                         if (account.UltraGroup == 0) {
                             <span style="margin-right:10px; color: #FFAA33"><b>⚠️Ultra Boarding Group Not Set</b></span>
-                        }
-                        else {
+                        } else {
                             <span style="margin-right:10px;"><b><u>Ultra Boarding Group @account.UltraGroup</u></b></span>
                         }
                     }
@@ -207,7 +208,7 @@
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
-                @if((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
+                @if ((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
                     <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.LeggacyAutoRegisterRewards)</span>
                 }
                 <span style="margin-right:10px;">
@@ -234,7 +235,7 @@
                     <a class="nav-link" data-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
                 </li>
                 @if (inDB) {
-                    var tabName = isAdmin ? $"Merits ({merits.Count}) & Demerits" : $"Merits ({merits.Count})";
+                    var tabName = isAdmin ? $"Merits ({Model.Merits.Count}) & Demerits ({Model.Demerits.Count})" : $"Merits & Demerits";
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">@tabName</a>
                     </li>
@@ -282,7 +283,7 @@
                                         <div class="card" style="margin-top:20px">
                                             <table class="table table-striped">
                                                 <caption style="caption-side: top; text-align: center; font-weight: bold;"><u>Merits</u></caption>
-                                                @if (merits.Count > 0) {
+                                                @if (Model.Merits.Count > 0) {
                                                     <tbody>
                                                         <tr>
                                                             <th class="text-left">Date</th>
@@ -293,9 +294,9 @@
                                                         </tr>
                                                     </tbody>
                                                     <tbody>
-                                                        @foreach (var merit in merits) {
+                                                        @foreach (var merit in Model.Merits) {
                                                             <tr>
-                                                                <td>@merit.When.ToString("yyyy-MM-dd")</td>
+                                                                <td style="white-space: nowrap">@merit.When.ToString("yyyy-MM-dd")</td>
                                                                 <td> @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))</td>
                                                                 @if (isAdmin) {
                                                                     <td><a href="/myfarms/removemerit?id=@merit.Id" title="Remove Merit">X</a></td>
@@ -321,20 +322,20 @@
                                         <div class="card" style="margin-top:20px">
                                             <table class="table table-striped">
                                                 <caption style="caption-side: top; text-align: center; font-weight: bold;">Demerits</caption>
-                                                @if (demerits.Count > 0 && isAdmin) {
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-left">Date</th>
-                                                            <th>Reason</th>
-                                                            @if (isAdmin) {
-                                                                <th></th>
-                                                            }
-                                                        </tr>
-                                                    </thead>
+                                                <thead>
+                                                    <tr>
+                                                        <th class="text-left">Date</th>
+                                                        <th>Reason</th>
+                                                        @if (isAdmin) {
+                                                            <th></th>
+                                                        }
+                                                    </tr>
+                                                </thead>
+                                                @if (Model.Demerits.Count > 0) {
                                                     <tbody>
-                                                        @foreach (var demerit in demerits) {
-                                                            <tr>
-                                                                <td>@demerit.When.ToString("yyyy-MM-dd")</td>
+                                                        @foreach (var demerit in demerits.OrderByDescending(x => x.When)) {
+                                                            <tr class="@(demerit.When < DateTimeOffset.Now.AddMonths(-1) && !demerit.Permanent ? "Expired" : "")">
+                                                                <td style="white-space: nowrap">@demerit.When.ToString("yyyy-MM-dd")</td>
                                                                 <td> @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage))</td>
                                                                 @if (isAdmin) {
                                                                     <td><a href="/myfarms/removedemerit?id=@demerit.Id" title="Remove Demerit">X</a></td>
@@ -343,13 +344,9 @@
                                                         }
                                                     </tbody>
                                                 } else {
-                                                    <tbody>
-                                                        <tr style="text-align: center">
-                                                            <td style="text-align: center">
-                                                                <span style="display: inline-block; padding: 20px;">No demerits for user.</span>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
+                                                    <tr style="padding: 20px; margin-top:20px; text-align: center">
+                                                        <td>No demerits for user.</td>
+                                                    </tr>
                                                 }
                                             </table>
                                         </div>

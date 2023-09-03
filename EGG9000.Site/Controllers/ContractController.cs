@@ -99,41 +99,45 @@ namespace EGG9000.Site.Controllers {
         //}
 
 
-        private async Task<(List<PotentialCoopGroup>, Ei.Contract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
-            Ei.Contract contract;
+        private async Task<((List<PotentialCoopGroup> coopGroups, List<(String reason, UserByAccount account)> excluded), Contract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
+            Contract contract;
 
             if(string.IsNullOrWhiteSpace(contractid) || contractid == "test") {
-                contract = new Ei.Contract();
+                contract = new Contract();
+                var eicontract = new Ei.Contract();
                 foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                     var gradeSpec = new Ei.Contract.Types.GradeSpec();
                     gradeSpec.Grade = grade;
                     gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
-                    contract.GradeSpecs.Add(gradeSpec);
+                    eicontract.GradeSpecs.Add(gradeSpec);
                 }
-                contract.Name = "test";
-                contract.Identifier = "test";
-                contract.MaxCoopSize = 10;
-                contract.Egg = Ei.Egg.Edible;
+                eicontract.Name = "test";
+                eicontract.Identifier = "test";
+                eicontract.MaxCoopSize = 10;
+                eicontract.Egg = Ei.Egg.Edible;
+                contract.OverwriteDetails(eicontract);
             } else if(contractid == "sub") {
-                contract = new Ei.Contract();
+                contract = new Contract();
+                var eicontract = new Ei.Contract();
                 foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                     var gradeSpec = new Ei.Contract.Types.GradeSpec();
                     gradeSpec.Grade = grade;
                     gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
-                    contract.GradeSpecs.Add(gradeSpec);
+                    eicontract.GradeSpecs.Add(gradeSpec);
                 }
-                contract.Name = "test";
-                contract.Identifier = "test";
-                contract.MaxCoopSize = 10;
-                contract.Egg = Ei.Egg.Edible;
-                contract.CcOnly = true;
+                eicontract.Name = "test";
+                eicontract.Identifier = "test";
+                eicontract.MaxCoopSize = 10;
+                eicontract.Egg = Ei.Egg.Edible;
+                eicontract.CcOnly = true;
+                contract.OverwriteDetails(eicontract);
             } else {
-                contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid)).Details;
+                contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid));
             }
 
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
-            var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.Identifier).ToListAsync();
+            var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
             var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, guild, count);
 
             return (coopGroups, contract);
@@ -157,7 +161,7 @@ namespace EGG9000.Site.Controllers {
             var guild = _discord.GetGuild(GuildId);
             var t = await _GetGroups(GuildId, ContractID, 0, dbguild, guild, count);
 
-            var boardingGroups = t.Item1.GroupBy(x => x.BoardingGroup).Select(x => new {
+            var boardingGroups = t.Item1.coopGroups.GroupBy(x => x.BoardingGroup).Select(x => new {
                 BoardingGroup = new { Value = x.Key, Name = dbguild.DisableBG ? guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[x.Key])).Name : x.Key.ToString() },
                 Grades = x.Where(y => (y.PotentialCoops?.Count ?? 0) > 0).Select(y => new {
                     Grade = y.Grade.ToString(),

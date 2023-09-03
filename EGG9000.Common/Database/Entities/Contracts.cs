@@ -24,6 +24,8 @@ namespace EGG9000.Common.Database.Entities {
 
         public string _response { get; set; }
 
+        public bool HadTwoRewards { get; set; }
+
         [NotMapped]
         private Ei.Contract _details { get; set; }
         [NotMapped]
@@ -37,6 +39,10 @@ namespace EGG9000.Common.Database.Entities {
                 }
                 return _details;
             }
+        }
+        public void OverwriteDetails(Ei.Contract details) {
+            _details = details;
+            _response = JsonConvert.SerializeObject(details);
         }
 
 

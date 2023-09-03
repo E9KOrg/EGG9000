@@ -79,13 +79,12 @@ namespace EGG9000.Bot.Automated {
                 _logger.LogInformation("Manage Overflow for {guildName}", guild.Name);
                 var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
                 var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
-                //var overflowServer = _client.Guilds.First(x => x.Id == 763854787912794183);
                 await mainServer.DownloadUsersAsync();
                 foreach(var server in overflowServers) {
                     await server.DownloadUsersAsync();
                 }
-                //await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
-                //await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
+                await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
+                await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
                 _client.RoleUpdated += _client_RoleUpdated;
 
 #if DEBUG
@@ -97,7 +96,6 @@ namespace EGG9000.Bot.Automated {
 
 
                 const ulong overflowRoleID = 775547850134257675;
-                //const ulong activeRoleID = 798284088967430144;
                 const ulong registeredRoleID = 794713762396897280;
 
 
@@ -202,6 +200,10 @@ namespace EGG9000.Bot.Automated {
                         x.Name = updatedRole.Name;
                         x.Color = updatedRole.Color;
                         x.Permissions = updatedRole.Permissions;
+
+                        /**
+                         * Can't sync role icons as the overflows aren't boosted
+                         */
                         //if(updatedRole.Icon != originalRole.Icon) {
                         //    x.Icon = new Image(await DownloadImage(updatedRole.GetIconUrl()));
                         //}

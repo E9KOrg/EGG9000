@@ -194,9 +194,9 @@ namespace EGG9000.Bot.Automated {
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
-            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract.Details, coops, skipbg, userCsHistoryEntries, dbguild);
+            var sortedGroupd = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
 
-            foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
+            foreach(var group in sortedGroupd.coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
                 _logger.LogInformation("{guild} BG{bg}, Grade {grade}, Count {count} for Contract {contract}", guild.Name, group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2), contract.Name);
                 var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
 
