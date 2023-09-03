@@ -84,7 +84,11 @@ namespace EGG9000.Bot.Automated {
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
             UpdateInterval = newUpdateInterval;
             _logger.LogInformation("Updating interval to {interval}", UpdateInterval);
-            _timer.Change(UpdateInterval, UpdateInterval);
+            if(_timer is null) {
+                _timer = new Timer(_run, null, UpdateInterval, UpdateInterval);
+            } else {
+                _timer.Change(UpdateInterval, UpdateInterval);
+            }
         }
 
         private async void _run(object state) {
