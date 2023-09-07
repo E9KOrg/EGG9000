@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
-                coops = coops.Where(x => x.Name.Equals("BringPrior75", StringComparison.OrdinalIgnoreCase)).ToList();
+                coops = coops.Where(x => x.Name.Equals("curryspend13", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
@@ -1365,7 +1365,7 @@ namespace EGG9000.Bot.Automated {
                 var dmChannel = await discordUser.CreateDMChannelAsync();
                 await dmChannel.SendMessageAsync($"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");
             } catch(HttpException) {
-                await coopChannel.SendMessageAsync($"{Message} (User has blocked DMs from bot)");
+                await coopChannel.SendMessageAsync($"{discordUser.Mention}: {Message} (User has blocked DMs from bot)");
             }
         }
 
