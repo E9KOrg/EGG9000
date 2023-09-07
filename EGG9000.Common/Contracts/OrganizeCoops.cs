@@ -38,15 +38,11 @@ namespace EGG9000.Common.Contracts {
                 }));
 
             accounts = FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
-
+            accounts = FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User).ToList()), "Previously completed");
             accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
-
             accounts = FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 
-            accounts = FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User).ToList()), "Previously completed");
-
             accounts = FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
-
             //Need 1k soul eggs for contracts
             accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup.SoulEggs >= 1000, "< 1k soul eggs");
             //Need to have the egg unlocked
@@ -153,8 +149,13 @@ namespace EGG9000.Common.Contracts {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold && (x.UserCsHistoryEntry?.Cxp ?? 0) <= x.Account.RedoScoreThreshold)
                 return true;
 
+<<<<<<< HEAD
             if(!yesMatchCheck && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAccountMatch && userAccounts.Any(ua =>
                 ua.Account.Id != x.Account.Id &&
+=======
+            if(!yesMatchCheck && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAccountMatch && userAccounts.Any(ua => 
+                ua.Account.Id != x.Account.Id && 
+>>>>>>> da75e16 (Merge OrganizeCoops)
                 ua.Account.GetGroup(contract.cc_only).Equals(x.Account.GetGroup(contract.cc_only)) &&
                 (ua.Account.GetGrade().Equals(x.Account.GetGrade()) || contract.cc_only && ua.Account.SubscriptionLevel is not null && x.Account.SubscriptionLevel is not null) &&
                 CheckOnPreviousComplete(ua, contract, userAccounts, true)
