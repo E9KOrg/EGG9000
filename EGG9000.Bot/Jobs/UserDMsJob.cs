@@ -60,7 +60,8 @@ namespace EGG9000.Bot.Jobs {
                     }
                 } catch(Exception e) {
                     _logger.LogError(e, $"Error sending warning to {user.DiscordUsername}");
-                    _bugsnag.Notify(e);
+                    if(!e.Message.Contains("Cannot send messages to this user"))
+                        _bugsnag.Notify(e);
                 }
             }
             if(users.Count > 0) {
