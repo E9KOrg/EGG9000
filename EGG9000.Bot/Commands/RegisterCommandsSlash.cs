@@ -40,6 +40,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
 using MassTransit.Initializers;
 using Bugsnag;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -193,76 +194,6 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync($"Attempted to remove {targetUser.Mention} from co-op, please check again in a few minutes.");
             }
         }
-
-        [SlashCommand(Description = "Fix for getting full co-op error")]
-        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
-            await command.RespondAsync("Please wait...");
-            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(coop == null) {
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Command can only be used in a co-op channel");
-                return;
-            }
-
-            var dbuser = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.DiscordId == command.User.Id)?.User;
-            if(dbuser is null) {
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user in co-op.");
-            }
-
-            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-
-            var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
-
-            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser?.DiscordId == command.User.Id && x.EggsShipped == 0);
-
-            if(xref is null) {
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user with zero production.");
-                return;
-            }
-
-            //logger.LogInformation("Attempting to fix {user} in {coop} by submitting leave request", dbuser.DiscordUsername, coop.Name);
-            //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
-            //    ClientVersion = 24,
-            //    ContractIdentifier = coop.ContractID,
-            //    CoopIdentifier = coop.Name,
-            //    PlayerIdentifier = xref.EggIncId,
-            //}, xref.EggIncId);
-            logger.LogInformation("Attempting to fix {user} in {coop} by creating temp co-op", dbuser.DiscordUsername, coop.Name);
-            var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
-
-            await Task.Delay(2);
-            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-
-            if(status.Participants.Count == contract.MaxUsers) {
-                logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
-                var res3 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-                    ClientVersion = 24,
-                    ContractIdentifier = coop.ContractID,
-                    CoopIdentifier = coop.Name,
-                    PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
-                }, coop.CreatorID);
-
-                await Task.Delay(2);
-                status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-            }
-
-
-            if(status.Participants.Count < contract.MaxUsers) {
-                logger.LogInformation("Successfully remove {user} from {coop}", dbuser.DiscordUsername, coop.Name);
-                var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
-                var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
-                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
-
-                await command.Channel.SendMessageAsync($"Successfully removed {command.User.Mention} from co-op, they should be able to rejoin now.");
-                await command.DeleteOriginalResponseAsync();
-            } else {
-                logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
-                await command.ModifyOriginalResponseAsync($"Attempted to remove {command.User.Mention} from co-op, please check again in a few minutes.");
-            }
-
-        }
-
 
         [SlashCommand(Description = "Accept the rules of this discord server")]
         public static async Task Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client) {

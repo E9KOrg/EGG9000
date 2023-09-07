@@ -72,6 +72,7 @@ namespace EGG9000.Bot.Automated {
                 //coops = coops.Where(x => x.DiscordChannelId == 1096187766372569179).ToList();
                 //coops = coops.Where(x => x.ContractID == "summer-activities").ToList();
                 coops = coops.Where(x => x.Name.Equals("curryspend13", StringComparison.OrdinalIgnoreCase)).ToList();
+                coops = coops.Where(x => x.Name.Equals("BringPrior75", StringComparison.OrdinalIgnoreCase)).ToList();
                 //coops = coops.Where(x => x.GuildId == 1094314306767695984 && x.League == 5).ToList();
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
 #endif
