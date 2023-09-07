@@ -38,29 +38,32 @@ namespace EGG9000.Common.Contracts {
                 }));
 
 
-            FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
+            accounts = FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
 
-            FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
+            accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
 
-            FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
+            accounts = FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 
-            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract), "Previously completed");
+            accounts = FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract), "Previously completed");
 
-            FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
+            accounts = FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
 
             //Need 1k soul eggs for contracts
-            FilterAccounts(accounts, excluded, x => x.Account.Backup.SoulEggs >= 1000, "< 1k soul eggs");
+            accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup.SoulEggs >= 1000, "< 1k soul eggs");
             //Need to have the egg unlocked
-            FilterAccounts(accounts, excluded, x =>
+            accounts = FilterAccounts(accounts, excluded, x =>
                 x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Details.Egg || (int)contract.Details.Egg >= 100, "Egg not unlocked");
 
             //If the contract is Subscription only, filter further
-            FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.SubscriptionLevel.HasValue, "Doesn't have subscription");
+            accounts = FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.SubscriptionLevel.HasValue, "Doesn't have subscription");
 
-            FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
+            accounts = FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
 
 
-            FilterAccounts(accounts, excluded, x => {
+            accounts = FilterAccounts(accounts, excluded, x => {
+                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) {
+                    return false;
+                }
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
                 var registerRewards = contract.Details.Leggacy && x.Account.LeggacyAutoRegisterRewards != null ? x.Account.LeggacyAutoRegisterRewards : x.Account.AutoRegisterRewards;
                 var ignoreRewards = dbguild is not null && dbguild.DisableBG;
@@ -139,9 +142,9 @@ namespace EGG9000.Common.Contracts {
             return (groups, excluded);
         }
 
-        private static void FilterAccounts(IEnumerable<UserByAccount> accounts, List<(String, UserByAccount)> excluded, Func<UserByAccount, bool> includeInCoopFilter, string reasonNotIncluded) {
+        private static IEnumerable<UserByAccount> FilterAccounts(IEnumerable<UserByAccount> accounts, List<(String, UserByAccount)> excluded, Func<UserByAccount, bool> includeInCoopFilter, string reasonNotIncluded) {
             excluded.AddRange(accounts.Where(x => !includeInCoopFilter(x)).Select(x => (reasonNotIncluded, x)));
-            accounts = accounts.Where(includeInCoopFilter);
+            return accounts.Where(includeInCoopFilter);
         }
 
         private static bool CheckOnPreviousComplete(UserByAccount x, Contract contract) {
