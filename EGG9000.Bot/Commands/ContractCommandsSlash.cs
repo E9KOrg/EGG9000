@@ -33,11 +33,9 @@ using Bugsnag.Payload;
 using System.Security.Principal;
 using static Ei.Contract.Types;
 using Ei;
+
 using Microsoft.Extensions.Logging;
 using Exception = System.Exception;
-using Microsoft.Extensions.Logging;
-using Exception = System.Exception;
-using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {

@@ -38,8 +38,11 @@ namespace EGG9000.Common.Contracts {
                 }));
 
             accounts = FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
+          
             accounts = FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User).ToList()), "Previously completed");
+          
             accounts = FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
+          
             accounts = FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 
             accounts = FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
@@ -52,10 +55,9 @@ namespace EGG9000.Common.Contracts {
 
             //If the contract is Subscription only, filter further
             accounts = FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.SubscriptionLevel.HasValue, "Doesn't have subscription");
-
+          
             accounts = FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
-
-
+          
             accounts = FilterAccounts(accounts, excluded, x => {
                 if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) {
                     return false;
@@ -79,8 +81,6 @@ namespace EGG9000.Common.Contracts {
             //        account.RoleId = role?.Id ?? 0;
             //    }
             //}
-
-
 
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                 if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
