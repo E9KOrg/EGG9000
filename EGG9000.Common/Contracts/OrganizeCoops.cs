@@ -149,13 +149,8 @@ namespace EGG9000.Common.Contracts {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold && (x.UserCsHistoryEntry?.Cxp ?? 0) <= x.Account.RedoScoreThreshold)
                 return true;
 
-<<<<<<< HEAD
-            if(!yesMatchCheck && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAccountMatch && userAccounts.Any(ua =>
+            if(!yesMatchCheck && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch && userAccounts.Any(ua =>
                 ua.Account.Id != x.Account.Id &&
-=======
-            if(!yesMatchCheck && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAccountMatch && userAccounts.Any(ua => 
-                ua.Account.Id != x.Account.Id && 
->>>>>>> da75e16 (Merge OrganizeCoops)
                 ua.Account.GetGroup(contract.cc_only).Equals(x.Account.GetGroup(contract.cc_only)) &&
                 (ua.Account.GetGrade().Equals(x.Account.GetGrade()) || contract.cc_only && ua.Account.SubscriptionLevel is not null && x.Account.SubscriptionLevel is not null) &&
                 CheckOnPreviousComplete(ua, contract, userAccounts, true)
