@@ -10,6 +10,6 @@ namespace EGG9000.Common.Helpers {
         YesAll = 1,
         YesThreshold = 2,
         No = 3,
-        YesAccountMatch = 4
+        YesOtherAccountMatch = 4
     }
 }
