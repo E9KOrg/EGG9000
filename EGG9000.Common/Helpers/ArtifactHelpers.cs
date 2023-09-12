@@ -64,22 +64,21 @@ namespace EGG9000.Common.Helpers {
             };
         }
 
-        public static int GetTotalCraftWithLegendaryPossibility(List<ArtifactCount> artifactHall) {
+        public static uint GetTotalCraftWithLegendaryPossibility(List<ArtifactCount> artifactHall) {
             if(artifactHall is null || artifactHall.Count == 0) return 0;
 
-            int totalCrafts = 0;
+            uint totalCrafts = 0;
 
             foreach(var artifactCount in artifactHall) {
                 var artifactName = artifactCount.Artifact.Artifact;
-                var tier = artifactCount.Artifact.Additive;
-                var something = artifactCount.Count;
-                //System.Console.WriteLine(artifactName + " " + tier + " " + something);
 
                 // This is currently adding all items that fit this criteria, not just ones that can be crafted
                 if(artifactCount.Artifact.Tier == 4 && artifactName != "Lunar Totem") {
-                    totalCrafts += artifactCount.Count;
+                    System.Console.WriteLine(artifactName + " " + artifactCount.Artifact.Tier + " " + artifactCount.NumberCrafted);
+                    totalCrafts += artifactCount.NumberCrafted;
                 } else if(artifactCount.Artifact.Tier == 3 && artifactName == "Tungsten Ankh") {
-                    totalCrafts += artifactCount.Count;
+                    System.Console.WriteLine(artifactName + " " + artifactCount.Artifact.Tier + " " + artifactCount.NumberCrafted);
+                    totalCrafts += artifactCount.NumberCrafted;
                 }
             }
 
