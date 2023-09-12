@@ -23,7 +23,6 @@ using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
-using NLog.Layouts;
 using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Commands {
