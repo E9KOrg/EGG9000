@@ -53,7 +53,6 @@ namespace EGG9000.Bot.Jobs {
 #else
             var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
 #endif
-            ConcurrentBag<UserSubscriptionInfo> list = new ConcurrentBag<UserSubscriptionInfo>();
             foreach(var guildGroup in users.GroupBy(x => x.GuildId)) {
                 var dbguild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
                 if(dbguild is null)
@@ -68,7 +67,6 @@ namespace EGG9000.Bot.Jobs {
                         foreach(var account in user.EggIncAccounts) {
 
                             var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                            list.Add(subscriptionStatus);
                             if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                                 if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
                                     account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
@@ -95,8 +93,6 @@ namespace EGG9000.Bot.Jobs {
                     }
                 });
             }
-
-            var groups = list.GroupBy(x => x.Status).ToList();
 
             await _db.SaveChangesAsync();
             _logger.LogInformation("Finished checking subscriptions");
