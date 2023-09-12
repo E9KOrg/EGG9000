@@ -1,5 +1,6 @@
 ﻿using Ei;
 using MassTransit;
+using MassTransit.Caching.Internals;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -72,17 +73,32 @@ namespace EGG9000.Common.Helpers {
             foreach(var artifactCount in artifactHall) {
                 var artifactName = artifactCount.Artifact.Artifact;
 
-                // This is currently adding all items that fit this criteria, not just ones that can be crafted
                 if(artifactCount.Artifact.Tier == 4 && artifactName != "Lunar Totem") {
-                    System.Console.WriteLine(artifactName + " " + artifactCount.Artifact.Tier + " " + artifactCount.NumberCrafted);
                     totalCrafts += artifactCount.NumberCrafted;
                 } else if(artifactCount.Artifact.Tier == 3 && artifactName == "Tungsten Ankh") {
-                    System.Console.WriteLine(artifactName + " " + artifactCount.Artifact.Tier + " " + artifactCount.NumberCrafted);
                     totalCrafts += artifactCount.NumberCrafted;
                 }
             }
-
             return totalCrafts;
         }
+
+        public static int GetLegendaryArtifactCount(List<ArtifactCount> artifactHall) {
+            int legendaryCount = 0;
+
+            foreach (var artifactCount in artifactHall) {
+                if(artifactCount.Artifact.Rarity == 4) {
+                    legendaryCount += artifactCount.Count;
+                }
+            }
+            return legendaryCount;
+        }
+
+        public static double FormulaLLC(int lAmount, uint totalCraft, int exhens, int standards, int shens) {
+            double expectedDropL = (double)exhens / 25 + (double)standards / (4.5 * 25) + (double)shens / (6 * 25);
+            double expectedCraftL = totalCraft * 0.0085;
+
+            return Math.Round((lAmount - expectedDropL - expectedCraftL), 2);
+        }
+
     }
 }

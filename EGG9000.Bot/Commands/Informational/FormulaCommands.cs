@@ -23,6 +23,8 @@ using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
+using NLog.Layouts;
+using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class ForumlaCommands {
@@ -125,20 +127,26 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
-            // Get the last ship type from MaxShipLevels
             var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
             
-            // Fetch all ships sent for the last ship type
             var shipsForLastType = account.Backup.ShipsSent.Where(x => x.ship == lastShipType).ToList();
 
-            // Extract counts based on duration type
             var extendedCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Epic).Sum(x => x.count);
             var standardCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Long).Sum(x => x.count);
             var shortCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Short).Sum(x => x.count);
 
-            uint totalCraftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+            var craftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+            var legCount = ArtifactHelpers.GetLegendaryArtifactCount(account.Backup.ArtifactHall);
 
-            sb.AppendLine($"The **LLC** for **{userName}** is `5`\nTotal crafts with legendary possibility: `{totalCraftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short");
+            double expectedDropL = (double)extendedCount / 25 + (double)standardCount / (4.5 * 25) + (double)shortCount / (6 * 25);
+            double expectedCraftL = craftCount * 0.0085;
+
+            var expectedLeg = Math.Round((expectedDropL + expectedCraftL), 2);
+            var actualLegPercent = (int)(((double)legCount * 100 / (expectedDropL + expectedCraftL)) - 100);
+
+            var LLC = Math.Round((legCount - expectedDropL - expectedCraftL), 2);
+
+            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{actualLegPercent}%`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{expectedLeg}` expected / `{legCount}` acquired");
         }
     }
 }
