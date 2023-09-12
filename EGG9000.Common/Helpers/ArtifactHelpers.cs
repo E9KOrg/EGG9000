@@ -1,6 +1,5 @@
 ﻿using Ei;
 using MassTransit;
-using MassTransit.Caching.Internals;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -92,13 +91,5 @@ namespace EGG9000.Common.Helpers {
             }
             return legendaryCount;
         }
-
-        public static double FormulaLLC(int lAmount, uint totalCraft, int exhens, int standards, int shens) {
-            double expectedDropL = (double)exhens / 25 + (double)standards / (4.5 * 25) + (double)shens / (6 * 25);
-            double expectedCraftL = totalCraft * 0.0085;
-
-            return Math.Round((lAmount - expectedDropL - expectedCraftL), 2);
-        }
-
     }
 }
