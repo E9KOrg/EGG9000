@@ -411,6 +411,7 @@ namespace EGG9000.Bot.Commands {
 
             if(!dbuser.Registered.HasValue) {
                 dbuser.Registered = DateTimeOffset.Now;
+                await db.SaveChangesAsync();
                 var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                 if(unjoinedRole is not null) {
                     await socketGuildUser.AddRoleAsync(unjoinedRole);
