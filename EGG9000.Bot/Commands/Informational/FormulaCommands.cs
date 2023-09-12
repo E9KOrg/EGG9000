@@ -23,11 +23,6 @@ using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
-using System.Globalization;
-using Google.Protobuf.WellKnownTypes;
-using static Ei.Backup.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class ForumlaCommands {
@@ -47,16 +42,13 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-
             var sb = new StringBuilder();
-            
 
             foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
                 if(user.EggIncAccounts.Count > 1)
                     sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
                 MERCalculate(account, sb, user.DiscordUsername, (int)MERValue);
             }
-
 
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
         }
@@ -111,52 +103,42 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        /*[SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
+        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Getting account backups...", ephemeral: true);
+            await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
+            if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
                 await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
                 return;
             }
 
-            var contentString = "";
+            var sb = new StringBuilder();
 
-            if(user.EggIncAccounts.Count == 1) {
-                contentString = await LLCCalculate(user.EggIncAccounts.FirstOrDefault(), user.DiscordUsername);
-                await command.ModifyOriginalResponseAsync(x => { x.Components = null; x.Content = "Success"; });
-                await command.Channel.SendMessageAsync(contentString);
-            } else {
-                var builder = new ComponentBuilder();
-                foreach(var account in user.EggIncAccounts) {
-                    builder.WithButton($"{account.Name} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"LLCAccountButton:{account.Id}|{user.DiscordUsername} - {account.Name}");
-                }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to check the LLC of."; x.Components = builder.Build(); });
+            foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
+                if(user.EggIncAccounts.Count > 1)
+                    sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
+                LLCCalculate(account, sb, user.DiscordUsername);
             }
+
+            await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
         }
 
         [ComponentCommand]
-        public static async Task LLCAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(user is null) return;
-            var dataObjs = data.Split("|");
-            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
-            var discordUsername = dataObjs[1];
+        private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
+            // Get the last ship type from MaxShipLevels
+            var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
+            
+            // Fetch all ships sent for the last ship type
+            var shipsForLastType = account.Backup.ShipsSent.Where(x => x.ship == lastShipType).ToList();
 
-            var contentString = await LLCCalculate(account, discordUsername);
-            await component.UpdateAsync(x => { x.Components = null; x.Content = "Success"; });
-            await component.Channel.SendMessageAsync(contentString);
+            // Extract counts based on duration type
+            var extendedCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Epic).Sum(x => x.count);
+            var standardCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Long).Sum(x => x.count);
+            var shortCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Short).Sum(x => x.count);
+
+            int totalCraftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+
+            sb.AppendLine($"The **LLC** for **{userName}** is `5`\nTotal crafts with legendary possibility: `{totalCraftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short");
         }
-        private static async Task<string> LLCCalculate(EggIncAccount account, string userName) {
-            var stringBuilder = new StringBuilder();
-            var backup = account.Backup;
-            if(backup == null) {
-                return null;
-            }
-
-            stringBuilder.Append($"The **LLC** for **{userName}** is ``");
-            stringBuilder.AppendLine();
-            return stringBuilder.ToString();
-        }*/
     }
 }
