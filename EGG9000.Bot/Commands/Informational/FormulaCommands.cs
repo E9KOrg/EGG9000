@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Commands {
             var standardCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Long).Sum(x => x.count);
             var shortCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Short).Sum(x => x.count);
 
-            int totalCraftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+            uint totalCraftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
 
             sb.AppendLine($"The **LLC** for **{userName}** is `5`\nTotal crafts with legendary possibility: `{totalCraftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short");
         }
