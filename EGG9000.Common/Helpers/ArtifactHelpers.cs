@@ -64,5 +64,32 @@ namespace EGG9000.Common.Helpers {
             };
         }
 
+        public static uint GetTotalCraftWithLegendaryPossibility(List<ArtifactCount> artifactHall) {
+            if(artifactHall is null || artifactHall.Count == 0) return 0;
+
+            uint totalCrafts = 0;
+
+            foreach(var artifactCount in artifactHall) {
+                var artifactName = artifactCount.Artifact.Artifact;
+
+                if(artifactCount.Artifact.Tier == 4 && artifactName != "Lunar Totem") {
+                    totalCrafts += artifactCount.NumberCrafted;
+                } else if(artifactCount.Artifact.Tier == 3 && artifactName == "Tungsten Ankh") {
+                    totalCrafts += artifactCount.NumberCrafted;
+                }
+            }
+            return totalCrafts;
+        }
+
+        public static int GetLegendaryArtifactCount(List<ArtifactCount> artifactHall) {
+            int legendaryCount = 0;
+
+            foreach (var artifactCount in artifactHall) {
+                if(artifactCount.Artifact.Rarity == 4) {
+                    legendaryCount += artifactCount.Count;
+                }
+            }
+            return legendaryCount;
+        }
     }
 }
