@@ -174,10 +174,11 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            double result = (seValue * 1.5) * Math.Pow(1.1, PE) * 100;
+            double result = (seValue * 1.5) * Math.Pow(1.1, PE);
+            double resultPercentage = result * 100;
             double bonus = Math.Round(Math.Pow((1.05 + 0.01 * 5), PE) * (1.5), 2);
 
-            await command.ModifyOriginalResponseAsync($"{SIPrefix.GetPrefixFromEB(result).RankWithSubRank} (<:Soul_Egg_SE:724341890794913964>`{SE}` and <:Egg_of_Prophecy_PE:669981330477547580>`{PE}`)\nEarnings multiplier: `{result.ToEggString(true, 2)}`\nBonus per soul egg: `{bonus:n}`");
+            await command.ModifyOriginalResponseAsync($"{SIPrefix.GetPrefixFromEB(result).RankWithSubRank} (<:Soul_Egg_SE:724341890794913964>`{SE}` and <:Egg_of_Prophecy_PE:669981330477547580>`{PE}`)\nEarning Bonus %: `{resultPercentage.ToEggString(true, 2)}%`\nEarning multiplier: `{result.ToEggString(true, 2)}`\nBonus per soul egg: `{bonus:n}`");
         }
     }
 }
