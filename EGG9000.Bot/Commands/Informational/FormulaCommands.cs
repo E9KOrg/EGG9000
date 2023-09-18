@@ -137,15 +137,23 @@ namespace EGG9000.Bot.Commands {
             var craftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
             var legCount = ArtifactHelpers.GetLegendaryArtifactCount(account.Backup.ArtifactHall);
 
-            double expectedDropL = (double)extendedCount / 25 + (double)standardCount / (4.5 * 25) + (double)shortCount / (6 * 25);
-            double expectedCraftL = craftCount * 0.0085;
+            var expectedDropL = (double)extendedCount / 25 + (double)standardCount / (4.5 * 25) + (double)shortCount / (6 * 25);
+            var expectedCraftL = craftCount * 0.0085;
 
             var expectedLeg = Math.Round((expectedDropL + expectedCraftL), 2);
-            var actualLegPercent = (int)(((double)legCount * 100 / (expectedDropL + expectedCraftL)) - 100);
+            int actualLegPercent;
+
+            if((expectedDropL + expectedCraftL) != 0) {
+                actualLegPercent = (int)(((double)legCount * 100 / (expectedDropL + expectedCraftL)) - 100);
+            } else {
+                actualLegPercent = int.MinValue;
+            }
+
+            var displayPercent = actualLegPercent == int.MinValue ? "-∞" : $"{actualLegPercent}";
 
             var LLC = Math.Round((legCount - expectedDropL - expectedCraftL), 2);
 
-            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{actualLegPercent}%`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{expectedLeg}` expected / `{legCount}` acquired");
+            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{displayPercent}%`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{expectedLeg}` expected / `{legCount}` acquired");
         }
 
         [SlashCommand(Description = "Calculate the EB% based on SE and PE inputs", ParentCommand = "formulae", AllowInDMs = true)]
