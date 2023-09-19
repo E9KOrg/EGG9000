@@ -41,6 +41,7 @@ namespace EGG9000.Common.Contracts {
           
             FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
           
+
             FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
           
             FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
@@ -150,7 +151,7 @@ namespace EGG9000.Common.Contracts {
             //)) return true;
 
             if(contract.HadTwoRewards) {
-                var completedTwoRewards = (!x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || !x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
+                var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
                 if(completedTwoRewards) {
                     return false;
                 }

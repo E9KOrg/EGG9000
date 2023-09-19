@@ -221,7 +221,7 @@ namespace EGG9000.Site.Controllers {
                     try {
                         var pinned = await channel.GetMessagesAsync(1000).FlattenAsync(); //await retryPolicy.ExecuteAsync(async () => );
                         Console.WriteLine(pinned.Count(x => x.IsPinned));
-                        foreach(var msg in pinned) {
+                        foreach(var msg in pinned.Where(x => x.Author.Id == 514257192803893272)) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
                                 if(!UpdateMessageIDs.Contains(msg.Id)) {
                                     await msg.DeleteAsync();
