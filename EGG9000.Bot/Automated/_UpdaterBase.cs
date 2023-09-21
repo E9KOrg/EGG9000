@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Humanizer;
+using Cronos;
 
 namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {
@@ -36,6 +37,10 @@ namespace EGG9000.Bot.Automated {
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private bool Restarted = false;
 
+        private CronExpression _cronExpression;
+        private DateTimeOffset _nextRunFromCron;
+        private DateTimeOffset _updaterInitiated;
+
         public TimeSpan UpdateInterval;
         private TimeSpan _delayedStart;
         private DateTime? _lastMessageSent;
@@ -45,6 +50,7 @@ namespace EGG9000.Bot.Automated {
         public DiscordHostedService _client;
         public IConfiguration _configuration;
         public IServiceProvider _provider;
+        private UpdaterOptions<T> _options;
 
         protected Bugsnag.IClient _bugsnag;
         protected ILogger<T> _logger;
@@ -53,12 +59,24 @@ namespace EGG9000.Bot.Automated {
 
 
         public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider) {
+            _initiate(provider);
+            UpdateInterval = updateInterval;
+            _delayedStart = _options.DelayStart ?? delayedStart;
+
+        }
+
+        public _UpdaterBase(CronExpression cronExpression, IServiceProvider provider) {
+            _initiate(provider);
+            _cronExpression = cronExpression;
+            _nextRunFromCron = _options.DelayStart.HasValue ? 
+                DateTimeOffset.Now + _options.DelayStart.Value : 
+                cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
+        }
+
+        private void _initiate(IServiceProvider provider) {
             _logger = provider.GetService<ILogger<T>>();
             _logger.LogInformation("Initiating");
-            var options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>();
             _configuration = provider.GetService<IConfiguration>();
-            UpdateInterval = updateInterval;
-            _delayedStart = options.CurrentValue.DelayStart ?? delayedStart;
             _client = provider.GetService<DiscordHostedService>();
             Instance = this;
             _bugsnag = provider.GetService<Bugsnag.IClient>();
@@ -66,6 +84,9 @@ namespace EGG9000.Bot.Automated {
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 
             initialStart = true;
+            _updaterInitiated = DateTimeOffset.Now;
+            _options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>().CurrentValue;
+
         }
 
         public static _UpdaterBase<T> Instance;
@@ -85,13 +106,17 @@ namespace EGG9000.Bot.Automated {
             UpdateInterval = newUpdateInterval;
             _logger.LogInformation("Updating interval to {interval}", UpdateInterval);
             if(_timer is null) {
-                _timer = new Timer(_run, null, UpdateInterval, UpdateInterval);
+                _timer = new Timer(_runTimer, null, UpdateInterval, UpdateInterval);
             } else {
                 _timer.Change(UpdateInterval, UpdateInterval);
             }
         }
 
-        private async void _run(object state) {
+        private async void _runTimer(object state) {
+            await _run(state);
+        }
+
+        private async Task _run(object state) {
             _logger.LogInformation("Running");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
@@ -134,15 +159,50 @@ namespace EGG9000.Bot.Automated {
             try {
                 if(_cts is null)
                     _cts = new CancellationTokenSource();
-                _timer = new Timer(_run, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
-                _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
                 initialStart = false;
+
+                if(_cronExpression is not null) {
+                    _ = LoopForCronExpression();
+                    _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(15));
+                } else {
+                    _timer = new Timer(_runTimer, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
+                    _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
+                }
             } catch(Exception e) {
                 _bugsnag.Notify(e);
                 _logger.LogError(e, "Error starting");
             }
             return Task.CompletedTask;
         }
+
+        private async Task LoopForCronExpression() {
+            while(!_cts.IsCancellationRequested) {
+                try {
+
+                    if(_nextRunFromCron < DateTimeOffset.Now) {
+                        _logger.LogInformation($"Running, Current time: {DateTimeOffset.Now.ToString("h:mm:ss:ff")}, next run at {_nextRunFromCron}");
+
+                        var timer = System.Diagnostics.Stopwatch.StartNew();
+                        await _run(null);
+                        _logger.LogInformation($"Update took {timer.Elapsed.Humanize()}");
+                    }
+
+
+                    _nextRunFromCron = _cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
+                    var delay = (_nextRunFromCron - DateTimeOffset.Now) + TimeSpan.FromMilliseconds(10);
+                    if(delay < TimeSpan.Zero) {
+                        delay = TimeSpan.FromSeconds(1);
+                    }
+                    _logger.LogInformation($"Next run in {delay.Humanize()} at {_nextRunFromCron.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss")}");
+                    await Task.Delay((int)delay.TotalMilliseconds, _cts.Token);
+
+                } catch(Exception e) {
+                    _bugsnag.Notify(e);
+                    _logger.LogError(e, "Error running updater");
+                }
+            }
+        }
+
 
         public async Task StopAsync(CancellationToken cancellationToken) {
             try {
@@ -153,8 +213,13 @@ namespace EGG9000.Bot.Automated {
                     _cts.Dispose();
                     _cts = null;
                 }
-                await _timer.DisposeAsync();
-                _timer = null;
+
+                if(_cronExpression is not null) {
+
+                } else { 
+                    await _timer.DisposeAsync();
+                    _timer = null;
+                }
                 await _watchDogTimer.DisposeAsync();
 
                 while(!await _semaphoreSlim.WaitAsync(5000)) {
@@ -169,7 +234,9 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _WatchDog(object state) {
-            if(LastStarted < DateTime.Now - UpdateInterval * 4) {
+            var watchDogDue = _cronExpression is not null ? DateTime.Now.AddMinutes(30) : _lastAlive + UpdateInterval * 2;
+
+            if(LastStarted < watchDogDue) {
                 var lastAlive = DateTimeOffset.Now - _lastAlive;
                 _logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - LastStarted).Humanize(), _lastAlive.Humanize());
                 if(lastAlive > TimeSpan.FromMinutes(5) && (_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1)) {
@@ -182,8 +249,14 @@ namespace EGG9000.Bot.Automated {
                     await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.", options: new RequestOptions { CancelToken = _cts.Token });
                     _semaphoreSlim.Release();
                     Restarted = true;
-                    _timer.Change(TimeSpan.Zero, UpdateInterval);
                     _lastMessageSent = DateTime.Now;
+
+                    if(_cronExpression is not null) {
+                        _ = LoopForCronExpression();
+                    } else {
+                        _timer.Change(TimeSpan.Zero, UpdateInterval);
+                    }
+
                 }
             }
         }
