@@ -22,16 +22,9 @@ using System.Xml.Serialization;
 
 namespace EGG9000.Bot.Automated {
     public class UserCxpUpdater : _UpdaterBase<UserCxpUpdater> {
-        private static DateTimeOffset? nextOccurance = CronExpression.Parse("0 9 * * MON,WED,FRI").GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
-        private static TimeSpan _nextRunTimeDelay = (nextOccurance - DateTimeOffset.Now) ?? TimeSpan.FromHours(1);
-
-
-
         public UserCxpUpdater(
             IServiceProvider provider
-        ) : base(TimeSpan.FromDays(1), _nextRunTimeDelay, provider) {
-            _logger.LogInformation("NextOccurance {time}", nextOccurance);
-            _logger.LogInformation("NextTimeDelay {time}", _nextRunTimeDelay);
+        ) : base(CronExpression.Parse("0 9 * * MON,WED,FRI"), provider) {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
