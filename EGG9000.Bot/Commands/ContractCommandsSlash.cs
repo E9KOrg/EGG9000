@@ -123,11 +123,11 @@ namespace EGG9000.Bot.Commands {
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
                 await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
-                await command.Channel.SendMessageAsync($"Successfully removed {command.User.Mention} from co-op, they should be able to rejoin now.");
+                await command.Channel.SendMessageAsync($"Successfully removed <@{dbuser.DiscordId}> from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
             } else {
                 logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
-                await command.ModifyOriginalResponseAsync($"Attempted to remove {command.User.Mention} from co-op, please check again in a few minutes.");
+                await command.ModifyOriginalResponseAsync($"Attempted to remove <@{dbuser.DiscordId}> from co-op, please check again in a few minutes.");
             }
         }
 
