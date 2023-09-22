@@ -760,7 +760,7 @@ namespace EGG9000.Bot.Automated {
 
                                 if(userFarmDetails.Account is not null || userFarmDetails.Backup is not null) {
                                     var grade = userFarmDetails.Account?.GetGrade() ?? userFarmDetails.Backup.Grade;
-                                    if((uint)grade != coop.League) {
+                                    if((uint)grade != coop.League && !coop.Contract.cc_only) {
                                         mention += $" (Wrong {grade})";
                                     }
                                 }
