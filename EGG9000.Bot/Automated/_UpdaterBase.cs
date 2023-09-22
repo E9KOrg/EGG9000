@@ -39,6 +39,7 @@ namespace EGG9000.Bot.Automated {
 
         private CronExpression _cronExpression;
         private DateTimeOffset _nextRunFromCron;
+        private DateTimeOffset _firstRunDue;
         private DateTimeOffset _updaterInitiated;
 
         public TimeSpan UpdateInterval;
@@ -71,6 +72,7 @@ namespace EGG9000.Bot.Automated {
             _nextRunFromCron = _options.DelayStart.HasValue ? 
                 DateTimeOffset.Now + _options.DelayStart.Value : 
                 cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
+            _firstRunDue = _nextRunFromCron;
         }
 
         private void _initiate(IServiceProvider provider) {
@@ -185,6 +187,7 @@ namespace EGG9000.Bot.Automated {
                         var timer = System.Diagnostics.Stopwatch.StartNew();
                         await _run(null);
                         _logger.LogInformation($"Update took {timer.Elapsed.Humanize()}");
+                        _lastAlive = DateTimeOffset.Now;
                     }
 
 
@@ -234,6 +237,10 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _WatchDog(object state) {
+            if(_cronExpression is not null && _firstRunDue > DateTimeOffset.Now) {
+                return;
+            }
+
             var watchDogDue = _cronExpression is not null ? DateTime.Now.AddMinutes(30) : _lastAlive + UpdateInterval * 2;
 
             if(LastStarted < watchDogDue) {

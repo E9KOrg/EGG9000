@@ -176,6 +176,10 @@ namespace EGG9000.Common.Services {
                     tasks.Add(Task.Run(async () => {
                         try {
                             var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
+                            if(response.Data is null) {
+                                  _logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
+                                return;
+                            }
                             _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
                             foreach(var backupResponse in response.Data) {
                                 var key = GetUserBackupKey(backupResponse.EggIncId);
