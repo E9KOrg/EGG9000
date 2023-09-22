@@ -19,13 +19,14 @@ using Humanizer;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Cronos;
 
 namespace EGG9000.Bot.Automated {
     public class HandleGradeChanges : _UpdaterBase<HandleGradeChanges> {
 
         public HandleGradeChanges(
             IServiceProvider provider
-        ) : base(TimeSpan.FromHours(0.5), TimeSpan.FromMinutes(15), provider) {
+        ) : base(CronExpression.Parse("30 10,18,23 * * 1,3,5"), provider) {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
@@ -35,7 +36,7 @@ namespace EGG9000.Bot.Automated {
 
             var chunkedUsers = users.Chunk(100);
             foreach(var userchunk in chunkedUsers) {
-                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (user, token) => {
+                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                             var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
