@@ -103,6 +103,10 @@ namespace EGG9000.Common.Database {
         public string DeviceId { get; set; } = string.Empty;
         [Key(36)]
         public List<(Ei.MissionInfo.Types.Spaceship ship, Ei.MissionInfo.Types.DurationType type, int count)> ShipsSent { get; set; }
+        [Key(37)]
+        public double SeasonCS { get; set; } = 0;
+        [Key(38)]
+        public double TotalCS { get; set; } = 0;
 
 
         [IgnoreMember]
@@ -197,6 +201,9 @@ namespace EGG9000.Common.Database {
             Grade = backup.Contracts.LastCpi?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
             GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
+
+            TotalCS = backup.Contracts.LastCpi.TotalCxp;
+            SeasonCS = backup.Contracts.LastCpi.SeasonCxp;
 
             HasDeviceId = backup.HasDeviceId;
             if(backup.HasDeviceId) DeviceId = backup.DeviceId;
