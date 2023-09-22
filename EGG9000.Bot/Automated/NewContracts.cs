@@ -181,8 +181,7 @@ namespace EGG9000.Bot.Automated {
         private async Task UpdateChannel(SocketGuild guild, Guild dbguild, GuildContract targetGuildContract) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
-            var backups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new 
-            { User = x, Backup = y.Backup })).ToList();
+            var backups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser { User = x, Backup = y.Backup })).ToList();
 
             await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild);
         }
