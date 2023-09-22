@@ -42,7 +42,6 @@ using System.Security.Principal;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Factories;
 using Microsoft.Data.SqlClient;
-using System.Globalization;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -376,9 +375,7 @@ namespace EGG9000.Site.Controllers {
                 User = x.DBUser,
                 Backup = y.Backup,
                 DiscordUser = _discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
-                TotalContracts = x.DBUser.GuildCoops,
-                TotalCS = y.Backup?.TotalCS ?? 0,
-                SeasonCS = y.Backup?.SeasonCS ?? 0
+                TotalContracts = x.DBUser.GuildCoops
             })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
@@ -424,34 +421,6 @@ namespace EGG9000.Site.Controllers {
                 }
                 return View(leaderboard);
             }
-        }
-
-        public async Task<IActionResult> CSLeaderboard(string cstype = "total", [FromQuery] ulong guildid = 0) {
-            var loginuser = (await _userManager.GetUserAsync(User));
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
-
-            ViewBag.CSType = cstype;
-
-            if(guildid == 0 || !User.IsInRole("Admin")) {
-                guildid = user.GuildId;
-            }
-
-            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
-
-            var leaderboard = await _getLeaderboard(guildid);
-
-
-            switch(cstype) {
-                case "season":
-                    leaderboard = leaderboard.OrderByDescending(x => x.SeasonCS).Where(x => x.SeasonCS > 0).ToList();
-                    break;
-                case "total":
-                default:
-                    leaderboard = leaderboard.OrderByDescending(x => x.TotalCS).Where(x => x.TotalCS > 0).ToList();
-                    break;
-            }
-            return View(leaderboard);
         }
 
         [Authorize]
