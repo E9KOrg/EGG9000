@@ -139,6 +139,9 @@ namespace EGG9000.Common.Contracts {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAll)
                 return true;
 
+            if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra && !contract.cc_only)
+                return true;
+
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold && (x.UserCsHistoryEntry?.Cxp ?? 0) <= x.Account.RedoScoreThreshold)
                 return true;
 

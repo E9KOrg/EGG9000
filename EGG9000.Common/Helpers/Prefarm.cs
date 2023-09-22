@@ -42,6 +42,8 @@ namespace EGG9000.Common.Helpers {
             public DateTimeOffset Started { get; set; }
             //public bool Active { get; set; }
             public List<SimpleXref> RecentXrefs { get; set; }
+            public double TotalCS { get; set; }
+            public double SeasonCS { get; set; }
         }
 
         public class SimpleXref {
