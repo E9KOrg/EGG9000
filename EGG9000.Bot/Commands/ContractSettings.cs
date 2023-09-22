@@ -126,6 +126,7 @@ namespace EGG9000.Bot.Commands {
 
             var redoText = account.RedoLeggacySelection switch {
                 RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
+                RedoLeggacyOption.YesNoUltra => "Yes (Will not redo completed Ultra contracts)",
                 RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.RedoScoreThreshold} score)",
                 RedoLeggacyOption.YesOtherAccountMatch => "Yes (If any other of your accounts get assigned)",
                 RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
@@ -255,6 +256,9 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesAll),
                 new SelectMenuOptionBuilder($"Yes (If your previous score was under a threshold you set)", "2", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold),
             };
+            if(account.SubscriptionLevel is not null) {
+                list.Add(new SelectMenuOptionBuilder($"Yes (Will not redo completed Ultra contracts)", "5", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra));
+            }
             if(dbuser.EggIncAccounts.Count > 1) {
                 list.Add(new SelectMenuOptionBuilder("Yes (If any other of your accounts get assigned)", "4", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch));
             }
