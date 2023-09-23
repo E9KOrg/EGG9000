@@ -109,7 +109,7 @@ namespace EGG9000.Common.Helpers {
                 "The Chalice" => new string[] { "<:Afx_The_Chalice_1:801923476294205480>", "<:Afx_The_Chalice_2:801923503058059287>", "<:Afx_The_Chalice_3:801923523319693342>", "<:Afx_The_Chalice_4:801401326708850698>" }[instance.Tier - 1],
                 "Titanium Actuator" => new string[] { "<:Afx_Titanium_Actuator_1:801957617253351435>", "<:Afx_Titanium_Actuator_2:801957652052967474>", "<:Afx_Titanium_Actuator_3:801957676808536094>", "<:Afx_Titanium_Actuator_4:801401362763874304>" }[instance.Tier - 1],
                 "Tungsten Ankh" => new string[] { "<:Afx_Tungsten_Ankh_1:801924204605866035>", "<:Afx_Tungsten_Ankh_2:801924230731399178>", "<:Afx_Tungsten_Ankh_3:801924249522012220>", "<:Afx_Tungsten_Ankh_4:801401388256591932>" }[instance.Tier - 1],
-                "Vial of Martian Dust" => new string[] { "<:Afx_Vial_Martian_Dust_1:801923830023979008>", "<:Afx_Vial_Martian_Dust_2:801923862836412427>", "<:Afx_Vial_Martian_Dust_3:801923891534364672>", "<:Afx_Vial_Martian_Dust_4:801401410578939914>" }[instance.Tier - 1],
+                "Vial of Martian Dust" => new string[] { "<:Afx_Vial_Nartian_Dust_1:801923830023979008>", "<:Afx_Vial_Nartian_Dust_2:801923862836412427>", "<:Afx_Vial_Nartian_Dust_3:801923891534364672>", "<:Afx_Vial_Martian_Dust_4:801401410578939914>" }[instance.Tier - 1],
                 _ => instance.Artifact.ToString()
             };
         }
