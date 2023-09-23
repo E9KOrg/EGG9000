@@ -292,6 +292,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[0]);
             await command.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
                 x.Components = builder.ComponentBuilder?.Build();
                 x.Embed = builder.EmbedBuilder.Build();
             });
@@ -339,11 +340,6 @@ Last Backup <t:{backup.LastBackupTime}:R>
                     .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
                 ).WithColor(RandomColor())
                 .WithDescription(GetAfxSetString(currentSet));
-
-            /*if(currentSet.Count > 0) embedBuilder.AddField("Artifact 1", GetAfxString(currentSet[0]));
-            if(currentSet.Count > 1) embedBuilder.AddField("Artifact 2", GetAfxString(currentSet[1]));
-            if(currentSet.Count > 2) embedBuilder.AddField("Artifact 3", GetAfxString(currentSet[2]));
-            if(currentSet.Count > 3) embedBuilder.AddField("Artifact 4", GetAfxString(currentSet[3]));*/
 
             if(currentSetIndex > 0 && setsCount > 1 && afxSets[currentSetIndex - 1] is not null) {
                 componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;

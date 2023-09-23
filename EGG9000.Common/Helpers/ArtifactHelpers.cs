@@ -28,6 +28,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static long[] GetFairness(EggIncArtifactInstance instance) {
+            if(instance is null || instance.Artifact is null || instance.Tier < 0) return "";
             return instance.Artifact switch {
                 "Aurelian Brooch" => new long[] { 0, 1186, 13827, 58753 },
                 "Beak of Midas" => new long[] { 0, 6075, 23885, 86083 },
@@ -65,6 +66,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static string GetRarityEmoji(EggIncArtifactInstance instance) {
+            if(instance is null) return "";
             return instance.Rarity switch {
                 1 => "",
                 2 => "<:Rare:905959988030226453>",
@@ -75,7 +77,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static string GetAfEmoji(EggIncArtifactInstance instance) {
-            Console.WriteLine($"Looking for {instance.Artifact} of tier {instance.Tier}");
+            if(instance is null || instance.Artifact is null || instance.Tier < 0) return "";
             return instance.Artifact switch {
                 "Aurelian Brooch" => new string[] { "<:Afx_Aurelian_Brooch_1:801924296213659720>", "<:Afx_Aurelian_Brooch_2:801924317109288981>", "<:Afx_Aurelian_Brooch_3:801924329759571992>", "<:Afx_Aurelian_Brooch_4:801400352338739210>" }[instance.Tier - 1],
                 "Beak of Midas" => new string[] { "<:Afx_Beak_Of_Midas_1:801923763141738527>", "<:Afx_Beak_Of_Midas_2:801923773669441546>", "<:Afx_Beak_Of_Midas_3:801923785963601941>", "<:Afx_Beak_Of_Midas_4:801400369145970688>" }[instance.Tier - 1],
