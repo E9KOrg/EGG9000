@@ -37,7 +37,7 @@ namespace EGG9000.Bot.Automated {
 #endif
 
             //Loop through each user in the DB
-            var chunkSize = 100;
+            var chunkSize = 25;
             var count = 0;
             var userChunks = users.Chunk(chunkSize);
             var random = new Random();
@@ -47,6 +47,7 @@ namespace EGG9000.Bot.Automated {
             var existingScores = await _db.UserCsHistoryEntries.ToListAsync();
             _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {
+                this.StillAlive();
                 var scoresToAdd = new List<UserCsHistoryEntry>();
                 var skipped = 0;
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, cancellationToken) => {
