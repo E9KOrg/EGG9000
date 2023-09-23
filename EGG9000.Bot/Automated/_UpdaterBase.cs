@@ -237,9 +237,17 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _WatchDog(object state) {
-            if(_cronExpression is not null && _firstRunDue > DateTimeOffset.Now) {
-                return;
+            if(_cronExpression is not null) {
+                if(_firstRunDue > DateTimeOffset.Now) {
+                    _logger.LogTrace("Watchdog skipped because first run not due.");
+                    return;
+                }
+                if(_lastAlive > DateTimeOffset.Now.AddMinutes(2)) {
+                    _logger.LogTrace("Watchdog skipped because last alive is less than 2 minutes.");
+                    return;
+                }
             }
+
 
             var watchDogDue = _cronExpression is not null ? DateTime.Now.AddMinutes(30) : _lastAlive + UpdateInterval * 2;
 

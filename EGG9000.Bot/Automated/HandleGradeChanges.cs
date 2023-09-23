@@ -34,8 +34,9 @@ namespace EGG9000.Bot.Automated {
 
             var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync();
 
-            var chunkedUsers = users.Chunk(100);
+            var chunkedUsers = users.Chunk(25);
             foreach(var userchunk in chunkedUsers) {
+                this.StillAlive();
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
