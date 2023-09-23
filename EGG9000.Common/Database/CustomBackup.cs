@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 using EGG9000.Bot;
@@ -9,7 +10,7 @@ using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-
+using Ei;
 using Google.Protobuf.Collections;
 
 using MessagePack;
@@ -107,6 +108,8 @@ namespace EGG9000.Common.Database {
         public double SeasonCS { get; set; } = 0;
         [Key(38)]
         public double TotalCS { get; set; } = 0;
+        [Key(39)]
+        public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = new();
 
 
         [IgnoreMember]
@@ -281,6 +284,35 @@ namespace EGG9000.Common.Database {
                 );
                 return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
             }).ToList();
+
+            /* Setup for artifact sets */
+            var afxSetsItemIds = backup.ArtifactsDb.SavedArtifactSets.Select(s => {
+                return s.Slots.Select(sl => sl.ItemId).ToList();
+            }).ToList();
+
+            List<List<EggIncArtifactInstance>> afxSetsList = new();
+            foreach(var afxSetItems in afxSetsItemIds) {
+                var afxInstances = new List<EggIncArtifactInstance>();
+                foreach(var id in afxSetItems) {
+                    var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == id);
+                    if(x is null) {
+                        Console.WriteLine($"No item found with id {id} in inventory.");
+                        continue;
+                    }
+
+                    var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                    if(artifact is null) continue;
+
+                    artifact.Stones = x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null).ToList();
+
+                    afxInstances.Add(artifact);
+                }
+                if(afxInstances.Count == afxSetItems.Count) afxSetsList.Add(afxInstances);
+                else {
+                    Console.WriteLine("Counts were not the same, skipping...");
+                }
+            }
+            ArtifactSets = afxSetsList;
 
             ArtifactHall.AddRange(backup.ArtifactsDb.ArtifactStatus.Where(a =>
                 !backup.ArtifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&
@@ -475,7 +507,7 @@ namespace EGG9000.Common.Database {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Contract contract = null) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Entities.Contract contract = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
                 if(coop != null && coop.LastStatusUpdate is not null) {

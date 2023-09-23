@@ -28,6 +28,8 @@ using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using Google.Protobuf.WellKnownTypes;
 using static Ei.Backup.Types;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using System.ComponentModel;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -244,6 +246,142 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await db.SaveChangesAsync();
 
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
+        }
+
+        private class AfxSetBuilder {
+            public ComponentBuilder ComponentBuilder { get; set; }
+            public EmbedBuilder EmbedBuilder { get; set; }
+            public AfxSetBuilder() { }
+        }
+
+        public static Color RandomColor() {
+            var random = new Random();
+
+            // Generate random values for red, green, and blue components.
+            var red = (byte)random.Next(256);
+            var green = (byte)random.Next(256);
+            var blue = (byte)random.Next(256);
+
+            // Create and return the Discord.Color.
+            return new Color(red, green, blue);
+        }
+
+        public static string GetAfxSetString(List<EggIncArtifactInstance> set) {
+            return string.Join("\n", set.Select(s => ArtifactHelpers.GetAfEmoji(s) + ArtifactHelpers.GetRarityEmoji(s) + string.Join("", s.Stones.Select(st => ArtifactHelpers.GetAfEmoji(st)).ToList())));
+        }
+
+        public static string GetAfxString(EggIncArtifactInstance instance) {
+            return ArtifactHelpers.GetAfEmoji(instance) + ArtifactHelpers.GetRarityEmoji(instance) + string.Join("", instance.Stones.Select(st => ArtifactHelpers.GetAfEmoji(st))).ToString();
+        }
+
+        [SlashCommand(Description = "Show off your saved Artifact Sets")]
+        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
+            await command.RespondAsync("Getting backups...");
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
+                return;
+            }
+            var accountIndex = int.Parse(useraccount.Split("|")[1]);
+            var account = user.EggIncAccounts[accountIndex];
+            var afxSets = account.Backup?.ArtifactSets;
+            if(afxSets is null || afxSets.Count == 0) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Backup is empty, or no Artifact Sets were found for this account");
+                return;
+            }
+
+            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[0]);
+            await command.ModifyOriginalResponseAsync(x => {
+                x.Components = builder.ComponentBuilder?.Build();
+                x.Embed = builder.EmbedBuilder.Build();
+            });
+        }
+
+        [ComponentCommand]
+        public static async Task LoadAFXSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+
+            var dataItems = data.Split(",");
+            var discordId = ulong.Parse(dataItems[0] ?? "-1");
+            var accountIndex = int.Parse(dataItems[1] ?? "-1");
+            var currentSetIndex = int.Parse(dataItems[2] ?? "-1");
+
+            if(discordId < 0 || accountIndex < 0 || currentSetIndex < 0) return;
+
+            var user = db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
+            if(user is null || user.EggIncAccounts.Count -1 < accountIndex) return;
+
+            var account = user.EggIncAccounts[accountIndex];
+            var afxSets = account.Backup?.ArtifactSets;
+            if(afxSets is null) return;
+
+            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[currentSetIndex]);
+            await component.UpdateAsync(x => {
+                x.Content = "";
+                x.Components = builder.ComponentBuilder?.Build();
+                x.Embed = builder.EmbedBuilder.Build();
+            });
+        }
+
+        private static AfxSetBuilder AFXSetEmbedBuilder(DBUser user, int accountIndex, List<List<EggIncArtifactInstance>> afxSets, List<EggIncArtifactInstance> currentSet) {
+            var builder = new AfxSetBuilder() {
+                ComponentBuilder = null
+            };
+
+            var componentBuilder = new ComponentBuilder();
+            var buttonCount = 0;
+
+            var currentSetIndex = afxSets.IndexOf(currentSet);
+            var setsCount = afxSets.Count;
+
+            var embedBuilder = new EmbedBuilder().WithAuthor(
+                new EmbedAuthorBuilder()
+                    .WithName($"Set {currentSetIndex + 1}")
+                    .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
+                ).WithColor(RandomColor())
+                .WithDescription(GetAfxSetString(currentSet));
+
+            /*if(currentSet.Count > 0) embedBuilder.AddField("Artifact 1", GetAfxString(currentSet[0]));
+            if(currentSet.Count > 1) embedBuilder.AddField("Artifact 2", GetAfxString(currentSet[1]));
+            if(currentSet.Count > 2) embedBuilder.AddField("Artifact 3", GetAfxString(currentSet[2]));
+            if(currentSet.Count > 3) embedBuilder.AddField("Artifact 4", GetAfxString(currentSet[3]));*/
+
+            if(currentSetIndex > 0 && setsCount > 1 && afxSets[currentSetIndex - 1] is not null) {
+                componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;
+            }
+            if(currentSetIndex < afxSets.Count - 1 && afxSets[currentSetIndex + 1] is not null) {
+                componentBuilder.WithButton($"Set {currentSetIndex + 2} →", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex + 1}"); buttonCount++;
+            }
+            if(buttonCount > 0) builder.ComponentBuilder = componentBuilder;
+
+            builder.EmbedBuilder = embedBuilder;
+            return builder;
+        }
+
+        public class PersonalUserAccountAutoComplete : AutoCompleteHandler {
+            private readonly ApplicationDbContext _db;
+            public PersonalUserAccountAutoComplete(ApplicationDbContext db) {
+                _db = db;
+            }
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                var users = await _db.DBUsers
+                    .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
+                    .Take(10).ToListAsync();
+
+                var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
+
+                var results = new List<AutocompleteResult>();
+                foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
+                    if(account.User.EggIncAccounts.Count > 1) {
+                        var name = account.Account.Backup?.UserName;
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup.EarningsBonus.ToEggString()}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                    } else {
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                    }
+                }
+
+                await arg.RespondAsync(null, results.ToArray());
+            }
         }
 
         [SlashCommand(Description = "Get help from staff, please give details")]
