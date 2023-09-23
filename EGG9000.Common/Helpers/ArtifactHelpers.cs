@@ -28,7 +28,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static long[] GetFairness(EggIncArtifactInstance instance) {
-            if(instance is null || instance.Artifact is null || instance.Tier < 0) return "";
+            if(instance is null || instance.Artifact is null || instance.Tier < 0) return new long[]{0, 0, 0, 0};
             return instance.Artifact switch {
                 "Aurelian Brooch" => new long[] { 0, 1186, 13827, 58753 },
                 "Beak of Midas" => new long[] { 0, 6075, 23885, 86083 },
