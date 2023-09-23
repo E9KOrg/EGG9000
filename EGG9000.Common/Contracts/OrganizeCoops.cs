@@ -135,7 +135,14 @@ namespace EGG9000.Common.Contracts {
             accounts.RemoveAll(x => !includeInCoopFilter(x));
         }
 
-        private static bool CheckOnPreviousComplete(UserByAccount x, Contract contract, List<UserByAccount> otherAccounts, bool yesMatchCheck = false) {
+        private static bool MatchGroup(EggIncAccount a1, EggIncAccount a2, Contract c) {
+            return(a1.GetGroup(c.cc_only).Equals(a2.GetGroup(c.cc_only)));
+        }
+        private static bool MatchGrade(EggIncAccount a1, EggIncAccount a2, Contract c) {
+            return a1.GetGrade().Equals(a2.GetGrade()) || (c.cc_only && a1.SubscriptionLevel is not null && a2.SubscriptionLevel is not null);
+        }
+
+        private static bool CheckOnPreviousComplete(UserByAccount x, Contract contract, List<UserByAccount> otherAccounts) {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAll)
                 return true;
 
@@ -145,13 +152,12 @@ namespace EGG9000.Common.Contracts {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold && (x.UserCsHistoryEntry?.Cxp ?? 0) <= x.Account.RedoScoreThreshold)
                 return true;
 
-
-            //if(!yesMatchCheck && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch && otherAccounts.Any(ua =>
-            //    ua.Account.Id != x.Account.Id &&
-            //    ua.Account.GetGroup(contract.cc_only).Equals(x.Account.GetGroup(contract.cc_only)) &&
-            //    (ua.Account.GetGrade().Equals(x.Account.GetGrade()) || contract.cc_only && ua.Account.SubscriptionLevel is not null && x.Account.SubscriptionLevel is not null) &&
-            //    CheckOnPreviousComplete(ua, contract, new List<UserByAccount>(), true)
-            //)) return true;
+            if(otherAccounts.Count > 0 && x.Account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch && otherAccounts.Any(ua =>
+                ua.Account.Id != x.Account.Id &&
+                MatchGrade(ua.Account, x.Account, contract) &&
+                MatchGroup(ua.Account, x.Account, contract) &&
+                !CheckOnPreviousComplete(ua, contract, new List<UserByAccount>())
+            )) return true;
 
             if(contract.HadTwoRewards) {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
