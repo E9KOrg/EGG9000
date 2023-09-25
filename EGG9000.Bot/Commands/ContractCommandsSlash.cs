@@ -695,11 +695,19 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
+            var guildContract = await db.GuildContracts.FirstAsync(gc => gc.GuildID == command.GuildId && gc.Contract == contract);
 
             var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Count();
 
+            var existingXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract).ToListAsync();
+
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
+
+                if(existingXrefs.Any()) {
+                    await command.ModifyOriginalResponseAsync($"⚠️ERROR: You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existingXrefs.First().Coop.DiscordChannelId}>");
+                    return;
+                }
 
                 EggIncAccount subAccountBypass = null;
                 if(contract.cc_only) {
@@ -736,10 +744,18 @@ namespace EGG9000.Bot.Commands {
             var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             var account = user.EggIncAccounts.First(x => x.Id == data.Split("|")[1]);
+
+            var guildContract = await db.GuildContracts.FirstAsync(gc => gc.GuildID == user.GuildId && gc.Contract == contract);
+            var existingXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract).ToListAsync();
+            if(existingXrefs.Any()) {
+                await component.Channel.SendMessageAsync($"⚠️ERROR: You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existingXrefs.First().Coop.DiscordChannelId}>");
+                return;
+            }
+
             var userList = new List<UserByAccount> { new UserByAccount {
                     Account = account,
                     User = user
-                } };
+            } };
             var guild = _client.GetGuild(component.GuildId.Value);
             var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue);
             await component.ModifyOriginalResponseAsync(x => x.Content = "Done");
