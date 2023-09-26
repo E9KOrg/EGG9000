@@ -242,8 +242,8 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogTrace("Watchdog skipped because first run not due.");
                     return;
                 }
-                if(_lastAlive > DateTimeOffset.Now.AddMinutes(2)) {
-                    _logger.LogTrace("Watchdog skipped because last alive is less than 2 minutes.");
+                if(_lastAlive > DateTimeOffset.Now.AddMinutes(5)) {
+                    _logger.LogTrace("Watchdog skipped because last alive is less than 5 minutes.");
                     return;
                 }
             }

@@ -18,23 +18,21 @@ using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace EGG9000.Bot.Automated {
+namespace EGG9000.Bot.Automated.Coops {
     public class CoopReorder : _UpdaterBase<CoopReorder> {
         public CoopReorder(
             IServiceProvider provider
         ) : base(TimeSpan.FromMinutes(30), TimeSpan.Zero, provider) {
         }
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            try
-            {
+            try {
                 var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-                foreach (var dbguild in dbguilds)
-                {
+                foreach(var dbguild in dbguilds) {
                     if(cancellationToken.IsCancellationRequested)
                         continue;
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.Id);
-                    if (guild == null)
+                    if(guild == null)
                         continue;
 
                     var categories = await _client.GetAllCoopCategories(guild);
@@ -56,9 +54,7 @@ namespace EGG9000.Bot.Automated {
                         await SortCoops(overflowCoops, overflowCategories, overflowGuild);
                     }
                 }
-            }
-            catch (Exception e)
-            {
+            } catch(Exception e) {
                 _logger.LogError(e, "Failed to sort co-ops");
                 _bugsnag.Notify(e);
             }
@@ -66,8 +62,7 @@ namespace EGG9000.Bot.Automated {
 
         private async Task SortCoops(List<Coop> coops, List<SocketCategoryChannel> categories, SocketGuild guild) {
             _logger.LogInformation("Sorting Co-ops for {guildName}", guild.Name);
-            coops = coops.OrderBy(x =>
-            {
+            coops = coops.OrderBy(x => {
                 //x.CoopEnds
                 var targetAmount = x.Contract.Details.GradeSpecs[(int)x.League - 1].Goals.Last().TargetAmount;
                 var totalAmount = x.LastStatusUpdate?.Participants.Sum(x => x.AmountWithOfflineIgnoreSilo()) ?? 0;
@@ -132,7 +127,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
-            for(int i = coopSorts.Count - 1; i >= 0; i--) {
+            for(var i = coopSorts.Count - 1; i >= 0; i--) {
                 var coopSort = coopSorts[i];
                 if(coopSort.NeedsReorder) {
                     await coopSort.Channel.ModifyAsync(x => x.Position = coopSort.NewPosition);

@@ -81,6 +81,20 @@ namespace EGG9000.Bot.Services {
             }
         }
 
+        public void RunJob(string jobName) {
+            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            job.NextRun = DateTimeOffset.Now;
+        }
+
+        public void StopJob(string jobName) {
+            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            job.NextRun = DateTimeOffset.Now.AddYears(1);
+        }
+        public void StarJob(string jobName) {
+            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            job.NextRun = GetNextRun(job.MethodInfo.GetCustomAttribute<JobAttribute>().Cron);
+        }
+
         public Task StopAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Stopping JobService");
             return Task.CompletedTask;

@@ -41,6 +41,7 @@ using System.Diagnostics.Contracts;
 using MassTransit.Initializers;
 using Bugsnag;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using EGG9000.Bot.Automated.Coops;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
