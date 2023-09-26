@@ -24,7 +24,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using AutoMapper.Internal;
 
-namespace EGG9000.Bot.Automated {
+namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopChannels : _UpdaterBase<CreateCoopChannels> {
         public CreateCoopChannels(
             IServiceProvider provider
@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
-            ApplicationDbContext _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync();
 
             if(coops.Count > 0) {
@@ -100,7 +100,7 @@ namespace EGG9000.Bot.Automated {
                 completedCoops.Remove(completedCoop);
                 var coopChannel = (ITextChannel)_client.GetChannel(completedCoop.DiscordChannelId);
                 if(coopChannel == null && completedCoop.DiscordChannelId > 0) {
-                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(completedCoop.DiscordChannelId, options: new RequestOptions { CancelToken = cancellationToken }));
+                    coopChannel = (ITextChannel)await _client.Rest.GetChannelAsync(completedCoop.DiscordChannelId, options: new RequestOptions { CancelToken = cancellationToken });
                 }
                 if(coopChannel != null) {
                     try {

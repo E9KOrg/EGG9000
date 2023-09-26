@@ -18,7 +18,7 @@ using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace EGG9000.Bot.Automated {
+namespace EGG9000.Bot.Automated.Coops {
     public class CoopDeleteChannel : _UpdaterBase<CoopDeleteChannel> {
 
         public CoopDeleteChannel(
@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Automated {
             foreach(var coop in coops) {
                 var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
                 if(coopChannel == null) {
-                    coopChannel = (ITextChannel)(await _client.Rest.GetChannelAsync(coop.DiscordChannelId));
+                    coopChannel = (ITextChannel)await _client.Rest.GetChannelAsync(coop.DiscordChannelId);
                 }
                 if(coopChannel != null) {
                     try {
