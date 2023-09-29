@@ -156,7 +156,7 @@ namespace EGG9000.Common.Contracts {
                 ua.Account.Id != x.Account.Id &&
                 MatchGrade(ua.Account, x.Account, contract) &&
                 MatchGroup(ua.Account, x.Account, contract) &&
-                !CheckOnPreviousComplete(ua, contract, new List<UserByAccount>())
+                CheckOnPreviousComplete(ua, contract, new List<UserByAccount>())
             )) return true;
 
             if(contract.HadTwoRewards) {
