@@ -97,7 +97,7 @@ namespace EGG9000.Bot.Commands {
                 eBuilder.WithDescription($"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}");
             }
 
-            eBuilder.AddField("Break", MCSBreakMessage(account));
+            eBuilder.AddField("Break (60 Day Max)", MCSBreakMessage(account));
 
             var builder = new ComponentBuilder();
             if(!dbguild.DisableBG) {
@@ -341,15 +341,27 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            var builder = new ComponentBuilder();
-            var row = new ActionRowBuilder()
-                .WithButton("Add 1 Day to Break", $"BreakAddDay:{index},{dbuser.DiscordId}")
-                .WithButton("Add 1 Week to Break", $"BreakAddWeek:{index},{dbuser.DiscordId}")
-                .WithButton("Stop Break Early", $"StopBreakEarly:{index},{dbuser.DiscordId}")
-                .WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
-            builder.AddRow(row);
+            var builder = MCSBreakBuilder(account, index, dbuser);
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+
+        private static ComponentBuilder MCSBreakBuilder(EggIncAccount account, int index, DBUser dbuser) {
+            var builder = new ComponentBuilder();
+            var row = new ActionRowBuilder();
+
+            if(account.OnBreakUntil < DateTime.Now.AddDays(60) || account.OnBreakUntil == default) {
+                row.WithButton("Add 1 Day to Break", $"BreakAddDay:{index},{dbuser.DiscordId}")
+                   .WithButton("Add 1 Week to Break", $"BreakAddWeek:{index},{dbuser.DiscordId}");
+            }
+
+            if(account.OnBreakUntil != default && account.OnBreakUntil > DateTimeOffset.Now) {
+                row.WithButton("Stop Break Early", $"StopBreakEarly:{index},{dbuser.DiscordId}");
+            }
+
+            row.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            builder.AddRow(row);
+            return builder;
         }
 
         public static string MCSBreakMessage(EggIncAccount account) {
@@ -369,11 +381,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
-            account.SetBreak((account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(1), dbuser);
+            account.SetBreak(AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil, 1), dbuser);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
         }
 
         [ComponentCommand]
@@ -383,11 +395,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
-            account.SetBreak((account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil).AddDays(7), dbuser);
+            account.SetBreak(AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil, 7), dbuser);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
         }
 
         [ComponentCommand]
@@ -401,8 +413,19 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
         }
+
+        private static DateTimeOffset AddCappedDays(DateTimeOffset currentDtOffset, int daysToAdd) {
+            var dayDifferential = (currentDtOffset - DateTimeOffset.Now).Days;
+            Console.WriteLine("Day differential: " + dayDifferential);
+            if(dayDifferential >= 60) return currentDtOffset;
+            else {
+                if(dayDifferential + daysToAdd >= 60) daysToAdd = 60 - dayDifferential; //Cap to 60 days
+                return currentDtOffset.AddDays(daysToAdd);
+            }
+        }
+
         #endregion
 
         #region Rewards
