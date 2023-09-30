@@ -110,6 +110,11 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
                             }
                         } catch(HttpException) {
+                            var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+                            if(dbUser is not null) {
+                                dbUser.DMSBlocked = true;
+                                await _db.SaveChangesAsync();
+                            }
                             var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
                             if(dbguild.ChannelDetails.Any(y => y.ChannelType == GuildChannelType.WarningMessagesForUser)) {
                                 var talkChannel = _client.GetGuild(user.GuildId).GetTextChannel(dbguild.ChannelDetails.First(y => y.ChannelType == GuildChannelType.WarningMessagesForUser).Id);

@@ -176,6 +176,11 @@ namespace EGG9000.Bot.Automated {
                         try {
                             var ultraMessageSend = await dmChannel.SendMessageAsync(ultraMessageOut);
                         } catch(Exception) {
+                            var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == pingableUser.DiscordId);
+                            if(dbUser is not null) {
+                                dbUser.DMSBlocked = true;
+                                await _db.SaveChangesAsync();
+                            }
                             _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} (DMs are blocked).", pingableUser.DiscordUsername);
                         }
                     }
