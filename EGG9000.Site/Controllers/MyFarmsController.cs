@@ -27,6 +27,7 @@ using Event = EGG9000.Common.Database.Entities.Event;
 using System.Diagnostics.Contracts;
 using static EGG9000.Site.Controllers.HomeController;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using EGG9000.Bot.Helpers;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -223,15 +224,13 @@ namespace EGG9000.Site.Controllers {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);
                     var dmChannel = await discordUser.CreateDMChannelAsync();
-                    try {
-                        await dmChannel.SendMessageAsync("Testing DM Ping");
-                    } catch(Exception ex) {
-                        var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
-                        if(dbUser is not null) {
-                            dbUser.DMSBlocked = true;
-                            await _db.SaveChangesAsync();
-                        }
+                    var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, "Testing DM Ping");
+                    var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+                    if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                        dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                        await _db.SaveChangesAsync();
                     }
+                    if(retEx != null) _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
                     return Ok();
                 case "talktoegg9000":
                     var channel = (SocketTextChannel)_discord.GetChannel(1012791664831639613);

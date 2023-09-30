@@ -1226,18 +1226,19 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(user.DiscordUser != null) {
                     var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
+                    
                     var dmChannel = await user.DiscordUser.CreateDMChannelAsync();
-                    try {
-                        var message = await dmChannel.SendMessageAsync(warningText);
-                    } catch(Exception) {
-                        var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == user.DiscordUser.Id);
-                        if(dbUser is not null) {
-                            dbUser.DMSBlocked = true;
-                            await _db.SaveChangesAsync();
-                        }
+
+                    var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, warningText);
+                    var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == user.DiscordUser.Id);
+                    if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                        dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                        await _db.SaveChangesAsync();
+                    }
+                    if(retEx != null) {
+                        _logger.LogError(retEx, "User {user} has DMs blocked", user.DiscordUser.Username);
                         await coopChannel.SendMessageAsync($"{warningText} (DMs are blocked)");
                     }
-
                 }
                 sleepTracking.Add(currentSleep);
             }
@@ -1320,36 +1321,36 @@ namespace EGG9000.Bot.Automated.Coops {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFull ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFull = false;
                 userStatus.Xref.UpdateCoopSetting();
+
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try {
-                    await dmChannel.SendMessageAsync($"All users have joined the co-op {coopChannel.Mention}");
-                } catch(Exception) {
-                    var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
-                    if(dbUser is not null) {
-                        dbUser.DMSBlocked = true;
-                        await db.SaveChangesAsync();
-                    }
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"All users have joined the co-op {coopChannel.Mention}");
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
+                }
+                if(retEx != null) {
+                    _logger.LogError(retEx, "User {user} has DMs blocked", userStatus.DiscordUser.Username);
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} All users have joined the co-op {coopChannel.Mention} (User has blocked DMs from bot)");
                 }
-
             }
         }
         public async Task HandlePingOnCheckedIn(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnEveryoneCheckedIn ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnEveryoneCheckedIn = false;
                 userStatus.Xref.UpdateCoopSetting();
+
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try {
-                    await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.");
-                } catch(Exception) {
-                    var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
-                    if(dbUser is not null) {
-                        dbUser.DMSBlocked = true;
-                        await db.SaveChangesAsync();
-                    }
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.");
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
+                }
+                if(retEx != null) {
+                    _logger.LogError(retEx, "User {user} has DMs blocked", userStatus.DiscordUser.Username);
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} The co-op {coopChannel.Mention} has finished and everyone is checked in. (User has blocked DMs from bot)");
                 }
-
             }
         }
 
@@ -1357,34 +1358,35 @@ namespace EGG9000.Bot.Automated.Coops {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFinished ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFinished = false;
                 userStatus.Xref.UpdateCoopSetting();
+
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try {
-                    await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has finished.");
-                } catch(Exception) {
-                    var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
-                    if(dbUser is not null) {
-                        dbUser.DMSBlocked = true;
-                        await db.SaveChangesAsync();
-                    }
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"The co-op {coopChannel.Mention} has finished.");
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
+                }
+                if(retEx != null) {
+                    _logger.LogError(retEx, "User {user} has DMs blocked", userStatus.DiscordUser.Username);
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} The co-op {coopChannel.Mention} has finished. (User has blocked DMs from bot)");
                 }
-
             }
         }
 
         public async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             if(discordUser is null)
                 return;
-            try {
-                var dmChannel = await discordUser.CreateDMChannelAsync();
-                await dmChannel.SendMessageAsync($"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");
-            } catch(HttpException) {
-                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
-                if(dbUser is not null) {
-                    dbUser.DMSBlocked = true;
-                    await db.SaveChangesAsync();
-                }
-                await coopChannel.SendMessageAsync($"{discordUser.Mention}: {Message} (User has blocked DMs from bot)");
+
+            var dmChannel = await discordUser.CreateDMChannelAsync();
+            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");
+            var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                await db.SaveChangesAsync();
+            }
+            if(retEx != null) {
+                _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} The co-op {coopChannel.Mention} has finished. (User has blocked DMs from bot)");
             }
         }
 

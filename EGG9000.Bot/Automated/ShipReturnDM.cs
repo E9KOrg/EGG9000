@@ -95,37 +95,36 @@ namespace EGG9000.Bot.Automated {
 
                         shipDm.Sent = true;
                         user.ShipDMs = user.ShipDMs;
-                        await _db.SaveChangesAsync();
-                        try {
-                            var shipReturnTime = DateTimeOffset.FromUnixTimeSeconds(shipDm.ShipReturnTime);
-                            if(shipReturnTime > DateTimeOffset.Now.AddMinutes(-5)) {
-                                if(shipReturnTime > DateTimeOffset.Now) {
-                                    _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
-                                } else {
-                                    _logger.LogInformation("Sending late ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
-                                }
-                                await Task.Delay(500);
-                                await dmChannel.SendMessageAsync(message);
+                        
+
+                        var shipReturnTime = DateTimeOffset.FromUnixTimeSeconds(shipDm.ShipReturnTime);
+                        if(shipReturnTime > DateTimeOffset.Now.AddMinutes(-5)) {
+                            if(shipReturnTime > DateTimeOffset.Now) {
+                                _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
                             } else {
-                                _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                                _logger.LogInformation("Sending late ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
                             }
-                        } catch(HttpException) {
-                            var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
-                            if(dbUser is not null) {
-                                dbUser.DMSBlocked = true;
-                                await _db.SaveChangesAsync();
-                            }
+                            await Task.Delay(500);
+                        } else {
+                            _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                        }
+
+                        var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, message);
+                        var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+                        if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                            dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                        }
+                        if(retEx != null) {
+                            _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
                             var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
                             if(dbguild.ChannelDetails.Any(y => y.ChannelType == GuildChannelType.WarningMessagesForUser)) {
                                 var talkChannel = _client.GetGuild(user.GuildId).GetTextChannel(dbguild.ChannelDetails.First(y => y.ChannelType == GuildChannelType.WarningMessagesForUser).Id);
-
                                 await talkChannel.SendMessageAsync($"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs");
                             }
                         }
+                        await _db.SaveChangesAsync();
                     } catch(Exception e) {
-
                         _bugsnag.Notify(e);
-
                         _logger.LogError(e, "UpdateNextShipDM Error");
                     }
                 }
