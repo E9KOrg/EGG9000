@@ -2,17 +2,15 @@
 using Bugsnag.Payload;
 using Discord;
 using Discord.WebSocket;
-
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 
 using System;
@@ -26,6 +24,11 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {
         private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+
+        private static EmbedBuilder MenuEmbedTemplate(string title, string description, EggIncAccount account, DBUser dbuser) {
+            var userText = dbuser.EggIncAccounts.Count > 1 ? $"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}\n\n" : "";
+            return new EmbedBuilder().WithTitle(title).WithDescription(userText + description);
+        }
 
         private static async Task<Guild> GetGuild(ulong? GuildId, ApplicationDbContext db) {
             if(GuildId == 0) return null;
@@ -90,12 +93,10 @@ namespace EGG9000.Bot.Commands {
         public static MessageProperties MainMenu(DBUser dbuser, EggIncAccount account, int index, Guild dbguild) {
             var props = new MessageProperties();
 
-            var eBuilder = new EmbedBuilder()
-                .WithTitle($"Main Menu");
+            var desc = dbuser.DMSBlocked ? "⚠ <@514257192803893272> is currently blocked from sending you Direct Messages (DMs.) This could either be due to Server Privacy settings, or directly blocking the bot. Please reach out to Staff for questions." : "";
 
-            if(dbuser.EggIncAccounts.Count > 1) {
-                eBuilder.WithDescription($"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}");
-            }
+            var eBuilder = MenuEmbedTemplate("Main Menu", desc, account, dbuser);
+            if(desc != "") eBuilder.WithColor(Color.Red);
 
             eBuilder.AddField("Break (60 Day Max)", MCSBreakMessage(account));
 
@@ -120,6 +121,11 @@ namespace EGG9000.Bot.Commands {
                 if(account.LeggacyAutoRegisterRewards != null && account.LeggacyAutoRegisterRewards.Any()) {
                     eBuilder.AddField("Leggacy Rewards Filter", string.Join(",", account.LeggacyAutoRegisterRewards.Select(x => rDict[x])));
                 }
+            }
+
+            if(account.SubscriptionLevel == null) {
+                eBuilder.AddField("Ultra Offer Pings", account.PingForNCUltra ? "Enabled" : "Disabled");
+                builder.WithButton("Ultra Offer Pings", $"MCSUltraPing:{index},{dbuser.DiscordId}");
             }
 
             builder.WithButton("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}");
@@ -184,9 +190,15 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Group 2", "2", isDefault: account.Group == 2),
                 new SelectMenuOptionBuilder("Group 3", "3", isDefault: account.Group == 3),
             });
-            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
-            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out.Select which BG will allow you to be most active after a co-op is launched at that time.\n\nHere are BG times in your local timezone:\n BG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Where(x => x.bg != 4).ToList().Select(x => $" BG{x.bg} <t:{x.time}:t>"))}";
-            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
+            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = BGEmbed(dbuser, account); });
+        }
+
+        private static Embed BGEmbed(DBUser dbuser, EggIncAccount account) {
+            var content = $"Boarding Groups (BG) set when your co-op will be launched when a contract comes out.Select which BG will allow you to be most active after a co-op is launched at that time.\n\n" +
+                $"Here are BG times in your local timezone:\n BG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Where(x => x.bg != 4).ToList().Select(x => $" BG{x.bg} <t:{x.time}:t>"))}";
+            return MenuEmbedTemplate("Boarding Group Menu", content, account, dbuser).Build();
         }
 
         [ComponentCommand]
@@ -216,9 +228,15 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Ultra Group 3", "3", isDefault: account.UltraGroup == 3),
                 new SelectMenuOptionBuilder("Ultra Group 4 (24h After Contract Launch)", "4", isDefault: account.UltraGroup == 4),
             });
-            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
-            var content = $"Ultra Groups (UG) set when your co-op will be launched when an ultra contract comes out. Select which UG will allow you to be most active after a co-op is launched at that time.\n\nHere are UG times in your local timezone:\n UG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n{string.Join("\n", BoardingGroupTimes.Skip(1).Where(x => x.bg != 4).ToList().Select(x => $" UG{x.bg} <t:{x.time}:t>"))}\n UG4 <t:{BoardingGroupTimes[3].time}:t>  (24 hours after contracts launch)";
-            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Content = content; x.Embed = null; });
+            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = UGEmbed(dbuser, account); });
+        }
+
+        private static Embed UGEmbed(DBUser dbuser, EggIncAccount account) {
+            var content = $"Ultra Groups (UG) set when your co-op will be launched when an ultra contract comes out. Select which UG will allow you to be most active after a co-op is launched at that time.\n\n" +
+                $"Here are UG times in your local timezone:\n UG1 <t:{BoardingGroupTimes[0].time}:t>  (When contracts normally launch)\n" +
+                $"{string.Join("\n", BoardingGroupTimes.Skip(1).Where(x => x.bg != 4).ToList().Select(x => $" UG{x.bg} <t:{x.time}:t>"))}\n UG4 <t:{BoardingGroupTimes[3].time}:t>  (24 hours after contracts launch)";
+            return MenuEmbedTemplate("Ultra Boarding Group Menu", content, account, dbuser).Build();
         }
 
         [ComponentCommand]
@@ -247,8 +265,20 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            var mainMenu = MainMenu(dbuser, account, index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Components = GetRlButtons(index, account, dbuser); x.Embed = RedoLeggaciesEmbedBuilder(dbuser, account).Build(); });
+        }
+
+        private static EmbedBuilder RedoLeggaciesEmbedBuilder(DBUser dbuser, EggIncAccount account) {
+            var redoText = account.RedoLeggacySelection switch {
+                RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
+                RedoLeggacyOption.YesNoUltra => "Yes (Will not redo completed Ultra contracts)",
+                RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.RedoScoreThreshold} score)",
+                RedoLeggacyOption.YesOtherAccountMatch => "Yes (If any other of your accounts get assigned)",
+                RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
+                _ => "No (Will still be assigned to incomplete leggacies)"
+            };
+            var content = "This option allows you to determine which Leggacy contracts you will redo, when they are offered in-game.\n\n**NOTE:** You will **always** be assigned to incomplete Leggacy contracts, so long as they match your rewards filter.";
+            return MenuEmbedTemplate("Redo Leggacies Menu", content, account, dbuser).AddField("Redo Completed Leggacies", redoText);
         }
 
         private static List<SelectMenuOptionBuilder> GetRedoLeggacyOptions(EggIncAccount account, DBUser dbuser) {
@@ -304,10 +334,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
 
             if(!isNum || (num <= 0 || num > maxThresh)) {
-                var errMsg = "⚠️Input needs to be " + (num <= 0 ? "a positive integer" : $"less than {maxThresh}");
-                var embedBuilder = new EmbedBuilder().WithTitle(errMsg).WithColor(Color.Red).Build();
+                var errMsg = $"⚠️ `{numText}` not accepted - Input must be " + (!isNum ? "a number" : (num <= 0 ? "a positive integer" : $"less than `{maxThresh:n0}`"));
+                var embed = RedoLeggaciesEmbedBuilder(dbuser, dbuser.EggIncAccounts[index]).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
+                //var embedBuilder = new EmbedBuilder().WithTitle(errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder().WithButton("Re-enter", $"RLThreshModal:{index},{dbuser.DiscordId}").WithButton("Cancel", $"MCSRL:{index},{dbuser.DiscordId}").Build();
-                await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
+                await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embed; });
             } else {
                 var account = dbuser.EggIncAccounts[index];
                 account.RedoScoreThreshold = (int)num;
@@ -315,7 +346,7 @@ namespace EGG9000.Bot.Commands {
                 await db.SaveChangesAsync();
 
                 var mainMenu = MainMenu(dbuser, account, index, await GetGuild(dbuser.GuildId, db));
-                await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+                await modal.UpdateAsync(x => { x.Components = GetRlButtons(index, account, dbuser); x.Embed = RedoLeggaciesEmbedBuilder(dbuser, account).Build(); });
             }
         }
 
@@ -330,7 +361,52 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
 
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = GetRlButtons(index, account, dbuser); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Components = GetRlButtons(index, account, dbuser); x.Embed = RedoLeggaciesEmbedBuilder(dbuser, account).Build(); });
+        }
+        #endregion
+
+        #region UltraPings
+        [ComponentCommand]
+        public static async Task MCSUltraPing(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+
+            await component.UpdateAsync(x => { x.Components = UltraPingComponents(dbuser, account.PingForNCUltra, index); x.Embed = UltraPingEmbed(dbuser, account, account.PingForNCUltra); });
+        }
+
+        [ComponentCommand]
+        public static async Task MCSUltraPingToggle(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            var toggleState = data.Split(",")[2] == "t";
+
+            account.PingForNCUltra = toggleState;
+            await db.SaveChangesAsync();
+
+            await component.UpdateAsync(x => { x.Components = UltraPingComponents(dbuser, toggleState, index); x.Embed = UltraPingEmbed(dbuser, account, toggleState); });
+        }
+
+        [ComponentCommand]
+        public static MessageComponent UltraPingComponents(DBUser dbuser, bool enabled, int index) {
+            var builder = new ComponentBuilder();
+            var row = new ActionRowBuilder()
+                .WithButton(enabled ? "Disable Pings" : "Enable Pings", $"MCSUltraPingToggle:{index},{dbuser.DiscordId},{(enabled ? "f" : "t")}")
+                .WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            builder.AddRow(row);
+            return builder.Build();
+        }
+
+        [ComponentCommand]
+        public static Embed UltraPingEmbed(DBUser dbuser, EggIncAccount account, bool enabled) {
+            var ultraPingMessage = $"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}\n\nThis option allows you to be notified when a Leggacy PE <:Egg_of_Prophecy_PE:669981330477547580> Contract that you have not finished, is offered to <:ultra:1131045418319495369> Egg, Inc. Ultra players. " +
+                "These pings will occur when Ultra Contracts are released, on Fridays at " +
+                $"<t:{new DateTimeOffset(2023, 5, 1, 11, 0, 0, TimeSpan.FromHours(-5)).ToUnixTimeSeconds()}:t>.";
+
+            return MenuEmbedTemplate("Ultra Offer Pings Menu", ultraPingMessage, account, dbuser).AddField("Ultra Offer Pings", enabled ? "Enabled" : "Disabled").Build();
         }
         #endregion
 
@@ -343,7 +419,11 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             var builder = MCSBreakBuilder(account, index, dbuser);
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = BreakEmbed(dbuser, account); });
+        }
+
+        public static Embed BreakEmbed(DBUser user, EggIncAccount account) {
+            return MenuEmbedTemplate("Break Menu", "Setting a break will prevent you from being added to coops for the duration of the break.", account, user).AddField("Break", MCSBreakMessage(account)).Build();
         }
 
         private static ComponentBuilder MCSBreakBuilder(EggIncAccount account, int index, DBUser dbuser) {
@@ -385,7 +465,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
+            await component.UpdateAsync(x => { x.Embed = x.Embed = BreakEmbed(dbuser, account); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
         }
 
         [ComponentCommand]
@@ -399,7 +479,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
+            await component.UpdateAsync(x => { x.Embed = x.Embed = BreakEmbed(dbuser, account); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
         }
 
         [ComponentCommand]
@@ -413,7 +493,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
-            await component.UpdateAsync(x => { x.Embed = props.Embed.GetValueOrDefault(null); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
+            await component.UpdateAsync(x => { x.Embed = x.Embed = BreakEmbed(dbuser, account); x.Components = MCSBreakBuilder(account, index, dbuser).Build(); });
         }
 
         private static DateTimeOffset AddCappedDays(DateTimeOffset currentDtOffset, int daysToAdd) {
@@ -434,23 +514,29 @@ namespace EGG9000.Bot.Commands {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
-            var reg = dbuser.EggIncAccounts[index];
+            var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
-            if(reg.AutoRegisterRewards is null)
-                reg.AutoRegisterRewards = new List<Ei.RewardType>();
+            if(account.AutoRegisterRewards is null)
+                account.AutoRegisterRewards = new List<Ei.RewardType>();
 
             var select2 = new SelectMenuBuilder()
                 .WithCustomId($"MCSRewardsSet:{index},{dbuser.DiscordId}")
                 .WithPlaceholder("Rewards Filter")
                 .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count);
             foreach(var item in GetRewardDictionary()) {
-                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: reg.AutoRegisterRewards.Any(x => x == item.Key));
+                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: account.AutoRegisterRewards.Any(x => x == item.Key));
             }
             builder.WithSelectMenu(select2);
-            builder.WithButton("Clear Filter (Do all contracts)", $"MCSRewardsClear:{index},{dbuser.DiscordId}");
-            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
-            var content = $"**This filter will apply to New Contracts & Leggacy Contracts by default. To set a filter specific for leggacies, use `Leggacy Rewards Filter`.**\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
-            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = null; x.Content = content; });
+            if(account.AutoRegisterRewards != null && account.AutoRegisterRewards.Count > 0)
+                builder.WithButton("Clear Filter (Do all contracts)", $"MCSRewardsClear:{index},{dbuser.DiscordId}");
+            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = RewardsEmbed(dbuser, account); });
+        }
+
+        private static Embed RewardsEmbed(DBUser dbuser, EggIncAccount account) {
+            var content = $"**This filter will apply to New Contracts & Leggacy Contracts by default. To set a filter specific for leggacies, use `Leggacy Rewards Filter`.**" +
+                $"\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
+            return MenuEmbedTemplate("Rewards Filter Menu", content, account, dbuser).Build();
         }
 
         [ComponentCommand]
@@ -489,23 +575,29 @@ namespace EGG9000.Bot.Commands {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
-            var reg = dbuser.EggIncAccounts[index];
+            var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
-            if(reg.LeggacyAutoRegisterRewards is null)
-                reg.LeggacyAutoRegisterRewards = new List<Ei.RewardType>();
+            if(account.LeggacyAutoRegisterRewards is null)
+                account.LeggacyAutoRegisterRewards = new List<Ei.RewardType>();
 
             var select2 = new SelectMenuBuilder()
                 .WithCustomId($"MCSLeggacyRewardsSet:{index},{dbuser.DiscordId}")
                 .WithPlaceholder("Leggacy Rewards Filter")
                 .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count);
             foreach(var item in GetRewardDictionary()) {
-                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: reg.LeggacyAutoRegisterRewards.Any(x => x == item.Key));
+                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: account.LeggacyAutoRegisterRewards.Any(x => x == item.Key));
             }
             builder.WithSelectMenu(select2);
-            builder.WithButton("Clear Filter (Follow main filter)", $"MCSLeggacyRewardsClear:{index},{dbuser.DiscordId}");
-            builder.WithButton("Cancel", $"MCSMenu:{index},{dbuser.DiscordId}");
-            var content = $"**This filter applies _only_ to Leggacy Contracts. If it is empty, your normal filter will be applied instead**.\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
-            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = null; x.Content = content; });
+            if(account.LeggacyAutoRegisterRewards != null && account.LeggacyAutoRegisterRewards.Count > 0)
+                builder.WithButton("Clear Filter (Follow main filter)", $"MCSLeggacyRewardsClear:{index},{dbuser.DiscordId}");
+            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = LeggacyRewardsEmbed(dbuser, dbuser.EggIncAccounts[index]); });
+        }
+
+        private static Embed LeggacyRewardsEmbed(DBUser dbuser, EggIncAccount account) {
+            var content = $"**This filter applies _only_ to Leggacy Contracts. If it is empty, your normal filter will be applied instead**." +
+                $"\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
+            return MenuEmbedTemplate("Leggacy Rewards Filter Menu", content, account, dbuser).Build();
         }
 
         [ComponentCommand]

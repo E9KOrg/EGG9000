@@ -41,7 +41,7 @@ namespace EGG9000.Common.Database.Entities {
         public ulong? LastGuild { get; set; }
 
         public bool AcceptedRules { get; set; }
-
+        public bool DMSBlocked { get; set; } = false;
         public bool TempDisabled { get; set; }
         public bool showEB { get; set; }
 
@@ -376,6 +376,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool AFSMarkedClean { get; set; } = false;
         [Key(26)]
         public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
+        [Key(27)]
+        public bool PingForNCUltra { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
