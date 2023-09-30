@@ -35,7 +35,7 @@ using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
-        public static TimeSpan _updateInterval = TimeSpan.FromMinutes(45);
+        public static TimeSpan _updateInterval = TimeSpan.FromMinutes(90);
         private APILink _apiLink;
         public static List<UserX> _users;
         private Words _words;

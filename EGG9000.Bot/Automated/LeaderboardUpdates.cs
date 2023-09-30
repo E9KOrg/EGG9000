@@ -30,7 +30,7 @@ using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
-        public static TimeSpan UpdateTime = TimeSpan.FromMinutes(30);
+        public static TimeSpan UpdateTime = TimeSpan.FromMinutes(60);
 
         public static List<UserX> _users;
 

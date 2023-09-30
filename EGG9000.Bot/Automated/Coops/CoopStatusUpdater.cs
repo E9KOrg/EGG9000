@@ -38,7 +38,7 @@ namespace EGG9000.Bot.Automated.Coops {
         private static TimeSpan interval = TimeSpan.FromMinutes(20);
 #else
         private static TimeSpan delay = TimeSpan.FromMinutes(2);
-        private static TimeSpan interval = TimeSpan.FromMinutes(20);
+        private static TimeSpan interval = TimeSpan.FromMinutes(40);
 #endif
         private Dictionary<ulong, SocketTextChannel> _demeritChannels = new Dictionary<ulong, SocketTextChannel>();
 
