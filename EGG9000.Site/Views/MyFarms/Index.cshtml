@@ -101,7 +101,7 @@
 
 @if (unjoinedCoops.Any()) {
     <div class="alert alert-danger">
-        @if (isAdmin){
+        @if (isAdmin || isLesserAdmin){
             <span>@Model.User.DiscordUsername has not joined the following coops they've been assigned.</span>
         } else{
             <span>Pssst... It looks like you haven't joined the following coops that you've been assigned!</span>
@@ -122,7 +122,7 @@
 
 @if(Model.User.DMSBlocked){
     <div class="alert alert-danger">
-        @if (isAdmin && true == false){
+        @if (isAdmin || isLesserAdmin){
             <span><b>@Model.User.DiscordUsername has blocked DMs from EGG9000.</b></span>
         } else{
             <span><b>It looks like you've blocked DMs from EGG9000</b>.<br />This can either be due to Server Privacy settings, or directly blocking the bot.<br />This may lead to missed communications - please resolve this.</span>
