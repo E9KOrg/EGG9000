@@ -698,8 +698,8 @@ namespace EGG9000.Bot.Commands {
 
             var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Count();
 
-            var existContractXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && !x.Coop.FinishedOrFailedOrExpired()).ToListAsync();
-            var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && !x.Coop.FinishedOrFailedOrExpired()).ToListAsync();
+            var existContractXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
+            var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
 
             var dbguild = await db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
@@ -752,8 +752,8 @@ namespace EGG9000.Bot.Commands {
             var account = user.EggIncAccounts.First(x => x.Id == data.Split("|")[1]);
 
             var guildContract = await db.GuildContracts.FirstAsync(gc => gc.GuildID == user.GuildId && gc.Contract == contract);
-            var existingXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && !x.Coop.FinishedOrFailedOrExpired()).ToListAsync();
-            var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && !x.Coop.FinishedOrFailedOrExpired()).ToListAsync();
+            var existingXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
+            var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
 
             var userList = new List<UserByAccount> { new UserByAccount {
                     Account = account,
