@@ -376,6 +376,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool AFSMarkedClean { get; set; } = false;
         [Key(26)]
         public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
+        [Key(27)]
+        public bool PingForNCUltra { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)

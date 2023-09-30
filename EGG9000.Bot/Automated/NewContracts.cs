@@ -157,6 +157,43 @@ namespace EGG9000.Bot.Automated {
                         CcOnly = contract.cc_only
                     };
 
+                    //Ping non-ultra members who have "Ping on Ultra contract I don't have" turned on
+                    var reminderChannel = await _client.GetChannelAsync(GuildChannelType.UnobtainedUltraChannel, guild);
+                    if(reminderChannel is not null) {
+                        //Clear the channel, except for pinned messages
+                        var cleared = false;
+                        while(!cleared) {
+                            var messages = await reminderChannel.GetMessagesAsync(100).ToListAsync();
+                            var unpinnedRemain = messages.Any(mc => mc.Any(mes => !mes.IsPinned));
+                            if(unpinnedRemain) foreach(var cluster in messages) foreach(var grabbedMessage in cluster) if(!grabbedMessage.IsPinned) await grabbedMessage.DeleteAsync();
+                            else cleared = true;
+                        }
+
+                        //Start gathering users list
+                        var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
+                        var pingableUsers = await _db.DBUsers.Where(
+                            u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null 
+                            && a.PingForNCUltra
+                            && a.Backup != null
+                            && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)
+                            && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
+                        )).ToListAsync();
+
+                        //Don't continue further for zero-counts
+                        if(pingableUsers is null || pingableUsers.Count == 0) return;
+
+                        //Start forming the message
+                        var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
+                        var message = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
+                        //Send the message
+                        await reminderChannel.SendMessageAsync(message);
+
+                        var pingGroups = pingableUsers.OrderByDescending(u => u.DiscordUsername).Select(u => $"@<{u.DiscordId}>").ToList().Chunk(20);
+                        foreach( var pingGroup in pingGroups) {
+                            await reminderChannel.SendMessageAsync(string.Join(" ", pingGroup));
+                        }
+                    }
+
                     _db.GuildContracts.Add(guildContract);
                     await _db.SaveChangesAsync();
                     if(!dbguild.DisableBG) {
