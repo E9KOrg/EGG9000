@@ -26,6 +26,7 @@ using System.Security.Principal;
 using Event = EGG9000.Common.Database.Entities.Event;
 using System.Diagnostics.Contracts;
 using static EGG9000.Site.Controllers.HomeController;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -222,7 +223,15 @@ namespace EGG9000.Site.Controllers {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);
                     var dmChannel = await discordUser.CreateDMChannelAsync();
-                    await dmChannel.SendMessageAsync("Testing DM Ping");
+                    try {
+                        await dmChannel.SendMessageAsync("Testing DM Ping");
+                    } catch(Exception ex) {
+                        var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+                        if(dbUser is not null) {
+                            dbUser.DMSBlocked = true;
+                            await _db.SaveChangesAsync();
+                        }
+                    }
                     return Ok();
                 case "talktoegg9000":
                     var channel = (SocketTextChannel)_discord.GetChannel(1012791664831639613);

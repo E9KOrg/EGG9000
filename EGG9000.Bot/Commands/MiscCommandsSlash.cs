@@ -420,6 +420,11 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 try {
                     var message = await dmChannel.SendMessageAsync(infoText);
                 } catch(Exception) {
+                    var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == command.User.Id);
+                    if(dbUser is not null) {
+                        dbUser.DMSBlocked = true;
+                        await db.SaveChangesAsync();
+                    }
                     await command.Channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
                 }
             }

@@ -41,7 +41,7 @@ namespace EGG9000.Common.Database.Entities {
         public ulong? LastGuild { get; set; }
 
         public bool AcceptedRules { get; set; }
-
+        public bool DMSBlocked { get; set; } = false;
         public bool TempDisabled { get; set; }
         public bool showEB { get; set; }
 

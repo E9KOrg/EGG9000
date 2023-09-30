@@ -59,6 +59,11 @@ namespace EGG9000.Bot.Jobs {
                         }
                     }
                 } catch(Exception e) {
+                    var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == user.DiscordId);
+                    if(dbUser is not null) {
+                        dbUser.DMSBlocked = true;
+                        await _db.SaveChangesAsync();
+                    }
                     _logger.LogError(e, $"Error sending warning to {user.DiscordUsername}");
                     if(!e.Message.Contains("Cannot send messages to this user"))
                         _bugsnag.Notify(e);
