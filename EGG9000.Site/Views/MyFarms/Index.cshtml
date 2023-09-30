@@ -100,25 +100,40 @@
 }
 
 @if (unjoinedCoops.Any()) {
-    @if (isAdmin) {
-        <div class="alert alert-danger">
-            @Model.User.DiscordUsername has not joined the following coops they've been assigned.
-            <div class="font-weight-bold" style="margin-top:10px;">
-                @foreach (var xref in unjoinedCoops) {
-                    <div><img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />@xref.Coop.Contract.Name - @xref.Coop.Name<a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a></div>
-                }
-            </div>
+    <div class="alert alert-danger">
+        @if (isAdmin){
+            <span>@Model.User.DiscordUsername has not joined the following coops they've been assigned.</span>
+        } else{
+            <span>Pssst... It looks like you haven't joined the following coops that you've been assigned!</span>
+        }
+        <div class="font-weight-bold" style="margin-top:10px;">
+            @foreach (var xref in unjoinedCoops) {
+                <div>
+                    <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
+                    @xref.Coop.Contract.Name - @xref.Coop.Name
+                    <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/">
+                        <img src="/images/discordicon.png" style="max-height: 1em;" />
+                    </a>
+                </div>
+            }
         </div>
-    } else {
-        <div class="alert alert-danger">
-            Pssst... It looks like you haven't joined the following coops that you've been assigned!
+    </div>
+}
+
+@if(Model.User.DMSBlocked){
+    <div class="alert alert-danger">
+        @if (isAdmin && true == false){
+            <span><b>@Model.User.DiscordUsername has blocked DMs from EGG9000.</b></span>
+        } else{
+            <span><b>It looks like you've blocked DMs from EGG9000</b>.<br />This can either be due to Server Privacy settings, or directly blocking the bot.<br />This may lead to missed communications - please resolve this.</span>
             <div class="font-weight-bold" style="margin-top:10px;">
-                @foreach (var xref in unjoinedCoops) {
-                    <div>><img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />@xref.Coop.Contract.Name - @xref.Coop.Name<a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a></div>
-                }
+                <a href="https://support.discord.com/hc/en-us/articles/217916488-Blocking-Privacy-Settings-">
+                    <img style="max-height: 30px" src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"/> 
+                    See this Discord support article for help fixing this issue.
+                </a>
             </div>
-        </div>
-    }
+        }
+    </div>
 }
 
 <div>

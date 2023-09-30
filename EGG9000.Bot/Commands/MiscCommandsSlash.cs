@@ -31,6 +31,7 @@ using static Ei.Backup.Types;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using System.ComponentModel;
 using EGG9000.Bot.Automated.Coops;
+using Microsoft.AspNetCore.Connections.Features;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -381,6 +382,19 @@ Last Backup <t:{backup.LastBackupTime}:R>
             }
         }
 
+        [SlashCommand(Description = "Daveed testing")]
+        public static async Task DMMe(FauxCommand command, ApplicationDbContext db) {
+            var dmChannel = await command.User.CreateDMChannelAsync();
+            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"Test DM");
+            var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == command.User.Id);
+            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                await db.SaveChangesAsync();
+            } if(retEx != null) {
+                await command.RespondAsync("Exception caught.");
+            } else await command.RespondAsync("Sent");
+        }
+
         [SlashCommand(Description = "Get help from staff, please give details")]
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
@@ -417,16 +431,13 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.RespondAsync(infoText, ephemeral: keepPrivate);
             if(keepPrivate) {
                 var dmChannel = await command.User.CreateDMChannelAsync();
-                try {
-                    var message = await dmChannel.SendMessageAsync(infoText);
-                } catch(Exception) {
-                    var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == command.User.Id);
-                    if(dbUser is not null) {
-                        dbUser.DMSBlocked = true;
-                        await db.SaveChangesAsync();
-                    }
-                    await command.Channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, infoText);
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == command.User.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
                 }
+                if(retEx != null) await command.Channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
             }
         }
     }

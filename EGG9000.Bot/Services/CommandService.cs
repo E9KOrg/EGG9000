@@ -439,17 +439,15 @@ namespace EGG9000.Bot.Services {
                         if(xref.CoopSetting?.PingOnMessage ?? false) {
                             var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
                             var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
-                            try {
-                                var dmChannel = await discordUser.CreateDMChannelAsync();
-                                await dmChannel.SendMessageAsync($"Message from <#{coop.DiscordChannelId}>, **{author.GetCleanName()}:** {message.Content}");
-                            } catch(Exception e) {
-                                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
-                                if(dbUser is not null) {
-                                    dbUser.DMSBlocked = true;
-                                    await db.SaveChangesAsync();
-                                }
-                                _logger.LogError(e, "User {user} has DMs blocked", discordUser.Username);
+
+                            var dmChannel = await discordUser.CreateDMChannelAsync();
+                            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"Message from <#{coop.DiscordChannelId}>, **{author.GetCleanName()}:** {message.Content}");
+                            var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+                            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                                dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                                await db.SaveChangesAsync();
                             }
+                            if(retEx != null) _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
                         }
                     }
                 }

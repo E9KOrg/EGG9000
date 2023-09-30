@@ -93,7 +93,10 @@ namespace EGG9000.Bot.Commands {
         public static MessageProperties MainMenu(DBUser dbuser, EggIncAccount account, int index, Guild dbguild) {
             var props = new MessageProperties();
 
-            var eBuilder = MenuEmbedTemplate("Main Menu", "", account, dbuser);
+            var desc = dbuser.DMSBlocked ? "⚠ <@514257192803893272> is currently blocked from sending you Direct Messages (DMs.) This could either be due to Server Privacy settings, or directly blocking the bot. Please reach out to Staff for questions." : "";
+
+            var eBuilder = MenuEmbedTemplate("Main Menu", desc, account, dbuser);
+            if(desc != "") eBuilder.WithColor(Color.Red);
 
             eBuilder.AddField("Break (60 Day Max)", MCSBreakMessage(account));
 
