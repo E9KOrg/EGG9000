@@ -30,6 +30,7 @@ using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
 using static Ei.Backup.Types;
 using Microsoft.AspNetCore.Http;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -397,7 +398,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(xref.CoopSetting is null && user is not null) {
                             xref.CoopSetting = new CoopSetting(xref, user.User);
                             if(xref.CoopSetting.PingOnCoopCreated) {
-                                await SendDMWarning(guild.GetUser(user.User.DiscordId), coopChannel, "Co-op has been created: ", coop);
+                                await SendDMWarning(db, guild.GetUser(user.User.DiscordId), coopChannel, "Co-op has been created: ", coop);
                                 xref.CoopSetting.PingOnCoopCreated = false;
                             }
                             xref.UpdateCoopSetting();
@@ -532,7 +533,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }).ToList();
 
 
-                    await CheckDeflectorChange(coop.LastStatusUpdate, status, coop, usersWithStatus, coopChannel);
+                    await CheckDeflectorChange(coop.LastStatusUpdate, status, coop, usersWithStatus, coopChannel, db);
                     await CheckOnCoopFullError(usersWithStatus, coop, status, coop.Contract, coopChannel);
 
                     timings.Set("1.1");
@@ -764,18 +765,17 @@ namespace EGG9000.Bot.Automated.Coops {
                                     if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                         xref.JoinWarning24TillFinish = true;
                                         await _db.SaveChangesAsync();
-                                        await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                     } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                         xref.JoinWarning24h = true;
                                         xref.JoinWarning12h = true;
                                         await _db.SaveChangesAsync();
                                         //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
-                                        var dmChannel = await discordUser.CreateDMChannelAsync();
-                                        await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op", coop);
                                     } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                         xref.JoinWarning12h = true;
                                         await _db.SaveChangesAsync();
-                                        await SendDMWarning(discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
                                     }
 
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-18)) {
@@ -966,15 +966,15 @@ namespace EGG9000.Bot.Automated.Coops {
                     var missingCount = coopDetails.CoopParticipants.Count(x => x.Xref is not null && x.CoopStatus is null);
 
                     if(missingCount == 0) {
-                        await HandlePingOnFull(coopDetails.CoopParticipants, coopChannel);
+                        await HandlePingOnFull(db, coopDetails.CoopParticipants, coopChannel);
                     }
 
                     if(status.ClearedForExit) {
-                        await HandlePingOnCheckedIn(coopDetails.CoopParticipants, coopChannel);
+                        await HandlePingOnCheckedIn(db, coopDetails.CoopParticipants, coopChannel);
                     }
 
                     if(coop.FinishedOrFailed()) {
-                        await HandleFinished(coopDetails.CoopParticipants, coopChannel);
+                        await HandleFinished(db, coopDetails.CoopParticipants, coopChannel);
                     }
 
 
@@ -1226,13 +1226,19 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(user.DiscordUser != null) {
                     var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
+                    
                     var dmChannel = await user.DiscordUser.CreateDMChannelAsync();
-                    try {
-                        var message = await dmChannel.SendMessageAsync(warningText);
-                    } catch(Exception) {
+
+                    var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, warningText);
+                    var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == user.DiscordUser.Id);
+                    if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                        dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                        await _db.SaveChangesAsync();
+                    }
+                    if(retEx != null) {
+                        _logger.LogError(retEx, "User {user} has DMs blocked", user.DiscordUser.Username);
                         await coopChannel.SendMessageAsync($"{warningText} (DMs are blocked)");
                     }
-
                 }
                 sleepTracking.Add(currentSleep);
             }
@@ -1311,55 +1317,76 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public async Task HandlePingOnFull(List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
+        public async Task HandlePingOnFull(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFull ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFull = false;
                 userStatus.Xref.UpdateCoopSetting();
+
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try {
-                    await dmChannel.SendMessageAsync($"All users have joined the co-op {coopChannel.Mention}");
-                } catch(Exception) {
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"All users have joined the co-op {coopChannel.Mention}");
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
+                }
+                if(retEx != null) {
+                    _logger.LogError(retEx, "User {user} has DMs blocked", userStatus.DiscordUser.Username);
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} All users have joined the co-op {coopChannel.Mention} (User has blocked DMs from bot)");
                 }
-
             }
         }
-        public async Task HandlePingOnCheckedIn(List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
+        public async Task HandlePingOnCheckedIn(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnEveryoneCheckedIn ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnEveryoneCheckedIn = false;
                 userStatus.Xref.UpdateCoopSetting();
+
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try {
-                    await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.");
-                } catch(Exception) {
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.");
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
+                }
+                if(retEx != null) {
+                    _logger.LogError(retEx, "User {user} has DMs blocked", userStatus.DiscordUser.Username);
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} The co-op {coopChannel.Mention} has finished and everyone is checked in. (User has blocked DMs from bot)");
                 }
-
             }
         }
 
-        public async Task HandleFinished(List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
+        public async Task HandleFinished(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, ITextChannel coopChannel) {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFinished ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFinished = false;
                 userStatus.Xref.UpdateCoopSetting();
+
                 var dmChannel = await userStatus.DiscordUser.CreateDMChannelAsync();
-                try {
-                    await dmChannel.SendMessageAsync($"The co-op {coopChannel.Mention} has finished.");
-                } catch(Exception) {
+                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"The co-op {coopChannel.Mention} has finished.");
+                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == userStatus.DiscordUser.Id);
+                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                    await db.SaveChangesAsync();
+                }
+                if(retEx != null) {
+                    _logger.LogError(retEx, "User {user} has DMs blocked", userStatus.DiscordUser.Username);
                     await coopChannel.SendMessageAsync($"{userStatus.DiscordUser.Mention} The co-op {coopChannel.Mention} has finished. (User has blocked DMs from bot)");
                 }
-
             }
         }
 
-        public async Task SendDMWarning(SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
+        public async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             if(discordUser is null)
                 return;
-            try {
-                var dmChannel = await discordUser.CreateDMChannelAsync();
-                await dmChannel.SendMessageAsync($"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");
-            } catch(HttpException) {
-                await coopChannel.SendMessageAsync($"{discordUser.Mention}: {Message} (User has blocked DMs from bot)");
+
+            var dmChannel = await discordUser.CreateDMChannelAsync();
+            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}");
+            var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
+            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                await db.SaveChangesAsync();
+            }
+            if(retEx != null) {
+                _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} The co-op {coopChannel.Mention} has finished. (User has blocked DMs from bot)");
             }
         }
 
@@ -1410,7 +1437,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsync();
-                        await SendDMWarning(user.DiscordUser, coopChannel, $"Highest EB ({highestEB2.DiscordUser?.GetCleanName()} at {highestEB2.Backup.EarningsBonus.ToEggString()}) has joined", coop);
+                        await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Highest EB ({highestEB2.DiscordUser?.GetCleanName()} at {highestEB2.Backup.EarningsBonus.ToEggString()}) has joined", coop);
                     }
                 }
             }
@@ -1424,12 +1451,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     user.Xref.CoopSetting.PingOnCompleteOnCheckIn = false;
                     user.Xref.UpdateCoopSetting();
                     await _db.SaveChangesAsync();
-                    await SendDMWarning(user.DiscordUser, coopChannel, $"Your co-op will complete once everyone checks in.", coop);
+                    await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Your co-op will complete once everyone checks in.", coop);
                 }
             }
         }
 
-        public async Task CheckDeflectorChange(Ei.ContractCoopStatusResponse prevStatus, Ei.ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel) {
+        public async Task CheckDeflectorChange(Ei.ContractCoopStatusResponse prevStatus, Ei.ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel, ApplicationDbContext _db) {
             if(prevStatus == null || coop.FinishedOrFailed() || coop.CoopEnds < DateTimeOffset.Now) {
                 return;
             }
@@ -1439,7 +1466,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(oldTachyon != newTachyon) {
                     var oldVal = oldTachyon * 100;
                     var newVal = newTachyon * 100;
-                    await SendDMWarning(user.DiscordUser, coopChannel, $"Tachyon Deflector amount changed from {oldVal:F0}% to {newVal:F0}%", coop);
+                    await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Tachyon Deflector amount changed from {oldVal:F0}% to {newVal:F0}%", coop);
                 }
             }
         }

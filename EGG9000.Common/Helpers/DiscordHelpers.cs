@@ -48,6 +48,15 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
+        public static async Task<Exception> BoolSendDm(IDMChannel dmChannel, string message) {
+            try {
+                await dmChannel.SendMessageAsync(message);
+                return null;
+            } catch(Exception ex) {
+                return ex;
+            }
+        }
+
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             var tokenSource2 = new CancellationTokenSource();
             var token2 = tokenSource2.Token;

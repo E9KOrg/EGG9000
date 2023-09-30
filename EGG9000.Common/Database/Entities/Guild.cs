@@ -153,6 +153,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
         BannedUserThread = 36,
         [Description("Optional: Thread ID where artifact cheaters will be outed.")]
-        ArtifactCheaterThread = 37
+        ArtifactCheaterThread = 37,
+        /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
+        UnobtainedUltraChannel = 38*/
     }
 }
