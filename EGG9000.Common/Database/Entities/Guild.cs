@@ -154,7 +154,7 @@ namespace EGG9000.Common.Database.Entities {
         BannedUserThread = 36,
         [Description("Optional: Thread ID where artifact cheaters will be outed.")]
         ArtifactCheaterThread = 37,
-        [Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
-        UnobtainedUltraChannel = 38
+        /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
+        UnobtainedUltraChannel = 38*/
     }
 }

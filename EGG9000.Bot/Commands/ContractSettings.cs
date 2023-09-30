@@ -120,8 +120,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            var ultraPingChannel = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.UnobtainedUltraChannel);
-            if(ultraPingChannel != null && account.SubscriptionLevel == null) {
+            if(account.SubscriptionLevel == null) {
                 eBuilder.AddField("Ultra Offer Pings", account.PingForNCUltra ? "Enabled" : "Disabled");
                 builder.WithButton("Ultra Offer Pings", $"MCSUltraPing:{index},{dbuser.DiscordId}");
             }
