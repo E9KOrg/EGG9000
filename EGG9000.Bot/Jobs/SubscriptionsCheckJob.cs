@@ -13,6 +13,7 @@ using Ei;
 using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 
@@ -27,15 +28,16 @@ namespace EGG9000.Bot.Jobs {
 
     public class SubscriptionsCheckJob {
         private readonly ILogger<SubscriptionsCheckJob> _logger;
-        private readonly ApplicationDbContext _db;
         private readonly DiscordSocketClient _discord;
         private readonly Bugsnag.IClient _bugsnag;
+        private readonly IServiceProvider _provider;
 
-        public SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord, Bugsnag.IClient bugsnag) {
+
+        public SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IServiceProvider provider) {
             _logger = logger;
-            _db = applicationDbContext;
             _discord = discord;
             _bugsnag = bugsnag;
+            _provider = provider;
         }
 
 
@@ -47,14 +49,15 @@ namespace EGG9000.Bot.Jobs {
 #endif
         public async Task CheckSubscriptions() {
             _logger.LogInformation("Checking subscriptions");
+            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 #if DEBUG
-            var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
-            //var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0 && x.DiscordId == 491603295220006913).ToList();
+            //var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
+            var users = db.DBUsers.Where(x => x.DiscordId == 273621777119313921).ToList();
 #else
-            var users = _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
+            var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
 #endif
             foreach(var guildGroup in users.GroupBy(x => x.GuildId)) {
-                var dbguild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
+                var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
                 if(dbguild is null)
                     continue;
                 var guild = _discord.GetGuild(guildGroup.Key);
@@ -94,7 +97,7 @@ namespace EGG9000.Bot.Jobs {
                 });
             }
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             _logger.LogInformation("Finished checking subscriptions");
         }
 

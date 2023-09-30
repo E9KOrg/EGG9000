@@ -22,16 +22,28 @@ using System.Xml.Serialization;
 
 namespace EGG9000.Bot.Automated {
     public class UserCxpUpdater : _UpdaterBase<UserCxpUpdater> {
+#if DEBUG
+        //public UserCxpUpdater(
+        //    IServiceProvider provider
+        //) : base(CronExpression.Parse("0 9 * * MON,WED,FRI"), provider) {
+        //}
+        public UserCxpUpdater(
+            IServiceProvider provider
+        ) : base(TimeSpan.MaxValue, TimeSpan.Zero, provider) {
+        }
+#else
+
         public UserCxpUpdater(
             IServiceProvider provider
         ) : base(CronExpression.Parse("0 9 * * MON,WED,FRI"), provider) {
         }
+#endif
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             //Get a list of all users that are a part of a guild
 #if DEBUG
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 305047615073026049).ToListAsync();
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync();
 #else
             var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
 #endif

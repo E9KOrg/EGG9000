@@ -38,6 +38,7 @@ using System.IO;
 using MassTransit;
 using EGG9000.Bot.Consumers;
 using EGG9000.Common.Extensions;
+using EGG9000.Bot.Automated.Coops;
 
 namespace EGG9000.Bot.Services {
 
@@ -55,6 +56,7 @@ namespace EGG9000.Bot.Services {
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
         private ContractUpdater _contractUpdater;
         private CoopStatusUpdater _coopStatusUpdater;
+        private JobService _jobService;
         private Guild _cpGuild;
         private IServiceProvider _provider;
         private ILogger<CommandService> _logger;
@@ -67,6 +69,7 @@ namespace EGG9000.Bot.Services {
                 Bugsnag.IClient bugsnag,
                 ContractUpdater contractUpdater,
                 CoopStatusUpdater coopStatusUpdater,
+                JobService jobService,
                 ApplicationDbContext context,
                 IServiceProvider serviceProvider,
                 ILogger<CommandService> logger,
@@ -81,6 +84,7 @@ namespace EGG9000.Bot.Services {
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
             _coopStatusUpdater = coopStatusUpdater;
+            _jobService = jobService;
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
@@ -171,6 +175,8 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_coopStatusUpdater);
                         } else if(parameterInfo.ParameterType == typeof(ContractUpdater)) {
                             parameters.Add(_contractUpdater);
+                        } else if(parameterInfo.ParameterType == typeof(JobService)) {
+                            parameters.Add(_jobService);
                         } else if(parameterInfo.ParameterType == typeof(IServiceProvider)) {
                             parameters.Add(_provider);
                         } else if(parameterInfo.ParameterType == typeof(Bugsnag.IClient)) {
