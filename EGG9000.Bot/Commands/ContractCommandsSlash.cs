@@ -1,7 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Bot.Automated;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Services;
@@ -36,6 +34,7 @@ using Ei;
 
 using Microsoft.Extensions.Logging;
 using Exception = System.Exception;
+using EGG9000.Bot.Automated.Coops;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
@@ -81,7 +80,7 @@ namespace EGG9000.Bot.Commands {
 
             var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
 
-            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser?.DiscordId == dbuser.DiscordId && x.EggsShipped == 0);
+            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser?.DiscordId == command.User.Id && x.EggsShipped == 0);
 
             if(xref is null) {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user with zero production.");
@@ -123,11 +122,11 @@ namespace EGG9000.Bot.Commands {
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
                 await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
-                await command.Channel.SendMessageAsync($"Successfully removed <@{dbuser.DiscordId}> from co-op, they should be able to rejoin now.");
+                await command.Channel.SendMessageAsync($"Successfully removed {command.User.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
             } else {
                 logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
-                await command.ModifyOriginalResponseAsync($"Attempted to remove <@{dbuser.DiscordId}> from co-op, please check again in a few minutes.");
+                await command.ModifyOriginalResponseAsync($"Attempted to remove {command.User.Mention} from co-op, please check again in a few minutes.");
             }
         }
 

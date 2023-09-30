@@ -17,6 +17,7 @@ using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
 using MassTransit;
 using EGG9000.Bot.Consumers;
+using EGG9000.Bot.Automated.Coops;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -114,7 +115,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddHostedService<RemoveTempRoles>();
             services.AddHostedService<HandleGradeChanges>();
 
-            services.AddHostedService<JobService>();
+
+            services.AddSingleton<JobService>();
+            services.AddHostedService<JobService>(provider => provider.GetService<JobService>());
 
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();

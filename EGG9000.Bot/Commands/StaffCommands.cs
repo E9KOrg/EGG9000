@@ -39,6 +39,7 @@ using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using System.Collections;
 using System.Numerics;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -154,7 +155,7 @@ namespace EGG9000.Bot.Commands {
                     .WithIconUrl(EggIncEggs.GetEggById((int)findCoop.Contract.Details.Egg).Image)
                     .WithUrl($"https://egg9000.com/coop/{findCoop.Contract.ID}/{findCoop.Name.ToLower()}"))
                 .WithColor(color);
-                
+
 
             var assigned = 0;
             var joined = 0;
@@ -174,7 +175,7 @@ namespace EGG9000.Bot.Commands {
             userList.AddRange(findCoop?.UserCoopsXrefs?.Select(u => $"{(u.JoinedCoop ? "✓" : "❌")} <@{u.User.DiscordId}>").ToList());
             if(userList.Count == 1) {
                 userList.Add("..._No users_");
-            } else if (userList.Count > 10){
+            } else if(userList.Count > 10) {
                 userList = userList.Take(10).ToList();
                 userList.Add("..._(Trimmed list)_");
             }
@@ -185,7 +186,7 @@ namespace EGG9000.Bot.Commands {
             builder.AddField("League", PlayerGradeDetails.GetEmoji(findCoop.League));
 
             if(findCoop.Finished) builder.AddField("Status", "**Finished**");
-            else if(findCoop.FinishedOrFailed()) builder.AddField("Status", "**Failed**"); 
+            else if(findCoop.FinishedOrFailed()) builder.AddField("Status", "**Failed**");
             else builder.AddField("Projected to finish?", $"{(findCoop.ProjectedToFinish ? "Yes" : "No")}");
 
             await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
@@ -255,13 +256,24 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                          .SelectMany(t => t.GetMethods())
+                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                          .FirstOrDefault(x => x.Name == serviceName);
+                if(job is null) {
+                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    return;
+                }
+
+                jobService.RunJob(serviceName);
+
                 return;
             }
+
             await command.RespondAsync($"Attempting to restart {serviceName}");
             try {
                 await service.StopAsync(new System.Threading.CancellationToken());
@@ -274,12 +286,22 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
         }
 
-        [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
+        [SlashCommand(Description = "Stop an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                          .SelectMany(t => t.GetMethods())
+                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                          .FirstOrDefault(x => x.Name == serviceName);
+                if(job is null) {
+                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    return;
+                }
+
+                jobService.RunJob(serviceName);
+                
                 return;
             }
             if(!(service as IUpdaterService).Running()) {
@@ -298,12 +320,20 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Run automated service now", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
-                return;
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                          .SelectMany(t => t.GetMethods())
+                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                          .FirstOrDefault(x => x.Name == serviceName);
+                if(job is null) {
+                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    return;
+                }
+
+                jobService.RunJob(serviceName);
             }
             if(!(service as IUpdaterService).Running()) {
                 await command.RespondAsync($"The service {serviceName} is already stopped.");
@@ -320,12 +350,20 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider) {
+        public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                await command.RespondAsync($"Unable to locate a service with the name {serviceName}");
-                return;
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                          .SelectMany(t => t.GetMethods())
+                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                          .FirstOrDefault(x => x.Name == serviceName);
+                if(job is null) {
+                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    return;
+                }
+
+                jobService.RunJob(serviceName);
             }
             if((service as IUpdaterService).Running()) {
                 await command.RespondAsync($"The service {serviceName} is already running.");
@@ -342,20 +380,34 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
         }
 
+        private static List<AutocompleteResult> _allServicesAndJobs = null;
         public class ServiceNameAutoComplete : AutoCompleteHandler {
             private readonly IServiceProvider _serviceProvider;
             public ServiceNameAutoComplete(IServiceProvider serviceProvider) {
                 _serviceProvider = serviceProvider;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var services = _serviceProvider.GetServices<IHostedService>().Where(x => x is IUpdaterService).OrderBy(x => x.GetType().Name).ToList();
-                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    services = services.Where(x => x.GetType().Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
+                if(_allServicesAndJobs == null) {
+                    var services = _serviceProvider.GetServices<IHostedService>().Where(x => x is IUpdaterService).OrderBy(x => x.GetType().Name)
+                        .Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToList();
+
+                    var jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                          .SelectMany(t => t.GetMethods())
+                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                          .Select(x => new AutocompleteResult($"Job.{x.GetType().Name}", x.GetType().Name)).ToArray();
+
+                    _allServicesAndJobs = new List<AutocompleteResult>();
+                    _allServicesAndJobs.AddRange(services);
+                    _allServicesAndJobs.AddRange(jobs);
                 }
 
 
-                var results = services.Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToArray();
-                await arg.RespondAsync(null, results);
+                var results = _allServicesAndJobs;
+                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    results = results.Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+
+                await arg.RespondAsync(null, results.OrderBy(x => x.Name).ToArray());
             }
         }
     }

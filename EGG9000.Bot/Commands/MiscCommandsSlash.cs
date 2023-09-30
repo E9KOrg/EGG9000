@@ -30,6 +30,7 @@ using Google.Protobuf.WellKnownTypes;
 using static Ei.Backup.Types;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using System.ComponentModel;
+using EGG9000.Bot.Automated.Coops;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
