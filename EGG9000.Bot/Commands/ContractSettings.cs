@@ -43,8 +43,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static readonly DateTimeOffset StaticToday = DateTimeOffset.Now;
-
-        public static List<(int bg, long time)> BoardingGroupTimes = new(){
+        public static readonly List<(int bg, long time)> BoardingGroupTimes = new(){
             (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
             (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
             (3, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
