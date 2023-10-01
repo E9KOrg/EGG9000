@@ -42,12 +42,13 @@ namespace EGG9000.Bot.Commands {
 
         }
 
+        public static readonly TimeSpan TimeZoneOffset = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.Now);
         private static readonly DateTimeOffset StaticToday = DateTimeOffset.Now;
         public static readonly List<(int bg, long time)> BoardingGroupTimes = new(){
-            (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
-            (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
-            (3, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
-            (4, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(24).ToUnixTimeSeconds())
+            (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).ToUnixTimeSeconds()),
+            (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(8).ToUnixTimeSeconds()),
+            (3, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(16).ToUnixTimeSeconds()),
+            (4, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(24).ToUnixTimeSeconds())
         };
 
         #region AdminBypass
