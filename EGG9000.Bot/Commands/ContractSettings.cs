@@ -42,11 +42,13 @@ namespace EGG9000.Bot.Commands {
 
         }
 
+        private static readonly DateTimeOffset StaticToday = DateTimeOffset.Now;
+
         public static List<(int bg, long time)> BoardingGroupTimes = new(){
-            (1, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
-            (2, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
-            (3, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
-            (4, new DateTimeOffset(2023, 5, 1, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(24).ToUnixTimeSeconds())
+            (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).ToUnixTimeSeconds()),
+            (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(8).ToUnixTimeSeconds()),
+            (3, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(16).ToUnixTimeSeconds()),
+            (4, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeSpan.FromHours(-5)).AddHours(24).ToUnixTimeSeconds())
         };
 
         #region AdminBypass
