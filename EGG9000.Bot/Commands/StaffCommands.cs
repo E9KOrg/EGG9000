@@ -144,33 +144,16 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            Color color = Color.DarkGrey;
-            if(!findCoop.Finished && findCoop.FinishedOrFailed()) color = Color.Red;
-            else if(findCoop.ProjectedToFinish) color = Color.Green;
-            else color = Color.Blue;
-
             var builder = new EmbedBuilder()
                 .WithAuthor(new EmbedAuthorBuilder()
                     .WithName($"{findCoop.Contract.Name} - {findCoop.Name}")
                     .WithIconUrl(EggIncEggs.GetEggById((int)findCoop.Contract.Details.Egg).Image)
                     .WithUrl($"https://egg9000.com/coop/{findCoop.Contract.ID}/{findCoop.Name.ToLower()}"))
-                .WithColor(color);
-
-
-            var assigned = 0;
-            var joined = 0;
-
-            foreach(var u in findCoop?.UserCoopsXrefs) {
-                if(u is null) continue;
-                else if(u.JoinedCoop) {
-                    assigned++;
-                    joined++;
-                } else assigned++;
-            }
+                .WithColor((!findCoop.Finished && findCoop.FinishedOrFailed()) ? Color.Red : (findCoop.ProjectedToFinish ? Color.Green : Color.Blue));
 
             //For each item in coopName.UserCoopsXrefs, append a user mention to a variable
             var userList = new List<string> {
-                $"**__Coop Users {joined}/{assigned}__:**"
+                $"**__Coop Users {findCoop?.UserCoopsXrefs.Count(u => u.JoinedCoop) ?? 0}/{findCoop?.UserCoopsXrefs.Count ?? 0}__:**"
             };
             userList.AddRange(findCoop?.UserCoopsXrefs?.Select(u => $"{(u.JoinedCoop ? "✓" : "❌")} <@{u.User.DiscordId}>").ToList());
             if(userList.Count == 1) {
@@ -183,7 +166,7 @@ namespace EGG9000.Bot.Commands {
             builder.WithDescription(string.Join("\n", userList));
 
             builder.AddField("Channel", $"{(findCoop.DeletedChannel ? "**Channel Deleted**" : "<#" + findCoop.DiscordChannelId + ">")}");
-            builder.AddField("League", PlayerGradeDetails.GetEmoji(findCoop.League));
+            builder.AddField("League", (findCoop.AnyLeague ? "<:ultra:1131045418319495369> Any Grade" : "") + PlayerGradeDetails.GetEmoji(findCoop.League));
 
             if(findCoop.Finished) builder.AddField("Status", "**Finished**");
             else if(findCoop.FinishedOrFailed()) builder.AddField("Status", "**Failed**");
