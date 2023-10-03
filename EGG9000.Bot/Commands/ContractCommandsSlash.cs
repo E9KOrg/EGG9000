@@ -714,12 +714,12 @@ namespace EGG9000.Bot.Commands {
                     User = user
                 } };
 
-                if(existContractXrefs.Any(x => x.EggIncId == (subAccountBypass.Id ?? user.EggIncAccounts.First().Id))) {
+                if(existContractXrefs is not null && existContractXrefs.Any(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id))) {
                     await command.ModifyOriginalResponseAsync($"⚠️ERROR: You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existContractXrefs.First().Coop.DiscordChannelId}>");
                     return;
                 }
 
-                if(activeXrefs.Count(x => x.EggIncId == (subAccountBypass.Id ?? user.EggIncAccounts.First().Id)) >= 4) {
+                if(activeXrefs is not null && activeXrefs.Count(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id)) >= 4) {
                     await command.ModifyOriginalResponseAsync($"⚠️ERROR: You have 4 active coops, and cannot be assigned a new one at this time. Try again when a current coop finishes.");
                     return;
                 }
@@ -736,7 +736,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 foreach(var account in userList) {
-                    Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
+                    _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
                     builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to create the co-op with."; x.Components = builder.Build(); });
