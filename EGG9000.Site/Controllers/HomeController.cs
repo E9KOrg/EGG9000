@@ -174,9 +174,8 @@ namespace EGG9000.Site.Controllers {
             return Json(msg);
         }
 
-        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
-
         [Authorize(Roles = "Admin,GuildAdmin")]
+        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
             //var rawBackup = await ContractsAPI.FirstContact(ei);
