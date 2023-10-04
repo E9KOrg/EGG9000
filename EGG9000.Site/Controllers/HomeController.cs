@@ -174,8 +174,8 @@ namespace EGG9000.Site.Controllers {
             return Json(msg);
         }
 
-        /*[ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
-
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
             //var rawBackup = await ContractsAPI.FirstContact(ei);
@@ -184,18 +184,21 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(backup);
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
             var backup = await _apiLink.GetBackup(ei);
             return new ObjectResult(backup);
         }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
             var backup = await ContractsAPI.FirstContact(ei);
             return new ObjectResult(backup);
-        }*/
+        }
 
         public async Task<IActionResult> CleanCoopPins() {
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
