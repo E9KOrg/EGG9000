@@ -44,8 +44,9 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var builder = new EmbedBuilder();
-            builder.Title = $"EB Tracking";
+            var builder = new EmbedBuilder {
+                Title = $"EB Tracking"
+            };
             foreach(var id in user.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)

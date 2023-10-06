@@ -88,7 +88,7 @@ namespace EGG9000.Bot.Commands {
                 builder.WithButton($"Manage {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}", $"{prefix}:{i},{dbuser.DiscordId}");
             }
 
-            builder.WithButton("Coop Settings", $"CSAccountMenu:{dbuser.DiscordId},true");
+            builder.WithButton("Coop Settings", $"CSAccountMenu:{dbuser.DiscordId},true,false");
             builder.WithButton("Ship Return DM", $"SRDMenu:{dbuser.DiscordId}");
             return builder.Build();
         }
@@ -387,6 +387,7 @@ namespace EGG9000.Bot.Commands {
             var toggleState = data.Split(",")[2] == "t";
 
             account.PingForNCUltra = toggleState;
+            dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
 
             await component.UpdateAsync(x => { x.Components = UltraPingComponents(dbuser, toggleState, index); x.Embed = UltraPingEmbed(dbuser, account, toggleState); });

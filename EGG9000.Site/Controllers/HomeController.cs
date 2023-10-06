@@ -174,7 +174,7 @@ namespace EGG9000.Site.Controllers {
             return Json(msg);
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
@@ -184,7 +184,7 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(backup);
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
@@ -192,7 +192,7 @@ namespace EGG9000.Site.Controllers {
             return new ObjectResult(backup);
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
