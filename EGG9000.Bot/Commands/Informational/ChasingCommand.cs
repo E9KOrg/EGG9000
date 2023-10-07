@@ -19,7 +19,7 @@ namespace EGG9000.Bot.Commands {
     public class ChasingCommand {
         [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
         public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord, ILogger logger) {
-            await command.RespondAsync("Getting backups...");
+            await command.RespondAsync("Getting backups...", ephemeral: true);
 
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Commands {
 
             if(user.EggIncAccounts.Count == 1) {
                 contentString = await ChasingStringBuilder(discord, parameter, user.GuildId, user.EggIncAccounts.First(), db);
-                await command.DeleteOriginalResponseAsync();
+                //await command.DeleteOriginalResponseAsync();
                 await command.Channel.SendMessageAsync(contentString);
             } else {
                 var builder = new ComponentBuilder();
@@ -83,23 +83,54 @@ namespace EGG9000.Bot.Commands {
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
-
+            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).ToList();
+            var unit = "";
+            switch(parameter) {
+                case ChasingParameters.EB:
+                    accounts = accounts.OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+                    unit = "EB";
+                    break;
+                case ChasingParameters.SE:
+                    accounts = accounts.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+                    unit = "SE";
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(parameter), parameter, null);
+            }
+            
             var userIndex = accounts.FindIndex(x => x.Backup.EggIncId == eggIncAccount.Backup.EggIncId);
 
-            var sb = new StringBuilder();
-            for(var i = userIndex - 1; i <= userIndex + 1; i++) {
+            var stringBuilder = new StringBuilder();
+            stringBuilder.AppendLine("```");
+            stringBuilder.AppendFormat($"{"In game",-20}{"Discord",-20}{unit, -8}");
+            stringBuilder.AppendLine();
+            stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――――――");
+            stringBuilder.AppendLine();
+
+            for(var i = userIndex - 3; i <= userIndex + 1; i++) {
                 if(i >= 0 && i < accounts.Count) {
-                    sb.AppendLine(accounts[i].User.DiscordUsername + " " + accounts[i].Backup.EarningsBonus);
+                    switch(parameter) {
+                        case ChasingParameters.EB:
+                            stringBuilder.AppendFormat($"{(i == userIndex ? "you" : accounts[i].Backup.UserName), -20}{accounts[i].DiscordUser.Username, -20}{accounts[i].Backup.EarningsBonus.ToEggString(), -8}");
+                            stringBuilder.AppendLine();
+                            break;
+                        case ChasingParameters.SE:
+                            stringBuilder.AppendFormat($"{(i == userIndex ? "you" : accounts[i].Backup.UserName), -20}{accounts[i].DiscordUser.Username, -20}{accounts[i].Backup.SoulEggs.ToEggString(), -8}");
+                            stringBuilder.AppendLine();
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(parameter), parameter, null);
+                    }
+
                 }
 
             }
-            return sb.ToString();
+            stringBuilder.AppendLine("```");
+            return stringBuilder.ToString();
         }
         public enum ChasingParameters {
-            CS = 0,
-            EB = 1,
-            SE = 2
+            EB = 0,
+            SE = 1
         }
     }
 }
