@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using Bugsnag.Payload;
+using Discord;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -8,8 +9,10 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Automated {
     public class ArtifactCheaters : _UpdaterBase<ArtifactCheaters> {
@@ -28,13 +31,11 @@ namespace EGG9000.Bot.Automated {
         public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-
-            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
-
+            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).Include(a => a.EggIncAccounts).ToListAsync();
             var scoreSet = new Dictionary<EggIncAccount, double>();
 
             foreach(var user in dbusers) {
-                foreach(var account in user.EggIncAccounts) {
+                foreach(var account in user.EggIncAccounts.ToList()) {
                     var score = (double)ArtifactHelpers.GetArtifactFairnessScore(account.Backup?.ArtifactHall ?? null);
                     if(account is null || score is 0) continue;
                     scoreSet.Add(account, score);
@@ -56,13 +57,14 @@ namespace EGG9000.Bot.Automated {
             var upperThreshold = averageScore + (zScoreCutoff * standardDeviation);
             var upperOutliers = scoreSet
                 .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
-                .Where(pair => !pair.Key.AFSMarkedClean)
+                .Where(pair => pair.Key.AFSMarkedClean == false)
                 .Where(pair => (pair.Value - averageScore) / standardDeviation > zScoreCutoff)
                 .Select(pair => pair.Key)
                 .ToList();
 
             if(sendMessages) {
                 foreach(var outlier in upperOutliers) {
+
                     var user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
                     var outlierScore = scoreSet[outlier];
 
@@ -78,7 +80,12 @@ namespace EGG9000.Bot.Automated {
                     var thread = guild.GetThreadChannel(threadobj.Id);
                     if(thread is null) continue;
 
+#if DEV9002
+                    if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User `<@{user.DiscordId}>` is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+#else
                     if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+#endif
+
                     outlier.AFSWarningSent = true;
                     user.UpdateAccounts();
                 }
