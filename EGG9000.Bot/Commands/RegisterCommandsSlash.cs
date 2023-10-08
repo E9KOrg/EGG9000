@@ -822,7 +822,8 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
                 await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
-                await targetUser.KickAsync();
+                if(banaccount) await targetUser.BanAsync();
+                else await targetUser.KickAsync();
                 await command.RespondAsync("Kicked with DM");
             } catch(HttpException) {
                 await command.RespondAsync("Unable to send DM, user is not yet kicked");
