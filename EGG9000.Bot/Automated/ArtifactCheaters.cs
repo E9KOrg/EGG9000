@@ -57,7 +57,8 @@ namespace EGG9000.Bot.Automated {
             var upperThreshold = averageScore + (zScoreCutoff * standardDeviation);
             var upperOutliers = scoreSet
                 .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
-                .Where(pair => pair.Key.AFSMarkedClean == false)
+                .Where(pair => !pair.Key.AFSMarkedClean)
+                .Where(pair => !pair.Key.AFSWarningSent)
                 .Where(pair => (pair.Value - averageScore) / standardDeviation > zScoreCutoff)
                 .Select(pair => pair.Key)
                 .ToList();
@@ -81,9 +82,9 @@ namespace EGG9000.Bot.Automated {
                     if(thread is null) continue;
 
 #if DEV9002
-                    if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User `<@{user.DiscordId}>` is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    await thread.SendMessageAsync($"User `<@{user.DiscordId}>` is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
 #else
-                    if(!outlier.AFSWarningSent) await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
 #endif
 
                     outlier.AFSWarningSent = true;
