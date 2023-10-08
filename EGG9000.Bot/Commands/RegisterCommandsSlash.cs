@@ -822,7 +822,10 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
                 await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
-                if(banaccount) await targetUser.BanAsync();
+
+                //Check if running user has ban perms
+                var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
+                if(banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers)) await targetUser.BanAsync();
                 else await targetUser.KickAsync();
                 await command.RespondAsync("Kicked with DM");
             } catch(HttpException) {
