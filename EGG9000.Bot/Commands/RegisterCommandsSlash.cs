@@ -442,7 +442,7 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.EggIncAccounts.Count > 1) {
                 roleText = $"Your new account has been added with an EB of {Response.EarningsBonus.ToEggString()}";
             } else if(role != null) {
-                roleText = $"You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}.";
+                roleText = $"You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}";
             }
             var faqText = "";
             var faqChannel = await _client.GetChannelAsync(GuildChannelType.FaqChannel, guild);
@@ -456,7 +456,7 @@ namespace EGG9000.Bot.Commands {
             //}
 
             var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-            await (generalChannel ?? command.Channel).SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}");
+            await (generalChannel ?? command.Channel).SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}.");
 
             var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
             if(overflowRole != null) {
