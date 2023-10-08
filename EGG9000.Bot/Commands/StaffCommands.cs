@@ -55,7 +55,7 @@ namespace EGG9000.Bot.Commands {
             if(account is null) {
                 await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
             } else {
-                await command.RespondAsync($"User account <@ {dbuser.DiscordId}> ({account.Name}) marked as having clean artifacts.");
+                await command.RespondAsync($"User account <@{dbuser.DiscordId}> ({account.Name}) marked as having clean artifacts.");
                 account.AFSMarkedClean = true;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
