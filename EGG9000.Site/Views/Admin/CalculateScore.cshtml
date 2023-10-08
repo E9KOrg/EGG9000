@@ -53,7 +53,7 @@
     @foreach (var user in Model.TopScore) {
         <tr>
             <td><img class="thumbnail" src="@PlayerGradeDetails.GetImage(user.Grade)" /></td>
-            <td onclick="copyIdToClipboard('@user.DiscordUsername', 'high-copy-notification-name')" title="Click to copy">@user.DiscordUsername</td>
+            <td onclick="copyIdToClipboard('@user.DiscordUsername', 'high-copy-notification-name')" title="Click to copy">@user.DiscordUsername.Split(" (")[0]</td>
             <td>@user.Score.ToString("G3")</td>
             <td onclick="copyIdToClipboard('@user.DiscordId', 'high-copy-notification-discord')" title="Click to copy">@user.DiscordId</td>
         </tr>
