@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
     public class ChasingCommand {
-        [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
+        [SlashCommand(Description = "Show you players ahead and behind you.", AllowInDMs = true)]
         public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord, ILogger logger) {
             await command.RespondAsync("Getting backups...");
 
@@ -27,11 +27,8 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            //var contentString = "";
-
             if(user.EggIncAccounts.Count == 1) {
                 var contentString = await ChasingStringBuilder(discord, parameter, user.GuildId, user.EggIncAccounts.First(), db);
-                //await command.DeleteOriginalResponseAsync();
                 await command.ModifyOriginalResponseAsync(contentString);
             } else {
                 var builder = new ComponentBuilder();
@@ -47,7 +44,6 @@ namespace EGG9000.Bot.Commands {
         
         [ComponentCommand]
         public static async Task ChasingAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            //await component.UpdateAsync(x => { x.Content = "Working..."; x.Components = null; });
             var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(user is null) return;
             var dataObjs = data.Split("|");
