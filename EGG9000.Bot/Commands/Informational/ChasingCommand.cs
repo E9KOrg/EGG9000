@@ -19,7 +19,7 @@ namespace EGG9000.Bot.Commands {
     public class ChasingCommand {
         [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
         public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord, ILogger logger) {
-            await command.RespondAsync("Getting backups...", ephemeral: true);
+            await command.RespondAsync("Getting backups...");
 
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
@@ -27,12 +27,12 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var contentString = "";
+            //var contentString = "";
 
             if(user.EggIncAccounts.Count == 1) {
-                contentString = await ChasingStringBuilder(discord, parameter, user.GuildId, user.EggIncAccounts.First(), db);
+                var contentString = await ChasingStringBuilder(discord, parameter, user.GuildId, user.EggIncAccounts.First(), db);
                 //await command.DeleteOriginalResponseAsync();
-                await command.Channel.SendMessageAsync(contentString);
+                await command.ModifyOriginalResponseAsync(contentString);
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in user.EggIncAccounts) {
@@ -94,38 +94,35 @@ namespace EGG9000.Bot.Commands {
                     accounts = accounts.OrderByDescending(x => x.Backup.SoulEggs).ToList();
                     unit = "SE";
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(parameter), parameter, null);
             }
             
             var userIndex = accounts.FindIndex(x => x.Backup.EggIncId == eggIncAccount.Backup.EggIncId);
 
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine("```");
-            stringBuilder.AppendFormat($"{"In game",-20}{"Discord",-20}{unit, -8}");
-            stringBuilder.AppendLine();
-            stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――――――");
-            stringBuilder.AppendLine();
+            
+            var counter = 0;
+            var start = userIndex != accounts.Count - 1 ? userIndex - 3 : userIndex - 4;
 
-            for(var i = userIndex - 3; i <= userIndex + 1; i++) {
+            for(var i = start; counter < 5; i++) {
                 if(i >= 0 && i < accounts.Count) {
                     switch(parameter) {
                         case ChasingParameters.EB:
-                            stringBuilder.AppendFormat($"{(i == userIndex ? "you" : accounts[i].Backup.UserName), -20}{accounts[i].DiscordUser.Username, -20}{accounts[i].Backup.EarningsBonus.ToEggString(), -8}");
+                            stringBuilder.AppendFormat($"`{accounts[i].Backup.UserName, -20}{accounts[i].Backup.EarningsBonus.ToEggString(true, 2), 8} {unit}`");
                             stringBuilder.AppendLine();
                             break;
                         case ChasingParameters.SE:
-                            stringBuilder.AppendFormat($"{(i == userIndex ? "you" : accounts[i].Backup.UserName), -20}{accounts[i].DiscordUser.Username, -20}{accounts[i].Backup.SoulEggs.ToEggString(), -8}");
+                            stringBuilder.AppendFormat($"`{accounts[i].Backup.UserName, -20}{accounts[i].Backup.SoulEggs.ToEggString(true, 2), 8} {unit}`");
                             stringBuilder.AppendLine();
                             break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(parameter), parameter, null);
                     }
 
+                    counter++;
                 }
 
+                if(i == accounts.Count - 1) {
+                    break;
+                }
             }
-            stringBuilder.AppendLine("```");
             return stringBuilder.ToString();
         }
         public enum ChasingParameters {
