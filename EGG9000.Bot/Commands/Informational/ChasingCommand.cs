@@ -35,7 +35,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var account in user.EggIncAccounts) {
                     builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}");
                 }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Components = builder.Build(); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); });
             }
 
             user.UpdateAccounts();
