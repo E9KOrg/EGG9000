@@ -1386,7 +1386,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
             if(retEx != null) {
                 _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
-                await coopChannel.SendMessageAsync($"{discordUser.Mention} The co-op {coopChannel.Mention} has finished. (User has blocked DMs from bot)");
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention} (User has blocked DMs from bot)");
             }
         }
 
