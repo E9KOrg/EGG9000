@@ -43,12 +43,12 @@ namespace EGG9000.Bot.Commands {
             if(inCoopChannel) {
                 var builder = new ComponentBuilder();
                 builder.WithButton("This Co-op Only", $"CSCoop:{dbuser.DiscordId}");
-                builder.WithButton("This and Future Co-ops", $"CSAccountMenu:{dbuser.DiscordId}");
+                builder.WithButton("This and Future Co-ops", $"CSAccountMenu:{dbuser.DiscordId},false,false");
 
 
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Would you like to edit settings for just this co-op or this and future co-ops?"; x.Components = builder.Build(); });
             } else {
-                var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", true, dbuser);
+                var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", false, false, dbuser);
                 await command.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
             }
         }
@@ -57,9 +57,10 @@ namespace EGG9000.Bot.Commands {
         public static async Task CSAccountMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var openedFromContSets = data.Split(",").Length > 1 && Convert.ToBoolean(data.Split(",")[1]);
+            var coopOnly = data.Split(",").Length > 2 && Convert.ToBoolean(data.Split(",")[2]);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
-            var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", !openedFromContSets, dbuser);
+            var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", coopOnly, openedFromContSets, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -73,7 +74,7 @@ namespace EGG9000.Bot.Commands {
             ("PingOnTachyonChange", "Get notified when someone adds/removes a Tachyon Deflector"),
             ("PingOnCompleteOnCheckIn", "Get notified when your co-op will complete as soon as everyone checks in"),
         };
-        public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix ,string title, bool coopOnly, DBUser dbuser) {
+        public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix ,string title, bool coopOnly, bool mcs, DBUser dbuser) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()
@@ -90,7 +91,7 @@ namespace EGG9000.Bot.Commands {
                 builder.WithButton(option.Property, $"{prefix}:{option.Property},{dbuser.DiscordId},{!coopOnly}");
             }
 
-            if(!coopOnly) {
+            if(mcs) {
                 builder.WithButton("↵Contract Settings", $"MCSAccounts:{dbuser.DiscordId}", ButtonStyle.Secondary);
             }
 
@@ -107,7 +108,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
             var xref = await db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == component.ChannelId);
-            var props = MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser), "CSCoopOnly", "This Co-op", false, dbuser);
+            var props = MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser), "CSCoopOnly", "This Co-op", true, false, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -134,7 +135,7 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            var props = MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", !openedFromContSets, dbuser);
+            var props = MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", false, openedFromContSets, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -155,7 +156,7 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            var props = MainMenu(setting, "CSCoopOnly", "This Co-op", !openedFromContSets, dbuser);
+            var props = MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
     }

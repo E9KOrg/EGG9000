@@ -453,7 +453,7 @@ namespace EGG9000.Bot.Commands {
 
 
 
-        [SlashCommand(Description = "Fix a users reference in a co-op when they are showing as an alien", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Fix a users reference in a co-op when they are showing as an alien", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task FixReference(FauxCommand command, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ApplicationDbContext db, [SlashParam] SocketGuildUser targetuser, [SlashParam(Description = "Egg Inc Name, will match partial name")] string eggincname) {
             //var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id && !x.JoinedCoop);
