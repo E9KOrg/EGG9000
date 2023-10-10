@@ -33,7 +33,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public const string UserId = "EI5223299518300160";
         
-        public const uint ClientVersion = 59;
+        public const uint ClientVersion = 60;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
@@ -511,7 +511,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     client.BaseAddress = new Uri(BaseAddressNew);
 
                     var ms1 = new MemoryStream();
-                    new Ei.EggIncFirstContactRequest {
+                    var request = new Ei.EggIncFirstContactRequest {
                         ClientVersion = ClientVersion,
                         Platform = Aux.Platform.Droid,
                         EiUserId = UserId,
@@ -519,7 +519,8 @@ namespace EGG9000.Bot.EggIncAPI {
                         Username = "",
                         //GameServicesId = "102371659776481580429", 
                         Rinfo = GetInfo(UserId)
-                    }.WriteTo(ms1);
+                    };
+                    request.WriteTo(ms1);
                     //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
                     ms1.Position = 0;
                     var messageData = ms1.ToArray();
