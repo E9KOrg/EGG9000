@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Automated {
         public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).Include(a => a.EggIncAccounts).ToListAsync();
+            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
             var scoreSet = new Dictionary<EggIncAccount, double>();
 
             foreach(var user in dbusers) {
