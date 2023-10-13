@@ -11,7 +11,6 @@ using EGG9000.Common.Database.Entities;
 using Ei;
 
 using Humanizer;
-using MassTransit.Initializers.TypeConverters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
