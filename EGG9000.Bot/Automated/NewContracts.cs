@@ -159,16 +159,16 @@ namespace EGG9000.Bot.Automated {
 
                     //Ping non-ultra members who have "Ping on Ultra contract I don't have" turned on
                     //Start gathering users list
-                    var pingableUsers = await _db.DBUsers.Where(
-                        u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null
+                    var pingableUsers = await _db.DBUsers.ToListAsync();
+                    pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null
                         && a.PingForNCUltra
                         && a.Backup != null
                         && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)
                         && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
-                    )).ToListAsync();
+                    )).ToList();
 
                     //Start forming the message
-                    var validFor = DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now;
+                    var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTime.Now;
                     var ultraMessageOut = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
 
                     foreach(var pingableUser in pingableUsers) {

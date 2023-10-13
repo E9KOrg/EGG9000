@@ -40,6 +40,7 @@ using EGG9000.Common.Contracts;
 using System.Collections;
 using System.Numerics;
 using EGG9000.Bot.Services;
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -55,7 +56,12 @@ namespace EGG9000.Bot.Commands {
             if(account is null) {
                 await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
             } else {
-                await command.RespondAsync($"User account <@{dbuser.DiscordId}> ({account.Name}) marked as having clean artifacts.");
+                var identifier = string.IsNullOrEmpty(account.Name) ? account.Id : account.Name;
+#if DEV9002
+                await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean artifacts.");
+#else
+                await command.RespondAsync($"User account` <@{dbuser.DiscordId}>` ({identifier}) marked as having clean artifacts.");
+#endif
                 account.AFSMarkedClean = true;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
@@ -358,37 +364,6 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
             }
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
-        }
-
-        private static List<AutocompleteResult> _allServicesAndJobs = null;
-        public class ServiceNameAutoComplete : AutoCompleteHandler {
-            private readonly IServiceProvider _serviceProvider;
-            public ServiceNameAutoComplete(IServiceProvider serviceProvider) {
-                _serviceProvider = serviceProvider;
-            }
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                if(_allServicesAndJobs == null) {
-                    var services = _serviceProvider.GetServices<IHostedService>().Where(x => x is IUpdaterService).OrderBy(x => x.GetType().Name)
-                        .Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToList();
-
-                    var jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
-                          .SelectMany(t => t.GetMethods())
-                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
-                          .Select(x => new AutocompleteResult($"Job.{x.GetType().Name}", x.GetType().Name)).ToArray();
-
-                    _allServicesAndJobs = new List<AutocompleteResult>();
-                    _allServicesAndJobs.AddRange(services);
-                    _allServicesAndJobs.AddRange(jobs);
-                }
-
-
-                var results = _allServicesAndJobs;
-                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    results = results.Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
-                }
-
-                await arg.RespondAsync(null, results.OrderBy(x => x.Name).ToArray());
-            }
         }
     }
 }
