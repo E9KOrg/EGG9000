@@ -165,8 +165,16 @@ namespace EGG9000.Bot.Commands {
             }
 
             var userid = useraccount.Split("|")[0];
+            var guid = Guid.Parse(userid);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+
+            /* Find current coop xrefs */
+            var xref = await db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == guid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
+            if(xref == null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find user in co-op");
+                return;
+            }
 
             /* Find a new co-op */
             var coops = await db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == targetCoop.GuildId && x.ContractID == targetCoop.ContractID && x.League == newgrade 
@@ -209,13 +217,6 @@ namespace EGG9000.Bot.Commands {
             /* END MOVING TO NEW COOP */
 
             /* REMOVING FROM OLD COOP */
-            var userid2 = Guid.Parse(useraccount.Split("|")[0]);
-            var xref = await db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == userid2 && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
-            if(xref == null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unabled to find user in co-op");
-                return;
-            }
-
             db.Remove(xref);
             /* END REMOVING FROM OLD COOP */
 

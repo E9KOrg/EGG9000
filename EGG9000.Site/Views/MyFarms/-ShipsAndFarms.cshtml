@@ -6,6 +6,11 @@
 @model (CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
 
 @{
+    string properCaseAndSuffix(string inputString, int number){
+        var suffix = (number == 0 || number > 1) ? "s" : "";
+        return inputString.FirstCharToUpper() + suffix;
+    }
+
     void artifactTemplate(EggIncArtifactInstance artifact) {
         <tr>
             <td>@artifact.Artifact</td>
@@ -60,24 +65,26 @@
 
         .tooltip-custom:hover .tooltiptext-custom {
             display: inline-block;
-            z-index: 2; /* Make sure the tooltip is above other elements on hover */
-            top: -100%; /* Adjust this value as needed */
-            left: -200px;
+            z-index: 2;
+            position: absolute;
+            bottom: 25px; /* Adjust this value as needed */
+            left: 50%;
+            transform: translateX(-50%); /* Center the tooltip */
         }
 
     .tooltiptext-custom {
         display: none;
-        position: absolute;
-        background-color: rgba(255, 255, 255, 0.9); /* Adjust opacity here */
+        background-color: rgba(255, 255, 255, 0.95);
         border: 1px solid #ccc;
         padding: 10px;
         border-radius: 4px;
-        white-space: nowrap; /* Prevent the tooltip from wrapping */
+        white-space: nowrap;
+        text-align: center; /* Center the text within the tooltip */
+        position: absolute;
     }
 
-    .gray-text-half-margin,
-    .gray-text {
-        color: lightgray
+    .gray-text-half-margin, .gray-text {
+        color: lightgray;
     }
 
     .orange-text {
@@ -92,18 +99,47 @@
         color: blue;
     }
 
-    .gray-text,
-    .orange-text,
-    .purple-text,
-    .blue-text {
-        display: inline-block; /* Display spans horizontally */
-        margin-right: 10px; /* Add spacing between spans */
+    .gray-text, .orange-text, .purple-text, .blue-text {
+        display: inline-block;
+        margin-right: 10px;
     }
 
     .gray-text-half-margin {
-        display: inline-block; /* Display spans horizontally */
-        margin-right: 5px; /* Add spacing between spans */
+        display: inline-block;
+        margin-right: 5px;
     }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px; /* Adjust the padding to your preference */
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+    /* Create the triangle */
+    .speech-bubble :after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -15px; /* Half of the triangle's width */
+        border-width: 15px; /* Adjust the size of the triangle */
+        border-style: solid;
+        border-color: #ccc transparent transparent transparent;
+    }
+
+    .mobile-only-cont img {
+        max-height: 20px;
+    }
+
+    .desk-only-cont img {
+        max-height: 35px;
+    }
+
+    .desk-only-cont {
+        font-size: 1.5rem;
+    }
+
 </style>
 
 <div id="shipsDiv" class="ship-container">
@@ -160,102 +196,184 @@
 </div>
 
 <div>
-    <table class="table table-sm" style="width: auto;">
-        <thead>
-            <tr>
-                <th style="text-align: center;">Ship</th>
-                <th>Stars</th>
-                <th>Next Level</th>
-                <th>Max Level</th>
-                <th>Launches</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var ship in MissionHelpers.MaxShipLevels) {
-                var currentStars = Model.Backup.GetShipLevel(ship.Key);
-                var shipEmojiLink = getShipEmoji(ship.Key);
+    <div id="ship-level-container">
+        <table id="ship-level-table" class="table card" style="width: 70%; table-layout: auto; display: table;">
+            <thead>
                 <tr>
-                    <td align="center">
-                        @if (shipEmojiLink != "") {
-                            <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height: 20px">
-                        }
-                    </td>
-                    <td>
-                        @for(var i = 0; i < ship.Value; i++) {
-                            if (i < currentStars) {
-                                <span class="GoldenStar">★</span>
-                                
-                            } else {
-                                <span class="GrayStar">★</span>
-                            }
-                        }
-                    </td>
-                    <td>
-                        @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
-                            <span class="tooltip-custom">
-                            @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
-                                <span class="tooltiptext-custom">
-                                    @{
-                                        var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
-                                        var shortsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Short] : 0;
-                                        var standardsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Long] : 0;
-                                        var extendedsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Epic] : 0;
-                                    }
-                                    <span class="blue-text">@shortsToNext Short</span><span class="gray-text-half-margin">or</span>
-                                    <span class="purple-text">@standardsToNext Standard</span><span class="gray-text-half-margin">or</span>
-                                    <span class="orange-text">@extendedsToNext Extended</span>
-                                </span>
-                            </span>
-                        }else{
-                            @("--")
-                        }
-                    </td>
-                    <td>
-                        <span class="tooltip-custom">
-                            @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
-                            @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
-                                <span class="tooltiptext-custom">
-                                    @{
-                                        var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
-                                        var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
-                                        var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Long] : 0;
-                                        var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Epic] : 0;
-                                    }
-                                    <span class="blue-text">@shortsToMax Short</span><span class="gray-text-half-margin">or</span>
-                                    <span class="purple-text">@standardsToMax Standard</span><span class="gray-text-half-margin">or</span>
-                                    <span class="orange-text">@extendedsToMax Extended</span>
-                                </span>
-                            }
-                        </span>
-                    </td>
-                    <td>
-                        <span class="tooltip-custom">
-                            @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
-                            <span class="tooltiptext-custom">
-                                @{
-                                    var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
-                                    var tutorialShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Tutorial);
-                                    var extendedShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Epic);
-                                    var standardShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Long);
-                                    var shortShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Short);
-                                }
-                                @if(ship.Key == Ei.MissionInfo.Types.Spaceship.ChickenOne){
-                                    <span class="gray-text">@tutorialShips.count Tutorial</span>
-                                }
-                                <span class="blue-text">@shortShips.count Short</span>
-                                <span class="purple-text">@standardShips.count Standard</span>
-                                <span class="orange-text">@extendedShips.count Extended</span>
-                            </span>
-                        </span>
-                    </td>
+                    <th style="text-align: center;">Ship</th>
+                    <th>Stars</th>
+                    <th>Next Level</th>
+                    <th>Max Level</th>
+                    <th>Launches</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var ship in MissionHelpers.MaxShipLevels) {
+                    var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                    var shipEmojiLink = getShipEmoji(ship.Key);
+                    <tr>
+                        <td align="center">
+                            @if (shipEmojiLink != "") {
+                                <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)">
+                            }
+                        </td>
+                        <td>
+                            @for (var i = 0; i < ship.Value; i++) {
+                                if (i < currentStars){
+                                    <span class="Star GoldenStar">★</span>
+                                } else {
+                                    <span class="Star GrayStar">★</span>
+                                }
+                            }
+                        </td>
+                        <td>
+                            @if (Model.Backup.GetShipProgressTotal(ship.Key) != 1) {
+                                <span class="tooltip-custom">
+                                    @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
+                                    <span class="tooltiptext-custom speech-bubble">
+                                        @{
+                                            var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
+                                            var shortsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                            var standardsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                            var extendedsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+
+                                            var shortsTimeNext = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortsToNext);
+                                            var standardsTimeNext = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardsToNext);
+                                            var extendedsTimeNext = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedsToNext);
+                                        }
+                                        <span id="@ship.Key-short-nextlvl" timeval="@shortsTimeNext" intval="@shortsToNext" class="blue-text">@shortsToNext @properCaseAndSuffix("Short", shortsToNext)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-standard-nextlvl" timeval="@standardsTimeNext" intval="@standardsToNext" class="purple-text">@standardsToNext @properCaseAndSuffix("Standard", standardsToNext)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-extended-nextlvl" timeval="@extendedsTimeNext" intval="@extendedsToNext" class="orange-text">@extendedsToNext @properCaseAndSuffix("Extended", extendedsToNext)</span>
+                                    </span>
+                                </span>
+                            }
+                            else{@("--")}
+                        </td>
+                        <td>
+                            <span class="tooltip-custom">
+                                @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                                @if (Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                                    <span class="tooltiptext-custom speech-bubble">
+                                        @{
+                                            var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                                            var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                            var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                            var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+
+                                            var shortsTimeMax = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortsToMax);
+                                            var standardsTimeMax = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardsToMax);
+                                            var extendedsTimeMax = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedsToMax);
+                                        }
+                                        <span id="@ship.Key-short-maxlvl" timeval="@shortsTimeMax" intval="@shortsToMax" class="blue-text">@shortsToMax @properCaseAndSuffix("Short", shortsToMax)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-standard-maxlvl" timeval="@standardsTimeMax" intval="@standardsToMax" class="purple-text">@standardsToMax @properCaseAndSuffix("Standard", standardsToMax)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-extended-maxlvl" timeval="@extendedsTimeMax" intval="@extendedsToMax" class="orange-text">@extendedsToMax @properCaseAndSuffix("Extended", extendedsToMax)</span>
+                                    </span>
+                                }
+                            </span>
+                        </td>
+                        <td>
+                            <span class="tooltip-custom">
+                                @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
+                                <span class="tooltiptext-custom speech-bubble">
+                                    @{
+                                        var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
+                                        var tutorialShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Tutorial);
+                                        var extendedShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Epic);
+                                        var standardShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Long);
+                                        var shortShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Short);
+
+                                        var tutorialTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Tutorial, tutorialShips.count);
+                                        var shortsTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortShips.count);
+                                        var standardsTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardShips.count);
+                                        var extendedsTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedShips.count);
+
+                                    }
+                                    @if (ship.Key == Ei.MissionInfo.Types.Spaceship.ChickenOne) {
+                                        <span id="@ship.Key-tutorial-launched" timeval="@tutorialTimeLaunched" intval="@tutorialShips.count" class="gray-text">@tutorialShips.count @properCaseAndSuffix("Tutorial", tutorialShips.count)</span>
+                                    }
+                                    <span id="@ship.Key-short-launched" timeval="@shortsTimeLaunched" intval="@shortShips.count" class="blue-text">@shortShips.count @properCaseAndSuffix("Short", shortShips.count)</span>
+                                    <span id="@ship.Key-standard-launched" timeval="@standardsTimeLaunched" intval="@standardShips.count" class="purple-text">@standardShips.count @properCaseAndSuffix("Standard", standardShips.count)</span>
+                                    <span id="@ship.Key-extended-launched" timeval="@extendedsTimeLaunched" intval="@extendedShips.count" class="orange-text">@extendedShips.count @properCaseAndSuffix("Extended", extendedShips.count)</span>
+                                </span>
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <span id="do-tt" style="color: #ccc">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
+        <button class="btn-primary" id="mo-tt" style="color: #ccc" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
+    </div>
 </div>
 <br />
 <hr />
 <br />
+
+<script type="text/javascript">
+    var timeState = 'no';
+    var ctrlReleaseHandled = false;
+
+    var isMobile = (window.innerWidth < 768);
+    if(isMobile) {
+        document.getElementById('do-tt').style.height = '0px';
+        document.getElementById('do-tt').style.visibility = 'hidden';
+        document.getElementById('ship-level-table').classList.add('table-sm');
+        document.getElementById('ship-level-container').classList.add('mobile-only-cont');
+    }
+    else {
+        document.getElementById('mo-tt').style.height = '0px';
+        document.getElementById('mo-tt').style.visibility = 'hidden';
+        document.getElementById('ship-level-table').classList.add('table-responsive-md');
+        document.getElementById('ship-level-container').classList.add('desk-only-cont');
+    }
+    
+    function properCaseAndSuffix(inputString, number) {
+        const suffix = (number == 0 || number > 1) ? 's' : '';
+        return inputString.charAt(0).toUpperCase() + inputString.slice(1) + suffix;
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.ctrlKey) ctrlReleaseHandled = false;
+    });
+
+    function toggleShipTimes(){
+        const elementsLaunched = Array.from(document.querySelectorAll('[id*="-launched"]'));
+        const elementsMaxLvl = Array.from(document.querySelectorAll('[id*="-maxlvl"]'));
+        const elementsNextLvl = Array.from(document.querySelectorAll('[id*="-nextlvl"]'));
+        const elements = elementsLaunched.concat(elementsMaxLvl, elementsNextLvl);
+        switch (timeState) {
+            case 'yes':
+                timeState = 'no';
+                elements.forEach(element => {
+                    if (element.nodeName == 'SPAN') {
+                        const elementId = element.id.toString();
+                        const durationType = elementId.split("-")[1];
+                        const durationString = properCaseAndSuffix(durationType, parseInt(element.intVal));
+                        element.textContent = element.getAttribute('intval') + ' ' + durationString;
+                    }
+                });
+                break;
+            case 'no':
+                timeState = 'yes';
+                elements.forEach(element => {
+                    if (element.nodeName == 'SPAN') element.textContent = element.getAttribute('timeval') + ' (' + element.getAttribute('intval') + ')';
+                });
+                break;
+        }
+    }
+
+    /* When control is released */
+    document.addEventListener("keyup", function (event) {
+        if (!event.ctrlKey && !ctrlReleaseHandled) {
+            ctrlReleaseHandled = true;
+            toggleShipTimes();
+        }
+    });
+
+</script>
+
+
+
 @for (var i = 0; i < Model.Backup.Farms.Count; i++) {
     var farm = Model.Backup.Farms[i];
 
