@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Automated {
         public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).Include(a => a.EggIncAccounts).ToListAsync();
+            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
             var scoreSet = new Dictionary<EggIncAccount, double>();
 
             foreach(var user in dbusers) {
@@ -65,8 +65,9 @@ namespace EGG9000.Bot.Automated {
 
             if(sendMessages) {
                 foreach(var outlier in upperOutliers) {
-
-                    var user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
+                    DBUser user;
+                    if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
+                    else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
                     var outlierScore = scoreSet[outlier];
 
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
@@ -81,10 +82,12 @@ namespace EGG9000.Bot.Automated {
                     var thread = guild.GetThreadChannel(threadobj.Id);
                     if(thread is null) continue;
 
+                    var identifier = string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name;
+
 #if DEV9002
-                    await thread.SendMessageAsync($"User `<@{user.DiscordId}>` is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    await thread.SendMessageAsync($"User `<@{user.DiscordId}>` may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
 #else
-                    await thread.SendMessageAsync($"User <@{user.DiscordId}> is likely using cheated artifacts - the account `{outlier.Name}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    await thread.SendMessageAsync($"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
 #endif
 
                     outlier.AFSWarningSent = true;

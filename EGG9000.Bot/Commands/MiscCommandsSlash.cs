@@ -32,6 +32,7 @@ using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using System.ComponentModel;
 using EGG9000.Bot.Automated.Coops;
 using Microsoft.AspNetCore.Connections.Features;
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -354,46 +355,6 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             builder.EmbedBuilder = embedBuilder;
             return builder;
-        }
-
-        public class PersonalUserAccountAutoComplete : AutoCompleteHandler {
-            private readonly ApplicationDbContext _db;
-            public PersonalUserAccountAutoComplete(ApplicationDbContext db) {
-                _db = db;
-            }
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                var users = await _db.DBUsers
-                    .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
-                    .Take(10).ToListAsync();
-
-                var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
-
-                var results = new List<AutocompleteResult>();
-                foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
-                    if(account.User.EggIncAccounts.Count > 1) {
-                        var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup.EarningsBonus.ToEggString()}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
-                    } else {
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
-                    }
-                }
-
-                await arg.RespondAsync(null, results.ToArray());
-            }
-        }
-
-        [SlashCommand(Description = "Daveed testing")]
-        public static async Task DMMe(FauxCommand command, ApplicationDbContext db) {
-            var dmChannel = await command.User.CreateDMChannelAsync();
-            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, $"Test DM");
-            var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == command.User.Id);
-            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
-                dbUser.DMSBlocked = !dbUser.DMSBlocked;
-                await db.SaveChangesAsync();
-            } if(retEx != null) {
-                await command.RespondAsync("Exception caught.");
-            } else await command.RespondAsync("Sent");
         }
 
         [SlashCommand(Description = "Get help from staff, please give details")]

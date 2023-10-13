@@ -28,11 +28,12 @@ using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using Google.Protobuf.WellKnownTypes;
 using static Ei.Backup.Types;
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 
 namespace EGG9000.Bot.Commands {
     public static class CraftCommand {
         [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam] TierInput quality, [SlashParam(AutocompleteHandler = typeof(EggIncArtifacts.ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
+        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam] TierInput quality, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 
             if(requestedArtifact is null) {
