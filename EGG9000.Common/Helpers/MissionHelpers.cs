@@ -16,7 +16,7 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
-        public readonly static Dictionary<Spaceship, uint> MaxShipLevels = new() {
+        public static readonly Dictionary<Spaceship, uint> MaxShipLevels = new() {
             { Spaceship.ChickenOne, 0 },
             { Spaceship.ChickenNine, 2 },
             { Spaceship.ChickenHeavy, 3 },
@@ -28,6 +28,111 @@ namespace EGG9000.Common.Helpers {
             { Spaceship.Voyegger, 6 },
             { Spaceship.Henerprise, 7 }
         };
+
+        private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
+            { Spaceship.ChickenOne, new() {
+                    { DurationType.Tutorial, 1 },
+                    { DurationType.Short, 20 },
+                    { DurationType.Long, 60 },
+                    { DurationType.Epic, 2 * 60 },
+                }
+            },
+            { Spaceship.ChickenNine, new() {
+                    { DurationType.Short, 30 },
+                    { DurationType.Long, 60 },
+                    { DurationType.Epic, 3 * 60 },
+                }
+            },
+            { Spaceship.ChickenHeavy, new() {
+                    { DurationType.Short, 45 },
+                    { DurationType.Long, 90 },
+                    { DurationType.Epic, 4 * 60 },
+                }
+            },
+            { Spaceship.Bcr, new() {
+                    { DurationType.Short, 90 },
+                    { DurationType.Long, 4 * 60 },
+                    { DurationType.Epic, 8 * 60 },
+                }
+            },
+            { Spaceship.MilleniumChicken, new() {
+                    { DurationType.Short, 3 * 60 },
+                    { DurationType.Long, 6 * 60 },
+                    { DurationType.Epic, 12 * 60 },
+                }
+            },
+            { Spaceship.CorellihenCorvette, new() {
+                    { DurationType.Short, 4 * 60 },
+                    { DurationType.Long, 12 * 60 },
+                    { DurationType.Epic, 24 * 60 },
+                }
+            },
+            { Spaceship.Galeggtica, new() {
+                    { DurationType.Short, 6 * 60 },
+                    { DurationType.Long, 16 * 60 },
+                    { DurationType.Epic, (24 + 6) * 60 },
+                }
+            },
+            { Spaceship.Chickfiant, new() {
+                    { DurationType.Short, 8 * 60 },
+                    { DurationType.Long, 24 * 60 },
+                    { DurationType.Epic, 48 * 60 },
+                }
+            },
+            { Spaceship.Voyegger, new() {
+                    { DurationType.Short, 12 * 60 },
+                    { DurationType.Long, 36 * 60 },
+                    { DurationType.Epic, 72 * 60 },
+                }
+            },
+            { Spaceship.Henerprise, new() {
+                    { DurationType.Short, 24 * 60 },
+                    { DurationType.Long, 48 * 60 },
+                    { DurationType.Epic, 96 * 60 },
+                }
+            },
+        };
+
+        public static string GetShipTime(this CustomBackup backup, Spaceship ship, DurationType duration, int number) {
+            var erScalar = backup.EpicResearch.FirstOrDefault(er => er.Id == "afx_mission_time").Level;
+            if(erScalar < 0) erScalar = 0;
+            var shipTimes = ShipBaseTimesMinutes[ship];
+            return shipTimes.ContainsKey(duration) ?
+                MinutesToString((int)(ShipBaseTimesMinutes[ship][duration] * (number / 3) * (1 - (.01 * erScalar)))) //Div by 3 for 3 ship slots
+                : "";
+        }
+
+        private static string MinutesToString(int minutes) {
+            if(minutes < 60) return minutes + "m";
+            if(minutes < 1440) { // Less than a day
+                var hours = minutes / 60;
+                var remainingMinutes = minutes % 60;
+                return remainingMinutes == 0 ? hours + "h" : hours + "h" + remainingMinutes + "m";
+            }
+            if(minutes < 525600) { // Less than a year (assuming 365 days in a year)
+                var days = minutes / 1440;
+                var remainingMinutes = minutes % 1440;
+                if(remainingMinutes == 0) return days + "d";
+                var hours = remainingMinutes / 60;
+                var remainingMinutesInHourSc = remainingMinutes % 60;
+                return days + "d" + hours + "h" + remainingMinutesInHourSc + "m";
+            }
+            var years = minutes / 525600;
+            var remainingMinutesInYear = minutes % 525600;
+            if(remainingMinutesInYear == 0) return years + "y";
+            var daysInYear = remainingMinutesInYear / 1440;
+            var remainingMinutesInDay = remainingMinutesInYear % 1440;
+            var hoursInDay = remainingMinutesInDay / 60;
+            var remainingMinutesInHour = remainingMinutesInDay % 60;
+            var result = years + "y";
+            if(daysInYear > 0)
+                result += daysInYear + "d";
+            if(hoursInDay > 0)
+                result += hoursInDay + "h";
+            if(remainingMinutesInHour > 0)
+                result += remainingMinutesInHour + "m";
+            return result;
+        }
 
         public static List<MissionInfo> GetLaunchedMissions(ArtifactsDB artifactsDB) {
             return (artifactsDB.MissionArchive.ToList() ?? new List<MissionInfo>())

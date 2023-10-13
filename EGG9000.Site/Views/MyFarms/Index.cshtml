@@ -21,21 +21,8 @@
     List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = Model.Scoring;
     Guild dbguild = Model.DBGuild;
 
-    @*Func<EggIncArtifactInstance, object> artifactTemplate = @<span>
-		<span>@item.Artifact</span>
-		@if(item.Additive) {
-		<span>+@item.Value</span>
-		} else if(item.Value < 2) {
-		<span>@Math.Round((item.Value - 1) * 100)%</span>
-		} else {
-		<span>@(item.Value)x</span>
-		}
-		<span>@item.Boost</span>
-		</span>;*@
-
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
-    List<Ei.Backup> rawBackups = Model.RawBackups;
 
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
@@ -182,7 +169,6 @@
         //Remove existing "tank" and "hyperloop" options
         epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Hyperloop"));
         epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Fuel Tank"));
-        var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1) {
