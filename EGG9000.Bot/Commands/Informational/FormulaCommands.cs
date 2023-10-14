@@ -142,15 +142,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
-            //var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
-
-            //var shipsForLastType = account.Backup.ShipsSent.Where(x => x.ship == lastShipType).ToList();
-            //var exploringEpicShips = account.Backup.SpaceMissions.Where(x => x.Ship == lastShipType && x.Status == Ei.MissionInfo.Types.Status.Exploring && x.Duration == Ei.MissionInfo.Types.DurationType.Epic).ToList();
-
-            //var extendedCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Epic).Sum(x => x.count);
-            //var standardCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Long).Sum(x => x.count);
-            //var shortCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Short).Sum(x => x.count);
-
             var extendedCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Epic);
             var standardCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Long);
             var shortCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Short);
