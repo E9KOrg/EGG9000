@@ -159,7 +159,7 @@ namespace EGG9000.Bot.Automated {
 
                     //Ping non-ultra members who have "Ping on Ultra contract I don't have" turned on
                     //Start gathering users list
-                    var pingableUsers = await _db.DBUsers.ToListAsync();
+                    var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
                     pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null
                         && a.PingForNCUltra
                         && a.Backup != null
