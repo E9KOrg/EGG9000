@@ -124,6 +124,7 @@ namespace EGG9000.Bot.Automated {
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
                 try {
                     LastStarted = DateTime.Now;
+                    _lastAlive = DateTimeOffset.Now;
                     var log = new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now };
                     _db.AutomationLogs.Add(log);
                     await _db.SaveChangesAsync();
@@ -237,43 +238,43 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _WatchDog(object state) {
-            if(_cronExpression is not null) {
-                if(_firstRunDue > DateTimeOffset.Now) {
-                    _logger.LogTrace("Watchdog skipped because first run not due.");
-                    return;
-                }
-            }
+            //if(_cronExpression is not null) {
+            //    if(_firstRunDue > DateTimeOffset.Now) {
+            //        _logger.LogTrace("Watchdog skipped because first run not due.");
+            //        return;
+            //    }
+            //}
 
-            if(_lastAlive > DateTimeOffset.Now.AddMinutes(-5)) {
-                _logger.LogInformation("Watchdog skipped because last alive is less than 5 minutes.");
-                return;
-            }
+            //if(_lastAlive > DateTimeOffset.Now.AddMinutes(-5)) {
+            //    _logger.LogInformation("Watchdog skipped because last alive is less than 5 minutes.");
+            //    return;
+            //}
 
-            var watchDogDue = _cronExpression is not null ? DateTime.Now.AddMinutes(30) : _lastAlive + UpdateInterval * 2;
+            //var watchDogDue = _cronExpression is not null ? DateTime.Now.AddMinutes(30) : _lastAlive + UpdateInterval * 2;
 
-            if(LastStarted < watchDogDue) {
-                var lastAlive = DateTimeOffset.Now - _lastAlive;
-                _logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - LastStarted).Humanize(), _lastAlive.Humanize());
-                if(lastAlive > TimeSpan.FromMinutes(5) && (_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1)) {
-                    var success = await AttemptCancel();
-                    var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
-                    if(success) {
-                        await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Restart Succeeded.", options: new RequestOptions { CancelToken = _cts.Token });
-                        return;
-                    }
-                    await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.", options: new RequestOptions { CancelToken = _cts.Token });
-                    _semaphoreSlim.Release();
-                    Restarted = true;
-                    _lastMessageSent = DateTime.Now;
+            //if(LastStarted < watchDogDue) {
+            //    var lastAlive = DateTimeOffset.Now - _lastAlive;
+            //    _logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - LastStarted).Humanize(), _lastAlive.Humanize());
+            //    if(lastAlive > TimeSpan.FromMinutes(5) && (_lastMessageSent == null || (DateTime.Now - _lastMessageSent).Value.TotalHours > 1)) {
+            //        var success = await AttemptCancel();
+            //        var dmChannel = await (await _client.GetUserAsync(248865520756064257)).CreateDMChannelAsync(options: new RequestOptions { CancelToken = _cts.Token });
+            //        if(success) {
+            //            await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Restart Succeeded.", options: new RequestOptions { CancelToken = _cts.Token });
+            //            return;
+            //        }
+            //        await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Attempting Restart.", options: new RequestOptions { CancelToken = _cts.Token });
+            //        _semaphoreSlim.Release();
+            //        Restarted = true;
+            //        _lastMessageSent = DateTime.Now;
 
-                    if(_cronExpression is not null) {
-                        _ = LoopForCronExpression();
-                    } else {
-                        _timer.Change(TimeSpan.Zero, UpdateInterval);
-                    }
+            //        if(_cronExpression is not null) {
+            //            _ = LoopForCronExpression();
+            //        } else {
+            //            _timer.Change(TimeSpan.Zero, UpdateInterval);
+            //        }
 
-                }
-            }
+            //    }
+            //}
         }
 
         private async Task<bool> AttemptCancel() {
