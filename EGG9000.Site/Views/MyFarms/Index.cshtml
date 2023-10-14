@@ -265,7 +265,7 @@
             <div class="tab-content">
                 <div class="tab-pane" style="margin-top:20px" id="shipsfarms@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ShipsandFarms", (backup, Model.JoinedCoops, contracts));
+                        await Html.RenderPartialAsync("-ShipsandFarms", (index, backup, Model.JoinedCoops, contracts));
                     }
                 </div>
 

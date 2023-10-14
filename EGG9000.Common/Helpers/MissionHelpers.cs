@@ -98,11 +98,20 @@ namespace EGG9000.Common.Helpers {
             if(erScalar < 0) erScalar = 0;
             var shipTimes = ShipBaseTimesMinutes[ship];
             return shipTimes.ContainsKey(duration) ?
-                MinutesToString((int)(ShipBaseTimesMinutes[ship][duration] * (number / 3) * (1 - (.01 * erScalar)))) //Div by 3 for 3 ship slots
+                MinutesToString(backup, (int)(ShipBaseTimesMinutes[ship][duration] * (number / 3) * (1 - (.01 * erScalar)))) //Div by 3 for 3 ship slots
                 : "";
         }
 
-        private static string MinutesToString(int minutes) {
+        public static int GetShipTimeRaw(this CustomBackup backup, Spaceship ship, DurationType duration, int number) {
+            var erScalar = backup.EpicResearch.FirstOrDefault(er => er.Id == "afx_mission_time").Level;
+            if(erScalar < 0) erScalar = 0;
+            var shipTimes = ShipBaseTimesMinutes[ship];
+            return shipTimes.ContainsKey(duration) ? 
+                (int)(ShipBaseTimesMinutes[ship][duration] * ((double)number / 3) * (1 - (.01 * erScalar))) //Div by 3 for 3 ship slots
+                : 0;
+        }
+
+        public static string MinutesToString(this CustomBackup backup, int minutes) {
             if(minutes < 60) return minutes + "m";
             if(minutes < 1440) { // Less than a day
                 var hours = minutes / 60;

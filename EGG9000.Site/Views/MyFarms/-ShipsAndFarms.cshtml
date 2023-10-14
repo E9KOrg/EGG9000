@@ -3,7 +3,7 @@
 @using System.Globalization;
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @inject DiscordSocketClient DiscordClient
-@model (CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
+@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
 
 @{
     string properCaseAndSuffix(string inputString, int number){
@@ -47,7 +47,16 @@
         var shipEmojiLink = "https://cdn.discordapp.com/emojis/" + shipEmoji + ".png?v=1";
         return shipEmojiLink;
     }
+
+    int index = Model.Index;
 }
+
+<script type="text/javascript">
+    var isMobileCS = false;
+    if (window.innerWidth <= 768) { // You can adjust the threshold for mobile screens
+        isMobileCS = true;
+    }
+</script>
 
 <style>
     .GoldenStar {
@@ -128,16 +137,12 @@
         border-color: #ccc transparent transparent transparent;
     }
 
-    .mobile-only-cont img {
-        max-height: 20px;
+    .ship-info-container {
+        display: flex;
     }
 
-    .desk-only-cont img {
-        max-height: 35px;
-    }
-
-    .desk-only-cont {
-        font-size: 1.5rem;
+    .ship-info-item {
+        flex: 1;
     }
 
 </style>
@@ -195,9 +200,9 @@
     }
 </div>
 
-<div>
-    <div id="ship-level-container">
-        <table id="ship-level-table" class="table card" style="width: 70%; table-layout: auto; display: table;">
+<div id="shipInfoContainer-@index" class="ship-info-container">
+    <div id="ship-level-container-@index" style="margin-left: 10px; width:60%; display: block;">
+        <table id="ship-level-table" class="table card table-sm" style="width: 100%; table-layout: auto; display: table;">
             <thead>
                 <tr>
                     <th style="text-align: center;">Ship</th>
@@ -211,10 +216,10 @@
                 @foreach (var ship in MissionHelpers.MaxShipLevels) {
                     var currentStars = Model.Backup.GetShipLevel(ship.Key);
                     var shipEmojiLink = getShipEmoji(ship.Key);
-                    <tr>
+                    <tr id="@ship.Key-overall-row" style="height: 38px;">
                         <td align="center">
                             @if (shipEmojiLink != "") {
-                                <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)">
+                                <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height:20px;">
                             }
                         </td>
                         <td>
@@ -301,8 +306,80 @@
                 }
             </tbody>
         </table>
-        <span id="do-tt" style="color: #ccc">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
-        <button class="btn-primary" id="mo-tt" style="color: #ccc" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
+        <span id="do-tt-@index" style="color: #ccc">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
+        <button class="btn-primary" id="mo-tt-@index" style="color: #ccc; margin-bottom: 10px;" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
+    </div>
+    <div id="asc-planner-cont" style="margin-left: 0px; width: auto"> 
+        <table id="asc-planner-table" class="table card table-sm" style="table-layout: auto; display: table;">
+            <thead>
+                <tr>
+                    <th colspan="4">ASC Planner 
+                        <span class="tooltip-custom">
+                            (❔)
+                            <span class="tooltiptext-custom speech-bubble">
+                                All-Star-Club, commonly shortened to "ASC", is<br />
+                                the name of the community-created achievement<br />
+                                for getting completing all <span class="GoldenStar">★</span>s, on all ships.
+                            </span>
+                        </span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ship in MissionHelpers.MaxShipLevels)
+                {
+                    var alreadyMaxed = (Model.Backup.GetShipProgressTotal(ship.Key) >= 1);
+
+                    var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                    var shipEmojiLink = getShipEmoji(ship.Key);
+
+                    var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                    var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                    var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                    var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+
+                    var shortsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortsToMax);
+                    var standardsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardsToMax);
+                    var extendedsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedsToMax);
+
+                    <tr id="@ship.Key-asc-row-@index" style="height: 38px;" dataMaxed="@(alreadyMaxed.ToString())">
+                        <td id="asc-name-col-@index" align="left" style="padding-left: 5px; font-size: 0.75rem;" dataMaxed="@(alreadyMaxed.ToString())">
+                            @MissionHelpers.GetProperShipName(ship.Key)
+                        </td>
+                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                            @if (!alreadyMaxed) {
+                                <select class="blue-text" name="@ship.Key-duration-asc-choice-@index" id="@ship.Key-duration-asc-choice-@index" onchange="durationSelectionChanged(this)">
+                                    <option value="short" class="blue-text">Short</option>
+                                    <option value="standard" class="purple-text">Standard</option>
+                                    <option value="extended" class="orange-text">Extended</option>
+                                </select>
+                            }
+                        </td>
+                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                            @if (!alreadyMaxed) {
+                                <span class="blue-text" id="@ship.Key-number-needed-asc-@index" 
+                                    data-short="@shortsToMax" data-standard="@standardsToMax" data-extended="@extendedsToMax">
+                                    @shortsToMax
+                                </span>
+                            }
+                        </td>
+                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                            @if (!alreadyMaxed) {
+                                <span class="blue-text" id="@ship.Key-time-needed-asc-@index" 
+                                    data-short="@shortsTimeMax" data-standard="@standardsTimeMax" data-extended="@extendedsTimeMax"
+                                      dt-short="@Model.Backup.MinutesToString(shortsTimeMax)" dt-standard="@Model.Backup.MinutesToString(standardsTimeMax)" dt-extended="@Model.Backup.MinutesToString(extendedsTimeMax)">
+                                    @Model.Backup.MinutesToString(shortsTimeMax)
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td colspan="3"><span>Total time (as configured):</span></td>
+                    <td><span id="total-asc-time-@index"></span></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 <br />
@@ -312,19 +389,22 @@
 <script type="text/javascript">
     var timeState = 'no';
     var ctrlReleaseHandled = false;
+    var index = @index;
 
     var isMobile = (window.innerWidth < 768);
-    if(isMobile) {
-        document.getElementById('do-tt').style.height = '0px';
-        document.getElementById('do-tt').style.visibility = 'hidden';
-        document.getElementById('ship-level-table').classList.add('table-sm');
-        document.getElementById('ship-level-container').classList.add('mobile-only-cont');
-    }
-    else {
-        document.getElementById('mo-tt').style.height = '0px';
-        document.getElementById('mo-tt').style.visibility = 'hidden';
-        document.getElementById('ship-level-table').classList.add('table-responsive-md');
-        document.getElementById('ship-level-container').classList.add('desk-only-cont');
+    if (isMobile) {
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.height = '0px'; });
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.visibility = 'hidden'; });
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.display = 'none'; });
+        document.querySelectorAll('[id*="shipInfoContainer"]').forEach(el => { el.style.flexDirection = 'column'; });
+        document.querySelectorAll('[id*="asc-planner-cont"]').forEach(el => { el.style.marginLeft = '10px'; });
+        document.querySelectorAll('[id*="ship-level-container-"]').forEach(el => { el.style.width = '100%' });
+        document.querySelectorAll('[dataMaxed="True"]').forEach(el => { el.style.display = 'none'; });
+    } else {
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.height = '0px'; });
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.visibility = 'hidden'; });
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.display = 'none'; });
+        document.querySelectorAll('[id*="shipInfoContainer"]').forEach(el => { el.style.flexDirection = 'row'; });
     }
     
     function properCaseAndSuffix(inputString, number) {
@@ -368,6 +448,91 @@
             ctrlReleaseHandled = true;
             toggleShipTimes();
         }
+    });
+
+    function durationSelectionChanged(el) {
+        if (el == null || el.id == null) return;
+
+        var shipName = el.id.split('-')[0];
+        index = el.id.split('-')[el.id.split('-').length - 1];
+        console.log("index: " + index);
+        var newValue = el.value;
+
+        var numNeededSpan = document.getElementById(shipName + '-number-needed-asc-' + index);
+        numNeededSpan.textContent = numNeededSpan.getAttribute('data-' + newValue);
+
+        var timeNeededSpan = document.getElementById(shipName + '-time-needed-asc-' + index);
+        timeNeededSpan.textContent = timeNeededSpan.getAttribute('dt-' + newValue);
+
+        var newColorClass = '';
+        switch(newValue){
+            case 'extended':
+                newColorClass = 'orange-text'
+                break;
+            case 'standard':
+                newColorClass = 'purple-text'
+                break;
+            default:
+            case 'short':
+                newColorClass = 'blue-text';
+                break;
+        }
+        timeNeededSpan.classList = newColorClass;
+        numNeededSpan.classList = newColorClass;
+        el.classList = newColorClass;
+
+        //Re-calc total times
+        reSumTimes(index);
+    }
+
+    function reSumTimes(index){
+
+        console.log("Summming for index " + index);
+
+        var times = [];
+
+        var idQuery = "-time-needed-asc-" + index;
+        var timeEls = document.querySelectorAll('[id*="' + idQuery + '"]');
+
+        if(timeEls.length == 0) {
+            console.log("Time els is empty");
+            var el2 = document.getElementById('total-asc-time-' + index);
+            if(el2 == undefined) return;
+            else el2.textContent = 'Maxed';
+            return;
+        }
+
+        timeEls.forEach(el => {
+            if(el.textContent !== '0m')
+                times.push(el.textContent);
+        });
+
+        const summedTimesStr = sumTime(times);
+        document.getElementById('total-asc-time-' + index).textContent = summedTimesStr;
+    }
+
+    function sumTime(timeStrings) {
+        let totalSeconds = 0;
+        for (let i = 0; i < timeStrings.length; i++) {
+            const timeString = timeStrings[i].trim();
+            const days = parseInt(timeString.match(/\d+d/)?.[0]?.slice(0, -1) ?? 0);
+            const hours = parseInt(timeString.match(/\d+h/)?.[0]?.slice(0, -1) ?? 0);
+            const minutes = parseInt(timeString.match(/\d+m/)?.[0]?.slice(0, -1) ?? 0);
+            totalSeconds += (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60);
+        }
+        const days = Math.floor(totalSeconds / (24 * 60 * 60));
+        const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+        const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+        return `${days}d${hours}h${minutes}m`;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        reSumTimes(0);
+        reSumTimes(1);
+        reSumTimes(2);
+        reSumTimes(3);
+        reSumTimes(4);
+        reSumTimes(5);
     });
 
 </script>

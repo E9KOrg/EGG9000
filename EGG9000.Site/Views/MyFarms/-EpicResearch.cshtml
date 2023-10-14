@@ -51,34 +51,6 @@
 				</tr>
 			</thead>
 			<tbody>
-				@*				@foreach (var epicResearch in Model.epicResearchConfig.OrderBy(o => o.Order)) {
-				if (epicResearch.MappedBackupResearch != null) {
-				string badgeColour = (epicResearch.MappedBackupResearch.Level == 0) ? "danger" :
-				(epicResearch.MappedBackupResearch.Level > 0 && epicResearch.MappedBackupResearch.Level < epicResearch.Costs.Count()) ? "warning" :
-				(epicResearch.MappedBackupResearch.Level == epicResearch.Costs.Count()) ? "success" : "";
-				var outstandingResearch = epicResearch.Costs.Skip(Convert.ToInt32(epicResearch.MappedBackupResearch.Level)).ToArray();
-				<tr>
-				<td>@epicResearch.Title</td>
-				<td>@epicResearch.Desc</td>
-				<td>
-				<span class="badge badge-@badgeColour">@epicResearch.MappedBackupResearch.Level / @epicResearch.Costs.Count()</span>
-				</td>
-				@if (outstandingResearch.Count() > 0) {
-				<td class="text-right">@String.Format("{0:n0}",outstandingResearch.FirstOrDefault())</td>
-				<td></td>
-				<td class="text-right">@String.Format("{0:n0}",outstandingResearch.Sum())</td>
-				totalCostToUpgrade += outstandingResearch.Sum(); // Add to total cost of upgrades.
-				} else {
-				<td colspan="3">&nbsp;</td>
-				}
-				</tr>
-				} else {
-				<tr><td colspan="99">Error finding research for @epicResearch.Id</td></tr>
-				}
-				}
-				<tr>
-				<td colspan="99" class="text-right"><b>Total GE required: @String.Format("{0:n0}",totalCostToUpgrade)</b></td>
-				</tr>*@
 				<tr ng-repeat="epicResearch in EpicResearchConfig">
 					<td>
 						{{epicResearch.title}}
