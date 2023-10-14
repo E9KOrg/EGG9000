@@ -124,15 +124,36 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
         }
 
+        public static int GetCompledShipsOfDuration(EggIncAccount account, Ei.MissionInfo.Types.DurationType duration) {
+            var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
+
+            var shipsForLastType = account.Backup.ShipsSent
+                .Where(x => x.ship == lastShipType && x.type == duration)
+                .ToList()
+                .Sum(x => x.count);
+
+            var exploringShips = account.Backup.SpaceMissions
+                .Where(x => x.Ship == lastShipType && x.Status == Ei.MissionInfo.Types.Status.Exploring && x.Duration == duration)
+                .ToList()
+                .Count;
+
+            return shipsForLastType - exploringShips;
+        }
+
         [ComponentCommand]
         private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
-            var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
-            
-            var shipsForLastType = account.Backup.ShipsSent.Where(x => x.ship == lastShipType).ToList();
+            //var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
 
-            var extendedCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Epic).Sum(x => x.count);
-            var standardCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Long).Sum(x => x.count);
-            var shortCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Short).Sum(x => x.count);
+            //var shipsForLastType = account.Backup.ShipsSent.Where(x => x.ship == lastShipType).ToList();
+            //var exploringEpicShips = account.Backup.SpaceMissions.Where(x => x.Ship == lastShipType && x.Status == Ei.MissionInfo.Types.Status.Exploring && x.Duration == Ei.MissionInfo.Types.DurationType.Epic).ToList();
+
+            //var extendedCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Epic).Sum(x => x.count);
+            //var standardCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Long).Sum(x => x.count);
+            //var shortCount = shipsForLastType.Where(x => x.type == Ei.MissionInfo.Types.DurationType.Short).Sum(x => x.count);
+
+            var extendedCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Epic);
+            var standardCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Long);
+            var shortCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Short);
 
             var craftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
             var legCount = ArtifactHelpers.GetLegendaryArtifactCount(account.Backup.ArtifactHall);
