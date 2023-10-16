@@ -11,7 +11,6 @@ using EGG9000.Common.Database.Entities;
 using Ei;
 
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -72,6 +71,7 @@ namespace EGG9000.Bot.Jobs {
                             var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
                             if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                                 if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
+                                    await SendUltraLogMessage(user, account, (int)subscriptionStatus.SubscriptionLevel, (int)account.SubscriptionLevel, dbguild, guild);
                                     account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                                     user.UpdateAccounts();
                                 }
@@ -81,6 +81,7 @@ namespace EGG9000.Bot.Jobs {
                                 }
                             } else {
                                 if(account.SubscriptionLevel.HasValue) {
+                                    await SendUltraLogMessage(user, account, (int)account.SubscriptionLevel, 0, dbguild, guild);
                                     account.SubscriptionLevel = null;
                                     user.UpdateAccounts();
                                 }
@@ -99,6 +100,29 @@ namespace EGG9000.Bot.Jobs {
 
             await db.SaveChangesAsync();
             _logger.LogInformation("Finished checking subscriptions");
+        }
+
+        public static string LevelText(int level) {
+            return level switch {
+                0 => "Not Subscribed",
+                1 => "ULTRA Standard",
+                2 => "ULTRA Pro",
+                _ => "???"
+            };
+        }
+
+        public async Task SendUltraLogMessage(DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
+            var message = $"<@{user.DiscordId}> (`{account.Name}`)'s ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
+            var ultraChannelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.UltraLog);
+            if(ultraChannelDetails == null) return;
+            var ultraThread = guild.GetThreadChannel(ultraChannelDetails.Id);
+            if(ultraThread is not null) {
+                await ultraThread.SendMessageAsync(message);
+            } else {
+                var ultraChannel = guild.GetTextChannel(ultraChannelDetails.Id);
+                if(ultraChannel is null) return;
+                await ultraChannel.SendMessageAsync(message);
+            }
         }
 
         public async Task CheckRole(ulong? roleid, DBUser dbuser, bool pro, SocketGuildUser user) {

@@ -95,7 +95,7 @@ namespace EGG9000.Site.Controllers {
             var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            var RawBackups = rawBackups;
+            /*var RawBackups = rawBackups;*/
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
             var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
@@ -104,7 +104,7 @@ namespace EGG9000.Site.Controllers {
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, RawBackups, Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
         }
 
         [AllowAnonymous]
@@ -115,7 +115,7 @@ namespace EGG9000.Site.Controllers {
             //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             var rawBackup = await ContractsAPI.FirstContact(eggIncId);
             var backup = new CustomBackup(rawBackup.Backup);
-            var RawBackups = new List<Ei.Backup>() { rawBackup.Backup };
+            /*var RawBackups = new List<Ei.Backup>() { rawBackup.Backup };*/
             var contractIDs = backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId).ToList();
             var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             var serialized = MessagePackSerializer.Serialize(backup, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
@@ -126,7 +126,7 @@ namespace EGG9000.Site.Controllers {
             };
             var uncompletedPes = GetUncompletedPEContracts(newDbUser, Contracts);
             return View("Index", new MyFarmsModel(
-                newDbUser, Contracts, new List<Demerit>(), new List<Merit>(), RawBackups, new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null,
+                newDbUser, Contracts, new List<Demerit>(), new List<Merit>(), /*RawBackups,*/ new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null,
                 uncompletedPes
             ));
         }
@@ -136,7 +136,7 @@ namespace EGG9000.Site.Controllers {
             List<Common.Database.Entities.Contract> Contracts,
             List<Demerit> Demerits,
             List<Merit> Merits,
-            List<Backup> RawBackups,
+            /*List<Backup> RawBackups*/
             List<UserSnapShot> SnapShots,
             List<UserCoopXref> UnjoinedCoops,
             List<Coop> JoinedCoops,

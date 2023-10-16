@@ -3,9 +3,14 @@
 @using System.Globalization;
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @inject DiscordSocketClient DiscordClient
-@model (CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
+@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
 
 @{
+    string properCaseAndSuffix(string inputString, int number){
+        var suffix = (number == 0 || number > 1) ? "s" : "";
+        return inputString.FirstCharToUpper() + suffix;
+    }
+
     void artifactTemplate(EggIncArtifactInstance artifact) {
         <tr>
             <td>@artifact.Artifact</td>
@@ -42,7 +47,29 @@
         var shipEmojiLink = "https://cdn.discordapp.com/emojis/" + shipEmoji + ".png?v=1";
         return shipEmojiLink;
     }
+
+    int index = Model.Index;
+
+    string formatEpochToTime(long epochSeconds){
+        return DateTimeOffset.FromUnixTimeSeconds(epochSeconds).Subtract(DateTimeOffset.Now).Duration().Humanize(2).ShortenTime();
+    }
+
+    string getProgressClass(Ei.MissionInfo.Types.DurationType dt){
+        return dt switch {
+            Ei.MissionInfo.Types.DurationType.Short => "mission-progress-blue",
+            Ei.MissionInfo.Types.DurationType.Long => "mission-progress-purple",
+            Ei.MissionInfo.Types.DurationType.Epic => "mission-progress-orange",
+            _ => ""
+        };
+    }
 }
+
+<script type="text/javascript">
+    var isMobileCS = false;
+    if (window.innerWidth <= 768) { // You can adjust the threshold for mobile screens
+        isMobileCS = true;
+    }
+</script>
 
 <style>
     .GoldenStar {
@@ -60,24 +87,26 @@
 
         .tooltip-custom:hover .tooltiptext-custom {
             display: inline-block;
-            z-index: 2; /* Make sure the tooltip is above other elements on hover */
-            top: -100%; /* Adjust this value as needed */
-            left: -200px;
+            z-index: 2;
+            position: absolute;
+            bottom: 25px; /* Adjust this value as needed */
+            left: 50%;
+            transform: translateX(-50%); /* Center the tooltip */
         }
 
     .tooltiptext-custom {
         display: none;
-        position: absolute;
-        background-color: rgba(255, 255, 255, 0.9); /* Adjust opacity here */
+        background-color: rgba(255, 255, 255, 0.95);
         border: 1px solid #ccc;
         padding: 10px;
         border-radius: 4px;
-        white-space: nowrap; /* Prevent the tooltip from wrapping */
+        white-space: nowrap;
+        text-align: center; /* Center the text within the tooltip */
+        position: absolute;
     }
 
-    .gray-text-half-margin,
-    .gray-text {
-        color: lightgray
+    .gray-text-half-margin, .gray-text {
+        color: lightgray;
     }
 
     .orange-text {
@@ -92,27 +121,86 @@
         color: blue;
     }
 
-    .gray-text,
-    .orange-text,
-    .purple-text,
-    .blue-text {
-        display: inline-block; /* Display spans horizontally */
-        margin-right: 10px; /* Add spacing between spans */
+    .gray-text, .orange-text, .purple-text, .blue-text {
+        display: inline-block;
+        margin-right: 10px;
     }
 
     .gray-text-half-margin {
-        display: inline-block; /* Display spans horizontally */
-        margin-right: 5px; /* Add spacing between spans */
+        display: inline-block;
+        margin-right: 5px;
     }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px; /* Adjust the padding to your preference */
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+    /* Create the triangle */
+    .speech-bubble :after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -15px; /* Half of the triangle's width */
+        border-width: 15px; /* Adjust the size of the triangle */
+        border-style: solid;
+        border-color: #ccc transparent transparent transparent;
+    }
+
+    .ship-info-container {
+        display: flex;
+    }
+
+    .ship-info-item {
+        flex: 1;
+    }
+
+    .mission-card-progress {
+        max-height: 12px;
+        margin-bottom: 7px;
+        display: block;
+        height: 100%;
+    }
+
+    .mission-progress-blue {
+        background-color: blue;
+    }
+    .mission-progress-purple {
+        background-color: purple;
+    }
+    .mission-progress-orange {
+        background-color: darkorange;
+    }
+
+    .progress-container {
+        width: 100%;
+        background-color: darkgray;
+        max-height: 12px;
+        height: 100%;
+        margin-bottom:12px;
+    }
+
 </style>
 
 <div id="shipsDiv" class="ship-container">
+    @{
+        var shipIndex = 0;
+    }
     @foreach (var mission in Model.Backup.SpaceMissions ?? new List<SpaceMission>()) {
         var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
-
+        var epochReturns = (long)(returns.ToUnixTimeSeconds());
 
         var shipEmojiLink = getShipEmoji(mission.Ship);
-        <div class="ship-item card" style="display: inline-block; text-align: center; margin: 10px; padding-top: 10px">
+        <div class="ship-item card" style="display: inline-block; text-align: center; margin: 10px">
+            <span class="progress-container tooltip-custom" id="progress-container-@shipIndex-@index">
+                <span id="progressbar-@shipIndex-@index" class="mission-card-progress @getProgressClass(mission.Duration)" data-started="@mission.StartTime" data-duration="@mission.DurationSeconds">
+                    &nbsp;
+                </span>
+                <span class="tooltiptext-custom speech-bubble" id="progressbar-@shipIndex-@index-tt"></span>
+            </span>
             @if (shipEmojiLink != "") {
                 <img src="@((shipEmojiLink))" style="max-height: 40px">
             }
@@ -136,9 +224,24 @@
                     case Ei.MissionInfo.Types.Status.Exploring:
                     case Ei.MissionInfo.Types.Status.Returned:
                         if (returns < DateTimeOffset.Now) {
-                            <div>Returned: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime()) ago</div>
+                            <div>
+                                <span class="tooltip-custom">
+                                    Returned <span id="ship-return-m-@shipIndex-@index-ago" timedataval="@epochReturns">@formatEpochToTime(epochReturns)</span> ago
+                                    <span id="ship-return-tt-@shipIndex-@index-ago" class="tooltiptext-custom speech-bubble">
+                                        Placeholder... Why are you looking here?
+                                    </span>
+                                </span>
+                            </div>
                         } else {
-                            <div>Returns: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime())</div>
+                            <div>
+                                <span class="tooltip-custom">
+                                    Returns in <span id="ship-return-m-@shipIndex-@index" timedataval="@epochReturns">@formatEpochToTime(epochReturns)</span>
+                                    <span id="ship-return-tt-@shipIndex-@index" class="tooltiptext-custom speech-bubble">
+                                        Placeholder... Why are you looking here?
+                                    </span>
+                                </span>        
+                            </div>
+
                         }
                         break;
                 }
@@ -156,106 +259,474 @@
                 }
             </div>
         </div>
+        shipIndex++;
     }
 </div>
 
-<div>
-    <table class="table table-sm" style="width: auto;">
-        <thead>
-            <tr>
-                <th style="text-align: center;">Ship</th>
-                <th>Stars</th>
-                <th>Next Level</th>
-                <th>Max Level</th>
-                <th>Launches</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var ship in MissionHelpers.MaxShipLevels) {
-                var currentStars = Model.Backup.GetShipLevel(ship.Key);
-                var shipEmojiLink = getShipEmoji(ship.Key);
+<div id="shipInfoContainer-@index" class="ship-info-container">
+    <div id="ship-level-container-@index" style="margin-left: 10px; width:60%; display: block;">
+        <table id="ship-level-table" class="table card table-sm" style="width: 100%; table-layout: auto; display: table;">
+            <thead>
                 <tr>
-                    <td align="center">
-                        @if (shipEmojiLink != "") {
-                            <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height: 20px">
-                        }
-                    </td>
-                    <td>
-                        @for(var i = 0; i < ship.Value; i++) {
-                            if (i < currentStars) {
-                                <span class="GoldenStar">★</span>
-                                
-                            } else {
-                                <span class="GrayStar">★</span>
-                            }
-                        }
-                    </td>
-                    <td>
-                        @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
-                            <span class="tooltip-custom">
-                            @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
-                                <span class="tooltiptext-custom">
-                                    @{
-                                        var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
-                                        var shortsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Short] : 0;
-                                        var standardsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Long] : 0;
-                                        var extendedsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Epic] : 0;
-                                    }
-                                    <span class="blue-text">@shortsToNext Short</span><span class="gray-text-half-margin">or</span>
-                                    <span class="purple-text">@standardsToNext Standard</span><span class="gray-text-half-margin">or</span>
-                                    <span class="orange-text">@extendedsToNext Extended</span>
-                                </span>
-                            </span>
-                        }else{
-                            @("--")
-                        }
-                    </td>
-                    <td>
-                        <span class="tooltip-custom">
-                            @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
-                            @if(Model.Backup.GetShipProgressTotal(ship.Key) != 1){
-                                <span class="tooltiptext-custom">
-                                    @{
-                                        var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
-                                        var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
-                                        var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Long] : 0;
-                                        var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax?[Ei.MissionInfo.Types.DurationType.Epic] : 0;
-                                    }
-                                    <span class="blue-text">@shortsToMax Short</span><span class="gray-text-half-margin">or</span>
-                                    <span class="purple-text">@standardsToMax Standard</span><span class="gray-text-half-margin">or</span>
-                                    <span class="orange-text">@extendedsToMax Extended</span>
-                                </span>
-                            }
-                        </span>
-                    </td>
-                    <td>
-                        <span class="tooltip-custom">
-                            @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
-                            <span class="tooltiptext-custom">
-                                @{
-                                    var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
-                                    var tutorialShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Tutorial);
-                                    var extendedShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Epic);
-                                    var standardShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Long);
-                                    var shortShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Short);
-                                }
-                                @if(ship.Key == Ei.MissionInfo.Types.Spaceship.ChickenOne){
-                                    <span class="gray-text">@tutorialShips.count Tutorial</span>
-                                }
-                                <span class="blue-text">@shortShips.count Short</span>
-                                <span class="purple-text">@standardShips.count Standard</span>
-                                <span class="orange-text">@extendedShips.count Extended</span>
-                            </span>
-                        </span>
-                    </td>
+                    <th style="text-align: center;">Ship</th>
+                    <th>Stars</th>
+                    <th>Next Level</th>
+                    <th>Max Level</th>
+                    <th>Launches</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var ship in MissionHelpers.MaxShipLevels) {
+                    var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                    var shipEmojiLink = getShipEmoji(ship.Key);
+                    <tr id="@ship.Key-overall-row" style="height: 38px;">
+                        <td align="center">
+                            @if (shipEmojiLink != "") {
+                                <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height:20px;">
+                            }
+                        </td>
+                        <td>
+                            @for (var i = 0; i < ship.Value; i++) {
+                                if (i < currentStars){
+                                    <span class="Star GoldenStar">★</span>
+                                } else {
+                                    <span class="Star GrayStar">★</span>
+                                }
+                            }
+                        </td>
+                        <td>
+                            @if (Model.Backup.GetShipProgressTotal(ship.Key) != 1) {
+                                <span class="tooltip-custom">
+                                    @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
+                                    <span class="tooltiptext-custom speech-bubble">
+                                        @{
+                                            var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
+                                            var shortsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                            var standardsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                            var extendedsToNext = shipsToNext.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToNext[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+
+                                            var shortsTimeNext = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortsToNext);
+                                            var standardsTimeNext = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardsToNext);
+                                            var extendedsTimeNext = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedsToNext);
+                                        }
+                                        <span id="@ship.Key-short-nextlvl" timeval="@shortsTimeNext" intval="@shortsToNext" class="blue-text">@shortsToNext @properCaseAndSuffix("Short", shortsToNext)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-standard-nextlvl" timeval="@standardsTimeNext" intval="@standardsToNext" class="purple-text">@standardsToNext @properCaseAndSuffix("Standard", standardsToNext)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-extended-nextlvl" timeval="@extendedsTimeNext" intval="@extendedsToNext" class="orange-text">@extendedsToNext @properCaseAndSuffix("Extended", extendedsToNext)</span>
+                                    </span>
+                                </span>
+                            }
+                            else{@("--")}
+                        </td>
+                        <td>
+                            <span class="tooltip-custom">
+                                @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                                @if (Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                                    <span class="tooltiptext-custom speech-bubble">
+                                        @{
+                                            var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                                            var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                                            var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                                            var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+
+                                            var shortsTimeMax = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortsToMax);
+                                            var standardsTimeMax = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardsToMax);
+                                            var extendedsTimeMax = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedsToMax);
+                                        }
+                                        <span id="@ship.Key-short-maxlvl" timeval="@shortsTimeMax" intval="@shortsToMax" class="blue-text">@shortsToMax @properCaseAndSuffix("Short", shortsToMax)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-standard-maxlvl" timeval="@standardsTimeMax" intval="@standardsToMax" class="purple-text">@standardsToMax @properCaseAndSuffix("Standard", standardsToMax)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-extended-maxlvl" timeval="@extendedsTimeMax" intval="@extendedsToMax" class="orange-text">@extendedsToMax @properCaseAndSuffix("Extended", extendedsToMax)</span>
+                                    </span>
+                                }
+                            </span>
+                        </td>
+                        <td>
+                            <span class="tooltip-custom">
+                                @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
+                                <span class="tooltiptext-custom speech-bubble">
+                                    @{
+                                        var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
+                                        var tutorialShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Tutorial);
+                                        var extendedShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Epic);
+                                        var standardShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Long);
+                                        var shortShips = ships.FirstOrDefault(x => x.type == Ei.MissionInfo.Types.DurationType.Short);
+
+                                        var tutorialTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Tutorial, tutorialShips.count);
+                                        var shortsTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortShips.count);
+                                        var standardsTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardShips.count);
+                                        var extendedsTimeLaunched = Model.Backup.GetShipTime(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedShips.count);
+
+                                    }
+                                    @if (ship.Key == Ei.MissionInfo.Types.Spaceship.ChickenOne) {
+                                        <span id="@ship.Key-tutorial-launched" timeval="@tutorialTimeLaunched" intval="@tutorialShips.count" class="gray-text">@tutorialShips.count @properCaseAndSuffix("Tutorial", tutorialShips.count)</span>
+                                    }
+                                    <span id="@ship.Key-short-launched" timeval="@shortsTimeLaunched" intval="@shortShips.count" class="blue-text">@shortShips.count @properCaseAndSuffix("Short", shortShips.count)</span>
+                                    <span id="@ship.Key-standard-launched" timeval="@standardsTimeLaunched" intval="@standardShips.count" class="purple-text">@standardShips.count @properCaseAndSuffix("Standard", standardShips.count)</span>
+                                    <span id="@ship.Key-extended-launched" timeval="@extendedsTimeLaunched" intval="@extendedShips.count" class="orange-text">@extendedShips.count @properCaseAndSuffix("Extended", extendedShips.count)</span>
+                                </span>
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <span id="do-tt-@index" style="color: #ccc">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
+        <button class="btn-primary" id="mo-tt-@index" style="color: #ccc; margin-bottom: 10px;" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
+    </div>
+    <div id="asc-planner-cont" style="margin-left: 0px; width: auto"> 
+        <table id="asc-planner-table" class="table card table-sm" style="table-layout: auto; display: table;">
+            <thead>
+                <tr>
+                    <th colspan="4">ASC Planner 
+                        <span class="tooltip-custom">
+                            (❔)
+                            <span class="tooltiptext-custom speech-bubble">
+                                All-Star-Club, commonly shortened to "ASC", is<br />
+                                the name of the community-created achievement<br />
+                                for getting completing all <span class="GoldenStar">★</span>s, on all ships.
+                            </span>
+                        </span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ship in MissionHelpers.MaxShipLevels)
+                {
+                    var alreadyMaxed = (Model.Backup.GetShipProgressTotal(ship.Key) >= 1);
+
+                    var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                    var shipEmojiLink = getShipEmoji(ship.Key);
+
+                    var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                    var shortsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Short) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Short] : 0;
+                    var standardsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Long) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Long] : 0;
+                    var extendedsToMax = shipsToMax.ContainsKey(Ei.MissionInfo.Types.DurationType.Epic) ? shipsToMax[Ei.MissionInfo.Types.DurationType.Epic] : 0;
+
+                    var shortsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, Ei.MissionInfo.Types.DurationType.Short, shortsToMax);
+                    var standardsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, Ei.MissionInfo.Types.DurationType.Long, standardsToMax);
+                    var extendedsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, Ei.MissionInfo.Types.DurationType.Epic, extendedsToMax);
+
+                    <tr id="@ship.Key-asc-row-@index" style="height: 38px;" dataMaxed="@(alreadyMaxed.ToString())">
+                        <td id="asc-name-col-@index" align="left" style="padding-left: 5px; font-size: 0.75rem;" dataMaxed="@(alreadyMaxed.ToString())">
+                            @MissionHelpers.GetProperShipName(ship.Key)
+                        </td>
+                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                            @if (!alreadyMaxed) {
+                                <select class="blue-text" name="@ship.Key-duration-asc-choice-@index" id="@ship.Key-duration-asc-choice-@index" onchange="durationSelectionChanged(this)">
+                                    <option value="short" class="blue-text">Short</option>
+                                    <option value="standard" class="purple-text">Standard</option>
+                                    <option value="extended" class="orange-text">Extended</option>
+                                </select>
+                            }
+                        </td>
+                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                            @if (!alreadyMaxed) {
+                                <span class="blue-text" id="@ship.Key-number-needed-asc-@index" 
+                                    data-short="@shortsToMax" data-standard="@standardsToMax" data-extended="@extendedsToMax">
+                                    @shortsToMax
+                                </span>
+                            }
+                        </td>
+                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                            @if (!alreadyMaxed) {
+                                <span class="blue-text" id="@ship.Key-time-needed-asc-@index" 
+                                    data-short="@shortsTimeMax" data-standard="@standardsTimeMax" data-extended="@extendedsTimeMax"
+                                      dt-short="@Model.Backup.MinutesToString(shortsTimeMax)" dt-standard="@Model.Backup.MinutesToString(standardsTimeMax)" dt-extended="@Model.Backup.MinutesToString(extendedsTimeMax)">
+                                    @Model.Backup.MinutesToString(shortsTimeMax)
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+                <tr>
+                    <td colspan="3"><span>Total time (as configured):</span></td>
+                    <td><span id="total-asc-time-@index"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 <br />
 <hr />
 <br />
+
+<script type="text/javascript">
+    var timeState = 'no';
+    var ctrlReleaseHandled = false;
+    var index = @index;
+
+    var isMobile = (window.innerWidth < 768);
+    if (isMobile) {
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.height = '0px'; });
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.visibility = 'hidden'; });
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.display = 'none'; });
+        document.querySelectorAll('[id*="shipInfoContainer"]').forEach(el => { el.style.flexDirection = 'column'; });
+        document.querySelectorAll('[id*="asc-planner-cont"]').forEach(el => { el.style.marginLeft = '10px'; });
+        document.querySelectorAll('[id*="ship-level-container-"]').forEach(el => { el.style.width = '100%' });
+        document.querySelectorAll('[dataMaxed="True"]').forEach(el => { el.style.display = 'none'; });
+    } else {
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.height = '0px'; });
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.visibility = 'hidden'; });
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.display = 'none'; });
+        document.querySelectorAll('[id*="shipInfoContainer"]').forEach(el => { el.style.flexDirection = 'row'; });
+    }
+    
+    function properCaseAndSuffix(inputString, number) {
+        const suffix = (number == 0 || number > 1) ? 's' : '';
+        return inputString.charAt(0).toUpperCase() + inputString.slice(1) + suffix;
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.ctrlKey) ctrlReleaseHandled = false;
+    });
+
+    function toggleShipTimes(){
+        const elementsLaunched = Array.from(document.querySelectorAll('[id*="-launched"]'));
+        const elementsMaxLvl = Array.from(document.querySelectorAll('[id*="-maxlvl"]'));
+        const elementsNextLvl = Array.from(document.querySelectorAll('[id*="-nextlvl"]'));
+        const elements = elementsLaunched.concat(elementsMaxLvl, elementsNextLvl);
+        switch (timeState) {
+            case 'yes':
+                timeState = 'no';
+                elements.forEach(element => {
+                    if (element.nodeName == 'SPAN') {
+                        const elementId = element.id.toString();
+                        const durationType = elementId.split("-")[1];
+                        const durationString = properCaseAndSuffix(durationType, parseInt(element.intVal));
+                        element.textContent = element.getAttribute('intval') + ' ' + durationString;
+                    }
+                });
+                break;
+            case 'no':
+                timeState = 'yes';
+                elements.forEach(element => {
+                    if (element.nodeName == 'SPAN') element.textContent = element.getAttribute('timeval') + ' (' + element.getAttribute('intval') + ')';
+                });
+                break;
+        }
+    }
+
+    /* When control is released */
+    document.addEventListener("keyup", function (event) {
+        if (!event.ctrlKey && !ctrlReleaseHandled) {
+            ctrlReleaseHandled = true;
+            toggleShipTimes();
+        }
+    });
+
+    function durationSelectionChanged(el) {
+        if (el == null || el.id == null) return;
+
+        var shipName = el.id.split('-')[0];
+        index = el.id.split('-')[el.id.split('-').length - 1];
+        var newValue = el.value;
+
+        var numNeededSpan = document.getElementById(shipName + '-number-needed-asc-' + index);
+        numNeededSpan.textContent = numNeededSpan.getAttribute('data-' + newValue);
+
+        var timeNeededSpan = document.getElementById(shipName + '-time-needed-asc-' + index);
+        timeNeededSpan.textContent = timeNeededSpan.getAttribute('dt-' + newValue);
+
+        var newColorClass = '';
+        switch(newValue){
+            case 'extended':
+                newColorClass = 'orange-text'
+                break;
+            case 'standard':
+                newColorClass = 'purple-text'
+                break;
+            default:
+            case 'short':
+                newColorClass = 'blue-text';
+                break;
+        }
+        timeNeededSpan.classList = newColorClass;
+        numNeededSpan.classList = newColorClass;
+        el.classList = newColorClass;
+
+        //Re-calc total times
+        reSumTimes(index);
+    }
+
+    function reSumTimes(index){
+
+        var times = [];
+
+        var idQuery = "-time-needed-asc-" + index;
+        var timeEls = document.querySelectorAll('[id*="' + idQuery + '"]');
+
+        if(timeEls.length == 0) {
+            var el2 = document.getElementById('total-asc-time-' + index);
+            if(el2 == undefined) return;
+            else el2.textContent = 'Maxed';
+            return;
+        }
+
+        timeEls.forEach(el => {
+            if(el.textContent !== '0m')
+                times.push(el.textContent);
+        });
+
+        const summedTimesStr = sumTime(times);
+        document.getElementById('total-asc-time-' + index).textContent = summedTimesStr;
+    }
+
+    function sumTime(timeStrings) {
+        let totalSeconds = 0;
+        for (let i = 0; i < timeStrings.length; i++) {
+            const timeString = timeStrings[i].trim();
+            const days = parseInt(timeString.match(/\d+d/)?.[0]?.slice(0, -1) ?? 0);
+            const hours = parseInt(timeString.match(/\d+h/)?.[0]?.slice(0, -1) ?? 0);
+            const minutes = parseInt(timeString.match(/\d+m/)?.[0]?.slice(0, -1) ?? 0);
+            totalSeconds += (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60);
+        }
+        const days = Math.floor(totalSeconds / (24 * 60 * 60));
+        const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+        const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+        return `${days}d${hours}h${minutes}m`;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        reSumTimes(0);
+        reSumTimes(1);
+        reSumTimes(2);
+        reSumTimes(3);
+        reSumTimes(4);
+        reSumTimes(5);
+    });
+
+    function formatEpochToTime(epochSeconds) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, return "0s"
+            return "0s";
+        }
+
+        // Calculate days, hours, and minutes
+        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
+        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+
+        // Format the result as "XdXhXm"
+        var result = "";
+
+        if (days > 0) {
+            result += days + "d";
+        }
+
+        if (hours > 0) {
+            result += hours + "h";
+        }
+
+        if (minutes > 0) {
+            result += minutes + "m";
+        }
+
+        if (result === "") {
+            result = "0s"; // If the time is less than 1 minute, display "0s"
+        }
+
+        return result;
+    }
+
+    function formatEpochToFullTime(epochSeconds) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, return "0 seconds"
+            return "0 seconds";
+        }
+
+        // Calculate days, hours, minutes, and seconds
+        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
+        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+        var seconds = timeDifference % 60;
+
+        // Build the result string
+        var result = "";
+
+        if (days > 0) {
+            result += days + "d";
+        }
+
+        if (hours > 0) {
+            result += hours + "h";
+        }
+
+        if (minutes > 0) {
+            result += minutes + "m";
+        }
+
+        if (seconds > 0) {
+            result += seconds + "s";
+        }
+
+        return result.trim();
+    }
+
+    function formatEpochToLocalDateTime(epochSeconds) {
+        // Convert the epoch time to milliseconds and create a Date object
+        var date = new Date(epochSeconds * 1000);
+
+        // Get date and time components
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+        var day = String(date.getDate()).padStart(2, '0');
+        var hours = String(date.getHours()).padStart(2, '0');
+        var minutes = String(date.getMinutes()).padStart(2, '0');
+        var seconds = String(date.getSeconds()).padStart(2, '0');
+
+        // Format the result as "YYYY-MM-DD HH:mm:ss"
+        var result = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        return result;
+    }
+
+    function limitToHundrd(value){
+        if(value <= 100) return value;
+        else return 100.00;
+    }
+
+    function updateTimedataval() {
+        var elements = document.querySelectorAll('span[id^="ship-return-m"]');
+        elements.forEach(function (element) {
+            var timeVal = element.getAttribute('timedataval');
+            element.textContent = formatEpochToTime(timeVal);
+            var ttEl = document.getElementById(element.id.replace('-m', '-tt'));
+            if(ttEl != null){
+                var ttCounter = formatEpochToFullTime(timeVal);
+                var ttCounterText = element.id.indexOf('ago') > -1 ? ttCounter + ' ago' : 'In ' + ttCounter;
+                var fullDate = formatEpochToLocalDateTime(timeVal);
+                ttEl.innerHTML = `${ttCounterText} <br><span style="color: grey;">(</span> ${fullDate} <span style="color: grey;">)</span>`;
+            }
+            var progressEl = document.getElementById(element.id.replace('ship-return-m-', 'progressbar-').replace('-ago', ''));
+            if(progressEl != null){
+                var startSeconds = parseInt(progressEl.getAttribute('data-started'));
+                var durationSeconds = parseInt(progressEl.getAttribute('data-duration'));
+                var currentSeconds = new Date() / 1000;
+                const percentageDone = limitToHundrd(((currentSeconds - startSeconds) / durationSeconds) * 100);
+                const containerWidth = progressEl.parentElement.offsetWidth;
+                const fillWidth = (containerWidth * percentageDone) / 100;
+                progressEl.style.width = fillWidth + 'px';
+
+                const progressTT = document.getElementById(progressEl.id + '-tt');
+                progressTT.textContent = (percentageDone).toFixed(2) + '%';
+            }
+        });
+    }
+
+    // Initial call to the function
+    updateTimedataval();
+
+    // Set up a timer to call the function every second
+    setInterval(updateTimedataval, 1000);
+
+</script>
+
+
+
 @for (var i = 0; i < Model.Backup.Farms.Count; i++) {
     var farm = Model.Backup.Farms[i];
 
