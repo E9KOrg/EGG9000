@@ -156,5 +156,7 @@ namespace EGG9000.Common.Database.Entities {
         ArtifactCheaterThread = 37,
         /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
         UnobtainedUltraChannel = 38*/
+        [Description("Optional: Thread/Channel ID where changes in players' ULTRA status will be logged")]
+        UltraLog = 39
     }
 }

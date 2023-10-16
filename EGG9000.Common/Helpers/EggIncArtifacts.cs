@@ -124,21 +124,6 @@ namespace EGG9000.Common.Helpers {
             };
         }
 
-        public class ArtifactNameAutoComplete : AutoCompleteHandler {
-            private readonly EiAfxDataRoot _eiAfxData;
-            public ArtifactNameAutoComplete() {
-                _eiAfxData = GetEiAfxData();
-            }
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                IEnumerable<ArtifactFamily> artifactFamilies = _eiAfxData.artifact_families.ToList();
-                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    artifactFamilies = artifactFamilies.Where(x => x.name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
-                }
-
-                await arg.RespondAsync(null, artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).Take(25).ToArray());
-            }
-        }
-
         public static Tier GetTier(int afxId, int tierNumber) {
             var data = GetEiAfxData();
             // Should be do so, because stone fragment tiers have a different afx_id.
