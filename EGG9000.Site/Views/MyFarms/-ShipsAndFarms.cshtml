@@ -49,6 +49,19 @@
     }
 
     int index = Model.Index;
+
+    string formatEpochToTime(long epochSeconds){
+        return DateTimeOffset.FromUnixTimeSeconds(epochSeconds).Subtract(DateTimeOffset.Now).Duration().Humanize(2).ShortenTime();
+    }
+
+    string getProgressClass(Ei.MissionInfo.Types.DurationType dt){
+        return dt switch {
+            Ei.MissionInfo.Types.DurationType.Short => "mission-progress-blue",
+            Ei.MissionInfo.Types.DurationType.Long => "mission-progress-purple",
+            Ei.MissionInfo.Types.DurationType.Epic => "mission-progress-orange",
+            _ => ""
+        };
+    }
 }
 
 <script type="text/javascript">
@@ -145,15 +158,49 @@
         flex: 1;
     }
 
+    .mission-card-progress {
+        max-height: 12px;
+        margin-bottom: 7px;
+        display: block;
+        height: 100%;
+    }
+
+    .mission-progress-blue {
+        background-color: blue;
+    }
+    .mission-progress-purple {
+        background-color: purple;
+    }
+    .mission-progress-orange {
+        background-color: darkorange;
+    }
+
+    .progress-container {
+        width: 100%;
+        background-color: darkgray;
+        max-height: 12px;
+        height: 100%;
+        margin-bottom:12px;
+    }
+
 </style>
 
 <div id="shipsDiv" class="ship-container">
+    @{
+        var shipIndex = 0;
+    }
     @foreach (var mission in Model.Backup.SpaceMissions ?? new List<SpaceMission>()) {
         var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
-
+        var epochReturns = (long)(returns.ToUnixTimeSeconds());
 
         var shipEmojiLink = getShipEmoji(mission.Ship);
-        <div class="ship-item card" style="display: inline-block; text-align: center; margin: 10px; padding-top: 10px">
+        <div class="ship-item card" style="display: inline-block; text-align: center; margin: 10px">
+            <span class="progress-container tooltip-custom" id="progress-container-@shipIndex-@index">
+                <span id="progressbar-@shipIndex-@index" class="mission-card-progress @getProgressClass(mission.Duration)" data-started="@mission.StartTime" data-duration="@mission.DurationSeconds">
+                    &nbsp;
+                </span>
+                <span class="tooltiptext-custom speech-bubble" id="progressbar-@shipIndex-@index-tt"></span>
+            </span>
             @if (shipEmojiLink != "") {
                 <img src="@((shipEmojiLink))" style="max-height: 40px">
             }
@@ -177,9 +224,24 @@
                     case Ei.MissionInfo.Types.Status.Exploring:
                     case Ei.MissionInfo.Types.Status.Returned:
                         if (returns < DateTimeOffset.Now) {
-                            <div>Returned: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime()) ago</div>
+                            <div>
+                                <span class="tooltip-custom">
+                                    Returned <span id="ship-return-m-@shipIndex-@index-ago" timedataval="@epochReturns">@formatEpochToTime(epochReturns)</span> ago
+                                    <span id="ship-return-tt-@shipIndex-@index-ago" class="tooltiptext-custom speech-bubble">
+                                        Placeholder... Why are you looking here?
+                                    </span>
+                                </span>
+                            </div>
                         } else {
-                            <div>Returns: @((returns - DateTimeOffset.Now).Humanize(2).ShortenTime())</div>
+                            <div>
+                                <span class="tooltip-custom">
+                                    Returns in <span id="ship-return-m-@shipIndex-@index" timedataval="@epochReturns">@formatEpochToTime(epochReturns)</span>
+                                    <span id="ship-return-tt-@shipIndex-@index" class="tooltiptext-custom speech-bubble">
+                                        Placeholder... Why are you looking here?
+                                    </span>
+                                </span>        
+                            </div>
+
                         }
                         break;
                 }
@@ -197,6 +259,7 @@
                 }
             </div>
         </div>
+        shipIndex++;
     }
 </div>
 
@@ -455,7 +518,6 @@
 
         var shipName = el.id.split('-')[0];
         index = el.id.split('-')[el.id.split('-').length - 1];
-        console.log("index: " + index);
         var newValue = el.value;
 
         var numNeededSpan = document.getElementById(shipName + '-number-needed-asc-' + index);
@@ -487,15 +549,12 @@
 
     function reSumTimes(index){
 
-        console.log("Summming for index " + index);
-
         var times = [];
 
         var idQuery = "-time-needed-asc-" + index;
         var timeEls = document.querySelectorAll('[id*="' + idQuery + '"]');
 
         if(timeEls.length == 0) {
-            console.log("Time els is empty");
             var el2 = document.getElementById('total-asc-time-' + index);
             if(el2 == undefined) return;
             else el2.textContent = 'Maxed';
@@ -534,6 +593,135 @@
         reSumTimes(4);
         reSumTimes(5);
     });
+
+    function formatEpochToTime(epochSeconds) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, return "0s"
+            return "0s";
+        }
+
+        // Calculate days, hours, and minutes
+        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
+        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+
+        // Format the result as "XdXhXm"
+        var result = "";
+
+        if (days > 0) {
+            result += days + "d";
+        }
+
+        if (hours > 0) {
+            result += hours + "h";
+        }
+
+        if (minutes > 0) {
+            result += minutes + "m";
+        }
+
+        if (result === "") {
+            result = "0s"; // If the time is less than 1 minute, display "0s"
+        }
+
+        return result;
+    }
+
+    function formatEpochToFullTime(epochSeconds) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, return "0 seconds"
+            return "0 seconds";
+        }
+
+        // Calculate days, hours, minutes, and seconds
+        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
+        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+        var seconds = timeDifference % 60;
+
+        // Build the result string
+        var result = "";
+
+        if (days > 0) {
+            result += days + "d";
+        }
+
+        if (hours > 0) {
+            result += hours + "h";
+        }
+
+        if (minutes > 0) {
+            result += minutes + "m";
+        }
+
+        if (seconds > 0) {
+            result += seconds + "s";
+        }
+
+        return result.trim();
+    }
+
+    function formatEpochToLocalDateTime(epochSeconds) {
+        // Convert the epoch time to milliseconds and create a Date object
+        var date = new Date(epochSeconds * 1000);
+
+        // Get date and time components
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+        var day = String(date.getDate()).padStart(2, '0');
+        var hours = String(date.getHours()).padStart(2, '0');
+        var minutes = String(date.getMinutes()).padStart(2, '0');
+        var seconds = String(date.getSeconds()).padStart(2, '0');
+
+        // Format the result as "YYYY-MM-DD HH:mm:ss"
+        var result = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        return result;
+    }
+
+    function limitToHundrd(value){
+        if(value <= 100) return value;
+        else return 100.00;
+    }
+
+    function updateTimedataval() {
+        var elements = document.querySelectorAll('span[id^="ship-return-m"]');
+        elements.forEach(function (element) {
+            var timeVal = element.getAttribute('timedataval');
+            element.textContent = formatEpochToTime(timeVal);
+            var ttEl = document.getElementById(element.id.replace('-m', '-tt'));
+            if(ttEl != null){
+                var ttCounter = formatEpochToFullTime(timeVal);
+                var ttCounterText = element.id.indexOf('ago') > -1 ? ttCounter + ' ago' : 'In ' + ttCounter;
+                var fullDate = formatEpochToLocalDateTime(timeVal);
+                ttEl.innerHTML = `${ttCounterText} <br><span style="color: grey;">(</span> ${fullDate} <span style="color: grey;">)</span>`;
+            }
+            var progressEl = document.getElementById(element.id.replace('ship-return-m-', 'progressbar-').replace('-ago', ''));
+            if(progressEl != null){
+                var startSeconds = parseInt(progressEl.getAttribute('data-started'));
+                var durationSeconds = parseInt(progressEl.getAttribute('data-duration'));
+                var currentSeconds = new Date() / 1000;
+                const percentageDone = limitToHundrd(((currentSeconds - startSeconds) / durationSeconds) * 100);
+                const containerWidth = progressEl.parentElement.offsetWidth;
+                const fillWidth = (containerWidth * percentageDone) / 100;
+                progressEl.style.width = fillWidth + 'px';
+
+                const progressTT = document.getElementById(progressEl.id + '-tt');
+                progressTT.textContent = (percentageDone).toFixed(2) + '%';
+            }
+        });
+    }
+
+    // Initial call to the function
+    updateTimedataval();
+
+    // Set up a timer to call the function every second
+    setInterval(updateTimedataval, 1000);
 
 </script>
 
