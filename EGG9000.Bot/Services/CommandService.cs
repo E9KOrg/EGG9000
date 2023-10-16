@@ -40,6 +40,7 @@ using EGG9000.Bot.Consumers;
 using EGG9000.Common.Extensions;
 using EGG9000.Bot.Automated.Coops;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Services {
 
@@ -63,6 +64,7 @@ namespace EGG9000.Bot.Services {
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
         private IPublishEndpoint _publishEndpoint;
+        private readonly Discord.Commands.CommandService _discordCmdService = new Discord.Commands.CommandService();
         public CommandService(IConfiguration Configuration,
                 DiscordHostedService discord,
                 APILink apilink,
@@ -90,6 +92,7 @@ namespace EGG9000.Bot.Services {
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
+            _discordCmdService.AddModulesAsync(Assembly.GetEntryAssembly(), null);
             logger.LogInformation($"Initiating CommandService");
         }
 
@@ -260,7 +263,6 @@ namespace EGG9000.Bot.Services {
                     command.Details.Description = $"(Admin Only) {command.Details.Description}";
                 }
                 guildCommand.WithDescription(command.Details.Description);
-                //guildCommand.Description += "~";
 
                 if(command.Details.AdminOnly != StaffOnlyLevel.None) {
                     guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
@@ -312,7 +314,6 @@ namespace EGG9000.Bot.Services {
                     };
                 }
 
-
                 guildCommandProperties.Add(guildCommand.Build());
             }
 
@@ -320,12 +321,13 @@ namespace EGG9000.Bot.Services {
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
-                    var isCPGuild = guild.Id == _cpGuild?.Id || (_cpGuild?.OverflowServers.Contains(guild.Id) ?? false);
-
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((guildCommandProperties).ToArray());
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
-                await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
+                var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
+                _discordCommands.AddRange(globalCommands.Select(y => (y, (ulong)0)));
+
+                Console.WriteLine("_discordCommands refreshed: " + string.Join("\n", _discordCommands.Select(x => $"Name: {x.command.Name}, ID: ${x.command.Id}").ToList()));
             } catch(Exception exception) {
                 _bugsnag.Notify(exception);
 
@@ -459,10 +461,11 @@ namespace EGG9000.Bot.Services {
                 if(command != null) {
                     SocketApplicationCommand discordCommand = null;
                     try {
-                        discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == command.Name.ToLower() && x.guildid == (message.Channel as SocketGuildChannel).Guild.Id).command;
+                        discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == command.Name.ToLower() && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
                     } finally { }
                     await message.Channel.SendMessageAsync(
-                        $"⚠️{message.Author.Mention}, looks like you attempted to run the command but Discord sent it as a normal message instead of a command. Make sure a pop-up comes up when you start typing a command, if the pop-up doesn't show up then try force closing Discord and trying again. You can also try clicking on this </{command.Name}:{discordCommand?.Id}> highlighted command to run it."
+                        $"⚠️{message.Author.Mention}, looks like you attempted to run the command but Discord sent it as a normal message instead of a command. Make sure a pop-up comes up when you start typing a command, " +
+                        $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also try clicking on this </{command.Name}:{discordCommand?.Id}> highlighted command to run it."
                         , messageReference: new MessageReference(message.Id)
                     );
                 }
