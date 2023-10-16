@@ -64,7 +64,6 @@ namespace EGG9000.Bot.Services {
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
         private IPublishEndpoint _publishEndpoint;
-        private readonly Discord.Commands.CommandService _discordCmdService = new Discord.Commands.CommandService();
         public CommandService(IConfiguration Configuration,
                 DiscordHostedService discord,
                 APILink apilink,
@@ -92,7 +91,6 @@ namespace EGG9000.Bot.Services {
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
-            _discordCmdService.AddModulesAsync(Assembly.GetEntryAssembly(), null);
             logger.LogInformation($"Initiating CommandService");
         }
 
@@ -326,8 +324,6 @@ namespace EGG9000.Bot.Services {
                 }
                 var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
                 _discordCommands.AddRange(globalCommands.Select(y => (y, (ulong)0)));
-
-                Console.WriteLine("_discordCommands refreshed: " + string.Join("\n", _discordCommands.Select(x => $"Name: {x.command.Name}, ID: ${x.command.Id}").ToList()));
             } catch(Exception exception) {
                 _bugsnag.Notify(exception);
 
