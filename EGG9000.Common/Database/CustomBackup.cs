@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
-
+using System.Text.RegularExpressions;
 using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
@@ -235,7 +235,8 @@ namespace EGG9000.Common.Database {
                     Egg = f.Egg
                 }).ToList(),
                 Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown : Ei.ArtifactSpec.Types.Name.Unknown,
-                Capacity = m.Capacity
+                Capacity = m.Capacity,
+                Stars = m.Level
             }).ToList();
 
             FuelAmounts = new Dictionary<Ei.Egg, double>();
@@ -682,6 +683,8 @@ namespace EGG9000.Common.Database {
         public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = Ei.ArtifactSpec.Types.Name.Unknown;
         [Key(7)]
         public uint Capacity { get; set; } = 0;
+        [Key(8)]
+        public uint Stars { get; set; } = 0;
 
 
         [IgnoreMember]

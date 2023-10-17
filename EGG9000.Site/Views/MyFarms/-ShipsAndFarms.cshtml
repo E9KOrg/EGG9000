@@ -109,14 +109,22 @@
         color: lightgray;
     }
 
+    .mission-progress-blue {
+        background-color: blue;
+    }
+    .mission-progress-purple {
+        background-color: purple;
+    }
+    .mission-progress-orange {
+        background-color: darkorange;
+    }
+
     .orange-text {
         color: darkorange;
     }
-
     .purple-text {
         color: purple;
     }
-
     .blue-text {
         color: blue;
     }
@@ -165,22 +173,16 @@
         height: 100%;
     }
 
-    .mission-progress-blue {
-        background-color: blue;
-    }
-    .mission-progress-purple {
-        background-color: purple;
-    }
-    .mission-progress-orange {
-        background-color: darkorange;
-    }
-
     .progress-container {
         width: 100%;
         background-color: darkgray;
         max-height: 12px;
         height: 100%;
         margin-bottom:12px;
+    }
+
+    .launched-stars {
+        font-size: 1.3rem;
     }
 
 </style>
@@ -196,15 +198,32 @@
         var shipEmojiLink = getShipEmoji(mission.Ship);
         <div class="ship-item card" style="display: inline-block; text-align: center; margin: 10px">
             <span class="progress-container tooltip-custom" id="progress-container-@shipIndex-@index">
-                <span id="progressbar-@shipIndex-@index" class="mission-card-progress @getProgressClass(mission.Duration)" data-started="@mission.StartTime" data-duration="@mission.DurationSeconds">
+                <span id="progressbar-@shipIndex-@index" style="width: 0px;" class="mission-card-progress @getProgressClass(mission.Duration)" data-started="@mission.StartTime" data-duration="@mission.DurationSeconds">
                     &nbsp;
                 </span>
-                <span class="tooltiptext-custom speech-bubble" id="progressbar-@shipIndex-@index-tt"></span>
+                <span class="tooltiptext-custom speech-bubble" id="progressbar-@shipIndex-@index-tt">0%</span>
             </span>
             @if (shipEmojiLink != "") {
                 <img src="@((shipEmojiLink))" style="max-height: 40px">
             }
-            <h4 class="card-header">@mission.Ship.ToString().Replace("_", " ")</h4>
+            <h4 class="card-header">
+                @mission.Ship.ToString().Replace("_", " ")<br>
+                <span id="ship-progress-stars-@index-@shipIndex" class="launched-stars">
+                @{
+                    var shipMaxLevel = MissionHelpers.MaxShipLevels[mission.Ship];
+                    var launchedShipLevel = mission.Stars;
+                    @for (var i = 0; i < shipMaxLevel; i++) {
+                        if (i < launchedShipLevel)
+                        {
+                            <span class="Star GoldenStar">★</span>
+                        } else {
+                            <span class="Star GrayStar">★</span>
+                        }
+                    }
+                }
+                </span>
+            </h4>
+
             <div class="card-body">
                 <div>Status: @mission.Status</div>
                 @switch (mission.Status) {
@@ -214,10 +233,18 @@
                         var needsFuel = mission == null || fuelTargets.Any(ft => ft.Value > (mission.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
                         <div>Needs Fuel: @needsFuel</div>
                         foreach (var fuel in mission.Fuels) {
+                            var eggEmojiUrl = $"https://cdn.discordapp.com/emojis/{EggIncEggs.GetEggById(fuel.Egg)?.Emoji?.Split(":")[2].Replace(">", "")}";
                             var target = fuelTargets[fuel.Egg];
                             var percent = fuel.Amount / target * 100;
                             <div>
-                                @fuel.Egg.ToString(): @Math.Round(percent)% full
+                                @{
+                                    var eggName = string.Join(" ", Regex.Split(Enum.GetName(typeof(Ei.Egg), fuel.Egg).ToString(), @"(?=\p{Lu})"));
+                                }
+                                @if (eggEmojiUrl != null && eggEmojiUrl != "https://cdn.discordapp.com/emojis/"){
+                                    <span><img style="max-height: 20px;" src="@(eggEmojiUrl)" title="@(eggName)" /> @eggName: @Math.Round(percent)% full</span>
+                                } else{
+                                    <span>@eggName: @Math.Round(percent)% full</span>
+                                }
                             </div>
                         }
                         break;
@@ -253,7 +280,16 @@
                             <div>Targeting: None</div>
                             break;
                         default:
-                            <div>Targeting: @((mission.Targeting))</div>
+                            var targetInfo = ArtifactHelpers.GetTargetInfo(mission.Targeting);
+                            if(targetInfo is not null && targetInfo?.Name != ""){
+                                if(targetInfo.EmojiURL != ""){
+                                    <div>Targeting: @(targetInfo.Name) <img title="@(targetInfo.Name)" style="max-height: 25px;" src="@(targetInfo.EmojiURL)" /></div>
+                                } else {
+                                    <div>Targeting: @(targetInfo.Name)</div>
+                                }
+                            } else{
+                                <div>Targeting: @((mission.Targeting))</div>
+                            }
                             break;
                     }
                 }
@@ -704,15 +740,17 @@
             var progressEl = document.getElementById(element.id.replace('ship-return-m-', 'progressbar-').replace('-ago', ''));
             if(progressEl != null){
                 var startSeconds = parseInt(progressEl.getAttribute('data-started'));
-                var durationSeconds = parseInt(progressEl.getAttribute('data-duration'));
-                var currentSeconds = new Date() / 1000;
-                const percentageDone = limitToHundrd(((currentSeconds - startSeconds) / durationSeconds) * 100);
-                const containerWidth = progressEl.parentElement.offsetWidth;
-                const fillWidth = (containerWidth * percentageDone) / 100;
-                progressEl.style.width = fillWidth + 'px';
+                if(startSeconds != 0){
+                    var durationSeconds = parseInt(progressEl.getAttribute('data-duration'));
+                    var currentSeconds = new Date() / 1000;
+                    const percentageDone = limitToHundrd(((currentSeconds - startSeconds) / durationSeconds) * 100);
+                    const containerWidth = progressEl.parentElement.offsetWidth;
+                    const fillWidth = (containerWidth * percentageDone) / 100;
+                    progressEl.style.width = fillWidth + 'px';
 
-                const progressTT = document.getElementById(progressEl.id + '-tt');
-                progressTT.textContent = (percentageDone).toFixed(2) + '%';
+                    const progressTT = document.getElementById(progressEl.id + '-tt');
+                    progressTT.textContent = (percentageDone).toFixed(2) + '%';
+                }
             }
         });
     }
