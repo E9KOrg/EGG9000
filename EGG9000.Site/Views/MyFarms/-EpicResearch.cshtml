@@ -1,5 +1,5 @@
 ﻿@using static EGG9000.Common.Helpers.EpicResearchCalc
-@model (List<EpicResearchDetail> epicResearchConfig, CustomBackup backup);
+@model (List<EpicResearchDetail> epicResearchConfig, CustomBackup backup, EggIncAccount account);
 @{
 	foreach (var research in Model.epicResearchConfig) {
 		research.MappedBackupResearch = Model.backup.EpicResearch.FirstOrDefault(o => o.Id == research.Id) ?? new CustomResearch { Level = 0};
@@ -26,6 +26,10 @@
 			MappedBackupResearch = new CustomResearch { Level = Model.backup.TankLevel }
 		});
 	}
+
+	var rawBankGE = Model.backup.TotalGEInPiggyBank;
+	var bankScalar = Model.account.SubscriptionLevel == null ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40);
+	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
 <div class="card" style="margin-top:15px" ng-controller="EpicResearch@(Model.backup.EggIncId)">
 	<h4 class="card-header">
@@ -90,9 +94,9 @@
 				<tr>
 					<td colspan="2" class="d-none d-md-table-cell"></td>
 					<td colspan="3" class="text-right">
-						Current @{
+						@{
 							GEEmoji();
-						}
+						} Current
 					</td>
 					<td class="text-right">{{CurrentGE | number:0}}</td>
 				</tr>
@@ -110,9 +114,21 @@
 					<td colspan="3" class="text-right">
 						@{
 							GEEmoji();
-						} in Bank
+						} In Bank
+						@if(totalBankGE != rawBankGE){
+							<br /><img src="https://cdn.discordapp.com/emojis/1131045418319495369.webp" style="max-height: 15px;" /> @(("ULTRA Bonus"))
+							<br /><hr />
+							GEEmoji(); @((" Total in Bank"))
+						}
 					</td>
-					<td class="text-right">{{TotalGEInPiggyBank | number:0}}</td>
+					<td class="text-right">
+						{{RawGEInPiggyBank | number:0}}
+						<span ng-if="@totalBankGE != @rawBankGE">
+							<br />+{{@(totalBankGE - rawBankGE) | number:0}}
+							<br /><hr />
+							{{@totalBankGE | number:0}}
+						</span>
+					</td>
 				</tr>
 				<tr>
 					<td colspan="2" class="d-none d-md-table-cell"></td>
@@ -123,7 +139,7 @@
 							} required
 						</b>
 					</td>
-					<td class="text-right"><b>{{Math.max(0, TotalGECost() - CurrentGE - TotalGEInPiggyBank) | number:0}}</b></td>
+					<td class="text-right"><b>{{Math.max(0, TotalGECost() - CurrentGE - @totalBankGE) | number:0}}</b></td>
 				</tr>
 			</tbody>
 		</table>
@@ -144,7 +160,9 @@
 		window.egg9000module.controller('EpicResearch@(Model.backup.EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
 			$scope.EpicResearchConfig = @Html.Raw(Json.Serialize(Model.epicResearchConfig));
 			$scope.CurrentGE = @(Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent);
-			$scope.TotalGEInPiggyBank = @Model.backup.TotalGEInPiggyBank;
+			var BankMultiplier = @(Model.account.SubscriptionLevel == null ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40));
+			$scope.RawGEInPiggyBank = @Model.backup.TotalGEInPiggyBank;
+			$scope.TotalGEInPiggyBank = @Model.backup.TotalGEInPiggyBank * BankMultiplier;
 			$scope.Math = window.Math;
 			$scope.Discount = "0";
 			angular.forEach($scope.EpicResearchConfig, function(epicResearch) { epicResearch.levelsToBuy = epicResearch.costs.length - epicResearch.mappedBackupResearch.level; });

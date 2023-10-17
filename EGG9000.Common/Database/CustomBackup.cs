@@ -112,13 +112,31 @@ namespace EGG9000.Common.Database {
         public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = new();
 
 
+         /*
+         * The previous formula used here was off by a level or two
+         * 
+         * This formula is tracking the data from:
+         * https://egg-inc.fandom.com/wiki/Piggy_Bank
+         * 
+         * Each time the Piggy Bank is cracked it gains a bonus, 
+         * starting at 2% on the first level, 25% on the second level, 
+         * and 10n+10% after that point (e.g. level 6 would have a 70% bonus
+         * 
+         * NumPiggyBreaks = 1 for a new account, so condition is < 2 => 2% => 1.02
+         * 'Second level' would be NumPiggyBreaks = 2; < 3 => 25% => 1.25
+         * Otherwise => (10 * n + 10)% => ( ([that percentage] / 100) + 1) to determine the scalar
+         */
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
             get {
                 try {
-                    return (ulong)(PiggyBank * ((NumPiggyBreaks + 2.0m) / 10 + 1));
+                    return NumPiggyBreaks switch {
+                        < 2 => (ulong)(PiggyBank * 1.02),
+                        < 3 => (ulong)(PiggyBank * 1.25),
+                        _ => PiggyBank + (PiggyBank * (10 * NumPiggyBreaks + 10) / 100 + 1)
+                    };
                 } catch(OverflowException) {
-                    return UInt64.MaxValue;
+                    return ulong.MaxValue;
                 }
             }
         }
