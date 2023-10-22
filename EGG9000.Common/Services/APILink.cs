@@ -198,6 +198,7 @@ namespace EGG9000.Common.Services {
                                         var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
                                         if(kendromedmchannel is not null) {
                                             await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                            ContractsAPI.ClientVersion = (uint)_LastClientVersion;
                                         } else {
                                             _logger.LogError("Unable to get DM channel for Kendrome");
                                         }

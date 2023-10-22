@@ -447,8 +447,10 @@ namespace EGG9000.Bot.Automated.Coops {
                         _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
                         coop.League = (uint)status.Grade;
                     }
-
-                    if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
+                    if(coop.League == 0) {
+                        _logger.LogWarning("{coopName} is returning Grade as 0");
+                        return;
+                    } else if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
                         //Attempt to fix not started co-op
                         _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
 
@@ -735,9 +737,13 @@ namespace EGG9000.Bot.Automated.Coops {
                         foreach(var userFarmDetails in usersNotJoined) {
                             var xref = userFarmDetails.Xref;
                             try {
-                                var user = users.First(x => x.User.Id == xref.GetID()).User;
+                                var user = users.FirstOrDefault(x => x.User.Id == xref.GetID())?.User;
 
-                                var discordUser = guild.GetUser(user.DiscordId);
+                                if(user == null) {
+                                    user = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == xref.UserId);
+                                }
+
+                                var discordUser = user == null ? null : guild.GetUser(user.DiscordId);
 
                                 var mention = "";
 
