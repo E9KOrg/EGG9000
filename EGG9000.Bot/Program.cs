@@ -49,6 +49,11 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.EnableSensitiveDataLogging(true);
         });
 
+        services.AddDbContextFactory<ApplicationDbContext>(options => {
+            options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
+            options.EnableSensitiveDataLogging(true);
+        });
+
         services.AddSingleton<Words>();
         services.AddMemoryCache();
 

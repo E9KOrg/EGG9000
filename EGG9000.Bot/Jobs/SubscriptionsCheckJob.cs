@@ -11,6 +11,7 @@ using EGG9000.Common.Database.Entities;
 using Ei;
 
 using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,14 +30,14 @@ namespace EGG9000.Bot.Jobs {
         private readonly ILogger<SubscriptionsCheckJob> _logger;
         private readonly DiscordSocketClient _discord;
         private readonly Bugsnag.IClient _bugsnag;
-        private readonly IServiceProvider _provider;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
 
 
-        public SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IServiceProvider provider) {
+        public SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IDbContextFactory<ApplicationDbContext> dbFactory) {
             _logger = logger;
             _discord = discord;
             _bugsnag = bugsnag;
-            _provider = provider;
+            _dbFactory = dbFactory;
         }
 
 
@@ -48,10 +49,11 @@ namespace EGG9000.Bot.Jobs {
 #endif
         public async Task CheckSubscriptions() {
             _logger.LogInformation("Checking subscriptions");
-            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var db = await _dbFactory.CreateDbContextAsync(); ;
 #if DEBUG
-            //var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
-            var users = db.DBUsers.Where(x => x.DiscordId == 273621777119313921).ToList();
+            var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
+            //var users = db.DBUsers.Where(x => x.DiscordId == 899062018194161695).ToList();
+            //users = users.Where(x => x.DiscordId == 899062018194161695).ToList();
 #else
             var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
 #endif
@@ -63,29 +65,30 @@ namespace EGG9000.Bot.Jobs {
                 var standardRoleId = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == Common.Database.Entities.GuildChannelType.StandardSubscription)?.Id;
                 var proRoleId = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == Common.Database.Entities.GuildChannelType.ProSubscription)?.Id;
 
+                var checks = 0;
 
                 await Parallel.ForEachAsync(guildGroup, new ParallelOptions { MaxDegreeOfParallelism = 5 }, async (user, cancellationToken) => {
                     try {
                         foreach(var account in user.EggIncAccounts) {
-
-                            var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                            if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
-                                if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
-                                    await SendUltraLogMessage(user, account, (int)subscriptionStatus.SubscriptionLevel, (int)account.SubscriptionLevel, dbguild, guild);
-                                    account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
-                                    user.UpdateAccounts();
-                                }
-                                if(account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
-                                    account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
-                                    user.UpdateAccounts();
-                                }
-                            } else {
-                                if(account.SubscriptionLevel.HasValue) {
-                                    await SendUltraLogMessage(user, account, (int)account.SubscriptionLevel, 0, dbguild, guild);
-                                    account.SubscriptionLevel = null;
-                                    user.UpdateAccounts();
-                                }
-                            }
+                            await CheckSubscription(guildGroup.Key, user, account, dbguild, guild);
+                            //var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
+                            //if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
+                            //    if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
+                            //        await SendUltraLogMessage(user, account, (int)subscriptionStatus.SubscriptionLevel, (int)account.SubscriptionLevel, dbguild, guild);
+                            //        account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
+                            //        user.UpdateAccounts();
+                            //    }
+                            //    if(account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
+                            //        account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
+                            //        user.UpdateAccounts();
+                            //    }
+                            //} else {
+                            //    if(account.SubscriptionLevel.HasValue) {
+                            //        await SendUltraLogMessage(user, account, (int)account.SubscriptionLevel, 0, dbguild, guild);
+                            //        account.SubscriptionLevel = null;
+                            //        user.UpdateAccounts();
+                            //    }
+                            //}
                         }
                         var discorduser = guild.GetUser(user.DiscordId);
                         if(discorduser is not null) {
@@ -102,6 +105,31 @@ namespace EGG9000.Bot.Jobs {
             _logger.LogInformation("Finished checking subscriptions");
         }
 
+        private async Task CheckSubscription(ulong guildId, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
+            try {
+                var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
+                if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
+                    if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
+                        await SendUltraLogMessage(user, account,(int?)account.SubscriptionLevel ?? 0, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
+                        account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
+                        user.UpdateAccounts();
+                    }
+                    if(account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
+                        account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
+                        user.UpdateAccounts();
+                    }
+                } else {
+                    if(account.SubscriptionLevel.HasValue) {
+                        await SendUltraLogMessage(user, account, (int?)account.SubscriptionLevel ?? 0, 0, dbGuild, guild);
+                        account.SubscriptionLevel = null;
+                        user.UpdateAccounts();
+                    }
+                }
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+            }
+        }
+
         public static string LevelText(int level) {
             return level switch {
                 0 => "Not Subscribed",
@@ -111,8 +139,9 @@ namespace EGG9000.Bot.Jobs {
             };
         }
 
-        public static async Task SendUltraLogMessage(DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
-            var message = $"<@{user.DiscordId}>'s ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`, for the account (`{account.Id}`).";
+
+        public async Task SendUltraLogMessage(DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
+            var message = $"<@{user.DiscordId}> {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $"({account.Backup.UserName}`)" : "")}  ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
             var ultraChannelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.UltraLog);
             if(ultraChannelDetails == null) return;
             var ultraThread = guild.GetThreadChannel(ultraChannelDetails.Id);
