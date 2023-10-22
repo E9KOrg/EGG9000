@@ -63,6 +63,7 @@ namespace EGG9000.Bot.Services {
         private ILogger<CommandService> _logger;
         private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
         private IPublishEndpoint _publishEndpoint;
+        private IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         public CommandService(IConfiguration Configuration,
                 DiscordHostedService discord,
                 APILink apilink,
@@ -74,7 +75,7 @@ namespace EGG9000.Bot.Services {
                 ApplicationDbContext context,
                 IServiceProvider serviceProvider,
                 ILogger<CommandService> logger,
-                IPublishEndpoint publishEndpoint
+                IPublishEndpoint publishEndpoint, IDbContextFactory<ApplicationDbContext> dbContextFactory
             ) {
             _discord = discord;
             _configuration = Configuration;
@@ -90,6 +91,7 @@ namespace EGG9000.Bot.Services {
             _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
+            _dbContextFactory = dbContextFactory;
             logger.LogInformation($"Initiating CommandService");
         }
 
@@ -161,7 +163,7 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
                             parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
-                            parameters.Add(_provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>());
+                            parameters.Add(await _dbContextFactory.CreateDbContextAsync());
                         } else if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
                             parameters.Add((DiscordSocketClient)_discord);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
@@ -423,7 +425,7 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
         private async Task HandleMessageReceived(SocketMessage message) {
-            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var db = await _dbContextFactory.CreateDbContextAsync();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
                 var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -66,6 +68,7 @@ namespace EGG9000.Common.Database {
         //    //    {
         //    //    }
 
+        [ActivatorUtilitiesConstructor]
         public ApplicationDbContext(IConfiguration configuration) : base(GetOptions(configuration)) {
         }
 
