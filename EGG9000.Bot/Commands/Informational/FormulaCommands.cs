@@ -29,9 +29,10 @@ namespace EGG9000.Bot.Commands {
     public static class ForumlaCommands {
         public enum MERChoice {
             [Discord.Interactions.ChoiceDisplay("Current")] Current = 0,
-            [Discord.Interactions.ChoiceDisplay("30")] Twenty = 30,
-            [Discord.Interactions.ChoiceDisplay("40")] Thirty = 40,
-            [Discord.Interactions.ChoiceDisplay("50")] Forty = 50
+            //[Discord.Interactions.ChoiceDisplay("20")] Twenty = 20,
+            [Discord.Interactions.ChoiceDisplay("30")] Thirty = 30,
+            [Discord.Interactions.ChoiceDisplay("40")] Forty = 40,
+            [Discord.Interactions.ChoiceDisplay("50")] Fifty = 50
         };
 
         [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae", AllowInDMs = true)]
