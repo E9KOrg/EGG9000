@@ -63,22 +63,27 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Last EB", $"{id.LastEB.ToEggString()}\n{DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
                 }
 
-                builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
-
-                if(id.LastEBTime.HasValue) {
-                    var change = backup.EarningsBonus - id.LastEB;
-                    var percentChange = change / id.LastEB * 100d;
-
-                    var format = percentChange == (int)percentChange ? "F0" : "F2";
-
-                    var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
-                    builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                if(backup.EarningsBonus == 0) {
+                    builder.AddField("Error", "The API is not responding correctly.\nPlease try again later.", true);
+                    logger.LogWarning($"Error: TrackEB 0 EB detected for {backup.UserName}");
                 } else {
-                    builder.AddField("First Update", "No previous EB to compare to", true);
-                }
+                    builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
 
-                id.LastEB = backup.EarningsBonus;
-                id.LastEBTime = backupDate;
+                    if(id.LastEBTime.HasValue) {
+                        var change = backup.EarningsBonus - id.LastEB;
+                        var percentChange = change / id.LastEB * 100d;
+
+                        var format = Math.Abs(percentChange - Math.Round(percentChange)) < 0.01 ? "F0" : "F2";
+
+                        var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
+                        builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                    } else {
+                        builder.AddField("First Update", "No previous EB to compare to", true);
+                    }
+
+                    id.LastEB = backup.EarningsBonus;
+                    id.LastEBTime = backupDate;
+                }
             }
 
             user.UpdateAccounts();
