@@ -40,7 +40,6 @@ using EGG9000.Bot.Consumers;
 using EGG9000.Common.Extensions;
 using EGG9000.Bot.Automated.Coops;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Services {
 
