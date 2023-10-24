@@ -63,22 +63,26 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Last EB", $"{id.LastEB.ToEggString()}\n{DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
                 }
 
-                builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
+                if(backup.EarningsBonus == 0) {
+                    builder.AddField("Error", "The API is not responding correctly.\nPlease try again later.", true);
+                } else {
+                    builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
 
-                if(id.LastEBTime.HasValue) {
-                    var change = backup.EarningsBonus - id.LastEB;
-                    var percentChange = change / id.LastEB * 100d;
+                    if(id.LastEBTime.HasValue) {
+                        var change = backup.EarningsBonus - id.LastEB;
+                        var percentChange = change / id.LastEB * 100d;
 
                     var format = percentChange == (int)percentChange ? "F0" : "F2";
 
-                    var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
-                    builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
-                } else {
-                    builder.AddField("First Update", "No previous EB to compare to", true);
-                }
+                        var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
+                        builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                    } else {
+                        builder.AddField("First Update", "No previous EB to compare to", true);
+                    }
 
-                id.LastEB = backup.EarningsBonus;
-                id.LastEBTime = backupDate;
+                    id.LastEB = backup.EarningsBonus;
+                    id.LastEBTime = backupDate;
+                }
             }
 
             user.UpdateAccounts();
