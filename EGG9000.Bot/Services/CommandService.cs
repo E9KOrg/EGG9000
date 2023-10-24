@@ -321,7 +321,7 @@ namespace EGG9000.Bot.Services {
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
-                    var discordCommands = await guild.BulkOverwriteApplicationCommandAsync((guildCommandProperties).ToArray());
+                    var discordCommands = await guild.BulkOverwriteApplicationCommandAsync(guildCommandProperties.ToArray());
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
                 var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
