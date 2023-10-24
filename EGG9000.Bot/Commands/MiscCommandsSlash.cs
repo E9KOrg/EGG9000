@@ -65,7 +65,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(backup.EarningsBonus == 0) {
                     builder.AddField("Error", "The API is not responding correctly.\nPlease try again later.", true);
-                    logger.LogWarning($"Error: TrackEB 0 EB detected for {backup.UserName}");
+                    logger.LogWarning("Error: TrackEB 0 EB detected for {username}", backup.UserName ?? id.Name ?? id.Id);
                 } else {
                     builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
 
