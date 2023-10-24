@@ -139,7 +139,6 @@ namespace EGG9000.Bot.Jobs {
             };
         }
 
-
         public async Task SendUltraLogMessage(DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
             var message = $"<@{user.DiscordId}> {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $"({account.Backup.UserName}`)" : "")}  ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
             var ultraChannelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.UltraLog);
