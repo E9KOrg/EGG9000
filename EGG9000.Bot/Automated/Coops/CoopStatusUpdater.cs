@@ -785,7 +785,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     }
 
 
-                                    var hoursToKick = coop.AnyLeague ? 18 : 24;
+                                    var hoursToKick = coop.Contract.cc_only ? 18 : 24;
                                     if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-hoursToKick)) {
                                         var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Backup?.UserName})" : "";
                                         await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopChannel, dbguild, coop, false);

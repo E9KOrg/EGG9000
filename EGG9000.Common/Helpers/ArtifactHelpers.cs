@@ -1,10 +1,12 @@
 ﻿using Ei;
+using Google.Protobuf.WellKnownTypes;
 using MassTransit;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Ei.Backup.Types;
 
@@ -76,6 +78,27 @@ namespace EGG9000.Common.Helpers {
             };
         }
 
+        public class ShipTargetInfo() {
+            public string Name { get; set; }
+            public string EmojiURL { get; set; }
+        }
+
+        public static ShipTargetInfo GetTargetInfo(ArtifactSpec.Types.Name aspec) {
+            var bInfo = string.Join(" ", Regex.Split(System.Enum.GetName(typeof(ArtifactSpec.Types.Name), aspec), @"(?=\p{Lu})"))
+                .Replace(" Of ", " of ").Replace(" In ", " in ").Replace(" A ", " a ");
+            if(bInfo.StartsWith(" ")) bInfo = bInfo.Substring(1);
+            var tier = bInfo.IndexOf("Fragment") > -1 ? (byte)0
+                    : (bInfo.IndexOf(" Stone") > -1 ? (byte)3 : (byte)4);
+            var tempEmoji = GetAfEmoji(new EggIncArtifactInstance() {
+                Artifact = bInfo.Replace(" Fragment", ""),
+                Tier = tier
+            });
+            return new ShipTargetInfo() {
+                Name = bInfo,
+                EmojiURL = tempEmoji == bInfo ? "" : $"https://cdn.discordapp.com/emojis/{tempEmoji.Split(":")[2].Replace(">", "")}"
+            };
+        }
+
         public static string GetAfEmoji(EggIncArtifactInstance instance) {
             if(instance is null || instance.Artifact is null || instance.Tier < 0) return "";
             return instance.Artifact switch {
@@ -87,6 +110,7 @@ namespace EGG9000.Common.Helpers {
                 "Demeters Necklace" => new string[] { "<:Afx_Demeters_Necklace_1:801791558407159829>", "<:Afx_Demeters_Necklace_2:801791575348609034>", "<:Afx_Demeters_Necklace_3:801791588988092446>", "<:Afx_Demeters_Necklace_4:801400518710788096>" }[instance.Tier - 1],
                 "Dilithium Monocle" => new string[] { "<:Afx_Dilithium_Monocle_1:801786173390979122>", "<:Afx_Dilithium_Monocle_2:801786191748923403>", "<:Afx_Dilithium_Monocle_3:801786210266775562>", "<:Afx_Dilithium_Monocle_4:801402979470278656>" }[instance.Tier - 1],
                 "Dilithium Stone" => new string[] { "<:Afx_Dilithium_Stone_1:807798908897591296>", "<:Afx_Dilithium_Stone_2:807798889901588490>", "<:Afx_Dilithium_Stone_3:807798875153891368>", "<:Afx_Dilithium_Stone_4:801400591363342380>" }[instance.Tier],
+                "Gold Meteorite" => new string[] { "<:Afx_Gold_Meteorite_1:807766396712910898>", "<:Afx_Gold_Meteorite_2:807766382317404171>", "<:Afx_Gold_Meteorite_3:801400672737034240>" }[instance.Tier - 1],
                 "Gusset" => new string[] { "<:Afx_Ornate_Gusset_1:801790964679180339>", "<:Afx_Ornate_Gusset_2:801790982563561502>", "<:Afx_Ornate_Gusset_3:801790999697293342>", "<:Afx_Ornate_Gusset_4:801400934236160011>" }[instance.Tier - 1],
                 "Interstellar Compass" => new string[] { "<:Afx_Interstellar_Compass_1:801946444600311818>", "<:Afx_Interstellar_Compass_2:801946468734861322>", "<:Afx_Interstellar_Compass_3:801946486627106817>", "<:Afx_Interstellar_Compass_4:801402991776104478>" }[instance.Tier - 1],
                 "Life Stone" => new string[] { "<:Afx_Life_Stone_1:807798970792935426>", "<:Afx_Life_Stone_2:807798955810488321>", "<:Afx_Life_Stone_3:807798940539944990>", "<:Afx_Life_Stone_4:801400782557151252>" }[instance.Tier],
@@ -95,6 +119,7 @@ namespace EGG9000.Common.Helpers {
                 "Lunar Totem" => new string[] { "<:Afx_Lunar_Totem_1:801923971880321085>", "<:Afx_Lunar_Totem_2:801923990872522752>", "<:Afx_Lunar_Totem_3:801924010203938817>", "<:Afx_Lunar_Totem_4:801400854037004289>" }[instance.Tier - 1],
                 "Mercury's Lens" => new string[] { "<:Afx_Mercurys_Lens_1:801950726909722665>", "<:Afx_Mercurys_Lens_2:801950753585365034>", "<:Afx_Mercurys_Lens_3:801403003185266708>", "<:Afx_Mercurys_Lens_4:801400885149564928>" }[instance.Tier - 1],
                 "Neodymium Medallion" => new string[] { "<:Afx_Neo_Medallion_1:801923701162901504>", "<:Afx_Neo_Medallion_2:801923722973413467>", "<:Afx_Neo_Medallion_3:801923743894863872>", "<:Afx_Neo_Medallion_4:801400910060060673>" }[instance.Tier - 1],
+                "OrnateGusset" => new string[] { "<:Afx_Ornate_Gusset_1:801790964679180339>", "<:Afx_Ornate_Gusset_2:801790982563561502>", "<:Afx_Ornate_Gusset_3:801790999697293342>", "<:Afx_Ornate_Gusset_4:801400934236160011>" }[instance.Tier - 1],
                 "Phoenix Feather" => new string[] { "<:Afx_Phoenix_Feather_1:801924123302428702>", "<:Afx_Phoenix_Feather_2:801924144534519818>", "<:Afx_Phoenix_Feather_3:801924163022749736>", "<:Afx_Phoenix_Feather_4:801403016195473418>" }[instance.Tier - 1],
                 "Prophecy Stone" => new string[] { "<:Afx_Prophecy_Stone_1:807799478722887680>", "<:Afx_Prophecy_Stone_2:807799450608205905>", "<:Afx_Prophecy_Stone_3:807799057384341521>", "<:Afx_Prophecy_Stone_4:801400987809873971>" }[instance.Tier],
                 "Puzzle Cube" => new string[] { "<:Afx_Puzzle_Cube_1:801954137486655589>", "<:Afx_Puzzle_Cube_2:801954163926761522>", "<:Afx_Puzzle_Cube_3:801954186517413918>", "<:Afx_Puzzle_Cube_4:801401010718638080>" }[instance.Tier - 1],
@@ -102,13 +127,16 @@ namespace EGG9000.Common.Helpers {
                 "Quantum Stone" => new string[] { "<:Afx_Quantum_Stone_1:807799549954883624>", "<:Afx_Quantum_Stone_2:807799527498711040>", "<:Afx_Quantum_Stone_3:807799509630582854>", "<:Afx_Quantum_Stone_4:801401076712079381>" }[instance.Tier],
                 "Shell Stone" => new string[] { "<:Afx_Shell_Stone_1:807799916881117214>", "<:Afx_Shell_Stone_2:807799894089007145>", "<:Afx_Shell_Stone_3:807799866142490644>", "<:Afx_Shell_Stone_4:801401100573343776>" }[instance.Tier],
                 "Ship in a Bottle" => new string[] { "<:Afx_Ship_In_A_Bottle_1:801955542238363688>", "<:Afx_Ship_In_A_Bottle_2:801955569858641981>", "<:Afx_Ship_In_A_Bottle_3:801955999123636244>", "<:Afx_Ship_In_A_Bottle_4:801746240785481740>" }[instance.Tier - 1],
+                "Solar Titanium" => new string[] { "<:Afx_Solar_Titanium_1:807261434039894086>", "<:Afx_Solar_Titanium_2:807261357182550067>", "<:Afx_Solar_Titanium_3:801401141605695529>" }[instance.Tier - 1],
                 "Soul Stone" => new string[] { "<:Afx_Soul_Stone_1:807800048662085663>", "<:Afx_Soul_Stone_2:807800028634415144>", "<:Afx_Soul_Stone_3:807799997764075521>", "<:Afx_Soul_Stone_4:801401175487807519>" }[instance.Tier],
                 "Tachyon Deflector" => new string[] { "<:Afx_Tachyon_Deflector_1:801956755655229510>", "<:Afx_Tachyon_Deflector_2:801956779272437800>", "<:Afx_Tachyon_Deflector_3:801956823296770071>", "<:Afx_Tachyon_Deflector_4:801401224292728842>" }[instance.Tier - 1],
                 "Tachyon Stone" => new string[] { "<:Afx_Tachyon_Stone_1:807800396264767528>", "<:Afx_Tachyon_Stone_2:807800375100964864>", "<:Afx_Tachyon_Stone_3:807800354380840980>", "<:Afx_Tachyon_Stone_4:801401251278880788>" }[instance.Tier],
+                "Tau Ceti Geode" => new string[] { "<:Afx_Tau_Ceti_Geode_1:807766532813619240>", "<:Afx_Tau_Ceti_Geode_2:807766597225283617>", "<:Afx_Tau_Ceti_Geode_3:801401276830056488>" }[instance.Tier - 1],
                 "Terra Stone" => new string[] { "<:Afx_Terra_Stone_1:807800715929583626>", "<:Afx_Terra_Stone_2:807800439831658506>", "<:Afx_Terra_Stone_3:807800418549366826>", "<:Afx_Terra_Stone_4:801401301107343390>" }[instance.Tier],
                 "The Chalice" => new string[] { "<:Afx_The_Chalice_1:801923476294205480>", "<:Afx_The_Chalice_2:801923503058059287>", "<:Afx_The_Chalice_3:801923523319693342>", "<:Afx_The_Chalice_4:801401326708850698>" }[instance.Tier - 1],
                 "Titanium Actuator" => new string[] { "<:Afx_Titanium_Actuator_1:801957617253351435>", "<:Afx_Titanium_Actuator_2:801957652052967474>", "<:Afx_Titanium_Actuator_3:801957676808536094>", "<:Afx_Titanium_Actuator_4:801401362763874304>" }[instance.Tier - 1],
                 "Tungsten Ankh" => new string[] { "<:Afx_Tungsten_Ankh_1:801924204605866035>", "<:Afx_Tungsten_Ankh_2:801924230731399178>", "<:Afx_Tungsten_Ankh_3:801924249522012220>", "<:Afx_Tungsten_Ankh_4:801401388256591932>" }[instance.Tier - 1],
+                "Vial Martian Dust" => new string[] { "<:Afx_Vial_Nartian_Dust_1:801923830023979008>", "<:Afx_Vial_Nartian_Dust_2:801923862836412427>", "<:Afx_Vial_Nartian_Dust_3:801923891534364672>", "<:Afx_Vial_Martian_Dust_4:801401410578939914>" }[instance.Tier - 1],
                 "Vial of Martian Dust" => new string[] { "<:Afx_Vial_Nartian_Dust_1:801923830023979008>", "<:Afx_Vial_Nartian_Dust_2:801923862836412427>", "<:Afx_Vial_Nartian_Dust_3:801923891534364672>", "<:Afx_Vial_Martian_Dust_4:801401410578939914>" }[instance.Tier - 1],
                 _ => instance.Artifact.ToString()
             };

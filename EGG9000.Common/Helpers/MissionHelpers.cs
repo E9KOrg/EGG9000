@@ -6,11 +6,6 @@ using Ei;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-
 using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Common.Helpers {
@@ -27,6 +22,70 @@ namespace EGG9000.Common.Helpers {
             { Spaceship.Chickfiant, 5 },
             { Spaceship.Voyegger, 6 },
             { Spaceship.Henerprise, 7 }
+        };
+
+        private static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities = new() {
+            { Spaceship.ChickenOne, new() {
+                    { DurationType.Tutorial, new(){ 4 } },
+                    { DurationType.Short, new(){ 4 } },
+                    { DurationType.Long, new(){ 5 } },
+                    { DurationType.Epic, new(){ 6 } },
+                }
+            },
+            { Spaceship.ChickenNine, new() {
+                    { DurationType.Short, new(){ 7, 8, 9 } },
+                    { DurationType.Long, new(){ 8, 9, 10 } },
+                    { DurationType.Epic, new(){ 9, 10, 11 } },
+                }
+            },
+            { Spaceship.ChickenHeavy, new() {
+                    { DurationType.Short, new(){ 12, 13, 14, 15 } },
+                    { DurationType.Long, new(){ 14, 16, 18, 20 } },
+                    { DurationType.Epic, new(){ 15, 17, 19, 21 } },
+                }
+            },
+            { Spaceship.Bcr, new() {
+                    { DurationType.Short, new(){ 18, 20, 22, 24, 26 } },
+                    { DurationType.Long, new(){ 20, 22, 24, 26, 28 } },
+                    { DurationType.Epic, new(){ 22, 25, 29, 31, 34 } },
+                }
+            },
+            { Spaceship.MilleniumChicken, new() {
+                    { DurationType.Short, new(){ 10, 11, 12, 13, 14 }},
+                    { DurationType.Long, new(){ 12, 14, 16, 18, 20 } },
+                    { DurationType.Epic, new(){ 14, 16, 18, 20, 22 } },
+                }
+            },
+            { Spaceship.CorellihenCorvette, new() {
+                    { DurationType.Short, new(){ 18, 20, 22, 24, 26 } },
+                    { DurationType.Long, new(){ 21, 23, 25, 27, 29 } },
+                    { DurationType.Epic, new(){ 24, 27, 30, 33, 36 } },
+                }
+            },
+            { Spaceship.Galeggtica, new() {
+                    { DurationType.Short, new(){ 27, 30, 33, 36, 39, 42 } },
+                    { DurationType.Long, new(){ 30, 33, 36, 39, 42, 45 } },
+                    { DurationType.Epic, new(){ 35, 39, 43, 47, 51, 55 }},
+                }
+            },
+            { Spaceship.Chickfiant, new() {
+                    { DurationType.Short, new(){ 20, 22, 24, 26, 28, 30 } },
+                    { DurationType.Long, new(){ 24, 26, 28, 30, 32, 34 } },
+                    { DurationType.Epic, new(){ 28, 31, 34, 37, 40, 43 } },
+                }
+            },
+            { Spaceship.Voyegger, new() {
+                    { DurationType.Short, new(){ 30, 33, 36, 39, 42, 45, 48 } },
+                    { DurationType.Long, new(){ 35, 39, 43, 47, 51, 55, 59 } },
+                    { DurationType.Epic, new(){ 40, 44, 48, 52, 56, 60, 64 } },
+                }
+            },
+            { Spaceship.Henerprise, new() {
+                    { DurationType.Short, new(){ 45, 50, 53, 57, 61, 65, 69, 73 } },
+                    { DurationType.Long, new(){ 50, 54, 58, 62, 66, 70, 74, 78 } },
+                    { DurationType.Epic, new(){ 56, 61, 66, 71, 76, 81, 86, 91 } },
+                }
+            }
         };
 
         private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
@@ -92,6 +151,13 @@ namespace EGG9000.Common.Helpers {
                 }
             },
         };
+
+        public static int GetNominalCapacity(this CustomBackup backup, SpaceMission mission) {
+            if(mission is null || !NominalShipCapacities.ContainsKey(mission.Ship)) return 0;
+            var nominalCaps = NominalShipCapacities[mission.Ship][mission.Duration];
+            var erLevel = backup.EpicResearch.FirstOrDefault(er => er.Id == "afx_mission_capacity")?.Level ?? 0;
+            return (int)(nominalCaps[(int)mission.Stars] * (1 + (erLevel * 0.05)));
+        }
 
         public static string GetShipTime(this CustomBackup backup, Spaceship ship, DurationType duration, int number) {
             var erScalar = backup.EpicResearch.FirstOrDefault(er => er.Id == "afx_mission_time").Level;

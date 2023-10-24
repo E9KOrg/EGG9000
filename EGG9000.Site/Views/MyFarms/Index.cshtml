@@ -271,7 +271,7 @@
 
                 <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup));
+                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup, account));
                     }
                 </div>
                 <div class="tab-pane" id="artifactcombos@(index)" role="tabpanel">

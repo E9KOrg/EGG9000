@@ -343,12 +343,17 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var currentSetIndex = afxSets.IndexOf(currentSet);
             var setsCount = afxSets.Count;
 
+            var account = user.EggIncAccounts[accountIndex];
+            var accText = user.EggIncAccounts.Count > 1 ? $"For account: {account.Backup?.UserName ?? "[No Name]"} ({account.Backup?.EarningsBonus.ToEggString() ?? "No EB"})" : "";
+
             var embedBuilder = new EmbedBuilder().WithAuthor(
                 new EmbedAuthorBuilder()
                     .WithName($"Set {currentSetIndex + 1}")
                     .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
                 ).WithColor(RandomColor())
                 .WithDescription(GetAfxSetString(currentSet));
+            if(accText != "")
+                embedBuilder.WithFooter(new EmbedFooterBuilder().WithText(accText));
 
             if(currentSetIndex > 0 && setsCount > 1 && afxSets[currentSetIndex - 1] is not null) {
                 componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;
