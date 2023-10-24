@@ -159,27 +159,29 @@ namespace EGG9000.Bot.Automated {
 
                     //Ping non-ultra members who have "Ping on Ultra contract I don't have" turned on
                     //Start gathering users list
-                    var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
-                    pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null
-                        && a.PingForNCUltra
-                        && a.Backup != null
-                        && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)
-                        && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
-                    )).ToList();
+                    if(contract.cc_only) {
+                        var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
+                        pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null
+                            && a.PingForNCUltra
+                            && a.Backup != null
+                            && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)
+                            && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
+                        )).ToList();
 
-                    //Start forming the message
-                    var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTime.Now;
-                    var ultraMessageOut = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
+                        //Start forming the message
+                        var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTime.Now;
+                        var ultraMessageOut = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
 
-                    foreach(var pingableUser in pingableUsers) {
-                        var dmChannel = await _client.GetUser(pingableUser.DiscordId).CreateDMChannelAsync();
-                        var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, ultraMessageOut);
-                        var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == pingableUser.DiscordId);
-                        if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
-                            dbUser.DMSBlocked = !dbUser.DMSBlocked;
-                            await _db.SaveChangesAsync();
+                        foreach(var pingableUser in pingableUsers) {
+                            var dmChannel = await _client.GetUser(pingableUser.DiscordId).CreateDMChannelAsync();
+                            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, ultraMessageOut);
+                            var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == pingableUser.DiscordId);
+                            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
+                                dbUser.DMSBlocked = !dbUser.DMSBlocked;
+                                await _db.SaveChangesAsync();
+                            }
+                            if(retEx != null) _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} (DMs are blocked).", pingableUser.DiscordUsername);
                         }
-                        if(retEx != null) _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} (DMs are blocked).", pingableUser.DiscordUsername);
                     }
 
                     _db.GuildContracts.Add(guildContract);
