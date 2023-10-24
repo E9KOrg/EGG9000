@@ -72,7 +72,7 @@ namespace EGG9000.Bot.Commands {
                         var change = backup.EarningsBonus - id.LastEB;
                         var percentChange = change / id.LastEB * 100d;
 
-                    var format = percentChange == (int)percentChange ? "F0" : "F2";
+                        var format = Math.Abs(percentChange - Math.Round(percentChange)) < 0.01 ? "F0" : "F2";
 
                         var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
                         builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
