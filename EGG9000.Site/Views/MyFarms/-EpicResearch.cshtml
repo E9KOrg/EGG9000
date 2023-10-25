@@ -32,16 +32,18 @@
 	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
 <div class="card" style="margin-top:15px" ng-controller="EpicResearch@(Model.backup.EggIncId)">
-	<h4 class="card-header">
-		Epic Research GE Calculator
-		<select ng-model="Discount">
-			<option value="0" selected>Select Discount</option>
-			<option value="25">25%</option>
-			<option value="30">30%</option>
-			<option value="35">35% (Most Common)</option>
-			<option value="40">40%</option>
+	<h4 class="card-header mb-3 d-flex justify-content-between align-items-center">
+		<span>Epic Research GE Calculator</span>
+		<select id="discount-select" class="form-select form-select-sm" ng-model="Discount">
+			<option id="discount-0" value="0" selected>Select Discount</option>
+			<option id="discount-25" value="25">25%</option>
+			<option id="discount-30" value="30">30%</option>
+			<option id="discount-35" value="35">35% (Most Common)</option>
+			<option id="discount-40" value="40">40%</option>
 		</select>
+		<button class="btn-m btn btn-outline-primary" id="collapsePE" onclick="$('.collapsible-er-row').toggleClass('toggleHide')">Toggle Completed Research</button>
 	</h4>
+
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
@@ -55,7 +57,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="epicResearch in EpicResearchConfig">
+				<tr ng-repeat="epicResearch in EpicResearchConfig" ng-class="{ 'collapsible-er-row': epicResearch.mappedBackupResearch.level == epicResearch.costs.length }">
 					<td>
 						{{epicResearch.title}}
 						<span class="d-md-none">
@@ -80,6 +82,13 @@
 					</td>
 					<td ng-if-end class="text-right">{{GetCostForLevels(epicResearch) | number:0}}</td>
 				</tr>
+				@if (Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Length) > 0){
+					<tr class="collapsible-er-row toggleHide">
+						<td colspan="6" style="text-align: center; color:coral">
+							<b>@Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Length) completed Epic Research items hidden</b>
+						</td>
+					</tr>
+				}
 				<tr>
 					<td colspan="2" class="d-none d-md-table-cell"></td>
 					<td colspan="3" class="text-right">
@@ -158,6 +167,7 @@
 		window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
 
 		window.egg9000module.controller('EpicResearch@(Model.backup.EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+			$scope.Discount = 0;
 			$scope.EpicResearchConfig = @Html.Raw(Json.Serialize(Model.epicResearchConfig));
 			$scope.CurrentGE = @(Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent);
 			var BankMultiplier = @(Model.account.SubscriptionLevel == null ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40));
@@ -185,6 +195,12 @@
 				angular.forEach($scope.EpicResearchConfig, function(epicResearch) { cost += $scope.GetCostForLevels(epicResearch); });
 				return cost;
 			}
+
+			$(document).ready(function () {
+				if ($('.bootstrap-dark').length > 0) {
+					$('select[id*="discount"], option[id*="discount"]').css('color', '#c3c3c3');
+				}
+			});
 		}]);
 	}
 
