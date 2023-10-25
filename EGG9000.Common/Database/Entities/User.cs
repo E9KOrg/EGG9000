@@ -378,6 +378,8 @@ namespace EGG9000.Common.Database.Entities {
         public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
         [Key(27)]
         public bool PingForNCUltra { get; set; } = false;
+        [Key(28)]
+        public float LatestRunningScore { get; set; } = 0;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
