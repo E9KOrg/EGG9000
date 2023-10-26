@@ -922,7 +922,9 @@
             }
 
             var indexMatches = element.id.match(/\d/g);
-            if (indexMatches){
+            var percentDone = 100 - ((((returnsEpoch - currentEpoch) / (returnsEpoch - startedEpoch)) * 100));
+            if (percentDone > 101) percentDone = 101;
+            if (indexMatches && percentDone <= 101){
                 var [rIndex, sIndex] = indexMatches;
                 var dataEl = document.getElementById(`data-ship-${rIndex}-${sIndex}`);
                 var rawData = dataEl.getAttribute('data-vals');
@@ -933,7 +935,7 @@
                 var antiRingEl = document.getElementById(`ship-antiring-${rIndex}-${sIndex}`);
 
                 if(fueling == "False" && ringEl != null && antiRingEl != null){
-                    var percentDone = 100 - ((((returnsEpoch - currentEpoch) / (returnsEpoch - startedEpoch)) * 100));
+                    
                     var ringOffset = circumfrence - percentDone / 100 * circumfrence;
                     var antiRingOffset = circumfrence - ringOffset;
 
