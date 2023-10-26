@@ -118,12 +118,10 @@ namespace EGG9000.Bot.Jobs {
                         account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
                         user.UpdateAccounts();
                     }
-                } else {
-                    if(account.SubscriptionLevel.HasValue) {
-                        await SendUltraLogMessage(user, account, (int?)account.SubscriptionLevel ?? 0, 0, dbGuild, guild);
-                        account.SubscriptionLevel = null;
-                        user.UpdateAccounts();
-                    }
+                } else if(account.SubscriptionLevel.HasValue && account.SubscriptionLevel is not null) {
+                    await SendUltraLogMessage(user, account, (int?)account.SubscriptionLevel ?? 0, 0, dbGuild, guild);
+                    account.SubscriptionLevel = null;
+                    user.UpdateAccounts();
                 }
             } catch(Exception e) {
                 _bugsnag.Notify(e);
@@ -140,7 +138,7 @@ namespace EGG9000.Bot.Jobs {
         }
 
         public async Task SendUltraLogMessage(DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
-            var message = $"<@{user.DiscordId}> {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $"({account.Backup.UserName}`)" : "")}  ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
+            var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`)" : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
             var ultraChannelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.UltraLog);
             if(ultraChannelDetails == null) return;
             var ultraThread = guild.GetThreadChannel(ultraChannelDetails.Id);
