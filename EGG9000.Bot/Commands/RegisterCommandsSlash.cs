@@ -42,6 +42,7 @@ using MassTransit.Initializers;
 using Bugsnag;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Bot.Automated.Coops;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -84,14 +85,13 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                var role = await DiscordHelpers.CheckRoles(guild, guildUser, user, _client, null, new List<LeaderboardUser>());
+                var role = await DiscordHelpers.CheckRoles(db, guild, guildUser, user, _client, null, new List<LeaderboardUser>());
 
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel.Id == command.Channel.Id) {
                     await command.DeleteOriginalResponseAsync();
                     var text = $"Welcome {command.User.Mention}, you have been moved to this server. You have the rank of {role?.Name} with an EB of {earningsBonus.ToEggString()}";
-                    var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                    await generalChannel.SendMessageAsync(text);
+                    var response = await ChannelHelper.DetermineAndSend(dbguild, guild, GuildChannelType.General, new() { Text =  text });
                     await CleanWelcomeChannel(guild, _client, command.User);
                 } else {
                     await command.ModifyOriginalResponseAsync("Registration has been moved");
@@ -233,9 +233,8 @@ namespace EGG9000.Bot.Commands {
                     await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:1095116354329268366> command");
                     return;
                 } else {
-                    var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                    await generalChannel.SendMessageAsync($"Welcome back {targetUser.Mention}!");
 
+                    var response = await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
 
                     var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
                     if(activeRole != null) {
@@ -257,11 +256,12 @@ namespace EGG9000.Bot.Commands {
             };
             db.DBUsers.Add(user);
 
-            string channelText = "";
-            var talkChannel = guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
-            if(talkChannel != null) {
-                channelText = $"If you have questions about this, feel free to message us in {talkChannel.Mention}";
-            }
+            var dbGuild = db.Guilds.FirstOrDefault(g => g.Id == guild.Id);
+
+            var talkChannel = ChannelHelper.DetermineChannelType(dbGuild, guild, GuildChannelType.TalkToStaff);
+            var talkChannelMention = talkChannel != null ? (talkChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)talkChannel).Mention
+                : ((SocketThreadChannel)talkChannel).Mention) : null;
+            var channelText = talkChannelMention == null ? "" : $"If you have questions about this, feel free to message us in {talkChannelMention}";
             await command.RespondAsync($"{targetUser.Mention}, next we’ll need you to register with your Egg, Inc account. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window. More detailed instructions are included in the pinned messages of this channel.\n\nWhy do we need this? The bot needs everyone's ID to be able to track Farming activity, rates, and contract preferences. It also factors this information in to create balanced co-ops for each contract. The bot only reads certain parts of the info and does not make any changes. {channelText}");
 
 
@@ -442,7 +442,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
             }
-            var role = await DiscordHelpers.CheckRoles(guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, new List<LeaderboardUser>());
+            var role = await DiscordHelpers.CheckRoles(db, guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, new List<LeaderboardUser>());
 
             var roleText = "";
             if(dbuser.EggIncAccounts.Count > 1) {
@@ -450,19 +450,18 @@ namespace EGG9000.Bot.Commands {
             } else if(role != null) {
                 roleText = $"You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}";
             }
-            var faqText = "";
-            var faqChannel = await _client.GetChannelAsync(GuildChannelType.FaqChannel, guild);
-            if(faqChannel != null && dbuser.EggIncAccounts.Count == 1) {
-                faqText = $"When you have a chance, read over {faqChannel.Mention} to get an idea on how the server and bot functions";
-            }
 
+            var faqChannel = ChannelHelper.DetermineChannelType(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.FaqChannel);
+            var faqMention = faqChannel != null ? (faqChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)faqChannel).Mention : ((SocketThreadChannel)faqChannel).Mention) : null;
+            var faqText = (faqMention != null && dbuser.EggIncAccounts.Count == 1) ? $"When you have a chance, read over {faqMention} to get an idea on how the server and bot functions" : "";
 
             //if(checkLeague.Role != null) {
             //    roleText += $" Your Grade is {checkLeague.Role.Name}";
             //}
 
-            var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-            await (generalChannel ?? command.Channel).SendMessageAsync($"Welcome {user.Mention}! {roleText}. {faqText}.");
+            var compiledMessage = $"Welcome {user.Mention}! {roleText}. {faqText}.";
+            var response = await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = compiledMessage }, logger);
+            if(response == null) await command.Channel.SendMessageAsync(compiledMessage);
 
             var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
             if(overflowRole != null) {
@@ -570,7 +569,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser && guild.Id == (user as SocketGuildUser).Guild.Id) {
-                _ = await DiscordHelpers.CheckRoles(_client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
+                _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
             }
 
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);

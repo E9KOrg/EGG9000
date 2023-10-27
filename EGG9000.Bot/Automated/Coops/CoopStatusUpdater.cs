@@ -31,6 +31,7 @@ using EGG9000.Common.Factories;
 using static Ei.Backup.Types;
 using Microsoft.AspNetCore.Http;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -448,7 +449,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         coop.League = (uint)status.Grade;
                     }
                     if(coop.League == 0) {
-                        _logger.LogWarning("{coopName} is returning Grade as 0");
+                        _logger.LogWarning("{coopName} is returning Grade as 0", coopName);
                         return;
                     } else if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
                         //Attempt to fix not started co-op
@@ -802,10 +803,9 @@ namespace EGG9000.Bot.Automated.Coops {
                                         var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                         await coopChannel.SendMessageAsync(message);
                                         xref.OutsideCoop = true;
-                                        var outsideCoopLog = await _client.GetChannelAsync(GuildChannelType.OutsideCoopLog, guild);
-                                        if(outsideCoopLog != null) {
-                                            await outsideCoopLog.SendMessageAsync($"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>");
-                                        }
+                                        var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>";
+                                        var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id == guild.Id);
+                                        var response = ChannelHelper.DetermineAndSend(dbguild, socketGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
                                         await _db.SaveChangesAsync();
                                     }
                                 }

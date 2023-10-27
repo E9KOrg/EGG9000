@@ -22,6 +22,7 @@ using Microsoft.Extensions.Logging;
 using Google.Protobuf.WellKnownTypes;
 using MassTransit.Caching.Internals;
 using EGG9000.Common.Helpers;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpersExt {
@@ -94,7 +95,7 @@ namespace EGG9000.Bot.Helpers {
                     };
         }
 
-        public static async Task<SocketRole> CheckRoles(SocketGuild guild, SocketGuildUser discordUser, DBUser dbUser, DiscordHostedService _client, List<(Ei.Contract.Types.PlayerGrade, SocketRole)> grades, List<LeaderboardUser> leaderboardUsers) {
+        public static async Task<SocketRole> CheckRoles(ApplicationDbContext db, SocketGuild guild, SocketGuildUser discordUser, DBUser dbUser, DiscordHostedService _client, List<(Ei.Contract.Types.PlayerGrade, SocketRole)> grades, List<LeaderboardUser> leaderboardUsers) {
             if(grades is null) {
                 grades = await GetGradeRoles(_client, guild);
             }
@@ -225,15 +226,9 @@ namespace EGG9000.Bot.Helpers {
                 var index = random.Next(messages.Count);
 
                 //Attempt to find the "separate channel for rankup messages" channel, if it's been set
-                var altRankupChannel = await _client.GetChannelAsync(GuildChannelType.AltRankup, guild);
-
+                var response = await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.AltRankup, new() { Text = messages[index] });
                 //If it can't be found, use 'General' instead
-                if(altRankupChannel == null) {
-                    var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                    await generalChannel.SendMessageAsync(messages[index]);
-                } else {
-                    await altRankupChannel.SendMessageAsync(messages[index]);
-                }
+                if(response == null) await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = messages[index] });
             }
 
             return role;

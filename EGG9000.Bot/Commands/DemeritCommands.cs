@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
@@ -50,13 +51,9 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync(message);
 
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
-                var demeritChannel = await discordClient.GetChannelAsync(GuildChannelType.DemeritLogChannel, dbguild);
-                if(demeritChannel is not null) {
-                    if(count >= 3) {
-                        message = $"**{message}**";
-                    }
-                    await demeritChannel.SendMessageAsync(message);
-                }
+                var socketGuild = discordClient.Guilds.FirstOrDefault(g => g.Id == dbguild.Id);
+
+                var response = await ChannelHelper.DetermineAndSend(dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
             } catch(Exception e) {
                 await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }

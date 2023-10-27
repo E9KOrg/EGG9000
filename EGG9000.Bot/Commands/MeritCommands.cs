@@ -26,6 +26,7 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
@@ -63,13 +64,7 @@ namespace EGG9000.Bot.Commands {
                 if(guildFind is not null) {
                     var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
                     if(socketGuild is not null) {
-                        var meritChannelObj = guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.MeritLogChannel);
-                        if(meritChannelObj is not null) {
-                            var meritChannel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == meritChannelObj.Id);
-                            if(meritChannel is not null) {
-                                await meritChannel.SendMessageAsync($"{target.Mention}: {merit.Reason} (Merits: {count})");
-                            }
-                        }
+                        var response = await ChannelHelper.DetermineAndSend(guildFind, socketGuild, GuildChannelType.MeritLogChannel, new() { Text = $"{target.Mention}: {merit.Reason} (Merits: {count})" });
                     }
                 }
             }

@@ -15,6 +15,7 @@ using EGG9000.Bot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
@@ -283,7 +284,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class ArtifactNameAutoComplete : AutoCompleteHandler {
             private readonly EiAfxDataRoot _eiAfxData;
             public ArtifactNameAutoComplete() {
-                _eiAfxData = Common.Helpers.EggIncArtifacts.GetEiAfxData();
+                _eiAfxData = EggIncArtifacts.GetEiAfxData();
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
                 IEnumerable<ArtifactFamily> artifactFamilies = _eiAfxData.artifact_families.ToList();
