@@ -396,7 +396,6 @@ namespace EGG9000.Common.Database.Entities {
             SentBreakWarning = false;
             BreakSetTime = until == default ? DateTimeOffset.MaxValue : DateTimeOffset.Now;
             BreakCoopWarningSent = false;
-
             dbuser.UpdateUserBreak();
         }
 

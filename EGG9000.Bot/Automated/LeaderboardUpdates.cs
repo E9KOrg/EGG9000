@@ -27,7 +27,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using EGG9000.Bot.Automated.Helpers;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
@@ -158,8 +158,9 @@ namespace EGG9000.Bot.Automated {
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"}) " : " ")}" +
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
                                 $"({breakCooper.Farm.CoopId ?? "Unknown Coop ID"}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId}`")}";
-                            await (breakCoopsChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)breakCoopsChannel).SendMessageAsync(message)
-                                : ((SocketThreadChannel)breakCoopsChannel).SendMessageAsync(message));
+
+                            var result = await ChannelHelper.DetermineAndSend(dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
+
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();
                         }
@@ -190,7 +191,7 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
-                        _ = await DiscordHelpers.CheckRoles(guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), userAccounts.ToList());
+                        _ = await DiscordHelpers.CheckRoles(_db, guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), userAccounts.ToList());
                     }
 
                     await PostOverallLeaderboard(guild, users, recentContracts, _db);

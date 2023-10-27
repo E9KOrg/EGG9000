@@ -33,6 +33,8 @@ using System.ComponentModel;
 using EGG9000.Bot.Automated.Coops;
 using Microsoft.AspNetCore.Connections.Features;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using EGG9000.Bot.Common.Helpers;
+using System.Threading.Channels;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -387,19 +389,18 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 return;
             }
 
-            var channel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffChannel).Id);
+            var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
+            var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
+            var infoText = $"Staff has been called ({details})";
+            var message = $"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
 
-            if(channel is null) {
+            var response = await ChannelHelper.DetermineAndSend(guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
+
+            if(response is null) {
                 await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
                 return;
             }
 
-            var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
-            var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
-
-            var infoText = $"Staff has been called ({details})";
-
-            await channel.SendMessageAsync($"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}");
             await command.RespondAsync(infoText, ephemeral: keepPrivate);
             if(keepPrivate) {
                 var dmChannel = await command.User.CreateDMChannelAsync();
