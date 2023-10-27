@@ -155,9 +155,10 @@ namespace EGG9000.Bot.Automated {
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
+                            var coopName = string.IsNullOrEmpty(breakCooper.Farm.ContractId) ? "Unknown Coop ID" : _db.Coops.FirstOrDefault(c => c.GuildId == dbguild.Id && c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower())?.Name ?? $"`{breakCooper.Farm.CoopId}`";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"}) " : " ")}" +
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
-                                $"({breakCooper.Farm.CoopId ?? "Unknown Coop ID"}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId}`")}";
+                                $"({coopName}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
                             var result = await ChannelHelper.DetermineAndSend(dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
 
