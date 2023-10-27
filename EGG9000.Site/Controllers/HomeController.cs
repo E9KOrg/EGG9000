@@ -662,6 +662,7 @@ namespace EGG9000.Site.Controllers {
             var leaderboard = await _getLeaderboard(user.GuildId);
 
             var myEbsWithRole = new List<Tuple<double, string>>();
+            var myAccountNames = new List<string>();
             var allEbData = new List<Tuple<double, string>>();
 
             foreach(var u in leaderboard) {
@@ -677,11 +678,13 @@ namespace EGG9000.Site.Controllers {
                         u.Backup.EarningsBonus,
                         SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
                     ));
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
                 }
             }
 
             ViewBag.ListOfEb = allEbData;
             ViewBag.MyEbs = myEbsWithRole;
+            ViewBag.MyNames = myAccountNames;
             ViewBag.AllRoles = SIPrefix.GetAllFarmerRoles();
 
             return View();
