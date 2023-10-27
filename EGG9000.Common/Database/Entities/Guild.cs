@@ -152,11 +152,13 @@ namespace EGG9000.Common.Database.Entities {
         MeritLogChannel = 35,
         [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
         BannedUserThread = 36,
-        [Description("Optional: Thread ID where artifact cheaters will be outed.")]
+        [Description("Optional: Thread ID where potential artifact cheaters will be outed.")]
         ArtifactCheaterThread = 37,
         /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
         UnobtainedUltraChannel = 38*/
         [Description("Optional: Thread/Channel ID where changes in players' ULTRA status will be logged")]
-        UltraLog = 39
+        UltraLog = 39,
+        [Description("Optional: Thread/Channel ID where players who join coops while on break will be logged")]
+        BreakCoopLog = 40
     }
 }

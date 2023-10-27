@@ -1,7 +1,7 @@
 ﻿using Cronos;
 
 using Discord.WebSocket;
-
+using EGG9000.Bot.Automated.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
@@ -108,7 +108,7 @@ namespace EGG9000.Bot.Jobs {
         private async Task CheckSubscription(ulong guildId, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
             try {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
+                if(subscriptionStatus.HasStatus && subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                     if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
                         await SendUltraLogMessage(user, account,(int?)account.SubscriptionLevel ?? 0, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
                         account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
@@ -139,15 +139,10 @@ namespace EGG9000.Bot.Jobs {
 
         public async Task SendUltraLogMessage(DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
             var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`)" : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
-            var ultraChannelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.UltraLog);
-            if(ultraChannelDetails == null) return;
-            var ultraThread = guild.GetThreadChannel(ultraChannelDetails.Id);
-            if(ultraThread is not null) {
-                await ultraThread.SendMessageAsync(message);
-            } else {
-                var ultraChannel = guild.GetTextChannel(ultraChannelDetails.Id);
-                if(ultraChannel is null) return;
-                await ultraChannel.SendMessageAsync(message);
+            var ultraChannel = ChannelHelper.DetermineChannelType(dbGuild, guild, GuildChannelType.UltraLog);
+            if(ultraChannel is not null) {
+                await (ultraChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)ultraChannel).SendMessageAsync(message)
+                    : ((SocketThreadChannel)ultraChannel).SendMessageAsync(message));
             }
         }
 
