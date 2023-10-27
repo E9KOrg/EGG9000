@@ -814,6 +814,48 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"{command.User.Mention} will no longer be updated with their EB.", ephemeral: true);
         }
 
+        [SlashCommand(Description = "Check the list of Users/EIDs that have been banned from the server via /kick", ParentCommand = "b", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task BanList(FauxCommand command, ApplicationDbContext db) {
+            var bannedUsers = await db.DBUsers.Where(u => u.Banned && u.GuildId == command.GuildId).ToListAsync();
+            if(bannedUsers is null || bannedUsers.Count == 0) {
+                await command.RespondAsync("No users are banned from this guild");
+                return;
+            }
+            var userList = string.Join("\n", bannedUsers.Select(u => $"{u.DiscordUsername}\t{u.DiscordId}\t" + string.Join(", ", u.EggIncAccounts.Select(a => a.Id).ToList()))) ?? "Could not compile list";
+            await command.RespondAsync(userList);
+        }
+
+        [SlashCommand(Description = "Remove the ban placed on a user, and their associated EID(s)", ParentCommand = "b", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task RemoveBan(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(Description = "Discord ID of user to unban")] ulong discordid) {
+            var user = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordid);
+            if(user is null || !user.Banned) {
+                await command.RespondAsync("Could not find a banned user with that ID in the DB.");
+                return;
+            }
+            user.Banned = false;
+            await db.SaveChangesAsync();
+
+            var socketGuild = _client.GetGuild(command.GuildId ?? user.GuildId);
+            var targetUser = socketGuild.GetUser(discordid);
+            //Check if running user has ban perms
+            var runningUser = socketGuild?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
+            if(runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers)) {
+                if(targetUser is null) {
+                    await command.RespondAsync("Could not find a Discord User with that ID.\nThe User's DB ban has been removed, however they may still be banned from the server.");
+                    return;
+                }
+                var banObject = await socketGuild.GetBanAsync(targetUser);
+                if(banObject is null) {
+                    await command.RespondAsync("User was not banned from the server.\nDB ban has been removed.");
+                } else {
+                    await socketGuild.RemoveBanAsync(targetUser);
+                    await command.RespondAsync("User has been both unbanned from the server, and their DB ban has been removed.");
+                }
+            } else {
+                await command.RespondAsync("You do not have the `BanMembers` permission - the user's DB ban was removed, however they still may be banned from the server.");
+            }
+        }
+
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam(Required=false)] bool banaccount = false) {
             try {
