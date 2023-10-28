@@ -42,27 +42,27 @@
 
 <div class="card">
 	<div class="card-header text-center">
+		<!--@Model.CoopStatus.CoopIdentifier-->
+		<span class="text-nowrap">
+			<img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="EggThumb" />
+			@Model.Contract?.Name;
+			<img alt="@(((Ei.Contract.Types.PlayerGrade)Model.League).ToString().Replace("_", " "))" src="@((PlayerGradeDetails.GetImage((Ei.Contract.Types.PlayerGrade)Model.League)))" style="width: 20px; height: 20px;" />
+		</span>
+		<span class="text-nowrap">
+			(@Model.CoopStatus.ContractIdentifier)
+		</span>
 		<!-- If the channel isn't deleted, turn the coop name into a link to the discord channel-->
 		@{
-			if (!discordChannelDeleted){
+			if (!discordChannelDeleted) {
 				var discordGuildID = Model.CoopDetails.Coop?.OverflowGuildId != default ? Model.CoopDetails.Coop.OverflowGuildId : Model.CoopDetails.Coop.GuildId;
 				var discordChannelID = Model.CoopDetails.Coop?.DiscordChannelId;
 				var discordLink = "discord://discordapp.com/channels/" + discordGuildID + "/" + discordChannelID + "/";
-				<a href="@discordLink" alt="Discord channel link" target="_blank">#@Model.CoopStatus.CoopIdentifier</a>
+				<a href="@discordLink" alt="Discord channel link" target="_self"><img src="/images/discordicon.png"/> @Model.CoopStatus.CoopIdentifier</a>
 			}
 			else {
 				@Model.CoopStatus.CoopIdentifier;
 			}
 		}
-		<!--@Model.CoopStatus.CoopIdentifier-->
-		<span class="text-nowrap">
-			<img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="EggThumb" />
-			@Model.Contract?.Name;
-			@(Model.League == 0 ? "Elite" : "Standard")
-		</span>
-		<span class="text-nowrap">
-			(@Model.CoopStatus.ContractIdentifier)
-		</span>
 		@{
 			var status = "success";
 			if (Model.CoopDetails.PercentProjected < 100) {
