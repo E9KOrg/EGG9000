@@ -1,5 +1,6 @@
 ﻿using Bugsnag.Payload;
 using Discord;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -76,19 +77,14 @@ namespace EGG9000.Bot.Automated {
                     var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
                     if(clientGuild is null) continue;
 
-                    var threadobj = clientGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.ArtifactCheaterThread);
-                    if(threadobj is null) continue;
-
-                    var thread = guild.GetThreadChannel(threadobj.Id);
-                    if(thread is null) continue;
-
                     var identifier = string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name;
-
 #if DEV9002
-                    await thread.SendMessageAsync($"User `<@{user.DiscordId}>` may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    var message = $"User `<@{user.DiscordId}>` may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 #else
-                    await thread.SendMessageAsync($"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`");
+                    var message = $"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 #endif
+
+                    var response = await ChannelHelper.DetermineAndSend(clientGuild, guild, GuildChannelType.ArtifactCheaterThread, new() { Text = message});
 
                     outlier.AFSWarningSent = true;
                     user.UpdateAccounts();

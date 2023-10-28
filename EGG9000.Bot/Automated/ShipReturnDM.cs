@@ -22,6 +22,7 @@ using static EGG9000.Common.Database.Entities.DBUser;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM : _UpdaterBase<ShipReturnDM> {
@@ -117,10 +118,9 @@ namespace EGG9000.Bot.Automated {
                         if(retEx != null) {
                             _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
                             var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
-                            if(dbguild.ChannelDetails.Any(y => y.ChannelType == GuildChannelType.WarningMessagesForUser)) {
-                                var talkChannel = _client.GetGuild(user.GuildId).GetTextChannel(dbguild.ChannelDetails.First(y => y.ChannelType == GuildChannelType.WarningMessagesForUser).Id);
-                                await talkChannel.SendMessageAsync($"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs");
-                            }
+                            var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id ==  dbguild.Id);
+                            var response = await ChannelHelper.DetermineAndSend(dbguild, socketGuild, GuildChannelType.WarningMessagesForUser, new() 
+                            { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs" });
                         }
                         await _db.SaveChangesAsync();
                     } catch(Exception e) {

@@ -79,14 +79,15 @@ namespace EGG9000.Common.Database.Entities {
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
         public UInt64 Id { get; set; }
+        public bool ThreadAndChannel { get; set; } = false;
     }
 
     public enum GuildChannelType {
         [Description("Required: Greets new users and handles registering")]
         Welcome = 0,
-        [Description("Required: Announces new users who registered and other various messages like new rank roles")]
+        [Description("/TC/Required: Announces new users who registered and other various messages like new rank roles")]
         General = 1,
-        [Description("Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
+        [Description("/TC/Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
         AltRankup = 23,
         [Description("Required: Rules channel you want people to read before registering")]
         Rules = 2,
@@ -94,19 +95,19 @@ namespace EGG9000.Common.Database.Entities {
         Leaderboard = 3,
         [Description("Optional: Shows in-game daily events")]
         GameEvents = 4,
-        [Description("Optional: FAQ Channel linked to when announcing new registered users")]
+        [Description("/TC/Optional: FAQ Channel linked to when announcing new registered users")]
         FaqChannel = 5,
         [Description("Required: Category for contract channels")]
         ContractCategory = 6,
         [Description("Optional: Category for failed co-ops")]
         FailedCategory = 8,
-        [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
+        [Description("/TC/Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
         WarningMessagesForUser = 9,
         [Description("Optional: Shows limited time shells")]
         LimitedTimeShells = 10,
         [Description("Optional: Limited time shells notification role")]
         LimitedTimeShellsRole = 11,
-        [Description("Optional: Outside Co-op Log")]
+        [Description("/TC/Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
         [Description("Optional: Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
@@ -124,7 +125,7 @@ namespace EGG9000.Common.Database.Entities {
         GradeC = 20,
         [Description("Optional: Game Version Outdated Role")]
         GameVersionOutdated = 21,
-        [Description("Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
+        [Description("/TC/Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
         DemeritLogChannel = 22,
         [Description("Optional: 'Android' Role")]
         AndroidRole = 24,
@@ -136,7 +137,7 @@ namespace EGG9000.Common.Database.Entities {
         NAHRole = 27,
         [Description("Optional: 'All-Star Club' Role")]
         ASCRole = 28,
-        [Description("Optional: Channel for /callstaff messages")]
+        [Description("/TC/Optional: Where /callstaff messages will appear")]
         CallStaffChannel = 29,
         [Description("Optional: Role for staff to ping in /callstaff instances")]
         CallStaffTagRole = 30,
@@ -148,15 +149,19 @@ namespace EGG9000.Common.Database.Entities {
         SubscriptionContractCategory = 33,
         [Description("Optional: Subscription-Only Event Channel, adding this will prevent sub-only events from appearing elsewhere.")]
         SubscriptionGameEvents = 34,
-        [Description("Optional: Merit Log, all merits added to users will appear in this channel")]
+        [Description("/TC/Optional: Merit Log, all merits added to users will appear in this channel")]
         MeritLogChannel = 35,
         [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
         BannedUserThread = 36,
-        [Description("Optional: Thread ID where artifact cheaters will be outed.")]
+        [Description("/TC/Optional: Where potential artifact cheaters will be outed.")]
         ArtifactCheaterThread = 37,
         /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
         UnobtainedUltraChannel = 38*/
-        [Description("Optional: Thread/Channel ID where changes in players' ULTRA status will be logged")]
-        UltraLog = 39
+        [Description("/TC/Optional: Where changes in players' ULTRA status will be logged")]
+        UltraLog = 39,
+        [Description("/TC/Optional: Where players who join coops while on break will be logged")]
+        BreakCoopLog = 40,
+        [Description("/TC/Optional: Where players can talk to staff of the server")]
+        TalkToStaff = 41
     }
 }

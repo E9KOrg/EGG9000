@@ -378,6 +378,12 @@ namespace EGG9000.Common.Database.Entities {
         public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
         [Key(27)]
         public bool PingForNCUltra { get; set; } = false;
+        [Key(28)]
+        public float LatestRunningScore { get; set; } = 0;
+        [Key(29)]
+        public DateTimeOffset BreakSetTime { get; set; } = DateTimeOffset.MaxValue;
+        [Key(30)]
+        public bool BreakCoopWarningSent { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
@@ -388,7 +394,8 @@ namespace EGG9000.Common.Database.Entities {
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
             SentBreakWarning = false;
-
+            BreakSetTime = until == default ? DateTimeOffset.MaxValue : DateTimeOffset.Now;
+            BreakCoopWarningSent = false;
             dbuser.UpdateUserBreak();
         }
 
