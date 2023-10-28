@@ -5,6 +5,7 @@ using Discord.WebSocket;
 
 using EGG9000.Bot;
 using EGG9000.Bot.Commands;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -145,18 +146,10 @@ namespace EGG9000.Common.Services {
             }
 
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-
-            var demeritChannel = await _discord.GetChannelAsync(GuildChannelType.DemeritLogChannel, dbguild);
-            if(dbuser is not null && dbuser.TempDisabled && demeritChannel is not null) {
-                var guild = _discord.GetGuild(user.Guild.Id);
-                await demeritChannel.SendMessageAsync($"{guild.EveryoneRole.Mention} {user.Mention} just joined and is disabled.");
-            }
-
-
+            if(dbuser is not null && dbuser.TempDisabled) await ChannelHelper.DetermineAndSend(dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
-                var generalChannel = await _discord.GetChannelAsync(GuildChannelType.General, user.Guild);
-                await generalChannel.SendMessageAsync($"Welcome back {user.Mention}!");
+                var response = await ChannelHelper.DetermineAndSend(dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
             } else if(dbuser is not null && dbuser.GuildId == 0) {
@@ -172,9 +165,10 @@ namespace EGG9000.Common.Services {
             var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
             var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
-            var talkChannel = user.Guild.TextChannels.FirstOrDefault(x => x.Id == 746509501271769210);
-            if(talkChannel != null)
-                msg += $" If you have any questions feel free to ask us in {talkChannel.Mention}, we are glad you are here!";
+            var talkChannel = ChannelHelper.DetermineChannelType(dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.TalkToStaff);
+            var talkChannelMention = talkChannel != null ? (talkChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)talkChannel).Mention
+                : ((SocketThreadChannel)talkChannel).Mention) : null;
+            if(talkChannelMention != null) msg += $" If you have any questions feel free to ask us in {talkChannelMention}, we are glad you are here!";
                 
             await welcomeChannel.SendMessageAsync(msg);
         }

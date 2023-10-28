@@ -27,6 +27,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
+using EGG9000.Bot.Common.Helpers;
 
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater : _UpdaterBase<LeaderboardUpdater> {
@@ -45,6 +46,10 @@ namespace EGG9000.Bot.Automated {
         ) : base(UpdateTime, delayedStart: TimeSpan.FromMinutes(5), provider) {
         }
 
+        private class BreakCooper {
+            public LeaderboardUser User { get; set; }
+            public CustomFarm Farm { get; set; }
+        }
 
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
@@ -132,12 +137,39 @@ namespace EGG9000.Bot.Automated {
 
 
                     var users = lUsers.Where(x => x.User.GuildId == guild.Id).ToList();
+                    var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync();
+
+                    var breakCoopsChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.BreakCoopLog);
+                    if(breakCoopsChannel is not null) {
+                        _logger.LogInformation("Handling on-break coop warnings for {guild}", guild.Name);
+                        var joinedCoopOnBreak = users.Where(ua =>
+                            !ua.Account.BreakCoopWarningSent
+                            && ua.Backup.Farms != null
+                            && ua.Account.OnBreakUntil != default
+                            && ua.Account.OnBreakUntil > DateTimeOffset.Now
+                            && ua.Backup.Farms.Any(f => f.FarmType == Ei.FarmType.Contract && f.Started > ua.Account.BreakSetTime)
+                        ).ToList().Select(u => new BreakCooper() {
+                            User = u,
+                            Farm = u.Backup.Farms.First(f => f.FarmType == Ei.FarmType.Contract && f.Started > u.Account.BreakSetTime)
+                        });
+
+                        foreach(var breakCooper in joinedCoopOnBreak) {
+                            var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
+                            var coopName = string.IsNullOrEmpty(breakCooper.Farm.ContractId) ? "Unknown Coop ID" : _db.Coops.FirstOrDefault(c => c.GuildId == dbguild.Id && c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower())?.Name ?? $"`{breakCooper.Farm.CoopId}`";
+                            var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"}) " : " ")}" +
+                                $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
+                                $"({coopName}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
+
+                            var result = await ChannelHelper.DetermineAndSend(dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
+
+                            breakCooper.User.Account.BreakCoopWarningSent = true;
+                            breakCooper.User.User.UpdateAccounts();
+                        }
+                        await _db.SaveChangesAsync();
+                    }
 
                     //Handle promotions
                     _logger.LogInformation("Handling promotions for {guild}", guild.Name);
-
-
-                    var grades = await DiscordHelpers.GetGradeRoles(_client, guild);
 
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {
                         if(cancellationToken.IsCancellationRequested)
@@ -152,9 +184,6 @@ namespace EGG9000.Bot.Automated {
                             y.User.DiscordUsername = discordUser.Nickname ?? discordUser.Username;
                         });
 
-
-
-
                         if(!dbUser.showEB && !string.IsNullOrEmpty(discordUser.Nickname) && discordUser.GetCleanName() != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
                             try {
                                 _logger.LogInformation("Updating {user} to {newname}", discordUser.Nickname, discordUser.GetCleanName());
@@ -163,10 +192,7 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
-                        _ = await DiscordHelpers.CheckRoles(guild, discordUser, dbUser, _client, grades, userAccounts.ToList());
-
-
-
+                        _ = await DiscordHelpers.CheckRoles(_db, guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), userAccounts.ToList());
                     }
 
                     await PostOverallLeaderboard(guild, users, recentContracts, _db);

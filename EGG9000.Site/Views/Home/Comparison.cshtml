@@ -8,6 +8,7 @@
     List<Tuple<double, string>> myEb = ViewBag.MyEbs;
     List<Tuple<double, string>> listOfEb = ViewBag.ListOfEb;
     List<string> allRoles = ViewBag.AllRoles;
+    List<string> myNames = ViewBag.MyNames;
 }
 
 <h1>EB Comparison</h1>
@@ -16,13 +17,14 @@
 <div class="row">
     <div class="col-md-4 mt-3">
         <div class="card">
-            <div class="card-header"><b>Your Eb</b></div>
+            <div class="card-header"><b>@(myEb.Count > 1 ? "Your EBs" : "Your EB")</b></div>
             <div class="card-body">
                 <table class="table table-sm">
                     <tbody>
                         @foreach (var eb in myEb)
                         {
                             <tr>
+                                <td>@myNames[myEb.IndexOf(eb)]</td>
                                 <td>@ArgumentsHelper.NumberToString(eb.Item1,true,2)</td>
                                 <td>@eb.Item2</td>
                             </tr>
@@ -108,7 +110,7 @@ var ebOptions = {
             @:          color: '#fff',
             @:          background: '#775DD0',
             @:      },
-            @:      text: 'You are @("aeiouAEIOU".IndexOf(eb.Item2.Substring(0,1)) >= 0 ? "an" : "a") @eb.Item2',
+            @:      text: '@((myEb.Count > 1 ? (myNames[myEb.IndexOf(eb)]) + " is" : "You are" )) @("aeiouAEIOU".IndexOf(eb.Item2.Substring(0,1)) >= 0 ? "an" : "a") @eb.Item2',
             @:  }
             @:},
             }

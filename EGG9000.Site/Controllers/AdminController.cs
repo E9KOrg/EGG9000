@@ -476,7 +476,9 @@ namespace EGG9000.Site.Controllers {
                 var xrefs = userXrefs.FirstOrDefault(x => x.Key == score.UserId)?.Last3Score.ToList() ?? new List<UserCoopXref>();
                 xrefs.Add(score.xref);
                 if(xrefs.Count == 4) {
+                    var firstXref = xrefs.First();
                     score.xref.RunningScore = xrefs.Average(x => x.Score);
+                    _db.DBUsers.FirstOrDefault(u => u.Id == firstXref.User.Id).EggIncAccounts.FirstOrDefault(a => a.Id == firstXref.EggIncId).LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
                 } else if(xrefs.Count > 4) {
                     Console.WriteLine($"{xrefs.Count} xrefs found for {score.UserName}");
                 }
