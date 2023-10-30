@@ -1,0 +1,96 @@
+﻿@using System.Globalization
+@using Discord
+@using Discord.Rest
+@using Discord.WebSocket
+@model Dictionary<EGG9000.Site.Controllers.AdminController.HalloweenUser, int>
+
+@{
+	var standardPermitCount = 0;
+
+
+	var permitUsers = new List<RestGuildUser>();
+	var piggyUsers = new List<RestGuildUser>();
+
+	foreach (var user in Model)
+	{
+		for (var i = 0; i < user.Value; i++)
+		{
+			if (user.Key.NeedsProPermit)
+			{
+				permitUsers.Add(user.Key.User);
+			}
+			else
+			{
+				piggyUsers.Add(user.Key.User);
+			}
+		}
+
+	}
+	Random rnd = new Random();
+	var permitWinners = new List<RestGuildUser>();
+	var piggyWinners = new List<RestGuildUser>();
+
+
+	@permitUsers.Count
+	<br />
+
+	@piggyUsers.Count
+	<br />
+	@Model.Count
+	<br />
+
+	for (var i = 0; i < 5; i++)
+	{
+		var winnerPermit = permitUsers[rnd.Next(permitUsers.Count)];
+		permitUsers.RemoveAll(x => x.Id == winnerPermit.Id);
+		permitWinners.Add(winnerPermit);
+		var piggyPermit = piggyUsers[rnd.Next(piggyUsers.Count)];
+		piggyUsers.RemoveAll(x => x.Id == piggyPermit.Id);
+		piggyWinners.Add(piggyPermit);
+	}
+}
+<h4>Permit Winners</h4>
+@foreach (var user in permitWinners)
+{
+	@user.GetName()
+	;
+	<br />
+
+}
+<h4>Piggy Winners</h4>
+@foreach (var user in piggyWinners)
+{
+	@user.GetName()
+	;
+	<br />
+
+}
+
+<table>
+	<thead>
+		<tr>
+			<th>Eggs Found</th>
+			<th>User</th>
+			<th>Needs Permit</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var user in Model.OrderByDescending(x => x.Value))
+		{
+			<tr>
+				<td>
+					@user.Value
+				</td>
+				<td>
+					@(user.Key.User.GetName())
+				</td>
+				<td>@user.Key.NeedsProPermit</td>
+				@if (user.Key.NeedsProPermit)
+				{
+					standardPermitCount++;
+					<td>@standardPermitCount</td>
+				}
+			</tr>
+		}
+	</tbody>
+</table>
