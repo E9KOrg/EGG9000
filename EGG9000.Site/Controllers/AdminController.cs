@@ -911,6 +911,103 @@ namespace EGG9000.Site.Controllers {
             public List<SocketTextChannel> ExtraChannels { get; set; }
         }
 
+        public async Task<ActionResult> HalloweenHunt() {
+            var links = @"pets
+1 https://discord.com/channels/656455567858073601/793657823379980318/1137531135858053221
+2 https://discord.com/channels/656455567858073601/793657823379980318/1141451234763612290
+3 https://discord.com/channels/656455567858073601/793657823379980318/1147190984992628807
+
+ooo-pretty
+4 https://discord.com/channels/656455567858073601/997065059870183454/1162256962088620052
+5 https://discord.com/channels/656455567858073601/997065059870183454/1162440798730723549
+
+talk-to-staff
+6 https://discord.com/channels/656455567858073601/746509501271769210/1166964382111109172
+
+general-discussion
+7 https://discord.com/channels/656455567858073601/656455568353132546/1167860751856324759
+8 https://discord.com/channels/656455567858073601/656455568353132546/1167866501575999488
+9 https://discord.com/channels/656455567858073601/798985476006084628/1167897993354166342
+10 https://discord.com/channels/656455567858073601/656455568353132546/1168016129906704424
+
+ongoing-giveaway-discussion
+11 https://discord.com/channels/656455567858073601/1094454621105307718/1158048460298268773
+
+prestige-pointers
+12 https://discord.com/channels/656455567858073601/1062265666817753128/1163240887556509706
+13 https://discord.com/channels/656455567858073601/1062265666817753128/1167676193189920788
+
+artifact-discussion
+14 https://discord.com/channels/656455567858073601/798985476006084628/1167842583943319642
+15 https://discord.com/channels/656455567858073601/798985476006084628/1167897993354166342
+
+off-topic
+16 https://discord.com/channels/656455567858073601/664563280081059845/1164837137343066154
+17 https://discord.com/channels/656455567858073601/664563280081059845/1166072475847766146
+18 https://discord.com/channels/656455567858073601/664563280081059845/1166187273033875508
+
+food-and-snacks
+19 https://discord.com/channels/656455567858073601/792940901777014784/1151297635311943762
+20 https://discord.com/channels/656455567858073601/792940901777014784/1156413304558862357
+
+tech-and-games
+21 https://discord.com/channels/656455567858073601/793576356083793971/1160256688029454446
+22 https://discord.com/channels/656455567858073601/793576356083793971/1162614595626745958
+
+space-and-science
+23 https://discord.com/channels/656455567858073601/796127648899530762/1084138285842059375
+24 https://discord.com/channels/656455567858073601/796127648899530762/1095467290419527690
+
+world-news
+25 https://discord.com/channels/656455567858073601/947948999128789042/1080834875361329222
+
+arts-and-crafts
+26 https://discord.com/channels/656455567858073601/821545853805920286/1103947681228926986
+
+sports-and-outdoors
+27 https://discord.com/channels/656455567858073601/823901567039700992/1154002038649270312
+
+books-and-tv
+28 https://discord.com/channels/656455567858073601/793836057702432799/1149552277175144519
+
+music
+29 https://discord.com/channels/656455567858073601/793591029353676851/1130563391027675260";
+
+            var easterCacheKey = $"HalloweenEggs";
+            Dictionary<HalloweenUser, int> eggsFound;
+            if(!_cache.TryGetValue(easterCacheKey, out eggsFound)) {
+
+
+                var regex = new Regex(@"(\d+)/(\d+)/(\d+)");
+                var matches = regex.Matches(links);
+                eggsFound = new Dictionary<HalloweenUser, int>();
+                foreach(Match match in matches) {
+                    var guild = await _discord.Rest.GetGuildAsync(ulong.Parse(match.Groups[1].Value));
+                    var channel = await guild.GetTextChannelAsync(ulong.Parse(match.Groups[2].Value));
+                    var message = await channel.GetMessageAsync(ulong.Parse(match.Groups[3].Value));
+                    var reactions = message.Reactions;
+                    var userReactions = await message.GetReactionUsersAsync(reactions.First(x => x.Key.Name.Contains("Hallowegg")).Key, 9999).FlattenAsync();
+                    foreach(var user in userReactions) {
+                        if(user.Username == "melina8irbie")
+                            continue;
+                        var existingUser = eggsFound.Any(x => x.Key.User.Id == user.Id);
+                        if(existingUser) {
+                            eggsFound[eggsFound.First(x => x.Key.User.Id == user.Id).Key]++;
+                        } else {
+                            var guildUser = await guild.GetUserAsync(user.Id);
+                            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
+
+                            var needsProPermit = dbuser.EggIncAccounts.Any(x => x.Backup.PermitLevel == 0);
+                            eggsFound.Add(new HalloweenUser { User = guildUser, NeedsProPermit = needsProPermit }, 1);
+                        }
+                    }
+                }
+
+                _cache.Set(easterCacheKey, eggsFound, TimeSpan.FromMinutes(10));
+            }
+            return View(eggsFound);
+        }
+
         public async Task<ActionResult> EasterEggHunt() {
             var links = @"1 https://discord.com/channels/656455567858073601/656455568353132546/964162211155173406
 16 https://discord.com/channels/656455567858073601/656455568353132546/963900393782411274
@@ -1104,6 +1201,11 @@ namespace EGG9000.Site.Controllers {
         //}
 
         public class EasterUser {
+            public RestGuildUser User { get; set; }
+            public bool NeedsProPermit { get; set; }
+        }
+
+        public class HalloweenUser {
             public RestGuildUser User { get; set; }
             public bool NeedsProPermit { get; set; }
         }
