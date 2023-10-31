@@ -131,15 +131,15 @@
 							if (coop is not null) {
 								userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
-							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)?.Evaluation;
-							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
+							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
+							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm?.ContractId)?.Evaluation;
+							<tr data-name="@(contract?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>
 									@if (score is not null) {
 										@score.Cxp
 									}
 								</td>
-								<td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
+								<td>@(contract?.Name ?? farm.ContractId)</td>
 								<td>
 									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
 										@(farm.CoopId ?? coop?.Name)
