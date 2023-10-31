@@ -17,6 +17,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Humanizer;
 using Cronos;
+using EGG9000.Common.Database.Entities;
 
 namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {
@@ -125,7 +126,7 @@ namespace EGG9000.Bot.Automated {
                 try {
                     LastStarted = DateTime.Now;
                     _lastAlive = DateTimeOffset.Now;
-                    var log = new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now };
+                    var log = new AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now };
                     _db.AutomationLogs.Add(log);
                     await _db.SaveChangesAsync();
                     await Run(state, _cts.Token);
@@ -147,7 +148,7 @@ namespace EGG9000.Bot.Automated {
                     _semaphoreSlim.Release();
                 }
             } else {
-                _db.AutomationLogs.Add(new Common.Database.Entities.AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now, Skipped = true });
+                _db.AutomationLogs.Add(new AutomationLog { Type = this.GetType().Name, StartTime = DateTimeOffset.Now, Skipped = true });
                 await _db.SaveChangesAsync();
                 _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize());
             }

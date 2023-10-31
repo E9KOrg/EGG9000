@@ -501,7 +501,6 @@ namespace EGG9000.Bot.Commands {
 
         private static DateTimeOffset AddCappedDays(DateTimeOffset currentDtOffset, int daysToAdd) {
             var dayDifferential = (currentDtOffset - DateTimeOffset.Now).Days;
-            Console.WriteLine("Day differential: " + dayDifferential);
             if(dayDifferential >= 60) return currentDtOffset;
             else {
                 if(dayDifferential + daysToAdd >= 60) daysToAdd = 60 - dayDifferential; //Cap to 60 days
