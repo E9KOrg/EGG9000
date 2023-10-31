@@ -39,7 +39,7 @@
 	@Model.Count
 	<br />
 
-	for (var i = 0; i < 5; i++)
+	for (var i = 0; i < Math.Min(5, permitUsers.Count); i++)
 	{
 		var winnerPermit = permitUsers[rnd.Next(permitUsers.Count)];
 		permitUsers.RemoveAll(x => x.Id == winnerPermit.Id);
