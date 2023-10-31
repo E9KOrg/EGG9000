@@ -16,6 +16,112 @@
 	.table {
 		border-bottom: 1px solid #ccc;
 	}
+
+	div.custom-card {
+		display: inline-block;
+		padding: 2px 5px;
+		border-radius: 7px;
+		margin: 5px;
+		border: 2px solid;
+		font-size: 0.8rem;
+		font-weight: bold;
+	}
+
+	div.tc-card {
+		background-color: gray;
+		border-color: darkgray;
+		color: black;
+	}
+
+	div.opt-card {
+		background-color: lightgreen;
+		border-color: darkolivegreen;
+		color: darkgreen;
+	}
+
+	.tooltip-custom {
+		position: relative;
+		display: inline-block;
+	}
+
+		.tooltip-custom:hover .tooltiptext-custom {
+			display: inline-block;
+			z-index: 3;
+			position: absolute;
+			bottom: 25px;
+			left: 50%;
+			transform: translateX(-50%);
+		}
+
+	.tooltiptext-custom {
+		display: none;
+		border: 1px solid #ccc;
+		padding: 10px;
+		border-radius: 4px;
+		white-space: nowrap;
+		text-align: center;
+		position: absolute;
+	}
+
+		.tooltiptext-custom .bootstrap-dark {
+			background-color: rgba(33, 37, 41, 0.95);
+		}
+
+		.tooltiptext-custom .bootstrap {
+			background-color: rgba(130, 135, 140, 0.95);
+		}
+
+
+	.bootstrap-dark .speech-bubble {
+		background-color: rgba(33, 37, 41, 0.95);
+		color: white !important;
+	}
+
+	.bootstrap .speech-bubble {
+		background-color: rgba(130, 135, 140, 0.95);
+		color: black !important;
+	}
+
+	.speech-bubble {
+		position: relative;
+		padding: 10px;
+		margin: 10px auto;
+		border-radius: 5px;
+	}
+
+		.speech-bubble :after {
+			content: "";
+			position: absolute;
+			top: 100%;
+			left: 50%;
+			margin-left: -15px;
+			border-width: 15px;
+			border-style: solid;
+			border-color: #ccc transparent transparent transparent;
+		}
+
+	.custom-input {
+		display: inline-block;
+		padding: 4px;
+		border: 1px solid #ccc;
+		border-radius: 3px;
+		color: #333;
+		background-color: #fff;
+		transition: border-color 0.3s;
+	}
+
+	.bootstrap-dark .custom-input {
+		border-color: #343a40;
+		color: #fff;
+		background-color: #343a40;
+	}
+
+	.bootstrap .custom-input {
+		border-color: #007bff;
+		color: #333;
+		background-color: #fff;
+	}
+
 </style>
 <h2>Configure Server</h2>
 
@@ -25,33 +131,40 @@
 			<th>Type</th>
 			<th>Description</th>
 			<th>ID</th>
-			<th>Channel/Role Name</th>
+			<th>Name</th>
 		</tr>
 	</thead>
 	<tbody>
 		@foreach (var val in Enum.GetValues<GuildChannelType>()) {
+			FieldInfo fi = val.GetType().GetField(val.ToString());
+			DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
+			var description = (attributes != null && attributes.Any()) ? attributes.First().Description : val.ToString();
 			<tr>
-				<td>@val.ToString()</td>
 				<td>
-					@{
-						FieldInfo fi = val.GetType().GetField(val.ToString());
-
-						DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
-
-						if (attributes != null && attributes.Any()) {
-							@attributes.First().Description
-							;
-						} else {
-							@val.ToString()
-							;
+					@val.ToString()
+					@if(description.StartsWith("/TC/") || description.Contains("Optional:")){
+						<br/>
+						@if (description.StartsWith("/TC/")){
+							<div class="custom-card tooltip-custom tc-card">
+								Thread/Channel
+								<span class="tooltiptext-custom speech-bubble">This parameter will accept either a Channel ID or Thread ID.</span>
+							</div>
 						}
-
+						@if (description.Contains("Optional:")){
+							<div class="custom-card tooltip-custom opt-card">
+								Optional
+								<span class="tooltiptext-custom speech-bubble">This parameter is not required, and it is up to your discretion to choose to use it or not.</span>
+							</div>
+						}
 					}
+				</td>
+				<td>
+					@description.Replace("/TC/", "").Replace("Optional: ", "")
 				</td>
 				<td>
 					@{
 						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
-						<input class="channelDetail" id="@val.ToString()" value="@detail.Id" />
+						<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
 					}
 				</td>
 				<td>
@@ -68,9 +181,9 @@
 	<div class="card-body">
 		@foreach (var coopCategory in (Model.CoopCategories ?? "").Split(",")) {
 			ulong.TryParse(coopCategory, out ulong id);
-			<div><input class="coopCategory" value="@coopCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
+			<div><input class="custom-input coopCategory" value="@coopCategory" /> @discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
 		}
-		<button class="btn btn-primary" onclick="InsertCoopCategory(this)">Add Category</button>
+		<button style="margin-top: 10px;" class="btn btn-primary" onclick="InsertCoopCategory(this)">Add Category</button>
 	</div>
 </div>
 
@@ -79,9 +192,9 @@
 	<div class="card-body">
 		@foreach (var finishedCategory in (Model.FinishedCategories ?? "").Split(",")) {
 			ulong.TryParse(finishedCategory, out ulong id);
-			<div><input class="finishedCategory" value="@finishedCategory" />@discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
+			<div><input class="custom-input finishedCategory" value="@finishedCategory" /> @discord.GetGuild(Model.Id).GetChannel(id)?.Name</div>
 		}
-		<button class="btn btn-primary" onclick="InsertFinishedCategory(this)">Add Category</button>
+		<button style="margin-top: 10px;" class="btn btn-primary" onclick="InsertFinishedCategory(this)">Add Category</button>
 	</div>
 </div>
 
@@ -89,7 +202,7 @@
 	<div class="card-header">Boarding Groups</div>
 	<div class="card-body">
 		<label>
-			<input type="checkbox" value="true" id="DisableBG" onclick="ShowGroupRoles(this)" checked="@Model.DisableBG" /> Disable Boarding Groups
+			<input class="custom-input" type="checkbox" value="true" id="DisableBG" onclick="ShowGroupRoles(this)" checked="@Model.DisableBG" /> Disable Boarding Groups
 		</label>
 		<div id="GroupRoles" style="@(Model.DisableBG ? "" : "display: none;")">
 			<b>Group Roles</b>
@@ -108,7 +221,7 @@
 	<div class="card-body">
 		Guilds will attempt to include other members of the same guild when creating co-ops as long as they are in the same boarding group and it doesn't affect EB balance.
 		<label>
-			<input type="checkbox" value="true" id="AllowGuilds" checked="@Model.AllowGuilds" /> Allow Guilds
+			<input class="custom-input" type="checkbox" value="true" id="AllowGuilds" checked="@Model.AllowGuilds" /> Allow Guilds
 		</label>
 	</div>
 </div>
@@ -118,15 +231,15 @@
 	<div class="card-body">
 		<div>
 		<label>
-			<input type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
+				<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
 		</label>
 		</div>
-		<label>Co-op Prefix <input value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
+		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
 	</div>
 </div>
 
-<button class="btn btn-success" onclick="SaveChannels(this)">Save Settings</button>
-
+<button style="margin-top: 15px;" class="btn btn-success" onclick="SaveChannels(this)">Save Settings</button>
+<hr />
 
 
 @if (Model.OverflowServers.Any()) {
@@ -136,12 +249,13 @@
 	foreach (var role in allRoles) {
 		<div>
 			<label style="color: @(role.Color.ToString() != "#000000" ? role.Color: "")">
-				<input class="role" data-id="@role.Id" type="checkbox" checked="@roleIds.Any(x => x == role.Id.ToString())" />
+				<input class="role custom-input" data-id="@role.Id" type="checkbox" checked="@roleIds.Any(x => x == role.Id.ToString())" />
 				@role.Name <img style="height: 1em; vertical-align: baseline;" src="@role.GetIconUrl()" />
 			</label>
 		</div>
 	}
-	<button class="btn btn-success" onclick="SaveRoles(this)">Save Roles</button>
+	<button style="margin-top: 10px;" class="btn btn-success" onclick="SaveRoles(this)">Save Roles</button>
+	<hr />
 }
 
 

@@ -24,7 +24,6 @@
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
 
-
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
 
     string emojiDelegage(Match match) {
@@ -81,7 +80,7 @@
 </script>
 
 @if (isAdmin) {
-    <h1>@Model.User.DiscordUsername Farms</h1>
+    <h1>@Model.User.DiscordUsername's Farms</h1>
 } else {
     <h1>My Farms</h1>
 }
@@ -227,6 +226,9 @@
                         @string.Join("", "No")
                     }
                 </span>
+                @if(account?.LatestRunningScore != 0){
+                    <br /><span><b><u>Latest Running Score</u></b>: @account.LatestRunningScore.ToString("G3")</span>
+                }
             </div>
 
             <ul class="nav nav-tabs" role="tablist">
