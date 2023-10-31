@@ -478,7 +478,11 @@ namespace EGG9000.Site.Controllers {
                 if(xrefs.Count == 4) {
                     var firstXref = xrefs.First();
                     score.xref.RunningScore = xrefs.Average(x => x.Score);
-                    _db.DBUsers.FirstOrDefault(u => u.Id == firstXref.User.Id).EggIncAccounts.FirstOrDefault(a => a.Id == firstXref.EggIncId).LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
+                    var dbUser = await _db.DBUsers.FirstOrDefaultAsync(u => u.Id == firstXref.UserId);
+                    if(dbUser != null) {
+                        var eggIncAccount = dbUser.EggIncAccounts.FirstOrDefault(a => a.Id == firstXref.EggIncId);
+                        if(eggIncAccount != null) eggIncAccount.LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
+                    }
                 } else if(xrefs.Count > 4) {
                     Console.WriteLine($"{xrefs.Count} xrefs found for {score.UserName}");
                 }
