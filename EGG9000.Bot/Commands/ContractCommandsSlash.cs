@@ -131,7 +131,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Makes a co-op public", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Makes a co-op public", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task MakePublic(FauxCommand command, ApplicationDbContext db) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
