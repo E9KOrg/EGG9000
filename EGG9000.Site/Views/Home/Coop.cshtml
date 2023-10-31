@@ -57,9 +57,7 @@
 				var discordGuildID = Model.CoopDetails.Coop?.OverflowGuildId != default ? Model.CoopDetails.Coop.OverflowGuildId : Model.CoopDetails.Coop.GuildId;
 				var discordChannelID = Model.CoopDetails.Coop?.DiscordChannelId;
 				var discordLink = "discord://discordapp.com/channels/" + discordGuildID + "/" + discordChannelID + "/";
-				<a href="@discordLink" alt="Discord channel link" target=" _self"><img style="max-height: 1em;" src="/images/discordicon.png" /> @Model.CoopStatus.CoopIdentifier
-
-				</a>
+				<a href="@discordLink" alt="Discord channel link" target="_self"><img src="/images/discordicon.png"/> @Model.CoopStatus.CoopIdentifier</a>
 			}
 			else {
 				@Model.CoopStatus.CoopIdentifier;
