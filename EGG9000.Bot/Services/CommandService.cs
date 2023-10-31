@@ -116,8 +116,7 @@ namespace EGG9000.Bot.Services {
 
         private async Task _discord_UserCommandExecuted(SocketUserCommand arg) {
             try {
-                var command = _userCommandFunctions.First(x => x.Name == arg.Data.Name || x.Details.Name == arg.Data.Name);
-                if(command == null) return;
+                var command = _userCommandFunctions.First(x => x.Name == arg.Data.Name);
 
                 _ = Task.Run(() => RunCommand(command, arg));
 
