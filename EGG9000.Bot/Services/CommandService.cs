@@ -479,7 +479,7 @@ namespace EGG9000.Bot.Services {
 
             var types = new Dictionary<Type, ApplicationCommandOptionType> {
                 {typeof(int), ApplicationCommandOptionType.Integer },
-                {typeof(UInt64), ApplicationCommandOptionType.Integer },
+                {typeof(ulong), ApplicationCommandOptionType.Integer },
                 {typeof(uint), ApplicationCommandOptionType.Integer },
                 {typeof(string), ApplicationCommandOptionType.String },
                 {typeof(bool), ApplicationCommandOptionType.Boolean },
