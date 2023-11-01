@@ -257,6 +257,8 @@ namespace EGG9000.Bot.Automated {
                     await channel.DeleteMessagesBatchAsync(nonBotMessages);
                 }
 
+                var dbGuild = _db.Guilds.FirstOrDefault(g => g.Id == channel.Guild.Id);
+                var findSpotButton = (dbGuild.DisableBG && dbGuild.Id != 1108127105088241746 /*DEV server*/) ? null : ((DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18)) ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build() : null);
 
                 existingMessages = existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt).ToList();
 
@@ -264,6 +266,7 @@ namespace EGG9000.Bot.Automated {
                     await (existingMessages.First() as RestUserMessage).ModifyWithTimeoutAsync(msg => {
                         msg.Embed = embedBuilder.Build();
                         msg.Content = rawTextMessageAspect;
+                        msg.Components = findSpotButton;
                     });
                 } else {
                     await channel.SendMessageAsync(rawTextMessageAspect, embed: embedBuilder.Build());
