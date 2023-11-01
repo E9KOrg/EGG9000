@@ -239,84 +239,85 @@ namespace EGG9000.Bot.Services {
         }
 
         private async Task CreateCommands() {
-            _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
-            _discord.UserCommandExecuted += _discord_UserCommandExecuted;
-            _discord.MessageReceived += _discord_MessageReceived;
-            _discord.ButtonExecuted += _discord_ButtonExecuted;
-            _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
-            _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
-            _discord.ModalSubmitted += _discord_ModalSubmitted;
+            try {
 
-            await _publishEndpoint.Publish<ShutdownMessage>(new ShutdownMessage());
+                _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
+                _discord.UserCommandExecuted += _discord_UserCommandExecuted;
+                _discord.MessageReceived += _discord_MessageReceived;
+                _discord.ButtonExecuted += _discord_ButtonExecuted;
+                _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
+                _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
+                _discord.ModalSubmitted += _discord_ModalSubmitted;
+
+                await _publishEndpoint.Publish<ShutdownMessage>(new ShutdownMessage());
 
 
-            _logger.LogInformation("Creating slash commands");
-            List<ApplicationCommandProperties> guildCommandProperties = new();
-            List<ApplicationCommandProperties> globalCommandProperties = new();
+                _logger.LogInformation("Creating slash commands");
+                List<ApplicationCommandProperties> guildCommandProperties = new();
+                List<ApplicationCommandProperties> globalCommandProperties = new();
 
-            foreach(var command in _slashCommandFunctions) {
-                var guildCommand = new SlashCommandBuilder();
-                guildCommand.DefaultMemberPermissions = GuildPermission.UseApplicationCommands;
-                guildCommand.WithName(command.Name);
-                if(command.Details.AdminOnly != StaffOnlyLevel.None) {
-                    command.Details.Description = $"(Admin Only) {command.Details.Description}";
-                }
-                guildCommand.WithDescription(command.Details.Description);
+                foreach(var command in _slashCommandFunctions) {
+                    var guildCommand = new SlashCommandBuilder();
+                    guildCommand.DefaultMemberPermissions = GuildPermission.UseApplicationCommands;
+                    guildCommand.WithName(command.Name);
+                    if(command.Details.AdminOnly != StaffOnlyLevel.None) {
+                        command.Details.Description = $"(Admin Only) {command.Details.Description}";
+                    }
+                    guildCommand.WithDescription(command.Details.Description);
 
-                if(command.Details.AdminOnly != StaffOnlyLevel.None) {
-                    guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
-                        StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
-                        StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
-                        StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
-                        StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
-                        _ => GuildPermission.UseApplicationCommands
-                    };
-                }
+                    if(command.Details.AdminOnly != StaffOnlyLevel.None) {
+                        guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
+                            StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
+                            StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                            StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                            StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                            _ => GuildPermission.UseApplicationCommands
+                        };
+                    }
 
-                if(command.SubFunctions != null) {
-                    foreach(var subFunction in command.SubFunctions) {
-                        var subCommandOption = new SlashCommandOptionBuilder();
-                        subCommandOption.WithName(subFunction.Name);
-                        subCommandOption.WithDescription(subFunction.Details.Description);
-                        subCommandOption.WithType(ApplicationCommandOptionType.SubCommand);
-                        guildCommand.AddOption(subCommandOption);
-                        foreach(var parameterInfo in subFunction.Parameters.Where(x => x.GetCustomAttributes<SlashParamAttribute>().Any())) {
-                            AddCommandParams(parameterInfo, null, subCommandOption);
+                    if(command.SubFunctions != null) {
+                        foreach(var subFunction in command.SubFunctions) {
+                            var subCommandOption = new SlashCommandOptionBuilder();
+                            subCommandOption.WithName(subFunction.Name);
+                            subCommandOption.WithDescription(subFunction.Details.Description);
+                            subCommandOption.WithType(ApplicationCommandOptionType.SubCommand);
+                            guildCommand.AddOption(subCommandOption);
+                            foreach(var parameterInfo in subFunction.Parameters.Where(x => x.GetCustomAttributes<SlashParamAttribute>().Any())) {
+                                AddCommandParams(parameterInfo, null, subCommandOption);
+                            }
+                        }
+                    } else {
+                        foreach(var parameterInfo in command.Parameters.Where(x => x.GetCustomAttributes<SlashParamAttribute>().Any())) {
+                            AddCommandParams(parameterInfo, guildCommand, null);
                         }
                     }
-                } else {
-                    foreach(var parameterInfo in command.Parameters.Where(x => x.GetCustomAttributes<SlashParamAttribute>().Any())) {
-                        AddCommandParams(parameterInfo, guildCommand, null);
+                    if(command.Details.AllowInDMs || (command.SubFunctions?.All(x => x.Details.AllowInDMs) ?? false)) {
+                        globalCommandProperties.Add(guildCommand.Build());
+                    } else {
+                        guildCommandProperties.Add(guildCommand.Build());
                     }
                 }
-                if(command.Details.AllowInDMs || (command.SubFunctions?.All(x => x.Details.AllowInDMs) ?? false)) {
-                    globalCommandProperties.Add(guildCommand.Build());
-                } else {
+
+                foreach(var command in _userCommandFunctions) {
+                    var guildCommand = new UserCommandBuilder {
+                        DefaultMemberPermissions = GuildPermission.UseApplicationCommands
+                    };
+                    guildCommand.WithName(command.Details.Name ?? command.Name);
+                    command.Name = command.Details.Name ?? command.Name;
+
+                    if(command.Details.AdminOnly != StaffOnlyLevel.None) {
+                        guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
+                            StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
+                            StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                            StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                            StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                            _ => GuildPermission.UseApplicationCommands
+                        };
+                    }
+
                     guildCommandProperties.Add(guildCommand.Build());
                 }
-            }
 
-            foreach(var command in _userCommandFunctions) {
-                var guildCommand = new UserCommandBuilder {
-                    DefaultMemberPermissions = GuildPermission.UseApplicationCommands
-                };
-                guildCommand.WithName(command.Details.Name ?? command.Name);
-                command.Name = command.Details.Name ?? command.Name;
-
-                if(command.Details.AdminOnly != StaffOnlyLevel.None) {
-                    guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
-                        StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
-                        StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
-                        StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
-                        StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
-                        _ => GuildPermission.UseApplicationCommands
-                    };
-                }
-
-                guildCommandProperties.Add(guildCommand.Build());
-            }
-
-            try {
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
