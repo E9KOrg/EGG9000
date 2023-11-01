@@ -871,6 +871,11 @@ namespace EGG9000.Bot.Commands {
                 User = user
             }};
 
+            if(DateTimeOffset.Now >= guildContract.Contract.GoodUntil) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"This contract has expired, and no new co-ops can be formed."); });
+                return;
+            }
+
             if(existingXrefs.Any(x => x.EggIncId == account.Id)) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existingXrefs.First().Coop.DiscordChannelId}>"); });
                 return;
