@@ -1155,7 +1155,6 @@ namespace EGG9000.Bot.Automated.Coops {
                                 var remainingTime = remainingAmount / totalRate;
                                 if(remainingTime < TimeSpan.MaxValue.TotalSeconds) {
                                     try {
-                                        var timeSpan = TimeSpan.FromSeconds(remainingTime);
                                         embedBuilder.AddField("Time To Complete", GetTimeRemaining(targetAmount, totalRate, amountWithOffline), inline: true);
                                         if(status.SecondsRemaining > remainingTime) {
                                             embedBuilder.AddField("Ahead By", TimeSpan.FromSeconds(status.SecondsRemaining - remainingTime).Humanize(2).ShortenTime(), inline: true);
