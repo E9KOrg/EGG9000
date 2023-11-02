@@ -110,7 +110,6 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                var dbguild = dbGuilds.First(x => x.Id == guild.Id);
                 if(groupGuildContracts is not null) {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
                         if(cancellationToken.IsCancellationRequested)
