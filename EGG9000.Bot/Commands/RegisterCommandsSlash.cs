@@ -356,7 +356,7 @@ namespace EGG9000.Bot.Commands {
                 logger.LogError(ex, "Error checking banned users");
             }
 
-            var existingUsers = await db.DBUsers.Where(x => x.GuildId == guildObj.Id).ToListAsync();
+            var existingUsers = await db.DBUsers.Where(x => x.GuildId == guildObj.Id && x.DiscordId != command.User.Id).ToListAsync();
             if(existingUsers.Any(u => u.EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
                 await command.ModifyOriginalResponseAsync(m => m.Content = $"{user.Mention} Error:  EggInc ID `{eggincid}` is already registered with this server. Reach out to staff if you believe this is an error.");
                 return;
