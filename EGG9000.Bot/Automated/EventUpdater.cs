@@ -314,7 +314,7 @@ namespace EGG9000.Bot.Automated {
         public async Task CheckShells(ApplicationDbContext db) {
             var config = await ContractsAPI.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, ContractsAPI.UserId, true);
 
-
+            if(config is null) return; // This randomly failed while I was working
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
 
             var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.Now.AddHours(-1));
