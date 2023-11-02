@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Automated {
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync();
             times.Set("guildcontracts");
 
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var dbGuilds = await _db.Guilds.AsQueryable().ToListAsync();
             times.Set("dbguilds");
             var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync();
             times.Set("coops");
@@ -82,7 +82,7 @@ namespace EGG9000.Bot.Automated {
             //guildGroups = guildGroups.Where(x => x.Key == dbguilds.First(x => x.Name.Contains("ingham")).DiscordSeverId);
 #endif
 
-            foreach(var dbguild in dbguilds) {
+            foreach(var dbguild in dbGuilds) {
                 if(cancellationToken.IsCancellationRequested)
                     break;
                 //foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {
@@ -110,12 +110,12 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                //var dbguild = dbguilds.First(x => x.Id == guild.Id);
+                var dbguild = dbGuilds.First(x => x.Id == guild.Id);
                 if(groupGuildContracts is not null) {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
                         if(cancellationToken.IsCancellationRequested)
                             break;
-                        await UpdateContractChannel(_db, guildContract, guild);
+                        await UpdateContractChannel(_db, guildContract, guild, dbguild);
                     }
                 }
 
@@ -173,7 +173,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsync();
         }
 
-        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, FauxCommand slashCommand = null) {
+        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild,  Guild dbGuild, FauxCommand slashCommand = null) {
             try {
                 _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 
@@ -257,7 +257,6 @@ namespace EGG9000.Bot.Automated {
                     await channel.DeleteMessagesBatchAsync(nonBotMessages);
                 }
 
-                var dbGuild = _db.Guilds.FirstOrDefault(g => g.Id == channel.Guild.Id);
                 var findSpotButton = (dbGuild.DisableBG && dbGuild.Id != 1108127105088241746 /*DEV server*/) ? null : ((DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18)) ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build() : null);
 
                 existingMessages = existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt).ToList();
