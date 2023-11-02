@@ -21,8 +21,49 @@ namespace EGG9000.Common.Helpers {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
 
+        public static int GetAFOrder(string AF) {
+            return AF switch {
+                "Aurelian Brooch" => 18,
+                "Beak of Midas" => 23,
+                "Book of Basan" => 33,
+                "Carved Rainstick" => 24,
+                "Clarity Stone" => 12,
+                "Demeters Necklace" => 16,
+                "Dilithium Monocle" => 29,
+                "Dilithium Stone" => 11,
+                "Gold Meteorite" => 1,
+                "Gusset" => 20,
+                "Ornate Gusset" => 20,
+                "Interstellar Compass" => 25,
+                "Life Stone" => 10,
+                "Light of Eggendil" => 34,
+                "Lunar Stone" => 5,
+                "Lunar Totem" => 15,
+                "Mercury's Lens" => 22,
+                "Neodymium Medallion" => 21,
+                "Phoenix Feather" => 27,
+                "Prophecy Stone" => 13,
+                "Puzzle Cube" => 14,
+                "Quantum Metronome" => 28,
+                "Quantum Stone" => 9,
+                "Shell Stone" => 4,
+                "Ship in a Bottle" => 31,
+                "Solar Titanium" => 3,
+                "Soul Stone" => 8,
+                "Tachyon Deflector" => 32,
+                "Tachyon Stone" => 6,
+                "Tau Ceti Geode" => 2,
+                "Terra Stone" => 7,
+                "The Chalice" => 26,
+                "Titanium Actuator" => 30,
+                "Tungsten Ankh" => 19,
+                "Vial of Martian Dust" => 17,
+                _ => 0,
+            };
+        }
+
         public static long[] GetFairness(EggIncArtifactInstance instance) {
-            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? new long[] { 0, 0, 0, 0 } : instance.Artifact switch {
+            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? new long[] { 0, 0, 0, 0 } : instance.Artifact.Replace(" Fragement", "") switch {
                 "Aurelian Brooch" => new long[] { 0, 1186, 13827, 58753 },
                 "Beak of Midas" => new long[] { 0, 6075, 23885, 86083 },
                 "Book of Basan" => new long[] { 0, 114405, 360427, 934701 },
