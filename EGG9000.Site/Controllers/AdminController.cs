@@ -478,10 +478,12 @@ namespace EGG9000.Site.Controllers {
                 if(xrefs.Count == 4) {
                     var firstXref = xrefs.First();
                     score.xref.RunningScore = xrefs.Average(x => x.Score);
-                    var dbUser = await _db.DBUsers.FirstOrDefaultAsync(u => u.Id == firstXref.UserId);
-                    if(dbUser != null) {
-                        var eggIncAccount = dbUser.EggIncAccounts.FirstOrDefault(a => a.Id == firstXref.EggIncId);
-                        if(eggIncAccount != null) eggIncAccount.LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
+                    if(firstXref.User != null) {
+                        var eggIncAccount = firstXref.User.EggIncAccounts.FirstOrDefault(a => a.Id == firstXref.EggIncId);
+                        if(eggIncAccount != null) {
+                            eggIncAccount.LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
+                            firstXref.User.UpdateAccounts();
+                        }
                     }
                 } else if(xrefs.Count > 4) {
                     Console.WriteLine($"{xrefs.Count} xrefs found for {score.UserName}");
