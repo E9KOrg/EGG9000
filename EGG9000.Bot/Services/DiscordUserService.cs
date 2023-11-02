@@ -161,18 +161,15 @@ namespace EGG9000.Common.Services {
                 }
             }
 
-            //Make sure we are not in an overflow server
-            if(dbguild != null) {
-                var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
-                var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
-                var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
-                var talkChannel = ChannelHelper.DetermineChannelType(dbguild, _discord.GetGuild(dbguild.DiscordSeverId), GuildChannelType.TalkToStaff);
-                var talkChannelMention = talkChannel != null ? (talkChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)talkChannel).Mention
-                    : ((SocketThreadChannel)talkChannel).Mention) : null;
-                if(talkChannelMention != null) msg += $" If you have any questions feel free to ask us in {talkChannelMention}, we are glad you are here!";
+            var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
+            var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
+            var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
+            var talkChannel = ChannelHelper.DetermineChannelType(dbguild, _discord.GetGuild(dbguild.DiscordSeverId), GuildChannelType.TalkToStaff);
+            var talkChannelMention = talkChannel != null ? (talkChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)talkChannel).Mention
+                : ((SocketThreadChannel)talkChannel).Mention) : null;
+            if(talkChannelMention != null) msg += $" If you have any questions feel free to ask us in {talkChannelMention}, we are glad you are here!";
 
-                await welcomeChannel.SendMessageAsync(msg);
-            }
+            await welcomeChannel.SendMessageAsync(msg);
         }
 
         public async Task UserLeft(SocketGuild guild, SocketUser user, ApplicationDbContext db) {
