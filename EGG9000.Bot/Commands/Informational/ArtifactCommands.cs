@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 using SixLabors.ImageSharp;
@@ -17,13 +16,31 @@ using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Discord.WebSocket;
 using EGG9000.Common.Helpers;
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using Microsoft.AspNetCore.Http;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.Fonts;
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using Microsoft.CodeAnalysis.Text;
 
 namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
+
+        private static readonly Dictionary<string, Image> AFImages = new();
+        private static bool LoadAFImages() {
+            if(AFImages.Count > 0) return true;
+            else {
+                try {
+                    var allFiles = Directory.GetFiles($"../../../../EGG9000.Site/wwwroot/images/artifacts", "*.png", SearchOption.AllDirectories);
+                    foreach(var fileDir in allFiles) {
+                        var imageFormat = Image.DetectFormat(fileDir);
+                        if(imageFormat == null || imageFormat.DefaultMimeType != "image/png") continue;
+                        AFImages.Add(System.IO.Path.GetFileNameWithoutExtension(fileDir), Image.Load(fileDir.Replace("\\", "/")));
+                    }
+                    return true;
+                } catch(Exception) {
+                    return false;
+                }
+            }
+        }
 
         // This method can be seen as an inline implementation of an `IImageProcessor`:
         // (The combination of `IImageOperations.Apply()` + this could be replaced with an `IImageProcessor`)
@@ -78,7 +95,9 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])];
             if(account is null) await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
 
-            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(InventoryB64(account))), "image.png", "Inventory Image"), text: " ");
+            var b64 = InventoryB64(account);
+            if(string.IsNullOrEmpty(b64)) await command.RespondAsync($"⚠︎ Error: User inventory could not be converted.");
+            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(b64)), "image.png", "Inventory Image"), text: " ");
         }
 
         [SlashCommand(Description = "View your inventory")]
@@ -91,7 +110,9 @@ namespace EGG9000.Bot.Commands {
             }
             var accountIndex = int.Parse(useraccount.Split("|")[1]);
             var account = user.EggIncAccounts[accountIndex];
-            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(InventoryB64(account))), "image.png", "Inventory Image"), text: " ");
+            var b64 = InventoryB64(account);
+            if(string.IsNullOrEmpty(b64)) await command.RespondAsync($"⚠︎ Error: User inventory could not be converted.");
+            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(b64)), "image.png", "Inventory Image"), text: " ");
         }
 
         private static Image BackgroundImage(Color backgroundColor, int size, int radius) {
@@ -124,6 +145,9 @@ namespace EGG9000.Bot.Commands {
 
         private static string InventoryB64(EggIncAccount account) {
 
+            var loaded = LoadAFImages(); //Make sure cache of images is initiated
+            if(!loaded) return "";
+
             /*
              * Constants that will determine how the image comes out
              */
@@ -132,10 +156,10 @@ namespace EGG9000.Bot.Commands {
             var stoneSize = (int)(afSize / 4.5);
             var radius = 50;
 
-            var textHeight = 50;
+            var textHeight = 60;
             var textBaseWidth = 24;
             var textRadius = (int)(textHeight / 2.5);
-            var textFontSize = 40;
+            var textFontSize = 50;
             var textOffset = (int)(textBaseWidth / 2.5);
 
             var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).ToList().OrderByDescending(i => i.Artifact.Rarity).ToList();
@@ -153,7 +177,6 @@ namespace EGG9000.Bot.Commands {
                 foreach(var other in others) skipIndexes.Add(orderedList.IndexOf(other));
                 acount.Count += others.Count;
             }
-            Console.WriteLine("SkipIndexes: " + string.Join(",", skipIndexes.Select(s => s.ToString()).ToList()));
             var removed = 0;
             foreach(var skipIndex in skipIndexes) {
                 orderedList.RemoveAt(skipIndex - removed);
@@ -187,14 +210,14 @@ namespace EGG9000.Bot.Commands {
                     _ => Color.ParseHex("#383834")
                 };
 
-                var afImage = Image.Load($"../../../../EGG9000.Site\\wwwroot\\images\\artifacts\\{afName}\\{afName}_{afTier}.png");
+                var afImage = AFImages[$"{afName}_{afTier}"];
                 afImage.Mutate(i => { i.Resize(new Size(afSize, afSize)); });
 
                 var stoneImages = new List<Image>();
                 foreach(var stone in afStones) {
                     var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                     var stoneTier = stone.Tier + 1;
-                    var stoneImage = Image.Load($"../../../../EGG9000.Site\\wwwroot\\images\\artifacts\\{stoneName}\\{stoneName}_{stoneTier}.png");
+                    var stoneImage = AFImages[$"{stoneName}_{stoneTier}"];
                     stoneImage.Mutate(i => { i.Resize(new Size(stoneSize, stoneSize)); });
                     stoneImages.Add(stoneImage);
                 }
@@ -202,32 +225,44 @@ namespace EGG9000.Bot.Commands {
                 Image textImage = null;
                 if(afCount != 1) {
                     var textLength = afCount.ToString().Length;
-                    var textWidth = (textLength * textBaseWidth) + textBaseWidth;
+                    var textWidth = Math.Max(textHeight, (textLength * textBaseWidth) + textBaseWidth);
                     textImage = new Image<Rgba32>(textWidth, textHeight);
                     textImage.Mutate(x => x
-                        .Fill(Color.ParseHex("#121212")) // Fill the image with a background color
+                        .Fill(Color.ParseHex("#4f4f4f")) // Fill the image with a background color
                         .Fill(Color.Transparent, new RectangularPolygon(textRadius, textRadius, textWidth - textRadius, textRadius))); // Create a transparent rectangle with rounded corners
                     textImage.Mutate(x => x.ApplyRoundedCorners(textRadius));
 
-                    textImage.Mutate(x => x.DrawText(afCount.ToString(), new Font(SystemFonts.Get("Arial"), textFontSize), Color.White, new Point(textOffset * (textLength > 1 ? textLength / 2 : 1), textOffset)));
+                    Font font = null;
+                    try {
+                        var collection = new FontCollection();
+                        var family = collection.Add("../../../../EGG9000.Site/wwwroot/Always Together.otf");
+                        font = family.CreateFont(textFontSize, FontStyle.Bold);
+                    } catch(Exception) {
+                        font = new Font(SystemFonts.Get("Arial"), textFontSize);
+                    }
+
+                    var text = afCount.ToString();
+                    var center = new PointF(textImage.Width / 2, textImage.Height / 2);
+                    var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
+                    var textPosition = new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2);
+
+                    textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
                 }
 
                 var backgroundImage = BackgroundImage(backgroundColor, afSize, radius);
                 backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
 
-                try {
-                    baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
-                    if(textImage != null) {
-                        baseImage.Mutate(b => { b.DrawImage(textImage, new Point(x + afSize - (padding * afCount.ToString().Length), y + afSize - padding), 1f); });
-                    } else if(stoneImages.Count > 0) {
-                        var stoneIndex = 1;
-                        foreach(var stoneImage in stoneImages) {
-                            baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + afSize - (int)(padding * 0.5) - (stoneSize * stoneIndex), (int)(y + afSize - (padding * 1.5))), 1f); });
-                            stoneIndex++;
-                        }
+                baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
+                if(textImage != null) {
+                    var baseCenter = new Point(x + backgroundImage.Width, y + backgroundImage.Height);
+                    var textPosition = new Point(baseCenter.X - (int)(textImage.Width/ 1.5), baseCenter.Y - (int)(textImage.Height/ 1.5));
+                    baseImage.Mutate(b => { b.DrawImage(textImage, textPosition, 1f); });
+                } else if(stoneImages.Count > 0) {
+                    var stoneIndex = 1;
+                    foreach(var stoneImage in stoneImages) {
+                        baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + afSize - (int)(padding * 0.5) - (stoneSize * stoneIndex), (int)(y + afSize - (padding * 1.5))), 1f); });
+                        stoneIndex++;
                     }
-                } catch(Exception ex) {
-                    Console.WriteLine($"Attempting to draw over point: X:{x},Y:{y}");
                 }
                 index++;
             }
