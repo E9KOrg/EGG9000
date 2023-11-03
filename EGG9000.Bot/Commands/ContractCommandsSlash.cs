@@ -734,15 +734,10 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            if(eligibleAccounts.Count > 1) {
-                var builder = new ComponentBuilder();
-                foreach(var account in eligibleAccounts) {
-                    _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"FindCoopSpotForAccount:{dbUser.EggIncAccounts.IndexOf(account)}", emote: emote);
-                }
-                await component.ModifyOriginalResponseAsync(x => { x.Embed = null; x.Content = $"Select an account: "; x.Components = builder.Build(); });
-            } else {
-                await FindCoopSpotForAccount(component, _client, _provider, $"{dbUser.EggIncAccounts.IndexOf(eligibleAccounts.First())}", db);
+            var builder = new ComponentBuilder();
+            foreach(var account in eligibleAccounts) {
+                _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
+                builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"FindCoopSpotForAccount:{dbUser.EggIncAccounts.IndexOf(account)}", emote: emote);
             }
         }
 
