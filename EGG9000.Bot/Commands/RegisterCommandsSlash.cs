@@ -813,7 +813,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync($"{command.User.Mention} will no longer be updated with their EB.", ephemeral: true);
         }
 
-        [SlashCommand(Description = "Check the list of Users/EIDs that have been banned from the server via /kick", ParentCommand = "b", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Check the list of Users/EIDs that have been banned from the server via /kick", ParentCommand = "b", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task BanList(FauxCommand command, ApplicationDbContext db) {
             var bannedUsers = await db.DBUsers.Where(u => u.Banned && u.GuildId == command.GuildId).ToListAsync();
             if(bannedUsers is null || bannedUsers.Count == 0) {
@@ -824,7 +824,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync(userList);
         }
 
-        [SlashCommand(Description = "Remove the ban placed on a user, and their associated EID(s)", ParentCommand = "b", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Remove the ban placed on a user, and their associated EID(s)", ParentCommand = "b", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RemoveBan(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(Description = "Discord ID of user to unban")] ulong discordid) {
             var user = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordid);
             if(user is null || !user.Banned) {
