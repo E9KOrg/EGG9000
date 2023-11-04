@@ -614,12 +614,11 @@ namespace EGG9000.Bot.Commands {
                 if(backup == null)
                     continue;
 
-                builder.AddField("――――――――――――――――――", ($"{((account.GetGrade() != default) ? PlayerGradeDetails.GetEmoji(account.GetGrade()) : "")} ***{account.Backup?.UserName} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
-                builder.AddField("Last Backup", (backup?.Farms?.Count > 0) ? DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)) : "Empty - Check EID", true);
+                var deviceTypeEmoji = account.DeviceID is not null ? (account.DeviceID.Length == 16 ? ":robot: " : ":apple: ") : "";
+                var permitEmoji = account.Backup is not null ? (account.Backup?.PermitLevel == 0 ? "<:Standard_Permit:755734059761795173> " : "<:Pro_Permit:724392625276452955> ") : "";
 
-                if(!string.IsNullOrEmpty(account.DeviceID)) {
-                    builder.AddField("Device Type", account.DeviceID.Length == 16 ? "Android :robot:" : "iOS :apple:", true);
-                }
+                builder.AddField("――――――――――――――――――", ($"{deviceTypeEmoji}{permitEmoji}{((account.GetGrade() != default) ? $"{PlayerGradeDetails.GetEmoji(account.GetGrade())} " : "")}***{account.Backup?.UserName} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
+                builder.AddField("Last Backup", (backup?.Farms?.Count > 0) ? DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)) : "Empty - Check EID", true);
 
                 if(account.SubscriptionLevel is not null) {
                     builder.AddField("Subscription", $"ULTRA {(UserSubscriptionInfo.Types.Level)account.SubscriptionLevel}", true);
