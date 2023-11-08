@@ -37,12 +37,13 @@ namespace EGG9000.Common.Contracts {
                     RoleId = dbguild is not null && dbguild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbguild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
                 })).ToList();
 
+            FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
+
             FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
-          
+
             FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
           
 
-            FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
           
             FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 

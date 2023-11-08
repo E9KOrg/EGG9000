@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using Humanizer;
 using Cronos;
 using EGG9000.Common.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {
@@ -56,6 +57,7 @@ namespace EGG9000.Bot.Automated {
 
         protected Bugsnag.IClient _bugsnag;
         protected ILogger<T> _logger;
+        protected IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
         protected ulong _CPGuildId;
 
@@ -81,6 +83,7 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation("Initiating");
             _configuration = provider.GetService<IConfiguration>();
             _client = provider.GetService<DiscordHostedService>();
+            _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
             Instance = this;
             _bugsnag = provider.GetService<Bugsnag.IClient>();
             _provider = provider;
