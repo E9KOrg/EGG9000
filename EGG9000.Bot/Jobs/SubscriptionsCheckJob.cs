@@ -108,7 +108,7 @@ namespace EGG9000.Bot.Jobs {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
                 if(subscriptionStatus.HasStatus && subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                     if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
-                        await SendUltraLogMessage(user, account,(int?)account.SubscriptionLevel ?? 0, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
+                        await SendUltraLogMessage(user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
                         account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                         user.UpdateAccounts();
                     }
@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Jobs {
                         user.UpdateAccounts();
                     }
                 } else if(account.SubscriptionLevel.HasValue && account.SubscriptionLevel is not null) {
-                    await SendUltraLogMessage(user, account, (int?)account.SubscriptionLevel ?? 0, 0, dbGuild, guild);
+                    await SendUltraLogMessage(user, account, (int?)account.SubscriptionLevel ?? -1, -1, dbGuild, guild);
                     account.SubscriptionLevel = null;
                     user.UpdateAccounts();
                 }
@@ -128,9 +128,9 @@ namespace EGG9000.Bot.Jobs {
 
         public static string LevelText(int level) {
             return level switch {
-                0 => "Not Subscribed",
-                1 => "ULTRA Standard",
-                2 => "ULTRA Pro",
+                -1 => "Not Subscribed",
+                0 => "ULTRA Standard",
+                1 => "ULTRA Pro",
                 _ => "???"
             };
         }

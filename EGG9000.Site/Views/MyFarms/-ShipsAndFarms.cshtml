@@ -154,6 +154,33 @@
         background-color: rgba(130, 135, 140, 0.95);
     }
 
+    .bootstrap-dark .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+
+    .bootstrap .speech-bubble {
+        background-color: rgba(130, 135, 140, 0.95);
+    }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px; /* Adjust the padding to your preference */
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+        /* Create the triangle */
+        .speech-bubble :after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -15px; /* Half of the triangle's width */
+            border-width: 15px; /* Adjust the size of the triangle */
+            border-style: solid;
+            border-color: #ccc transparent transparent transparent;
+        }
+
     .gray-text-half-margin, .gray-text {
         color: lightgray;
     }
@@ -186,32 +213,6 @@
     .gray-text-half-margin {
         display: inline-block;
         margin-right: 5px;
-    }
-
-    .bootstrap-dark .speech-bubble {
-        background-color: rgba(33, 37, 41, 0.95);
-    }
-    .bootstrap .speech-bubble {
-        background-color: rgba(130, 135, 140, 0.95);
-    }
-
-    .speech-bubble {
-        position: relative;
-        padding: 10px; /* Adjust the padding to your preference */
-        margin: 10px auto; /* Center the bubble horizontally */
-        border-radius: 5px; /* Rounded corners for the bubble */
-    }
-
-    /* Create the triangle */
-    .speech-bubble :after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        margin-left: -15px; /* Half of the triangle's width */
-        border-width: 15px; /* Adjust the size of the triangle */
-        border-style: solid;
-        border-color: #ccc transparent transparent transparent;
     }
 
     .ship-item {

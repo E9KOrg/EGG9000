@@ -48,7 +48,7 @@ namespace EGG9000.Bot.Jobs {
                         continue;
                     }
 
-                    if(!account.SentBreakWarning) {
+                    if(!account.SentBreakWarning && account.OnBreakUntil > DateTimeOffset.FromUnixTimeSeconds(0).AddDays(1)) {
                         _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
                         var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
 
