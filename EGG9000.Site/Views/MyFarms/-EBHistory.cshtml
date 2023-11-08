@@ -33,8 +33,10 @@
             @if (Model.uncompletePEs[Model.backup.EggIncId].Count() > 0 || true) {
                 <div class="card" style="margin-top:15px;">
                     <h4 class="card-header" style="text-align: center">
-                        <button class="btn-sm btn btn-outline-primary" id="collapsePE" onclick="$('.collapsible-row').toggleClass('toggleHide')">Toggle Hidden</button>
-                        <br />
+                        @if (Model.uncompletePEs[Model.backup.EggIncId].Count() != 0) {
+                            <button class="btn-sm btn btn-outline-primary" id="collapsePE" onclick="$('.collapsible-row').toggleClass('toggleHide')">Toggle Hidden</button>
+                            <br />
+                        }
                         Missing Contract Eggs of Prophecy
                     </h4>
                     <table class="table table-sm align-middle collapsible-table table-striped">
@@ -47,13 +49,19 @@
                             </tr>
                         </thead>
                         <tbody id="content-collapse">
-                            @foreach (var contract in Model.uncompletePEs[Model.backup.EggIncId].OrderBy(c => c.Created).ToList()) {
+                            @if(Model.uncompletePEs[Model.backup.EggIncId].Count() == 0){
                                 <tr class="collapsible-row toggleHide">
-                                    <td>@contract.Name</td>
-                                    <td>@contract.ID</td>
-                                    <td>@contract.Created.ToString("yyyy-MM-dd")</td>
-                                    <td>@contract.Details.GetPossiblePE()</td>
+                                    <td colspan="4" style="text-align: center;">You've gathered all Prophecy Eggs from Contracts.<br /><a class="nav-link text-primary" href="https://rroll.to/iHgSMg" target="_blank" rel="nofollow">Ready to take the next challenge?</a></td>
                                 </tr>
+                            } else {
+                                @foreach (var contract in Model.uncompletePEs[Model.backup.EggIncId].OrderBy(c => c.Created).ToList()) {
+                                    <tr class="collapsible-row toggleHide">
+                                        <td>@contract.Name</td>
+                                        <td>@contract.ID</td>
+                                        <td>@contract.Created.ToString("yyyy-MM-dd")</td>
+                                        <td>@contract.Details.GetPossiblePE()</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                         <tbody id="altNotShownBody">

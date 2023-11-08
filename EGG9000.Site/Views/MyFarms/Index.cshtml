@@ -57,6 +57,66 @@
     .Expired td {
         opacity: 60%;
     }
+
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+
+        .tooltip-custom:hover .tooltiptext-custom {
+            display: inline-block;
+            z-index: 3;
+            position: absolute;
+            bottom: 25px; /* Adjust this value as needed */
+            left: 50%;
+            transform: translateX(-50%); /* Center the tooltip */
+        }
+
+    .tooltiptext-custom {
+        display: none;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: nowrap;
+        text-align: center; /* Center the text within the tooltip */
+        position: absolute;
+    }
+
+        .tooltiptext-custom .bootstrap-dark {
+            background-color: rgba(33, 37, 41, 0.95);
+        }
+
+        .tooltiptext-custom .bootstrap {
+            background-color: rgba(130, 135, 140, 0.95);
+        }
+
+    .bootstrap-dark .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+
+    .bootstrap .speech-bubble {
+        background-color: rgba(130, 135, 140, 0.95);
+    }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px; /* Adjust the padding to your preference */
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+        /* Create the triangle */
+        .speech-bubble :after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -15px; /* Half of the triangle's width */
+            border-width: 15px; /* Adjust the size of the triangle */
+            border-style: solid;
+            border-color: #ccc transparent transparent transparent;
+        }
+
 </style>
 
 <script>
@@ -76,6 +136,27 @@
                 notification.style.opacity = "0";
             }, 2000);
         }
+    }
+
+    function formatEpochToTime(epochSeconds, full) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, invert to assume counting up.
+            timeDifference *= -1;
+        }
+
+        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
+        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+        var seconds = timeDifference % 60; // 60 seconds in a minute
+
+        // Format the result as "XdXhXm"
+        var result = ("" + (days > 0 ? `${days}d` : "") + (hours > 0 ? `${hours}h` : "") + ((minutes > 0 && (days == 0 && hours < 10 || full)) ? `${minutes}m` : "") + ((seconds > 0 && ((minutes < 10 && hours == 0 && days == 0) || full)) ? `${seconds}s` : "")) ?? "0s";
+        if (result == "") result = "0s"; // If the time is empty, display "0s"
+
+        return result;
     }
 </script>
 
@@ -181,7 +262,14 @@
                 }
                 <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
                 <div class="copy-notification" id="copy-notification-eid-@index">EID copied!</div>
-                <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span>
+                <span style="margin-right:10px;">
+                    <b><u>Last Backup</u></b>: 
+                    <span class="tooltip-custom">
+                        <span id="last-backup-disp-@index" data-lb="@backup.LastBackupTime"></span>
+                        <script>document.getElementById('last-backup-disp-@index').textContent = formatEpochToTime(@backup.LastBackupTime);</script>
+                        <span id="last-backup-tooltip-@index" class="tooltiptext-custom speech-bubble"></span>
+                    </span>
+                </span>
                 @if (backup.MaxEggReached < Ei.Egg.Enlightenment) {
                     <span style="margin-right:10px;"><b><u>Highest Egg</u></b>: @backup.MaxEggReached</span>
                 }
@@ -400,100 +488,45 @@
     }
 </div>
 
-@{
-
-
-    //(IHtmlContent, DateTimeOffset) GetActiveFarm(CustomFarm farm) {
-    //	var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
-    //	var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-    //	var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
-    //	var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-    //	IHtmlContent html =
-    //@<tr>
-    //		<td>@(contract?.Name ?? farm.ContractId)</td>
-    //		<td>
-    //			<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-    //				@(farm.CoopId ?? coop?.Name)
-    //			</a>
-    //		</td>
-    //		<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-    //		<td>@(farm.Completed ? "✔️" : "")</td>
-    //		@if (contract != null && contract.MaxUsers <= 1) {
-    //			<td colspan="2">Solo</td>
-    //		} else {
-    //			<td>
-    //				@xref?.Score?.ToString("G2")
-    //			</td>
-    //			<td>
-    //				@xref?.RunningScore?.ToString("G2")
-    //			</td>
-    //		}
-    //		@*<td>@farm.BoostsUsed</td>*@
-    //		<td>@farm.NumChickens.ToEggString()</td>
-    //		<td>@farm.EggsPaidFor.ToEggString()</td>
-    //		<td>
-    //			@if (lastUpdate != null) {
-    //				var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-    //				@percent.ToString("P0")
-    //			}
-    //		</td>
-    //		@if (isAdmin) {
-    //			<td>@farm.TimeCheatsDetected</td>
-    //			<td>@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
-    //		}
-    //		<td>@farm.BoostTokensReceived</td>
-    //		<td>@farm.BoostTokensSpent</td>
-    //		<td>@farm.BoostTokensGiven</td>
-    //	</tr>
-    //;
-
-    //	return (html, farm.Started);
-    //}
-
-    //(IHtmlContent, DateTimeOffset) GetArchivedFarm(CustomArchivedFarms farm) {
-    //	var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-    //	var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
-    //	IHtmlContent html =
-    //@<tr>
-    //	<td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
-    //	<td>
-    //		<a href="/coop/@farm.ContractId/@(farm.CoopName)">
-    //			@(farm.CoopName)
-    //		</a>
-    //	</td>
-    //	<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-    //	<td>@(farm.Completed ? "✔️" : "")</td>
-    //	<td>
-    //		@xref?.Score?.ToString("G2")
-    //	</td>
-    //	<td>
-    //		@xref?.RunningScore?.ToString("G2")
-    //	</td>
-    //	@if (lastUpdate != null) {
-    //			var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-    //			<td></td>
-    //			@*<td></td>*@
-    //			<td>@lastUpdate.ContributionAmount.ToEggString()</td>
-    //			<td>@percent.ToString("P0").Replace(" ", "")</td>
-    //			<td>@lastUpdate.TimeCheatDetected</td>
-    //			<td></td>
-    //			<td></td>
-    //			<td>@lastUpdate.BoostTokensSpent</td>
-    //			<td></td>
-    //		} else {
-    //			<td colspan="99"></td>
-    //		}
-
-    //	</tr>
-    //	;
-    //	return (html, farm.Started);
-    //}
-}
-
 @section Scripts {
     <script>
+
+        function formatEpochToLocalDateTime(epochSeconds) {
+            // Convert the epoch time to milliseconds and create a Date object
+            var date = new Date(epochSeconds * 1000);
+
+            // Get date and time components
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+            var day = String(date.getDate()).padStart(2, '0');
+            var hours = String(date.getHours()).padStart(2, '0');
+            var minutes = String(date.getMinutes()).padStart(2, '0');
+            var seconds = String(date.getSeconds()).padStart(2, '0');
+
+            // Format the result as "YYYY-MM-DD HH:mm:ss"
+            var result = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            return result;
+        }
+
+        function updateLastBackupTime() {
+            var elements = document.querySelectorAll('[id^="last-backup-disp"]');
+            elements.forEach(function (el) {
+                var timeData = parseInt(el.getAttribute('data-lb'));
+                el.textContent = formatEpochToTime(timeData, false);
+                var index = el.id.replace('last-backup-disp-', '');
+
+                var fullTime = formatEpochToTime(timeData, true);
+                var localTime = formatEpochToLocalDateTime(timeData);
+                var newInnerHTML = `${fullTime} ago <br><span style="color: grey;">(</span> ${localTime} <span style="color: grey;">)</span>`;
+
+                document.getElementById('last-backup-tooltip-' + index).innerHTML = newInnerHTML;
+            });
+        }
+
         $(document).ready(() => {
             let url = location.href.replace(/\/$/, "");
+
+            updateLastBackupTime();
 
             if (location.hash) {
                 const hash = url.split("#");
@@ -545,6 +578,8 @@
                     }
                 });
             });
+
+            setInterval(updateLastBackupTime, 1000);
         });
     </script>
 	}
