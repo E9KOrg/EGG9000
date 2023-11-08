@@ -121,7 +121,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Look for a coop with certain search parameters", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task FindCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] string coopname = "", [SlashParam(Required = false)] SocketChannel contractchannel = null) {
+        public static async Task LocateCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] string coopname = "", [SlashParam(Required = false)] SocketChannel contractchannel = null) {
             //Coop name was not passed correctly, error out
             if(string.IsNullOrEmpty(coopname) || string.IsNullOrWhiteSpace(coopname)) {
                 await command.RespondAsync($"⚠️ERROR: Unable to parse the coop name `{coopname}`. Check you've entered a value?", ephemeral: true);
