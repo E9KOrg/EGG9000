@@ -209,7 +209,7 @@ namespace EGG9000.Bot.Helpers {
                         messages.AddRange(new List<string> {
                         $"What an effort! Make way for {discordUser.Mention} and their eggcellent EB of {EarningsBonus}%! You are now a {role.Name}. Very impressive!",
                         $"We have a new {role.Name} among us! Congratulations on the rank, and the mighty EB of {EarningsBonus}%, {discordUser.Mention}!",
-                        $"{EarningsBonus}% !That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
+                        $"{EarningsBonus}%! That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
                         });
                         break;
                     case "Xennafarmer":
