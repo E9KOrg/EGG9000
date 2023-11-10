@@ -133,7 +133,7 @@ namespace EGG9000.Common.Database {
                     return NumPiggyBreaks switch {
                         < 2 => (ulong)(PiggyBank * 1.02),
                         < 3 => (ulong)(PiggyBank * 1.25),
-                        _ => PiggyBank + (PiggyBank * (10 * NumPiggyBreaks + 10) / 100 + 1)
+                        _ => PiggyBank + (PiggyBank * (10 * (NumPiggyBreaks + 1) + 10) / 100 + 1)
                     };
                 } catch(OverflowException) {
                     return ulong.MaxValue;
