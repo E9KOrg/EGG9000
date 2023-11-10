@@ -161,7 +161,8 @@ namespace EGG9000.Common.Helpers {
 
         public static string GetShipTime(this CustomBackup backup, Spaceship ship, DurationType duration, int number) {
             var erScalar = backup.EpicResearch.FirstOrDefault(er => er.Id == "afx_mission_time").Level;
-            if(erScalar < 0) erScalar = 0;
+            //ER only applies to Quintillion and above
+            if(erScalar < 0 || ship < Spaceship.MilleniumChicken) erScalar = 0;
             var shipTimes = ShipBaseTimesMinutes[ship];
             return shipTimes.ContainsKey(duration) ?
                 MinutesToString(backup, (int)(ShipBaseTimesMinutes[ship][duration] * (number / 3) * (1 - (.01 * erScalar)))) //Div by 3 for 3 ship slots
