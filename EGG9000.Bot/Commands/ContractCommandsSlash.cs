@@ -82,23 +82,16 @@ namespace EGG9000.Bot.Commands {
 
             var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
 
-            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser?.DiscordId == command.User.Id && x.EggsShipped == 0);
+            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser == dbuser && x.EggsShipped == 0);
 
             if(xref is null) {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user with zero production.");
                 return;
             }
 
-            //logger.LogInformation("Attempting to fix {user} in {coop} by submitting leave request", dbuser.DiscordUsername, coop.Name);
-            //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
-            //    ClientVersion = 24,
-            //    ContractIdentifier = coop.ContractID,
-            //    CoopIdentifier = coop.Name,
-            //    PlayerIdentifier = xref.EggIncId,
-            //}, xref.EggIncId);
             logger.LogInformation("Attempting to fix {user} in {coop} by creating temp co-op", dbuser.DiscordUsername, coop.Name);
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
 
             await Task.Delay(2);
             status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
