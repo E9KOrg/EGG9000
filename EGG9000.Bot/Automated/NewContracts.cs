@@ -210,7 +210,7 @@ namespace EGG9000.Bot.Automated {
             var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var backups = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser { User = x, Backup = y.Backup })).ToList();
 
-            await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild);
+            await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild, dbguild);
         }
 
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {

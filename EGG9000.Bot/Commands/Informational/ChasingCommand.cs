@@ -57,8 +57,6 @@ namespace EGG9000.Bot.Commands {
 
         private async static Task<string> ChasingStringBuilder(DiscordSocketClient discord, ChasingParameters parameter, ulong guildId, EggIncAccount eggIncAccount, ApplicationDbContext db) {
             var guild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildId);
-            var inactiveUsers = JsonConvert.DeserializeObject<List<Prefarm.GuildUser>>(guild.InactiveElites ?? "[]");
-            inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<Prefarm.GuildUser>>(guild.InactiveStandards ?? "[]"));
 
             var rawUsers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildId && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -70,7 +68,6 @@ namespace EGG9000.Bot.Commands {
                 x.Registered,
                 DBUser = x
             }).ToListAsync();
-            rawUsers = rawUsers.Where(x => inactiveUsers.All(y => y.DatabaseId != x.Id)).ToList();
             
             var accounts = rawUsers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new Prefarm.LeaderboardUser {
                 User = x.DBUser,
@@ -80,6 +77,12 @@ namespace EGG9000.Bot.Commands {
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0
             })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).ToList();
+
+#if DEV9002
+#else
+            accounts = accounts.Where(x => x.Account.Active).ToList();
+#endif
+
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:
