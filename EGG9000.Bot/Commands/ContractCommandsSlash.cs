@@ -536,7 +536,7 @@ namespace EGG9000.Bot.Commands {
             Guid userid;
             try {
                 userid = Guid.Parse(useraccount.Split("|")[0]);
-            } catch(Exception e) {
+            } catch(Exception) {
                   await command.RespondAsync($"⚠️ERROR: Unable to parse user account, please use the autocomplete dropdown. (DEBUG: Value for useraccount is `{useraccount}`)");
                 return;
             }
