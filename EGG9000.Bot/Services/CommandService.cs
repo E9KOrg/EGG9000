@@ -505,13 +505,6 @@ namespace EGG9000.Bot.Services {
                                 embed: warningEmbed,
                                 messageReference: new MessageReference(message.Id)
                             );
-                        } else {
-                            var errorEmbed = ContractCommandsSlash.EmbedError($"Stop trying to run commands you aren't allowed to!");
-                            await message.Channel.SendMessageAsync(
-                                text: "",
-                                embed: errorEmbed,
-                                messageReference: new MessageReference(message.Id)
-                            );
                         }
                     }
                 }
