@@ -87,13 +87,19 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Log a Message", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null) {
-            if(channel == null) {
-                await command.Channel.SendMessageAsync(message);
-            } else {
-                await ((SocketTextChannel)channel).SendMessageAsync(message);
+        public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null, [SlashParam(Required = false, Description = "Message ID to reply to")] string replyto = null) {
+            try {
+                if(channel == null) {
+                    if(replyto == null) await command.Channel.SendMessageAsync(message);
+                    else await command.Channel.SendMessageAsync(text: message, messageReference: new MessageReference(ulong.Parse(replyto)));
+                } else {
+                    if(replyto == null) await ((SocketTextChannel)channel).SendMessageAsync(message);
+                    else await ((SocketTextChannel)channel).SendMessageAsync(text: message, messageReference: new MessageReference(ulong.Parse(replyto)));
+                }
+                await command.RespondAsync("Sent", ephemeral: true);
+            } catch(Exception ex) {
+                await command.RespondAsync($"There was an error running this command: {ex.Message}", ephemeral: true);
             }
-            await command.RespondAsync("Sent", ephemeral: true);
         }
 
         [SlashCommand(Description = "Select X random users with Y role", AdminOnly = StaffOnlyLevel.FarmHand)]
@@ -110,7 +116,6 @@ namespace EGG9000.Bot.Commands {
                 var userList = string.Join("\n", randomUsers.Select(u => $"{u.Username} ({u.Id})"));
 #else
                 var userList = string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>"));
-
 #endif
 
                 await command.RespondAsync(userList);
