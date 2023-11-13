@@ -1,16 +1,20 @@
 ﻿
 using Bugsnag.Payload;
+
 using Discord;
 using Discord.WebSocket;
+
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 
 using System;
@@ -52,7 +56,7 @@ namespace EGG9000.Bot.Commands {
         };
 
         #region AdminBypass
-        [SlashCommand(Description ="Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        [SlashCommand(Description = "Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -97,21 +101,28 @@ namespace EGG9000.Bot.Commands {
 
             var desc = dbuser.DMSBlocked ? "⚠ <@514257192803893272> is currently blocked from sending you Direct Messages (DMs.) This could either be due to Server Privacy settings, or directly blocking the bot. Please reach out to Staff for questions." : "";
 
+
             var eBuilder = MenuEmbedTemplate("Main Menu", desc, account, dbuser);
             if(desc != "") eBuilder.WithColor(Color.Red);
 
             eBuilder.AddField("Break (60 Day Max)", MCSBreakMessage(account));
 
-            var builder = new ComponentBuilder();
+            var buttons = new List<(string, string, ButtonStyle)>();
+
+
+
+            //for(var i = 1; i < 10; i++) {
+            //    builder.WithButton($"Test really long buttons {i} - - - -", $"test{i}");
+            //}
             if(!dbguild.DisableBG) {
                 eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
-                builder.WithButton("Boarding Group", $"MCSBg:{index},{dbuser.DiscordId}");
+                buttons.Add(("Boarding Group", $"MCSBg:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
                 if(account.SubscriptionLevel is not null) {
                     eBuilder.AddField("Ultra Boarding Group", account.UltraGroup != default ? $"UG{account.UltraGroup} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.UltraGroup).time}:t>" : "Not Set (please select below)");
-                    builder.WithButton("Ultra Boarding Group", $"MCSUBg:{index},{dbuser.DiscordId}");
+                    buttons.Add(("Ultra Boarding Group", $"MCSUBg:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
                 }
-                builder.WithButton("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}");
-                builder.WithButton("Leggacy Rewards Filter", $"MCSLeggacyRewards:{index},{dbuser.DiscordId}");
+                buttons.Add(("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+                buttons.Add(("Leggacy Rewards Filter", $"MCSLeggacyRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
                 var rDict = GetRewardDictionary();
                 if(account.AutoRegisterRewards is null)
@@ -127,10 +138,9 @@ namespace EGG9000.Bot.Commands {
 
             if(account.SubscriptionLevel == null) {
                 eBuilder.AddField("Ultra Offer Pings", account.PingForNCUltra ? "Enabled" : "Disabled");
-                builder.WithButton("Ultra Offer Pings", $"MCSUltraPing:{index},{dbuser.DiscordId}");
+                buttons.Add(("Ultra Offer Pings", $"MCSUltraPing:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             }
 
-            builder.WithButton("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}");
 
             var redoText = account.RedoLeggacySelection switch {
                 RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
@@ -141,14 +151,25 @@ namespace EGG9000.Bot.Commands {
                 _ => "No (Will still be assigned to incomplete leggacies)"
             };
             eBuilder.AddField("Redo Completed Leggacies", redoText);
-            builder.WithButton("Redo Completed Leggacies", $"MCSRL:{index},{dbuser.DiscordId}");
+            buttons.Add(("Redo Completed Leggacies", $"MCSRL:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+
+
+            buttons.Add(("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
             if(dbguild.AllowGuilds) {
                 eBuilder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "Not Set" : account.Guild.Truncate(100));
-                builder.WithButton("Set Guild", $"MCSGuild:{index},{dbuser.DiscordId}");
+                buttons.Add(("Set Guild", $"MCSGuild:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             }
 
-            builder.WithButton("Return", $"MCSAccounts:{dbuser.DiscordId}", ButtonStyle.Secondary);
+            buttons.Add(("Return", $"MCSAccounts:{dbuser.DiscordId}", ButtonStyle.Secondary));
+
+            var builder = new ComponentBuilder();
+            buttons.Chunk(5).ToList().ForEach(x => {
+                var row = new ActionRowBuilder();
+                x.ToList().ForEach(y => row.WithButton(y.Item1, y.Item2, y.Item3).Build());
+                builder.AddRow(row);
+            });
+
             props.Components = builder.Build();
             props.Embed = eBuilder.Build();
 
@@ -193,7 +214,7 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Group 3", "3", isDefault: account.Group == 3),
             });
             builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
-            
+
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = BGEmbed(dbuser, account); });
         }
 
@@ -358,7 +379,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            account.RedoLeggacySelection = (RedoLeggacyOption)Enum.Parse(typeof(RedoLeggacyOption), component.Data.Values.First()); 
+            account.RedoLeggacySelection = (RedoLeggacyOption)Enum.Parse(typeof(RedoLeggacyOption), component.Data.Values.First());
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
@@ -452,7 +473,7 @@ namespace EGG9000.Bot.Commands {
                 return "Not on break";
             } else if(account.OnBreakUntil < DateTimeOffset.Now) {
                 return $"\nBreak Ended <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
-            } else { 
+            } else {
                 return $"\nEnds <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
             }
         }
