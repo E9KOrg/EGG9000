@@ -262,9 +262,9 @@
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#inventoryview@(index)" role="tab" aria-selected="false">Inventory View</a>
-                </li>
+                <!--<li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#inventoryview(index)" role="tab" aria-selected="false">Inventory View</a>
+                </li>-->
             </ul>
 
             <div class="tab-content">
@@ -397,11 +397,11 @@
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
                 </div>
-                <div class="tab-pane; justify-content-center" id="inventoryview@(index)" role="tabpanel">
-                    @{
-                        await Html.RenderPartialAsync("-InventoryView", (account, index));
-                    }
-                </div>
+                <!--<div class="tab-pane; justify-content-center" id="inventoryview@(index)" role="tabpanel">
+                    /*@{
+                        //await Html.RenderPartialAsync("-InventoryView", (account, index));
+                    }*/
+                </div>-->
 
             </div>
         </div>
