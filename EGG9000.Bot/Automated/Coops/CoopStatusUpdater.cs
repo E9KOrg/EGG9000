@@ -807,7 +807,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                         xref.OutsideCoop = true;
                                         var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopChannel.Id}>";
                                         var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id == guild.Id);
-                                        var response = ChannelHelper.DetermineAndSend(dbguild, socketGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+                                        var response = ChannelHelper.DetermineAndSend(db, dbguild, socketGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
                                         await _db.SaveChangesAsync();
                                     }
                                 }

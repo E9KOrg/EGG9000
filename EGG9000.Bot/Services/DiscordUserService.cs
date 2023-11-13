@@ -146,10 +146,10 @@ namespace EGG9000.Common.Services {
             }
 
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser is not null && dbuser.TempDisabled) await ChannelHelper.DetermineAndSend(dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+            if(dbuser is not null && dbuser.TempDisabled) await ChannelHelper.DetermineAndSend(db, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
-                var response = await ChannelHelper.DetermineAndSend(dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
+                var response = await ChannelHelper.DetermineAndSend(db, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
             } else if(dbuser is not null && dbuser.GuildId == 0) {

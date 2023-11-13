@@ -53,7 +53,7 @@ namespace EGG9000.Bot.Commands {
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
                 var socketGuild = discordClient.Guilds.FirstOrDefault(g => g.Id == dbguild.Id);
 
-                var response = await ChannelHelper.DetermineAndSend(dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
+                var response = await ChannelHelper.DetermineAndSend(db, dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
             } catch(Exception e) {
                 await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }
