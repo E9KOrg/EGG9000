@@ -82,7 +82,6 @@ namespace EGG9000.Bot.Commands {
 #else
             accounts = accounts.Where(x => x.Account.Active).ToList();
 #endif
-
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:

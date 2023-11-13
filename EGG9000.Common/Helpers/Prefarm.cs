@@ -418,7 +418,7 @@ namespace EGG9000.Common.Helpers {
             if(status is not null) {
                 foreach(var participant in status.Participants) {
                     //Try and match UUID
-                    var backup = backups.FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)));
+                    var backup = backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)));
                     //UserWithBackup backup = null;
                     if(backup is not null) {
                         var thisXref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == backup.User.Id && x.EggIncId == backup.Backup.EggIncId);

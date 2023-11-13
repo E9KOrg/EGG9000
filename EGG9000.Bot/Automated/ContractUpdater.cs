@@ -66,7 +66,7 @@ namespace EGG9000.Bot.Automated {
             var times = new TimingsFactory(_logger);
             times.Start();
 
-            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var _db = await _dbContextFactory.CreateDbContextAsync();
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync();
             times.Set("guildcontracts");
 
@@ -97,7 +97,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
                 //dbusers = dbusers.Take(100).ToList();
-                //_ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
+                _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
                 //await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
 #else
                 _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);

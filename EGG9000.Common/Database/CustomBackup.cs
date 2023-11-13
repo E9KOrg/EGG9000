@@ -223,8 +223,8 @@ namespace EGG9000.Common.Database {
             GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
-            TotalCS = backup.Contracts.LastCpi.TotalCxp;
-            SeasonCS = backup.Contracts.LastCpi.SeasonCxp;
+            TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;
+            SeasonCS = backup.Contracts.LastCpi?.SeasonCxp ?? -1;
 
             HasDeviceId = backup.HasDeviceId;
             if(backup.HasDeviceId) DeviceId = backup.DeviceId;

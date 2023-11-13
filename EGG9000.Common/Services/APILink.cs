@@ -69,8 +69,8 @@ namespace EGG9000.Common.Services {
         private APILinkOptions _settings;
 
 #if DEBUG
-        private string urlBase => _configuration.GetConnectionString("APILinkURL");
-        //private string urlBase => "http://localhost:5014/Home/";
+        //private string urlBase => _configuration.GetConnectionString("APILinkURL");
+        private string urlBase => "https://localhost:44316/Home/";
 #else
         private string urlBase => _configuration.GetConnectionString("APILinkURL");
 #endif

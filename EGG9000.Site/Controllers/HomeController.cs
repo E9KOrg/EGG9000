@@ -347,8 +347,8 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
-            var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites ?? "[]");
-            inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards ?? "[]"));
+            //var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites ?? "[]");
+            //inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards ?? "[]"));
 
             var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -361,7 +361,7 @@ namespace EGG9000.Site.Controllers {
                 //                    Contracts = x.UserCoopXrefs.Select(y => y.Coop.ContractID),
                 DBUser = x
             }).ToListAsync();
-            rawusers = rawusers.Where(x => !inactiveUsers.Any(y => y.DatabaseId == x.Id)).ToList();
+            //rawusers = rawusers.Where(x => !inactiveUsers.Any(y => y.DatabaseId == x.Id)).ToList();
             //var users = rawusers.Select(x => new DBUser {
             //    DiscordId = x.DiscordId,
             //    DiscordUsername = x.DiscordUsername,
@@ -382,7 +382,7 @@ namespace EGG9000.Site.Controllers {
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && x.Account.Active).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }
