@@ -388,7 +388,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var infoText = $"Staff has been called ({details})";
             var message = $"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
 
-            var response = await ChannelHelper.DetermineAndSend(guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
+            var response = await ChannelHelper.DetermineAndSend(db, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
 
             if(response is null) {
                 await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");

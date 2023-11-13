@@ -226,9 +226,9 @@ namespace EGG9000.Bot.Helpers {
                 var index = random.Next(messages.Count);
 
                 //Attempt to find the "separate channel for rankup messages" channel, if it's been set
-                var response = await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.AltRankup, new() { Text = messages[index] });
+                var response = await ChannelHelper.DetermineAndSend(db, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.AltRankup, new() { Text = messages[index] });
                 //If it can't be found, use 'General' instead
-                if(response == null) await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = messages[index] });
+                if(response == null) await ChannelHelper.DetermineAndSend(db, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = messages[index] });
             }
 
             return role;
