@@ -128,7 +128,7 @@ namespace EGG9000.Common.Helpers {
             var bInfo = string.Join(" ", Regex.Split(System.Enum.GetName(typeof(ArtifactSpec.Types.Name), aspec), @"(?=\p{Lu})"))
                 .Replace(" Of ", " of ").Replace(" In ", " in ").Replace(" A ", " a ").Trim();
             var tier = bInfo.IndexOf("Fragment") > -1 ? (byte)0
-                    : (bInfo.IndexOf(" Stone") > -1 || bInfo.IndexOf("Tau Ceti Geode") > -1 || bInfo.IndexOf("Gold Meteorite") > -1 || bInfo.IndexOf("Solar Titanium") > -1 ? (byte)3 
+                    : (bInfo.IndexOf(" Stone") > -1 || bInfo.IndexOf("Tau Ceti Geode") > -1 || bInfo.IndexOf("Gold Meteorite") > -1 || bInfo.IndexOf("Solar Titanium") > -1 ? (byte)3
                     : (byte)4);
             var tempEmoji = GetAfEmoji(new EggIncArtifactInstance() {
                 Artifact = bInfo.Replace(" Fragment", ""),
@@ -326,7 +326,11 @@ namespace EGG9000.Common.Helpers {
             var orderedList = GetOrderedInventory(account);
             if(orderedList is null) return ("", null);
 
-            var baseDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName.Replace("\\", "/") + "/";
+#if RELEASE
+            var baseDir = "c:/Websites/EGG9000";
+#else
+            var baseDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName.Replace("\\", "/") + "/../EGG9000.Site";
+#endif
             var (rows, columns) = FindClosestGridSize(orderedList.Count);
             var config = new InventoryCreatorConfig(100, 30, rows, columns);
 
@@ -351,61 +355,59 @@ namespace EGG9000.Common.Helpers {
                     _ => Color.ParseHex("#383834")
                 };
 
-                try {
-                    var afImage = Image.Load($"{baseDir}../EGG9000.Site/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
-                    afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
+                var afImage = Image.Load($"{baseDir}/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
 
-                    var stoneImages = new List<Image>();
-                    foreach(var stone in afStones) {
-                        var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                        var stoneTier = stone.Tier + 1;
-                        var stoneImage = Image.Load($"{baseDir}../EGG9000.Site/wwwroot/images/artifacts/{stoneName}/{stoneName}_{stoneTier}.png");
-                        stoneImage.Mutate(i => { i.Resize(new Size(config.StoneSize, config.StoneSize), true); });
-                        stoneImages.Add(stoneImage);
-                    }
+                afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
 
-                    Image textImage = null;
-                    if(afCount != 1) {
-                        var textWidth = Math.Max(config.TextHeight, (afCount.ToString().Length * config.TextBaseWidth) + config.TextBaseWidth);
-                        textImage = new Image<Rgba32>(textWidth, config.TextHeight);
-                        textImage.Mutate(x => x
-                            .Fill(Color.ParseHex("#4f4f4f")) // Fill the image with a background color
-                            .Fill(Color.Transparent, new RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius))); // Create a transparent rectangle with rounded corners
-                        textImage.Mutate(x => x.ApplyRoundedCorners(config.TextCornerRadius));
+                var stoneImages = new List<Image>();
+                foreach(var stone in afStones) {
+                    var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
+                    var stoneTier = stone.Tier + 1;
 
-                        var font = new FontCollection().Add($"{baseDir}../EGG9000.Site/wwwroot/Always Together.otf").CreateFont(config.TextFontSize, FontStyle.Bold);
-                        var text = afCount.ToString();
-                        var center = new PointF(textImage.Width / 2, textImage.Height / 2);
-                        var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
-                        var textPosition = new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2);
-
-                        textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
-                    }
-
-                    var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
-                    backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
-
-                    baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
-                    if(textImage != null) {
-                        var baseCenter = new Point(x + backgroundImage.Width, y + backgroundImage.Height);
-                        var textPosition = new Point(baseCenter.X - (int)(textImage.Width / 1.5), baseCenter.Y - (int)(textImage.Height / 1.5));
-                        baseImage.Mutate(b => { b.DrawImage(textImage, textPosition, 1f); });
-                    } else if(stoneImages.Count > 0) {
-                        var stoneIndex = 1;
-                        foreach(var stoneImage in stoneImages) {
-                            baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), (int)(y + config.AFSize - (config.Padding * 1.5))), 1f); });
-                            stoneIndex++;
-                        }
-                    }
-                    index++;
-                } catch(Exception) {
-                    return ("", config);
+                    var stoneImage = Image.Load($"{baseDir}/wwwroot/images/artifacts/{stoneName}/{stoneName}_{stoneTier}.png");
+                    stoneImage.Mutate(i => { i.Resize(new Size(config.StoneSize, config.StoneSize), true); });
+                    stoneImages.Add(stoneImage);
                 }
+
+                Image textImage = null;
+                if(afCount != 1) {
+                    var textWidth = Math.Max(config.TextHeight, (afCount.ToString().Length * config.TextBaseWidth) + config.TextBaseWidth);
+                    textImage = new Image<Rgba32>(textWidth, config.TextHeight);
+                    textImage.Mutate(x => x
+                        .Fill(Color.ParseHex("#4f4f4f")) // Fill the image with a background color
+                        .Fill(Color.Transparent, new RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius))); // Create a transparent rectangle with rounded corners
+                    textImage.Mutate(x => x.ApplyRoundedCorners(config.TextCornerRadius));
+
+                    var font = new FontCollection().Add($"{baseDir}/wwwroot/Always Together.otf").CreateFont(config.TextFontSize, FontStyle.Bold);
+                    var text = afCount.ToString();
+                    var center = new PointF(textImage.Width / 2, textImage.Height / 2);
+                    var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
+                    var textPosition = new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2);
+
+                    textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
+                }
+
+                var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
+                backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
+
+                baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
+                if(textImage != null) {
+                    var baseCenter = new Point(x + backgroundImage.Width, y + backgroundImage.Height);
+                    var textPosition = new Point(baseCenter.X - (int)(textImage.Width / 1.5), baseCenter.Y - (int)(textImage.Height / 1.5));
+                    baseImage.Mutate(b => { b.DrawImage(textImage, textPosition, 1f); });
+                } else if(stoneImages.Count > 0) {
+                    var stoneIndex = 1;
+                    foreach(var stoneImage in stoneImages) {
+                        baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), (int)(y + config.AFSize - (config.Padding * 1.5))), 1f); });
+                        stoneIndex++;
+                    }
+                }
+                index++;
             }
 
             var b64 = baseImage.ToBase64String(JpegFormat.Instance);
             return (b64.Replace(removeB64Header ? "data:image/jpeg;base64," : "A value that is not ever going to be present in the B64", ""), config);
         }
-        #endregion
+#endregion
     }
 }
