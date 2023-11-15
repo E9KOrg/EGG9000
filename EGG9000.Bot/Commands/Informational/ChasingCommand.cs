@@ -76,7 +76,12 @@ namespace EGG9000.Bot.Commands {
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && x.Account.Active).ToList();
+            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).ToList();
+
+#if DEV9002
+#else
+            accounts = accounts.Where(x => x.Account.Active).ToList();
+#endif
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:

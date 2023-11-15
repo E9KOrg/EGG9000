@@ -160,7 +160,7 @@ namespace EGG9000.Bot.Automated {
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
                                 $"({coopName}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
-                            var result = await ChannelHelper.DetermineAndSend(dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
+                            var result = await ChannelHelper.DetermineAndSend(_db, dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
 
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();

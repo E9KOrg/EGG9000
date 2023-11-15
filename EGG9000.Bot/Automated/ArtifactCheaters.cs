@@ -84,7 +84,7 @@ namespace EGG9000.Bot.Automated {
                     var message = $"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 #endif
 
-                    var response = await ChannelHelper.DetermineAndSend(clientGuild, guild, GuildChannelType.ArtifactCheaterThread, new() { Text = message});
+                    var response = await ChannelHelper.DetermineAndSend(_db, clientGuild, guild, GuildChannelType.ArtifactCheaterThread, new() { Text = message});
 
                     outlier.AFSWarningSent = true;
                     user.UpdateAccounts();

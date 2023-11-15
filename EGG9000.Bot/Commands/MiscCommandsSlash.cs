@@ -192,9 +192,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             if(targetGuildContract != null) {
                 await command.RespondAsync("Updating contract...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
-
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-
                 await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, dbguild, command);
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
                 return;
@@ -390,7 +388,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var infoText = $"Staff has been called ({details})";
             var message = $"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
 
-            var response = await ChannelHelper.DetermineAndSend(guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
+            var response = await ChannelHelper.DetermineAndSend(db, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
 
             if(response is null) {
                 await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
