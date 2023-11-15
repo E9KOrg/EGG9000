@@ -18,6 +18,7 @@ using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using System.IO;
 
 namespace EGG9000.Common.Helpers {
     public static class ArtifactHelpers {
@@ -325,6 +326,7 @@ namespace EGG9000.Common.Helpers {
             var orderedList = GetOrderedInventory(account);
             if(orderedList is null) return ("", null);
 
+            var baseDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName.Replace("\\", "/") + "/";
             var (rows, columns) = FindClosestGridSize(orderedList.Count);
             var config = new InventoryCreatorConfig(100, 30, rows, columns);
 
@@ -350,14 +352,14 @@ namespace EGG9000.Common.Helpers {
                 };
 
                 try {
-                    var afImage = Image.Load($"../EGG9000.Site/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
+                    var afImage = Image.Load($"{baseDir}../EGG9000.Site/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
                     afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
 
                     var stoneImages = new List<Image>();
                     foreach(var stone in afStones) {
                         var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                         var stoneTier = stone.Tier + 1;
-                        var stoneImage = Image.Load($"../EGG9000.Site/wwwroot/images/artifacts/{stoneName}/{stoneName}_{stoneTier}.png");
+                        var stoneImage = Image.Load($"{baseDir}../EGG9000.Site/wwwroot/images/artifacts/{stoneName}/{stoneName}_{stoneTier}.png");
                         stoneImage.Mutate(i => { i.Resize(new Size(config.StoneSize, config.StoneSize), true); });
                         stoneImages.Add(stoneImage);
                     }
@@ -371,7 +373,7 @@ namespace EGG9000.Common.Helpers {
                             .Fill(Color.Transparent, new RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius))); // Create a transparent rectangle with rounded corners
                         textImage.Mutate(x => x.ApplyRoundedCorners(config.TextCornerRadius));
 
-                        var font = new FontCollection().Add("../EGG9000.Site/wwwroot/Always Together.otf").CreateFont(config.TextFontSize, FontStyle.Bold);
+                        var font = new FontCollection().Add($"{baseDir}../EGG9000.Site/wwwroot/Always Together.otf").CreateFont(config.TextFontSize, FontStyle.Bold);
                         var text = afCount.ToString();
                         var center = new PointF(textImage.Width / 2, textImage.Height / 2);
                         var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
@@ -402,7 +404,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             var b64 = baseImage.ToBase64String(JpegFormat.Instance);
-            return (b64.Replace(removeB64Header ? "data:image/png;base64," : "A value that is not ever going to be present in the B64", ""), config);
+            return (b64.Replace(removeB64Header ? "data:image/jpeg;base64," : "A value that is not ever going to be present in the B64", ""), config);
         }
         #endregion
     }
