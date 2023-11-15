@@ -56,6 +56,13 @@ namespace EGG9000.Common.Services {
             throw new NotImplementedException();
         }
 
+        public async Task RespondWithFileAsync(FileAttachment attachment, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
+            if(_socketCommandBase is not null && !_socketCommandBase.HasResponded)
+                await _socketCommandBase.RespondWithFileAsync(attachment, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
+            else
+                await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Attachments = new List<FileAttachment> { attachment }; x.Content = text ?? ""; x.Embeds = embeds; x.Components = components; });
+        }
+
 
         public async Task DeleteOriginalResponseAsync(RequestOptions options = null) {
             if(_socketCommandBase is not null)
