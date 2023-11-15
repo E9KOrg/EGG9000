@@ -55,6 +55,7 @@ namespace EGG9000.Bot.Commands {
                 var description = $"Inventory of <@{user.DiscordId}> - `{account.Name ?? account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
                 await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image"), text: description);
             } else {
+                await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image"), text: " ");
                 var response = command.GetOriginalResponseAsync().Result; // Get the URL of the uploaded image
                 var imageUrl = response.Attachments.First().Url.IndexOf("jpeg", StringComparison.OrdinalIgnoreCase) is int index && index != -1 ? response.Attachments.First().Url[..(index + "jpeg".Length)] : response.Attachments.First().Url;
                 await response.ModifyAsync(properties => {  // Update the message with a "Full res image" link
