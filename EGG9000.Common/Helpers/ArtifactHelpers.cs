@@ -264,7 +264,7 @@ namespace EGG9000.Common.Helpers {
             var rarityGroupedAfs = orderedList.GroupBy(a => a.Artifact.Rarity).ToList();
             orderedList = new List<ArtifactCount>();
             foreach(var rarityGrouping in rarityGroupedAfs) {
-                orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.Artifact.Artifact.Replace(" Fragment", "")) + 0.05 * g.Artifact.Tier + 0.01 * g.Artifact.Stones.Count).ToList());
+                orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.Artifact.Artifact.Replace(" Fragment", "")) + (g.Artifact.Artifact.Contains("Fragment") ? -0.05 : 0) + 0.05 * g.Artifact.Tier + 0.01 * g.Artifact.Stones.Count).ToList());
             }
             var skipIndexes = new List<int>();
             foreach(var acount in orderedList) {

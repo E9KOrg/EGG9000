@@ -588,7 +588,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var match = Artifact == other.Artifact && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+            var match = Artifact == other.Artifact && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
             return match;
         }
 
