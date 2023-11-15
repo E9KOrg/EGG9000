@@ -355,10 +355,6 @@ namespace EGG9000.Common.Helpers {
                     _ => Color.ParseHex("#383834")
                 };
 
-                if(afName.ToLower().Contains("solar")) {
-                    Console.WriteLine("Found solar titanium");
-                }
-
                 var afImage = Image.Load($"{baseDir}/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
 
                 afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
