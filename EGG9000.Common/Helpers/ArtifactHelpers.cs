@@ -1,6 +1,11 @@
-﻿using Ei;
+﻿using EGG9000.Common.Database.Entities;
+using Ei;
 using Google.Protobuf.WellKnownTypes;
 using MassTransit;
+using SixLabors.Fonts;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,9 +14,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Ei.Backup.Types;
+using SixLabors.ImageSharp.Drawing;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 
 namespace EGG9000.Common.Helpers {
-    public class ArtifactHelpers {
+    public static class ArtifactHelpers {
 
         public static string GetArtifactFairnessScoreString(List<ArtifactCount> ArtifactHall) {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? "0 (null artifact hall)" : GetArtifactFairnessScore(ArtifactHall).ToString("E");
@@ -21,8 +30,49 @@ namespace EGG9000.Common.Helpers {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
 
+        public static int GetAFOrder(string AF) {
+            return AF switch {
+                "Aurelian Brooch" => 18,
+                "Beak of Midas" => 23,
+                "Book of Basan" => 33,
+                "Carved Rainstick" => 24,
+                "Clarity Stone" => 12,
+                "Demeters Necklace" => 16,
+                "Dilithium Monocle" => 29,
+                "Dilithium Stone" => 11,
+                "Gold Meteorite" => 1,
+                "Gusset" => 20,
+                "Ornate Gusset" => 20,
+                "Interstellar Compass" => 25,
+                "Life Stone" => 10,
+                "Light of Eggendil" => 34,
+                "Lunar Stone" => 5,
+                "Lunar Totem" => 15,
+                "Mercury's Lens" => 22,
+                "Neodymium Medallion" => 21,
+                "Phoenix Feather" => 27,
+                "Prophecy Stone" => 13,
+                "Puzzle Cube" => 14,
+                "Quantum Metronome" => 28,
+                "Quantum Stone" => 9,
+                "Shell Stone" => 4,
+                "Ship in a Bottle" => 31,
+                "Solar Titanium" => 3,
+                "Soul Stone" => 8,
+                "Tachyon Deflector" => 32,
+                "Tachyon Stone" => 6,
+                "Tau Ceti Geode" => 2,
+                "Terra Stone" => 7,
+                "The Chalice" => 26,
+                "Titanium Actuator" => 30,
+                "Tungsten Ankh" => 19,
+                "Vial of Martian Dust" => 17,
+                _ => 0,
+            };
+        }
+
         public static long[] GetFairness(EggIncArtifactInstance instance) {
-            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? new long[] { 0, 0, 0, 0 } : instance.Artifact switch {
+            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? new long[] { 0, 0, 0, 0 } : instance.Artifact.Replace(" Fragement", "") switch {
                 "Aurelian Brooch" => new long[] { 0, 1186, 13827, 58753 },
                 "Beak of Midas" => new long[] { 0, 6075, 23885, 86083 },
                 "Book of Basan" => new long[] { 0, 114405, 360427, 934701 },
@@ -138,5 +188,222 @@ namespace EGG9000.Common.Helpers {
         public static int GetLegendaryArtifactCount(List<ArtifactCount> artifactHall) {
             return artifactHall?.Where(a => a.Artifact?.Rarity == 4).Count() ?? 0;
         }
+
+        public static string GetAfxSetString(List<EggIncArtifactInstance> set) {
+            return string.Join("\n", set.Select(s => ArtifactHelpers.GetAfEmoji(s) + ArtifactHelpers.GetRarityEmoji(s) + string.Join("", s.Stones.Select(st => ArtifactHelpers.GetAfEmoji(st)).ToList())));
+        }
+
+        public static string GetAfxString(EggIncArtifactInstance instance) {
+            return ArtifactHelpers.GetAfEmoji(instance) + ArtifactHelpers.GetRarityEmoji(instance) + string.Join("", instance.Stones.Select(st => ArtifactHelpers.GetAfEmoji(st))).ToString();
+        }
+
+        #region InventoryImages
+
+        private static IImageProcessingContext ApplyRoundedCorners(this IImageProcessingContext context, float cornerRadius) {
+            var size = context.GetCurrentSize();
+            context.SetGraphicsOptions(new GraphicsOptions() {
+                Antialias = true,
+                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // Enforces that any part of this shape that has color is punched out of the background
+            });
+            BuildCorners(size.Width, size.Height, cornerRadius).ToList().ForEach(p => context = context.Fill(Color.Red, p)); //Color here is un-important, just can't be transparent
+            return context;
+        }
+
+        private static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius) {
+            var rect = new RectangularPolygon(-0.5f, -0.5f, cornerRadius, cornerRadius);
+            var cornerTopLeft = rect.Clip(new EllipsePolygon(cornerRadius - 0.5f, cornerRadius - 0.5f, cornerRadius));
+            var rightPos = imageWidth - cornerTopLeft.Bounds.Width + 1;
+            var bottomPos = imageHeight - cornerTopLeft.Bounds.Height + 1;
+            var cornerTopRight = cornerTopLeft.RotateDegree(90).Translate(rightPos, 0);
+            var cornerBottomLeft = cornerTopLeft.RotateDegree(-90).Translate(0, bottomPos);
+            var cornerBottomRight = cornerTopLeft.RotateDegree(180).Translate(rightPos, bottomPos);
+            return new PathCollection(cornerTopLeft, cornerBottomLeft, cornerTopRight, cornerBottomRight);
+        }
+
+        private static Image BackgroundImage(Color backgroundColor, int size, int radius) {
+            var image = new Image<Rgba32>(size, size);
+            var graphicsOptions = new GraphicsOptions {
+                Antialias = true,
+            };
+            image.Mutate(x => x.Fill(backgroundColor)); // Fill the image with a background 
+            image.Mutate(x => x.ApplyRoundedCorners(radius));
+            return image;
+        }
+
+        private static (int x, int y) GetPositionInGrid(int index, int rows, int columns, int itemSize, int padding) {
+            if(index < 0 || index >= rows * columns) {
+                throw new ArgumentException("Index is out of range for the given grid size.");
+            }
+            var column = index / rows;
+            var row = index % rows;
+            var x = column * (itemSize + padding) + padding;
+            var y = row * (itemSize + padding) + padding;
+            return (x, y);
+        }
+
+        private static (int rows, int columns) FindClosestGridSize(int itemCount) {
+            if(itemCount <= 0) {
+                throw new ArgumentException("itemCount must be a positive integer.");
+            }
+
+            var closestSquareRoot = (int)Math.Floor(Math.Sqrt(itemCount));
+            var rows = closestSquareRoot;
+            var columns = itemCount / rows;
+
+            while(rows * columns < itemCount) {
+                columns++;
+            }
+
+            return (rows, columns);
+        }
+
+        public static List<ArtifactCount> GetOrderedInventory(EggIncAccount account) {
+            if(account is null || account.Backup is null || account.Backup.ArtifactHall is null) return null;
+            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).ToList().OrderByDescending(i => i.Artifact.Rarity).ToList();
+            var rarityGroupedAfs = orderedList.GroupBy(a => a.Artifact.Rarity).ToList();
+            orderedList = new List<ArtifactCount>();
+            foreach(var rarityGrouping in rarityGroupedAfs) {
+                orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.Artifact.Artifact.Replace(" Fragment", "")) + 0.05 * g.Artifact.Tier + 0.01 * g.Artifact.Stones.Count).ToList());
+            }
+            var skipIndexes = new List<int>();
+            foreach(var acount in orderedList) {
+                var selfIndex = orderedList.IndexOf(acount);
+                if(acount.Artifact.Stones.Count > 0 || skipIndexes.Contains(selfIndex)) continue;
+
+                var others = orderedList.Where(a => a.Artifact.Equals(acount.Artifact) && orderedList.IndexOf(a) != selfIndex).ToList();
+                foreach(var other in others) skipIndexes.Add(orderedList.IndexOf(other));
+                acount.Count += others.Count;
+            }
+            var removed = 0;
+            foreach(var skipIndex in skipIndexes) {
+                orderedList.RemoveAt(skipIndex - removed);
+                removed++;
+            }
+            return orderedList;
+        }
+
+        public class InventoryCreatorConfig {
+            public int AFSize { get; set; } = 0;
+            public int Padding { get; set; } = 0;
+            public int StoneSize { get; set; } = 0;
+            public int AFCornerRadius { get; set; } = 0;
+
+            public int TextHeight { get; set; } = 0;
+            public int TextBaseWidth { get; set; } = 0;
+            public int TextCornerRadius { get; set; } = 0;
+            public int TextFontSize { get; set; } = 0;
+
+            public int Rows { get; set; } = 0;
+            public int Columns { get; set; } = 0;
+
+            public int TotalWidth { get; set; } = 0;
+            public int TotalHeight { get; set; } = 0;
+
+            public InventoryCreatorConfig(int afSize, int textHeight, int rows, int columns) {
+                AFSize = afSize;
+                Padding = AFSize / 5;
+                StoneSize = (int)(AFSize / 4.5);
+                AFCornerRadius = AFSize / 4;
+
+                TextHeight = textHeight;
+                TextBaseWidth = TextCornerRadius = (int)(TextHeight / 2.5);
+                TextFontSize = TextBaseWidth * 2;
+
+                Rows = rows;
+                Columns = columns;
+
+                TotalWidth = (Columns * AFSize) + (Padding * (Columns + 1));
+                TotalHeight = (Rows * AFSize) + (Padding * (Rows + 1));
+            }
+        }
+
+        public static (string B64, InventoryCreatorConfig Config) InventoryB64(EggIncAccount account, bool removeB64Header = true) {
+            /*
+            * Constants that will determine how the image comes out
+            */
+
+            var orderedList = GetOrderedInventory(account);
+            if(orderedList is null) return ("", null);
+
+            var (rows, columns) = FindClosestGridSize(orderedList.Count);
+            var config = new InventoryCreatorConfig(100, 30, rows, columns);
+
+            var baseImage = new Image<Rgba32>(config.TotalWidth, config.TotalHeight);
+            baseImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
+
+            var index = 0;
+            foreach(var groupedAf in orderedList) {
+                var isFrag = groupedAf.Artifact.Artifact.ToString().ToUpper().Contains("FRAGMENT");
+                var afName = groupedAf.Artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
+                var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? groupedAf.Artifact.Tier + 1 : groupedAf.Artifact.Tier);
+                var afCount = groupedAf.Count;
+                var afStones = groupedAf.Artifact.Stones;
+
+                var (x, y) = GetPositionInGrid(index, rows, columns, config.AFSize, config.Padding);
+
+                var backgroundColor = groupedAf.Artifact.Rarity switch {
+                    1 => Color.ParseHex("#383834"),
+                    2 => Color.ParseHex("#6cb6d9"),
+                    3 => Color.ParseHex("#b72de0"),
+                    4 => Color.ParseHex("#f2d61b"),
+                    _ => Color.ParseHex("#383834")
+                };
+
+                try {
+                    var afImage = Image.Load($"../EGG9000.Site/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
+                    afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
+
+                    var stoneImages = new List<Image>();
+                    foreach(var stone in afStones) {
+                        var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
+                        var stoneTier = stone.Tier + 1;
+                        var stoneImage = Image.Load($"../EGG9000.Site/wwwroot/images/artifacts/{stoneName}/{stoneName}_{stoneTier}.png");
+                        stoneImage.Mutate(i => { i.Resize(new Size(config.StoneSize, config.StoneSize), true); });
+                        stoneImages.Add(stoneImage);
+                    }
+
+                    Image textImage = null;
+                    if(afCount != 1) {
+                        var textWidth = Math.Max(config.TextHeight, (afCount.ToString().Length * config.TextBaseWidth) + config.TextBaseWidth);
+                        textImage = new Image<Rgba32>(textWidth, config.TextHeight);
+                        textImage.Mutate(x => x
+                            .Fill(Color.ParseHex("#4f4f4f")) // Fill the image with a background color
+                            .Fill(Color.Transparent, new RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius))); // Create a transparent rectangle with rounded corners
+                        textImage.Mutate(x => x.ApplyRoundedCorners(config.TextCornerRadius));
+
+                        var font = new FontCollection().Add("../EGG9000.Site/wwwroot/Always Together.otf").CreateFont(config.TextFontSize, FontStyle.Bold);
+                        var text = afCount.ToString();
+                        var center = new PointF(textImage.Width / 2, textImage.Height / 2);
+                        var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
+                        var textPosition = new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2);
+
+                        textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
+                    }
+
+                    var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
+                    backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
+
+                    baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
+                    if(textImage != null) {
+                        var baseCenter = new Point(x + backgroundImage.Width, y + backgroundImage.Height);
+                        var textPosition = new Point(baseCenter.X - (int)(textImage.Width / 1.5), baseCenter.Y - (int)(textImage.Height / 1.5));
+                        baseImage.Mutate(b => { b.DrawImage(textImage, textPosition, 1f); });
+                    } else if(stoneImages.Count > 0) {
+                        var stoneIndex = 1;
+                        foreach(var stoneImage in stoneImages) {
+                            baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), (int)(y + config.AFSize - (config.Padding * 1.5))), 1f); });
+                            stoneIndex++;
+                        }
+                    }
+                    index++;
+                } catch(Exception) {
+                    return ("", config);
+                }
+            }
+
+            var b64 = baseImage.ToBase64String(JpegFormat.Instance);
+            return (b64.Replace(removeB64Header ? "data:image/png;base64," : "A value that is not ever going to be present in the B64", ""), config);
+        }
+        #endregion
     }
 }

@@ -1,0 +1,162 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using EGG9000.Common.Commands;
+using EGG9000.Common.Services;
+using System.IO;
+using SixLabors.ImageSharp.Formats.Png;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using Microsoft.EntityFrameworkCore;
+using Discord.WebSocket;
+using EGG9000.Common.Helpers;
+using SixLabors.ImageSharp.Drawing;
+using SixLabors.Fonts;
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Common.Helpers.ArtifactHelpers;
+using Microsoft.CodeAnalysis.Text;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
+
+namespace EGG9000.Bot.Commands {
+    public static class ArtifactCommands {
+
+        [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(Required = false)] bool showinchannel = false) {
+            await command.RespondAsync("Getting backups...", ephemeral: !showinchannel);
+            var userid = useraccount.Split("|")[0];
+            if(userid is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: User id could not be found from param");
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbuser is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: DB user could not be found from user ID {userid}");
+            var account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])];
+            if(account is null) await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
+
+            var b64 = InventoryB64(account);
+            if(string.IsNullOrEmpty(b64.B64)) await command.RespondAsync($"⚠︎ Error: User inventory could not be converted.");
+            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(b64.B64)), "Inventory.jpeg", "Inventory Image"), text: " ");
+        }
+
+        [SlashCommand(Description = "View your inventory")]
+        public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
+            await command.RespondAsync("Getting backups...");
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
+                return;
+            }
+            var accountIndex = int.Parse(useraccount.Split("|")[1]);
+            var account = user.EggIncAccounts[accountIndex];
+            var b64 = InventoryB64(account);
+            if(string.IsNullOrEmpty(b64.B64)) await command.RespondAsync($"⚠︎ Error: User inventory could not be converted.");
+            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(b64.B64)), "Inventory.jpeg", "Inventory Image"), text: " ");
+        }
+
+        private class AfxSetBuilder {
+            public Discord.ComponentBuilder ComponentBuilder { get; set; }
+            public Discord.EmbedBuilder EmbedBuilder { get; set; }
+            public AfxSetBuilder() { }
+        }
+
+        public static Discord.Color RandomColor() {
+            var random = new Random();
+
+            // Generate random values for red, green, and blue components.
+            var red = (byte)random.Next(256);
+            var green = (byte)random.Next(256);
+            var blue = (byte)random.Next(256);
+
+            // Create and return the Discord.Color.
+            return new Discord.Color(red, green, blue);
+        }
+
+        [SlashCommand(Description = "Show off your saved Artifact Sets")]
+        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
+            await command.RespondAsync("Getting backups...");
+            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(user == null) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
+                return;
+            }
+            var accountIndex = int.Parse(useraccount.Split("|")[1]);
+            var account = user.EggIncAccounts[accountIndex];
+            var afxSets = account.Backup?.ArtifactSets;
+            if(afxSets is null || afxSets.Count == 0) {
+                await command.ModifyOriginalResponseAsync("⚠️ERROR: Backup is empty, or no Artifact Sets were found for this account");
+                return;
+            }
+
+            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[0]);
+            await command.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
+                x.Components = builder.ComponentBuilder?.Build();
+                x.Embed = builder.EmbedBuilder.Build();
+            });
+        }
+
+        [ComponentCommand]
+        public static async Task LoadAFXSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+
+            var dataItems = data.Split(",");
+            var discordId = ulong.Parse(dataItems[0] ?? "-1");
+            var accountIndex = int.Parse(dataItems[1] ?? "-1");
+            var currentSetIndex = int.Parse(dataItems[2] ?? "-1");
+
+            if(discordId < 0 || accountIndex < 0 || currentSetIndex < 0) return;
+
+            var user = db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
+            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
+
+            var account = user.EggIncAccounts[accountIndex];
+            var afxSets = account.Backup?.ArtifactSets;
+            if(afxSets is null) return;
+
+            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[currentSetIndex]);
+            await component.UpdateAsync(x => {
+                x.Content = "";
+                x.Components = builder.ComponentBuilder?.Build();
+                x.Embed = builder.EmbedBuilder.Build();
+            });
+        }
+
+        private static AfxSetBuilder AFXSetEmbedBuilder(DBUser user, int accountIndex, List<List<EggIncArtifactInstance>> afxSets, List<EggIncArtifactInstance> currentSet) {
+            var builder = new AfxSetBuilder() {
+                ComponentBuilder = null
+            };
+
+            var componentBuilder = new Discord.ComponentBuilder();
+            var buttonCount = 0;
+
+            var currentSetIndex = afxSets.IndexOf(currentSet);
+            var setsCount = afxSets.Count;
+
+            var account = user.EggIncAccounts[accountIndex];
+            var accText = user.EggIncAccounts.Count > 1 ? $"For account: {account.Backup?.UserName ?? "[No Name]"} ({account.Backup?.EarningsBonus.ToEggString() ?? "No EB"})" : "";
+
+            var embedBuilder = new Discord.EmbedBuilder().WithAuthor(
+                new Discord.EmbedAuthorBuilder()
+                    .WithName($"Set {currentSetIndex + 1}")
+                    .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
+                ).WithColor(RandomColor())
+                .WithDescription(GetAfxSetString(currentSet));
+            if(accText != "")
+                embedBuilder.WithFooter(new Discord.EmbedFooterBuilder().WithText(accText));
+
+            if(currentSetIndex > 0 && setsCount > 1 && afxSets[currentSetIndex - 1] is not null) {
+                componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;
+            }
+            if(currentSetIndex < afxSets.Count - 1 && afxSets[currentSetIndex + 1] is not null) {
+                componentBuilder.WithButton($"Set {currentSetIndex + 2} →", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex + 1}"); buttonCount++;
+            }
+            if(buttonCount > 0) builder.ComponentBuilder = componentBuilder;
+
+            builder.EmbedBuilder = embedBuilder;
+            return builder;
+        }
+
+    }
+}
