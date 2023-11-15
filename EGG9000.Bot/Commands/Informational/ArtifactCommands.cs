@@ -3,62 +3,86 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.PixelFormats;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Services;
 using System.IO;
-using SixLabors.ImageSharp.Formats.Png;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Discord.WebSocket;
 using EGG9000.Common.Helpers;
-using SixLabors.ImageSharp.Drawing;
-using SixLabors.Fonts;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
-using Microsoft.CodeAnalysis.Text;
-using SixLabors.ImageSharp.Processing.Processors.Transforms;
+using Discord;
 
 namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
 
         [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(Required = false)] bool showinchannel = false) {
-            await command.RespondAsync("Getting backups...", ephemeral: !showinchannel);
+            await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInProgress("Getting backups..."), ephemeral: !showinchannel);
             var userid = useraccount.Split("|")[0];
-            if(userid is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: User id could not be found from param");
+            if(userid is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("User id could not be found from param"); }); return; }
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
-            if(dbuser is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: DB user could not be found from user ID {userid}");
-            var account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])];
-            if(account is null) await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
+            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+            EggIncAccount account = null;
+            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } 
+            catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            var b64 = InventoryB64(account);
-            if(string.IsNullOrEmpty(b64.B64)) await command.RespondAsync($"⚠︎ Error: User inventory could not be converted.");
-            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(b64.B64)), "Inventory.jpeg", "Inventory Image"), text: " ");
+            await _viewInventory(command, dbuser, account, showinchannel);
         }
 
         [SlashCommand(Description = "View your inventory")]
         public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
-            await command.RespondAsync("Getting backups...");
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
-                return;
+            await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInProgress("Getting backups..."));
+            var userid = useraccount.Split("|")[0];
+            if(userid is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("User id could not be found from param"); }); return; }
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+            EggIncAccount account = null;
+            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError($"User account for {userid} could not be found"); }); return; }
+
+            await _viewInventory(command, dbuser, account);
+        }
+
+        public static async Task _viewInventory(FauxCommand command, DBUser user, EggIncAccount account, bool showInChannel = true) {
+            var (B64, Config) = InventoryB64(account);
+            if(string.IsNullOrEmpty(B64)) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("User inventory could not be converted."); }); return; }
+
+            if(!showInChannel) {
+                var description = $"Inventory of <@{user.DiscordId}> - `{account.Name ?? account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
+                await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image"), text: description);
+            } else {
+                var response = command.GetOriginalResponseAsync().Result; // Get the URL of the uploaded image
+                var imageUrl = response.Attachments.First().Url.IndexOf("jpeg", StringComparison.OrdinalIgnoreCase) is int index && index != -1 ? response.Attachments.First().Url[..(index + "jpeg".Length)] : response.Attachments.First().Url;
+                await response.ModifyAsync(properties => {  // Update the message with a "Full res image" link
+                    properties.Content = "";
+                    properties.Attachments = new List<FileAttachment>();
+                    properties.Embed = _inventoryEmbed(user, account, imageUrl);
+                });
             }
-            var accountIndex = int.Parse(useraccount.Split("|")[1]);
-            var account = user.EggIncAccounts[accountIndex];
-            var b64 = InventoryB64(account);
-            if(string.IsNullOrEmpty(b64.B64)) await command.RespondAsync($"⚠︎ Error: User inventory could not be converted.");
-            await command.RespondWithFileAsync(new Discord.FileAttachment(new MemoryStream(Convert.FromBase64String(b64.B64)), "Inventory.jpeg", "Inventory Image"), text: " ");
+        }
+
+        public static Embed _inventoryEmbed(DBUser dbuser, EggIncAccount account, string imageUrl) {
+            var description = $"Inventory of <@{dbuser.DiscordId}> - `{account.Name ?? account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
+            return new EmbedBuilder()
+                .WithColor(Color.Blue)
+                .WithTitle("Link to full resolution image")
+                .WithUrl(imageUrl)
+                .WithDescription(description)
+                .WithAuthor(new EmbedAuthorBuilder()
+                    .WithName("EGG9000")
+                    .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")
+                )
+                .WithImageUrl(imageUrl)
+                .Build();
         }
 
         private class AfxSetBuilder {
-            public Discord.ComponentBuilder ComponentBuilder { get; set; }
-            public Discord.EmbedBuilder EmbedBuilder { get; set; }
+            public ComponentBuilder ComponentBuilder { get; set; }
+            public EmbedBuilder EmbedBuilder { get; set; }
             public AfxSetBuilder() { }
         }
 
