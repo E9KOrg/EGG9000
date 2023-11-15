@@ -7,6 +7,8 @@ using System.Text;
 using Discord;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using EGG9000.Common.Database;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Bot.Common.Helpers {
     public class ChannelHelper {
@@ -42,9 +44,12 @@ namespace EGG9000.Bot.Common.Helpers {
             public MessageFlags Flags { get; set; } = MessageFlags.None;
         }
 
-        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
+        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(ApplicationDbContext db, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
 
-            var channel = DetermineChannelType(dbGuild, discordGuild, channelType);
+            var overflowParentGuild = await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString()));
+            if(overflowParentGuild is null) overflowParentGuild = dbGuild;
+
+            var channel = DetermineChannelType(overflowParentGuild, discordGuild, channelType);
             if(channel is null ) return null;
 
             if(channel.GetType() == typeof(SocketThreadChannel)) {

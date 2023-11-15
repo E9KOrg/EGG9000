@@ -209,7 +209,7 @@ namespace EGG9000.Bot.Helpers {
                         messages.AddRange(new List<string> {
                         $"What an effort! Make way for {discordUser.Mention} and their eggcellent EB of {EarningsBonus}%! You are now a {role.Name}. Very impressive!",
                         $"We have a new {role.Name} among us! Congratulations on the rank, and the mighty EB of {EarningsBonus}%, {discordUser.Mention}!",
-                        $"{EarningsBonus}% !That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
+                        $"{EarningsBonus}%! That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
                         });
                         break;
                     case "Xennafarmer":
@@ -226,9 +226,9 @@ namespace EGG9000.Bot.Helpers {
                 var index = random.Next(messages.Count);
 
                 //Attempt to find the "separate channel for rankup messages" channel, if it's been set
-                var response = await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.AltRankup, new() { Text = messages[index] });
+                var response = await ChannelHelper.DetermineAndSend(db, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.AltRankup, new() { Text = messages[index] });
                 //If it can't be found, use 'General' instead
-                if(response == null) await ChannelHelper.DetermineAndSend(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = messages[index] });
+                if(response == null) await ChannelHelper.DetermineAndSend(db, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = messages[index] });
             }
 
             return role;

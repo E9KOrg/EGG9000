@@ -61,7 +61,8 @@ namespace EGG9000.Bot.Services {
         private Guild _cpGuild;
         private IServiceProvider _provider;
         private ILogger<CommandService> _logger;
-        private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new List<(SocketApplicationCommand command, ulong guildid)>();
+        private List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = new();
+        private List<(SocketApplicationCommand command, ulong guildid)> _globalCommands = new();
         private IPublishEndpoint _publishEndpoint;
         private IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         public CommandService(IConfiguration Configuration,
@@ -317,14 +318,14 @@ namespace EGG9000.Bot.Services {
                     guildCommandProperties.Add(guildCommand.Build());
                 }
 
+                var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
+                _globalCommands.AddRange(globalCommands.Select(y => (y, (ulong)0)));
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync(guildCommandProperties.ToArray());
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
-                var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync(globalCommandProperties.ToArray());
-                _discordCommands.AddRange(globalCommands.Select(y => (y, (ulong)0)));
             } catch(Exception exception) {
                 _bugsnag.Notify(exception);
 
@@ -386,7 +387,6 @@ namespace EGG9000.Bot.Services {
                 return null;
             } else {
                 var fauxCommand = arg is SocketSlashCommand ? new FauxCommand(arg as SocketSlashCommand) : arg as FauxCommand;
-                var slashParamDetails = parameterInfo.GetCustomAttribute<SlashParamAttribute>();
                 var name = parameterInfo.Name.ToLower();
                 if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                     var users = new List<SocketGuildUser>();
@@ -453,18 +453,60 @@ namespace EGG9000.Bot.Services {
             }
 
             if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
-                var commandText = new Regex(@"^/(\w+)").Match(message.Content).Groups[1].Value.ToLower();
-                var command = _slashCommandFunctions.FirstOrDefault(x => x.Name == commandText);
-                if(command != null) {
+                var commandTextMatches = new Regex(@"^\/(\w+)(?:\s+(\w+))?").Match(message.Content);
+                if(commandTextMatches.Success) {
+                    var parentCommand = "";
+                    var commandText = "";
+                    if(commandTextMatches.Groups[2].Success) {
+                        parentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                        commandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
+                    } else {
+                        commandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                    }
+
+                    var global = false;
                     SocketApplicationCommand discordCommand = null;
                     try {
-                        discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == command.Name.ToLower() && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
-                    } finally { }
-                    await message.Channel.SendMessageAsync(
-                        $"⚠️{message.Author.Mention}, looks like you attempted to run the command but Discord sent it as a normal message instead of a command. Make sure a pop-up comes up when you start typing a command, " +
-                        $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also try clicking on this </{command.Name}:{discordCommand?.Id}> highlighted command to run it."
-                        , messageReference: new MessageReference(message.Id)
-                    );
+                        if(parentCommand == "") discordCommand = _discordCommands.First(x => x.command.Name.ToLower() == commandText && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
+                        else discordCommand = _discordCommands.First(x => x.command.Name.ToLower() == parentCommand && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
+                    } catch(Exception) { }
+
+                    if(discordCommand == null) {
+                        try {
+                            if(parentCommand == "") discordCommand = _globalCommands.First(x => x.command.Name.ToLower() == commandText).command;
+                            else discordCommand = _globalCommands.First(x => x.command.Name.ToLower() == parentCommand).command;
+                            if(discordCommand != null) global = true;
+                        } catch(Exception) { }
+                    }
+
+                    if(discordCommand != null) {
+                        var hasPerms = false;
+                        if(global) hasPerms = true;
+                        else {
+                            var command = _slashCommandFunctions.First(s => s.Name == (parentCommand == "" ? discordCommand.Name : parentCommand));
+
+                            var adminOnlyLevel = command == null ? StaffOnlyLevel.None : command.Details.AdminOnly;
+                            var associatedPerm = adminOnlyLevel switch {
+                                StaffOnlyLevel.Admin => GuildPermission.Administrator,
+                                StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                                StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                                StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                                _ => GuildPermission.UseApplicationCommands
+                            };
+                            hasPerms = command.Details.AdminOnly == StaffOnlyLevel.None || (message.Author as SocketGuildUser).GuildPermissions.ToList().Contains(associatedPerm);
+                        }
+
+                        if(hasPerms) {
+                            var warningEmbed = ContractCommandsSlash.EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
+                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(parentCommand != "" ? $"{parentCommand} " : "")}{commandText}:{discordCommand?.Id}> to run it.");
+
+                            await message.Channel.SendMessageAsync(
+                                text: "",
+                                embed: warningEmbed,
+                                messageReference: new MessageReference(message.Id)
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -583,16 +625,6 @@ namespace EGG9000.Bot.Services {
                 _logger.LogInformation("Waiting on semaphore to shutdown");
             }
             await _semaphoreSlim.WaitAsync(cancellationToken);
-        }
-
-        public String GetCommandTag(ulong GuildId, Type Command) {
-            var discordCommand = _discordCommands.FirstOrDefault(x => x.command.Name.ToLower() == Command.Name.ToLower() && x.guildid == GuildId).command;
-
-            if(discordCommand is not null) {
-                return $"</{discordCommand.Name}:{discordCommand.Id}>";
-            } else {
-                return $"</{Command.Name.ToLower()}>";
-            }
         }
     }
 }

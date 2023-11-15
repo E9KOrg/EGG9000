@@ -198,7 +198,9 @@ namespace EGG9000.Bot.Automated {
                     if(nextLaunch < currentTime) {
                         guildContract.BoardingGroup++;
                         await _db.SaveChangesAsync();
+#if !DEV9002
                         _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
+#endif
                     }
                 }
             }
