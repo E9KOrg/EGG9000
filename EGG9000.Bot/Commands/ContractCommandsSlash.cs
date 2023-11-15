@@ -82,7 +82,7 @@ namespace EGG9000.Bot.Commands {
 
             var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
 
-            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser == dbuser && x.EggsShipped == 0);
+            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser.Id == dbuser.Id && x.EggsShipped == 0);
 
             if(xref is null) {
                 await command.ModifyOriginalResponseAsync($"⚠️ERROR: Unable to locate user with zero production.");
