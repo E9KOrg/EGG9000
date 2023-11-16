@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Commands {
             catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await _viewInventory(command, dbuser, account, showinchannel);
+            await _viewInventory(command, dbuser, account);
         }
 
         [SlashCommand(Description = "View your inventory")]
@@ -47,38 +47,34 @@ namespace EGG9000.Bot.Commands {
             await _viewInventory(command, dbuser, account);
         }
 
-        public static async Task _viewInventory(FauxCommand command, DBUser user, EggIncAccount account, bool showInChannel = true) {
+        public static async Task _viewInventory(FauxCommand command, DBUser user, EggIncAccount account) {
             var (B64, Config) = InventoryB64(account);
             if(string.IsNullOrEmpty(B64)) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = ContractCommandsSlash.EmbedError("User inventory could not be converted."); }); return; }
 
-            if(!showInChannel) {
-                var description = $"Inventory of <@{user.DiscordId}> - `{account.Name ?? account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
-                await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image"), text: description);
-            } else {
-                await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image"), text: " ");
-                var response = command.GetOriginalResponseAsync().Result; // Get the URL of the uploaded image
-                var imageUrl = response.Attachments.First().Url.IndexOf("jpeg", StringComparison.OrdinalIgnoreCase) is int index && index != -1 ? response.Attachments.First().Url[..(index + "jpeg".Length)] : response.Attachments.First().Url;
-                await response.ModifyAsync(properties => {  // Update the message with a "Full res image" link
-                    properties.Content = "";
-                    properties.Attachments = new List<FileAttachment>();
-                    properties.Embed = _inventoryEmbed(user, account, imageUrl);
-                });
-            }
+            var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
+            await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account));
+            var response = command.GetOriginalResponseAsync().Result; // Get the response to edit it
+            var baseUrl = response.Embeds.First().Image.ToString();
+            var imageUrl = baseUrl.IndexOf("jpeg", StringComparison.OrdinalIgnoreCase) is int index && index != -1 ? baseUrl[..(index + "jpeg".Length)] : baseUrl;
+            await command.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
+                x.Embed = _inventoryEmbed(user, account, imageUrl);
+            });
         }
 
-        public static Embed _inventoryEmbed(DBUser dbuser, EggIncAccount account, string imageUrl) {
+        public static Embed _inventoryEmbed(DBUser dbuser, EggIncAccount account, string imageUrl = "") {
             var description = $"Inventory of <@{dbuser.DiscordId}> - `{account.Name ?? account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
-            return new EmbedBuilder()
+            var builder = new EmbedBuilder()
                 .WithColor(Color.Blue)
-                .WithTitle("Link to full resolution image")
-                .WithUrl(imageUrl)
                 .WithDescription(description)
                 .WithAuthor(new EmbedAuthorBuilder()
                     .WithName("EGG9000")
                     .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")
                 )
-                .WithImageUrl(imageUrl)
-                .Build();
+                .WithImageUrl("attachment://Inventory.jpeg");
+
+            if(imageUrl != "") { builder.WithTitle("Link to full resolution image").WithUrl(imageUrl); }
+            return builder.Build();
         }
 
         private class AfxSetBuilder {
@@ -87,7 +83,7 @@ namespace EGG9000.Bot.Commands {
             public AfxSetBuilder() { }
         }
 
-        public static Discord.Color RandomColor() {
+        public static Color RandomColor() {
             var random = new Random();
 
             // Generate random values for red, green, and blue components.
@@ -96,11 +92,11 @@ namespace EGG9000.Bot.Commands {
             var blue = (byte)random.Next(256);
 
             // Create and return the Discord.Color.
-            return new Discord.Color(red, green, blue);
+            return new Color(red, green, blue);
         }
 
         [SlashCommand(Description = "Show off your saved Artifact Sets")]
-        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
+        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
             await command.RespondAsync("Getting backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
@@ -153,25 +149,24 @@ namespace EGG9000.Bot.Commands {
                 ComponentBuilder = null
             };
 
-            var componentBuilder = new Discord.ComponentBuilder();
+            var componentBuilder = new ComponentBuilder();
             var buttonCount = 0;
 
             var currentSetIndex = afxSets.IndexOf(currentSet);
-            var setsCount = afxSets.Count;
 
             var account = user.EggIncAccounts[accountIndex];
             var accText = user.EggIncAccounts.Count > 1 ? $"For account: {account.Backup?.UserName ?? "[No Name]"} ({account.Backup?.EarningsBonus.ToEggString() ?? "No EB"})" : "";
 
-            var embedBuilder = new Discord.EmbedBuilder().WithAuthor(
-                new Discord.EmbedAuthorBuilder()
+            var embedBuilder = new EmbedBuilder().WithAuthor(
+                new EmbedAuthorBuilder()
                     .WithName($"Set {currentSetIndex + 1}")
                     .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
                 ).WithColor(RandomColor())
                 .WithDescription(GetAfxSetString(currentSet));
             if(accText != "")
-                embedBuilder.WithFooter(new Discord.EmbedFooterBuilder().WithText(accText));
+                embedBuilder.WithFooter(new EmbedFooterBuilder().WithText(accText));
 
-            if(currentSetIndex > 0 && setsCount > 1 && afxSets[currentSetIndex - 1] is not null) {
+            if(currentSetIndex > 0 && afxSets.Count > 1 && afxSets[currentSetIndex - 1] is not null) {
                 componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;
             }
             if(currentSetIndex < afxSets.Count - 1 && afxSets[currentSetIndex + 1] is not null) {
