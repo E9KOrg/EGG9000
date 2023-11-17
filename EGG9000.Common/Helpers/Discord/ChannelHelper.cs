@@ -44,12 +44,15 @@ namespace EGG9000.Bot.Common.Helpers {
             public MessageFlags Flags { get; set; } = MessageFlags.None;
         }
 
-        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(ApplicationDbContext db, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
+        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(ApplicationDbContext db, DiscordSocketClient _client, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
 
+            var overflowParentDGuild = discordGuild;
             var overflowParentGuild = await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString()));
             if(overflowParentGuild is null) overflowParentGuild = dbGuild;
 
-            var channel = DetermineChannelType(overflowParentGuild, discordGuild, channelType);
+            else overflowParentDGuild = _client.Guilds.FirstOrDefault(g => g.Id == overflowParentGuild.Id) ?? discordGuild;
+
+            var channel = DetermineChannelType(overflowParentGuild, overflowParentDGuild, channelType);
             if(channel is null ) return null;
 
             if(channel.GetType() == typeof(SocketThreadChannel)) {

@@ -708,9 +708,13 @@ namespace EGG9000.Bot.Commands {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"This command must be used in a server.\n\nCome to think of it, how did you even do this?"); });
                 return;
             }
-            var guildContract = await db.GuildContracts.FirstOrDefaultAsync(c => c.GuildID == component.GuildId && c.DiscordChannelId == component.ChannelId);
+            var guildContract = await db.GuildContracts.Include(gc => gc.Contract).FirstOrDefaultAsync(c => c.GuildID == component.GuildId && c.DiscordChannelId == component.ChannelId);
             if(guildContract is null) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"This command must be used in a contract channel.\n\nCome to think of it, how did you even do this?"); });
+                return;
+            }
+            if(DateTimeOffset.Now >= guildContract.Contract.GoodUntil) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"This contract has expired, and coops can no longer be joined."); });
                 return;
             }
 
@@ -721,7 +725,6 @@ namespace EGG9000.Bot.Commands {
             }
 
             var eligibleAccounts = dbUser.EggIncAccounts.Where(a => a.Backup?.SoulEggs > 1000 && (!contract.cc_only || a.SubscriptionLevel is not null)).ToList();
-
             if(eligibleAccounts.Count < 1) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You have no accounts that are eligible for this contract."); });
                 return;

@@ -30,7 +30,7 @@ using EGG9000.Bot.Common.Helpers;
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         [SlashCommand(Description = "Add demerit to user", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task AddDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
+        public static async Task AddDemerit(FauxCommand command, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -53,7 +53,7 @@ namespace EGG9000.Bot.Commands {
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
                 var socketGuild = discordClient.Guilds.FirstOrDefault(g => g.Id == dbguild.Id);
 
-                var response = await ChannelHelper.DetermineAndSend(db, dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
+                var response = await ChannelHelper.DetermineAndSend(db, _client, dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
             } catch(Exception e) {
                 await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
             }

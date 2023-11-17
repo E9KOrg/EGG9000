@@ -64,7 +64,7 @@ namespace EGG9000.Bot.Commands {
                 if(guildFind is not null) {
                     var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
                     if(socketGuild is not null) {
-                        var response = await ChannelHelper.DetermineAndSend(db, guildFind, socketGuild, GuildChannelType.MeritLogChannel, new() { Text = $"{target.Mention}: {merit.Reason} (Merits: {count})" });
+                        var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.MeritLogChannel, new() { Text = $"{target.Mention}: {merit.Reason} (Merits: {count})" });
                     }
                 }
             }

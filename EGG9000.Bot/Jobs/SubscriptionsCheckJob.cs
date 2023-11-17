@@ -68,7 +68,7 @@ namespace EGG9000.Bot.Jobs {
                 await Parallel.ForEachAsync(guildGroup, new ParallelOptions { MaxDegreeOfParallelism = 5 }, async (user, cancellationToken) => {
                     try {
                         foreach(var account in user.EggIncAccounts) {
-                            await CheckSubscription(db, user, account, dbguild, guild);
+                            await CheckSubscription(db, _discord, user, account, dbguild, guild);
                             //var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
                             //if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                             //    if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
@@ -103,12 +103,12 @@ namespace EGG9000.Bot.Jobs {
             _logger.LogInformation("Finished checking subscriptions");
         }
 
-        private async Task CheckSubscription(ApplicationDbContext db, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
+        private async Task CheckSubscription(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
             try {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
                 if(subscriptionStatus.HasStatus && subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
                     if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
-                        await SendUltraLogMessage(db, user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
+                        await SendUltraLogMessage(db, _client, user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
                         account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                         user.UpdateAccounts();
                     }
@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Jobs {
                         user.UpdateAccounts();
                     }
                 } else if(account.SubscriptionLevel.HasValue && account.SubscriptionLevel is not null) {
-                    await SendUltraLogMessage(db, user, account, (int?)account.SubscriptionLevel ?? -1, -1, dbGuild, guild);
+                    await SendUltraLogMessage(db, _client, user, account, (int?)account.SubscriptionLevel ?? -1, -1, dbGuild, guild);
                     account.SubscriptionLevel = null;
                     user.UpdateAccounts();
                 }
@@ -135,9 +135,9 @@ namespace EGG9000.Bot.Jobs {
             };
         }
 
-        public static async Task SendUltraLogMessage(ApplicationDbContext db, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
+        public static async Task SendUltraLogMessage(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
             var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`)" : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
-            var response = await ChannelHelper.DetermineAndSend(db, dbGuild, guild, GuildChannelType.UltraLog, new() { Text = message});
+            var response = await ChannelHelper.DetermineAndSend(db, _client, dbGuild, guild, GuildChannelType.UltraLog, new() { Text = message});
         }
 
         public async Task CheckRole(ulong? roleid, DBUser dbuser, bool pro, SocketGuildUser user) {
