@@ -54,6 +54,7 @@ namespace EGG9000.Bot.Automated {
         public IConfiguration _configuration;
         public IServiceProvider _provider;
         private UpdaterOptions<T> _options;
+        public APILink _apiLink;
 
         protected Bugsnag.IClient _bugsnag;
         protected ILogger<T> _logger;
@@ -83,6 +84,7 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation("Initiating");
             _configuration = provider.GetService<IConfiguration>();
             _client = provider.GetService<DiscordHostedService>();
+            _apiLink = provider.GetService<APILink>();
             _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
             Instance = this;
             _bugsnag = provider.GetService<Bugsnag.IClient>();
