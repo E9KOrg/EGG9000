@@ -233,6 +233,7 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task<List<ulong>> AddUsersToChannel(CoopPermissions coopPermissions) {
+            coopPermissions.UserIds = coopPermissions.UserIds.Distinct().ToList();
             try {
                 var guild = _discord.Guilds.FirstOrDefault(x => x.Id == coopPermissions.GuildId);
                 if(guild.Users.Any(x => x.Id == 1174941840684892352)) {
