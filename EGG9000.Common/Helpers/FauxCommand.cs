@@ -60,7 +60,7 @@ namespace EGG9000.Common.Services {
             if(_socketCommandBase is not null && !_socketCommandBase.HasResponded)
                 await _socketCommandBase.RespondWithFileAsync(attachment, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
             else
-                await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Attachments = new List<FileAttachment> { attachment }; x.Content = text ?? ""; x.Embeds = embeds; x.Components = components; });
+                await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Attachments = new List<FileAttachment> { attachment }; x.Content = text ?? ""; x.Embeds = embeds; x.Embed = embed; x.Components = components; });
         }
 
 
