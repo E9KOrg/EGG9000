@@ -27,6 +27,7 @@ using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Logging;
 using System.Net.NetworkInformation;
+using EGG9000.Common.SharedModels;
 
 namespace EGG9000.Common.Services {
     public class APILinkOptions {
@@ -229,6 +230,34 @@ namespace EGG9000.Common.Services {
                 }
             }
             return backups;
+        }
+
+        public async Task<List<ulong>> AddUsersToChannel(CoopPermissions coopPermissions) {
+            try {
+                var guild = _discord.Guilds.FirstOrDefault(x => x.Id == coopPermissions.GuildId);
+                if(guild.Users.Any(x => x.Id == 1174941840684892352)) {
+                    var url = $"{urlBase}AddUsersToChannel";
+                    var response = await SendAsync<List<ulong>>(url, coopPermissions, HttpMethod.Post);
+                    return response.Data;
+                } else {
+                    var coopChannel = guild.GetChannel(coopPermissions.ChannelId) as SocketTextChannel;
+                    List<ulong> addedUsers = new();
+                    foreach(var userid in coopPermissions.UserIds) {
+                        var user = guild.GetUser(userid);
+                        try {
+                            await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                            addedUsers.Add(userid);
+                            _logger.LogInformation("Adding user to channel {user}", user.DisplayName);
+                        } catch(Exception e) {
+                            _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                        }
+                    }
+                    return addedUsers;
+                }
+            } catch(Exception e) {
+                _logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}", e.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
+            }
+            return new List<ulong>();
         }
 
         public async Task<CustomBackup> GetBackup(string UserId) {

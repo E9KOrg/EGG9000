@@ -11,15 +11,20 @@ using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Services;
 using System.Collections.Concurrent;
 using EGG9000.Common.Database;
+using EGG9000.Common.SharedModels;
+using Discord.WebSocket;
+using Discord;
 
 namespace EGG9000.APILinkSite.Controllers {
     public class HomeController : Controller {
         private readonly ILogger<HomeController> _logger;
         private IMemoryCache _cache;
+        private DiscordBasicService _discord;
 
-        public HomeController(ILogger<HomeController> logger, IMemoryCache memoryCache) {
+        public HomeController(ILogger<HomeController> logger, IMemoryCache memoryCache, DiscordBasicService discord) {
             _logger = logger;
             _cache = memoryCache;
+            _discord = discord;
         }
         public IActionResult Ping() {
             return Content("Pong");
@@ -73,6 +78,24 @@ namespace EGG9000.APILinkSite.Controllers {
                         while(partition.MoveNext())
                             await body(partition.Current);
                 }));
+        }
+
+        public async Task<IActionResult> AddUsersToChannel([FromBody] CoopPermissions coopPermissions) {
+            var guild = _discord.Guilds.FirstOrDefault(x => x.Id == coopPermissions.GuildId);
+            var coopChannel = guild.GetChannel(coopPermissions.ChannelId) as SocketTextChannel;
+            List<ulong> addedUsers = new();
+            foreach(var userid in coopPermissions.UserIds) {
+                var user = guild.GetUser(userid);
+                try {
+                    await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                    addedUsers.Add(userid);
+                    _logger.LogInformation("Adding user to channel {user}", user.DisplayName);
+                } catch(Exception e) {
+                    _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                }
+            }
+            return Json(addedUsers);
+
         }
     }
 }
