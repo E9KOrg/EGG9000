@@ -119,7 +119,7 @@ namespace EGG9000.Bot.Automated {
                             _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
                             var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
                             var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id ==  dbguild.Id);
-                            var response = await ChannelHelper.DetermineAndSend(_db, dbguild, socketGuild, GuildChannelType.WarningMessagesForUser, new() 
+                            var response = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, socketGuild, GuildChannelType.WarningMessagesForUser, new() 
                             { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs" });
                         }
                         await _db.SaveChangesAsync();
