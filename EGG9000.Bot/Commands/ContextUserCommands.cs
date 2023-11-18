@@ -30,9 +30,9 @@ namespace EGG9000.Bot.Commands {
             await RegisterCommandsSlash._userstatus(command, db, _client, apiLink, command.Data.Member, true, false);
         }
 
-        [UserCommand(Name = "EGG9000.com", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task WebsiteLink(SocketUserCommand command) {
-            await command.RespondAsync($"<https://egg9000.com/MyFarms/ViewUser?discordId={command.Data.Member.Id}>", ephemeral: true);
+        [UserCommand(Name = "Contract Settings", AdminOnly = StaffOnlyLevel.FarmHand)]
+        public static async Task ContractSettings(SocketUserCommand command, ApplicationDbContext db) {
+            await ContractSettingsCommands.ContractSettings(command, db, (command.Data.Member as SocketGuildUser));
         }
 
         [UserCommand(Name = "Rockets Tracker", AdminOnly = StaffOnlyLevel.FarmHand)]
