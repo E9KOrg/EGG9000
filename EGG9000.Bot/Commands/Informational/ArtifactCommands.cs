@@ -63,7 +63,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         public static Embed _inventoryEmbed(DBUser dbuser, EggIncAccount account, string imageUrl = "") {
-            var description = $"Inventory of <@{dbuser.DiscordId}> - `{account.Name ?? account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
+            var description = $"Inventory of <@{dbuser.DiscordId}> - `{account.Backup?.UserName ?? "(No Name)"} ({account.Backup.EarningsBonus.ToEggString()})`";
             var builder = new EmbedBuilder()
                 .WithColor(Color.Blue)
                 .WithDescription(description)

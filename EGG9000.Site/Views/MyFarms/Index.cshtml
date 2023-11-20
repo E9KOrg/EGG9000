@@ -147,13 +147,23 @@
             timeDifference *= -1;
         }
 
-        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
-        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
-        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+        var months = Math.floor(timeDifference / 2592000); // 2592000 seconds in a month (30 days)
+        var weeks = Math.floor((timeDifference % 2592000) / 604800); // 604800 seconds in a week
+        var days = Math.floor(((timeDifference % 2592000) % 604800) / 86400); // 86400 seconds in a day
+        var hours = Math.floor(((timeDifference % 2592000) % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor(((timeDifference % 2592000) % 3600) / 60); // 60 seconds in a minute
         var seconds = timeDifference % 60; // 60 seconds in a minute
 
-        // Format the result as "XdXhXm"
-        var result = ("" + (days > 0 ? `${days}d` : "") + (hours > 0 ? `${hours}h` : "") + ((minutes > 0 && (days == 0 && hours < 10 || full)) ? `${minutes}m` : "") + ((seconds > 0 && ((minutes < 10 && hours == 0 && days == 0) || full)) ? `${seconds}s` : "")) ?? "0s";
+        // Format the result as "XwXdXhXmXs"
+        var result = (
+            "" +
+            (months > 0 ? `${months}M` : "") +
+            (weeks > 0 ? `${weeks}w` : "") +
+            (days > 0 ? `${days}d` : "") +
+            (hours > 0 && (months == 0 && weeks == 0 || full) ? `${hours}h` : "") +
+            ((minutes > 0 && (months == 0 && weeks == 0 && days == 0 && hours < 10 || full)) ? `${minutes}m` : "") +
+            ((seconds > 0 && ((minutes < 10 && hours == 0 && days == 0 && weeks == 0 && months == 0) || full)) ? `${seconds}s` : "")
+        ) ?? "0s";
         if (result == "") result = "0s"; // If the time is empty, display "0s"
 
         return result;
@@ -266,7 +276,7 @@
                     <b><u>Last Backup</u></b>: 
                     <span class="tooltip-custom">
                         <span id="last-backup-disp-@index" data-lb="@backup.LastBackupTime"></span>
-                        <script>document.getElementById('last-backup-disp-@index').textContent = formatEpochToTime(@backup.LastBackupTime);</script>
+                        <script>document.getElementById('last-backup-disp-@index').textContent = formatEpochToTime(@backup.LastBackupTime, false);</script>
                         <span id="last-backup-tooltip-@index" class="tooltiptext-custom speech-bubble"></span>
                     </span>
                 </span>
