@@ -480,10 +480,17 @@ namespace EGG9000.Bot.Services {
                     }
 
                     if(discordCommand != null) {
+                        var command = _slashCommandFunctions.First(s => s.Name == (parentCommand == "" ? discordCommand.Name : parentCommand));
+                        var parentHasChild = false;
+                        var bypass = false;
+                        if(command.SubFunctions is null || command.SubFunctions.Count == 0) {
+                            bypass = true;
+                        } else{
+                            parentHasChild = command.SubFunctions.Any(s => s.Name == commandText);
+                        }
                         var hasPerms = false;
                         if(global) hasPerms = true;
                         else {
-                            var command = _slashCommandFunctions.First(s => s.Name == (parentCommand == "" ? discordCommand.Name : parentCommand));
 
                             var adminOnlyLevel = command == null ? StaffOnlyLevel.None : command.Details.AdminOnly;
                             var associatedPerm = adminOnlyLevel switch {
@@ -496,9 +503,9 @@ namespace EGG9000.Bot.Services {
                             hasPerms = command.Details.AdminOnly == StaffOnlyLevel.None || (message.Author as SocketGuildUser).GuildPermissions.ToList().Contains(associatedPerm);
                         }
 
-                        if(hasPerms) {
+                        if(hasPerms && (parentHasChild || bypass)) {
                             var warningEmbed = ContractCommandsSlash.EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
-                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(parentCommand != "" ? $"{parentCommand} " : "")}{commandText}:{discordCommand?.Id}> to run it.");
+                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(parentCommand != "" ? $"{parentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandText : "")}:{discordCommand?.Id}> to run it.");
 
                             await message.Channel.SendMessageAsync(
                                 text: "",

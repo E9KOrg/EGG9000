@@ -254,7 +254,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Get help from staff, please give details")]
-        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
+        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
             var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
 
@@ -266,7 +266,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 return;
             }
 
-            var socketGuild = client.Guilds.First(x => x.Id == guildFind.Id);
+            var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
 
             if(socketGuild is null) {
                 await command.RespondAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
@@ -278,7 +278,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
             var infoText = $"Staff has been called ({details})";
             var message = $"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
 
-            var response = await ChannelHelper.DetermineAndSend(db, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
+            var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
 
             if(response is null) {
                 await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
