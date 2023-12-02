@@ -571,19 +571,21 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     //Handle User Joining Without Xref
                     var usersWithoutXref = coopDetails.CoopParticipants.Where(x => x.DBUser is not null && x.Xref is null);
+                    List<ulong> usersNeedingChannelPermissions = new();
                     foreach(var user in usersWithoutXref) {
                         var channeluser = coopDiscordUsers.FirstOrDefault(x => x.Id == user.DBUser.DiscordId); // await coopChannel.GetUserAsync(dbuser.DiscordId);
                         if(channeluser == null) {
-                            try {
-                                var discorduser = guild.Users.FirstOrDefault(x => x.Id == user.DBUser.DiscordId);
-                                if(discorduser != null) {
-                                    await coopChannel.AddPermissionOverwriteAsync(discorduser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                                    channeluser = discorduser;
-                                    _logger.LogInformation("Added Permission for {user} in {coop}", user.DBUser.DiscordUsername, coop.Name);
-                                }
-                            } catch {
-                                _logger.LogWarning("Error Adding Permission for {user} in {coop}", user.DBUser.DiscordUsername, coop.Name);
-                            }
+                            usersNeedingChannelPermissions.Add(user.DBUser.DiscordId);
+                            //try {
+                            //    var discorduser = guild.Users.FirstOrDefault(x => x.Id == user.DBUser.DiscordId);
+                            //    if(discorduser != null) {
+                            //        await coopChannel.AddPermissionOverwriteAsync(discorduser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                            //        channeluser = discorduser;
+                            //        _logger.LogInformation("Added Permission for {user} in {coop}", user.DBUser.DiscordUsername, coop.Name);
+                            //    }
+                            //} catch {
+                            //    _logger.LogWarning("Error Adding Permission for {user} in {coop}", user.DBUser.DiscordUsername, coop.Name);
+                            //}
                         }
                         if(channeluser != null) {
                             var xref = new UserCoopXref {
@@ -709,13 +711,14 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
                         if(userStatus.DiscordUser is not null && !coopChannel.PermissionOverwrites.Any(x => x.TargetId == userStatus.DiscordUser.Id)) {
-                            try {
-                                await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                                userStatus.Xref.AddedToChannel = true;
-                                _logger.LogInformation("Adding user to channel {user}", userStatus.DiscordUser.DisplayName);
-                            } catch(Exception e) {
-                                _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", userStatus.DiscordUser.DisplayName, coop.Name, guild.Name, e.Message);
-                            }
+                            usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
+                            //try {
+                            //    await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
+                            //    userStatus.Xref.AddedToChannel = true;
+                            //    _logger.LogInformation("Adding user to channel {user}", userStatus.DiscordUser.DisplayName);
+                            //} catch(Exception e) {
+                            //    _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", userStatus.DiscordUser.DisplayName, coop.Name, guild.Name, e.Message);
+                            //}
                         }
 
                         if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
@@ -727,6 +730,24 @@ namespace EGG9000.Bot.Automated.Coops {
                             await _db.SaveChangesAsync();
                         }
                     }
+
+                    var usersAdded = await _apiLink.AddUsersToChannel(
+                        new EGG9000.Common.SharedModels.CoopPermissions {
+                            ChannelId = coopChannel.Id, 
+                            GuildId = coopChannel.GuildId, 
+                            UserIds = usersNeedingChannelPermissions
+                        }
+                    );
+                    foreach(var userAdded in usersAdded) {
+                        var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser.Id == userAdded);
+                        if(xref != null) {
+                            xref.Xref.AddedToChannel = true;
+                        }
+                    }
+                    if(usersAdded.Count > 0) {
+                        await _db.SaveChangesAsync();
+                    }
+
 
                     //Handle waiting on assigned
                     var missingFromServer = false;
@@ -1235,7 +1256,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(user.DiscordUser != null) {
                     var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
-                    
+
                     var dmChannel = await user.DiscordUser.CreateDMChannelAsync();
 
                     var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, warningText);

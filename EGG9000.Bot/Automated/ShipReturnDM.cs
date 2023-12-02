@@ -169,10 +169,10 @@ namespace EGG9000.Bot.Automated {
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {
                         var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == user.Id);
                         dbuser.NextShipReturnDMDue = NextShipReturnDMDue;
-                        logger.LogInformation("Updating next ship time for {user} to {time}", user.DiscordUsername, NextShipReturnDMDue?.ToString("h:mm") ?? "null");
+                        //logger.LogInformation("Updating next ship time for {user} to {time}", user.DiscordUsername, NextShipReturnDMDue?.ToString("h:mm") ?? "null");
                     }
                 } catch(Exception e) {
-                    logger.LogError(e, $"UpdateNextShipDM Error");
+                    //logger.LogError(e, $"UpdateNextShipDM Error");
                 }
             }
             await _db.SaveChangesAsync();
@@ -180,7 +180,7 @@ namespace EGG9000.Bot.Automated {
             var earliestNextTime = dbusers.Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue is not null && x.NextShipReturnDMDue > DateTimeOffset.Now).OrderBy(x => x.NextShipReturnDMDue).FirstOrDefault();
             if(earliestNextTime is not null) {
                 var timeToNext = (earliestNextTime.NextShipReturnDMDue.Value - DateTimeOffset.Now);
-                logger.LogInformation("Next return time {time}", timeToNext);
+                //logger.LogInformation("Next return time {time}", timeToNext);
                 if(timeToNext > TimeSpan.Zero && timeToNext < TimeSpan.FromMinutes(5)) {
                     return timeToNext;
                 }
