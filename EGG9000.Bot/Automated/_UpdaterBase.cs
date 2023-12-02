@@ -54,6 +54,7 @@ namespace EGG9000.Bot.Automated {
         public IConfiguration _configuration;
         public IServiceProvider _provider;
         private UpdaterOptions<T> _options;
+        public APILink _apiLink;
 
         protected Bugsnag.IClient _bugsnag;
         protected ILogger<T> _logger;
@@ -80,9 +81,10 @@ namespace EGG9000.Bot.Automated {
 
         private void _initiate(IServiceProvider provider) {
             _logger = provider.GetService<ILogger<T>>();
-            _logger.LogInformation("Initiating");
+            //_logger.LogInformation("Initiating");
             _configuration = provider.GetService<IConfiguration>();
             _client = provider.GetService<DiscordHostedService>();
+            _apiLink = provider.GetService<APILink>();
             _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
             Instance = this;
             _bugsnag = provider.GetService<Bugsnag.IClient>();
@@ -110,7 +112,7 @@ namespace EGG9000.Bot.Automated {
 
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
             UpdateInterval = newUpdateInterval;
-            _logger.LogInformation("Updating interval to {interval}", UpdateInterval);
+            //_logger.LogInformation("Updating interval to {interval}", UpdateInterval);
             if(_timer is null) {
                 _timer = new Timer(_runTimer, null, UpdateInterval, UpdateInterval);
             } else {
@@ -123,7 +125,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task _run(object state) {
-            _logger.LogInformation("Running");
+            //_logger.LogInformation("Running");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
                 try {
@@ -147,7 +149,7 @@ namespace EGG9000.Bot.Automated {
                     _bugsnag.Notify(e);
                     _logger.LogError(e, "Error during run: {Message}", e.Message);
                 } finally {
-                    _logger.LogInformation("Releasing semaphore");
+                    //_logger.LogInformation("Releasing semaphore");
                     _semaphoreSlim.Release();
                 }
             } else {

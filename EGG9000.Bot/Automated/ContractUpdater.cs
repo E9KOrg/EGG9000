@@ -174,7 +174,7 @@ namespace EGG9000.Bot.Automated {
 
         public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild,  Guild dbGuild, FauxCommand slashCommand = null) {
             try {
-                _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
+                //_logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
