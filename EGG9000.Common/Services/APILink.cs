@@ -122,11 +122,11 @@ namespace EGG9000.Common.Services {
                     if(backup != null) {
                         lUsers.Add(new LeaderboardUser { User = user, Backup = backup });
                     } else {
-                        _logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
+                        //_logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
                     }
                 }
             }
-            _logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
+            //_logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
             await db.SaveChangesAsync();
             return lUsers;
         }
@@ -158,7 +158,7 @@ namespace EGG9000.Common.Services {
                 }
             }
 
-            _logger.LogInformation("Backups from cache {count}", backups.Count);
+            //_logger.LogInformation("Backups from cache {count}", backups.Count);
 
             if(backupsNeeded.Count > 0) {
                 var throttler = new SemaphoreSlim(2);
@@ -172,16 +172,16 @@ namespace EGG9000.Common.Services {
                         return null;
 
                     await throttler.WaitAsync();
-                    _logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
+                    //_logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
                     i++;
                     tasks.Add(Task.Run(async () => {
                         try {
                             var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
                             if(response.Data is null) {
-                                  _logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
+                                  //_logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
                                 return;
                             }
-                            _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
+                            //_logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
                             foreach(var backupResponse in response.Data) {
                                 var key = GetUserBackupKey(backupResponse.EggIncId);
                                 if(backupResponse.Unchanged) {
@@ -195,13 +195,13 @@ namespace EGG9000.Common.Services {
                                         backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion && 
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
-                                        _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
+                                        //_logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
                                         var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
                                         if(kendromedmchannel is not null) {
                                             await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
                                             ContractsAPI.ClientVersion = (uint)_LastClientVersion;
                                         } else {
-                                            _logger.LogError("Unable to get DM channel for Kendrome");
+                                            //_logger.LogError("Unable to get DM channel for Kendrome");
                                         }
                                     }
 
@@ -211,7 +211,7 @@ namespace EGG9000.Common.Services {
                                 }
                             }
                         } catch(Exception e) {
-                            _logger.LogError("Error getting backup from APILink {exception}", e);
+                            //_logger.LogError("Error getting backup from APILink {exception}", e);
                         } finally {
                             throttler.Release();
                         }
@@ -248,15 +248,15 @@ namespace EGG9000.Common.Services {
                         try {
                             await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                             addedUsers.Add(userid);
-                            _logger.LogInformation("Adding user to channel {user}", user.DisplayName);
+                            //_logger.LogInformation("Adding user to channel {user}", user.DisplayName);
                         } catch(Exception e) {
-                            _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                            //_logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
                         }
                     }
                     return addedUsers;
                 }
             } catch(Exception e) {
-                _logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}", e.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
+                //_logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}", e.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
             }
             return new List<ulong>();
         }
@@ -373,7 +373,7 @@ namespace EGG9000.Common.Services {
 
         public async Task StartAsync(CancellationToken cancellationToken) {
             if(_settings.AsyncLoadCache) {
-                _logger.LogInformation("Async Loading Users");
+                //_logger.LogInformation("Async Loading Users");
                 _ = GetUsers();
             } else {
                 await GetUsers();
@@ -381,14 +381,14 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task GetUsers() {
-            _logger.LogInformation("Getting User Backups for Cache");
+           // _logger.LogInformation("Getting User Backups for Cache");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
             var backups = usersTask.SelectMany(x => x.EggIncAccounts);
             if(backups != null) {
                 AddExistingBackups(backups);
             }
-            _logger.LogInformation("Finished Getting User Backups for Cache");
+            //_logger.LogInformation("Finished Getting User Backups for Cache");
 
         }
 

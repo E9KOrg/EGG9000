@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using NLog;
 using NLog.Web;
 
 namespace EGG9000.APILinkSite {
@@ -16,9 +17,6 @@ namespace EGG9000.APILinkSite {
             var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
             logger.Debug("init main");
             try {
-#if DEBUG
-                Log.Alert(Process.GetCurrentProcess().Id.ToString());
-#endif
                 CreateHostBuilder(args).Build().Run();
             } catch(Exception exception) {
                 // NLog: catch setup errors

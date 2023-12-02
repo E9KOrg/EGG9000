@@ -20,11 +20,13 @@ namespace EGG9000.APILinkSite.Controllers {
         private readonly ILogger<HomeController> _logger;
         private IMemoryCache _cache;
         private DiscordBasicService _discord;
+        //private Bugsnag.IClient _bugsnag;
 
         public HomeController(ILogger<HomeController> logger, IMemoryCache memoryCache, DiscordBasicService discord) {
             _logger = logger;
             _cache = memoryCache;
             _discord = discord;
+            //_bugsnag = bugsnag;
         }
         public IActionResult Ping() {
             return Content("Pong");
@@ -63,11 +65,20 @@ namespace EGG9000.APILinkSite.Controllers {
 
             //_cache.Set(request.UserId, backup, DateTimeOffset.Now.AddDays(7));
             //_logger.LogInformation($"Changed: ID {request.UserId} LastBackTime {request.LastBackupTime} NewLastBackupTime {backup.Backup?.Settings?.LastBackupTime}");
-            var customBackup = new CustomBackup(backup.Backup);
-            return new BackupResponse {
-                Backup = customBackup,
-                EggIncId = request.UserId, Unchanged = false
-            };
+            //_bugsnag.Breadcrumbs.Leave($"Attempting to get custombackup for {request.UserId}");
+
+            try {
+                var customBackup = new CustomBackup(backup.Backup);
+                return new BackupResponse {
+                    Backup = customBackup,
+                    EggIncId = request.UserId, Unchanged = false
+                };
+            } catch (Exception e) {
+                _logger.LogError(e, $"Attempted to get custombackup for {request.UserId}");
+                return new BackupResponse {
+                    EggIncId = request.UserId, Unchanged = true
+                };
+            }
         }
 
         public static Task ForEachAsync<T>(IEnumerable<T> source, int dop, Func<T, Task> body) {
@@ -86,12 +97,17 @@ namespace EGG9000.APILinkSite.Controllers {
             List<ulong> addedUsers = new();
             foreach(var userid in coopPermissions.UserIds) {
                 var user = guild.GetUser(userid);
-                try {
-                    await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
-                    addedUsers.Add(userid);
-                    _logger.LogInformation("Adding user to channel {user}", user.DisplayName);
-                } catch(Exception e) {
-                    _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                if(user is null) {
+                    _logger.LogInformation($"Unable to find user {userid}");
+                } else {
+                    _logger.LogInformation($"Attempting to add user {user?.DisplayName}");
+                    try {
+                        await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                        addedUsers.Add(userid);
+                        _logger.LogInformation("Added user to channel {user}", user.DisplayName);
+                    } catch(Exception e) {
+                        _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                    }
                 }
             }
             return Json(addedUsers);
