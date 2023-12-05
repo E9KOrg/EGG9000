@@ -3,11 +3,13 @@ syntax = "proto2";
 package aux;
 
 enum Platform {
+    UNKNOWN_PLATFORM = 0;
     IOS = 1;
     DROID = 2;
 }
 
 enum DeviceFormFactor {
+    UNKNOWN_DEVICE = 0;
     PHONE = 1;
     TABLET = 2;
 }
