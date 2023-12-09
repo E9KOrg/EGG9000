@@ -253,6 +253,17 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
 
+        [SlashCommand(Description = "Try to send a message to the outside-coop-log, daveed testing")]
+        public static async Task OutsideCoopLog(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
+
+            var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
+            var socketGuild = _client.GetGuild(guildFind.Id);
+
+            var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.OutsideCoopLog, new() { Text = "Test message" });
+
+            await command.RespondAsync("Response: " + response);
+        }
+
         [SlashCommand(Description = "Get help from staff, please give details")]
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
