@@ -5,7 +5,7 @@
 	var days2 = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
 }
 
-@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")){
+@if (User.IsInRole("Admin")){
 	<a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
 }
 <a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
