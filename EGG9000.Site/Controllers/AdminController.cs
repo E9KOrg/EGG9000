@@ -285,12 +285,12 @@ namespace EGG9000.Site.Controllers {
             public int FinishedCoops { get; set; }
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> EventCustomization() {
             return View(await _db.EventCustomizations.AsQueryable().OrderByDescending(x => x.Priority).ToListAsync());
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SaveEventCustomization([FromBody] EventCustomization eventCustomization) {
             _db.Entry(eventCustomization).State = EntityState.Modified;
             await _db.SaveChangesAsync();
