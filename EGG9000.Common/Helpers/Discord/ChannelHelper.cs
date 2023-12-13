@@ -46,13 +46,10 @@ namespace EGG9000.Bot.Common.Helpers {
 
         public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(ApplicationDbContext db, DiscordSocketClient _client, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
 
-            var overflowParentDGuild = discordGuild;
-            var overflowParentGuild = await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString()));
-            if(overflowParentGuild is null) overflowParentGuild = dbGuild;
+            var dbGuildProper = await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString())) ?? dbGuild;
+            var discordGuildProper = (dbGuildProper == dbGuild) ? discordGuild : _client.GetGuild(dbGuildProper.Id);
 
-            else overflowParentDGuild = _client.Guilds.FirstOrDefault(g => g.Id == overflowParentGuild.Id) ?? discordGuild;
-
-            var channel = DetermineChannelType(overflowParentGuild, overflowParentDGuild, channelType);
+            var channel = DetermineChannelType(dbGuildProper, discordGuildProper, channelType);
             if(channel is null ) return null;
 
             if(channel.GetType() == typeof(SocketThreadChannel)) {
