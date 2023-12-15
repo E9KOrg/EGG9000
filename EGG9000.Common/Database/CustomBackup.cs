@@ -14,7 +14,6 @@ using Ei;
 using Google.Protobuf.Collections;
 
 using MessagePack;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace EGG9000.Common.Database {
     [MessagePackObject]
