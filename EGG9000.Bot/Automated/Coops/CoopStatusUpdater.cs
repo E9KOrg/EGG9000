@@ -32,7 +32,6 @@ using static Ei.Backup.Types;
 using Microsoft.AspNetCore.Http;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
-using MassTransit.Logging;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
