@@ -32,6 +32,7 @@ using static Ei.Backup.Types;
 using Microsoft.AspNetCore.Http;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
+using MassTransit.Logging;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -739,7 +740,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     );
                     foreach(var userAdded in usersAdded) {
-                        var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser.Id == userAdded);
+                        var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                         if(xref != null) {
                             xref.Xref.AddedToChannel = true;
                         }
@@ -930,6 +931,40 @@ namespace EGG9000.Bot.Automated.Coops {
                         lastMessage += $"\n\nWaiting on the following users to check-in: {string.Join(", ", waitingOn.Select(x => x.DiscordUser?.Mention ?? x.Status.UserName))}";
                     }
 
+
+                    //Checking if users are gusset glitching
+                    var afCheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.ArtifactCheaterThread);
+                    if(afCheaterChannel != null) {
+                        var contractScalar = coop.Contract.Details?.GradeSpecs[((int)coop.League) - 1]?.Modifiers?.FirstOrDefault(m => m.Dimension == Ei.GameModifier.Types.GameDimension.HabCapacity)?.Value ?? 1;
+                        foreach(var u in usersWithStatus.Where(x => x.Xref is not null && !x.Xref.GussetCheatDetected)) {
+                            var farm = u.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
+                            if(farm is null) continue;
+                            /* AFFECT ALL HABS */
+                            double allScalar = 1;
+                            allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "hab_capacity1")?.Level * 0.05 ?? 0); //5% per level
+                            allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "microlux")?.Level * 0.05 ?? 0); //5% per level
+                            allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "grav_plating")?.Level * 0.02 ?? 0); //2% per level
+                            allScalar *= contractScalar; // Indeterminate before runtime
+
+                            /* AFFECT PORTAL HABS */
+                            double portalScalar = 1;
+                            portalScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "wormhole_dampening")?.Level * 0.02 ?? 0); //2% per level
+
+                            var currentChickens = farm.NumChickens;
+                            var scaledMaxChickens = EggIncHabSpace.GetScaledHabSpace(farm, allScalar, portalScalar) + 0.01; //0.01 offset, again for rounding
+
+                            //If they aren't surpassing the scaled limit, they aren't cheating
+                            if(currentChickens <= (scaledMaxChickens * 1.01)) continue; //1% offset for rounding errors
+
+                            var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
+                            if(gusset is null) {
+                                await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.ArtifactCheaterThread, 
+                                    new() { Text = $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.DiscordChannelId}>:\n" +
+                                    $"```\nMax hab space:\t   {(ulong)scaledMaxChickens:n0}\nCurrent chickens:\t{currentChickens:n0}\n```" });
+                                u.Xref.GussetCheatDetected = true;
+                            }
+                        }
+                    }
 
 
                     foreach(var u in usersWithStatus.Where(x => x.Xref is not null)) {
