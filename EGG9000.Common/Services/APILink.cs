@@ -46,15 +46,15 @@ namespace EGG9000.Common.Services {
     }
 
     public class APILink : IHostedService {
-//        //private static string urlBase = "http://localhost:5014/Home/";
+        //        //private static string urlBase = "http://localhost:5014/Home/";
 
-//#if DEBUG
-//        //private static string urlBase = "http://localhost:5014/Home/";
-//        //private static string urlBase = "https://localhost:44316/Home/";
-//        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
-//#else
-//        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
-//#endif
+        //#if DEBUG
+        //        //private static string urlBase = "http://localhost:5014/Home/";
+        //        //private static string urlBase = "https://localhost:44316/Home/";
+        //        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+        //#else
+        //        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+        //#endif
 
 
 
@@ -178,7 +178,7 @@ namespace EGG9000.Common.Services {
                         try {
                             var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
                             if(response.Data is null) {
-                                  //_logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
+                                //_logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
                                 return;
                             }
                             //_logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
@@ -191,8 +191,8 @@ namespace EGG9000.Common.Services {
                                     }
                                 }
                                 if(!backupResponse.Backup.EmptyBackup) {
-                                    if(_ReportUpdatedClientVersion && 
-                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion && 
+                                    if(_ReportUpdatedClientVersion &&
+                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion &&
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
                                         //_logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
@@ -245,12 +245,14 @@ namespace EGG9000.Common.Services {
                     List<ulong> addedUsers = new();
                     foreach(var userid in coopPermissions.UserIds) {
                         var user = guild.GetUser(userid);
-                        try {
-                            await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
-                            addedUsers.Add(userid);
-                            //_logger.LogInformation("Adding user to channel {user}", user.DisplayName);
-                        } catch(Exception e) {
-                            //_logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                        if(user is not null) {
+                            try {
+                                await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                                addedUsers.Add(userid);
+                                //_logger.LogInformation("Adding user to channel {user}", user.DisplayName);
+                            } catch(Exception e) {
+                                //_logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                            }
                         }
                     }
                     return addedUsers;
@@ -381,7 +383,7 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task GetUsers() {
-           // _logger.LogInformation("Getting User Backups for Cache");
+            // _logger.LogInformation("Getting User Backups for Cache");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
             var backups = usersTask.SelectMany(x => x.EggIncAccounts);
