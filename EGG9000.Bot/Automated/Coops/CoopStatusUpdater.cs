@@ -66,7 +66,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
                 //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
                 //coops = coops.Where(x => x.Name.Equals("gasbrink5", StringComparison.OrdinalIgnoreCase)).ToList();
-                coops = coops.Where(x => x._StatusCompressed is null).ToList();
+                //coops = coops.Where(x => x._StatusCompressed is null).ToList();
 #endif
 
                 var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
