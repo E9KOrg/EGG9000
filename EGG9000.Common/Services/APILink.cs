@@ -70,8 +70,8 @@ namespace EGG9000.Common.Services {
         private APILinkOptions _settings;
 
 #if DEBUG
-        //private string urlBase => _configuration.GetConnectionString("APILinkURL");
-        private string urlBase => "https://localhost:44316/Home/";
+        private string urlBase => _configuration.GetConnectionString("APILinkURL");
+        //private string urlBase => "https://localhost:44316/Home/";
 #else
         private string urlBase => _configuration.GetConnectionString("APILinkURL");
 #endif
@@ -239,28 +239,34 @@ namespace EGG9000.Common.Services {
                 if(guild.Users.Any(x => x.Id == 1174941840684892352)) {
                     var url = $"{urlBase}AddUsersToChannel";
                     var response = await SendAsync<List<ulong>>(url, coopPermissions, HttpMethod.Post);
+                    if(response.Data is null) {
+                        _logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}. Adding via EGG9000", response.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
+                        return new List<ulong>();
+                    }
                     return response.Data;
                 } else {
-                    var coopChannel = guild.GetChannel(coopPermissions.ChannelId) as SocketTextChannel;
-                    List<ulong> addedUsers = new();
-                    foreach(var userid in coopPermissions.UserIds) {
-                        var user = guild.GetUser(userid);
-                        if(user is not null) {
-                            try {
-                                await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
-                                addedUsers.Add(userid);
-                                //_logger.LogInformation("Adding user to channel {user}", user.DisplayName);
-                            } catch(Exception e) {
-                                //_logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
-                            }
-                        }
-                    }
-                    return addedUsers;
+                    return await AddUsersToChannelWithEGG900(coopPermissions, guild);
                 }
             } catch(Exception e) {
                 //_logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}", e.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
             }
             return new List<ulong>();
+        }
+
+        public async Task<List<ulong>> AddUsersToChannelWithEGG900(CoopPermissions coopPermissions, SocketGuild guild) {
+            var coopChannel = guild.GetChannel(coopPermissions.ChannelId) as SocketTextChannel;
+            List<ulong> addedUsers = new();
+            foreach(var userid in coopPermissions.UserIds) {
+                var user = guild.GetUser(userid);
+                try {
+                    await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                    addedUsers.Add(userid);
+                    //_logger.LogInformation("Adding user to channel {user}", user.DisplayName);
+                } catch(Exception e) {
+                    //_logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                }
+            }
+            return addedUsers;
         }
 
         public async Task<CustomBackup> GetBackup(string UserId) {
