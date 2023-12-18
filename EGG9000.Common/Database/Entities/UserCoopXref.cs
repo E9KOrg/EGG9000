@@ -51,6 +51,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool PingOnFinished { get; set; }
         public bool CoopFullWarning { get; set; }
         public ulong Group { get; set; }
+        public bool GussetCheatDetected { get; set; } = false;
 
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]

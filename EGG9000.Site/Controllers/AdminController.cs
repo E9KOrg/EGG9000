@@ -522,7 +522,9 @@ namespace EGG9000.Site.Controllers {
                 return new ScoreUser {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
-                    RunningScore = y.xref.RunningScore.Value, Grade = (Ei.Contract.Types.PlayerGrade)y.League
+                    RunningScore = y.xref.RunningScore.Value, 
+                    Grade = (Ei.Contract.Types.PlayerGrade)y.League,
+                    EggIncId = y.xref?.EggIncId ?? ""
                 };
             });
 
@@ -545,7 +547,9 @@ namespace EGG9000.Site.Controllers {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
                     Score = y.Score,
-                    DiscordUser = discordUser, Grade = (Ei.Contract.Types.PlayerGrade)y.League
+                    DiscordUser = discordUser, 
+                    Grade = (Ei.Contract.Types.PlayerGrade)y.League,
+                    EggIncId = y.xref?.EggIncId ?? ""
                 };
             });
                 
@@ -624,6 +628,7 @@ namespace EGG9000.Site.Controllers {
             public float Score { get; set; }
             public IGuildUser DiscordUser { get; set; }
             public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+            public string EggIncId { get; set; }
         }
 
         public async Task<IActionResult> Sleepers() {
