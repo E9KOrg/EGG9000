@@ -88,7 +88,7 @@ namespace EGG9000.Common.Helpers {
 
             public bool PotentialBoxCarry { get; set; }
             public UserCoopXref Xref { get; set; }
-            public ContributionInfo ContributionInfo { get; set; }
+            public Ei.ContractCoopStatusResponse.Types.ContributionInfo ContributionInfo { get; set; }
         }
 
         public static string GetTimeRemaining(double targetAmount, double currentRate, double currentAmount) {
