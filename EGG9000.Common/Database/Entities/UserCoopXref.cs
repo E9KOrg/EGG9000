@@ -1,5 +1,7 @@
 ﻿using MessagePack;
 
+using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -27,6 +29,30 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? LastStatusTime { get; set; }
         public DateTimeOffset? SleepingWarningTime { get; set; }
         public string Status { get; set; }
+
+        public byte[] _lastStatusByte { get; set; }
+        [NotMapped]
+        private ContributionInfoCompact _lastStatus { get; set; }
+        [NotMapped]
+        public ContributionInfoCompact LastStatus {
+            get {
+                if(Status != null) {
+                    var status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status);
+                    _lastStatus = new ContributionInfoCompact (status);
+                    Status = null;
+                }
+                if(_lastStatus != null)
+                    return _lastStatus;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _lastStatus = MessagePackSerializer.Deserialize<ContributionInfoCompact>(_sleepTrackingByte, lz4Options);
+                return _lastStatus;
+            }
+            set {
+                _lastStatus = value;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _lastStatusByte = MessagePackSerializer.Serialize(value, lz4Options);
+            }
+        }
 
         public ulong SleepingDiscordMessageID { get; set; }
         public int HoursSleeping { get; set; }
@@ -101,6 +127,27 @@ namespace EGG9000.Common.Database.Entities {
             CoopSetting = CoopSetting;
         }
     }
+    [MessagePackObject]
+    public class ContributionInfoCompact {
+        [Key(0)]
+        public double SoulPower { get; set; }
+        [Key(1)]
+        public double ContributionAmount { get; set; }
+        [Key(2)]
+        public uint BoostTokensSpent { get; set; }
+        [Key(3)]
+        public string UserName { get; set; }
+
+        public ContributionInfoCompact() {
+
+        }
+        public ContributionInfoCompact(Ei.ContractCoopStatusResponse.Types.ContributionInfo info) {
+            SoulPower = info.SoulPower;
+            ContributionAmount = info.ContributionAmount;
+            BoostTokensSpent = info.BoostTokensSpent;
+        }
+    }
+
     [MessagePackObject]
     public class SleepTracking {
         [Key(0)]

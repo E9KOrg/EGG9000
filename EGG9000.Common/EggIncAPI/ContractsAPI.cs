@@ -290,9 +290,9 @@ namespace EGG9000.Bot.EggIncAPI {
                         coopStatus.Success = true;
                         if(xrefs != null && coopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                             var departed = coopStatus.Participants.First(x => x.UserName == "[departed]");
-                            var matchingUser = xrefs.Where(x => !string.IsNullOrEmpty(x.Status)).Select(x => JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(x.Status)).FirstOrDefault(x => x.ContributionAmount == departed.ContributionAmount);
+                            var matchingUser = xrefs.Where(x => x.LastStatus is not null).FirstOrDefault(x => x.LastStatus.ContributionAmount == departed.ContributionAmount);
                             if(matchingUser is not null) {
-                                departed.UserName = matchingUser.UserName;
+                                departed.UserName = matchingUser.LastStatus.UserName;
                             }
                         }
                         return coopStatus;

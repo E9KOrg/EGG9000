@@ -560,7 +560,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
 
                         if(user.Xref != null) {
-                            user.Xref.Status = JsonConvert.SerializeObject(user.Status);
+                            user.Xref.LastStatus = user.Status is not null ? new ContributionInfoCompact(user.Status) : null;
                         }
 
                     }
@@ -598,7 +598,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 JoinedCoop = true,
                                 //LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow,
                                 Starter = false,
-                                Status = JsonConvert.SerializeObject(user.CoopStatus),
+                                LastStatus = user.CoopStatus is not null ? new ContributionInfoCompact(user.CoopStatus) : null,
                                 WasAssigned = false
                             };
                             _db.UserCoopXrefs.Add(xref);

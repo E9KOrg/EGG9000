@@ -148,7 +148,7 @@ namespace EGG9000.Bot.Commands {
                 //    CoopIdentifier = coop.Name,
                 //    PlayerIdentifier = xref.EggIncId,
                 //}, xref.EggIncId);
-                await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId);
+                await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
             }
 
 

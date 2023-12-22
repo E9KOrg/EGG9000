@@ -172,16 +172,16 @@ namespace EGG9000.Common.Services {
                         return null;
 
                     await throttler.WaitAsync();
-                    //_logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
+                    _logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
                     i++;
                     tasks.Add(Task.Run(async () => {
                         try {
                             var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
                             if(response.Data is null) {
-                                //_logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
+                                _logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
                                 return;
                             }
-                            //_logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
+                            _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
                             foreach(var backupResponse in response.Data) {
                                 var key = GetUserBackupKey(backupResponse.EggIncId);
                                 if(backupResponse.Unchanged) {
@@ -195,13 +195,13 @@ namespace EGG9000.Common.Services {
                                         backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion &&
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
-                                        //_logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
+                                        _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
                                         var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
                                         if(kendromedmchannel is not null) {
                                             await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
                                             ContractsAPI.ClientVersion = (uint)_LastClientVersion;
                                         } else {
-                                            //_logger.LogError("Unable to get DM channel for Kendrome");
+                                            _logger.LogError("Unable to get DM channel for Kendrome");
                                         }
                                     }
 
@@ -211,7 +211,7 @@ namespace EGG9000.Common.Services {
                                 }
                             }
                         } catch(Exception e) {
-                            //_logger.LogError("Error getting backup from APILink {exception}", e);
+                            _logger.LogError("Error getting backup from APILink {exception}", e);
                         } finally {
                             throttler.Release();
                         }
