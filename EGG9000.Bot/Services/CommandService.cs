@@ -191,7 +191,7 @@ namespace EGG9000.Bot.Services {
                         }
                     }
 
-                    //_logger.LogInformation("Running command {command} for user: {username}", command.Name, arg.User.Username);
+                    _logger.LogInformation("Running command {command} for user: {username}", command.Name, arg.User.Username);
                     await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
                 } catch(Exception e) {
                     try {
