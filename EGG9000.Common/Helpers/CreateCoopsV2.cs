@@ -17,7 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
-        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group, bool allowAllGrades = false) {
+        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group, bool allowAllGrades) {
             var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             string EIID = null;
@@ -84,7 +84,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades = false) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades) {
             userid ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -132,7 +132,7 @@ namespace EGG9000.Common.Helpers {
 
             return true;
         }
-        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades = false) {
+        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades) {
             var request = new Ei.CreateCoopRequest {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coop.Name.ToLower(),

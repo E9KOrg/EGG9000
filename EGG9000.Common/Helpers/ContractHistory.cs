@@ -30,16 +30,16 @@ namespace EGG9000.Common.Helpers {
                     var archiveFarm = xref.User.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Backup?.ArchivedFarms.FirstOrDefault(x => x.CoopId == xref.Coop.Name.ToLower());
 
 
-                    Ei.ContractCoopStatusResponse.Types.ContributionInfo lastStatus = null;
+                    ContributionInfoCompact lastStatus = null;
 
-                    if(xref.Status is not null)
-                        lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+                    if(xref.LastStatus is not null)
+                        lastStatus = xref.LastStatus;
 
-                    if(lastStatus is null)
-                        lastStatus = coopStatus.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
+                    if(lastStatus is null && coopStatus.Contributors.Any(x => x.UserId == xref.EggIncId))
+                        lastStatus = new ContributionInfoCompact(coopStatus.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId));
 
-                    if(lastStatus is null)
-                        lastStatus = coopStatus.Contributors.FirstOrDefault(x => x.ContributionAmount == archiveFarm?.ContributionAmount);
+                    if(lastStatus is null && coopStatus.Contributors.Any(x => x.ContributionAmount == archiveFarm?.ContributionAmount))
+                        lastStatus = new ContributionInfoCompact(coopStatus.Contributors.FirstOrDefault(x => x.ContributionAmount == archiveFarm?.ContributionAmount));
                     xrefcount++;
                     if(lastStatus is null) {
                         skipped++;
