@@ -179,7 +179,7 @@ namespace EGG9000.Bot.Automated {
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
 
-                RestUserMessage message;
+                RestUserMessage message = null;
                 var notification = customization.Settings.Notifications?
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
@@ -198,11 +198,16 @@ namespace EGG9000.Bot.Automated {
                     }
                 } else {
                     //Only send to non-CC channel, with ping
-                    message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                    if(eventChannel != null) {
+                        //message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        message = await eventChannel.SendMessageAsync(notification != null ? $"" : null, embed: embed);
+                    }
                 }
 
+                
                 //Always add the message id
-                messageIds.Add(message.Id);
+                if(message != null)
+                    messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
 
