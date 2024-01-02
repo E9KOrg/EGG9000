@@ -301,7 +301,7 @@ namespace EGG9000.Common.Database {
                     a.Spec.Level == x.Artifact.Spec.Level &&
                     a.Spec.Rarity == x.Artifact.Spec.Rarity
                 );
-                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
+                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0};
             }).ToList();
 
             /* Setup for artifact sets */
@@ -338,7 +338,7 @@ namespace EGG9000.Common.Database {
                     a.Spec.Level == x.Artifact.Spec.Level &&
                     a.Spec.Rarity == x.Artifact.Spec.Rarity
                 )
-            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count }));
+            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count}));
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
