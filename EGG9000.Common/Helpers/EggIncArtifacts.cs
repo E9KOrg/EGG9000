@@ -579,7 +579,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             var stonesAreEqual = (Stones?.Count ?? 0) == (other.Stones?.Count ?? 0);
-            if(stonesAreEqual) {
+            if(stonesAreEqual && Stones?.Count > 0) {
                 for(var i = 0; i < (Stones?.Count ?? 0); i++) {
                     if(!other.Stones[i].Equals(Stones[i])) {
                         stonesAreEqual = false;
@@ -588,7 +588,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var match = Artifact == other.Artifact && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+            var match = Artifact == other.Artifact && Rarity == other.Rarity && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
             return match;
         }
 

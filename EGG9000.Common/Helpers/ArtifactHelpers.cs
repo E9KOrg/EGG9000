@@ -1,19 +1,13 @@
 ﻿using EGG9000.Common.Database.Entities;
 using Ei;
-using Google.Protobuf.WellKnownTypes;
-using MassTransit;
 using SixLabors.Fonts;
-using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static Ei.Backup.Types;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Drawing.Processing;
@@ -21,6 +15,12 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using System.IO;
 
 namespace EGG9000.Common.Helpers {
+
+    public class InventoryArtifactCount {
+        public ArtifactCount AF { get; set; }
+        public bool Skip { get; set; } = false;
+    }
+
     public static class ArtifactHelpers {
 
         public static string GetArtifactFairnessScoreString(List<ArtifactCount> ArtifactHall) {
@@ -260,27 +260,20 @@ namespace EGG9000.Common.Helpers {
 
         public static List<ArtifactCount> GetOrderedInventory(EggIncAccount account) {
             if(account is null || account.Backup is null || account.Backup.ArtifactHall is null) return null;
-            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).ToList().OrderByDescending(i => i.Artifact.Rarity).ToList();
-            var rarityGroupedAfs = orderedList.GroupBy(a => a.Artifact.Rarity).ToList();
-            orderedList = new List<ArtifactCount>();
+            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).ToList().OrderByDescending(i => i.Artifact.Rarity).ToList().Select(a => new InventoryArtifactCount() {
+                AF = a, Skip = false
+            }).ToList();
+            var rarityGroupedAfs = orderedList.GroupBy(a => a.AF.Artifact.Rarity).ToList();
+            orderedList = new List<InventoryArtifactCount>();
             foreach(var rarityGrouping in rarityGroupedAfs) {
-                orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.Artifact.Artifact.Replace(" Fragment", "")) + (g.Artifact.Artifact.Contains("Fragment") ? -0.05 : 0) + 0.05 * g.Artifact.Tier + 0.01 * g.Artifact.Stones.Count).ToList());
+                orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.AF.Artifact.Artifact.Replace(" Fragment", "")) + (g.AF.Artifact.Artifact.Contains("Fragment") ? -0.05 : 0) + 0.05 * g.AF.Artifact.Tier + 0.01 * g.AF.Artifact.Stones.Count).ToList());
             }
-            var skipIndexes = new List<int>();
-            foreach(var acount in orderedList) {
-                var selfIndex = orderedList.IndexOf(acount);
-                if(acount.Artifact.Stones.Count > 0 || skipIndexes.Contains(selfIndex)) continue;
-
-                var others = orderedList.Where(a => a.Artifact.Equals(acount.Artifact) && orderedList.IndexOf(a) != selfIndex).ToList();
-                foreach(var other in others) skipIndexes.Add(orderedList.IndexOf(other));
-                acount.Count += others.Count;
+            foreach(var acount in orderedList.Where(a => !a.Skip && a.AF.Artifact.Stones?.Count == 0)) {
+                var others = orderedList.Where(a => acount.AF.Artifact.Equals(a.AF.Artifact) && orderedList.IndexOf(a) != orderedList.IndexOf(acount)).ToList();
+                foreach(var other in others) other.Skip = true;
+                acount.AF.Count += others.Count;
             }
-            var removed = 0;
-            foreach(var skipIndex in skipIndexes) {
-                orderedList.RemoveAt(skipIndex - removed);
-                removed++;
-            }
-            return orderedList;
+            return orderedList.Where(a => !a.Skip).Select(a => a.AF).ToList();
         }
 
         public class InventoryCreatorConfig {
