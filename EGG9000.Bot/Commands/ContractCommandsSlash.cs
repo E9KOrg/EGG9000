@@ -764,8 +764,8 @@ namespace EGG9000.Bot.Commands {
                 case PotentialCoopCode.NoSpots1:
                 case PotentialCoopCode.NoSpots2:
                     _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    var createNewCoopComponent = new ComponentBuilder().WithButton("Create New Coop", customId: $"NoSpotsCreateCoop:{guildContract.ContractID}|{account.Id}", emote: emote).Build();
-                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}"); x.Components = createNewCoopComponent; });
+                    //var createNewCoopComponent = new ComponentBuilder().WithButton("Create New Coop", customId: $"NoSpotsCreateCoop:{guildContract.ContractID}|{account.Id}", emote: emote).Build();
+                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}"); /*x.Components = createNewCoopComponent;*/ });
                     return;
                 default:
                     var coop = newCoopResponse.FoundCoop;
