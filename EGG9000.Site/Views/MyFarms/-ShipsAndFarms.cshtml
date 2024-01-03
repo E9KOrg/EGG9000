@@ -17,6 +17,8 @@
             <td>@artifact.Artifact</td>
             @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
                 <td>@Math.Round((artifact.Value) * 100)%</td>
+            } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
+                <td>-@artifact.Value</td>
             } else if (artifact.Additive) {
                 <td>+@artifact.Value</td>
             } else if (+artifact.Value < 2) {
