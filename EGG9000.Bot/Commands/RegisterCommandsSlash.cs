@@ -518,6 +518,23 @@ namespace EGG9000.Bot.Commands {
         }
 
 
+        /*[SlashCommand(Description = "Lookup who (if anyone) has an EI number registered to their account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task WhoIs(FauxCommand command, ApplicationDbContext db, [SlashParam] string ei, [SlashParam(Required = false)] bool showInChannel = false) {
+            ei = ei.ToUpper();
+            if(!ei.StartsWith("EI")) ei = "EI" + ei;
+            if(!new Regex(@"^EI[0-9]{16}$").IsMatch(ei)) {
+                await command.RespondAsync(embed: EmbedError($"ID `{ei}` is not in the correct format: EI + 16 numbers."), ephemeral: !showInChannel);
+                return;
+            }
+            await command.RespondAsync(embed: EmbedInProgress("Working..."), ephemeral: !showInChannel);
+
+            //Todo once we can query by EI account
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u._eggIncIds.Contains(ei));
+
+            if(dbUser is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Could not find a user registered with the ID `{ei}`"); });
+            else await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"The ID `{ei}` is registered to the account @<{dbUser.DiscordId}>"); });
+        }*/
+
         [SlashCommand(Description = "Get a users status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
             return _userstatus(command, db, _client, apiLink, user, true, ShowInChannel);

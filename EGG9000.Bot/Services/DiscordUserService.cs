@@ -177,6 +177,8 @@ namespace EGG9000.Common.Services {
                 return;
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
+            await RegisterCommandsSlash.CleanWelcomeChannel(guild, _discord, user);
+
             if(guild.Id != dbuser?.GuildId)
                 return;
 
@@ -185,7 +187,6 @@ namespace EGG9000.Common.Services {
                 dbuser.GuildId = 0;
                 await db.SaveChangesAsync();
             }
-            await RegisterCommandsSlash.CleanWelcomeChannel(guild, _discord, user);
         }
 
     }
