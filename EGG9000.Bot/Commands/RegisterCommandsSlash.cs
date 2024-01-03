@@ -453,13 +453,13 @@ namespace EGG9000.Bot.Commands {
 
             var faqChannel = ChannelHelper.DetermineChannelType(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.FaqChannel);
             var faqMention = faqChannel != null ? (faqChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)faqChannel).Mention : ((SocketThreadChannel)faqChannel).Mention) : null;
-            var faqText = (faqMention != null && dbuser.EggIncAccounts.Count == 1) ? $"When you have a chance, read over {faqMention} to get an idea on how the server and bot functions" : "";
+            var faqText = (faqMention != null && dbuser.EggIncAccounts.Count == 1) ? $" When you have a chance, read over {faqMention} to get an idea on how the server and bot functions." : "";
 
             //if(checkLeague.Role != null) {
             //    roleText += $" Your Grade is {checkLeague.Role.Name}";
             //}
 
-            var compiledMessage = $"Welcome {user.Mention}! {roleText}. {faqText}.";
+            var compiledMessage = $"Welcome {user.Mention}! {roleText}.{faqText}";
             var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = compiledMessage }, logger);
             if(response == null) await command.Channel.SendMessageAsync(compiledMessage);
 
