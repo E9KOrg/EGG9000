@@ -14,16 +14,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 
 namespace EGG9000.Bot.Commands {
     public class ChasingCommand {
         [SlashCommand(Description = "Show you players ahead and behind you.", AllowInDMs = true)]
         public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord, ILogger logger) {
-            await command.RespondAsync("Getting backups...");
+            await command.DeferAsync();
 
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
                 return;
             }
 
@@ -35,7 +36,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var account in user.EggIncAccounts) {
                     builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}");
                 }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); x.Embed = null; });
             }
 
             user.UpdateAccounts();

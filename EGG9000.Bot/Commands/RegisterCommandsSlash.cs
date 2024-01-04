@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task _RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, ulong userid) {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == userid);
             if(user == null) {
-                await command.RespondAsync($"⚠️ERROR: Cannot find user");
+                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find user"));
                 return;
             } else if(user.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 user.RemoveID(eggincid);
@@ -129,10 +129,10 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
-            await command.RespondAsync("Working...");
+            await command.DeferAsync();
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Command can only be used in a co-op channel");
+                await command.ModifyOriginalResponseAsync( x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
             }
             var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == targetUser.Id);
@@ -281,11 +281,11 @@ namespace EGG9000.Bot.Commands {
 
 
             if(Response == null || Response.Farms == null || Response.Farms.Count == 0) {
-                await command.RespondAsync($" {command.User.Mention} Error:  Possibly wrong EggInc ID**", ephemeral: true);
+                await command.RespondAsync("", embed: EmbedError("Possibly wrong EggInc ID"), ephemeral: true);
                 return;
             }
             if(Response.EggIncId != eggincid) {
-                await command.RespondAsync($"Error matching ID {eggincid} - {Response.EggIncId}", ephemeral: true);
+                await command.RespondAsync("", embed: EmbedError($"Error matching ID {eggincid} - {Response.EggIncId}"), ephemeral: true);
                 return;
             }
 
@@ -343,10 +343,10 @@ namespace EGG9000.Bot.Commands {
                             if(thread is not null) {
                                 await thread.SendMessageAsync($"{user.Mention} attempted to register with a banned EggInc ID `{eggincid}` in <#{command.Channel.Id}>");
                             }
-                            await command.ModifyOriginalResponseAsync(m => m.Content = $"{user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+                            await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` has been banned from registering with this server."); });
                         } else {
                             var staffMention = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.CallStaffTagRole).Id.ToString() ?? "";
-                            await command.ModifyOriginalResponseAsync(m => m.Content = $" {(staffMention is not null ? "<@&" + staffMention + ">" : "")} {user.Mention} Error:  EggInc ID `{eggincid}` has been banned from registering with this server.");
+                            await command.ModifyOriginalResponseAsync(m => { m.Content = staffMention is not null ? "<@&" + staffMention + ">" : ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` has been banned from registering with this server."); });
                         }
                         return;
                     }
@@ -358,7 +358,7 @@ namespace EGG9000.Bot.Commands {
 
             var existingUsers = await db.DBUsers.Where(x => x.GuildId == guildObj.Id && x.DiscordId != command.User.Id).ToListAsync();
             if(existingUsers.Any(u => u.EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $"{user.Mention} Error:  EggInc ID `{eggincid}` is already registered with this server. Reach out to staff if you believe this is an error.");
+                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with this server. Reach out to staff if you believe this is an error."); });
                 return;
             }
 
@@ -374,7 +374,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(Response?.Farms == null || Response.Farms.Count == 0) {
-                await command.ModifyOriginalResponseAsync(m => m.Content = $" {user.Mention} Error:  Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by numbers. **You can also send a screenshot and someone will help you register.**");
+                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers. **You can also send a screenshot and someone will help you register.**"); });
                 return;
             }
             var addedUser = false;
@@ -392,7 +392,7 @@ namespace EGG9000.Bot.Commands {
                 addedUser = true;
             } else {
                 if(dbuser.EggIncAccounts.Any(y => y.Id == Response.EggIncId)) {
-                    await command.ModifyOriginalResponseAsync(m => m.Content = $"You are already registered with the bot. {user.Mention}");
+                    await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"You have already registered this EggInc ID with the bot."); });
                     return;
                 }
                 if(dbuser.EggIncAccounts.Count == 0) {
@@ -548,7 +548,7 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - User not registered", ephemeral: !showInChannel);
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DB object for <@{user.Id}>"), ephemeral: !showInChannel);
                 return;
             }
 
@@ -719,7 +719,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
+                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
             }
 
             dbuser.TempDisabled = true;
@@ -732,7 +732,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
+                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
             }
 
             dbuser.TempDisabled = false;
@@ -783,7 +783,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task ShowEB(FauxCommand command, ApplicationDbContext db) {
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
-                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
+                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
                 return;
             }
             if(dbUser.showEB) {
@@ -810,7 +810,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task HideEB(FauxCommand command, ApplicationDbContext db) {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync($"⚠️ERROR: Cannot find database user");
+                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
             }
 
             user.showEB = false;

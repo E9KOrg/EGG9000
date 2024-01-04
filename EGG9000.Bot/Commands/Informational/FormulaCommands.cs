@@ -1,29 +1,15 @@
-﻿using Discord;
-using Discord.WebSocket;
-using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
-using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
-using EGG9000.Common.Extensions;
-using EGG9000.Common.JsonData.EiAfxData;
-using static Ei.Backup.Types;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 
 namespace EGG9000.Bot.Commands {
     public static class ForumlaCommands {
@@ -40,7 +26,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.RespondAsync(content: "", embed: EmbedError("Unable to find backups for this user"));
                 return;
             }
 
@@ -110,7 +96,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Getting account backups...");
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.ModifyOriginalResponseAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.RespondAsync(content: "", embed: EmbedError("Unable to find backups for this user"));
                 return;
             }
 
@@ -186,12 +172,12 @@ namespace EGG9000.Bot.Commands {
                     seValue = double.Parse(SE.TrimEnd('s')) * 1e21;
                     break;
                 default:
-                    await command.RespondAsync("⚠️ERROR: Invalid SE value: must end with q, Q, or s");
+                    await command.RespondAsync(content: "", embed: EmbedError("Invalid SE value: must end with q, Q, or s"));
                     return;
             }
 
             if(PE <= 0 || PE > 1000) {
-                await command.RespondAsync("⚠️ERROR: Invalid PE value");
+                await command.RespondAsync(content: "", embed: EmbedError("Invalid PE value: must be a positive integer less than 1000."));
                 return;
             }
 

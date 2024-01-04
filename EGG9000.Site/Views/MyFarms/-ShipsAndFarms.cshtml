@@ -1,6 +1,7 @@
 ﻿@using Discord.WebSocket;
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
+@using System.Text;
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @using static Ei.MissionInfo.Types;
 @inject DiscordSocketClient DiscordClient
@@ -10,6 +11,16 @@
     string properCaseAndSuffix(string inputString, int number){
         var suffix = (number == 0 || number > 1) ? "s" : "";
         return inputString.FirstCharToUpper() + suffix;
+    }
+
+    string properSpacing(string input) {
+        StringBuilder result = new StringBuilder(input.Length * 2);
+        result.Append(input[0]); // Add the first character as is
+        for (int i = 1; i < input.Length; i++) {
+            if (char.IsUpper(input[i])) result.Append(' ');
+            result.Append(input[i]);
+        }
+        return result.ToString();
     }
 
     void artifactTemplate(EggIncArtifactInstance artifact) {
@@ -26,7 +37,7 @@
             } else {
                 <td>@(artifact.Value)x</td>
             }
-            <td>@artifact.Boost</td>
+            <td>@properSpacing(artifact.Boost.ToString())</td>
         </tr>
     }
 
@@ -125,6 +136,14 @@
         color: gray;
     }
 
+    .tooltip-text .bootstrap {
+        color: black;
+    }
+
+    .tooltip-text .bootstrap-dark {
+        color: #ccc;
+    }
+
     .tooltip-custom {
         position: relative;
         display: inline-block;
@@ -153,7 +172,7 @@
         background-color: rgba(33, 37, 41, 0.95);
     }
     .tooltiptext-custom .bootstrap {
-        background-color: rgba(130, 135, 140, 0.95);
+            background-color: rgba(235, 239, 242, 0.95);
     }
 
     .bootstrap-dark .speech-bubble {
@@ -161,7 +180,7 @@
     }
 
     .bootstrap .speech-bubble {
-        background-color: rgba(130, 135, 140, 0.95);
+        background-color: rgba(235, 239, 242, 0.95);
     }
 
     .speech-bubble {
@@ -183,8 +202,12 @@
             border-color: #ccc transparent transparent transparent;
         }
 
-    .gray-text-half-margin, .gray-text {
+    .gray-text-half-margin .bootstrap-dark, .gray-text .bootstrap-dark {
         color: lightgray;
+    }
+
+    .gray-text-half-margin .bootstrap, .gray-text .bootstrap {
+        color: darkgray;
     }
 
     .mission-progress-blue {
@@ -659,8 +682,8 @@
                 }
             </tbody>
         </table>
-        <span id="do-tt-@index" style="color: #ccc">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
-        <button class="btn-primary" id="mo-tt-@index" style="color: #ccc; margin-bottom: 10px;" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
+        <span id="do-tt-@index" class="tooltip-text">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
+        <button class="btn-primary tooltip-text" id="mo-tt-@index" style="margin-bottom: 10px;" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
     </div>
     <div id="asc-planner-cont" style="margin-left: 0px; width: auto"> 
         <table id="asc-planner-table" class="table card table-sm" style="table-layout: auto; display: table;">

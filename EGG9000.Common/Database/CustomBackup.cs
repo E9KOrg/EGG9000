@@ -314,10 +314,7 @@ namespace EGG9000.Common.Database {
                 var afxInstances = new List<EggIncArtifactInstance>();
                 foreach(var id in afxSetItems) {
                     var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == id);
-                    if(x is null) {
-                        Console.WriteLine($"No item found with id {id} in inventory.");
-                        continue;
-                    }
+                    if(x is null) continue;
 
                     var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
                     if(artifact is null) continue;
@@ -327,9 +324,6 @@ namespace EGG9000.Common.Database {
                     afxInstances.Add(artifact);
                 }
                 if(afxInstances.Count == afxSetItems.Count) afxSetsList.Add(afxInstances);
-                else {
-                    Console.WriteLine("Counts were not the same, skipping...");
-                }
             }
             ArtifactSets = afxSetsList;
 
