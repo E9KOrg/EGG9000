@@ -40,10 +40,10 @@ namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            await command.RespondAsync("Getting backups...");
+            await command.DeferAsync();
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
                 return;
             }
 
@@ -66,8 +66,9 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(backup.EarningsBonus == 0) {
-                    builder.AddField("Error", "The API is not responding correctly.\nPlease try again later.", true);
-                    logger.LogWarning("Error: TrackEB 0 EB detected for {username}", backup.UserName ?? id.Name ?? id.Id);
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is not responding correctly.\nPlease try again later."); });
+                    logger.LogWarning("Warning: TrackEB 0 EB detected for {username}", backup.UserName ?? id.Name ?? id.Id);
+                    return;
                 } else {
                     builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
 
@@ -98,15 +99,16 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "How many SE/PE needed for next rank up", AllowInDMs = true)]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
-            await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
+            await command.DeferAsync(ephemeral: !ShowInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
                 return;
             }
 
-            var builder = new EmbedBuilder();
-            builder.Title = $"Next Rank Details";
+            var builder = new EmbedBuilder() {
+                Title = "Next Rank Details"
+            };
             foreach(var id in user.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)
@@ -165,7 +167,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels");
+                await command.RespondAsync(content: "", embed: EmbedError($"Command only works in co-op channels"));
                 return;
             }
 
@@ -198,7 +200,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 return;
             }
 
-            await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
+            await command.RespondAsync(content: "", embed: EmbedError($"Command only works in contract or co-op channels"));
         }
 
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]

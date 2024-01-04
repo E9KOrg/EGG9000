@@ -27,6 +27,7 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Bot.Common.Helpers;
+using System.Diagnostics;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
@@ -95,7 +96,8 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit removed for {user.Mention}, they currently have {count} merits");
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -120,7 +122,8 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit info for {targetUser.Mention}\n{meritDesc}");
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -146,7 +149,8 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 

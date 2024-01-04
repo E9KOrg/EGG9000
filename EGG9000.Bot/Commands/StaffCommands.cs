@@ -48,13 +48,14 @@ namespace EGG9000.Bot.Commands {
         public static async Task MarkAFSClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
-            if(userid is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: User id could not be found from param");
+            if(userid is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User id could not be found from param"); });
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
-            if(dbuser is null) await command.ModifyOriginalResponseAsync($"⚠︎ Error: DB user could not be found from user ID {userid}");
-            var account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])];
+            if(dbuser is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID `{userid}`"); });
+            var index = int.Parse(useraccount.Split("|")[1]);
+            var account = dbuser.EggIncAccounts[index];
 
             if(account is null) {
-                await command.RespondAsync($"⚠︎ Error: User account for {userid} could not be found");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account `{index}` for <@{userid}> could not be found"); });
             } else {
                 var identifier = string.IsNullOrEmpty(account.Name) ? account.Id : account.Name;
 #if DEV9002
@@ -120,7 +121,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync(userList);
             } catch(Exception ex) {
-                await command.RespondAsync($"⚠️ERROR: Unable to parse role `{role}`, {ex.Message}");
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse role `{role}`.\n\n**Message**\n{ex.Message}"));
                 return;
             }
         }
@@ -129,7 +130,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task LocateCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] string coopname = "", [SlashParam(Required = false)] SocketChannel contractchannel = null) {
             //Coop name was not passed correctly, error out
             if(string.IsNullOrEmpty(coopname) || string.IsNullOrWhiteSpace(coopname)) {
-                await command.RespondAsync($"⚠️ERROR: Unable to parse the coop name `{coopname}`. Check you've entered a value?", ephemeral: true);
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse the coop name `{coopname}`. Check you've entered a value?"), ephemeral: true);
                 return;
             } else coopname = coopname.ToLower(); //To-lower it
 
@@ -148,7 +149,7 @@ namespace EGG9000.Bot.Commands {
 
             //If it can't be found, error out
             if(findCoop is null) {
-                await command.RespondAsync($"⚠️ERROR: Unable to find a coop named `{coopname + (contractchannel is null ? "" : $"for the contract {contractchannel}")}`", ephemeral: true);
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find a coop named `{coopname + (contractchannel is null ? "" : $"for the contract {contractchannel}")}`"), ephemeral: true);
                 return;
             }
 
@@ -189,14 +190,14 @@ namespace EGG9000.Bot.Commands {
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
             } catch(Exception ex) {
-                await command.RespondAsync($"⚠️ERROR: Unable to parse the timespan `{timespan}`, {ex.Message}");
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse the timespan `{timespan}`, {ex.Message}"));
                 return;
             }
             await command.DeferAsync();
 
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = $"⚠️ERROR: Unable to find user");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError("Unable to find user"); });
                 return;
             }
 
@@ -270,9 +271,8 @@ namespace EGG9000.Bot.Commands {
                 await service.StopAsync(new System.Threading.CancellationToken());
                 await service.StartAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                var frame = (new StackTrace(e, true)).GetFrame(0);
-
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
             await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
         }
@@ -303,9 +303,8 @@ namespace EGG9000.Bot.Commands {
             try {
                 await service.StopAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                var frame = (new StackTrace(e, true)).GetFrame(0);
-
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
             await command.ModifyOriginalResponseAsync($"Stopped {serviceName}");
         }
@@ -334,9 +333,8 @@ namespace EGG9000.Bot.Commands {
             try {
                 (service as IUpdaterService).ResetTimer();
             } catch(Exception e) {
-                var frame = (new StackTrace(e, true)).GetFrame(0);
-
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -364,9 +362,8 @@ namespace EGG9000.Bot.Commands {
             try {
                 await service.StartAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                var frame = (new StackTrace(e, true)).GetFrame(0);
-
-                await command.ModifyOriginalResponseAsync($"⚠️ERROR: Bot error - {e}  {frame.GetFileName()} {frame.GetFileLineNumber()} {serviceName}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
         }
