@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <StartupObject></StartupObject>
-    <Configurations>Debug;Release;DEV9002</Configurations>
+    <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
   </PropertyGroup>
   <Target Name="RunBotOnHomeControl" AfterTargets="Publish">
     <Exec Command=".\runbot.bat" />
@@ -19,6 +19,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9001|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+    <UserSecretsId>DEV9001-LiveDB</UserSecretsId>
     <LangVersion>preview</LangVersion>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
