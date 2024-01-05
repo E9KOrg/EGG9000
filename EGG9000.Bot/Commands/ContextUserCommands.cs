@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Commands;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 
 namespace EGG9000.Bot.Commands {
     public static class ContextUserCommands {
@@ -40,7 +41,7 @@ namespace EGG9000.Bot.Commands {
         {
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);
             if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.RespondAsync(text: "", embed: EmbedError("Unable to find backups for this user"));
                 return;
             } else {
                 var sb = new StringBuilder();

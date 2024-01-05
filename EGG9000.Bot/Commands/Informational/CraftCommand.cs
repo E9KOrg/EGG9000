@@ -1,51 +1,39 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
-using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Primitives;
 using System.Globalization;
-using Google.Protobuf.WellKnownTypes;
-using static Ei.Backup.Types;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 
 namespace EGG9000.Bot.Commands {
     public static class CraftCommand {
         [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam] TierInput quality, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db, ILogger logger) {
+        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam] TierInput quality, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 
             if(requestedArtifact is null) {
-                await command.RespondAsync($"Unable to locate an artifact with the name {artifact}", ephemeral: true);
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
                 return;
             }
 
-            await command.RespondAsync("Getting backups...", ephemeral: true);
+            await command.DeferAsync(ephemeral: true);
 
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
                 return;
             }
 
@@ -60,7 +48,7 @@ namespace EGG9000.Bot.Commands {
                 foreach(var account in user.EggIncAccounts) {
                     builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{((int)quality)}|{quantity}|{artifact}");
                 }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Components = builder.Build(); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Embed = null; x.Components = builder.Build(); });
             }
 
             user.UpdateAccounts();
@@ -69,7 +57,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task CraftAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            //await component.UpdateAsync(x => { x.Content = "Working..."; x.Components = null; });
             var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(user is null) return;
             var dataObjs = data.Split("|");
