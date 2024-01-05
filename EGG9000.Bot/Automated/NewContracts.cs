@@ -161,7 +161,7 @@ namespace EGG9000.Bot.Automated {
                     //Start gathering users list
                     if(contract.cc_only) {
                         var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
-                        pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => a.SubscriptionLevel == null
+                        pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()
                             && a.PingForNCUltra
                             && a.Backup != null
                             && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)

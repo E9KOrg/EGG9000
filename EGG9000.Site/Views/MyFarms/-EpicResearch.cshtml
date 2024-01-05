@@ -28,7 +28,7 @@
 	}
 
 	var rawBankGE = Model.backup.TotalGEInPiggyBank;
-	var bankScalar = Model.account.SubscriptionLevel == null ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40);
+	var bankScalar = !Model.account.HasActiveSubscription() ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40);
 	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
 <div class="card" style="margin-top:15px" ng-controller="EpicResearch@(Model.backup.EggIncId)">
@@ -170,7 +170,7 @@
 			$scope.Discount = 0;
 			$scope.EpicResearchConfig = @Html.Raw(Json.Serialize(Model.epicResearchConfig));
 			$scope.CurrentGE = @(Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent);
-			var BankMultiplier = @(Model.account.SubscriptionLevel == null ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40));
+			var BankMultiplier = @(!Model.account.HasActiveSubscription() ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40));
 			$scope.RawGEInPiggyBank = @Model.backup.TotalGEInPiggyBank;
 			$scope.TotalGEInPiggyBank = @Model.backup.TotalGEInPiggyBank * BankMultiplier;
 			$scope.Math = window.Math;

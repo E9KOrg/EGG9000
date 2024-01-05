@@ -246,7 +246,7 @@ namespace EGG9000.Bot.Commands {
             var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
             var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.Now);
 
-            if(contract.cc_only && account.SubscriptionLevel is null) {
+            if(contract.cc_only && !account.HasActiveSubscription()) {
                 return new PotentialCoopResponse { Response = PotentialCoopCode.NonUltra };
             } else if(existingCoop is not null) {
                 return new PotentialCoopResponse { Response = PotentialCoopCode.AlreadyAssigned, ReturnArgs = new() { existingCoop.Coop.DiscordChannelId.ToString() } };
@@ -610,7 +610,7 @@ namespace EGG9000.Bot.Commands {
             var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
             var guildContract = await db.GuildContracts.FirstAsync(gc => gc.GuildID == command.GuildId && gc.Contract == contract);
 
-            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.SubscriptionLevel is not null).Count();
+            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.HasActiveSubscription()).Count();
 
             var existContractXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
             var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
@@ -620,7 +620,7 @@ namespace EGG9000.Bot.Commands {
 
                 EggIncAccount subAccountBypass = null;
                 if(contract.cc_only) {
-                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.SubscriptionLevel is not null);
+                    subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.HasActiveSubscription());
                 }
 
                 var userList = new List<UserByAccount> { new UserByAccount {
@@ -646,7 +646,7 @@ namespace EGG9000.Bot.Commands {
                 var builder = new ComponentBuilder();
                 var userList = user.EggIncAccounts;
                 if(contract.cc_only) {
-                    userList = userList.Where(x => x.SubscriptionLevel is not null).ToList();
+                    userList = userList.Where(x => x.HasActiveSubscription()).ToList();
                 }
 
                 foreach(var account in userList) {
@@ -724,7 +724,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var eligibleAccounts = dbUser.EggIncAccounts.Where(a => a.Backup?.SoulEggs > 1000 && (!contract.cc_only || a.SubscriptionLevel is not null)).ToList();
+            var eligibleAccounts = dbUser.EggIncAccounts.Where(a => a.Backup?.SoulEggs > 1000 && (!contract.cc_only || a.HasActiveSubscription())).ToList();
             if(eligibleAccounts.Count < 1) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You have no accounts that are eligible for this contract."); });
                 return;
