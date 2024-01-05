@@ -40,9 +40,16 @@ using EGG9000.Bot.Consumers;
 using EGG9000.Common.Extensions;
 using EGG9000.Bot.Automated.Coops;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 
 namespace EGG9000.Bot.Services {
 
+    public class UserNotInServerException : Exception {
+        public ulong User { get; }
+        public UserNotInServerException(string message, ulong user) : base(message) { 
+            User = user;
+        }
+    }
 
     public class CommandService : IHostedService {
         private readonly DiscordHostedService _discord;
@@ -110,7 +117,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
 
             }
         }
@@ -124,7 +131,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
 
             }
         }
@@ -193,17 +200,18 @@ namespace EGG9000.Bot.Services {
 
                     _logger.LogInformation("Running command {command} for user: {username}", command.Name, arg.User.Username);
                     await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
+                } catch(UserNotInServerException unfe) {
+                    await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
                 } catch(Exception e) {
                     try {
                         _bugsnag.Notify(e);
                         var frame = (new StackTrace(e, true)).GetFrame(0);
 
-
                         if(arg.HasResponded) {
-                            await arg.ModifyOriginalResponseAsync(msg => msg.Content = $"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
-
+                            await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError($"**Message**\n{e.Message}\n\n**Frame info**\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine:{frame.GetFileLineNumber()}"); });
+                           
                         } else {
-                            await arg.RespondAsync($"⚠️ERROR: Bot error - {e.Message.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                            await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
                         }
                     } catch(Exception) {
 
@@ -215,7 +223,7 @@ namespace EGG9000.Bot.Services {
             } else {
                 _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
                 _logger.LogWarning("Command Semaphore Limit Hit");
-                await arg.RespondAsync("⚠️ERROR: Unable to run command at this time, please try again in a minute");
+                await arg.RespondAsync(text: "", embed: EmbedError("Unable to run command at this time, please try again in a minute"));
             }
         }
 
@@ -376,7 +384,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync($"⚠️ERROR: Bot error - {e.ToString()}  {frame.GetFileName()} {frame.GetFileLineNumber()} {arg.User.Mention}");
+                await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -397,6 +405,15 @@ namespace EGG9000.Bot.Services {
                         }
                     }
                     return users.ToArray();
+                }
+                if(parameterInfo.ParameterType == typeof(SocketGuildUser)) {
+                    var value = FindOption(name, fauxCommand.Data.Options)?.Value;
+                    try {
+                        var user = (SocketGuildUser)value;
+                        return user;
+                    } catch(InvalidCastException ex) {
+                        throw new UserNotInServerException(ex.Message, (value as SocketUser).Id);
+                    }
                 }
 
                 if(parameterInfo.ParameterType.IsEnum) {
