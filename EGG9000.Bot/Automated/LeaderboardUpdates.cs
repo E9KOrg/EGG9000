@@ -154,11 +154,11 @@ namespace EGG9000.Bot.Automated {
                         });
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
-                            if(_db.Coops.Any(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId)) continue;
+                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId);
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"}) " : " ")}" +
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
-                                $"(`{breakCooper.Farm.CoopId}`) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
+                                $"({(dbCoop is not null? $"<#{dbCoop.DiscordChannelId}>" : $"`{breakCooper.Farm.CoopId}`")}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
                             var result = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
 
