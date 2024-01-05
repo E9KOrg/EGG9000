@@ -56,7 +56,7 @@ namespace EGG9000.Common.Contracts {
                 x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Details.Egg || (int)contract.Details.Egg >= 100, "Egg not unlocked");
 
             //If the contract is Subscription only, filter further
-            FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.SubscriptionLevel.HasValue, "Doesn't have subscription");
+            FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.HasActiveSubscription(), "Doesn't have subscription");
           
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
           
@@ -140,7 +140,7 @@ namespace EGG9000.Common.Contracts {
             return(a1.GetGroup(c.cc_only).Equals(a2.GetGroup(c.cc_only)));
         }
         private static bool MatchGrade(EggIncAccount a1, EggIncAccount a2, Contract c) {
-            return a1.GetGrade().Equals(a2.GetGrade()) || (c.cc_only && a1.SubscriptionLevel is not null && a2.SubscriptionLevel is not null);
+            return a1.GetGrade().Equals(a2.GetGrade()) || (c.cc_only && a1.HasActiveSubscription() && a2.HasActiveSubscription());
         }
 
         private static bool CheckOnPreviousComplete(UserByAccount x, Contract contract, List<UserByAccount> otherAccounts) {
