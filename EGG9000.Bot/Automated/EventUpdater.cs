@@ -186,9 +186,11 @@ namespace EGG9000.Bot.Automated {
 
                 //If the event is subscriber-only
                 if(newEvent.CcOnly) {
-                    
+
                     //Send to non-CCs without ping
-                    message = await eventChannel.SendMessageAsync(null, embed: embed);
+                    if(eventChannel != null) {
+                        message = await eventChannel.SendMessageAsync(null, embed: embed);
+                    }
 
                     //If the CC event channel was found, that's where we'll ping for CC events
                     if(ccEventChannel != null) {
@@ -199,8 +201,7 @@ namespace EGG9000.Bot.Automated {
                 } else {
                     //Only send to non-CC channel, with ping
                     if(eventChannel != null) {
-                        //message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
-                        message = await eventChannel.SendMessageAsync(notification != null ? $"" : null, embed: embed);
+                        message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
                     }
                 }
 

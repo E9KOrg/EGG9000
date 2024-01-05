@@ -36,15 +36,18 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public ContributionInfoCompact LastStatus {
             get {
-                if(Status != null) {
+                if(Status != null && Status != "null") {
                     var status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status);
                     _lastStatus = new ContributionInfoCompact (status);
                     Status = null;
                 }
                 if(_lastStatus != null)
                     return _lastStatus;
+                if(_lastStatusByte == null)
+                    return null;
                 var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _lastStatus = MessagePackSerializer.Deserialize<ContributionInfoCompact>(_sleepTrackingByte, lz4Options);
+
+                _lastStatus = MessagePackSerializer.Deserialize<ContributionInfoCompact>(_lastStatusByte, lz4Options);
                 return _lastStatus;
             }
             set {

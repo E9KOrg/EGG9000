@@ -118,7 +118,7 @@ namespace EGG9000.Bot.Commands {
             if(!dbguild.DisableBG) {
                 eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
                 buttons.Add(("Boarding Group", $"MCSBg:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-                if(account.SubscriptionLevel is not null) {
+                if(account.HasActiveSubscription()) {
                     eBuilder.AddField("Ultra Boarding Group", account.UltraGroup != default ? $"UG{account.UltraGroup} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.UltraGroup).time}:t>" : "Not Set (please select below)");
                     buttons.Add(("Ultra Boarding Group", $"MCSUBg:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
                 }
@@ -137,7 +137,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            if(account.SubscriptionLevel == null) {
+            if(!account.HasActiveSubscription()) {
                 eBuilder.AddField("Ultra Offer Pings", account.PingForNCUltra ? "Enabled" : "Disabled");
                 buttons.Add(("Ultra Offer Pings", $"MCSUltraPing:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             }
@@ -310,7 +310,7 @@ namespace EGG9000.Bot.Commands {
                 new SelectMenuOptionBuilder("Yes (Will redo all contracts to help out others)", "1", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesAll),
                 new SelectMenuOptionBuilder($"Yes (If your previous score was under a threshold you set)", "2", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold),
             };
-            if(account.SubscriptionLevel is not null) {
+            if(account.HasActiveSubscription()) {
                 list.Add(new SelectMenuOptionBuilder($"Yes (Will not redo completed Ultra contracts)", "5", isDefault: account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra));
             }
             if(dbuser.EggIncAccounts.Count > 1) {
