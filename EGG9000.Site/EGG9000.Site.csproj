@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Configurations>Debug;Release;DEV9002</Configurations>
+    <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
   </PropertyGroup>
   <Target Name="PrePublish" BeforeTargets="Publish">
     <Exec Command=".\prepublish.bat" />
@@ -11,6 +11,11 @@
     <Exec Command=".\postpublish.bat" />
   </Target>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+    <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9001|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
     <LangVersion>preview</LangVersion>

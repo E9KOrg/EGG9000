@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!--<Nullable>enable</Nullable>-->
     <UserSecretsId>696ad316-9798-42ee-bc40-06f4a1dba403</UserSecretsId>
-    <Configurations>Debug;Release;DEV9002</Configurations>
+    <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9002|AnyCPU'">
@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9001|AnyCPU'">
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
