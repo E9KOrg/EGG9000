@@ -633,7 +633,7 @@ namespace EGG9000.Bot.Commands {
 
                 var deviceTypeEmoji = account.DeviceID is not null ? (account.DeviceID.Length == 16 ? ":robot: " : ":apple: ") : "";
                 var permitEmoji = account.Backup is not null ? (account.Backup?.PermitLevel == 0 ? "<:Standard_Permit:755734059761795173> " : "<:Pro_Permit:724392625276452955> ") : "";
-                var subscriptionEmoji = account.SubscriptionLevel is not null ? "<:ultra:1131045418319495369> " : "";
+                var subscriptionEmoji = account.HasActiveSubscription() ? "<:ultra:1131045418319495369> " : "";
 
                 builder.AddField("――――――――――――――――――", ($"{deviceTypeEmoji}{permitEmoji}{subscriptionEmoji}{((account.GetGrade() != default) ? $"{PlayerGradeDetails.GetEmoji(account.GetGrade())} " : "")}***{account.Backup?.UserName} " ?? "***(No Name)") + (backup?.Farms?.Count > 0 ? $"({backup.EarningsBonus.ToEggString()})***: " : "***: ") + (account.Id ?? "No EID"));
                 builder.AddField("Last Backup", (backup?.Farms?.Count > 0) ? DiscordHelpers.TimeStamper(DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)) : "Empty - Check EID", true);
@@ -653,7 +653,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(dbguild is null || !dbguild.DisableBG) { 
-                    if(account.SubscriptionLevel is not null) {
+                    if(account.HasActiveSubscription()) {
                         builder.AddField("Boarding Groups", $"{(account?.Group == 0 ? "**None**" : "BG" + account?.Group)}/{(account?.UltraGroup == 0 ? "**None**" : "UG" + account?.UltraGroup)}", true);
                     } else {
                         builder.AddField("Boarding Group", account?.Group == 0 ? "**None**" : "BG" + account?.Group, true);

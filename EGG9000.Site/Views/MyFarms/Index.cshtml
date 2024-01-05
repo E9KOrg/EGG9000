@@ -290,7 +290,7 @@
                     } else {
                         <span style="margin-right:10px;"><b><u>Boarding Group @account.Group</u></b></span>
                     }
-                    if (account.SubscriptionLevel is not null) {
+                    if (account.HasActiveSubscription()) {
                         if (account.UltraGroup == 0) {
                             <span style="margin-right:10px; color: #FFAA33"><b>⚠️Ultra Boarding Group Not Set</b></span>
                         } else {

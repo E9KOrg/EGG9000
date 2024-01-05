@@ -106,7 +106,7 @@ namespace EGG9000.Bot.Jobs {
         private async Task CheckSubscription(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
             try {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                if(subscriptionStatus.HasStatus && subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
+                if(subscriptionStatus.HasStatus && (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod) && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
                     if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
                         await SendUltraLogMessage(db, _client, user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
                         account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
@@ -116,11 +116,11 @@ namespace EGG9000.Bot.Jobs {
                         account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
                         user.UpdateAccounts();
                     }
-                } else if(account.SubscriptionLevel.HasValue && account.SubscriptionLevel is not null) {
+                } else if(account.SubscriptionLevel.HasValue) {
                     await SendUltraLogMessage(db, _client, user, account, (int?)account.SubscriptionLevel ?? -1, -1, dbGuild, guild);
                     account.SubscriptionLevel = null;
                     user.UpdateAccounts();
-                }
+                } 
             } catch(Exception e) {
                 _bugsnag.Notify(e);
             }
@@ -143,7 +143,7 @@ namespace EGG9000.Bot.Jobs {
         public async Task CheckRole(ulong? roleid, DBUser dbuser, bool pro, SocketGuildUser user) {
             if(roleid is null)
                 return;
-            var needsRole = dbuser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? Ei.UserSubscriptionInfo.Types.Level.Pro : Ei.UserSubscriptionInfo.Types.Level.Standard));
+            var needsRole = dbuser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? Ei.UserSubscriptionInfo.Types.Level.Pro : Ei.UserSubscriptionInfo.Types.Level.Standard) && y.HasActiveSubscription());
             var hasRole = user.Roles.Any(x => x.Id == roleid);
 
             if(hasRole && !needsRole) {

@@ -427,5 +427,13 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
+
+        public bool HasActiveSubscription() {
+            if(SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
+                return true;
+            }
+
+            return false;
+        }
     }
 }
