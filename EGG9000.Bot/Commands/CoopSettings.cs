@@ -1,40 +1,26 @@
-﻿using Bugsnag.Payload;
-
-using Discord;
-using Discord.Webhook;
+﻿using Discord;
 using Discord.WebSocket;
 
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
-
-using Google.Protobuf;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
-
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Commands {
     public class CoopSettingsCommand {
         #region MainMenu
         [SlashCommand(Description = "Co-op Settings")]
         public static async Task CoopSettings(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Working, please wait...", ephemeral: true);
+            await command.DeferAsync(ephemeral: true);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = "ERROR: Unable to find user, are you registered?");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user, are you registered?"); });
             }
 
             var inCoopChannel = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == command.ChannelId);
@@ -46,7 +32,7 @@ namespace EGG9000.Bot.Commands {
                 builder.WithButton("This and Future Co-ops", $"CSAccountMenu:{dbuser.DiscordId},false,false");
 
 
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Would you like to edit settings for just this co-op or this and future co-ops?"; x.Components = builder.Build(); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Would you like to edit settings for just this co-op or this and future co-ops?"; x.Components = builder.Build(); x.Embed = null; });
             } else {
                 var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", false, false, dbuser);
                 await command.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
@@ -64,7 +50,7 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        public static List<(string Property, string Description)> options = new List<(string Property, string Description)> {
+        public static List<(string Property, string Description)> options = new (){
             ("PingOnFull", "All assigned members have joined the co-op"),
             ("PingOnHighestEB", "Highest assigned EB has joined"),
             ("PingOnFinished", "Co-op has finished"),
