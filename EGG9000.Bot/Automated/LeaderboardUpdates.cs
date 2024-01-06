@@ -155,7 +155,6 @@ namespace EGG9000.Bot.Automated {
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
                             var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId));
-                            Console.WriteLine("coop: " + breakCooper.Farm.CoopId.ToLower());
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
                             var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
