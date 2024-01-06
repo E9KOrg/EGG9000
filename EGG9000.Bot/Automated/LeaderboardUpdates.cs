@@ -154,11 +154,14 @@ namespace EGG9000.Bot.Automated {
                         });
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
-                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId);
+                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId));
+                            Console.WriteLine("coop: " + breakCooper.Farm.CoopId.ToLower());
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
-                            var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"}) " : " ")}" +
+                            var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
+                            var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
-                                $"({(dbCoop is not null? $"<#{dbCoop.DiscordChannelId}>" : $"`{breakCooper.Farm.CoopId}`")}) for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
+                                $"({(dbCoop is not null? $"<#{dbCoop.DiscordChannelId}> - `{breakCooper.Farm.CoopId}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
+                                $"for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
                             var result = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
 
