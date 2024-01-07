@@ -7,14 +7,12 @@ using System.Security.Claims;
 using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 
 
 using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
