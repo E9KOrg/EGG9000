@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
 
             }
         }
@@ -131,7 +131,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
 
             }
         }
@@ -208,10 +208,10 @@ namespace EGG9000.Bot.Services {
                         var frame = (new StackTrace(e, true)).GetFrame(0);
 
                         if(arg.HasResponded) {
-                            await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError($"**Message**\n{e.Message}\n\n**Frame info**\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine:{frame.GetFileLineNumber()}"); });
+                            await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedInternalError($"**Message**\n{e.Message}\n\n**Frame info**\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"); });
                            
                         } else {
-                            await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                            await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
                         }
                     } catch(Exception) {
 
@@ -384,7 +384,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync(text: "", embed: EmbedError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -521,7 +521,7 @@ namespace EGG9000.Bot.Services {
                         }
 
                         if(hasPerms && (parentHasChild || bypass)) {
-                            var warningEmbed = ContractCommandsSlash.EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
+                            var warningEmbed = EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
                                 $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(parentCommand != "" ? $"{parentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandText : "")}:{discordCommand?.Id}> to run it.");
 
                             await message.Channel.SendMessageAsync(

@@ -688,8 +688,8 @@ namespace EGG9000.Bot.Commands {
         private static SemaphoreSlim dictionarySemaphore = new SemaphoreSlim(1);
 
         [ComponentCommand]
-        public static async Task FindCoopSpot(SocketMessageComponent component, DiscordSocketClient _client, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync(ephemeral: true);
+        public static async Task FindCoopSpot(SocketMessageComponent component, ApplicationDbContext db) {
+            await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null || dbUser.GuildId != component.GuildId) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Could not find your record - are you registered correctly?"); });
@@ -731,7 +731,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task FindCoopSpotForAccount(SocketMessageComponent component, DiscordSocketClient _client, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task FindCoopSpotForAccount(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coops are being filtered. This may take a few seconds."); x.Components = null; });
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
