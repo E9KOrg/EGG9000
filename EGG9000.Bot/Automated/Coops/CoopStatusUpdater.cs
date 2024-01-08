@@ -958,7 +958,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
                             if(gusset is null) {
                                 await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.ArtifactCheaterThread, 
-                                    new() { Text = $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.DiscordChannelId}>:\n" +
+                                    new() { Text = $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.DiscordChannelId}> (`{coop.Id}`):\n" +
                                     $"```\nMax hab space:\t   {(ulong)scaledMaxChickens:n0}\nCurrent chickens:\t{currentChickens:n0}\n```" });
                                 u.Xref.GussetCheatDetected = true;
                             }
