@@ -3,26 +3,14 @@ using Discord.WebSocket;
 
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-
-using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
-
-using Newtonsoft.Json;
-
-
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
@@ -97,7 +85,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"Merit removed for {user.Mention}, they currently have {count} merits");
             } catch(Exception e) {
                 var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -123,7 +111,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"Merit info for {targetUser.Mention}\n{meritDesc}");
             } catch(Exception e) {
                 var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -150,7 +138,7 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
             } catch(Exception e) {
                 var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: ContractCommandsSlash.EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 

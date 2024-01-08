@@ -104,22 +104,30 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Select X random users with Y role", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task SelectRoleUsers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, [SlashParam(Required = true)] SocketRole role, [SlashParam(Required = false)] SocketRole role2, [SlashParam(Required = false)] SocketRole role3) {
+        public static async Task SelectRoleUsers(FauxCommand command, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, [SlashParam(Required = true)] SocketRole role, [SlashParam(Required = false)] SocketRole role2, [SlashParam(Required = false)] SocketRole role3) {
             try {
-                var guildUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users;
-                var usersWithRole = guildUsers.Where(u => u.Roles.Contains(role));
-                if(role2 is not null) usersWithRole = usersWithRole.Where(u => u.Roles.Contains(role2));
-                if(role3 is not null) usersWithRole = usersWithRole.Where(u => u.Roles.Contains(role3));
-                var rnd = new Random();
-                var randomUsers = usersWithRole.OrderBy(u => rnd.Next()).Take(numberOfUsers);
+                var randomUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users
+                    .Where(u => u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3)))
+                    .OrderBy(u => new Random().Next()).ToList();
+                if(numberOfUsers != 0) randomUsers = randomUsers.Take(numberOfUsers).ToList();
 
-#if DEBUG || DEV9002
-                var userList = string.Join("\n", randomUsers.Select(u => $"{u.Username} ({u.Id})"));
-#else
-                var userList = string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>"));
-#endif
+                var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have these role(s)_\n";
 
-                await command.RespondAsync(userList);
+                var responseEmbedBuilder = new EmbedBuilder()
+                    .WithAuthor(new EmbedAuthorBuilder().WithName("Selected Users").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).WithColor(Color.Blue)
+                    .WithDescription($"{randomUsers.Count()} Users with the role(s):\n\t\t<@&{role.Id}>{(role2 is not null ? $"\n\t\t<@&{role2.Id}>" : "")}{(role3 is not null ? $"\n\t\t<@&{role3.Id}>" : "")}\n\n" +
+                        $"{(userList.Length > 1600 ? "_(List too large for Discord - see attached file)_\n" : userList)}");
+
+                if(randomUsers.Count < numberOfUsers && randomUsers.Count != 0) {
+                    responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"{numberOfUsers} users requested - only {randomUsers.Count} found"));
+                } else if(numberOfUsers == 0 && randomUsers.Count != 0) {
+                    responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"Showing all matching users"));
+                }
+
+                //Catch content that is too large, respond with file instead
+                if(userList.Length > 1600) await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt"), text: "", embed: responseEmbedBuilder.Build());
+                else await command.RespondAsync(content: "", embed: responseEmbedBuilder.Build());
+
             } catch(Exception ex) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse role `{role}`.\n\n**Message**\n{ex.Message}"));
                 return;
