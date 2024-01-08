@@ -41,7 +41,6 @@ using System.Collections;
 using System.Numerics;
 using EGG9000.Bot.Services;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
