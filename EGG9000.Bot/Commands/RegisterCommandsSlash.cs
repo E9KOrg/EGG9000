@@ -879,6 +879,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam(Required=false)] bool banaccount = false) {
+            await command.DeferAsync();
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();
                 var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
@@ -895,9 +896,9 @@ namespace EGG9000.Bot.Commands {
                 var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
                 if(banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers)) await targetUser.BanAsync();
                 else await targetUser.KickAsync();
-                await command.RespondAsync("Kicked with DM");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Kicked <@{targetUser}> with DM"; });
             } catch(HttpException) {
-                await command.RespondAsync("Unable to send DM, user is not yet kicked");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Unable to send DM, <@{targetUser}> was not kicked"; });
             }
         }
     }
