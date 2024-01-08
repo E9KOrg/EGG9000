@@ -480,38 +480,23 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Fix a users reference in a co-op when they are showing as an alien", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task FixReference(FauxCommand command, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ApplicationDbContext db, [SlashParam] SocketGuildUser targetuser, [SlashParam(Description = "Egg Inc Name, will match partial name")] string eggincname) {
+            await command.DeferAsync();
+            
             //var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id && !x.JoinedCoop);
             if(xref == null) {
                 xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id);
             }
             if(xref == null) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find user assignment to co-op"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user assignment to co-op"); });
                 return;
             }
-
 
             var t = xref.Coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserName.ToLower().Contains(eggincname.ToLower()));
             if(t == null) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find user in co-op. You can use a partial in-game name."));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user in co-op. You can use a partial in-game name."); });
                 return;
             }
-
-            //var newxref = new UserCoopXref {
-            //    AddedToChannel = true,
-            //    CoopId = xref.CoopId,
-            //    CreatedOn = xref.CreatedOn,
-            //    JoinedCoop = false,
-            //    Starter = false,
-            //    UserId = xref.GetID(),
-            //    WaitingOnStarter = false,
-            //    EggIncId = t.GetID(),
-            //    RefEggIncId = xref.EggIncId,
-            //    WasAssigned = true
-            //};
-
-            //db.Remove(xref);
-            //db.Add(newxref);
 
             xref.FixedUserName = t.UserName;
             await db.SaveChangesAsync();
@@ -522,7 +507,7 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
             await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
-            await command.RespondAsync($"Fixed {targetuser.Mention} reference.");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = "", x.Embed = EmbedSuccess($"Fixed {targetuser.Mention}'s reference."); });
         }
 
         [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = StaffOnlyLevel.FarmHand)]
@@ -688,8 +673,8 @@ namespace EGG9000.Bot.Commands {
         private static SemaphoreSlim dictionarySemaphore = new SemaphoreSlim(1);
 
         [ComponentCommand]
-        public static async Task FindCoopSpot(SocketMessageComponent component, DiscordSocketClient _client, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync(ephemeral: true);
+        public static async Task FindCoopSpot(SocketMessageComponent component, ApplicationDbContext db) {
+            await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null || dbUser.GuildId != component.GuildId) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Could not find your record - are you registered correctly?"); });
@@ -731,7 +716,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task FindCoopSpotForAccount(SocketMessageComponent component, DiscordSocketClient _client, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task FindCoopSpotForAccount(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coops are being filtered. This may take a few seconds."); x.Components = null; });
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);

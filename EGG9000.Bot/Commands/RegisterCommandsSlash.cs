@@ -463,9 +463,12 @@ namespace EGG9000.Bot.Commands {
             var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = compiledMessage }, logger);
             if(response == null) await command.Channel.SendMessageAsync(compiledMessage);
 
-            var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
-            if(overflowRole != null) {
-                await socketGuildUser.AddRoleAsync(overflowRole);
+            //Only add the overflow role for the first registered account
+            if(dbuser.EggIncAccounts.Count == 1) {
+                var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
+                if(overflowRole != null) {
+                    await socketGuildUser.AddRoleAsync(overflowRole);
+                }
             }
 
             try {
@@ -548,7 +551,12 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DB object for <@{user.Id}>"), ephemeral: !showInChannel);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DB object for <@{user.Id}>"); });
+                return;
+            }
+
+            if(dbuser.EggIncAccounts == null || dbuser.EggIncAccounts.Count == 0) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No registered accounts found for <@{user.Id}>"); });
                 return;
             }
 
@@ -613,7 +621,7 @@ namespace EGG9000.Bot.Commands {
             };
 
             //Get a list of accounts tied to the user, in order of High -> Low EB
-            var accounts = user.EggIncAccounts.OrderBy(u => u.Backup?.EarningsBonus).Reverse();
+            var accounts = user.EggIncAccounts.OrderByDescending(u => u.Backup?.EarningsBonus);
 
             //Loop through each account, with the object, and its index
             foreach(var (account, index) in accounts.Select((value, i) => (value, i))) {
@@ -871,6 +879,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string reason, [SlashParam(Required=false)] bool banaccount = false) {
+            await command.DeferAsync();
             try {
                 var dmChannel = await targetUser.CreateDMChannelAsync();
                 var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
@@ -887,9 +896,9 @@ namespace EGG9000.Bot.Commands {
                 var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
                 if(banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers)) await targetUser.BanAsync();
                 else await targetUser.KickAsync();
-                await command.RespondAsync("Kicked with DM");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Kicked <@{targetUser}> with DM"; });
             } catch(HttpException) {
-                await command.RespondAsync("Unable to send DM, user is not yet kicked");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Unable to send DM, <@{targetUser}> was not kicked"; });
             }
         }
     }
