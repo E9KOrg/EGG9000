@@ -507,7 +507,7 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
             await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = "", x.Embed = EmbedSuccess($"Fixed {targetuser.Mention}'s reference."); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Fixed {targetuser.Mention}'s reference."); });
         }
 
         [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = StaffOnlyLevel.FarmHand)]
