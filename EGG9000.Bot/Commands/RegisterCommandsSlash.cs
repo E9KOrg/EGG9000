@@ -581,9 +581,9 @@ namespace EGG9000.Bot.Commands {
                 } else {
                     lastBuilder.Footer.Text += $"\nNot registered with a guild";
                 }
-            } else if(dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
+            } else if(guild is not null && dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
                 lastBuilder.Footer.Text += $"\nProperly registered with this server";
-            } else if(dbuser.GuildId != guild.Id) {
+            } else if(guild is null || dbuser.GuildId != guild.Id) {
                 lastBuilder.Footer.Text += $"\nNot registered with this server, try the /moveserver command";
             }
 
@@ -593,7 +593,7 @@ namespace EGG9000.Bot.Commands {
                 lastBuilder.Footer.Text += $"\nMissing bot registration date";
             }
 
-            if(dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser && guild.Id == (user as SocketGuildUser).Guild.Id) {
+            if(guild is not null && dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser && guild.Id == (user as SocketGuildUser).Guild.Id) {
                 _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
             }
 
@@ -896,9 +896,9 @@ namespace EGG9000.Bot.Commands {
                 var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
                 if(banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers)) await targetUser.BanAsync();
                 else await targetUser.KickAsync();
-                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Kicked <@{targetUser}> with DM"; });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Kicked <@{targetUser.Id}> with DM"; });
             } catch(HttpException) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Unable to send DM, <@{targetUser}> was not kicked"; });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"Unable to send DM, <@{targetUser.Id}> was not kicked"; });
             }
         }
     }
