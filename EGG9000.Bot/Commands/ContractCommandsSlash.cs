@@ -507,17 +507,19 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
             await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = "", x.Embed = EmbedSuccess($"Fixed {targetuser.Mention}'s reference."); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Fixed {targetuser.Mention}'s reference."); });
         }
 
         [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(AutocompleteHandler = typeof(MoveToCoopCoopNameAutoComplete))] string coopid) {
+            await command.DeferAsync();
+
             var coop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == Guid.Parse(coopid));
             Guid userid;
             try {
                 userid = Guid.Parse(useraccount.Split("|")[0]);
             } catch(Exception) {
-                  await command.RespondAsync(content: "", embed: EmbedError("Unable to parse user account, please use the autocomplete dropdown."));
+                  await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to parse user account, please use the autocomplete dropdown."); });
                 return;
             }
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == userid);
@@ -529,13 +531,12 @@ namespace EGG9000.Bot.Commands {
             var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
 
             if(newxref == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}"); });
                 return;
             }
-
             db.Add(newxref);
 
-            await command.RespondAsync($"Moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}"); });
             await db.SaveChangesAsync();
         }
 
