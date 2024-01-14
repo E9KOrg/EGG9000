@@ -249,7 +249,8 @@ namespace EGG9000.Bot.Commands {
                 return new PotentialCoopResponse { Response = PotentialCoopCode.NoGrade };
             }
 
-            var coops = await db.Coops.Include(c => c.Contract).Include(c => c.UserCoopsXrefs).Where(c => c.Contract == contract && c.GuildId == guild.Id && c.League == (uint)account.GetGrade()
+            var coops = await db.Coops.Include(c => c.Contract).Include(c => c.UserCoopsXrefs).Where(c => c.Contract == contract && c.GuildId == guild.Id 
+             && (c.League == (uint)account.GetGrade() || c.AnyLeague)
              && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now && c.ProjectedFinish > DateTimeOffset.Now).ToListAsync();
 
             if(!coops.Any()) {
@@ -307,7 +308,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 case PotentialCoopCode.NoSpots1:
                 case PotentialCoopCode.NoSpots2:
-                    await command.RespondAsync(content: "", embed: EmbedError($"No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}"));
+                    await command.RespondAsync(content: "", embed: EmbedError($"No open{(contract.cc_only ? "" : $" Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())}")} coop spots found for {contract.Name}"));
                     return;
             }
 
@@ -743,7 +744,7 @@ namespace EGG9000.Bot.Commands {
                 case PotentialCoopCode.NoSpots2:
                     _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
                     //var createNewCoopComponent = new ComponentBuilder().WithButton("Create New Coop", customId: $"NoSpotsCreateCoop:{guildContract.ContractID}|{account.Id}", emote: emote).Build();
-                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())} coop spots found for {contract.Name}"); /*x.Components = createNewCoopComponent;*/ });
+                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open{(contract.cc_only ? "" : $" Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())}")} coop spots found for {contract.Name}"); /*x.Components = createNewCoopComponent;*/ });
                     return;
                 default:
                     var coop = newCoopResponse.FoundCoop;
