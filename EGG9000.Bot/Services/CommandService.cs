@@ -41,14 +41,12 @@ using EGG9000.Common.Extensions;
 using EGG9000.Bot.Automated.Coops;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
-using System.Numerics;
-using AutoMapper;
 
 namespace EGG9000.Bot.Services {
 
     public class UserNotInServerException : Exception {
         public ulong User { get; }
-        public UserNotInServerException(string message, ulong user) : base(message) {
+        public UserNotInServerException(string message, ulong user) : base(message) { 
             User = user;
         }
     }
