@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
-using Discord.Net.Udp;
 using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
