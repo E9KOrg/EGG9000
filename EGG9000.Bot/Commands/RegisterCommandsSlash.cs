@@ -43,6 +43,7 @@ using Bugsnag;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
+using System.Data;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -837,27 +838,37 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Check the list of Users/EIDs that have been banned from the server via /kick", ParentCommand = "b", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task BanList(FauxCommand command, ApplicationDbContext db) {
-            var bannedUsers = await db.DBUsers.Where(u => u.Banned && u.GuildId == command.GuildId).ToListAsync();
+            await command.DeferAsync();
+            var bannedUsers = await db.DBUsers.Where(u => u.Banned && (u.LastGuild == command.GuildId || u.GuildId == command.GuildId)).ToListAsync();
             if(bannedUsers is null || bannedUsers.Count == 0) {
-                await command.RespondAsync("No users are banned from this guild");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("No users are banned from this guild."); });
                 return;
             }
             var userList = string.Join("\n", bannedUsers.Select(u => $"{u.DiscordUsername}\t{u.DiscordId}\t" + string.Join(", ", u.EggIncAccounts.Select(a => a.Id).ToList()))) ?? "Could not compile list";
-            await command.RespondAsync(userList);
+            var guildName = (await db.Guilds.FirstOrDefaultAsync(x => x.Id == command.GuildId)).Name;
+
+            var responseEmbedBuilder = new EmbedBuilder()
+                .WithAuthor(new EmbedAuthorBuilder().WithName("Banned Users").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).WithColor(Color.DarkRed)
+                        .WithDescription($"Users Banned from {guildName}\n\n" +
+                        $"{(userList.Length > 1600 ? "_(List too large for Discord - see attached file)_\n" : userList)}");
+
+            //Catch content that is too large, respond with file instead
+            if(userList.Length > 1600) await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "BannedUsers.txt"), text: "", embed: responseEmbedBuilder.Build());
+            else await command.RespondAsync(content: "", embed: responseEmbedBuilder.Build());
         }
 
         [SlashCommand(Description = "Remove the ban placed on a user, and their associated EID(s)", ParentCommand = "b", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RemoveBan(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(Description = "Discord ID of user to unban")] ulong discordid) {
-            var user = db.DBUsers.FirstOrDefault(u => u.DiscordId == discordid);
-            if(user is null || !user.Banned) {
+        public static async Task RemoveBan(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(Description = "Discord ID of user to unban")] SocketUser user) {
+            var dbuser = db.DBUsers.FirstOrDefault(u => u.DiscordId == user.Id);
+            if(dbuser is null || !dbuser.Banned) {
                 await command.RespondAsync("Could not find a banned user with that ID in the DB.");
                 return;
             }
-            user.Banned = false;
+            dbuser.Banned = false;
             await db.SaveChangesAsync();
 
-            var socketGuild = _client.GetGuild(command.GuildId ?? user.GuildId);
-            var targetUser = socketGuild.GetUser(discordid);
+            var socketGuild = _client.GetGuild(command.GuildId ?? dbuser.GuildId);
+            var targetUser = socketGuild.GetUser(user.Id);
             //Check if running user has ban perms
             var runningUser = socketGuild?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
             if(runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers)) {
