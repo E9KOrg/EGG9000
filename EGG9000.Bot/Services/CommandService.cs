@@ -53,15 +53,6 @@ namespace EGG9000.Bot.Services {
         }
     }
 
-    public class NumOverflowException : Exception {
-        public Type ExpectedType { get; }
-        public BigInteger ProvidedValue { get; }
-        public NumOverflowException(Type expectedType, BigInteger providedValue) {
-            ExpectedType = expectedType;
-            ProvidedValue = providedValue;
-        }
-    }
-
     public class CommandService : IHostedService {
         private readonly DiscordHostedService _discord;
         private List<SlashCommandFunction> _slashCommandFunctions;
@@ -213,8 +204,6 @@ namespace EGG9000.Bot.Services {
                     await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
                 } catch(UserNotInServerException unfe) {
                     await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
-                } catch(NumOverflowException nofe) {
-                    await arg.RespondAsync(text: "", embed: EmbedError($"Provided value `{nofe.ProvidedValue}` does not fall within the bounds of expected type `{nofe.ExpectedType}`."));
                 } catch(Exception e) {
                     try {
                         _bugsnag.Notify(e);
@@ -428,16 +417,6 @@ namespace EGG9000.Bot.Services {
                         throw new UserNotInServerException(ex.Message, (value as SocketUser).Id);
                     }
                 }
-
-                if(parameterInfo.ParameterType == typeof(int) ||  parameterInfo.ParameterType == typeof(long)) { 
-                    var value = FindOption(name, fauxCommand.Data.Options)?.Value;
-                    try {
-                        dynamic changedObj = Convert.ChangeType(value, parameterInfo.ParameterType);
-                    } catch(OverflowException) {
-                        throw new NumOverflowException(parameterInfo.ParameterType, BigInteger.Parse(value.ToString()));
-                    }
-                }
-
                 if(parameterInfo.ParameterType.IsEnum) {
                     var value = FindOption(name, fauxCommand.Data.Options)?.Value;
                     return value == null ? null : Enum.Parse(parameterInfo.ParameterType, value.ToString());
