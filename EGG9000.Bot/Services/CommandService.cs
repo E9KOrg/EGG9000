@@ -41,13 +41,24 @@ using EGG9000.Common.Extensions;
 using EGG9000.Bot.Automated.Coops;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using System.Numerics;
+using AutoMapper;
 
 namespace EGG9000.Bot.Services {
 
     public class UserNotInServerException : Exception {
         public ulong User { get; }
-        public UserNotInServerException(string message, ulong user) : base(message) { 
+        public UserNotInServerException(string message, ulong user) : base(message) {
             User = user;
+        }
+    }
+
+    public class NumOverflowException : Exception {
+        public Type ExpectedType { get; }
+        public BigInteger ProvidedValue { get; }
+        public NumOverflowException(Type expectedType, BigInteger providedValue) {
+            ExpectedType = expectedType;
+            ProvidedValue = providedValue;
         }
     }
 
@@ -202,6 +213,8 @@ namespace EGG9000.Bot.Services {
                     await (Task)command.MethodInfo.Invoke(null, parameters.ToArray());
                 } catch(UserNotInServerException unfe) {
                     await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
+                } catch(NumOverflowException nofe) {
+                    await arg.RespondAsync(text: "", embed: EmbedError($"Provided value `{nofe.ProvidedValue}` does not fall within the bounds of expected type `{nofe.ExpectedType}`."));
                 } catch(Exception e) {
                     try {
                         _bugsnag.Notify(e);
@@ -416,6 +429,15 @@ namespace EGG9000.Bot.Services {
                     }
                 }
 
+                if(parameterInfo.ParameterType == typeof(int) ||  parameterInfo.ParameterType == typeof(long)) { 
+                    var value = FindOption(name, fauxCommand.Data.Options)?.Value;
+                    try {
+                        dynamic changedObj = Convert.ChangeType(value, parameterInfo.ParameterType);
+                    } catch(OverflowException) {
+                        throw new NumOverflowException(parameterInfo.ParameterType, BigInteger.Parse(value.ToString()));
+                    }
+                }
+
                 if(parameterInfo.ParameterType.IsEnum) {
                     var value = FindOption(name, fauxCommand.Data.Options)?.Value;
                     return value == null ? null : Enum.Parse(parameterInfo.ParameterType, value.ToString());
@@ -556,7 +578,8 @@ namespace EGG9000.Bot.Services {
             };
 
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
-                AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
+                var maxVal = parameterInfo.ParameterType == typeof(int) ? int.MaxValue : double.MinValue;
+                AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: maxVal, guildCommand, subCommand);
                 return;
             }
             if(parameterInfo.ParameterType.IsEnum) {
@@ -567,24 +590,23 @@ namespace EGG9000.Bot.Services {
                         Value = Convert.ToInt32(value)
                     });
                 }
-                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand, choices.ToArray());
+                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand, choices.ToArray());
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                 for(var i = 1; i <= 10; i++) {
-                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i > 1 ? false : slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, guildCommand, subCommand);
+                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i > 1 ? false : slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand);
                 }
                 return;
             }
             throw new NotImplementedException($"Parameter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
         }
 
-        private void AddOption(string name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices) {
+        private void AddOption(string name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, bool positiveOnly, double maxValue, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices) {
             if(guildCommand != null) {
-
-                guildCommand.AddOption(name, type, description, isRequired, null, isAutocomplete: isAutocomplete, null, null, null, null, null, null, null, null, choices);
+                guildCommand.AddOption(name, type, description, isRequired, null, isAutocomplete: isAutocomplete, minValue: positiveOnly ? 0 : null, maxValue: maxValue == double.MinValue ? null : maxValue, null, null, null, null, null, null, choices);
             } else {
-                subCommand.AddOption(name, type, description, isRequired, false, isAutocomplete: isAutocomplete, null, null, null, null, null, null, null, null, choices);
+                subCommand.AddOption(name, type, description, isRequired, false, isAutocomplete: isAutocomplete, minValue: positiveOnly ? 0 : null, maxValue: maxValue == double.MinValue ? null : maxValue, null, null, null, null, null, null, choices);
             }
 
         }
