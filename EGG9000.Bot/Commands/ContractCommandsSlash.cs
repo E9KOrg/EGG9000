@@ -80,7 +80,17 @@ namespace EGG9000.Bot.Commands {
         private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ILogger logger, DBUser dbuser, Coop coop) {
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
+            if(status is null) { //Safeguarding
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is unresponsive, please try again in a minute or two."); });
+                return;
+            }
+
             var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
+
+            if(details is null) { // Edge cases were throwing when details was null
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op. (Co-op may be, or have been public/late joined)"); });
+                return;
+            }
 
             var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser.Id == dbuser.Id && x.EggsShipped == 0);
 
