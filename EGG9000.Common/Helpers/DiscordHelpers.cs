@@ -121,7 +121,7 @@ namespace EGG9000.Bot.Helpers {
             await CheckFreshEggsRole(guild, discordUser, dbUser);
             await CheckBG(_client, guild, discordUser, dbUser);
             await CheckPermitRoles(guild, discordUser, dbUser);
-            await CheckGrades(guild, discordUser, dbUser, grades);
+            await CheckGrades(discordUser, dbUser, grades);
             await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
             await CheckUserOSRole(_client, guild, discordUser, dbUser);
             await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
@@ -321,7 +321,7 @@ namespace EGG9000.Bot.Helpers {
 
             }
         }
-        private static async Task CheckGrades(SocketGuild Guild, IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
+        private static async Task CheckGrades(IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
             var neededGrades = dbuser.EggIncAccounts.Select(x => x.GetGrade());
 
             var neededRoles = neededGrades.Select(x => grades.First(g => g.grade == x).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();

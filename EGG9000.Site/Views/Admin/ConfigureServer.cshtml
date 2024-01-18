@@ -15,6 +15,7 @@
 
 	.table {
 		border-bottom: 1px solid #ccc;
+		caption-side: top !important;
 	}
 
 	div.custom-card {
@@ -30,6 +31,12 @@
 	div.tc-card {
 		background-color: gray;
 		border-color: darkgray;
+		color: black;
+	}
+
+	div.requ-card {
+		background-color: lightsalmon;
+		border-color: darksalmon;
 		color: black;
 	}
 
@@ -127,6 +134,7 @@
 
 <table class="table table-striped">
 	<thead>
+		<tr style="text-align: center; font-size: larger"><th colspan="3">Channels, Threads & Categories</th></tr>
 		<tr>
 			<th>Type</th>
 			<th>Description</th>
@@ -139,10 +147,11 @@
 			FieldInfo fi = val.GetType().GetField(val.ToString());
 			DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
 			var description = (attributes != null && attributes.Any()) ? attributes.First().Description : val.ToString();
+			if (description.StartsWith("/R/")) continue;
 			<tr>
 				<td>
 					@val.ToString()
-					@if(description.StartsWith("/TC/") || description.Contains("Optional:")){
+					@if(description.StartsWith("/TC/") || description.Contains("Optional:") || description.StartsWith("Required: ")){
 						<br/>
 						@if (description.StartsWith("/TC/")){
 							<div class="custom-card tooltip-custom tc-card">
@@ -156,10 +165,16 @@
 								<span class="tooltiptext-custom speech-bubble">This parameter is not required, and it is up to your discretion to choose to use it or not.</span>
 							</div>
 						}
+						@if (description.StartsWith("Required:")){
+							<div class="custom-card tooltip-custom requ-card">
+								Required
+								<span class="tooltiptext-custom speech-bubble">This parameter is required for your server to function correctly.</span>
+							</div>
+						}
 					}
 				</td>
 				<td>
-					@description.Replace("/TC/", "").Replace("Optional: ", "")
+					@description.Replace("/TC/", "").Replace("Optional: ", "").Replace("Required: ", "")
 				</td>
 				<td>
 					@{
@@ -169,6 +184,39 @@
 				</td>
 				<td>
 					@discord.GetGuild(Model.Id).GetChannel(@detail.Id)?.Name
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+<table class="table table-striped">
+	<thead>
+		<tr style="text-align: center; font-size: larger"><th colspan="3">Roles</th></tr>
+		<tr>
+			<th>Description</th>
+			<th>ID</th>
+			<th>Name</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var val in Enum.GetValues<GuildChannelType>())
+		{
+			FieldInfo fi = val.GetType().GetField(val.ToString());
+			DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
+			var description = (attributes != null && attributes.Any()) ? attributes.First().Description : val.ToString();
+			if (!description.StartsWith("/R/")) continue;
+			<tr>
+				<td>
+					@description.Replace("Optional: ", "").Replace("/R/", "")
+				</td>
+				<td>
+					@{
+						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
+						<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
+					}
+				</td>
+				<td>
 					@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
 				</td>
 			</tr>

@@ -105,45 +105,45 @@ namespace EGG9000.Common.Database.Entities {
         WarningMessagesForUser = 9,
         [Description("Optional: Shows limited time shells")]
         LimitedTimeShells = 10,
-        [Description("Optional: Limited time shells notification role")]
+        [Description("/R/Optional: Limited time shells notification role")]
         LimitedTimeShellsRole = 11,
         [Description("/TC/Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
-        [Description("Optional: Missing Boarding Group Role")]
+        [Description("/R/Optional: Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
-        [Description("Optional: Active Role (participated in a co-op in the last 3 weeks)")]
+        [Description("/R/Optional: Active Role (participated in a co-op in the last 3 weeks)")]
         ActiveRole = 15,
-        [Description("Optional: Grade AAA Role")]
+        [Description("/R/Optional: Grade AAA Role")]
         GradeAAA = 16,
-        [Description("Optional: Grade AA Role")]
+        [Description("/R/Optional: Grade AA Role")]
         GradeAA = 17,
-        [Description("Optional: Grade A Role")]
+        [Description("/R/Optional: Grade A Role")]
         GradeA = 18,
-        [Description("Optional: Grade B Role")]
+        [Description("/R/Optional: Grade B Role")]
         GradeB = 19,
-        [Description("Optional: Grade C Role")]
+        [Description("/R/Optional: Grade C Role")]
         GradeC = 20,
-        [Description("Optional: Game Version Outdated Role")]
+        [Description("/R/Optional: Game Version Outdated Role")]
         GameVersionOutdated = 21,
         [Description("/TC/Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
         DemeritLogChannel = 22,
-        [Description("Optional: 'Android' Role")]
+        [Description("/R/Optional: 'Android' Role")]
         AndroidRole = 24,
-        [Description("Optional: 'iOS/Apple' Role")]
+        [Description("/R/Optional: 'iOS/Apple' Role")]
         IosRole = 25,
-        [Description("Optional: 'Enlightenment Diamond' Role")]
+        [Description("/R/Optional: 'Enlightenment Diamond' Role")]
         EnDRole = 26,
-        [Description("Optional: 'Nobel prize in Animal Husbandry' Role")]
+        [Description("/R/Optional: 'Nobel prize in Animal Husbandry' Role")]
         NAHRole = 27,
-        [Description("Optional: 'All-Star Club' Role")]
+        [Description("/R/Optional: 'All-Star Club' Role")]
         ASCRole = 28,
         [Description("/TC/Optional: Where /callstaff messages will appear")]
         CallStaffChannel = 29,
-        [Description("Optional: Role for staff to ping in /callstaff instances")]
+        [Description("/R/Optional: Role for staff to ping in /callstaff instances")]
         CallStaffTagRole = 30,
-        [Description("Optional: Role for standard subscriptions")]
+        [Description("/R/Optional: Role for standard subscriptions")]
         StandardSubscription = 31,
-        [Description("Optional: Role for pro subscriptions")]
+        [Description("/R/Optional: Role for pro subscriptions")]
         ProSubscription = 32,
         [Description("Optional: Subscription-Only Contract Category, adding this will prevent sub-only contracts from appearing elsewhere.")]
         SubscriptionContractCategory = 33,
@@ -162,6 +162,10 @@ namespace EGG9000.Common.Database.Entities {
         [Description("/TC/Optional: Where players who join coops while on break will be logged")]
         BreakCoopLog = 40,
         [Description("/TC/Optional: Where players can talk to staff of the server")]
-        TalkToStaff = 41
+        TalkToStaff = 41,
+        [Description("/R/Optional: Role for users that have the Standard Permit")]
+        StandardPermitRole = 42,
+        [Description("/R/Optional: Role for users that have the Pro Permit")]
+        ProPermitRole = 43
     }
 }
