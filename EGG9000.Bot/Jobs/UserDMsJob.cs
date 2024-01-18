@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Jobs {
                     }
 
                     if(!account.SentBreakWarning && account.OnBreakUntil > DateTimeOffset.FromUnixTimeSeconds(0).AddDays(1)) {
-                        _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
+                        _logger.LogInformation("Sending warning to {user}", user.DiscordUsername);
                         var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
 
                         var mcs = (await _discord.GetGlobalApplicationCommandsAsync()).FirstOrDefault(c => c.Type == Discord.ApplicationCommandType.Slash && c.Name == "mycontractsettings");
