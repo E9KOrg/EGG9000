@@ -41,6 +41,7 @@ namespace EGG9000.Common.Commands {
         public string Description = "";
         public bool Required = true;
         public Type AutocompleteHandler;
+        public bool PositiveOnly = false;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
