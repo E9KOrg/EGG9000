@@ -471,43 +471,40 @@ namespace EGG9000.Bot.Services {
             if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
                 var commandTextMatches = new Regex(@"^\/(\w+)(?:\s+(\w+))?").Match(message.Content);
                 if(commandTextMatches.Success) {
-                    var parentCommand = "";
-                    var commandText = "";
+                    var foundParentCommand = "";
+                    var foundCommandText = "";
                     if(commandTextMatches.Groups[2].Success) {
-                        parentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
-                        commandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
-                    } else {
-                        commandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
-                    }
+                        foundParentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                        foundCommandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
+                    } else foundCommandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
 
                     var global = false;
                     SocketApplicationCommand discordCommand = null;
                     try {
-                        if(parentCommand == "") discordCommand = _discordCommands.First(x => x.command.Name.ToLower() == commandText && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
-                        else discordCommand = _discordCommands.First(x => x.command.Name.ToLower() == parentCommand && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
+                        if(foundParentCommand == "") discordCommand = _discordCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundCommandText && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
+                        else discordCommand = _discordCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundParentCommand && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
                     } catch(Exception) { }
 
                     if(discordCommand == null) {
                         try {
-                            if(parentCommand == "") discordCommand = _globalCommands.First(x => x.command.Name.ToLower() == commandText).command;
-                            else discordCommand = _globalCommands.First(x => x.command.Name.ToLower() == parentCommand).command;
+                            if(foundParentCommand == "") discordCommand = _globalCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundCommandText).command;
+                            else discordCommand = _globalCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundParentCommand).command;
                             if(discordCommand != null) global = true;
                         } catch(Exception) { }
                     }
 
                     if(discordCommand != null) {
-                        var command = _slashCommandFunctions.First(s => s.Name == (parentCommand == "" ? discordCommand.Name : parentCommand));
+                        var commands = _slashCommandFunctions.Where(s => s.Name == (foundParentCommand == "" ? foundCommandText : foundParentCommand) && !_userCommandFunctions.Any(u => u.Equals(s)));
+                        SlashCommandFunction command = null;
+                        if(foundParentCommand == "") command = commands.First(s => s.SubFunctions == null || s.SubFunctions.Count == 0);
+                        else command = commands.First(s => s.SubFunctions?.Count > 0);
                         var parentHasChild = false;
                         var bypass = false;
-                        if(command.SubFunctions is null || command.SubFunctions.Count == 0) {
-                            bypass = true;
-                        } else{
-                            parentHasChild = command.SubFunctions.Any(s => s.Name == commandText);
-                        }
+                        if(command.SubFunctions is null || command.SubFunctions.Count == 0) bypass = true;
+                        else parentHasChild = command.SubFunctions.Any(s => s.Name == foundCommandText);
                         var hasPerms = false;
                         if(global) hasPerms = true;
                         else {
-
                             var adminOnlyLevel = command == null ? StaffOnlyLevel.None : command.Details.AdminOnly;
                             var associatedPerm = adminOnlyLevel switch {
                                 StaffOnlyLevel.Admin => GuildPermission.Administrator,
@@ -521,10 +518,10 @@ namespace EGG9000.Bot.Services {
 
                         if(hasPerms && (parentHasChild || bypass)) {
                             var warningEmbed = EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
-                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(parentCommand != "" ? $"{parentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandText : "")}:{discordCommand?.Id}> to run it.");
+                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(foundParentCommand != "" ? $"{foundParentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandTextMatches.Groups[2] : foundCommandText)}:{discordCommand?.Id}> to run it.");
 
                             await message.Channel.SendMessageAsync(
-                                text: "",
+                                text: $"",
                                 embed: warningEmbed,
                                 messageReference: new MessageReference(message.Id)
                             );
