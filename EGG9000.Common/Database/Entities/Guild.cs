@@ -163,9 +163,9 @@ namespace EGG9000.Common.Database.Entities {
         BreakCoopLog = 40,
         [Description("/TC/Optional: Where players can talk to staff of the server")]
         TalkToStaff = 41,
-        [Description("/R/Optional: Role for users that have the Standard Permit")]
+        [Description("/R/Optional: Role for users that have the Standard Permit (must be paired with Pro Permit role)")]
         StandardPermitRole = 42,
-        [Description("/R/Optional: Role for users that have the Pro Permit")]
+        [Description("/R/Optional: Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
         ProPermitRole = 43
     }
 }
