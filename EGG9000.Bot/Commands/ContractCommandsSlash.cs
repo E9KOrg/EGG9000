@@ -87,12 +87,18 @@ namespace EGG9000.Bot.Commands {
 
             var details = new CoopDetails(coop, coop.Contract, coop.League, coop.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(x => new UserWithBackup { Backup = x.Backup, User = y.User })).ToList(), _client, status);
 
-            if(details is null) { // Edge cases were throwing when details was null
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op. (Co-op may be, or have been public/late joined)"); });
+            if(details is null || details.CoopParticipants is null || details.CoopParticipants.Count == 0) { // Edge cases were throwing when details was null
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op. Co-op may be, or may have been public, or user may no longer be assigned to coop."); });
                 return;
             }
 
-            var xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser.Id == dbuser.Id && x.EggsShipped == 0);
+            UserFarmDetails xref = null;
+            try {
+                xref = details.CoopParticipants.FirstOrDefault(x => x.DBUser.Id == dbuser.Id && x.EggsShipped == 0);
+            } catch(Exception) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op. Co-op may be, or may have been public, or user may no longer be assigned to coop."); });
+                return;
+            }
 
             if(xref is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user with zero production."); });
