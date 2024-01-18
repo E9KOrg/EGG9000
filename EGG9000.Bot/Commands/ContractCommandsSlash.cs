@@ -499,7 +499,12 @@ namespace EGG9000.Bot.Commands {
                 xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == targetuser.Id && x.Coop.DiscordChannelId == command.Channel.Id);
             }
             if(xref == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user assignment to co-op"); });
+                var moveText = "";
+                var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
+                if(dbGuild is not null) {
+                    moveText = "A </movetocoop:" + (await discord.GetGuild(dbGuild.Id).GetApplicationCommandsAsync()).FirstOrDefault(c => c.Type == ApplicationCommandType.Slash && c.Name == "movetocoop").Id + "> may be needed.";
+                }
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find user assignment to co-op.\n{moveText}"); });
                 return;
             }
 

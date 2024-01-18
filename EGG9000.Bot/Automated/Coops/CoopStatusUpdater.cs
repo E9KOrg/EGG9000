@@ -896,11 +896,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     //New commands list, each is a quick-link to start using the command
                     lastMessage += "__Co-op Commands (click to use):__\n";
 
+                    var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
                     if(_client.GetChannelAsync(GuildChannelType.CallStaffChannel, guild) != null) {
-                        lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
+                        lastMessage += $"\n</callstaff:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "callstaff")?.Id ?? 0}> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                     }
-                    lastMessage += "\n</coopsettings:1107809801469173933> Receive DM pings for various events in the co-op";
-                    lastMessage += "\n</fixfullcooperror:1111043604178276463> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
+                    lastMessage += $"\n</coopsettings:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "coopsettings")?.Id ?? 0}> Receive DM pings for various events in the co-op";
+                    lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "fixfullcooperror")?.Id ?? 0}> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
 
 
 

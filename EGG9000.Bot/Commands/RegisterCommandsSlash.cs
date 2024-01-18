@@ -231,7 +231,8 @@ namespace EGG9000.Bot.Commands {
                     await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
                     return;
                 } else if(user.GuildId != guild.Id) {
-                    await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:1095116354329268366> command");
+                    var moveservercommand = (await guild.GetApplicationCommandsAsync()).FirstOrDefault(c => c.Type == ApplicationCommandType.Slash && c.Name == "moveserver");
+                    await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:{moveservercommand?.Id ?? 0}> command");
                     return;
                 } else {
 
@@ -319,11 +320,11 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
+        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, user, logger);
         }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by numbers")] string eggincid) {
+        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, command.User, logger);
         }
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, string eggincid, IUser user, ILogger logger) {
@@ -337,7 +338,6 @@ namespace EGG9000.Bot.Commands {
                 var bannedUsers = db.DBUsers.Where(x => x.Banned).ToList().SelectMany(u => u.EggIncAccounts).ToList();
                 if(bannedUsers is not null) {
                     if(bannedUsers.Select(e => e.Id.ToUpper()).ToList().Contains(eggincid)) {
-                        //1132753030022975499 - dev server banned thread
                         var bannedUserThread = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.BannedUserThread);
                         if(bannedUserThread is not null) {
                             var thread = guild.GetThreadChannel(bannedUserThread.Id);
