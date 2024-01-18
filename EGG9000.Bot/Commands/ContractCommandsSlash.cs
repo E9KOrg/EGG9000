@@ -522,7 +522,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Move a user to a co-op.", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(AutocompleteHandler = typeof(MoveToCoopCoopNameAutoComplete))] string coopid) {
+        public static async Task MoveToCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
+            [SlashParam(AutocompleteHandler = typeof(MoveToCoopCoopNameAutoComplete))] string coopid, [SlashParam(Required = false, Description = "If true, will not ping user in coop channel")] bool silent = false) {
             await command.DeferAsync();
 
             var coop = await db.Coops.Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == Guid.Parse(coopid));
@@ -539,7 +540,7 @@ namespace EGG9000.Bot.Commands {
             var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = _client.GetChannel(coop.DiscordChannelId);
 
-            var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel);
+            var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketTextChannel)coopChannel, (SocketTextChannel)command.Channel, silent);
 
             if(newxref == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}"); });

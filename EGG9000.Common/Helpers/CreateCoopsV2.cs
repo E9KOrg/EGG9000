@@ -155,7 +155,7 @@ namespace EGG9000.Common.Helpers {
         }
 
 
-        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, String EggIncId, String eggIncName, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel) {
+        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, string EggIncId, string eggIncName, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,
@@ -179,13 +179,12 @@ namespace EGG9000.Common.Helpers {
                 try {
                     await commandChannel.SendMessageAsync(commandChannel.Guild.Id != targetChannel.Guild.Id ? $"{mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**." : "Looks like an error happened, please use /callstaff");
                 } catch(Exception) {
-                    await targetChannel.SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
+                    if(!silent) await targetChannel.SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
                     return newxref;
                 }
             }
 
-
-            await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
+            if(!silent) await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
             return newxref;
         }
     }
