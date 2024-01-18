@@ -795,17 +795,16 @@ namespace EGG9000.Bot.Automated.Coops {
                                     if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                         xref.JoinWarning24TillFinish = true;
                                         await _db.SaveChangesAsync();
-                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                     } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                         xref.JoinWarning24h = true;
                                         xref.JoinWarning12h = true;
                                         await _db.SaveChangesAsync();
-                                        //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
-                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"reminder to join - 24h since added to co-op", coop);
                                     } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                         xref.JoinWarning12h = true;
                                         await _db.SaveChangesAsync();
-                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"reminder to join - 12h since added to co-op", coop);
                                     }
 
 
