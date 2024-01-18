@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Jobs {
                     }
                     var dmChannel = await discorduser.CreateDMChannelAsync();
                     if(dmChannel is null) {
-                        _logger.LogWarning($"Could not create DM channel with {user.DiscordUsername}");
+                        _logger.LogWarning("Could not create DM channel with {user}", user.DiscordUsername);
                         continue;
                     }
 
@@ -52,8 +52,9 @@ namespace EGG9000.Bot.Jobs {
                         _logger.LogInformation($"Sending warning to {user.DiscordUsername}");
                         var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
 
+                        var mcs = (await _discord.GetGlobalApplicationCommandsAsync()).FirstOrDefault(c => c.Type == Discord.ApplicationCommandType.Slash && c.Name == "mycontractsettings");
                         var message = $"Your break for {account.Backup?.UserName ?? "(No Name)"} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}." +
-                            $"\n\nPlease use the `/mycontractsettings` command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on " +
+                            $"\n\nPlease use the {(mcs is not null ? $"</mycontractsettings:{mcs?.Id ?? 0}>" : "`/mycontractsettings`")} command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on " +
                             $"{DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.";
                         var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, message);
                         if((retEx == null) == user.DMSBlocked) {

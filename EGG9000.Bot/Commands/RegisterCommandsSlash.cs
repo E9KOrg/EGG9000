@@ -540,7 +540,7 @@ namespace EGG9000.Bot.Commands {
         }*/
 
         [SlashCommand(Description = "Get a users status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketGuildUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
+        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
             return _userstatus(command, db, _client, apiLink, user, true, ShowInChannel);
         }
 
