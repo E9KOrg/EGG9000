@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using System.Collections.Generic;
+using EGG9000.Bot.EggIncAPI;
 
 namespace EGG9000.Bot.Commands {
     public static class ForumlaCommands {
@@ -91,6 +93,44 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+        private class ShipData {
+            public string Type { get; set; }
+            public string Duration { get; set; }
+            public int Level { get; set; }
+            public double LegendaryDropRate { get; set; }
+
+            public ShipData(string type, string duration, int level, double legendaryDropRate) {
+                Type = type;
+                Duration = duration;
+                Level = level;
+                LegendaryDropRate = legendaryDropRate;
+            }
+        }
+
+        private class ShipsSent {
+            public Dictionary<(Ei.MissionInfo.Types.Spaceship, Ei.MissionInfo.Types.DurationType, uint), int> ShipCounts { get; private set; }
+
+            public ShipsSent(Ei.Backup backup) {
+                ShipCounts = new Dictionary<(Ei.MissionInfo.Types.Spaceship, Ei.MissionInfo.Types.DurationType, uint), int>();
+
+                if(backup.ArtifactsDb is not null) {
+                    foreach(var mission in backup.ArtifactsDb.MissionArchive) {
+                        var key = (mission.Ship, mission.DurationType, mission.Level);
+                        if(ShipCounts.ContainsKey(key)) {
+                            ShipCounts[key]++;
+                        } else {
+                            ShipCounts[key] = 1;
+                        }
+                    }
+                }
+            }
+
+            public int GetShipsCount(Ei.MissionInfo.Types.Spaceship shipType, Ei.MissionInfo.Types.DurationType durationType, uint level) {
+                var key = (shipType, durationType, level);
+                return ShipCounts.TryGetValue(key, out int count) ? count : 0;
+            }
+        }
+
         [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
             await command.RespondAsync("Getting account backups...");
@@ -103,11 +143,12 @@ namespace EGG9000.Bot.Commands {
             var sb = new StringBuilder();
 
             foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
-                if(user.EggIncAccounts.Count > 1)
+                if(user.EggIncAccounts.Count > 1) {
                     sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
-                LLCCalculate(account, sb, user.DiscordUsername);
+                }
+                await LLCCalculate(account, sb, user.DiscordUsername);
             }
-
+            
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
         }
 
@@ -128,7 +169,117 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
+        private static async Task LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
+            var shipDataTable = new List<(Ei.MissionInfo.Types.Spaceship ship, Ei.MissionInfo.Types.DurationType type, uint level, double legendaryDropRate)> {
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Epic, 0, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Short, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Long, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Epic, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Short, 2, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Long, 2, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Epic, 2, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Short, 3, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Long, 3, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Epic, 3, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Short, 4, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Long, 4, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Epic, 4, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Short, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Long, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Galeggtica, Ei.MissionInfo.Types.DurationType.Epic, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Short, 0, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Long, 0, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Epic, 0, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Short, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Long, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Epic, 1, 482.673),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Short, 2, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Long, 2, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Epic, 2, 1615.316),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Short, 3, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Long, 3, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Epic, 3, 274.828),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Short, 4, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Long, 4, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Epic, 4, 431.604),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Short, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Long, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Chickfiant, Ei.MissionInfo.Types.DurationType.Epic, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 0, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 0, 579.538),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 0, 270.244),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 1, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 1, 133.825),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 2, 9010.667),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 2, 934.343),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 2, 119.026),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 3, 8244.540),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 3, 372.407),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 3, 113.645),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 4, 3056.498),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 4, 653.134),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 4, 105.118),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 5, 1212.981),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 5, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 5, 161.565),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Short, 6, 654.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Long, 6, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Voyegger, Ei.MissionInfo.Types.DurationType.Epic, 6, 143.500),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 0, 2535.522),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 0, 0.000),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 0, 55.675),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 1, 1263.428),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 1, 300.548),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 1, 51.978),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 2, 1410.754),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 2, 203.415),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 2, 36.620),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 3, 594.269),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 3, 319.529),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 3, 38.262),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 4, 501.500),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 4, 165.267),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 4, 30.459),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 5, 615.863),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 5, 87.388),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 5, 27.887),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 6, 422.235),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 6, 84.260),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 6, 25.055),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Short, 7, 483.407),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Long, 7, 103.098),
+                (Ei.MissionInfo.Types.Spaceship.Henerprise, Ei.MissionInfo.Types.DurationType.Epic, 7, 24.977)
+            };
+
+            var backup = await ContractsAPI.FirstContact(account.Id);
+            var shipsSent = new ShipsSent(backup.Backup);
+
+            var sumOfRatios = 0.0;
+            foreach(var (ship, type, level, legendaryDropRate) in shipDataTable) {
+                var shipsSentCount = shipsSent.GetShipsCount(ship, type, level);
+                var shipsNeeded = legendaryDropRate;
+
+                var ratio = shipsNeeded != 0.0 ? shipsSentCount / shipsNeeded : 0.0;
+                sumOfRatios += ratio;
+            }
+
+            var extendedCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Epic);
+            var standardCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Long);
+            var shortCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Short);
+
+            var craftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+            var legCount = ArtifactHelpers.GetLegendaryArtifactCount(account.Backup.ArtifactHall);
+
+            var expectedLeggies = craftCount * 0.0085 + sumOfRatios;
+            var LLC = Math.Round((legCount - expectedLeggies), 2);
+            var LLCPercent = expectedLeggies != 0 ? (int)((legCount * 100 / expectedLeggies) - 100) : 0;
+
+            var displayPercent = LLCPercent == int.MinValue ? "-∞" : $"{LLCPercent}%";
+            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{displayPercent}`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{Math.Round(expectedLeggies, 2)}` expected / `{legCount}` acquired");
+        }
+
+        /*private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
             var extendedCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Epic);
             var standardCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Long);
             var shortCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Short);
@@ -152,8 +303,8 @@ namespace EGG9000.Bot.Commands {
 
             var LLC = Math.Round((legCount - expectedDropL - expectedCraftL), 2);
 
-            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{displayPercent}%`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{expectedLeg}` expected / `{legCount}` acquired");
-        }
+            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{displayPercent}%`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{expectedLeg}` expected / `{legCount}` acquired");            
+        }*/
 
         [SlashCommand(Description = "Calculate the EB% based on SE and PE inputs", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Eb(FauxCommand command, [SlashParam(Description = "SE")] string SE, [SlashParam(Description = "PE")] int PE) {
