@@ -257,7 +257,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 var findSpotButton = (dbGuild.DisableBG && dbGuild.Id != 1108127105088241746 /*DEV server*/) ? null : 
-                    ((DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18) && guildContract.Contract.GoodUntil > DateTimeOffset.Now) ? 
+                    (dbGuild.Id == 1108127105088241746 || ((DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18) && guildContract.Contract.GoodUntil > DateTimeOffset.Now)) ? 
                         new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build() 
                         : null);
 

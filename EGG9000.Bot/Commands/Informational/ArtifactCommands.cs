@@ -96,25 +96,43 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Show off your saved Artifact Sets")]
-        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
+        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount, [SlashParam(Description = "Set # to statically display", Required = false, PositiveOnly = true)] int index = 0) {
             await command.DeferAsync();
+            var lockSet = true;
+            if(index == 0) {
+                index = 1;
+                lockSet = false;
+            }
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
                 return;
             }
-            var accountIndex = int.Parse(useraccount.Split("|")[1]);
-            var account = user.EggIncAccounts[accountIndex];
+            EggIncAccount account = null;
+            int accountIndex = 0;
+            try {
+                accountIndex = int.Parse(useraccount.Split("|")[1]);
+                account = user.EggIncAccounts[accountIndex];
+            } catch(Exception) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
+
             var afxSets = account.Backup?.ArtifactSets;
             if(afxSets is null || afxSets.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Backup is empty, or no Artifact Sets were found for this account"); });
                 return;
             }
 
-            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[0]);
+            if(index < 1 || (index != 1 && index > afxSets.Count)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Set number `{index}` larger than maximum set number `{afxSets.Count}`."); });
+                return;
+            }
+
+            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[index - 1]);
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
-                x.Components = builder.ComponentBuilder?.Build();
+                x.Components = lockSet ? null : builder.ComponentBuilder?.Build();
                 x.Embed = builder.EmbedBuilder.Build();
             });
         }
@@ -163,8 +181,7 @@ namespace EGG9000.Bot.Commands {
                     .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
                 ).WithColor(RandomColor())
                 .WithDescription(GetAfxSetString(currentSet));
-            if(accText != "")
-                embedBuilder.WithFooter(new EmbedFooterBuilder().WithText(accText));
+            if(accText != "") embedBuilder.WithFooter(new EmbedFooterBuilder().WithText(accText));
 
             if(currentSetIndex > 0 && afxSets.Count > 1 && afxSets[currentSetIndex - 1] is not null) {
                 componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;

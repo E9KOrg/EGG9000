@@ -151,18 +151,23 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
         public class CreateCoopContractAutoComplete : AutoCompleteHandler {
             private readonly ApplicationDbContext _db;
-            public CreateCoopContractAutoComplete(ApplicationDbContext db) {
+            private readonly DiscordSocketClient _discord;
+            public CreateCoopContractAutoComplete(ApplicationDbContext db, DiscordSocketClient client) {
                 _db = db;
+                _discord = client;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var guild = _db.Guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                var discordGuild = _discord.GetGuild(guild.Id);
+                var discordUserPerms = discordGuild.GetUser(arg.User.Id).GuildPermissions.ToList();
+                var isStaff = discordUserPerms.Contains(GuildPermission.Administrator) || discordUserPerms.Contains(GuildPermission.ManageChannels) || discordUserPerms.Contains(GuildPermission.CreatePrivateThreads) || discordUserPerms.Contains(GuildPermission.ModerateMembers);
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
-                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.HasActiveSubscription()).Any();
+                var hasSubscriptionAccounts = dbUser?.EggIncAccounts.Where(x => x.HasActiveSubscription()).Any() ?? false;
 
                 var contracts = _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).ToList();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
-                if(guild is not null && !guild.DisableBG) {
+                if(guild is not null && !guild.DisableBG && !isStaff) {
                     //Limit contracts to those that have had longer than 16 hours to launch (i.e. all three boarding groups)
                     contracts = contracts.Where(x => (DateTimeOffset.Now - x.Created).TotalHours > 17).ToList();
                 }
