@@ -191,11 +191,11 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static string GetAfxSetString(List<EggIncArtifactInstance> set) {
-            return string.Join("\n", set.Select(s => ArtifactHelpers.GetAfEmoji(s) + ArtifactHelpers.GetRarityEmoji(s) + string.Join("", s.Stones.Select(st => ArtifactHelpers.GetAfEmoji(st)).ToList())));
+            return string.Join("\n", set.Select(GetAfxString));
         }
 
         public static string GetAfxString(EggIncArtifactInstance instance) {
-            return ArtifactHelpers.GetAfEmoji(instance) + ArtifactHelpers.GetRarityEmoji(instance) + string.Join("", instance.Stones.Select(st => ArtifactHelpers.GetAfEmoji(st))).ToString();
+            return GetAfEmoji(instance) + GetRarityEmoji(instance) + string.Join("", instance.Stones.Select(GetAfEmoji)).ToString();
         }
 
         #region InventoryImages
