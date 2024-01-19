@@ -838,12 +838,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         lastMessage += $"Coop **{coop.Name}** is ready for the following to join: {string.Join(", ", userList)}\n";
                     }
 
-                    if(status.Public) {
-                        lastMessage += $"This co-op is public.\n";
-                    }
-
-
-
 
                     //var usersAssigned = coop.UserCoopsXrefs.Select(x => {
                     //    var User = users.FirstOrDefault(y => y.Id == x.GetID());
@@ -857,9 +851,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     //        Backup = User.Backups?.First(y => y.EggIncId == x.EggIncId)
                     //    };
                     //}).Where(x => x != null);
-                    var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
-                    if(highestEB != null)
-                        lastMessage += $"Highest EB: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}\n";
 
 
                     var giftInfos = usersWithStatus.Where(x => x.Status is not null && x.Status.FarmInfo is not null && x.FarmStats is not null).Select(x => new {
@@ -889,9 +880,9 @@ namespace EGG9000.Bot.Automated.Coops {
                                 new FixedWidthCell($"{Math.Round(x.Habs)}%", CellAlignment.Right),
                                 new FixedWidthCell($"{Math.Round(x.Shipping)}%", CellAlignment.Right),
                             }).ToList());
-                        lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{string.Join("\n", GetTable(table))}```\n";
+                        lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{string.Join("\n", GetTable(table))}```\n\n";
                     } else if(coopDetails.CoopParticipants.Any(y => y.CoopStatus is not null && y.FarmStats is not null)) {
-                        lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n";
+                        lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n\n";
                     }
 
                     //New commands list, each is a quick-link to start using the command
@@ -903,22 +894,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     lastMessage += $"\n</coopsettings:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "coopsettings")?.Id ?? 0}> Receive DM pings for various events in the co-op";
                     lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "fixfullcooperror")?.Id ?? 0}> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
-
-
-                    lastMessage += $"\n\nCo-op Grade: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}";
-                    if(coop.AnyLeague) {
-                        lastMessage += " (<:ultra:1131045418319495369> Any-Grade)";
-                    }
-
-
-                    if(!string.IsNullOrEmpty(coop.CreatorID)) {
-                        var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
-                        if(creator != null) {
-                            var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
-                            lastMessage += $"\nCreated By {creator.User.DiscordUsername} {account.LastGrade}";
-
-                        }
-                    }
 
 
 
@@ -1147,15 +1122,33 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(lastMessage != "")
                             msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
+                        var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}\n";
+
+                        var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
+                        var highestEBMessage = "";
+                        if(highestEB != null)
+                            highestEBMessage = $"**Highest EB**: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}\n";
+
+                        var createdByMessage = "";
+                        if(!string.IsNullOrEmpty(coop.CreatorID)) {
+                            var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
+                            if(creator != null) {
+                                var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
+                                createdByMessage += $"**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}\n";
+                            }
+                        }
+
+                        var publicMessage = status.Public ? $"**This co-op is public**.\n" : "";
 
                         var embedBuilder = new EmbedBuilder()
-                        .WithDescription(
+                        .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
+                        (
                             (status.Finished()
                             ? "This co-op is finished!"
                             : coopDetails.PercentProjectedForJoined >= 100 && !coop.FinishedOrFailed()
                             ? "This co-op is projected to succeed without growth as long as there are no sleepers!"
                             : "") + $"\n[View on egg9000.com](https://egg9000.com/coop/{coop.ContractID}/{coop.Name})"
-                        )
+                        ))
                         .WithColor(color)
                         .WithTimestamp(DateTimeOffset.UtcNow)
                         .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Image))
