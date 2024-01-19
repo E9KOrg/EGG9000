@@ -32,6 +32,7 @@ using static Ei.Backup.Types;
 using Microsoft.AspNetCore.Http;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Contracts;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -784,7 +785,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                 if(userFarmDetails.Account is not null || userFarmDetails.Backup is not null) {
                                     var grade = userFarmDetails.Account?.GetGrade() ?? userFarmDetails.Backup.Grade;
-                                    if((uint)grade != coop.League && !coop.Contract.cc_only) {
+                                    if((uint)grade != coop.League && !(coop.Contract.cc_only || coop.AnyLeague)) {
                                         mention += $" (Wrong {grade})";
                                     }
                                 }
@@ -904,8 +905,10 @@ namespace EGG9000.Bot.Automated.Coops {
                     lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "fixfullcooperror")?.Id ?? 0}> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
 
 
-
-                    lastMessage += $"\n\nCo-op Grade: {(Ei.Contract.Types.PlayerGrade)(int)coop.League}";
+                    lastMessage += $"\n\nCo-op Grade: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}";
+                    if(coop.AnyLeague) {
+                        lastMessage += " (<:ultra:1131045418319495369> Any-Grade)";
+                    }
 
 
                     if(!string.IsNullOrEmpty(coop.CreatorID)) {
