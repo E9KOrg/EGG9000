@@ -41,21 +41,21 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.DeferAsync();
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             var builder = new EmbedBuilder {
                 Title = $"EB Tracking"
             };
-            foreach(var id in user.EggIncAccounts) {
+            foreach(var id in dbUser.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
                 backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
-                if(user.EggIncAccounts.Count > 1) {
+                if(dbUser.EggIncAccounts.Count > 1) {
                     builder.AddField("――――――――――――――――――", $"**{backup.UserName}**");
                 }
 
@@ -89,7 +89,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            user.UpdateAccounts();
+            dbUser.UpdateAccounts();
             await db.SaveChangesAsync();
             await command.ModifyOriginalResponseAsync(x => {
                 x.Embed = builder.Build();
@@ -100,16 +100,16 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "How many SE/PE needed for next rank up", AllowInDMs = true)]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
             await command.DeferAsync(ephemeral: !ShowInChannel);
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             var builder = new EmbedBuilder() {
                 Title = "Next Rank Details"
             };
-            foreach(var id in user.EggIncAccounts) {
+            foreach(var id in dbUser.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
@@ -123,7 +123,7 @@ namespace EGG9000.Bot.Commands {
                         break;
                 }
 
-                builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
+                builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (dbUser.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
                 var currentRank = SIPrefix.GetPrefixFromEB(backup.EarningsBonus);
@@ -135,7 +135,7 @@ namespace EGG9000.Bot.Commands {
                             break;
                     }
 
-                    builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
+                    builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (dbUser.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
                 }
 
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;

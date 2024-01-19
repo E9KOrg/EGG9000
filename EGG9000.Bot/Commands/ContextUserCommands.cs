@@ -39,14 +39,14 @@ namespace EGG9000.Bot.Commands {
         [UserCommand(Name = "Rockets Tracker", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RocketsTrackerLinks(SocketUserCommand command, ApplicationDbContext db)
         {
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);
-            if(user == null) {
-                await command.RespondAsync(text: "", embed: EmbedError("Unable to find backups for this user"));
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);
+            if(dbUser == null) {
+                await command.RespondAsync(text: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.Data.Member.Id}>"));
                 return;
             } else {
                 var sb = new StringBuilder();
-                foreach(var id in user.EggIncAccounts) {
-                    var backup = user.EggIncAccounts.FirstOrDefault(x => x.Id == id.Id).Backup;
+                foreach(var id in dbUser.EggIncAccounts) {
+                    var backup = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == id.Id).Backup;
                     if(sb.ToString() != "") sb.Append("\n\n");
                     sb.Append(backup.UserName + ": " + $"<https://wasmegg-carpet.netlify.app/rockets-tracker/?playerId={id.Id}>");
                 }

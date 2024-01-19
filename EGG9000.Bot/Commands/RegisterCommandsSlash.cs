@@ -50,27 +50,27 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Use to move registration to a different discord server")]
-        public static async Task MoveServer(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag) {
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        public static async Task MoveServer(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
-            if(user == null) {
-                await command.RespondAsync($"Cannot find user");
-            } else if(user.GuildId == guild.Id) {
-                if(user.TempDisabled) {
+            if(dbUser == null) {
+                await command.RespondAsync($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?");
+            } else if(dbUser.GuildId == guild.Id) {
+                if(dbUser.TempDisabled) {
                     await command.RespondAsync($"It looks like you have been disabled, ask staff for help.");
                 } else {
                     await command.RespondAsync($"Already configured for the current server, you should get your roles during the next Leaderboard update.");
                 }
             } else {
                 await command.RespondAsync($"Please wait...");
-                if(user.GuildId == 428181243474214942) {
+                if(dbUser.GuildId == 428181243474214942) {
                     await ((SocketGuildUser)command.User).AddRoleAsync(guild.Roles.FirstOrDefault(x => x.Name == "Prophet"));
                 }
-                user.GuildId = guild.Id;
+                dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
                 //var Response = await ContractsAPI.FirstContact(user.EggIncIds.First().Id);
-                var Response = await apiLink.GetBackup(user.EggIncAccounts.First().Id);
+                var Response = await apiLink.GetBackup(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
@@ -86,7 +86,7 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                var role = await DiscordHelpers.CheckRoles(db, guild, guildUser, user, _client, null, new List<LeaderboardUser>());
+                var role = await DiscordHelpers.CheckRoles(db, guild, guildUser, dbUser, _client, null, new List<LeaderboardUser>());
 
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel.Id == command.Channel.Id) {
@@ -101,7 +101,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Removed registered EggInc ID from your account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketGuildUser targetUser) {
+        public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketUser targetUser) {
             return _RemoveID(command, db, apiLink, eggincid, targetUser.Id);
         }
         /* Moving to a staff-only command, leaving commented out in case of re-activation in future
@@ -110,22 +110,26 @@ namespace EGG9000.Bot.Commands {
             return _RemoveID(command, db, apiLink, eggincid, command.User.Id);
         }*/
         public static async Task _RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, ulong userid) {
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == userid);
-            if(user == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find user"));
+            await command.DeferAsync();
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == userid);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{userid}>"); });
                 return;
-            } else if(user.EggIncAccounts.Any(x => x.Id == eggincid)) {
-                user.RemoveID(eggincid);
+            } else if(dbUser.EggIncAccounts.Any(x => x.Id == eggincid)) {
+                dbUser.RemoveID(eggincid);
             } else {
-                await command.RespondAsync($"⚠️ERROR: Unable to find the following EggIncId {eggincid}", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray());
+                Embed[] embedArrayErr = { EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>") };
+                embedArrayErr = embedArrayErr.Concat(AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()).ToArray();
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArrayErr; });
                 return;
             }
 
             await db.SaveChangesAsync();
+            var json = JsonConvert.SerializeObject(dbUser.EggIncAccounts, Formatting.Indented);
 
-            var json = JsonConvert.SerializeObject(user.EggIncAccounts, Formatting.Indented);
-
-            await command.RespondAsync($"ID removed", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray());
+            Embed[] embedArray = { EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>") };
+            embedArray = embedArray.Concat(AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()).ToArray();
+            await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID removed"; x.Embeds = embedArray; });
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
@@ -136,9 +140,13 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync( x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
             }
-            var dbuser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == targetUser.Id);
+            var dbUser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == targetUser.Id);
+            if(dbUser is null) {
+                await command.RespondAsync($"Unable to locate DBUser entry for <@{targetUser.Id}>");
+                return;
+            }
 
-            var xrefs = await db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == dbuser.Id && x.CoopId == coop.Id).ToListAsync();
+            var xrefs = await db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == dbUser.Id && x.CoopId == coop.Id).ToListAsync();
 
 
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
@@ -183,7 +191,7 @@ namespace EGG9000.Bot.Commands {
             //}
 
             if(status.Participants.Count < contract.MaxUsers) {
-                logger.LogInformation("Successfully remove {user} from {coop}", dbuser.DiscordUsername, coop.Name);
+                logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
@@ -192,7 +200,7 @@ namespace EGG9000.Bot.Commands {
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
             } else {
-                logger.LogInformation("Did not {user} from {coop}", dbuser.DiscordUsername, coop.Name);
+                logger.LogInformation("Did not {user} from {coop}", dbUser.DiscordUsername, coop.Name);
                 await command.ModifyOriginalResponseAsync($"Attempted to remove {targetUser.Mention} from co-op, please check again in a few minutes.");
             }
         }
@@ -206,31 +214,32 @@ namespace EGG9000.Bot.Commands {
             await _Accept(command, db, _client, targetUser);
         }
         public static async Task _Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IUser targetUser) {
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             if(guild == null) {
                 await command.RespondAsync("Unable to find server, please run this command in a server");
                 return;
             }
-            if(user is not null) {
-                if(user.GuildId == command.GuildId && user.EggIncAccounts.Count > 0) {
-                    if(user.TempDisabled) {
+            if(dbUser is not null) {
+                if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count > 0) {
+                    if(dbUser.TempDisabled) {
                         await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
                         return;
                     } else {
                         await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Your roles should show up during the next leaderboard update.");
+                        await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, new List<LeaderboardUser>());
                         return;
                     }
-                } else if(user.GuildId == command.GuildId && user.EggIncAccounts.Count == 0) {
+                } else if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count == 0) {
                     await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
                     return;
-                } else if(user.EggIncAccounts.Count > 0 && user.GuildId > 0 & !user.TempDisabled) {
+                } else if(dbUser.EggIncAccounts.Count > 0 && dbUser.GuildId > 0 & !dbUser.TempDisabled) {
                     await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the </moveserver:1095116354329268366> command");
                     return;
-                } else if(user.TempDisabled) {
+                } else if(dbUser.TempDisabled) {
                     await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
                     return;
-                } else if(user.GuildId != guild.Id) {
+                } else if(dbUser.GuildId != guild.Id) {
                     var moveservercommand = (await guild.GetApplicationCommandsAsync()).FirstOrDefault(c => c.Type == ApplicationCommandType.Slash && c.Name == "moveserver");
                     await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:{moveservercommand?.Id ?? 0}> command");
                     return;
@@ -248,7 +257,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            user = new DBUser {
+            dbUser = new DBUser {
                 DiscordId = targetUser.Id,
                 DiscordUsername = targetUser.Username,
                 AcceptedRules = true,
@@ -256,7 +265,7 @@ namespace EGG9000.Bot.Commands {
                 GuildId = guild.Id,
                 showEB = true
             };
-            db.DBUsers.Add(user);
+            db.DBUsers.Add(dbUser);
 
             var dbGuild = db.Guilds.FirstOrDefault(g => g.Id == guild.Id);
 
@@ -320,14 +329,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
+        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, user, logger);
         }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
+        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, command.User, logger);
         }
-        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, Bugsnag.IClient bugsnag, string eggincid, IUser user, ILogger logger) {
+        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IClient bugsnag, string eggincid, IUser user, ILogger logger) {
             await command.RespondAsync("Processing...");
             eggincid = eggincid.ToUpper();
 
@@ -552,7 +561,7 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DB object for <@{user.Id}>"); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
                 return;
             }
 
@@ -725,10 +734,11 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
+        public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                return;
             }
 
             dbuser.TempDisabled = true;
@@ -738,10 +748,11 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Re-enable user", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
+        public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                return;
             }
 
             dbuser.TempDisabled = false;
@@ -792,7 +803,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task ShowEB(FauxCommand command, ApplicationDbContext db) {
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
                 return;
             }
             if(dbUser.showEB) {
@@ -817,22 +828,18 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Remove the EB from your nickname")]
         public static async Task HideEB(FauxCommand command, ApplicationDbContext db) {
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Cannot find database user"));
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
             }
 
-            user.showEB = false;
+            dbUser.showEB = false;
             await db.SaveChangesAsync();
-
-
 
             var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
             var newName = ((IGuildUser)command.User).GetCleanName();
 
             await ((SocketGuildUser)command.User).ModifyAsync(x => x.Nickname = newName);
-
-
             await command.RespondAsync($"{command.User.Mention} will no longer be updated with their EB.", ephemeral: true);
         }
 

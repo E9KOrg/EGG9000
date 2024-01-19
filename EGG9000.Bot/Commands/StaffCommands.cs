@@ -147,7 +147,7 @@ namespace EGG9000.Bot.Commands {
 
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError("Unable to find user"); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
                 return;
             }
 

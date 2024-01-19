@@ -24,18 +24,18 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] MERChoice MERValue = MERChoice.Current) {
             await command.RespondAsync("Getting account backups...");
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find backups for this user"));
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null || !dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
                 return;
             }
 
             var sb = new StringBuilder();
 
-            foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
-                if(user.EggIncAccounts.Count > 1)
+            foreach(var account in dbUser.EggIncAccounts.Where(x => x.Backup is not null)) {
+                if(dbUser.EggIncAccounts.Count > 1)
                     sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
-                MERCalculate(account, sb, user.DiscordUsername, (int)MERValue);
+                MERCalculate(account, sb, dbUser.DiscordUsername, (int)MERValue);
             }
 
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
@@ -93,19 +93,18 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
         public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
-            await command.RespondAsync("Getting account backups...");
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null || !user.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find backups for this user"));
+            await command.DeferAsync();
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null || !dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             var sb = new StringBuilder();
-
-            foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
-                if(user.EggIncAccounts.Count > 1)
+            foreach(var account in dbUser.EggIncAccounts.Where(x => x.Backup is not null)) {
+                if(dbUser.EggIncAccounts.Count > 1)
                     sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
-                LLCCalculate(account, sb, user.DiscordUsername);
+                LLCCalculate(account, sb, dbUser.DiscordUsername);
             }
 
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
