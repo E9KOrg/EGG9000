@@ -99,7 +99,7 @@ namespace EGG9000.Common.Database.Entities {
         FaqChannel = 5,
         [Description("Required: Category for contract channels")]
         ContractCategory = 6,
-        [Description("Optional: Category for failed co-ops")]
+        [Description("Required: Category for failed co-ops")]
         FailedCategory = 8,
         [Description("/TC/Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
         WarningMessagesForUser = 9,

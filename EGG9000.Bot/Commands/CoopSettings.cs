@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Bugsnag.Payload;
 
 namespace EGG9000.Bot.Commands {
     public class CoopSettingsCommand {
@@ -20,7 +21,7 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync(ephemeral: true);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user, are you registered?"); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
             }
 
             var inCoopChannel = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == command.ChannelId);
