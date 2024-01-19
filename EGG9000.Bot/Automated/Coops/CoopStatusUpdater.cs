@@ -1144,9 +1144,9 @@ namespace EGG9000.Bot.Automated.Coops {
                         .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
                         (
                             (status.Finished()
-                            ? "This co-op is finished!"
+                            ? "\nThis co-op is finished!"
                             : coopDetails.PercentProjectedForJoined >= 100 && !coop.FinishedOrFailed()
-                            ? "This co-op is projected to succeed without growth as long as there are no sleepers!"
+                            ? "\nThis co-op is projected to succeed without growth as long as there are no sleepers!"
                             : "") + $"\n[View on egg9000.com](https://egg9000.com/coop/{coop.ContractID}/{coop.Name})"
                         ))
                         .WithColor(color)
