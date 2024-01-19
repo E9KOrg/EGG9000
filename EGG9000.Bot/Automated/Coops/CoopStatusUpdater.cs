@@ -1122,23 +1122,23 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(lastMessage != "")
                             msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
-                        var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}\n";
+                        var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}";
 
                         var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                         var highestEBMessage = "";
                         if(highestEB != null)
-                            highestEBMessage = $"**Highest EB**: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}\n";
+                            highestEBMessage = $"**\nHighest EB**: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}";
 
                         var createdByMessage = "";
                         if(!string.IsNullOrEmpty(coop.CreatorID)) {
                             var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
                             if(creator != null) {
                                 var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
-                                createdByMessage += $"**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}\n";
+                                createdByMessage += $"**\nCreated By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}";
                             }
                         }
 
-                        var publicMessage = status.Public ? $"**This co-op is public**.\n" : "";
+                        var publicMessage = status.Public ? $"**\nThis co-op is public**." : "";
 
                         var embedBuilder = new EmbedBuilder()
                         .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
