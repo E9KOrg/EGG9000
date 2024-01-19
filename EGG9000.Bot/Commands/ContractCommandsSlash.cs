@@ -265,9 +265,15 @@ namespace EGG9000.Bot.Commands {
                 return new PotentialCoopResponse { Response = PotentialCoopCode.NoGrade };
             }
 
-            var coops = await db.Coops.Include(c => c.Contract).Include(c => c.UserCoopsXrefs).Where(c => c.Contract == contract && c.GuildId == guild.Id 
-             && (c.League == (uint)account.GetGrade() || c.AnyLeague)
-             && c.CurrentUsers < c.MaxUsers && (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > DateTimeOffset.Now && c.ProjectedFinish > DateTimeOffset.Now).ToListAsync();
+            var coops = await db.Coops.Include(c => c.Contract).Include(c => c.UserCoopsXrefs).Where(c =>
+                c.Contract == contract
+                && c.GuildId == guild.Id
+                && (c.League == (uint)account.GetGrade() || c.AnyLeague)
+                && c.CurrentUsers < c.MaxUsers
+                && (int)c.Status > 2 && (int)c.Status < 13
+                && c.CoopEnds > DateTimeOffset.Now
+                && c.ProjectedFinish > DateTimeOffset.Now
+            ).ToListAsync();
 
             if(!coops.Any()) {
                 return new PotentialCoopResponse { Response = PotentialCoopCode.NoSpots1 };
