@@ -1165,13 +1165,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                         var ends = DiscordHelpers.TimeStamper(TimeSpan.FromSeconds(status.SecondsRemaining));
-                        //var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
-
-                        if(status.SecondsRemaining <= 0)
+                        if(status.SecondsRemaining <= 0) {
                             ends = $"Expired {ends}";
-                        //ends = $"Expired {ends} ago";
-
-
+                            if(!coop.PseudoExpired) coop.PseudoExpired = true;
+                        }
 
                         for(var i = 0; i < 3; i++) {
                             if(coop.Contract.Details.GetGoals(league).Count > i) {
