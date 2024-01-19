@@ -711,6 +711,10 @@ namespace EGG9000.Bot.Commands {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Could not find your record - are you registered correctly?"); });
                 return;
             }
+            if(dbUser.TempDisabled) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Looks like you are currently disabled, and therefore cannot be assigned to a co-op."); });
+                return;
+            }
             var dbguild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == component.GuildId);
             if(dbguild is null) {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"This command must be used in a server.\n\nCome to think of it, how did you even do this?"); });
