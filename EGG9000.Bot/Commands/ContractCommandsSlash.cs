@@ -272,6 +272,7 @@ namespace EGG9000.Bot.Commands {
                 && c.CurrentUsers < c.MaxUsers
                 && (int)c.Status > 2 && (int)c.Status < 13
                 && c.CoopEnds > DateTimeOffset.Now
+                && !c.PseudoExpired
                 && c.ProjectedFinish > DateTimeOffset.Now
             ).ToListAsync();
 
