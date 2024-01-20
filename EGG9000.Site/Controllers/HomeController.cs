@@ -382,7 +382,7 @@ namespace EGG9000.Site.Controllers {
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && x.Account.Active).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }
@@ -686,6 +686,46 @@ namespace EGG9000.Site.Controllers {
             ViewBag.MyEbs = myEbsWithRole;
             ViewBag.MyNames = myAccountNames;
             ViewBag.AllRoles = SIPrefix.GetAllFarmerRoles();
+
+            return View();
+        }
+
+        [Authorize]
+        public async Task<IActionResult> GradeComparison() {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
+
+            var leaderboard = await _getLeaderboard(user.GuildId);
+
+            var myGradeData = new List<Tuple<int, double>>();
+            var myAccountNames = new List<string>();
+            var allGradeData = new List<Tuple<int, double>>();
+            var allGrades = new List<int> { 0, 1, 2, 3, 4, 5 };
+
+            foreach(var u in leaderboard) {
+                // Add all users data.
+                allGradeData.Add(new(
+                    (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
+                    u?.Backup?.TotalCS ?? 0
+                ));
+
+                // Add logged in users data.
+                if(u.User.Id == user.Id) {
+                    myGradeData.Add(new(
+                        (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
+                        u?.Backup?.TotalCS ?? 0
+                    ));
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                }
+            }
+
+            ViewBag.MyGradeData = myGradeData;
+            ViewBag.MyNames = myAccountNames;
+            ViewBag.AllGradeData = allGradeData;
+            ViewBag.AllGrades = allGrades;
 
             return View();
         }

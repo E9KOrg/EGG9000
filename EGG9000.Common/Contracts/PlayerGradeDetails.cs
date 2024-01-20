@@ -35,9 +35,8 @@ namespace EGG9000.Common.Contracts {
         public static string GetImage(uint league) {
             return GetImage((Ei.Contract.Types.PlayerGrade)league);
         }
-            public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
-                var emoji = GetEmoji(grade);
-
+        public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
+            var emoji = GetEmoji(grade);
             var rgx = new Regex(@":(\d+)>");
             var id = rgx.Match(emoji).Groups[1];
             return $"https://cdn.discordapp.com/emojis/{id}.png?v=1";
