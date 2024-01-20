@@ -581,8 +581,8 @@ namespace EGG9000.Bot.Commands {
             }
 
             var userid = Guid.Parse(useraccount.Split("|")[0]);
-
             var xref = await db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == userid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
+            var username = xref.User.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Backup?.UserName ?? "(No Name)";
 
             if(xref == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user in co-op"); });
@@ -592,7 +592,7 @@ namespace EGG9000.Bot.Commands {
             db.Remove(xref);
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> from co-op");
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op");
 
         }
 
