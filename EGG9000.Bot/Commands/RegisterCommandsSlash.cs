@@ -582,7 +582,7 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.TempDisabled) lastBuilder.Footer.Text += $"\n❗User is disabled";
 
             if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
-                lastBuilder.Footer.Text += $"\n**Notes:** {dbuser.Notes}";
+                lastBuilder.Footer.Text += $"\nNotes:\n {dbuser.Notes}";
             }
 
             if(command.Channel is SocketDMChannel) {
@@ -692,7 +692,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
-                    footers.Add($"⚠️ **Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {ContractsAPI.ClientVersion}** ⚠️");
+                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {ContractsAPI.ClientVersion} ⚠️");
                 }
 
                 /*
