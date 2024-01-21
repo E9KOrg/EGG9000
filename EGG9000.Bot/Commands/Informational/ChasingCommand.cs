@@ -19,39 +19,39 @@ using static EGG9000.Bot.Commands.ContractCommandsSlash;
 namespace EGG9000.Bot.Commands {
     public class ChasingCommand {
         [SlashCommand(Description = "Show you players ahead and behind you.", AllowInDMs = true)]
-        public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord, ILogger logger) {
+        public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord) {
             await command.DeferAsync();
 
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
-            if(user.EggIncAccounts.Count == 1) {
-                var contentString = await ChasingStringBuilder(discord, parameter, user.GuildId, user.EggIncAccounts.First(), db);
+            if(dbUser.EggIncAccounts.Count == 1) {
+                var contentString = await ChasingStringBuilder(discord, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
                 await command.ModifyOriginalResponseAsync(contentString);
             } else {
                 var builder = new ComponentBuilder();
-                foreach(var account in user.EggIncAccounts) {
+                foreach(var account in dbUser.EggIncAccounts) {
                     builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}");
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); x.Embed = null; });
             }
 
-            user.UpdateAccounts();
+            dbUser.UpdateAccounts();
             await db.SaveChangesAsync();
         }
         
         [ComponentCommand]
         public static async Task ChasingAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(user is null) return;
+            var dbUser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            if(dbUser is null) return;
             var dataObjs = data.Split("|");
-            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
+            var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var parameter = (ChasingParameters)int.Parse(dataObjs[1]);
 
-            var contentString = await ChasingStringBuilder(_client, parameter, user.GuildId, account, db);
+            var contentString = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, account, db);
             await component.UpdateAsync(x => { x.Components = null; x.Content = "Success"; });
             await component.Channel.SendMessageAsync(contentString);
         }

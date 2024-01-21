@@ -120,8 +120,8 @@ namespace EGG9000.Bot.Helpers {
             await CheckHatchlingRole(guild, discordUser, dbUser);
             await CheckFreshEggsRole(guild, discordUser, dbUser);
             await CheckBG(_client, guild, discordUser, dbUser);
-            await CheckPermitRoles(guild, discordUser, dbUser);
-            await CheckGrades(guild, discordUser, dbUser, grades);
+            await CheckPermitRoles(_client, guild, discordUser, dbUser);
+            await CheckGrades(discordUser, dbUser, grades);
             await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
             await CheckUserOSRole(_client, guild, discordUser, dbUser);
             await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
@@ -289,39 +289,39 @@ namespace EGG9000.Bot.Helpers {
             return ($"<t:{time.ToUnixTimeSeconds()}:{ender}>");
         }
 
+        private static async Task CheckPermitRoles(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser dbUser) {
+            var standardPermitRole = await _client.GetRoleAsync(GuildChannelType.StandardPermitRole, Guild);
+            var proPermitRole = await _client.GetRoleAsync(GuildChannelType.ProPermitRole, Guild);
 
-        public static ulong ProPermitRoleID = 966017147350446121;
-        public static ulong StandardPermitRoleID = 966017278078517248;
-        private static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, DBUser dbUser) {
-            if(Guild.Roles.Any(x => x.Id == ProPermitRoleID)) {
-                var hasPro = DiscordUser.RoleIds.Any(x => x == ProPermitRoleID);
-                var hasStandard = DiscordUser.RoleIds.Any(x => x == StandardPermitRoleID); ;
+            if(standardPermitRole is not null && proPermitRole is not null) {
+                var hasPro = DiscordUser.RoleIds.Any(x => x == proPermitRole.Id);
+                var hasStandard = DiscordUser.RoleIds.Any(x => x == standardPermitRole.Id); ;
 
                 var needsPro = dbUser.EggIncAccounts.Any(x => x.Backup.PermitLevel == 1);
                 var needsStandard = dbUser.EggIncAccounts.Any(x => x.Backup.PermitLevel == 0);
 
 
                 if(!hasPro && needsPro) {
-                    await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
+                    await DiscordUser.AddRoleAsync(proPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Adding ProPermit role for {user}", DiscordUser.GetName());
                 }
                 if(hasPro && !needsPro) {
-                    await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
+                    await DiscordUser.RemoveRoleAsync(proPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing ProPermit role for {user}", DiscordUser.GetName());
                 }
                 if(!hasStandard && needsStandard) {
-                    await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
+                    await DiscordUser.AddRoleAsync(standardPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Adding StandardPermit role for {user}", DiscordUser.GetName());
 
                 }
                 if(hasStandard && !needsStandard) {
-                    await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
+                    await DiscordUser.RemoveRoleAsync(standardPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing StandardPermit role for {user}", DiscordUser.GetName());
                 }
 
             }
         }
-        private static async Task CheckGrades(SocketGuild Guild, IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
+        private static async Task CheckGrades(IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
             var neededGrades = dbuser.EggIncAccounts.Select(x => x.GetGrade());
 
             var neededRoles = neededGrades.Select(x => grades.First(g => g.grade == x).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();

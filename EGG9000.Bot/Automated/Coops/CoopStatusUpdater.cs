@@ -32,6 +32,7 @@ using static Ei.Backup.Types;
 using Microsoft.AspNetCore.Http;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Contracts;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
@@ -784,7 +785,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                 if(userFarmDetails.Account is not null || userFarmDetails.Backup is not null) {
                                     var grade = userFarmDetails.Account?.GetGrade() ?? userFarmDetails.Backup.Grade;
-                                    if((uint)grade != coop.League && !coop.Contract.cc_only) {
+                                    if((uint)grade != coop.League && !(coop.Contract.cc_only || coop.AnyLeague)) {
                                         mention += $" (Wrong {grade})";
                                     }
                                 }
@@ -795,17 +796,16 @@ namespace EGG9000.Bot.Automated.Coops {
                                     if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                         xref.JoinWarning24TillFinish = true;
                                         await _db.SaveChangesAsync();
-                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                     } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                         xref.JoinWarning24h = true;
                                         xref.JoinWarning12h = true;
                                         await _db.SaveChangesAsync();
-                                        //await coopChannel.SendMessageAsync($"{discordUser.Mention} reminder to join - 24h since added to co-op");
-                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 24h since added to co-op", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"reminder to join - 24h since added to co-op", coop);
                                     } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                         xref.JoinWarning12h = true;
                                         await _db.SaveChangesAsync();
-                                        await SendDMWarning(db, discordUser, coopChannel, $"{discordUser.Mention} reminder to join - 12h since added to co-op", coop);
+                                        await SendDMWarning(db, discordUser, coopChannel, $"reminder to join - 12h since added to co-op", coop);
                                     }
 
 
@@ -838,12 +838,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         lastMessage += $"Coop **{coop.Name}** is ready for the following to join: {string.Join(", ", userList)}\n";
                     }
 
-                    if(status.Public) {
-                        lastMessage += $"This co-op is public.\n";
-                    }
-
-
-
 
                     //var usersAssigned = coop.UserCoopsXrefs.Select(x => {
                     //    var User = users.FirstOrDefault(y => y.Id == x.GetID());
@@ -857,9 +851,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     //        Backup = User.Backups?.First(y => y.EggIncId == x.EggIncId)
                     //    };
                     //}).Where(x => x != null);
-                    var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
-                    if(highestEB != null)
-                        lastMessage += $"Highest EB: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}\n";
 
 
                     var giftInfos = usersWithStatus.Where(x => x.Status is not null && x.Status.FarmInfo is not null && x.FarmStats is not null).Select(x => new {
@@ -889,33 +880,20 @@ namespace EGG9000.Bot.Automated.Coops {
                                 new FixedWidthCell($"{Math.Round(x.Habs)}%", CellAlignment.Right),
                                 new FixedWidthCell($"{Math.Round(x.Shipping)}%", CellAlignment.Right),
                             }).ToList());
-                        lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{string.Join("\n", GetTable(table))}```\n";
+                        lastMessage += $"\nFarms that would benefit from gifting chickens: \n```{string.Join("\n", GetTable(table))}```\n\n";
                     } else if(coopDetails.CoopParticipants.Any(y => y.CoopStatus is not null && y.FarmStats is not null)) {
-                        lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n";
+                        lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n\n";
                     }
 
                     //New commands list, each is a quick-link to start using the command
                     lastMessage += "__Co-op Commands (click to use):__\n";
 
+                    var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
                     if(_client.GetChannelAsync(GuildChannelType.CallStaffChannel, guild) != null) {
-                        lastMessage += "\n</callstaff:1095116334599241747> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
+                        lastMessage += $"\n</callstaff:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "callstaff")?.Id ?? 0}> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                     }
-                    lastMessage += "\n</coopsettings:1107809801469173933> Receive DM pings for various events in the co-op";
-                    lastMessage += "\n</fixfullcooperror:1111043604178276463> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
-
-
-
-                    lastMessage += $"\n\nCo-op Grade: {(Ei.Contract.Types.PlayerGrade)(int)coop.League}";
-
-
-                    if(!string.IsNullOrEmpty(coop.CreatorID)) {
-                        var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
-                        if(creator != null) {
-                            var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
-                            lastMessage += $"\nCreated By {creator.User.DiscordUsername} {account.LastGrade}";
-
-                        }
-                    }
+                    lastMessage += $"\n</coopsettings:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "coopsettings")?.Id ?? 0}> Receive DM pings for various events in the co-op";
+                    lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "fixfullcooperror")?.Id ?? 0}> **NEW!** If you get the error co-op is full, try running this command to free up the space.";
 
 
 
@@ -1144,15 +1122,33 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(lastMessage != "")
                             msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
+                        var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}";
+
+                        var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
+                        var highestEBMessage = "";
+                        if(highestEB != null)
+                            highestEBMessage = $"**\nHighest EB**: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}";
+
+                        var createdByMessage = "";
+                        if(!string.IsNullOrEmpty(coop.CreatorID)) {
+                            var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
+                            if(creator != null) {
+                                var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
+                                createdByMessage += $"**\nCreated By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}";
+                            }
+                        }
+
+                        var publicMessage = status.Public ? $"**\nThis co-op is public**." : "";
 
                         var embedBuilder = new EmbedBuilder()
-                        .WithDescription(
+                        .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
+                        (
                             (status.Finished()
-                            ? "This co-op is finished!"
+                            ? "\nThis co-op is finished!"
                             : coopDetails.PercentProjectedForJoined >= 100 && !coop.FinishedOrFailed()
-                            ? "This co-op is projected to succeed without growth as long as there are no sleepers!"
+                            ? "\nThis co-op is projected to succeed without growth as long as there are no sleepers!"
                             : "") + $"\n[View on egg9000.com](https://egg9000.com/coop/{coop.ContractID}/{coop.Name})"
-                        )
+                        ))
                         .WithColor(color)
                         .WithTimestamp(DateTimeOffset.UtcNow)
                         .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Image))
@@ -1169,13 +1165,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                         var ends = DiscordHelpers.TimeStamper(TimeSpan.FromSeconds(status.SecondsRemaining));
-                        //var ends = TimeSpan.FromSeconds(status.SecondsRemaining).Humanize(precision: 2).ShortenTime();
-
-                        if(status.SecondsRemaining <= 0)
+                        if(status.SecondsRemaining <= 0) {
                             ends = $"Expired {ends}";
-                        //ends = $"Expired {ends} ago";
-
-
+                            if(!coop.PseudoExpired) coop.PseudoExpired = true;
+                        }
 
                         for(var i = 0; i < 3; i++) {
                             if(coop.Contract.Details.GetGoals(league).Count > i) {

@@ -38,7 +38,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup.EarningsBonus.ToEggString()}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup.EarningsBonus.ToEggString()})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     } else {
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     }
@@ -183,12 +183,12 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 _db = db;
             }
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername }).ToListAsync();
+                var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
                 if(users.Count == 0) await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
-                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).ToList().Select(x => new AutocompleteResult(x.DiscordUsername, x.UserId.ToString())));
+                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).ToList().Select(x => new AutocompleteResult(x.DiscordUsername + " - " + x.User.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)", x.UserId.ToString())));
             }
         }
         #endregion

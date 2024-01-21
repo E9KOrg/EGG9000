@@ -103,16 +103,16 @@ namespace EGG9000.Bot.Commands {
                 index = 1;
                 lockSet = false;
             }
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
             EggIncAccount account = null;
             int accountIndex = 0;
             try {
                 accountIndex = int.Parse(useraccount.Split("|")[1]);
-                account = user.EggIncAccounts[accountIndex];
+                account = dbUser.EggIncAccounts[accountIndex];
             } catch(Exception) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
                 return;
@@ -129,7 +129,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[index - 1]);
+            var builder = AFXSetEmbedBuilder(dbUser, accountIndex, afxSets, afxSets[index - 1]);
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Components = lockSet ? null : builder.ComponentBuilder?.Build();
