@@ -88,7 +88,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Log a Message", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task AS(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null, [SlashParam(Required = false, Description = "Message ID to reply to")] string replyto = null) {
+        public static async Task AS(FauxCommand command, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null, [SlashParam(Required = false, Description = "Message ID to reply to")] string replyto = null) {
             try {
                 if(channel == null) {
                     if(replyto == null) await command.Channel.SendMessageAsync(message);
@@ -134,64 +134,6 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Look for a coop with certain search parameters", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task LocateCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = true)] string coopname = "", [SlashParam(Required = false)] SocketChannel contractchannel = null) {
-            //Coop name was not passed correctly, error out
-            if(string.IsNullOrEmpty(coopname) || string.IsNullOrWhiteSpace(coopname)) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse the coop name `{coopname}`. Check you've entered a value?"), ephemeral: true);
-                return;
-            } else coopname = coopname.ToLower(); //To-lower it
-
-            //Define a condition for lessening the DB load
-            Func<Coop, bool> rightContract = coop => {
-                if(contractchannel is null) return true;
-                else if(coop?.Contract is null) return false;
-                else return (coop.Contract.ID == contractchannel.ToString());
-            };
-
-
-            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == command.GuildId || x.OverflowServersJson.Contains(command.GuildId.ToString()));
-
-            //Attempt to find the coop
-            var findCoop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(u => u.User).AsQueryable().FirstOrDefaultAsync(x => x.GuildId == guild.Id && x.Name.ToLower() == coopname);
-
-            //If it can't be found, error out
-            if(findCoop is null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find a coop named `{coopname + (contractchannel is null ? "" : $"for the contract {contractchannel}")}`"), ephemeral: true);
-                return;
-            }
-
-            var builder = new EmbedBuilder()
-                .WithAuthor(new EmbedAuthorBuilder()
-                    .WithName($"{findCoop.Contract.Name} - {findCoop.Name}")
-                    .WithIconUrl(EggIncEggs.GetEggById((int)findCoop.Contract.Details.Egg).Image)
-                    .WithUrl($"https://egg9000.com/coop/{findCoop.Contract.ID}/{findCoop.Name.ToLower()}"))
-                .WithColor((!findCoop.Finished && findCoop.FinishedOrFailed()) ? Color.Red : (findCoop.ProjectedToFinish ? Color.Green : Color.Blue));
-
-            //For each item in coopName.UserCoopsXrefs, append a user mention to a variable
-            var userList = new List<string> {
-                $"**__Coop Users {findCoop?.UserCoopsXrefs.Count(u => u.JoinedCoop) ?? 0}/{findCoop?.UserCoopsXrefs.Count ?? 0}__:**"
-            };
-            userList.AddRange(findCoop?.UserCoopsXrefs?.Select(u => $"{(u.JoinedCoop ? "✓" : "❌")} <@{u.User.DiscordId}>").ToList());
-            if(userList.Count == 1) {
-                userList.Add("..._No users_");
-            } else if(userList.Count > 10) {
-                userList = userList.Take(10).ToList();
-                userList.Add("..._(Trimmed list)_");
-            }
-
-            builder.WithDescription(string.Join("\n", userList));
-
-            builder.AddField("Channel", $"{(findCoop.DeletedChannel ? "**Channel Deleted**" : "<#" + findCoop.DiscordChannelId + ">")}");
-            builder.AddField("League", (findCoop.AnyLeague ? "<:ultra:1131045418319495369> Any Grade" : "") + PlayerGradeDetails.GetEmoji(findCoop.League));
-
-            if(findCoop.Finished) builder.AddField("Status", "**Finished**");
-            else if(findCoop.FinishedOrFailed()) builder.AddField("Status", "**Failed**");
-            else builder.AddField("Projected to finish?", $"{(findCoop.ProjectedToFinish ? "Yes" : "No")}");
-
-            await command.RespondAsync("", embed: builder.Build(), ephemeral: true);
-        }
-
         [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
@@ -205,7 +147,7 @@ namespace EGG9000.Bot.Commands {
 
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError("Unable to find user"); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
                 return;
             }
 

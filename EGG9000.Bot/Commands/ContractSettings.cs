@@ -58,10 +58,10 @@ namespace EGG9000.Bot.Commands {
 
         #region AdminBypass
         [SlashCommand(Description = "Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user) {
+        public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find user, are they registered?"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             } else {
                 await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             }
@@ -73,7 +73,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find user, are you registered?"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             } else {
                 await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             }

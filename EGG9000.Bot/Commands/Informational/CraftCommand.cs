@@ -31,27 +31,27 @@ namespace EGG9000.Bot.Commands {
 
             await command.DeferAsync(ephemeral: true);
 
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find backups for this user"); });
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             var contentString = "";
 
-            if(user.EggIncAccounts.Count == 1) {
-                contentString = await CraftStringBuilder(user.EggIncAccounts.First(), quantity, quality, requestedArtifact);
+            if(dbUser.EggIncAccounts.Count == 1) {
+                contentString = await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact);
                 await command.DeleteOriginalResponseAsync();
                 await command.Channel.SendMessageAsync(contentString);
             } else {
                 var builder = new ComponentBuilder();
-                foreach(var account in user.EggIncAccounts) {
+                foreach(var account in dbUser.EggIncAccounts) {
                     builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{((int)quality)}|{quantity}|{artifact}");
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Embed = null; x.Components = builder.Build(); });
             }
 
-            user.UpdateAccounts();
+            dbUser.UpdateAccounts();
             await db.SaveChangesAsync();
         }
 
