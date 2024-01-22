@@ -1134,11 +1134,11 @@ namespace EGG9000.Bot.Automated.Coops {
                             var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
                             if(creator != null) {
                                 var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
-                                createdByMessage += $"**\nCreated By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}";
+                                createdByMessage += $"\n**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}";
                             }
                         }
 
-                        var publicMessage = status.Public ? $"**\nThis co-op is public**." : "";
+                        var publicMessage = status.Public ? $"\n**This co-op is public**." : "";
 
                         var embedBuilder = new EmbedBuilder()
                         .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
