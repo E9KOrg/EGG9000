@@ -1138,7 +1138,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             }
                         }
 
-                        var publicMessage = status.Public ? $"**\nThis co-op is public**." : "";
+                        var publicMessage = status.Public ? $"\n**This co-op is public**." : "";
 
                         var embedBuilder = new EmbedBuilder()
                         .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
