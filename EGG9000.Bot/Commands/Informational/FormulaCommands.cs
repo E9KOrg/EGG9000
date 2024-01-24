@@ -143,11 +143,11 @@ namespace EGG9000.Bot.Commands {
             var sb = new StringBuilder();
 
 
-            foreach(var account in user.EggIncAccounts.Where(x => x.Backup is not null)) {
-                if(user.EggIncAccounts.Count > 1) {
+            foreach(var account in dbUser.EggIncAccounts.Where(x => x.Backup is not null)) {
+                if(dbUser.EggIncAccounts.Count > 1) {
                     sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
                 }
-                await LLCCalculate(account, sb, user.DiscordUsername);
+                await LLCCalculate(account, sb, dbUser.DiscordUsername);
             }
             
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
