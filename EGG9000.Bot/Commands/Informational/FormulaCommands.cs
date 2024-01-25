@@ -113,7 +113,7 @@ namespace EGG9000.Bot.Commands {
             public ShipsSent(Ei.Backup backup) {
                 ShipCounts = new Dictionary<(Ei.MissionInfo.Types.Spaceship, Ei.MissionInfo.Types.DurationType, uint), int>();
 
-                if(backup.ArtifactsDb is not null && backup.ArtifactsDb.MissionArchive is not null) {
+                if(backup?.ArtifactsDb?.MissionArchive is not null) {
                     foreach(var mission in backup.ArtifactsDb.MissionArchive) {
                         var key = (mission.Ship, mission.DurationType, mission.Level);
                         if(ShipCounts.ContainsKey(key)) {
@@ -254,7 +254,7 @@ namespace EGG9000.Bot.Commands {
             };
 
             var backup = await ContractsAPI.FirstContact(account.Id);
-            if(backup.Backup.ArtifactsDb is not null && backup.Backup.ArtifactsDb.MissionArchive is not null) {
+            if(backup?.Backup?.ArtifactsDb?.MissionArchive is not null) {
                 var shipsSent = new ShipsSent(backup.Backup);
 
                 var sumOfRatios = 0.0;
