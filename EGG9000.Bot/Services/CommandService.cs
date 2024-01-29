@@ -522,7 +522,6 @@ namespace EGG9000.Bot.Services {
                                 $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(foundParentCommand != "" ? $"{foundParentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandTextMatches.Groups[2] : foundCommandText)}:{discordCommand?.Id}> to run it.");
 
                             await message.Channel.SendMessageAsync(
-                                text: $"PermValue: {canUseCommandsInChannel}",
                                 embed: warningEmbed,
                                 messageReference: new MessageReference(message.Id)
                             );
