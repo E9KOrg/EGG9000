@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(Required = false)] bool showinchannel = false) {
-            await command.DeferAsync();
+            await command.DeferAsync(ephemeral: !showinchannel);
             var userid = useraccount.Split("|")[0];
             DBUser dbuser = null;
             try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Commands {
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await _viewInventory(command, dbuser, account);
+            await _viewInventory(command, dbuser, account, showinchannel);
         }
 
         [SlashCommand(Description = "View your inventory")]
@@ -47,12 +47,12 @@ namespace EGG9000.Bot.Commands {
             await _viewInventory(command, dbuser, account);
         }
 
-        public static async Task _viewInventory(FauxCommand command, DBUser user, EggIncAccount account) {
+        public static async Task _viewInventory(FauxCommand command, DBUser user, EggIncAccount account, bool showInChannel = true) {
             var (B64, Config) = InventoryB64(account);
             if(string.IsNullOrEmpty(B64)) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User inventory could not be converted."); }); return; }
 
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
-            await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account));
+            await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
             var response = command.GetOriginalResponseAsync().Result; // Get the response to edit it
             var baseUrl = response.Embeds.First().Image.ToString();
             var imageUrl = baseUrl.IndexOf("jpeg", StringComparison.OrdinalIgnoreCase) is int index && index != -1 ? baseUrl[..(index + "jpeg".Length)] : baseUrl;

@@ -34,7 +34,7 @@
                 {
                     continue;
                 }
-                <a href="/Contract/Details?GuildId=@contractGroup.First().GuildID&ContractId=@contractGroup.First().ContractID&League=@((int)grade)" class="btn btn-primary">@grade Co-ops</a>
+                <a href="/Contract/Details?GuildId=@contractGroup.First().GuildID&ContractId=@contractGroup.First().ContractID&League=@((int)grade)" class="btn btn-primary">@PlayerGradeDetails.GetNameFromLeague((int)grade) Co-ops</a>
             }
             @if (isAdmin)
             {

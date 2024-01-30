@@ -106,11 +106,6 @@ Sort by
 </div>
 
 @{
-	void MonoSpace(string str) {
-		foreach (var c in str) {
-			<span class="@(c == '.' ? "period" : "")">@c</span>
-		}
-	}
 	void RowTemplate(EggDayResults account, int i) {
 		var isMe = account.UserAccount.User.DiscordId.ToString() == discordId;
 		
