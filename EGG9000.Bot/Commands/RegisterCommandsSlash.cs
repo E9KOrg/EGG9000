@@ -846,7 +846,8 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Check the list of Users/EIDs that have been banned from the server via /kick", ParentCommand = "b", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task BanList(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();
-            var bannedUsers = await db.DBUsers.Where(u => u.Banned && (u.LastGuild == command.GuildId || u.GuildId == command.GuildId)).ToListAsync();
+            var guildId = (await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString())))?.Id ?? ulong.MaxValue;
+            var bannedUsers = await db.DBUsers.Where(u => (u.Banned && (u.LastGuild == guildId || u.GuildId == guildId)) || u.ServersBannedFrom.Contains(guildId)).ToListAsync();
             if(bannedUsers is null || bannedUsers.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("No users are banned from this guild."); });
                 return;
@@ -871,6 +872,8 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync("Could not find a banned user with that ID in the DB.");
                 return;
             }
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
+            var wasDbBanned = dbuser.ServersBannedFrom.Remove(dbGuild.Id);
             dbuser.Banned = false;
             await db.SaveChangesAsync();
 
@@ -901,10 +904,12 @@ namespace EGG9000.Bot.Commands {
             var kickedWithoutDm = false;
             var dmChannel = await targetUser.CreateDMChannelAsync();
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
             if(banaccount) {
-                var userObj = db.DBUsers.FirstOrDefault(x => x.DiscordId == targetUser.Id);
-                if(userObj is not null) {
-                    userObj.Banned = true;
+                var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
+                if(dbUser is not null) {
+                    dbUser.ServersBannedFrom.Add(dbGuild.Id);
+                    dbUser.Banned = true;
                     await db.SaveChangesAsync();
                 }
             }
