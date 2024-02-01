@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Services {
             _coopStatusUpdater = coopStatusUpdater;
             _jobService = jobService;
             ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out ulong _CPGuildId);
-            _cpGuild = context.Guilds?.FirstOrDefault(x => x.Id == _CPGuildId);
+            _cpGuild = context.Guilds.FirstOrDefault(x => x.Id == _CPGuildId);
             _provider = serviceProvider;
             _logger = logger;
             _dbContextFactory = dbContextFactory;
