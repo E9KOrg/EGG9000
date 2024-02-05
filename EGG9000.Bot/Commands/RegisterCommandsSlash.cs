@@ -288,15 +288,14 @@ namespace EGG9000.Bot.Commands {
             await _UpdateID(command, db, _client, apiLink, eggincid, targetUser, accountnumber);
         }
         public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
+            await command.DeferAsync(ephemeral: true);
             var Response = await apiLink.GetBackup(eggincid);
-
-
             if(Response == null || Response.Farms == null || Response.Farms.Count == 0) {
-                await command.RespondAsync("", embed: EmbedError("Possibly wrong EggInc ID"), ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
                 return;
             }
             if(Response.EggIncId != eggincid) {
-                await command.RespondAsync("", embed: EmbedError($"Error matching ID {eggincid} - {Response.EggIncId}"), ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Error matching ID {eggincid} - {Response.EggIncId}"); });
                 return;
             }
 
@@ -305,7 +304,7 @@ namespace EGG9000.Bot.Commands {
                 if(accountnumber == 0) {
                     var count = 1;
                     var accounts = string.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
-                    await command.RespondAsync($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}", ephemeral: true);
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}"); });
                     return;
                 }
                 var account = accountnumber - 1;
@@ -324,7 +323,7 @@ namespace EGG9000.Bot.Commands {
             }
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"ID Update", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(), ephemeral: true);
+            await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID Update"; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(); });
 
         }
 
@@ -337,7 +336,7 @@ namespace EGG9000.Bot.Commands {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, command.User, logger);
         }
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IClient bugsnag, string eggincid, IUser user, ILogger logger) {
-            await command.RespondAsync("Processing...");
+            await command.DeferAsync();
             eggincid = eggincid.ToUpper();
 
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
