@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
-        public static async Task MarkClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, MarkCleanOption cleantype) {
+        public static async Task MarkClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam] MarkCleanOption cleantype) {
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
             if(userid is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User id could not be found from param"); });
