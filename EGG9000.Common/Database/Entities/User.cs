@@ -384,6 +384,14 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset BreakSetTime { get; set; } = DateTimeOffset.MaxValue;
         [Key(30)]
         public bool BreakCoopWarningSent { get; set; } = false;
+        /*
+         * Key[31] was taken at some point, and now errors if used?
+         * Key[32] was taken at some point, and now errors if used?
+         */
+        [Key(33)]
+        public bool CraftingWarningSent { get; set; } = false;
+        [Key(34)]
+        public bool CraftingMarkedClean { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
