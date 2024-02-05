@@ -27,6 +27,70 @@ namespace EGG9000.Bot.Automated {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             await RunFairnessScores(true, false);
+            await RunCraftingLevelCheck(true, false);
+        }
+
+        public async Task RunCraftingLevelCheck(bool sendMessages = true, bool returnLevelSet = false) {
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
+            var xpSet = new Dictionary<EggIncAccount, double>();
+
+            foreach(var user in dbusers) {
+                foreach(var account in user.EggIncAccounts.ToList()) {
+                    if(account is null || account.Backup is null || account.Backup.CraftingXP == 0) continue;
+                    xpSet.Add(account, account.Backup.CraftingXP);
+                }
+            }
+
+            //Change this to actually relate how far above the average someone has to be to get flagged
+            const double zScoreCutoff = 1.0;
+
+            // Calculate the average score
+            var sumXp = xpSet.Values.Sum();
+            var averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
+
+            // Calculate the standard deviation for Z-score calculation
+            var sumSquaredDeviations = xpSet.Values.Sum(score => Math.Pow(score - averageXp, 2));
+            var standardDeviation = Math.Sqrt(sumSquaredDeviations / xpSet.Count);
+
+            // Calculate the Z-score for each account and find upper outliers
+            var upperThreshold = averageXp + (zScoreCutoff * standardDeviation);
+            var upperOutliers = xpSet
+                .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
+                .Where(pair => !pair.Key.CraftingWarningSent)
+                .Where(pair => !pair.Key.CraftingMarkedClean)
+                .Where(pair => (pair.Value - averageXp) / standardDeviation > zScoreCutoff)
+                .Select(pair => pair.Key)
+                .ToList();
+
+            if(sendMessages) {
+                foreach(var outlier in upperOutliers) {
+                    DBUser user;
+                    if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
+                    else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
+                    var outlierScore = xpSet[outlier];
+
+                    var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                    if(guild is null) continue;
+
+                    var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
+                    if(clientGuild is null) continue;
+
+                    var identifier = string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name;
+#if DEV9002
+                    var message = $"User `<@{user.DiscordId}>` may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
+#else
+                    var message = $"User <@{user.DiscordId}> may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
+#endif
+
+                    var response = await ChannelHelper.DetermineAndSend(_db, _client, clientGuild, guild, GuildChannelType.ArtifactCheaterThread, new() { Text = message });
+
+                    outlier.CraftingWarningSent = true;
+                    user.UpdateAccounts();
+                }
+                await _db.SaveChangesAsync();
+            }
         }
 
         public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset) {

@@ -44,8 +44,14 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
-        [SlashCommand(Description = "Mark a potential artifact cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
-        public static async Task MarkAFSClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
+
+        public enum MarkCleanOption {
+            [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
+            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1
+        }
+
+        [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
+        public static async Task MarkClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, MarkCleanOption cleantype) {
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
             if(userid is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User id could not be found from param"); });
@@ -59,11 +65,16 @@ namespace EGG9000.Bot.Commands {
             } else {
                 var identifier = string.IsNullOrEmpty(account.Name) ? account.Id : account.Name;
 #if DEV9002
-                await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean artifacts.");
+                await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
 #else
-                await command.RespondAsync($"User account` <@{dbuser.DiscordId}>` ({identifier}) marked as having clean artifacts.");
+                await command.RespondAsync($"User account` <@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
 #endif
-                account.AFSMarkedClean = true;
+                switch(cleantype) {
+                    case MarkCleanOption.Artifacts:
+                        account.AFSMarkedClean = true; break;
+                    case MarkCleanOption.CraftingXP:
+                        account.CraftingMarkedClean = true; break;
+                }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
             }
