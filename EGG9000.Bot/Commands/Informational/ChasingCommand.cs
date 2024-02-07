@@ -20,7 +20,7 @@ namespace EGG9000.Bot.Commands {
     public class ChasingCommand {
         [SlashCommand(Description = "Show you players ahead and behind you.", AllowInDMs = true)]
         public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord) {
-            await command.DeferAsync(ephemeral: true);
+            await command.DeferAsync();
 
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
