@@ -116,6 +116,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public SocketGuildUser DiscordUser { get; set; }
             public double SiloTime { get; set; }
             public CustomFarmStats FarmStats { get; set; }
+            public bool TimeCheatReported { get; set; }
         }
 
         public static string Truncate(string value, int maxLength) {
@@ -535,7 +536,8 @@ namespace EGG9000.Bot.Automated.Coops {
                         Xref = x.Xref,
                         User = x.DBUser,
                         Backup = x.Backup,
-                        DiscordUser = x.DBUser is not null ? guild.GetUser(x.DBUser.DiscordId) : null
+                        DiscordUser = x.DBUser is not null ? guild.GetUser(x.DBUser.DiscordId) : null,
+                        TimeCheatReported = x.TimeCheatReported
                     }).ToList();
 
 
@@ -908,9 +910,8 @@ namespace EGG9000.Bot.Automated.Coops {
                         lastMessage += $"\n\nWaiting on the following users to check-in: {string.Join(", ", waitingOn.Select(x => x.DiscordUser?.Mention ?? x.Status.UserName))}";
                     }
 
-
                     //Checking if users are gusset glitching
-                    var afCheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.ArtifactCheaterThread);
+                    var afCheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
                     if(afCheaterChannel != null) {
                         var contractScalar = coop.Contract.Details?.GradeSpecs[((int)coop.League) - 1]?.Modifiers?.FirstOrDefault(m => m.Dimension == Ei.GameModifier.Types.GameDimension.HabCapacity)?.Value ?? 1;
                         foreach(var u in usersWithStatus.Where(x => x.Xref is not null && !x.Xref.GussetCheatDetected)) {
@@ -935,11 +936,16 @@ namespace EGG9000.Bot.Automated.Coops {
 
                             var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
                             if(gusset is null) {
-                                await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.ArtifactCheaterThread, 
+                                await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread, 
                                     new() { Text = $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`):\n" +
                                     $"```\nMax hab space:\t   {(ulong)scaledMaxChickens:n0}\nCurrent chickens:\t{currentChickens:n0}\n```" });
                                 u.Xref.GussetCheatDetected = true;
                             }
+                        }
+                        foreach(var u in usersWithStatus.Where(u => u.Status.TimeCheatDetected && !u.TimeCheatReported).ToList()) {
+                            await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
+                                new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`)"});
+                            coopDetails.CoopParticipants.FirstOrDefault(c => c.EggIncId == u.Backup.EggIncId).TimeCheatReported = true;
                         }
                     }
 
