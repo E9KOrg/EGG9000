@@ -47,7 +47,8 @@ namespace EGG9000.Bot.Commands {
 
         public enum MarkCleanOption {
             [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
-            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1
+            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1,
+            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2
         }
 
         [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
@@ -74,6 +75,8 @@ namespace EGG9000.Bot.Commands {
                         account.AFSMarkedClean = true; break;
                     case MarkCleanOption.CraftingXP:
                         account.CraftingMarkedClean = true; break;
+                    case MarkCleanOption.MER:
+                        account.MERMarkedClean = true; break;
                 }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();

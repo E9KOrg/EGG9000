@@ -392,6 +392,10 @@ namespace EGG9000.Common.Database.Entities {
         public bool CraftingWarningSent { get; set; } = false;
         [Key(34)]
         public bool CraftingMarkedClean { get; set; } = false;
+        [Key(35)]
+        public bool MERWarningSent { get; set; } = false;
+        [Key(36)]
+        public bool MERMarkedClean { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
