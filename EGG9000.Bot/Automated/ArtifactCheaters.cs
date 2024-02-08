@@ -84,7 +84,7 @@ namespace EGG9000.Bot.Automated {
                     var message = $"User <@{user.DiscordId}> may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
 #endif
 
-                    var response = await ChannelHelper.DetermineAndSend(_db, _client, clientGuild, guild, GuildChannelType.ArtifactCheaterThread, new() { Text = message });
+                    var response = await ChannelHelper.DetermineAndSend(_db, _client, clientGuild, guild, GuildChannelType.CheaterThread, new() { Text = message });
 
                     outlier.CraftingWarningSent = true;
                     user.UpdateAccounts();
@@ -148,7 +148,7 @@ namespace EGG9000.Bot.Automated {
                     var message = $"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 #endif
 
-                    var response = await ChannelHelper.DetermineAndSend(_db, _client, clientGuild, guild, GuildChannelType.ArtifactCheaterThread, new() { Text = message});
+                    var response = await ChannelHelper.DetermineAndSend(_db, _client, clientGuild, guild, GuildChannelType.CheaterThread, new() { Text = message});
 
                     outlier.AFSWarningSent = true;
                     user.UpdateAccounts();
