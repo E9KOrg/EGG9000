@@ -311,15 +311,39 @@ namespace EGG9000.Bot.Commands {
                 }
                 var account = accountnumber - 1;
 
+                var existingAccount = user.EggIncAccounts[account];
+                var bg = existingAccount.Group;
+                var ug = existingAccount.UltraGroup;
+                var guild = existingAccount.Guild;
+                var redoLeggacy = existingAccount.RedoLeggacy;
+                var redoLeggacySelection = existingAccount.RedoLeggacySelection;
+                var redoThresh = existingAccount.RedoScoreThreshold;
+                var leggacyFilter = existingAccount.LeggacyAutoRegisterRewards;
+                var allFilter = existingAccount.AutoRegisterRewards;
+                var pingUltra = existingAccount.PingForNCUltra;
+
                 var eggIncIDs = new List<EggIncAccount>();
                 for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                    if(i == account)
+                    if(i == account) {
                         eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
+                    }
                     else
                         eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
 
                 user.EggIncAccounts = eggIncIDs;
+
+                var newAccount = user.EggIncAccounts[account];
+                newAccount.Group = bg;
+                newAccount.UltraGroup = ug;
+                newAccount.Guild = guild;
+                newAccount.RedoLeggacy = redoLeggacy;
+                newAccount.RedoLeggacySelection = redoLeggacySelection;
+                newAccount.RedoScoreThreshold = redoThresh;
+                newAccount.LeggacyAutoRegisterRewards = leggacyFilter;
+                newAccount.AutoRegisterRewards = allFilter;
+                newAccount.PingForNCUltra = pingUltra;
+
             } else {
                 user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
             }
