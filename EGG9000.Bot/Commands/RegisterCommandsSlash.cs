@@ -44,6 +44,8 @@ using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
 using System.Data;
+using Bugsnag.Polyfills;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -321,6 +323,13 @@ namespace EGG9000.Bot.Commands {
             } else {
                 user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
             }
+            foreach(var account in user.EggIncAccounts) {
+                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup);
+                if(customBackup?.Farms is not null) {
+                    account.Backup = customBackup;
+                }
+            }
+            user.UpdateAccounts();
             await db.SaveChangesAsync();
 
             await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID Update"; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(); });
