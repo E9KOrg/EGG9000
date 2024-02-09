@@ -638,6 +638,8 @@ namespace EGG9000.Bot.Commands {
                     User = user
                 } };
 
+                var accountHasUltra = (subAccountBypass ?? user.EggIncAccounts.First()).HasActiveSubscription();
+
                 if(existContractXrefs is not null && existContractXrefs.Any(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id))) {
                     await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existContractXrefs.First().Coop.DiscordChannelId}>"); });
                     return;
@@ -649,7 +651,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var guild = _client.GetGuild(command.GuildId.Value);
-                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, true); //Allow all grades 
+                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades 
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Done"; x.Embed = null; });
                 await command.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {command.User.Mention}"));
             } else {
@@ -684,6 +686,8 @@ namespace EGG9000.Bot.Commands {
                     User = user
             } };
 
+            var accountHasUltra = account.HasActiveSubscription();
+
             if(existingXrefs.Any(x => x.EggIncId == account.Id)) {
                 await component.UpdateAsync(x => { x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existingXrefs.First().Coop.DiscordChannelId}>"); });
                 return;
@@ -695,7 +699,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var guild = _client.GetGuild(component.GuildId.Value);
-            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, true); //Allow all grades
+            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = "Done"; x.Embed = null; });
             await component.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"));
         }
