@@ -324,9 +324,8 @@ namespace EGG9000.Bot.Commands {
 
                 var eggIncIDs = new List<EggIncAccount>();
                 for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                    if(i == account) {
+                    if(i == account) 
                         eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
-                    }
                     else
                         eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
