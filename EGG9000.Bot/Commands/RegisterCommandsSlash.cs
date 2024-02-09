@@ -324,8 +324,7 @@ namespace EGG9000.Bot.Commands {
 
                 var eggIncIDs = new List<EggIncAccount>();
                 for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                    if(i == account) 
-                        eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
+                    if(i == account) eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
                     else
                         eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
@@ -927,7 +926,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string intReason, [SlashParam(Required=false)] bool banaccount = false) {
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser targetUser, [SlashParam] string intReason, [SlashParam(Required=false)] bool banaccount = false) {
             await command.DeferAsync();
             var kickedWithoutDm = false;
             var dmChannel = await targetUser.CreateDMChannelAsync();
@@ -943,14 +942,18 @@ namespace EGG9000.Bot.Commands {
                 await dmChannel.SendMessageAsync($"You have been {(banaccount ? "banned" : "kicked")} from {guild.Name} for the reason: {intReason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
             } catch(HttpException) {
                 kickedWithoutDm = true;
-                //await command.ModifyOriginalResponseAsync(x => { x.Content = $"Unable to send DM, <@{targetUser.Id}> was not kicked"; });
             }
 
             //Check if running user has ban perms
             var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
             var canBan = (banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers));
-            await (canBan ? targetUser.BanAsync(0, intReason) : targetUser.KickAsync(intReason));
-            await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : "Kicked")} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
+            try {
+                var execDiscordUser = (targetUser as SocketGuildUser);
+                await (canBan ? execDiscordUser.BanAsync(0, intReason) : execDiscordUser.KickAsync(intReason));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : "Kicked")} <@{execDiscordUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
+            } catch(Exception) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"An exception was caught. The user may not have been {(canBan ? "banned" : "Kicked")} from the server.{(canBan ? $"The DB Ban was applied to the user's account." : "")}"); });
+            }
         }
     }
 }
