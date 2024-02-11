@@ -942,7 +942,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 u.Xref.GussetCheatDetected = true;
                             }
                         }
-                        foreach(var u in usersWithStatus.Where(u => u.Status.TimeCheatDetected && !u.TimeCheatReported).ToList()) {
+                        foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && !u.TimeCheatReported).ToList()) {
                             await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
                                 new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`)"});
                             coopDetails.CoopParticipants.FirstOrDefault(c => c.EggIncId == u.Backup.EggIncId).TimeCheatReported = true;
