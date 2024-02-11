@@ -976,7 +976,7 @@ namespace EGG9000.Bot.Commands {
 
             try {
                 var execDiscordUser = (targetUser as SocketGuildUser);
-                await (canBan ? targetUser.BanAsync(0, intReason) : targetUser.KickAsync(intReason));
+                await (canBan ? execDiscordUser.BanAsync(0, intReason) : execDiscordUser.KickAsync(intReason));
                 await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
             } catch(Exception) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"An exception was caught. The user may not have been {(canBan ? "banned" : "Kicked")} from the server.{(canBan ? $"The DB Ban was applied to the user's account." : "")}"); });
