@@ -28,6 +28,7 @@ namespace EGG9000.Common.Helpers {
         public DBUser DBUser { get; set; }
         public UInt32 League { get; set; }
         public EggIncAccount Account { get; set;}
+        public bool TimeCheatReported { get; set; } = false;
 
         public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
             if(coopStatus is null)

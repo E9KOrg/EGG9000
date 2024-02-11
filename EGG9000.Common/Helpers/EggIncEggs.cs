@@ -60,9 +60,10 @@ new EggIncEgg { Id = 104, Image = "https://vignette.wikia.nocookie.net/egg-inc/i
                 case Ei.RewardType.Gold:
                     return $"<:Egg_Golden:692439755798872075>  {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.EpicResearchItem:
-                    var goldenEggRefund = (int)(EpicResearchCalc.GetEpicResearchConfig().AsQueryable().FirstOrDefault(x => x.Id == goal.RewardSubType.ToLower())?.Costs?.Last() * goal?.RewardAmount);
-                    var refundString = $" (<:Golden_Egg_GE:692439755798872075> {(goldenEggRefund >= 1000 ? (goldenEggRefund / 1000).ToString() + 'K' : goldenEggRefund)})";
-                    return (goldenEggRefund == default ? $"{ToStartCase(goal.RewardSubType)} +{goal.RewardAmount}" : $"{ToStartCase(goal.RewardSubType)} +{goal.RewardAmount}{refundString}");
+                    var researchItem = (EpicResearchCalc.GetEpicResearchConfig().AsQueryable().FirstOrDefault(x => x.Id == goal.RewardSubType.ToLower()));
+                    var goldenEggRefund = (int)(researchItem?.Costs?.Last() * goal?.RewardAmount);
+                    var goldenEggRefundString = $" (<:Golden_Egg_GE:692439755798872075> {(goldenEggRefund >= 1000 ? (goldenEggRefund / 1000).ToString() + 'K' : goldenEggRefund)})";
+                    return $"{researchItem?.Title ?? ToStartCase(goal.RewardSubType)} +{goal.RewardAmount}{(goldenEggRefund == default ? "" : goldenEggRefundString)}";
                 case Ei.RewardType.Boost:
                     var boost = EggIncBoosts.FromId(goal.RewardSubType);
 

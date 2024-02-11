@@ -44,8 +44,15 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
-        [SlashCommand(Description = "Mark a potential artifact cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
-        public static async Task MarkAFSClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount) {
+
+        public enum MarkCleanOption {
+            [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
+            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1,
+            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2
+        }
+
+        [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
+        public static async Task MarkClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam] MarkCleanOption cleantype) {
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
             if(userid is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User id could not be found from param"); });
@@ -59,11 +66,18 @@ namespace EGG9000.Bot.Commands {
             } else {
                 var identifier = string.IsNullOrEmpty(account.Name) ? account.Id : account.Name;
 #if DEV9002
-                await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean artifacts.");
+                await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
 #else
-                await command.RespondAsync($"User account` <@{dbuser.DiscordId}>` ({identifier}) marked as having clean artifacts.");
+                await command.RespondAsync($"User account` <@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
 #endif
-                account.AFSMarkedClean = true;
+                switch(cleantype) {
+                    case MarkCleanOption.Artifacts:
+                        account.AFSMarkedClean = true; break;
+                    case MarkCleanOption.CraftingXP:
+                        account.CraftingMarkedClean = true; break;
+                    case MarkCleanOption.MER:
+                        account.MERMarkedClean = true; break;
+                }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
             }
@@ -104,19 +118,30 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Select X random users with Y role", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task SelectRoleUsers(FauxCommand command, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, [SlashParam(Required = true)] SocketRole role, [SlashParam(Required = false)] SocketRole role2, [SlashParam(Required = false)] SocketRole role3) {
+        public static async Task SelectRoleUsers(FauxCommand command, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, 
+            [SlashParam(Required = true, Description = "Role the user(s) should have")] SocketRole role, [SlashParam(Required = false, Description = "Second role [...]")] SocketRole role2, [SlashParam(Required = false, Description = "Third role [...]")] SocketRole role3,
+            [SlashParam(Required = false, Description = "Role the user(s) should NOT have")] SocketRole antiRole, [SlashParam(Required = false, Description = "Second role [...]")] SocketRole antiRole2, [SlashParam(Required = false, Description = "Third role [...]")] SocketRole antiRole3) {
             try {
                 var randomUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users
-                    .Where(u => u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3)))
+                    .Where( u =>
+                        u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3))
+                        && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
+                    )
                     .OrderBy(u => new Random().Next()).ToList();
                 if(numberOfUsers != 0) randomUsers = randomUsers.Take(numberOfUsers).ToList();
 
-                var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have these role(s)_\n";
+                var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have this filter of role(s)_\n";
 
+                var roleCount = 1 + (role2 == null ? 0 : 1) + (role3 == null ? 0 : 1);
+                var antiRoleCount = 0 + (antiRole == null ? 0 : 1) + (antiRole2 == null ? 0 : 1) + (antiRole3 == null ? 0 : 1);
+
+                var roleDescription = $"{randomUsers.Count} Users with the role{(roleCount > 1 ? "(s)" : "")}:\n\t\t<@&{role.Id}>{(role2 is not null ? $"\n\t\t<@&{role2.Id}>" : "")}{(role3 is not null ? $"\n\t\t<@&{role3.Id}>" : "")}" +
+                    $"{((antiRole != null || antiRole2 != null || antiRole3 != null) ? $"\nAnd without the role{(antiRoleCount > 1 ? "(s)" : "")}:\n\t\t{(antiRole is not null ? $"\t\t<@&{antiRole.Id}>" : "")}{(antiRole2 is not null ? $"\n\t\t<@&{antiRole2.Id}>" : "")}{(antiRole3 is not null ? $"\n\t\t<@&{antiRole3.Id}>" : "")}" : "")}\n\n";
+
+                var tooLong = roleDescription.Length + userList.Length > 1800;
                 var responseEmbedBuilder = new EmbedBuilder()
                     .WithAuthor(new EmbedAuthorBuilder().WithName("Selected Users").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).WithColor(Color.Blue)
-                    .WithDescription($"{randomUsers.Count()} Users with the role(s):\n\t\t<@&{role.Id}>{(role2 is not null ? $"\n\t\t<@&{role2.Id}>" : "")}{(role3 is not null ? $"\n\t\t<@&{role3.Id}>" : "")}\n\n" +
-                        $"{(userList.Length > 1600 ? "_(List too large for Discord - see attached file)_\n" : userList)}");
+                    .WithDescription(roleDescription + $"{(tooLong ? "_(List too large for Discord - see attached file)_\n" : userList)}");
 
                 if(randomUsers.Count < numberOfUsers && randomUsers.Count != 0) {
                     responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"{numberOfUsers} users requested - only {randomUsers.Count} found"));
@@ -125,7 +150,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 //Catch content that is too large, respond with file instead
-                if(userList.Length > 1600) await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt"), text: "", embed: responseEmbedBuilder.Build());
+                if(tooLong) await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt"), text: "", embed: responseEmbedBuilder.Build());
                 else await command.RespondAsync(content: "", embed: responseEmbedBuilder.Build());
 
             } catch(Exception ex) {

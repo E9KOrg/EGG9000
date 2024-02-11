@@ -44,6 +44,8 @@ using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
 using System.Data;
+using Bugsnag.Polyfills;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -226,8 +228,14 @@ namespace EGG9000.Bot.Commands {
                         await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
                         return;
                     } else {
-                        await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Your roles should show up during the next leaderboard update.");
                         await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, new List<LeaderboardUser>());
+                        await command.DeleteOriginalResponseAsync();
+                        var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
+                        var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                        if(activeRole != null) {
+                            await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
+                        }
+                        await CleanWelcomeChannel(guild, _client, targetUser);
                         return;
                     }
                 } else if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count == 0) {
@@ -288,15 +296,14 @@ namespace EGG9000.Bot.Commands {
             await _UpdateID(command, db, _client, apiLink, eggincid, targetUser, accountnumber);
         }
         public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
+            await command.DeferAsync(ephemeral: true);
             var Response = await apiLink.GetBackup(eggincid);
-
-
             if(Response == null || Response.Farms == null || Response.Farms.Count == 0) {
-                await command.RespondAsync("", embed: EmbedError("Possibly wrong EggInc ID"), ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
                 return;
             }
             if(Response.EggIncId != eggincid) {
-                await command.RespondAsync("", embed: EmbedError($"Error matching ID {eggincid} - {Response.EggIncId}"), ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Error matching ID {eggincid} - {Response.EggIncId}"); });
                 return;
             }
 
@@ -305,26 +312,55 @@ namespace EGG9000.Bot.Commands {
                 if(accountnumber == 0) {
                     var count = 1;
                     var accounts = string.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
-                    await command.RespondAsync($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}", ephemeral: true);
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}"); });
                     return;
                 }
                 var account = accountnumber - 1;
 
+                var existingAccount = user.EggIncAccounts[account];
+                var bg = existingAccount.Group;
+                var ug = existingAccount.UltraGroup;
+                var guild = existingAccount.Guild;
+                var redoLeggacy = existingAccount.RedoLeggacy;
+                var redoLeggacySelection = existingAccount.RedoLeggacySelection;
+                var redoThresh = existingAccount.RedoScoreThreshold;
+                var leggacyFilter = existingAccount.LeggacyAutoRegisterRewards;
+                var allFilter = existingAccount.AutoRegisterRewards;
+                var pingUltra = existingAccount.PingForNCUltra;
+
                 var eggIncIDs = new List<EggIncAccount>();
                 for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                    if(i == account)
-                        eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
+                    if(i == account) eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
                     else
                         eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
 
                 user.EggIncAccounts = eggIncIDs;
+
+                var newAccount = user.EggIncAccounts[account];
+                newAccount.Group = bg;
+                newAccount.UltraGroup = ug;
+                newAccount.Guild = guild;
+                newAccount.RedoLeggacy = redoLeggacy;
+                newAccount.RedoLeggacySelection = redoLeggacySelection;
+                newAccount.RedoScoreThreshold = redoThresh;
+                newAccount.LeggacyAutoRegisterRewards = leggacyFilter;
+                newAccount.AutoRegisterRewards = allFilter;
+                newAccount.PingForNCUltra = pingUltra;
+
             } else {
                 user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
             }
+            foreach(var account in user.EggIncAccounts) {
+                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup);
+                if(customBackup?.Farms is not null) {
+                    account.Backup = customBackup;
+                }
+            }
+            user.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await command.RespondAsync($"ID Update", embeds: AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(), ephemeral: true);
+            await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID Update"; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(); });
 
         }
 
@@ -337,7 +373,7 @@ namespace EGG9000.Bot.Commands {
             return _Register(command, db, _client, apiLink, bugsnag, eggincid, command.User, logger);
         }
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IClient bugsnag, string eggincid, IUser user, ILogger logger) {
-            await command.RespondAsync("Processing...");
+            await command.DeferAsync();
             eggincid = eggincid.ToUpper();
 
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
@@ -912,7 +948,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, [SlashParam] string intReason, [SlashParam(Required=false)] bool banaccount = false) {
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser targetUser, [SlashParam] string intReason, [SlashParam(Required=false)] bool banaccount = false) {
             await command.DeferAsync();
             var kickedWithoutDm = false;
             var dmChannel = await targetUser.CreateDMChannelAsync();
@@ -932,14 +968,19 @@ namespace EGG9000.Bot.Commands {
                 await dmChannel.SendMessageAsync($"You have been {(banaccount ? "banned" : "kicked")} from {guild.Name} for the reason: {intReason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
             } catch(HttpException) {
                 kickedWithoutDm = true;
-                //await command.ModifyOriginalResponseAsync(x => { x.Content = $"Unable to send DM, <@{targetUser.Id}> was not kicked"; });
             }
 
             //Check if running user has ban perms
             var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
             var canBan = (banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers));
-            await (canBan ? targetUser.BanAsync(0, intReason) : targetUser.KickAsync(intReason));
-            await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
+
+            try {
+                var execDiscordUser = (targetUser as SocketGuildUser);
+                await (canBan ? targetUser.BanAsync(0, intReason) : targetUser.KickAsync(intReason));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
+            } catch(Exception) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"An exception was caught. The user may not have been {(canBan ? "banned" : "Kicked")} from the server.{(canBan ? $"The DB Ban was applied to the user's account." : "")}"); });
+            }
         }
     }
 }
