@@ -579,9 +579,15 @@ namespace EGG9000.Site.Controllers {
             var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
             var topEachGradeMentions = topEachGrade.Select(x => $"{PlayerGradeDetails.GetEmoji(x.Grade)}: {Math.Round(x.Score)} <@{x.DiscordId}>");
 
+            var whatIsRscComponentBuilder = new ComponentBuilder();
+            whatIsRscComponentBuilder.WithButton("What is this?", "WhatIsRSC", ButtonStyle.Primary);
+
             await guild.GetTextChannel(656455568353132546)
-                .SendMessageAsync($"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}" +
-                $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f>:\n{string.Join("\n", topEachGradeMentions)}");
+                .SendMessageAsync(
+                    text: $"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}" +
+                        $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f>:\n{string.Join("\n", topEachGradeMentions)}",
+                    components: whatIsRscComponentBuilder.Build()
+                );
 
 
             return View(new ScoreResult {

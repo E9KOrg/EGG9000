@@ -255,6 +255,16 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
 
+        [ComponentCommand]
+        public static async Task WhatIsRSC(SocketMessageComponent component) {
+            var rscText = "The Contract Eggspert role is awarded to the top 10 highest scoring players of each scored contract, as well as the top-performers in Grades C, B, and A. The role will be removed after 7 days, and serves only to recognize eggceptional performance.\n\n" +
+                "Score is determined by comparing a player's `Total Eggs Delivered` to the 100 closest players in EB (50 above, 50 below). The number (score) next to a name denotes how many times greater than average the user's total was. I.e., a score of 1 is average, a score of 2 is double the average, etc.\n\n" +
+                "Contracts are scored manually by Palace staff once all Palace coops have finished, and the contract has expired. You can read more about scoring, and Running Score, in this announcement: https://discord.com/channels/656455567858073601/698270110279925770/939264092445745163";
+            var rscEmbed = new EmbedBuilder().WithColor(Color.LighterGrey).WithDescription(rscText).WithAuthor(new EmbedAuthorBuilder().WithName("What is this?").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
+
+            await component.RespondAsync(text: "", embed: rscEmbed, ephemeral: true);
+        }
+
         [SlashCommand(Description = "Get help from staff, please give details")]
         public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
         {
