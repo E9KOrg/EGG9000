@@ -231,6 +231,10 @@ namespace EGG9000.Bot.Commands {
                         await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, new List<LeaderboardUser>());
                         await command.DeleteOriginalResponseAsync();
                         var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
+                        var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                        if(activeRole != null) {
+                            await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
+                        }
                         await CleanWelcomeChannel(guild, _client, targetUser);
                         return;
                     }
