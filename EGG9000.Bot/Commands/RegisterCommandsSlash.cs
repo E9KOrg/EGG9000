@@ -228,8 +228,10 @@ namespace EGG9000.Bot.Commands {
                         await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
                         return;
                     } else {
-                        await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Your roles should show up during the next leaderboard update.");
                         await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, new List<LeaderboardUser>());
+                        await command.DeleteOriginalResponseAsync();
+                        var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
+                        await CleanWelcomeChannel(guild, _client, targetUser);
                         return;
                     }
                 } else if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count == 0) {
