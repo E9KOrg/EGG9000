@@ -730,6 +730,46 @@ namespace EGG9000.Site.Controllers {
             return View();
         }
 
+        [Authorize]
+        public async Task<IActionResult> CraftingLevelComparison() {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
+
+            var leaderboard = await _getLeaderboard(user.GuildId);
+
+            var myCraftingData = new List<Tuple<int, double>>();
+            var myAccountNames = new List<string>();
+            var allCraftingData = new List<Tuple<int, double>>();
+            var allCraftingLevels = Enumerable.Range(1, 31).ToList();
+
+            foreach(var u in leaderboard) {
+                // Add all users data.
+                allCraftingData.Add(new(
+                    (int)u?.Account?.Backup.GetCraftingLevel(),
+                    (int)(u?.Account?.Backup?.CraftingXP)
+                ));
+
+                // Add logged in users data.
+                if(u.User.Id == user.Id) {
+                    myCraftingData.Add(new(
+                        (int)u?.Account?.Backup.GetCraftingLevel(),
+                        (int)(u?.Account?.Backup?.CraftingXP)
+                    ));
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                }
+            }
+
+            ViewBag.MyCraftingData = myCraftingData;
+            ViewBag.MyNames = myAccountNames;
+            ViewBag.AllCraftingData = allCraftingData;
+            ViewBag.AllCraftingLevels = allCraftingLevels;
+
+            return View();
+        }
+
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ViewUser(Guid id) {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.Id == id);
