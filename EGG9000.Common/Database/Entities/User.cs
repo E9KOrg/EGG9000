@@ -106,6 +106,7 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
         public bool Banned { get; set; } = false;
+        public string ServersBannedFrom { get; set; } = ""; //Comma delimited list of Server IDs
 
 
         [NotMapped]
