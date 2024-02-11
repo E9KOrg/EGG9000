@@ -139,6 +139,7 @@ namespace EGG9000.Bot.Automated {
                     var users = lUsers.Where(x => x.User.GuildId == guild.Id).ToList();
                     var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync();
 
+                    //Handle users who are on break, and doing coops
                     var breakCoopsChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.BreakCoopLog);
                     if(breakCoopsChannel is not null) {
                         _logger.LogInformation("Handling on-break coop warnings for {guild}", guild.Name);
@@ -166,6 +167,28 @@ namespace EGG9000.Bot.Automated {
 
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();
+                        }
+                        await _db.SaveChangesAsync();
+                    }
+
+                    //Handle users with suspiciously high Mystical Egg Ratios
+                    const int adjustedMerThreshold = 12; //Pre-determined to be a good threshold.
+                    var cheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
+                    if(cheaterChannel is not null) {
+                        _logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);
+                        var merCheaters = users.Where(ua => 
+                        ua.Account != null && !ua.Account.MERWarningSent && !ua.Account.MERMarkedClean &&
+                        ua.Backup != null && (91 * Math.Log10(ua.Backup.SoulEggs / 1e18) + 200 - ua.Backup.EggsOfProphecy) / 10 / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
+                        );
+                        foreach(var merCheater in merCheaters) {
+                            var mer = (91 * Math.Log10(merCheater.Backup.SoulEggs / 1e18) + 200 - merCheater.Backup.EggsOfProphecy) / 10;
+                            var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
+                            var message = $"<@{merCheater.User.DiscordId}>{(merCheater.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")} may be cheating. MER is higher than expected, at `{mer:n2}`, after `{(int)merCheater.Backup.NumPrestiges}` prestiges.";
+
+                            var result = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.CheaterThread, new() { Text = message });
+
+                            merCheater.Account.MERWarningSent = true;
+                            merCheater.User.UpdateAccounts();
                         }
                         await _db.SaveChangesAsync();
                     }

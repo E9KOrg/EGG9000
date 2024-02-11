@@ -113,7 +113,7 @@ namespace EGG9000.Bot.Commands {
             public ShipsSent(Ei.Backup backup) {
                 ShipCounts = new Dictionary<(Ei.MissionInfo.Types.Spaceship, Ei.MissionInfo.Types.DurationType, uint), int>();
 
-                if(backup.ArtifactsDb is not null) {
+                if(backup?.ArtifactsDb?.MissionArchive is not null) {
                     foreach(var mission in backup.ArtifactsDb.MissionArchive) {
                         var key = (mission.Ship, mission.DurationType, mission.Level);
                         if(ShipCounts.ContainsKey(key)) {
@@ -254,30 +254,34 @@ namespace EGG9000.Bot.Commands {
             };
 
             var backup = await ContractsAPI.FirstContact(account.Id);
-            var shipsSent = new ShipsSent(backup.Backup);
+            if(backup?.Backup?.ArtifactsDb?.MissionArchive is not null) {
+                var shipsSent = new ShipsSent(backup.Backup);
 
-            var sumOfRatios = 0.0;
-            foreach(var (ship, type, level, legendaryDropRate) in shipDataTable) {
-                var shipsSentCount = shipsSent.GetShipsCount(ship, type, level);
-                var shipsNeeded = legendaryDropRate;
+                var sumOfRatios = 0.0;
+                foreach(var (ship, type, level, legendaryDropRate) in shipDataTable) {
+                    var shipsSentCount = shipsSent.GetShipsCount(ship, type, level);
+                    var shipsNeeded = legendaryDropRate;
 
-                var ratio = shipsNeeded != 0.0 ? shipsSentCount / shipsNeeded : 0.0;
-                sumOfRatios += ratio;
+                    var ratio = shipsNeeded != 0.0 ? shipsSentCount / shipsNeeded : 0.0;
+                    sumOfRatios += ratio;
+                }
+
+                var extendedCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Epic);
+                var standardCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Long);
+                var shortCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Short);
+
+                var craftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+                var legCount = ArtifactHelpers.GetLegendaryArtifactCount(account.Backup.ArtifactHall);
+
+                var expectedLeggies = craftCount * 0.0085 + sumOfRatios;
+                var LLC = Math.Round((legCount - expectedLeggies), 2);
+                var LLCPercent = expectedLeggies != 0 ? (int)((legCount * 100 / expectedLeggies) - 100) : 0;
+
+                var displayPercent = LLCPercent == int.MinValue ? "-∞" : $"{LLCPercent}%";
+                sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{displayPercent}`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{Math.Round(expectedLeggies, 2)}` expected / `{legCount}` acquired");
+            } else {
+                sb.AppendLine($"Unable to locate DBUser entry for {userName}.\nAre you registered?");
             }
-
-            var extendedCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Epic);
-            var standardCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Long);
-            var shortCount = GetCompledShipsOfDuration(account, Ei.MissionInfo.Types.DurationType.Short);
-
-            var craftCount = ArtifactHelpers.GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
-            var legCount = ArtifactHelpers.GetLegendaryArtifactCount(account.Backup.ArtifactHall);
-
-            var expectedLeggies = craftCount * 0.0085 + sumOfRatios;
-            var LLC = Math.Round((legCount - expectedLeggies), 2);
-            var LLCPercent = expectedLeggies != 0 ? (int)((legCount * 100 / expectedLeggies) - 100) : 0;
-
-            var displayPercent = LLCPercent == int.MinValue ? "-∞" : $"{LLCPercent}%";
-            sb.AppendLine($"The **LLC** for **{userName}** is `{LLC}` (`{displayPercent}`)\n:tools: Total crafts with legendary possibility: `{craftCount}`\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short\n<:leggy:1113516502516248636> Legendaries: `{Math.Round(expectedLeggies, 2)}` expected / `{legCount}` acquired");
         }
 
         /*private static void LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {

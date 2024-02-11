@@ -110,6 +110,8 @@ namespace EGG9000.Common.Database {
         public double TotalCS { get; set; } = 0;
         [Key(39)]
         public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = new();
+        [Key(40)]
+        public double CraftingXP { get; set; } = 0;
 
 
          /*
@@ -194,6 +196,22 @@ namespace EGG9000.Common.Database {
             return artifacts.Where(x => x.Count > 0).ToList();
         }
 
+        public uint GetCraftingLevel() {
+            uint currentLevel = 1;
+            long[] xpThresholds = { 500, 3000, 8000, 18000, 43000, 93000, 193000, 443000, 943000, 1943000,
+                               3943000, 7943000, 15943000, 30943000, 50943000, 85943000, 145943000, 245943000,
+                               395943000, 595943000, 845943000, 1145943000, 1470943000, 1820943000, 2220943000,
+                               2720943000, 3320943000, 4070943000, 5070943000 };
+
+            for(var i = xpThresholds.Length - 1; i >= 0; i--) {
+                if(CraftingXP >= xpThresholds[i]) {
+                    currentLevel = (uint)i + 1;
+                    break;
+                }
+            }
+            return currentLevel;
+        }
+
         public CustomBackup() { }
         public CustomBackup(Ei.Backup backup) {
             if(backup?.Game == null) {
@@ -230,6 +248,8 @@ namespace EGG9000.Common.Database {
             if(backup.HasDeviceId) DeviceId = backup.DeviceId;
 
             MaxEggReached = backup.Game.MaxEggReached;
+
+            CraftingXP = backup.Artifacts.CraftingXp;
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty)) {
