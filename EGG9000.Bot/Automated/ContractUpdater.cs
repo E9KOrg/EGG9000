@@ -256,7 +256,7 @@ namespace EGG9000.Bot.Automated {
                     await channel.DeleteMessagesBatchAsync(nonBotMessages);
                 }
 
-#if !DEV9002
+#if DEV9002
                 var findSpotButton = new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build();
 #else
                 var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
@@ -272,7 +272,7 @@ namespace EGG9000.Bot.Automated {
                         msg.Components = findSpotButton;
                     });
                 } else {
-                    await channel.SendMessageAsync(rawTextMessageAspect, embed: embedBuilder.Build());
+                    await channel.SendMessageAsync(rawTextMessageAspect, embed: embedBuilder.Build(), components: findSpotButton);
                 }
 
 
