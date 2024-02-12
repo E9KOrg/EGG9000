@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Commands {
             [Discord.Interactions.ChoiceDisplay("MER")] MER = 2
         }
 
-        [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
+        [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task MarkClean(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam] MarkCleanOption cleantype) {
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
