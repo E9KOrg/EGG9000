@@ -77,7 +77,7 @@ namespace EGG9000.Bot.Automated {
                     var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
                     if(clientGuild is null) continue;
 
-                    var identifier = string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name;
+                    var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
 #if DEV9002
                     var message = $"User `<@{user.DiscordId}>` may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
 #else
@@ -141,7 +141,7 @@ namespace EGG9000.Bot.Automated {
                     var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
                     if(clientGuild is null) continue;
 
-                    var identifier = string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name;
+                    var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
 #if DEV9002
                     var message = $"User `<@{user.DiscordId}>` may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 #else
