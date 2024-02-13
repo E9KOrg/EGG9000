@@ -509,7 +509,7 @@ namespace EGG9000.Bot.Commands {
             [SlashParam(Description = "(Usually not required) Egg Inc Name, will match partial name", Required = false)] string eggincname = "") {
             await command.DeferAsync();
 
-            var coop = await db.Coops.FirstOrDefaultAsync(c => c.DiscordChannelId == command.Channel.Id);
+            var coop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in co-op channels."); });
             }
@@ -560,7 +560,8 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var t = xref.Coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserName.ToLower().Contains(foundEIName.ToLower()));
+            var name = string.IsNullOrEmpty(eggincname) ? account.Backup?.UserName : eggincname;
+            var t = xref.Coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserName.ToLower().Contains(name.ToLower()));
             if(t == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user in co-op. You can use a partial in-game name."); });
                 return;
