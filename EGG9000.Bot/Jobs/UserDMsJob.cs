@@ -42,11 +42,6 @@ namespace EGG9000.Bot.Jobs {
                     if(discorduser is null) {
                         continue;
                     }
-                    var dmChannel = await discorduser.CreateDMChannelAsync();
-                    if(dmChannel is null) {
-                        _logger.LogWarning("Could not create DM channel with {user}", user.DiscordUsername);
-                        continue;
-                    }
 
                     if(!account.SentBreakWarning && account.OnBreakUntil > DateTimeOffset.FromUnixTimeSeconds(0).AddDays(1)) {
                         _logger.LogInformation("Sending warning to {user}", user.DiscordUsername);
@@ -56,14 +51,8 @@ namespace EGG9000.Bot.Jobs {
                         var message = $"Your break for {account.Backup?.UserName ?? "(No Name)"} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}." +
                             $"\n\nPlease use the {(mcs is not null ? $"</mycontractsettings:{mcs?.Id ?? 0}>" : "`/mycontractsettings`")} command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on " +
                             $"{DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.";
-                        var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, message);
-                        if((retEx == null) == user.DMSBlocked) {
-                            user.DMSBlocked = !user.DMSBlocked;
-                            await _db.SaveChangesAsync();
-                        }
-                        if(retEx != null) _logger.LogError(retEx, "User {user} has DMs blocked", discorduser.Username);
-
-                        account.BreakWarningSent(user);
+                        var dmResult = await DiscordHelpersExt.BoolSendDm(discorduser, message, _db);
+                        if(dmResult != DiscordHelpersExt.DMResult.DiscordError) account.BreakWarningSent(user);
                     }
                 }
             }
