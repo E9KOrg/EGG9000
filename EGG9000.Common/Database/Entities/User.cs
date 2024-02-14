@@ -1,6 +1,6 @@
 ﻿
 using Bugsnag.Payload;
-
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 
@@ -274,7 +274,17 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
-
+        public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
+            switch(dmResult) {
+                case DiscordHelpersExt.DMResult.Success:
+                    if(DMSBlocked) DMSBlocked = false; return true;
+                case DiscordHelpersExt.DMResult.CannotSendToUser: 
+                    if(!DMSBlocked) DMSBlocked = true; return true;
+                default:
+                    break;
+            }
+            return false;
+        }
 
         public void AddName(string Name, CustomBackup backup, string Id = null) {
             var eggIncIds = EggIncAccounts;

@@ -223,14 +223,7 @@ namespace EGG9000.Site.Controllers {
             switch(target) {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);
-                    var dmChannel = await discordUser.CreateDMChannelAsync();
-                    var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, "Testing DM Ping");
-                    var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
-                    if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
-                        dbUser.DMSBlocked = !dbUser.DMSBlocked;
-                        await _db.SaveChangesAsync();
-                    }
-                    if(retEx != null) _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
+                    await DiscordHelpersExt.BoolSendDm(discordUser, "Testing DM Ping", _db);
                     return Ok();
                 case "talktoegg9000":
                     var channel = (SocketTextChannel)_discord.GetChannel(1012791664831639613);
