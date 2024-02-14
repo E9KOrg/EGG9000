@@ -407,6 +407,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool MERWarningSent { get; set; } = false;
         [Key(36)]
         public bool MERMarkedClean { get; set; } = false;
+        [Key(37)]
+        public bool TimeCheatsMarkedClean { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)

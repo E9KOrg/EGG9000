@@ -117,6 +117,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public SocketGuildUser DiscordUser { get; set; }
             public double SiloTime { get; set; }
             public CustomFarmStats FarmStats { get; set; }
+            public bool TimeCheatMarkedClean { get; set; }
         }
 
         public static string Truncate(string value, int maxLength) {
@@ -537,6 +538,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         User = x.DBUser,
                         Backup = x.Backup,
                         DiscordUser = x.DBUser is not null ? guild.GetUser(x.DBUser.DiscordId) : null,
+                        TimeCheatMarkedClean = x.Account?.TimeCheatsMarkedClean ?? false
                     }).ToList();
 
 
@@ -941,7 +943,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 u.Xref.GussetCheatDetected = true;
                             }
                         }
-                        foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && u.Xref is not null && !u.Xref.TimeCheatReported).ToList()) {
+                        foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && u.Xref is not null && !u.Xref.TimeCheatReported && !u.TimeCheatMarkedClean).ToList()) {
                             await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
                                 new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`)"});
                             u.Xref.TimeCheatReported = true; //Set the flag to prevent repetition

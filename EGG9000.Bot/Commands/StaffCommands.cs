@@ -41,6 +41,7 @@ using System.Collections;
 using System.Numerics;
 using EGG9000.Bot.Services;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using System.Linq.Expressions;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -48,7 +49,16 @@ namespace EGG9000.Bot.Commands {
         public enum MarkCleanOption {
             [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
             [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1,
-            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2
+            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2,
+            [Discord.Interactions.ChoiceDisplay("Time Cheats")] TimeCheats = 3
+        }
+
+        public enum MarkDirtyOption {
+            [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
+            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1,
+            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2,
+            [Discord.Interactions.ChoiceDisplay("Time Cheats")] TimeCheats = 3,
+            [Discord.Interactions.ChoiceDisplay("All")] All = 4,
         }
 
         [SlashCommand(Description = "Mark a potential cheater as clean", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
@@ -68,7 +78,7 @@ namespace EGG9000.Bot.Commands {
 #if DEV9002
                 await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
 #else
-                await command.RespondAsync($"User account` <@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
+                await command.RespondAsync($"User account <@{dbuser.DiscordId}> ({identifier}) marked as having clean {cleantype}.");
 #endif
                 switch(cleantype) {
                     case MarkCleanOption.Artifacts:
@@ -77,10 +87,97 @@ namespace EGG9000.Bot.Commands {
                         account.CraftingMarkedClean = true; break;
                     case MarkCleanOption.MER:
                         account.MERMarkedClean = true; break;
+                    case MarkCleanOption.TimeCheats:
+                        account.TimeCheatsMarkedClean = true; break;
                 }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
             }
+        }
+
+        private class RemoveCleanUser {
+            public EggIncAccount Account { get; set; }
+            public DBUser User { get; set; }
+        }
+
+        [SlashCommand(Description = "Remove all 'Clean' markings from all accounts of users in this guild", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task GuildClearClean(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Remove 'Warning Sent' flags - bot will re-send detection messages")] bool removewarningsent, [SlashParam(Required = false, Description = "Clear this marking, if not provided, clear all")] MarkDirtyOption cleantype) {
+            await command.DeferAsync();
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
+            if(dbGuild is null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not determine which guild this is being run for."); });
+                return;
+            }
+
+            var dbusers = await db.DBUsers.Where(u => u.GuildId == dbGuild.Id).ToListAsync();
+            var accounts = dbusers.SelectMany(u => u.EggIncAccounts).ToList();
+            var updatedCount = 0;
+            switch(cleantype) {
+                case MarkDirtyOption.Artifacts:
+                    accounts = accounts.Where(a => a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent)).ToList();
+                    foreach(var account in accounts) {
+                        account.AFSWarningSent = false;
+                        account.AFSMarkedClean = false;
+                        updatedCount++;
+                    }
+                    break;
+                case MarkDirtyOption.CraftingXP:
+                    accounts = accounts.Where(a => a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent)).ToList();
+                    foreach(var account in accounts) {
+                        account.CraftingWarningSent = false;
+                        account.CraftingMarkedClean = false;
+                        updatedCount++;
+                    }
+                    break;
+                case MarkDirtyOption.MER:
+                    accounts = accounts.Where(a => a.MERMarkedClean || (removewarningsent && a.MERWarningSent)).ToList();
+                    foreach(var account in accounts) {
+                        account.MERWarningSent = false;
+                        account.MERMarkedClean = false;
+                        updatedCount++;
+                    }
+                    break;
+                case MarkDirtyOption.TimeCheats:
+                    accounts = accounts.Where(a => a.TimeCheatsMarkedClean).ToList();
+                    foreach(var account in accounts) {
+                        account.TimeCheatsMarkedClean = false;
+                        updatedCount++;
+                    }
+                    break;
+                case MarkDirtyOption.All:
+                    accounts = accounts.Where(a =>
+                        a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent) ||
+                        a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent) ||
+                        a.MERMarkedClean || (removewarningsent && a.MERWarningSent) ||
+                        a.TimeCheatsMarkedClean
+                    ).ToList();
+                    foreach(var account in accounts) {
+                        account.AFSWarningSent = false;
+                        account.AFSMarkedClean = false;
+                        account.CraftingWarningSent = false;
+                        account.CraftingMarkedClean = false;
+                        account.MERWarningSent = false;
+                        account.MERMarkedClean = false;
+                        account.TimeCheatsMarkedClean = false;
+                        updatedCount++;
+                    }
+                    break;
+                default: break;
+            }
+
+            if(updatedCount == 0) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("No users found to clear this marking from."); });
+                return;
+            }
+
+            var accountIds = accounts.Select(a => a.Id).ToList();
+            var usersToUpdate = dbusers.Where(u => u.EggIncAccounts.Any(a => accountIds.Contains(a.Id))).ToList();
+            foreach(var user in usersToUpdate) {
+                user.UpdateAccounts();
+            }
+            await db.SaveChangesAsync();
+
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Modified flags on `{updatedCount}` accounts across `{usersToUpdate.Count}` users."); });
         }
 
         [SlashCommand(Description = "Determine a user's artifact fairness score", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
