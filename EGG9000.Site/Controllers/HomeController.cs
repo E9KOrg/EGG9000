@@ -381,7 +381,9 @@ namespace EGG9000.Site.Controllers {
                 DiscordUser = _discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
-                SeasonCS = y.Backup?.SeasonCS ?? 0
+                SeasonCS = y.Backup?.SeasonCS ?? 0,
+                TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
+                CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
             })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
@@ -427,6 +429,19 @@ namespace EGG9000.Site.Controllers {
                 }
                 return View(leaderboard);
             }
+        }
+
+        public async Task<IActionResult> CraftingLevelLeaderboard([FromQuery] ulong guildid = 0) {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            if(guildid == 0 || !User.IsInRole("Admin")) {
+                guildid = user.GuildId;
+            }
+            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
+            var leaderboard = await _getLeaderboard(guildid);
+            leaderboard = leaderboard.OrderByDescending(x => x.TotalCraftingXP).Where(x => x.TotalCraftingXP > 0).ToList();
+            return View(leaderboard);
         }
 
         public async Task<IActionResult> CSLeaderboard(string cstype = "total", [FromQuery] ulong guildid = 0) {
@@ -739,6 +754,7 @@ namespace EGG9000.Site.Controllers {
             await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
 
             var leaderboard = await _getLeaderboard(user.GuildId);
+            leaderboard = leaderboard.Where(x => x.TotalCraftingXP > 0).ToList(); //Ignore 0-xp accounts
 
             var myCraftingData = new List<Tuple<int, double>>();
             var myAccountNames = new List<string>();

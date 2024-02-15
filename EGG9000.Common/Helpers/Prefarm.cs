@@ -44,6 +44,9 @@ namespace EGG9000.Common.Helpers {
             public List<SimpleXref> RecentXrefs { get; set; }
             public double TotalCS { get; set; }
             public double SeasonCS { get; set; }
+
+            public double TotalCraftingXP { get; set; }
+            public uint CraftingLevel { get; set; }
         }
 
         public class SimpleXref {
