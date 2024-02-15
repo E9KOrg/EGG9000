@@ -26,11 +26,11 @@ namespace EGG9000.Bot.Automated {
         public ArtifactCheaters(IServiceProvider provider) : base(interval, delay, provider) { }
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
-            await RunFairnessScores(true, false);
-            await RunCraftingLevelCheck(true, false);
+            await RunFairnessScores(cancellationToken, true, false);
+            //await RunCraftingLevelCheck(cancellationToken, true, false);
         }
 
-        public async Task RunCraftingLevelCheck(bool sendMessages = true, bool returnLevelSet = false) {
+        public async Task RunCraftingLevelCheck(CancellationToken cancellationToken, bool sendMessages = true, bool returnLevelSet = false) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
@@ -38,6 +38,7 @@ namespace EGG9000.Bot.Automated {
 
             foreach(var user in dbusers) {
                 foreach(var account in user.EggIncAccounts.ToList()) {
+                    if(cancellationToken.IsCancellationRequested) return;
                     if(account is null || account.Backup is null || account.Backup.CraftingXP == 0) continue;
                     xpSet.Add(account, account.Backup.CraftingXP);
                 }
@@ -49,6 +50,11 @@ namespace EGG9000.Bot.Automated {
             // Calculate the average score
             var sumXp = xpSet.Values.Sum();
             var averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
+
+            //Look at the top 50%
+            xpSet = xpSet.Where(x => x.Value > averageXp).ToDictionary(pair => pair.Key, pair => pair.Value);
+            sumXp = xpSet.Values.Sum();
+            averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
 
             // Calculate the standard deviation for Z-score calculation
             var sumSquaredDeviations = xpSet.Values.Sum(score => Math.Pow(score - averageXp, 2));
@@ -66,6 +72,7 @@ namespace EGG9000.Bot.Automated {
 
             if(sendMessages) {
                 foreach(var outlier in upperOutliers) {
+                    if(cancellationToken.IsCancellationRequested) return;
                     DBUser user;
                     if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
                     else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
@@ -93,13 +100,14 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset) {
+        public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(CancellationToken cancellationToken, bool sendMessages, bool returnScoreset) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
             var scoreSet = new Dictionary<EggIncAccount, double>();
 
             foreach(var user in dbusers) {
+                if(cancellationToken.IsCancellationRequested) return new();
                 foreach(var account in user.EggIncAccounts.ToList()) {
                     var score = (double)ArtifactHelpers.GetArtifactFairnessScore(account.Backup?.ArtifactHall ?? null);
                     if(account is null || score is 0) continue;
@@ -130,6 +138,7 @@ namespace EGG9000.Bot.Automated {
 
             if(sendMessages) {
                 foreach(var outlier in upperOutliers) {
+                    if(cancellationToken.IsCancellationRequested) return new();
                     DBUser user;
                     if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
                     else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
