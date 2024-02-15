@@ -55,7 +55,8 @@ namespace EGG9000.Bot.Commands {
             await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
             var response = command.GetOriginalResponseAsync().Result; // Get the response to edit it
             var baseUrl = response.Embeds.First().Image.ToString();
-            var imageUrl = baseUrl.IndexOf("jpeg", StringComparison.OrdinalIgnoreCase) is int index && index != -1 ? baseUrl[..(index + "jpeg".Length)] : baseUrl;
+            var formatIndex = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
+            var imageUrl = formatIndex is int index && index != -1 ? baseUrl[..(index + "&format".Length)] : baseUrl;
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = _inventoryEmbed(user, account, imageUrl);

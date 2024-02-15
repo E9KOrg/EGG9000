@@ -23,6 +23,8 @@ using Google.Protobuf.WellKnownTypes;
 using MassTransit.Caching.Internals;
 using EGG9000.Common.Helpers;
 using EGG9000.Bot.Common.Helpers;
+using Discord.Net;
+using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpersExt {
@@ -49,13 +51,24 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        public static async Task<Exception> BoolSendDm(IDMChannel dmChannel, string message) {
+        public enum DMResult {
+            Success = 0,
+            CannotSendToUser = 1,
+            DiscordError = 2,
+        };
+
+        public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
+            var result = DMResult.Success;
             try {
+                var dmChannel = await dmUser.CreateDMChannelAsync();
+                if(dmChannel is null) return DMResult.DiscordError;
                 await dmChannel.SendMessageAsync(message);
-                return null;
-            } catch(Exception ex) {
-                return ex;
+            } catch(HttpException ex) {
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
             }
+            if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
+            return result;
         }
 
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {

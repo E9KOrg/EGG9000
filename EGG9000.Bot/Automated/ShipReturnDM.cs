@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
 using EGG9000.Bot.Common.Helpers;
+using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM : _UpdaterBase<ShipReturnDM> {
@@ -39,8 +40,6 @@ namespace EGG9000.Bot.Automated {
                 if(discordUser == null) {
                     continue;
                 }
-                var dmChannel = await discordUser.CreateDMChannelAsync();
-
 
                 foreach(var shipDm in user.ShipDMs.Where(x => x.DMTime <= DateTimeOffset.Now.AddSeconds(30) && !x.Sent)) {
                     try {
@@ -110,17 +109,12 @@ namespace EGG9000.Bot.Automated {
                             _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
                         }
 
-                        var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, message);
-                        var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == discordUser.Id);
-                        if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
-                            dbUser.DMSBlocked = !dbUser.DMSBlocked;
-                        }
-                        if(retEx != null) {
-                            _logger.LogError(retEx, "User {user} has DMs blocked", discordUser.Username);
+                        var dmResult = await BoolSendDm(discordUser, message, _db);
+                        if(dmResult != DMResult.Success) {
                             var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
                             var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id ==  dbguild.Id);
                             var response = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, socketGuild, GuildChannelType.WarningMessagesForUser, new() 
-                            { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but have blocked the bot from sending you DMs" });
+                            { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but {(dmResult == DMResult.CannotSendToUser ? "have blocked the bot from sending you DMs" : "Discord is not responding")}" });
                         }
                         await _db.SaveChangesAsync();
                     } catch(Exception e) {

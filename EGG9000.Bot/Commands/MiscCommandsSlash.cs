@@ -35,6 +35,7 @@ using Microsoft.AspNetCore.Connections.Features;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using EGG9000.Bot.Common.Helpers;
 using System.Threading.Channels;
+using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -299,14 +300,8 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             await command.RespondAsync(infoText, ephemeral: keepPrivate);
             if(keepPrivate) {
-                var dmChannel = await command.User.CreateDMChannelAsync();
-                var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, infoText);
-                var dbUser = db.DBUsers.FirstOrDefault(u => u.DiscordId == command.User.Id);
-                if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
-                    dbUser.DMSBlocked = !dbUser.DMSBlocked;
-                    await db.SaveChangesAsync();
-                }
-                if(retEx != null) await command.Channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
+                var dmResult = await BoolSendDm(command.User, infoText, db);
+                if(dmResult != DMResult.Success) await command.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
             }
         }
     }
