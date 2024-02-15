@@ -34,6 +34,7 @@ using System.Diagnostics.Contracts;
 using Contract = EGG9000.Common.Database.Entities.Contract;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using Microsoft.Extensions.Logging;
+using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts : _UpdaterBase<NewContracts> {
@@ -173,14 +174,10 @@ namespace EGG9000.Bot.Automated {
                         var ultraMessageOut = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
 
                         foreach(var pingableUser in pingableUsers) {
-                            var dmChannel = await _client.GetUser(pingableUser.DiscordId).CreateDMChannelAsync();
-                            var retEx = await DiscordHelpersExt.BoolSendDm(dmChannel, ultraMessageOut);
-                            var dbUser = _db.DBUsers.FirstOrDefault(u => u.DiscordId == pingableUser.DiscordId);
-                            if(dbUser is not null && (retEx == null) == dbUser.DMSBlocked) {
-                                dbUser.DMSBlocked = !dbUser.DMSBlocked;
-                                await _db.SaveChangesAsync();
+                            var dmResult = await BoolSendDm(_client.GetUser(pingableUser.DiscordId), ultraMessageOut, _db);
+                            if(dmResult != DMResult.Success) {
+                                _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} {reason}.", pingableUser.DiscordUsername, dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)");
                             }
-                            if(retEx != null) _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} (DMs are blocked).", pingableUser.DiscordUsername);
                         }
                     }
 
