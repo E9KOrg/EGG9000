@@ -239,7 +239,7 @@ namespace EGG9000.Bot.Automated {
 
             lUsers = lUsers.Where(x => x.Backup != null).ToList();
             var activeUsers = lUsers.Where(x => x.Account.Active && x.DiscordUser != null).ToList();
-            var inactiveUsers = lUsers.Where(x => !x.Account.Active && x.DiscordUser != null).ToList();
+            //var inactiveUsers = lUsers.Where(x => !x.Account.Active && x.DiscordUser != null).ToList();
 
             var dbguild = _db.Guilds.FirstOrDefault(x => x.Id == guild.Id);
             if(dbguild == null) {
@@ -253,15 +253,15 @@ namespace EGG9000.Bot.Automated {
             var table1 = GetTables(activeUsers, "");
 
             var str = "";
-            str += $"Total Active Accounts: {activeUsers.Count()}\n";
+            str += $"Total Active Accounts: {activeUsers.Count}\n";
             str += $"Last 5 Contracts: \n{recentContracts[0].ID}: {lUsers.Count(x => x.Last1)}\n{recentContracts[1].ID}: {lUsers.Count(x => x.Last2)}\n{recentContracts[2].ID}: {lUsers.Count(x => x.Last3)}\n{recentContracts[3].ID}: {lUsers.Count(x => x.Last4)}\n{recentContracts[4].ID}: {lUsers.Count(x => x.Last5)}";
             table1.Add(str);
 
-            if(inactiveUsers.Count > 0 && inactiveUsers.Count < 100) {
+            /*if(inactiveUsers.Count > 0 && inactiveUsers.Count < 100) {
                 var table2 = GetTables(inactiveUsers, "Inactive Users");
                 //table2.Prepend("Inactive Account: ");
                 table1.AddRange(table2);
-            }
+            }*/
 
             var msgs = (await channel.GetMessagesAsync().FlattenAsync()).ToList();
 

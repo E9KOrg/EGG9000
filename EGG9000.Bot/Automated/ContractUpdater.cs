@@ -269,10 +269,10 @@ namespace EGG9000.Bot.Automated {
                     await (existingMessages.First() as RestUserMessage).ModifyWithTimeoutAsync(msg => {
                         msg.Embed = embedBuilder.Build();
                         msg.Content = rawTextMessageAspect;
-                        msg.Components = findSpotButton;
+                        msg.Components = (dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
                     });
                 } else {
-                    await channel.SendMessageAsync(rawTextMessageAspect, embed: embedBuilder.Build(), components: findSpotButton);
+                    await channel.SendMessageAsync(rawTextMessageAspect, embed: embedBuilder.Build(), components: dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
                 }
 
 

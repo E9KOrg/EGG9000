@@ -279,7 +279,11 @@
 	<div class="card-body">
 		<div>
 		<label>
-				<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
+			<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
+		</label>
+		<br/>
+		<label>
+				<input class="custom-input" type="checkbox" value="true" id="RemoveFindCoopSpot" checked="@Model.RemoveFindCoopSpot" /> Remove <button class="btn btn-primary btn-sm" disabled>Find Coop Spot</button> buttons from Co-op channels
 		</label>
 		</div>
 		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
@@ -330,6 +334,7 @@
 						AllowGuilds: $("#AllowGuilds").is(":checked"),
 						GroupRoles: GetCategoryJoins(".GroupRole"),
 						PublicScoreGrid: $("#PublicScoreGrid").is(":checked"),
+						RemoveFindCoopSpot: $("#RemoveFindCoopSpot").is(":checked"),
 						CoopNamePrefix: $("#CoopNamePrefix").val()
 					})
 			}, function () {
