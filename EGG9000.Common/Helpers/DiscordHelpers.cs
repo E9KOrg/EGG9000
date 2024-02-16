@@ -57,15 +57,18 @@ namespace EGG9000.Bot.Helpers {
             DiscordError = 2,
         };
 
-        public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
+        public static async Task<DMResult> BoolSendDm(SocketUser dmUser, string message, ApplicationDbContext db) {
+            DBUser dbUser = null;
             var result = DMResult.Success;
             try {
+                dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
                 var dmChannel = await dmUser.CreateDMChannelAsync();
                 if(dmChannel is null) return DMResult.DiscordError;
                 await dmChannel.SendMessageAsync(message);
             } catch(HttpException ex) {
                 result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
+            } catch (Exception) {
+                return DMResult.CannotSendToUser;
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
             return result;
