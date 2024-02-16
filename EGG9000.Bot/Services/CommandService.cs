@@ -454,7 +454,7 @@ namespace EGG9000.Bot.Services {
                         if(xref.CoopSetting?.PingOnMessage ?? false) {
                             var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
                             var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
-
+                            if(discordUser is null) continue; //Another null check
                             var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{coop.DiscordChannelId}>, **{author.GetCleanName()}:** {message.Content}", db);
                         }
                     }
