@@ -1156,6 +1156,7 @@ music
             dbGuild.GroupRoles = model.groupRoles;
             dbGuild.AllowGuilds = model.AllowGuilds;
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
+            dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             await _db.SaveChangesAsync();
 
@@ -1191,6 +1192,7 @@ music
             public bool AllowGuilds { get; set; }
             public bool PublicScoreGrid { get; set; }
             public string CoopNamePrefix { get; set; }
+            public bool RemoveFindCoopSpot { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
