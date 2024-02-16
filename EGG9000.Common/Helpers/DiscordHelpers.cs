@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Helpers {
             DiscordError = 2,
         };
 
-        public static async Task<DMResult> BoolSendDm(SocketUser dmUser, string message, ApplicationDbContext db) {
+        public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
             if(dmUser is null || dmUser?.Id is null) return DMResult.CannotSendToUser;
             DBUser dbUser = null;
             var result = DMResult.Success;
