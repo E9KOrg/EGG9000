@@ -478,7 +478,7 @@
                 <div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
                     @{
                         Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
-                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.User, scores));
+                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.User, scores, index));
                     }
                 </div>
 
@@ -574,10 +574,11 @@
                 history.replaceState(null, null, newUrl);
             });
 
-            $("#ArchivedFarmsSearch").keyup(function () {
-                var terms = $("#ArchivedFarmsSearch").val().split(" ");
-                var showAll = $("#ArchivedFarmsSearch").val().trim().length == 0;
-                $('#ArchivedFarmsTBody tr').each(function (index) {
+            $("[id^='ArchivedFarmsSearch']").keyup(function () {
+                var terms = $(this).val().split(" ");
+                var showAll = $(this).val().trim().length == 0;
+                var index = $(this).attr('id').replace("ArchivedFarmsSearch", "");
+                $('#ArchivedFarmsTBody' + index + ' tr').each(function (index) {
                     var row = $(this);
                     var name = row.data("name");
                     var coop = row.data("coop");

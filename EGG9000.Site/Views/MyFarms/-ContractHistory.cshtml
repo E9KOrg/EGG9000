@@ -1,5 +1,5 @@
 ﻿@using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User, Ei.MyContracts scores)
+@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User, Ei.MyContracts scores, int index)
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
@@ -94,7 +94,7 @@
 </div>
 
 <div class="card" style="margin-top:20px">
-	<h4 class="card-header">Archived Farms <input class="form-control" style="width: 150px; display: inline;" placeholder="Search" id="ArchivedFarmsSearch" /></h4>
+	<h4 class="card-header">Archived Farms <input class="form-control" style="width: 150px; display: inline;" placeholder="Search" id="@("ArchivedFarmsSearch" + Model.index)" /></h4>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
@@ -112,7 +112,7 @@
 					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡💲</th>
 				</tr>
 			</thead>
-			<tbody id="ArchivedFarmsTBody">
+			<tbody id="@("ArchivedFarmsTBody" + Model.index)">
 				@{
 					// Show completed farms, these could be 'active' and 'archived' farms.
 					foreach (var tuple in allFarms.Where(x =>
