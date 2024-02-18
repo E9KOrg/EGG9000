@@ -142,7 +142,6 @@ namespace EGG9000.Bot.Commands {
                 buttons.Add(("Ultra Offer Pings", $"MCSUltraPing:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             }
 
-
             var redoText = account.RedoLeggacySelection switch {
                 RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
                 RedoLeggacyOption.YesNoUltra => "Yes (Will not redo completed Ultra contracts)",
@@ -154,6 +153,8 @@ namespace EGG9000.Bot.Commands {
             eBuilder.AddField("Redo Completed Leggacies", redoText);
             buttons.Add(("Redo Completed Leggacies", $"MCSRL:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
+            eBuilder.AddField("Auto-Assign 2 -> 3 Contracts", account.DoTwoToThreeContracts ? "Yes" : "No");
+            buttons.Add(("2 -> 3 Setting", $"MCSTwoToThree:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
             buttons.Add(("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
@@ -386,6 +387,52 @@ namespace EGG9000.Bot.Commands {
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, await GetGuild(dbuser.GuildId, db));
 
             await component.UpdateAsync(x => { x.Components = GetRlButtons(index, account, dbuser); x.Embed = RedoLeggaciesEmbedBuilder(dbuser, account).Build(); });
+        }
+        #endregion
+
+        #region TwoToThree
+        [ComponentCommand]
+        public static async Task MCSTwoToThree(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+
+            await component.UpdateAsync(x => { x.Components = TwoToThreeComponents(dbuser, account.DoTwoToThreeContracts, index); x.Embed = TwoToThreeEmbed(dbuser, account, account.DoTwoToThreeContracts); });
+        }
+
+        [ComponentCommand]
+        public static async Task MCSToggleTwoToThree(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            var toggleState = data.Split(",")[2] == "t";
+
+            account.DoTwoToThreeContracts = toggleState;
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+
+            await component.UpdateAsync(x => { x.Components = TwoToThreeComponents(dbuser, toggleState, index); x.Embed = TwoToThreeEmbed(dbuser, account, toggleState); });
+        }
+
+        [ComponentCommand]
+        public static MessageComponent TwoToThreeComponents(DBUser dbuser, bool enabled, int index) {
+            var builder = new ComponentBuilder();
+            var row = new ActionRowBuilder()
+                .WithButton(enabled ? "Disable 2 -> 3 Auto-Assignments" : "Enable 2 -> 3 Auto-Assignments", $"MCSToggleTwoToThree:{index},{dbuser.DiscordId},{(enabled ? "f" : "t")}")
+                .WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            builder.AddRow(row);
+            return builder.Build();
+        }
+
+        [ComponentCommand]
+        public static Embed TwoToThreeEmbed(DBUser dbuser, EggIncAccount account, bool enabled) {
+            var twoToThreeMessage = $"Ocasionally Leggacy Contracts will be released with three rewards, despite previously having 2 rewards. In your contract history, this will appear as a complete contract, and auto-assignment will not happen, by default.\n" +
+                $"\n- If set to `No`, you will not be assigned coops for contracts in which only a new third reward is offered." +
+                $"\n- If set to `Yes`, you will be automatically assigned a co-op for these \"`2 -> 3`\" Leggacy Contracts.";
+
+            return MenuEmbedTemplate("2 -> 3 Contract Reward Menu", twoToThreeMessage, account, dbuser).AddField("Auto-Assign 2 -> 3 Contracts", enabled ? "Yes" : "No").Build();
         }
         #endregion
 
