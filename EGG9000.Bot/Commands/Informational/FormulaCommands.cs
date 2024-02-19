@@ -27,8 +27,11 @@ namespace EGG9000.Bot.Commands {
         public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] MERChoice MERValue = MERChoice.Current) {
             await command.RespondAsync("Getting account backups...");
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(dbUser == null || !dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                return;
+            } else if(!dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to retrieve your backup. Please try again later."); });
                 return;
             }
 
@@ -135,8 +138,11 @@ namespace EGG9000.Bot.Commands {
         public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(dbUser == null || !dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
+            if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                return;
+            } else if(!dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to retrieve your backup. Please try again later."); });
                 return;
             }
 
@@ -312,24 +318,26 @@ namespace EGG9000.Bot.Commands {
         }*/
 
         [SlashCommand(Description = "Calculate the EB% based on SE and PE inputs", ParentCommand = "formulae", AllowInDMs = true)]
-        public static async Task Eb(FauxCommand command, [SlashParam(Description = "SE")] string SE, [SlashParam(Description = "PE")] int PE) {
+        public static async Task Eb(FauxCommand command, [SlashParam(Description = "SE")] string SE, [SlashParam(Description = "PE", PositiveOnly = true)] int PE) {
             await command.RespondAsync("Calculating...");
 
             double seValue;
+            var parserDict = new Dictionary<string, double>() {
+                {"K", 1e3},
+                {"M", 1e6},
+                {"B", 1e9},
+                {"T", 1e12},
+                {"q", 1e15},
+                {"Q", 1e18},
+                {"s", 1e21},
+                {"S", 1e24}
+            };
 
-            switch(SE.Last()) {
-                case 'q':
-                    seValue = double.Parse(SE.TrimEnd('q')) * 1e15;
-                    break;
-                case 'Q':
-                    seValue = double.Parse(SE.TrimEnd('Q')) * 1e18;
-                    break;
-                case 's':
-                    seValue = double.Parse(SE.TrimEnd('s')) * 1e21;
-                    break;
-                default:
-                    await command.RespondAsync(content: "", embed: EmbedError("Invalid SE value: must end with q, Q, or s"));
-                    return;
+            if(parserDict.TryGetValue(SE.Last().ToString(), out var mult)) {
+                seValue = double.Parse(SE.TrimEnd(SE.Last())) * mult;
+            } else {
+                await command.RespondAsync(content: "", embed: EmbedError($"Invalid SE value: must end with {string.Join(", ", parserDict.Keys.ToList())}."));
+                return;
             }
 
             if(PE <= 0 || PE > 1000) {

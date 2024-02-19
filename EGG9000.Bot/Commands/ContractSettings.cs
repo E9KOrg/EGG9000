@@ -428,7 +428,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static Embed TwoToThreeEmbed(DBUser dbuser, EggIncAccount account, bool enabled) {
-            var twoToThreeMessage = $"Ocasionally Leggacy Contracts will be released with three rewards, despite previously having 2 rewards. In your contract history, this will appear as a complete contract, and auto-assignment will not happen, by default.\n" +
+            var twoToThreeMessage = $"Ocasionally, Leggacy Contracts will be released with three rewards, despite previously having two rewards. In your contract history, this will appear as a complete contract, and auto-assignment will not happen, by default.\n" +
                 $"\n- If set to `No`, you will not be assigned coops for contracts in which only a new third reward is offered." +
                 $"\n- If set to `Yes`, you will be automatically assigned a co-op for these \"`2 -> 3`\" Leggacy Contracts.";
 
