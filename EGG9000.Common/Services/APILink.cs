@@ -37,6 +37,7 @@ namespace EGG9000.Common.Services {
     public class BackupRequest {
         public string UserId { get; set; }
         public float LastBackupTime { get; set; }
+        public CustomBackup CurrentBackup {  get; set; }
     }
 
     public class BackupResponse {
@@ -140,7 +141,7 @@ namespace EGG9000.Common.Services {
                     return null;
 
                 var key = GetUserBackupKey(eggIncId);
-                CustomBackup currentBackup;
+                CustomBackup currentBackup = null;
                 float lastBackupTime = -1;
                 if(!forceAll && _cache.TryGetValue(key, out currentBackup)) {
                     if(currentBackup.Farms is not null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
@@ -154,7 +155,7 @@ namespace EGG9000.Common.Services {
                     }
                 }
                 if(eggIncId.StartsWith("EI")) {
-                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime });
+                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime, CurrentBackup = currentBackup});
                 }
             }
 
@@ -271,7 +272,7 @@ namespace EGG9000.Common.Services {
 
         public async Task<CustomBackup> GetBackup(string UserId) {
             var key = GetUserBackupKey(UserId);
-            CustomBackup currentBackup;
+            CustomBackup currentBackup = null;
             float lastBackupTime = -123;
             if(_cache.TryGetValue(key, out currentBackup)) {
                 if(currentBackup.Farms != null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
@@ -284,7 +285,7 @@ namespace EGG9000.Common.Services {
                 var url = $"{urlBase}GetBackup";
                 using(var request = new HttpRequestMessage(HttpMethod.Get, url)) {
                     //Add content
-                    var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
+                    var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId, CurrentBackup = currentBackup });
                     request.Content = new StringContent(content, Encoding.UTF8, "application/json");
                     //Add headers
                     request.Headers.Accept.Clear();

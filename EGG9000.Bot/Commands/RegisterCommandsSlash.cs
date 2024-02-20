@@ -352,7 +352,8 @@ namespace EGG9000.Bot.Commands {
                 user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
             }
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup);
+                var currentBackup = account?.Backup ?? null;
+                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, currentBackup); //Pass current backup to maintain username where possible
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
