@@ -843,15 +843,7 @@ namespace EGG9000.Site.Controllers {
             var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync())
                 .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds });
 
-            if(id.StartsWith("EI")) {
-
-                var matchingUser = users.FirstOrDefault(x => x._eggIncIds?.Contains(id) ?? false);
-                if(matchingUser != null) {
-                    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser.DiscordId });
-                }
-
-                return RedirectToAction("ViewUserId", "MyFarms", new { eggIncId = id });
-            } else if(id.Trim().All(x => x >= '0' && x <= '9')) {
+            if(id.Trim().All(x => x >= '0' && x <= '9')) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
             }
 
