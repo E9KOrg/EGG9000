@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package ei;
 
-import "Proto/common.proto";
+import "common.proto";
 
 message Vector3 {
     optional float x = 1;
@@ -156,7 +156,7 @@ message Backup {
         optional uint32 tank_level = 15;
         repeated double tank_fuels = 16;
         repeated double tank_limits = 18;
-        //optional MissionInfo.Spaceship last_fueled_ship = 9;
+        optional MissionInfo.Spaceship last_fueled_ship = 9;
         optional double inventory_score = 10;
         optional double crafting_xp = 17;
         optional bool enabled = 11;
