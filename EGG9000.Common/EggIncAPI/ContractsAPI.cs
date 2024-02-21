@@ -38,8 +38,8 @@ namespace EGG9000.Bot.EggIncAPI {
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.27.6",
-                Build = "1.27.6.0",
+                Version = "1.29.3",
+                Build = "111281",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en", 
