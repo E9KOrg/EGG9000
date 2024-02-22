@@ -452,14 +452,9 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
         public async Task<IActionResult> CalculateScore([FromQuery] string contractid) {
+
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.ContractID == contractid && x.GuildID == guildId).ToListAsync();
-            //            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
-
-            //var contractCoops = coops.Where(x => x.ContractID == contractid).ToList();
-
-
             var contractCoops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User)
                 .Where(x => 
                     x.ContractID == contractid && 
@@ -469,11 +464,12 @@ namespace EGG9000.Site.Controllers {
             Console.WriteLine($"Processing {contractid}");
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
             var scores = ContractScoring.GetContractScores(contractCoops, contract, _logger);
-            var userXrefs = await _db.UserCoopXrefs.Where(x => x.Score != null && x.Coop.ContractID != contractid && x.CreatedOn < contract.GoodUntil).GroupBy(x => x.UserId).Select(x => new { Key = x.Key, Last3Score = x.OrderByDescending(y => y.CreatedOn).Take(3) }).ToListAsync();
+            var userXrefs = await _db.UserCoopXrefs.Where(x => x.Score != null && x.Coop.ContractID != contractid && x.CreatedOn < contract.GoodUntil)
+                .GroupBy(x => x.UserId).Select(x => new { Key = x.Key, Last3Score = x.OrderByDescending(y => y.CreatedOn).Take(3) }).ToListAsync();
             foreach(var score in scores) {
                 score.xref.Score = score.Score;
                 score.xref.SoulPower = score.SoulPower;
-                var xrefs = userXrefs.FirstOrDefault(x => x.Key == score.UserId)?.Last3Score.ToList() ?? new List<UserCoopXref>();
+                var xrefs = userXrefs.FirstOrDefault(x => x.Key == score.UserId)?.Last3Score.ToList() ?? [];
                 xrefs.Add(score.xref);
                 if(xrefs.Count == 4) {
                     var firstXref = xrefs.First();
@@ -483,27 +479,10 @@ namespace EGG9000.Site.Controllers {
                         eggIncAccount.LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
                         firstXref.User.UpdateAccounts();
                     }
-                } else if(xrefs.Count > 4) {
-                    Console.WriteLine($"{xrefs.Count} xrefs found for {score.UserName}");
                 }
             }
             guildContracts.Where(x => x.ContractID == contractid).ToList().ForEach(x => x.HasScores = true);
             await _db.SaveChangesAsync();
-
-            //var userXrefs =    coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
-            //foreach(var score) {
-            //    foreach(var xref in xrefs.Where(x => x.Coop.ContractID == contractid)) {
-            //        //if(xref.RunningScore == null) {
-            //        var lastFourXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn && x.Score.HasValue).Take(4).ToList();
-            //        if(lastFourXrefs.Count == 4 && lastFourXrefs.All(x => x.Score.HasValue)) {
-            //            xref.RunningScore = lastFourXrefs.Average(x => x.Score);
-            //        } else {
-            //            xref.RunningScore = null;
-            //        }
-            //        //}
-            //    }
-            //}
-            //await _db.SaveChangesAsync();
 
             var users = await _db.DBUsers.Where(x => x.GuildId == guildId).Select(x => new {
                 x.Id,
@@ -511,15 +490,10 @@ namespace EGG9000.Site.Controllers {
                 x.DiscordUsername,
                 x._eggIncIds
             }).ToListAsync();
-            //var xrefsBelowThreshold = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.RunningScore.HasValue && y.RunningScore < 1e-3).Select(y => {
+
             var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < scoreThreshold).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
-                if(user == null) {
-                    return null;
-                }
-
-
-                return new ScoreUser {
+                return (user is null) ? null : new ScoreUser {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
                     RunningScore = y.xref.RunningScore.Value, 
@@ -528,26 +502,16 @@ namespace EGG9000.Site.Controllers {
                 };
             });
 
-
-
             var guild = _discord.GetGuild(guildId);
             var beastModeRole = guild.GetRole(938563459812049008);
 
-            //var topXrefs = userXrefs.SelectMany(x => x.Where(y => y.Coop.ContractID == contractid && y.Score.HasValue).Select((y => {
             var allTopXrefs = scores.Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
-                if(user == null) {
-                    return null;
-                }
-
-                var discordUser = guild.GetUser(user.DiscordId);
-
-
-                return new ScoreUser {
+                return (user is null) ? null : new ScoreUser {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
                     Score = y.Score,
-                    DiscordUser = discordUser, 
+                    DiscordUser = guild.GetUser(user.DiscordId), 
                     Grade = (Ei.Contract.Types.PlayerGrade)y.League,
                     EggIncId = y.xref?.EggIncId ?? ""
                 };
