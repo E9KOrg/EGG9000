@@ -540,23 +540,19 @@ namespace EGG9000.Site.Controllers {
 
             await _db.SaveChangesAsync();
 
-            var mentions = topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>");
-            var topEachGradeMentions = topEachGrade.Select(x => $"{PlayerGradeDetails.GetEmoji(x.Grade)}: {Math.Round(x.Score)} <@{x.DiscordId}>");
-
-            var whatIsRscComponentBuilder = new ComponentBuilder();
-            whatIsRscComponentBuilder.WithButton("What is this?", "WhatIsRSC", ButtonStyle.Primary);
-
             await guild.GetTextChannel(656455568353132546)
                 .SendMessageAsync(
-                    text: $"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", mentions)}" +
-                        $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f>:\n{string.Join("\n", topEachGradeMentions)}",
-                    components: whatIsRscComponentBuilder.Build()
+                    text: $"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> " +
+                        $"for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>"))}" +
+                        $"{(topEachGrade.Count == 0 ? "" : 
+                            $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f>:\n" +
+                            $"{string.Join("\n", topEachGrade.Select(x => $"{PlayerGradeDetails.GetEmoji(x.Grade)}: {Math.Round(x.Score)} <@{x.DiscordId}>"))}")}",
+                    components: new ComponentBuilder().WithButton("What is this?", "WhatIsRSC", ButtonStyle.Primary).Build()
                 );
 
-
             return View(new ScoreResult {
-                UsersBelowThreshold = xrefsBelowThreshold.Where(x => x != null).OrderBy(x => x.DiscordUsername).ToList(),
-                TopScore = topXrefs.ToList()
+                UsersBelowThreshold = [.. xrefsBelowThreshold.Where(x => x != null).OrderBy(x => x.DiscordUsername)],
+                TopScore = [.. topXrefs]
             });
         }
         public async Task<IActionResult> ReCalculateRunningScore() {
@@ -572,14 +568,12 @@ namespace EGG9000.Site.Controllers {
             foreach(var userXref in userXrefs) {
                 var xrefs = userXref.OrderByDescending(x => x.CreatedOn).ToList();
                 foreach(var xref in xrefs) {
-                    //if(xref.RunningScore == null) {
                     var lastFourXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn && x.Score.HasValue).Take(4).ToList();
                     if(lastFourXrefs.Count == 4 && xref.Score.HasValue) {
                         xref.RunningScore = lastFourXrefs.Average(x => x.Score);
                     } else {
                         xref.RunningScore = null;
                     }
-                    //}
                 }
             }
             await _db.SaveChangesAsync();
