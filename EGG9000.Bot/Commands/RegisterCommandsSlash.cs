@@ -129,9 +129,8 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
             var json = JsonConvert.SerializeObject(dbUser.EggIncAccounts, Formatting.Indented);
 
-            Embed[] embedArray = { EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>") };
-            embedArray = embedArray.Concat(AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()).ToArray();
-            await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID removed"; x.Embeds = embedArray; });
+            Embed[] embedArray = [EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>"), .. AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()];
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArray; });
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
