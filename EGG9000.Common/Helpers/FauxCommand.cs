@@ -1,4 +1,6 @@
-﻿using Discord;
+﻿// Ignore Spelling: Faux
+
+using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
 
@@ -108,6 +110,10 @@ namespace EGG9000.Common.Services {
 
         public async Task<IUserMessage> ModifyOriginalResponseAsync(string content) {
             return await ModifyOriginalResponseAsync(x => x.Content = content);
+        }
+
+        public Task RespondWithPremiumRequiredAsync(RequestOptions options = null) {
+            throw new NotImplementedException();
         }
 
         public FauxApplicationCommandData Data {
@@ -266,6 +272,12 @@ namespace EGG9000.Common.Services {
         }
 
         IDiscordInteractionData IDiscordInteraction.Data {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        public IReadOnlyCollection<IEntitlement> Entitlements {
             get {
                 throw new NotImplementedException();
             }
