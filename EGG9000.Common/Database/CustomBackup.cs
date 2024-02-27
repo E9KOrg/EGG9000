@@ -213,7 +213,8 @@ namespace EGG9000.Common.Database {
         }
 
         public CustomBackup() { }
-        public CustomBackup(Ei.Backup backup) {
+
+        public CustomBackup(Ei.Backup backup, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
                 EmptyBackup = true;
                 return;
@@ -221,7 +222,7 @@ namespace EGG9000.Common.Database {
             EpicResearch = backup.Game.EpicResearch.Select(x => new CustomResearch(x)).ToList();
             CurrentMultiplier = backup.Game.CurrentMultiplier;
             EggIncId = backup.GetID();
-            UserName = backup.UserName;
+            UserName = string.IsNullOrEmpty(backup.UserName) ? lastBackup?.UserName ?? "" : backup.UserName;
             //EarningsBonus = backup.Game.EarningsBonus;
             LastBackupTime = (long)backup.Settings.LastBackupTime;
             PermitLevel = (ushort)backup.Game.PermitLevel;
