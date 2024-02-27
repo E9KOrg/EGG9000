@@ -162,7 +162,7 @@ namespace EGG9000.Common.Contracts {
 
             if(contract.HadTwoRewards) {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
-                if(completedTwoRewards) {
+                if(completedTwoRewards && !x.Account.DoTwoToThreeContracts) {
                     return false;
                 }
             }

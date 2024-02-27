@@ -396,8 +396,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(30)]
         public bool BreakCoopWarningSent { get; set; } = false;
         /*
-         * Key[31] was taken at some point, and now errors if used?
-         * Key[32] was taken at some point, and now errors if used?
+         * [Key(31)] and [Key(31)] currently in progress of development.
          */
         [Key(33)]
         public bool CraftingWarningSent { get; set; } = false;
@@ -409,6 +408,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool MERMarkedClean { get; set; } = false;
         [Key(37)]
         public bool TimeCheatsMarkedClean { get; set; } = false;
+        [Key(38)]
+        public bool DoTwoToThreeContracts { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
