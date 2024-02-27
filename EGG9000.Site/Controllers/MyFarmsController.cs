@@ -70,7 +70,7 @@ namespace EGG9000.Site.Controllers {
             foreach(var account in user.EggIncAccounts) {
                 var rawBackup = await ContractsAPI.FirstContact(account.Id);
                 rawBackups.Add(rawBackup.Backup);
-                var customBackup = new CustomBackup(rawBackup.Backup);
+                var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                 //var json = JsonSerializer.Serialize(customBackup);
                 //var json = Newtonsoft.Json.JsonConvert.SerializeObject(customBackup);
                 //var customBackupAfterJson = Newtonsoft.Json.JsonConvert.DeserializeObject<CustomBackup>(json);
@@ -105,30 +105,6 @@ namespace EGG9000.Site.Controllers {
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
-        }
-
-        [AllowAnonymous]
-        public async Task<IActionResult> ViewUserId(string eggIncId) {
-            if(!eggIncId.StartsWith("EI")) {
-                return Content("EggIncID doesn't start with EI");
-            }
-            //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
-            var rawBackup = await ContractsAPI.FirstContact(eggIncId);
-            var backup = new CustomBackup(rawBackup.Backup);
-            /*var RawBackups = new List<Ei.Backup>() { rawBackup.Backup };*/
-            var contractIDs = backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId).ToList();
-            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
-            var serialized = MessagePackSerializer.Serialize(backup, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
-            backup = MessagePackSerializer.Deserialize<CustomBackup>(serialized, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
-            var newDbUser = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
-                UserCoopXrefs = new List<UserCoopXref>()
-            };
-            var uncompletedPes = GetUncompletedPEContracts(newDbUser, Contracts);
-            return View("Index", new MyFarmsModel(
-                newDbUser, Contracts, new List<Demerit>(), new List<Merit>(), /*RawBackups,*/ new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null,
-                uncompletedPes
-            ));
         }
 
         public record MyFarmsModel(
@@ -170,13 +146,6 @@ namespace EGG9000.Site.Controllers {
                 Backup = user.EggIncAccounts.First().Backup,
                 Event = boostEvent
             });
-        }
-
-        public async Task<IActionResult> GetCustomBackup([FromQuery] string id) {
-            //EI5862923193024512
-            var rawBackup = await ContractsAPI.FirstContact(id);
-            var customBackup = new CustomBackup(rawBackup.Backup);
-            return Json(customBackup);
         }
 
         public class EarningsBoostCalculatorModel {

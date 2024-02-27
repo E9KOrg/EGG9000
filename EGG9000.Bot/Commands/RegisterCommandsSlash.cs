@@ -129,9 +129,8 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
             var json = JsonConvert.SerializeObject(dbUser.EggIncAccounts, Formatting.Indented);
 
-            Embed[] embedArray = { EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>") };
-            embedArray = embedArray.Concat(AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()).ToArray();
-            await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID removed"; x.Embeds = embedArray; });
+            Embed[] embedArray = [EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>"), .. AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()];
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArray; });
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
@@ -352,7 +351,8 @@ namespace EGG9000.Bot.Commands {
                 user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
             }
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup);
+                var currentBackup = account?.Backup ?? null;
+                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, currentBackup); //Pass current backup to maintain username where possible
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -979,7 +979,7 @@ namespace EGG9000.Bot.Commands {
                 await (canBan ? execDiscordUser.BanAsync(0, intReason) : execDiscordUser.KickAsync(intReason));
                 await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
             } catch(Exception) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"An exception was caught. The user may not have been {(canBan ? "banned" : "Kicked")} from the server.{(canBan ? $"The DB Ban was applied to the user's account." : "")}"); });
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. The user may not have been {(canBan ? "banned" : "kicked")} from the server.{(canBan ? $" \n\n**The DB Ban was applied to the user's account.**" : "")}"); });
             }
         }
     }

@@ -185,7 +185,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
-        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
+        [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
             var backup = await _apiLink.GetBackup(ei);
@@ -193,11 +193,20 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
-        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
+        [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
             var backup = await ContractsAPI.FirstContact(ei);
             return new ObjectResult(backup);
+        }
+
+        [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
+        [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
+        [Produces("application/json")]
+        public async Task<IActionResult> CustomBackupOut(string ei) {
+            var rawBackup = await ContractsAPI.FirstContact(ei);
+            var customBackup = new CustomBackup(rawBackup.Backup);
+            return Json(customBackup);
         }
 
         public async Task<IActionResult> CleanCoopPins() {
