@@ -1,5 +1,5 @@
 ﻿@using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User, Ei.MyContracts scores)
+@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User, Ei.MyContracts scores, int index)
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
@@ -94,7 +94,7 @@
 </div>
 
 <div class="card" style="margin-top:20px">
-	<h4 class="card-header">Archived Farms <input class="form-control" style="width: 150px; display: inline;" placeholder="Search" id="ArchivedFarmsSearch" /></h4>
+	<h4 class="card-header">Archived Farms <input class="form-control" style="width: 150px; display: inline;" placeholder="Search" id="@("ArchivedFarmsSearch" + Model.index)" /></h4>
 	<div class="table-responsive">
 		<table class="table table-striped">
 			<thead>
@@ -112,7 +112,7 @@
 					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡💲</th>
 				</tr>
 			</thead>
-			<tbody id="ArchivedFarmsTBody">
+			<tbody id="@("ArchivedFarmsTBody" + Model.index)">
 				@{
 					// Show completed farms, these could be 'active' and 'archived' farms.
 					foreach (var tuple in allFarms.Where(x =>
@@ -121,10 +121,10 @@
 					).OrderByDescending(x => x.Item2)) {
 						if (tuple.Item1 is CustomFarm) {
 							CustomFarm farm = (CustomFarm)tuple.Item1;
-							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
+							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
 
-							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.EggIncId == backup.EggIncId);
-							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue);
+							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.EggIncId == backup.EggIncId);
+							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Score.HasValue && x.EggIncId == backup.EggIncId);
 
 
 							UserFarmDetails userFarmDetails = null;
@@ -134,11 +134,7 @@
 							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
 							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm?.ContractId)?.Evaluation;
 							<tr data-name="@(contract?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
-								<td>
-									@if (score is not null) {
-										@score.Cxp
-									}
-								</td>
+								<td>@(score?.Cxp.ToString() ?? "")</td>
 								<td>@(contract?.Name ?? farm.ContractId)</td>
 								<td>
 									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
@@ -164,8 +160,8 @@
 							</tr>
 						} else {
 							CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
-							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.EggIncId == backup.EggIncId);
-							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue);
+							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.EggIncId == backup.EggIncId);
+							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Score.HasValue && x.EggIncId == backup.EggIncId);
 							UserFarmDetails userFarmDetails = null;
 							if (xref is not null) {
 								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
@@ -173,11 +169,7 @@
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
 							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)?.Evaluation;
 							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
-								<td>
-									@if (score is not null) {
-										@score.Cxp
-									}
-								</td>
+								<td>@(score?.Cxp.ToString() ?? "")</td>
 								<td>@(contract?.Name ?? farm.ContractId)</td>
 								<td>
 									@if (!string.IsNullOrEmpty(farm.CoopId) || (contract?.MaxUsers ?? 0) > 1) {

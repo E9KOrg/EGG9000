@@ -30,11 +30,11 @@ namespace EGG9000.Bot.Commands {
 
             if(dbUser.EggIncAccounts.Count == 1) {
                 var contentString = await ChasingStringBuilder(discord, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
-                await command.ModifyOriginalResponseAsync(contentString);
+                await command.ModifyOriginalResponseAsync($"**{parameter} Chasing**:\n{contentString}");
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in dbUser.EggIncAccounts) {
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}");
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}|{command.User.Id}");
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); x.Embed = null; });
             }
@@ -45,15 +45,23 @@ namespace EGG9000.Bot.Commands {
         
         [ComponentCommand]
         public static async Task ChasingAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+
+            var dataObjs = data.Split("|");
+            var originalUserId = ulong.Parse(dataObjs[2]);
+
+            if(component.User.Id != originalUserId) {
+                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                return;
+            }
+
             var dbUser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null) return;
-            var dataObjs = data.Split("|");
             var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var parameter = (ChasingParameters)int.Parse(dataObjs[1]);
 
             var contentString = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, account, db);
-            await component.UpdateAsync(x => { x.Components = null; x.Content = "Success"; });
-            await component.Channel.SendMessageAsync(contentString);
+            await component.UpdateAsync(x => { x.Components = null; x.Content = $"**{parameter} Chasing**:\n{contentString}"; });
+            //await component.Channel.SendMessageAsync(contentString);
         }
 
         private async static Task<string> ChasingStringBuilder(DiscordSocketClient discord, ChasingParameters parameter, ulong guildId, EggIncAccount eggIncAccount, ApplicationDbContext db) {

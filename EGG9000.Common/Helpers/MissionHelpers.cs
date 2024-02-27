@@ -21,7 +21,7 @@ namespace EGG9000.Common.Helpers {
             { Spaceship.Galeggtica, 5 },
             { Spaceship.Chickfiant, 5 },
             { Spaceship.Voyegger, 6 },
-            { Spaceship.Henerprise, 7 }
+            { Spaceship.Henerprise, 8 }
         };
 
         private static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities = new() {
@@ -81,11 +81,19 @@ namespace EGG9000.Common.Helpers {
                 }
             },
             { Spaceship.Henerprise, new() {
-                    { DurationType.Short, new(){ 45, 50, 53, 57, 61, 65, 69, 73 } },
-                    { DurationType.Long, new(){ 50, 54, 58, 62, 66, 70, 74, 78 } },
-                    { DurationType.Epic, new(){ 56, 61, 66, 71, 76, 81, 86, 91 } },
+                    { DurationType.Short, new(){ 45, 50, 55, 60, 65, 70, 75, 80, 85 } },
+                    { DurationType.Long, new(){ 50, 56, 62, 68, 74, 80, 86, 92, 98 } },
+                    { DurationType.Epic, new(){ 56, 63, 70, 77, 84, 91, 98, 105, 112 } },
                 }
-            }
+            },
+            /*
+             * { Spaceship.Unknown, new() {
+             *      { DurationType.Short, new() { 60, 67, 74, 81, 88, 95, 102, 109} },
+             *      { DurationType.Long, new() { 78, 84, 92, 100, 108, 116, 124, 132} },
+             *      { DurationType.Epic, new() { 86, 96, 106, 116, 126, 136, 146, 156 } },
+             *  }
+             * }
+             */
         };
 
         private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
@@ -150,6 +158,12 @@ namespace EGG9000.Common.Helpers {
                     { DurationType.Epic, 96 * 60 },
                 }
             },
+            /*{ Spaceship.Unknown, new() {
+                    { DurationType.Short, 24 * 60 },
+                    { DurationType.Long, 48 * 60 },
+                    { DurationType.Epic, 96 * 60 },
+                }
+            },*/
         };
 
         public static int GetNominalCapacity(this CustomBackup backup, SpaceMission mission) {
