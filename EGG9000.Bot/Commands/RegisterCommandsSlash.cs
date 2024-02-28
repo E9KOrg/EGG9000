@@ -46,6 +46,7 @@ using EGG9000.Bot.Common.Helpers;
 using System.Data;
 using Bugsnag.Polyfills;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using System.Security.Principal;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -315,40 +316,44 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
                 var account = accountnumber - 1;
-
                 var existingAccount = user.EggIncAccounts[account];
-                var bg = existingAccount.Group;
-                var ug = existingAccount.UltraGroup;
-                var guild = existingAccount.Guild;
-                var redoLeggacy = existingAccount.RedoLeggacy;
-                var redoLeggacySelection = existingAccount.RedoLeggacySelection;
-                var redoThresh = existingAccount.RedoScoreThreshold;
-                var leggacyFilter = existingAccount.LeggacyAutoRegisterRewards;
-                var allFilter = existingAccount.AutoRegisterRewards;
-                var pingUltra = existingAccount.PingForNCUltra;
 
                 var eggIncIDs = new List<EggIncAccount>();
                 for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                    if(i == account) eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
+                    if(i == account) eggIncIDs.Add(new EggIncAccount {
+                        Id = Response.EggIncId,
+                        Group = existingAccount.Group,
+                        UltraGroup = existingAccount.UltraGroup,
+                        Guild = existingAccount.Guild,
+                        RedoLeggacy = existingAccount.RedoLeggacy,
+                        RedoLeggacySelection = existingAccount.RedoLeggacySelection,
+                        RedoScoreThreshold = existingAccount.RedoScoreThreshold,
+                        LeggacyAutoRegisterRewards = existingAccount.LeggacyAutoRegisterRewards,
+                        AutoRegisterRewards = existingAccount.AutoRegisterRewards,
+                        PingForNCUltra = existingAccount.PingForNCUltra,
+                    });
                     else
                         eggIncIDs.Add(user.EggIncAccounts[i]);
                 }
 
                 user.EggIncAccounts = eggIncIDs;
 
-                var newAccount = user.EggIncAccounts[account];
-                newAccount.Group = bg;
-                newAccount.UltraGroup = ug;
-                newAccount.Guild = guild;
-                newAccount.RedoLeggacy = redoLeggacy;
-                newAccount.RedoLeggacySelection = redoLeggacySelection;
-                newAccount.RedoScoreThreshold = redoThresh;
-                newAccount.LeggacyAutoRegisterRewards = leggacyFilter;
-                newAccount.AutoRegisterRewards = allFilter;
-                newAccount.PingForNCUltra = pingUltra;
-
             } else {
-                user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
+                var existingAccount = user.EggIncAccounts.First();
+                user.EggIncAccounts = [ 
+                    new (){ 
+                        Id = Response.EggIncId,
+                        Group = existingAccount.Group,
+                        UltraGroup = existingAccount.UltraGroup,
+                        Guild = existingAccount.Guild,
+                        RedoLeggacy = existingAccount.RedoLeggacy,
+                        RedoLeggacySelection = existingAccount.RedoLeggacySelection,
+                        RedoScoreThreshold = existingAccount.RedoScoreThreshold,
+                        LeggacyAutoRegisterRewards = existingAccount.LeggacyAutoRegisterRewards,
+                        AutoRegisterRewards = existingAccount.AutoRegisterRewards,
+                        PingForNCUltra = existingAccount.PingForNCUltra,
+                    } 
+                ];
             }
             foreach(var account in user.EggIncAccounts) {
                 var currentBackup = account?.Backup ?? null;
