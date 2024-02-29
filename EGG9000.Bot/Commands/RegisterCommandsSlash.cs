@@ -539,9 +539,7 @@ namespace EGG9000.Bot.Commands {
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel != null) {
                     var messages = await welcomeChannel.GetMessagesAsync().FlattenAsync();
-
-                    var userMessage = messages.Where(x => x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id);
-
+                    var userMessage = messages.Where(x => x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id || x.Interaction.User.Id == socketUser.Id);
                     await welcomeChannel.DeleteMessagesBatchAsync(userMessage);
                 }
             } catch(Exception) {
