@@ -15,6 +15,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
 using Discord;
+using System.Text.RegularExpressions;
 
 namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
@@ -38,8 +39,24 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync();
             var userid = useraccount.Split("|")[0];
             DBUser dbuser = null;
-            try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
+                //Don't keep EIDs in plaintext in the command history
+                if(Regex.IsMatch(useraccount, @"^EI\d{16}$")) {
+                    await command.DeleteOriginalResponseAsync();
+                    await command.Channel.SendMessageAsync(embed: EmbedError($"{command.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
+                } else {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                }
+                return; 
+            }
             if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+            
+            //I hate that people are like this
+            if(dbuser.DiscordId != command.User.Id) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Stop trying to view other's inventories."); });
+                return;
+            }
+            
             EggIncAccount account = null;
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }

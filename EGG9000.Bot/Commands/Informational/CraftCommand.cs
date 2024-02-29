@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.ArtifactHelpers;
 using System.Collections.Generic;
 
 namespace EGG9000.Bot.Commands {
@@ -84,30 +85,6 @@ namespace EGG9000.Bot.Commands {
 
         private async static Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
 
-            var baseCraftingCoefficients = new Dictionary<EggIncArtifactInstance, List<double>>() {
-                { new() { Artifact = "Light of Eggendil", Tier = 4 }, new() { 0, 100, 1000.0 } },
-                { new() { Artifact = "Book of Basan", Tier = 4 }, new() { 0, 150, 1000.0 } },
-                { new() { Artifact = "Tachyon Deflector", Tier = 4 }, new() { 120, 500, 1200.0 } },
-                { new() { Artifact = "Ship in a Bottle", Tier = 4 }, new() { 100, 400, 1200.0 } },
-                { new() { Artifact = "Titanium Actuator", Tier = 4 }, new() { 0, 200, 1000.0 } },
-                { new() { Artifact = "Dilithium Monocle", Tier = 4 }, new() { 0, 150, 1000.0 } },
-                { new() { Artifact = "Quantum Metronome", Tier = 4 }, new() { 33, 160, 1000.0 } },
-                { new() { Artifact = "Phoenix Feather", Tier = 4 }, new() { 40, 0, 1000.0 } },
-                { new() { Artifact = "The Chalice", Tier = 4 }, new() { 0, 150, 1000.0 } },
-                { new() { Artifact = "Interstellar Compass", Tier = 4 }, new() { 40, 200, 1000.0 } },
-                { new() { Artifact = "Carved Rainstick", Tier = 4 }, new() { 0, 170, 1000.0 } },
-                { new() { Artifact = "Beak of Midas", Tier = 4 }, new() { 50, 0, 1500.0 } },
-                { new() { Artifact = "Mercury's Lens", Tier = 4 }, new() { 40, 250, 1000.0 } },
-                { new() { Artifact = "Neodymium Medallion", Tier = 4 }, new() { 40, 200, 1000.0 } },
-                { new() { Artifact = "Gusset", Tier = 4 }, new() { 0, 150, 1000.0 } },
-                { new() { Artifact = "Tungsten Ankh", Tier = 4 }, new() { 40, 0, 1000.0 } },
-                { new() { Artifact = "Tungsten Ankh", Tier = 3 }, new() { 40, 0, 1000.0 } },
-                { new() { Artifact = "Aurelian Brooch", Tier = 4 }, new() { 40, 180, 1000.0 } },
-                { new() { Artifact = "Vial of Martian Dust", Tier = 4 }, new() { 40, 0, 1000.0 } },
-                { new() { Artifact = "Demeters Necklace", Tier = 4 }, new() { 40, 140, 1000.0 } },
-                { new() { Artifact = "Puzzle Cube", Tier = 4 }, new() { 50, 170, 1000.0 } },
-            };
-
             var levelMultipliers = new List<double>() {
                 1.00, 1.05, 1.10,
                 1.15, 1.20, 1.25,
@@ -156,7 +133,7 @@ namespace EGG9000.Bot.Commands {
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
             stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "You have enough GE!" : "You do not have enough GE!");
 
-            var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
+            var coefficientPair = BaseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
                 var keyAf = coefficientPair.Key;
                 var numCrafted = backup.ArtifactHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Artifact == keyAf.Artifact && a.Artifact.Tier == keyAf.Tier)?.NumberCrafted ?? 0;
