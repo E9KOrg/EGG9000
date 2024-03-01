@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static Ei.MissionInfo.Types;
 using System.Collections.Generic;

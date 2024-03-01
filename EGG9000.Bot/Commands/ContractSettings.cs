@@ -1,17 +1,12 @@
-﻿
-using Bugsnag.Payload;
-
-using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
-using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -19,12 +14,9 @@ using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Net.NetworkInformation;
-using System.Security.Principal;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {

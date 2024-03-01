@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -11,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Bugsnag.Payload;
 
 namespace EGG9000.Bot.Commands {
     public class CoopSettingsCommand {
