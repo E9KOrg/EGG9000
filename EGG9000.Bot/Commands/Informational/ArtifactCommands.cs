@@ -13,7 +13,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Helpers;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using Discord;
 using System.Text.RegularExpressions;
 

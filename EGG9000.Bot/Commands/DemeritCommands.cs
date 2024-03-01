@@ -3,27 +3,18 @@ using Discord.WebSocket;
 
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
 
 using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
 
-using Newtonsoft.Json;
-
-
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Bot.Common.Helpers;

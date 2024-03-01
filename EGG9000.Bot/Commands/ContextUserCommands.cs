@@ -1,28 +1,16 @@
-﻿using Discord;
+﻿
 using Discord.WebSocket;
 
-using EGG9000.Bot.Automated;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Services;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
-
 using Microsoft.EntityFrameworkCore;
 
-using Newtonsoft.Json;
-
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-using static EGG9000.Common.Helpers.Prefarm;
 using EGG9000.Common.Commands;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public static class ContextUserCommands {

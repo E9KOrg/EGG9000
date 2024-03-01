@@ -16,7 +16,7 @@ using EGG9000.Common.JsonData.EiAfxData;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using System.Collections.Generic;
 

@@ -40,7 +40,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
 using MassTransit.Initializers;
 using Bugsnag;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
 using System.Data;
@@ -288,7 +288,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, _client, apiLink, eggincid, _client.Guilds.FirstOrDefault(g => g.Id == command.Id).GetUser(command.User.Id), accountnumber);
+            await _UpdateID(command, db, _client, apiLink, eggincid, _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).GetUser(command.User.Id), accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
@@ -331,6 +331,7 @@ namespace EGG9000.Bot.Commands {
                 LeggacyAutoRegisterRewards = existingAccount.LeggacyAutoRegisterRewards,
                 AutoRegisterRewards = existingAccount.AutoRegisterRewards,
                 PingForNCUltra = existingAccount.PingForNCUltra,
+                DoTwoToThreeContracts = existingAccount.DoTwoToThreeContracts,
             };
             
             if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
