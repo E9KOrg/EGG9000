@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -164,6 +165,8 @@ namespace EGG9000.Common.Contracts {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
                 if(completedTwoRewards && !x.Account.DoTwoToThreeContracts) {
                     return false;
+                } else if(completedTwoRewards && x.Account.DoTwoToThreeContracts) {
+                    return true;
                 }
             }
             return (!x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed) && !x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed));
