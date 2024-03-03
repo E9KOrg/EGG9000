@@ -56,22 +56,26 @@ namespace EGG9000.Common.Services {
 
         public Task RestartAsync() {
             if(ConnectionState != ConnectionState.Connected) {
-                return Task.CompletedTask;
+                throw new RestartDiscordExecption("Not connected yet - cannot restart.", Severity.Warning);
             }
 
-            //Logout subtasks
-            LogoutAsync();
-            StopAsync().Wait();
-            _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
-            while(ConnectionState == ConnectionState.Connected) {}
-            _logger.Log(LogLevel.Information, "Discord Disconnected...");
+            try {
+                //Logout subtasks
+                LogoutAsync();
+                StopAsync().Wait();
+                _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
+                while(ConnectionState == ConnectionState.Connected) { }
+                _logger.Log(LogLevel.Information, "Discord Disconnected...");
 
-            //Log back in
-            LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
-            StartAsync().Wait();
-            _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
-            while(ConnectionState != ConnectionState.Connected) { }
-            _logger.Log(LogLevel.Information, "Discord Ready");
+                //Log back in
+                LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
+                StartAsync().Wait();
+                _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
+                while(ConnectionState != ConnectionState.Connected) { }
+                _logger.Log(LogLevel.Information, "Discord Ready");
+            } catch(Exception ex) {
+                throw new RestartDiscordExecption(ex.Message, Severity.Error);
+            }
 
             return Task.CompletedTask;
         }
