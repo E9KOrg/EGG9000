@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using Bugsnag;
+using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Common.Database;
@@ -21,7 +22,7 @@ using System.Threading.Tasks;
 namespace EGG9000.Common.Services {
     public class DiscordHostedService : DiscordSocketClient {
         public bool IsReady { get; private set; }
-        private IConfiguration _configuration;
+        private Microsoft.Extensions.Configuration.IConfiguration _configuration;
         private ApplicationDbContext _db;
         private readonly IMemoryCache _cache;
         private IServiceProvider _provider;
@@ -30,26 +31,53 @@ namespace EGG9000.Common.Services {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
-        public DiscordHostedService(IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
+        public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
             _provider = provider;
             _logger = logger;
 
-            this.Log += PrintLog;
-            this.Ready += DiscordHostedService_Ready;
-            this.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
-            this.StartAsync().Wait();
+            Log += PrintLog;
+            Ready += DiscordHostedService_Ready;
+            LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
+            StartAsync().Wait();
 
             _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
-
-            while(this.ConnectionState != ConnectionState.Connected) {
-                
-             }
-
+            while(ConnectionState != ConnectionState.Connected) {}
             _logger.Log(LogLevel.Information, "Discord Ready");
 
             _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             _cache = cache;
+        }
+
+        public class RestartDiscordExecption(string customMessage, Severity severity) : Exception {
+            public string CustomMessage { get; set; } = customMessage;
+            public Severity Severity { get; set; } = severity;
+        }
+
+        public Task RestartAsync() {
+            if(ConnectionState != ConnectionState.Connected) {
+                throw new RestartDiscordExecption("Not connected yet - cannot restart.", Severity.Warning);
+            }
+
+            try {
+                //Logout subtasks
+                LogoutAsync();
+                StopAsync().Wait();
+                _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
+                while(ConnectionState == ConnectionState.Connected) { }
+                _logger.Log(LogLevel.Information, "Discord Disconnected...");
+
+                //Log back in
+                LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
+                StartAsync().Wait();
+                _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
+                while(ConnectionState != ConnectionState.Connected) { }
+                _logger.Log(LogLevel.Information, "Discord Ready");
+            } catch(Exception ex) {
+                throw new RestartDiscordExecption(ex.Message, Severity.Error);
+            }
+
+            return Task.CompletedTask;
         }
 
         //public Task StartAsync(CancellationToken cancellationToken) {

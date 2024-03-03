@@ -36,7 +36,7 @@ using Microsoft.Extensions.Logging;
 using Exception = System.Exception;
 using EGG9000.Bot.Automated.Coops;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using static EGG9000.Bot.Automated.Coops.CoopStatusUpdater;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using Bugsnag;
 
 namespace EGG9000.Bot.Commands {
@@ -688,7 +688,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Create a co-op with the selected contract for you")]
         public static async Task CreateCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [SlashParam(AutocompleteHandler = typeof(CreateCoopContractAutoComplete))] string contractid) {
-            await command.DeferAsync(ephemeral: true);
+            await command.DeferAsync();
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(user is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user"); });
@@ -729,8 +729,8 @@ namespace EGG9000.Bot.Commands {
 
                 var guild = _client.GetGuild(command.GuildId.Value);
                 var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades 
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Done"; x.Embed = null; });
-                await command.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {command.User.Mention}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {command.User.Mention}"); });
+                //await command.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {command.User.Mention}"));
             } else {
                 var builder = new ComponentBuilder();
                 var userList = user.EggIncAccounts;
@@ -740,13 +740,21 @@ namespace EGG9000.Bot.Commands {
 
                 foreach(var account in userList) {
                     _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}", emote: emote);
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CreateCoopButton:{contractid}|{account.Id}|{user.DiscordId}", emote: emote);
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to create the co-op with."; x.Components = builder.Build(); });
             }
         }
         [ComponentCommand]
         public static async Task CreateCoopButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+            var dataObjs = data.Split("|");
+            var originalUserId = ulong.Parse(dataObjs[2]);
+
+            if(component.User.Id != originalUserId) {
+                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                return;
+            }
+
             await component.UpdateAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Working...");  x.Components = null; });
             var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var contractid = data.Split("|")[0];
@@ -777,8 +785,8 @@ namespace EGG9000.Bot.Commands {
 
             var guild = _client.GetGuild(component.GuildId.Value);
             var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
-            await component.ModifyOriginalResponseAsync(x => { x.Content = "Done"; x.Embed = null; });
-            await component.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"));
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"); });
+            //await component.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"));
         }
 
         private static Dictionary<ulong, SemaphoreSlim> startSemapohores = new();
@@ -974,26 +982,6 @@ namespace EGG9000.Bot.Commands {
             var guild = _client.GetGuild(component.GuildId.Value);
             var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, true); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedSuccess($"Co-op `{coop.Name}` {PlayerGradeDetails.GetEmoji(coop.League)} created for <#{component.ChannelId}>"); });
-        }
-
-        public static Embed EmbedInProgress(string text) {
-            return new EmbedBuilder().WithColor(Color.Blue).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Please wait...").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
-
-        public static Embed EmbedSuccess(string text) {
-            return new EmbedBuilder().WithColor(Color.Green).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Success").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
-
-        public static Embed EmbedWarning(string warningText) {
-            return new EmbedBuilder().WithColor(Color.LightOrange).WithDescription(warningText).WithAuthor(new EmbedAuthorBuilder().WithName("Warning").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
-
-        public static Embed EmbedError(string errorText) {
-            return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName("Error").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
-
-        public static Embed EmbedInternalError(string errorText) {
-            return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName("Internal Error").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
 
         private static async Task<SemaphoreSlim> AwaitStartSemaphore(FauxCommand command) {

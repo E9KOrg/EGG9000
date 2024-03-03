@@ -118,7 +118,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     break;
                 foreach(var coopSort in coopSorts.Where(x => x.NeedsMove)) {
                     if(currentCounts[coopSort.TargetCategoryIndex] < 50) {
-                        await coopSort.Channel.ModifyAsync(channel => channel.CategoryId = coopSort.TargetCategory.Id);
+                        await coopSort.Channel.ModifyAsync(channel => {
+                            try {
+                                channel.CategoryId = coopSort.TargetCategory.Id;
+                            } catch(Exception) {
+                                _logger.LogError("Error attempting to sort channel {name} into category {category}", channel.Name, coopSort.TargetCategory.Id);
+                            }
+                        });
                         currentCounts[coopSort.TargetCategoryIndex]++;
                         currentCounts[coopSort.CurrentCategoryIndex]--;
                         coopSort.NeedsMove = false;

@@ -4,44 +4,30 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-
 using EGG9000.Common.Helpers;
 
 using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
 
-using Newtonsoft.Json;
-
-
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using EGG9000.Common.Services;
-using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Diagnostics;
-using System.ServiceProcess;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using EGG9000.Common.Commands;
-using EGG9000.Common.Contracts;
-using System.Collections;
-using System.Numerics;
 using EGG9000.Bot.Services;
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using System.Linq.Expressions;
+using static EGG9000.Common.Services.DiscordHostedService;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -322,6 +308,17 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+            var discordHostedService = serviceProvider.GetService<DiscordHostedService>();
+
+            if(discordHostedService is not null && serviceName == "DiscordHostedService") {
+                try {
+                    await discordHostedService.RestartAsync();
+                    await command.RespondAsync(content: "", embed: EmbedSuccess("DiscordHostedService restarted."));
+                    return;
+                } catch(RestartDiscordExecption ex) {
+                    await command.RespondAsync(content: "", embed: EmbedError($"**Exception caught:**\n\n{ex.CustomMessage}"));
+                }
+            }
 
             if(service == null) {
                 var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
@@ -329,7 +326,7 @@ namespace EGG9000.Bot.Commands {
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
                 if(job is null) {
-                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate a service/job with the name {serviceName}"));
                     return;
                 }
 
@@ -338,7 +335,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await command.RespondAsync($"Attempting to restart {serviceName}");
+            await command.RespondAsync(content: "", embed: EmbedInProgress($"Attempting to restart {serviceName}"));
             try {
                 await service.StopAsync(new System.Threading.CancellationToken());
                 await service.StartAsync(new System.Threading.CancellationToken());
@@ -346,7 +343,7 @@ namespace EGG9000.Bot.Commands {
                 var frame = new StackTrace(e, true).GetFrame(0);
                 await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
-            await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
         [SlashCommand(Description = "Stop an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]

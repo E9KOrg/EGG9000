@@ -10,7 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;

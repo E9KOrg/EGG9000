@@ -393,6 +393,14 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     if(coopChannel == null) {
                         _logger.LogWarning("ERROR FINDING CHANNEL FOR CO-OP: {coopName}", coop.Name);
+                        coop.FindChannelErrors++;
+
+                        if(coop.FindChannelErrors >= 3) {
+                            coop.DeletedChannel = true;
+                            _logger.LogInformation("Reached 3 iterations of being unable to find channel for co-op {coopName}. Channel assumed deleted.", coop.Name);
+                            await db.SaveChangesAsync();
+                        }
+
                         return;
                     }
 
