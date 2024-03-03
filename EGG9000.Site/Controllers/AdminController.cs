@@ -1097,8 +1097,12 @@ music
             if(!VerifyId(id)) {
                 return NotFound();
             }
+            if(string.IsNullOrEmpty(json)) {
+                return BadRequest();
+            }
             var model = JsonConvert.DeserializeObject<SaveChannelDetailsObject>(json);
             var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+            dbGuild.CoopSettings = model.coopSettingsOverrides;
             dbGuild.ChannelDetails = model.channelDetails;
             dbGuild.CoopCategories = model.coopCategories;
             dbGuild.FinishedCategories = model.finishedCategories;
@@ -1134,6 +1138,7 @@ music
         }
 
         public class SaveChannelDetailsObject {
+            public List<ServerCoopSetting> coopSettingsOverrides { get; set; }
             public List<ChannelDetail> channelDetails { get; set; }
             public string coopCategories { get; set; }
             public string finishedCategories { get; set; }
