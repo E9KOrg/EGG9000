@@ -37,7 +37,6 @@ namespace EGG9000.Common.Services {
     public class BackupRequest {
         public string UserId { get; set; }
         public float LastBackupTime { get; set; }
-        public CustomBackup CurrentBackup {  get; set; }
     }
 
     public class BackupResponse {
@@ -155,7 +154,7 @@ namespace EGG9000.Common.Services {
                     }
                 }
                 if(eggIncId.StartsWith("EI")) {
-                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime, CurrentBackup = currentBackup});
+                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime});
                 }
             }
 
@@ -285,7 +284,7 @@ namespace EGG9000.Common.Services {
                 var url = $"{urlBase}GetBackup";
                 using(var request = new HttpRequestMessage(HttpMethod.Get, url)) {
                     //Add content
-                    var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId, CurrentBackup = currentBackup });
+                    var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
                     request.Content = new StringContent(content, Encoding.UTF8, "application/json");
                     //Add headers
                     request.Headers.Accept.Clear();
@@ -296,13 +295,17 @@ namespace EGG9000.Common.Services {
                     if(response.IsSuccessStatusCode) {
                         var json = await response.Content.ReadAsStringAsync();
                         var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
+                        var backupFromResponse = backupResponse.Backup;
                         if(backupResponse.Unchanged) {
                             return currentBackup;
                         }
-                        if(backupResponse.Backup.Farms != null) {
-                            _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
+                        if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup.UserName)) {
+                            backupFromResponse.UserName = currentBackup.UserName;
                         }
-                        return backupResponse.Backup;
+                        if(backupResponse.Backup.Farms != null) {
+                            _cache.Set(key, backupFromResponse, DateTimeOffset.Now.AddDays(7));
+                        }
+                        return backupFromResponse;
                     } else {
                         var errorContent = response.Content.ReadAsStringAsync();
                         errorMessage = response.StatusCode.ToString();
