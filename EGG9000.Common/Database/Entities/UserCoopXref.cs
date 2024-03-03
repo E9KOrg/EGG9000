@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -215,18 +216,31 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
-        public CoopSetting(UserCoopXref xref, DBUser user) {
+        public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) {
             if(user.CoopSetting is null)
                 user.CoopSetting = new CoopSetting();
 
-            PingOnFull = user.CoopSetting.PingOnFull || xref.PingOnFull;
-            PingOnHighestEB = user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
-            PingOnFinished = user.CoopSetting.PingOnFinished;
-            PingOnEveryoneCheckedIn = user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
-            PingOnMessage = user.CoopSetting.PingOnMessage;
-            PingOnCoopCreated = user.CoopSetting.PingOnCoopCreated;
-            PingOnTachyonChange = user.CoopSetting.PingOnTachyonChange;
-            PingOnCompleteOnCheckIn = user.CoopSetting.PingOnCompleteOnCheckIn;
+            PingOnFull = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFull) || user.CoopSetting.PingOnFull || xref.PingOnFull;
+            PingOnHighestEB = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnHighestEB) || user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
+            PingOnFinished = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFinished) || user.CoopSetting.PingOnFinished;
+            PingOnEveryoneCheckedIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnEveryoneCheckedIn) ||  user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
+            PingOnMessage = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnMessage) ||  user.CoopSetting.PingOnMessage;
+            PingOnCoopCreated = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCoopCreated) || user.CoopSetting.PingOnCoopCreated;
+            PingOnTachyonChange = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnTachyonChange) || user.CoopSetting.PingOnTachyonChange;
+            PingOnCompleteOnCheckIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCompleteOnCheckIn) || user.CoopSetting.PingOnCompleteOnCheckIn;
+
+            var disableOverrides = Enum.GetValues(typeof(GuildCoopSetting))
+                .Cast<GuildCoopSetting>()
+                .ToDictionary(setting => setting, userGuild.IsLockedAndDisabled);
+
+            if(disableOverrides[GuildCoopSetting.PingOnFull]) PingOnFull = false;
+            if(disableOverrides[GuildCoopSetting.PingOnHighestEB]) PingOnHighestEB = false;
+            if(disableOverrides[GuildCoopSetting.PingOnFinished]) PingOnFinished = false;
+            if(disableOverrides[GuildCoopSetting.PingOnEveryoneCheckedIn]) PingOnEveryoneCheckedIn = false;
+            if(disableOverrides[GuildCoopSetting.PingOnMessage]) PingOnMessage = false;
+            if(disableOverrides[GuildCoopSetting.PingOnCoopCreated]) PingOnCoopCreated = false;
+            if(disableOverrides[GuildCoopSetting.PingOnTachyonChange]) PingOnTachyonChange = false;
+            if(disableOverrides[GuildCoopSetting.PingOnCompleteOnCheckIn]) PingOnCompleteOnCheckIn = false;
         }
     }
 }

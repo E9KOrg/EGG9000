@@ -409,7 +409,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     foreach(var xref in coop.UserCoopsXrefs) {
                         var user = users.FirstOrDefault(x => x.User.Id == xref.UserId);
                         if(xref.CoopSetting is null && user is not null) {
-                            xref.CoopSetting = new CoopSetting(xref, user.User);
+                            xref.CoopSetting = new CoopSetting(xref, user.User, dbguild);
                             if(xref.CoopSetting.PingOnCoopCreated) {
                                 await SendDMWarning(db, guild.GetUser(user.User.DiscordId), coopChannel, "Co-op has been created: ", coop);
                                 xref.CoopSetting.PingOnCoopCreated = false;
