@@ -37,15 +37,11 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
-                    if(account.User.EggIncAccounts.Count > 1) {
-                        var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup.EarningsBonus.ToEggString()})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
-                    } else {
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
-                    }
+                    var name = account.Account.Backup?.UserName;
+                    results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup.EarningsBonus.ToEggString()})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                 }
 
-                await arg.RespondAsync(null, results.ToArray());
+                await arg.RespondAsync(null, [.. results]);
             }
         }
 
