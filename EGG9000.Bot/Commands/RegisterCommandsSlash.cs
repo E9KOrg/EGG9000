@@ -40,7 +40,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics.Contracts;
 using MassTransit.Initializers;
 using Bugsnag;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
 using System.Data;
@@ -288,7 +288,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, _client, apiLink, eggincid, (SocketGuildUser)command.User, accountnumber);
+            await _UpdateID(command, db, _client, apiLink, eggincid, _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).GetUser(command.User.Id), accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
@@ -296,6 +296,10 @@ namespace EGG9000.Bot.Commands {
         }
         public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             await command.DeferAsync(ephemeral: true);
+            if(targetUser is null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
+                return;
+            }
             var Response = await apiLink.GetBackup(eggincid);
             if(Response == null || Response.Farms == null || Response.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
@@ -307,52 +311,34 @@ namespace EGG9000.Bot.Commands {
             }
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
-            if(user.EggIncAccounts.Count > 1) {
-                if(accountnumber == 0) {
-                    var count = 1;
-                    var accounts = string.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}"); });
-                    return;
-                }
-                var account = accountnumber - 1;
 
-                var existingAccount = user.EggIncAccounts[account];
-                var bg = existingAccount.Group;
-                var ug = existingAccount.UltraGroup;
-                var guild = existingAccount.Guild;
-                var redoLeggacy = existingAccount.RedoLeggacy;
-                var redoLeggacySelection = existingAccount.RedoLeggacySelection;
-                var redoThresh = existingAccount.RedoScoreThreshold;
-                var leggacyFilter = existingAccount.LeggacyAutoRegisterRewards;
-                var allFilter = existingAccount.AutoRegisterRewards;
-                var pingUltra = existingAccount.PingForNCUltra;
-
-                var eggIncIDs = new List<EggIncAccount>();
-                for(var i = 0; i < user.EggIncAccounts.Count; i++) {
-                    if(i == account) eggIncIDs.Add(new EggIncAccount { Id = Response.EggIncId });
-                    else
-                        eggIncIDs.Add(user.EggIncAccounts[i]);
-                }
-
-                user.EggIncAccounts = eggIncIDs;
-
-                var newAccount = user.EggIncAccounts[account];
-                newAccount.Group = bg;
-                newAccount.UltraGroup = ug;
-                newAccount.Guild = guild;
-                newAccount.RedoLeggacy = redoLeggacy;
-                newAccount.RedoLeggacySelection = redoLeggacySelection;
-                newAccount.RedoScoreThreshold = redoThresh;
-                newAccount.LeggacyAutoRegisterRewards = leggacyFilter;
-                newAccount.AutoRegisterRewards = allFilter;
-                newAccount.PingForNCUltra = pingUltra;
-
-            } else {
-                user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId } };
+            if(accountnumber == 0 && user.EggIncAccounts.Count > 1) {
+                var count = 1;
+                var accounts = string.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}"); });
+                return;
             }
+
+            var existingAccount = user.EggIncAccounts.Count > 1 ? user.EggIncAccounts[accountnumber - 1] : user.EggIncAccounts.First();
+            var newAccount = new EggIncAccount {
+                Id = Response.EggIncId,
+                Group = existingAccount.Group,
+                UltraGroup = existingAccount.UltraGroup,
+                Guild = existingAccount.Guild,
+                RedoLeggacy = existingAccount.RedoLeggacy,
+                RedoLeggacySelection = existingAccount.RedoLeggacySelection,
+                RedoScoreThreshold = existingAccount.RedoScoreThreshold,
+                LeggacyAutoRegisterRewards = existingAccount.LeggacyAutoRegisterRewards,
+                AutoRegisterRewards = existingAccount.AutoRegisterRewards,
+                PingForNCUltra = existingAccount.PingForNCUltra,
+                DoTwoToThreeContracts = existingAccount.DoTwoToThreeContracts,
+            };
+            
+            if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
+            else user.EggIncAccounts = [newAccount];
+
             foreach(var account in user.EggIncAccounts) {
-                var currentBackup = account?.Backup ?? null;
-                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, currentBackup); //Pass current backup to maintain username where possible
+                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, account?.Backup ?? null); //Pass current backup to maintain username where possible
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -360,7 +346,7 @@ namespace EGG9000.Bot.Commands {
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = $"ID Update"; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray(); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("Update ID")).ToArray(); });
 
         }
 
@@ -554,9 +540,7 @@ namespace EGG9000.Bot.Commands {
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel != null) {
                     var messages = await welcomeChannel.GetMessagesAsync().FlattenAsync();
-
-                    var userMessage = messages.Where(x => x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id);
-
+                    var userMessage = messages.Where(x => x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id || x.Interaction.User.Id == socketUser.Id);
                     await welcomeChannel.DeleteMessagesBatchAsync(userMessage);
                 }
             } catch(Exception) {

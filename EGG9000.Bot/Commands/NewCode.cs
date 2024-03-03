@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
-using static EGG9000.Bot.Commands.ContractCommandsSlash;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public class NewCode {

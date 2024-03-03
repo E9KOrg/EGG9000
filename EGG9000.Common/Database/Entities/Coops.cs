@@ -39,6 +39,7 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? LastUpdateToChannel { get; set; }
         public DateTimeOffset? WarningForDeleteChannel { get; set; }
         public bool DeletedChannel { get; set; }
+        public uint FindChannelErrors { get; set; } = 0;
         public ulong Group { get; set; }
 
         public CoopStatusEnum Status { get; set; }
