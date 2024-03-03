@@ -27,6 +27,7 @@ using Microsoft.Extensions.Hosting;
 using System.Diagnostics;
 using EGG9000.Common.Commands;
 using EGG9000.Bot.Services;
+using static EGG9000.Common.Services.DiscordHostedService;
 
 namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
@@ -307,6 +308,17 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+            var discordHostedService = serviceProvider.GetService<DiscordHostedService>();
+
+            if(discordHostedService is not null && serviceName == "DiscordHostedService") {
+                try {
+                    await discordHostedService.RestartAsync();
+                    await command.RespondAsync(content: "", embed: EmbedSuccess("DiscordHostedService restarted."));
+                    return;
+                } catch(RestartDiscordExecption ex) {
+                    await command.RespondAsync(content: "", embed: EmbedError($"**Exception caught:**\n\n{ex.CustomMessage}"));
+                }
+            }
 
             if(service == null) {
                 var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
@@ -314,7 +326,7 @@ namespace EGG9000.Bot.Commands {
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
                 if(job is null) {
-                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate a service/job with the name {serviceName}"));
                     return;
                 }
 
@@ -323,7 +335,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await command.RespondAsync($"Attempting to restart {serviceName}");
+            await command.RespondAsync(content: "", embed: EmbedInProgress($"Attempting to restart {serviceName}"));
             try {
                 await service.StopAsync(new System.Threading.CancellationToken());
                 await service.StartAsync(new System.Threading.CancellationToken());
@@ -331,7 +343,7 @@ namespace EGG9000.Bot.Commands {
                 var frame = new StackTrace(e, true).GetFrame(0);
                 await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
-            await command.ModifyOriginalResponseAsync($"Restarted {serviceName}");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
         [SlashCommand(Description = "Stop an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
