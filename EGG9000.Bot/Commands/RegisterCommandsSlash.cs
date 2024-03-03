@@ -514,7 +514,7 @@ namespace EGG9000.Bot.Commands {
             } catch(Exception) { }
 
 
-
+            await command.DeleteResponseFix();
             await CleanWelcomeChannel(guild, _client, user);
             if(addedUser) {
                 try {
@@ -532,7 +532,6 @@ namespace EGG9000.Bot.Commands {
                 }
 
             }
-            await command.DeleteResponseFix();
         }
 
         public static async Task CleanWelcomeChannel(SocketGuild guild, DiscordHostedService _client, IUser socketUser, int chain = 0) {
