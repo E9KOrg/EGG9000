@@ -1,4 +1,5 @@
 ﻿
+using EGG9000.Common.Migrations;
 using Newtonsoft.Json;
 
 using System;
@@ -48,6 +49,24 @@ namespace EGG9000.Common.Database.Entities {
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
         
+        public string _coopSettingsJson { get; set; }
+        [NotMapped]
+        private List<ServerCoopSetting> _coopSettings { get; set; }
+        [NotMapped]
+        public List<ServerCoopSetting> CoopSettings {
+            get {
+                if(_coopSettings == null) {
+                    _coopSettings = JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
+                }
+                return _coopSettings;
+            }
+            set {
+                value.RemoveAll(x => !x.Enabled && !x.Locked);
+                _coopSettings = value;
+                _coopSettingsJson = JsonConvert.SerializeObject(value);
+            }
+        }
+
         public string _channelDetailsJson { get; set; }
         [NotMapped]
         private List<ChannelDetail> _channelDetails { get; set; }
@@ -68,12 +87,49 @@ namespace EGG9000.Common.Database.Entities {
         public bool HasChannel(GuildChannelType channelType) {
             return ChannelDetails.Any(x => x.ChannelType == channelType && x.Id > 0);
         }
+        public ServerCoopSetting GetCoopSetting(GuildCoopSetting coopSetting) {
+            return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) ?? new ServerCoopSetting { CoopSetting = coopSetting };
+        }
+        public bool IsLockedAndEnabled(GuildCoopSetting coopSetting) {
+            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
+            return setting != null && setting.Enabled && setting.Locked;
+        }
+        public bool IsLockedAndDisabled(GuildCoopSetting coopSetting) {
+            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
+            return setting != null && !setting.Enabled && setting.Locked;
+        }
         public string RolesToSync { get; set; }
         public bool DisableBG { get; set; }
         public bool AllowGuilds { get; set; }
         public string GroupRoles { get; set; }
         public bool PublicScoreGrid { get; set; }
         public bool RemoveFindCoopSpot { get; set; }
+    }
+
+    [NotMapped]
+    public class ServerCoopSetting {
+        public GuildCoopSetting CoopSetting { get; set; }
+        public bool Enabled { get; set; } = false;
+        public bool Locked { get; set; } = false;
+    }
+
+    public enum GuildCoopSetting {
+        [Description("All assigned members have joined the co-op")]
+        PingOnFull = 0,
+        [Description("Highest assigned EB has joined")]
+        PingOnHighestEB = 1,
+        [Description("Co-op has finished")]
+        PingOnFinished = 2,
+        [Description("Co-op is cleared for exit")]
+        PingOnEveryoneCheckedIn = 3,
+        [Description("Any non-bot message is sent in channel")]
+        PingOnMessage = 4,
+        [Description("Additional DM alongside the standard @mention in the co-op channel")]
+        PingOnCoopCreated = 5,
+        [Description("Get notified when someone adds/removes a Tachyon Deflector")]
+        PingOnTachyonChange = 6,
+        [Description("Get notified when your co-op will complete as soon as everyone checks in")]
+        PingOnCompleteOnCheckIn = 7
     }
 
     [NotMapped]
