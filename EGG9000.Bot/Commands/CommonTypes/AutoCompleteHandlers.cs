@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
 
 namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
@@ -269,9 +270,13 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .Select(x => new AutocompleteResult($"Job.{x.GetType().Name}", x.GetType().Name)).ToArray();
 
-                    _allServicesAndJobs = new List<AutocompleteResult>();
-                    _allServicesAndJobs.AddRange(services);
-                    _allServicesAndJobs.AddRange(jobs);
+                    var discordHostedService = _serviceProvider.GetServices<DiscordHostedService>().Select(c => new AutocompleteResult("DiscordHostedService", c.GetType().Name)).ToList();
+
+                    _allServicesAndJobs = [
+                        .. services,
+                        .. jobs,
+                        .. discordHostedService,
+                    ];
                 }
 
 
