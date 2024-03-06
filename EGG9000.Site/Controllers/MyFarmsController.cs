@@ -63,8 +63,12 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+            var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
-            bool update = false;
+            var update = false;
             var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
             foreach(var account in user.EggIncAccounts) {
@@ -104,7 +108,7 @@ namespace EGG9000.Site.Controllers {
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, isSelf));
         }
 
         public record MyFarmsModel(
@@ -119,7 +123,8 @@ namespace EGG9000.Site.Controllers {
             List<EpicResearchCalc.EpicResearchDetail> EpicResearchConfig,
             List<(string EggIncId, MyContracts MyContracts)> Scoring,
             Guild DBGuild,
-            Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts
+            Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,
+            bool IsSelf
         );
 
         public async Task<IActionResult> EarningsBoostCalculator() {
