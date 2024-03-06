@@ -511,7 +511,7 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("id");
-                        
+
                     b.ToTable("GlobalLeaderboardCoops");
                 });
 
