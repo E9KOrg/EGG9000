@@ -285,12 +285,15 @@ namespace EGG9000.Site.Controllers {
             public int FinishedCoops { get; set; }
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> EventCustomization() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
             return View(await _db.EventCustomizations.AsQueryable().OrderByDescending(x => x.Priority).ToListAsync());
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> SaveEventCustomization([FromBody] EventCustomization eventCustomization) {
             _db.Entry(eventCustomization).State = EntityState.Modified;
             await _db.SaveChangesAsync();
@@ -798,11 +801,13 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> SearchID([FromQuery] string id) {
-            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds }).ToListAsync())
-                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds });
+            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds, x.EIDs }).ToListAsync())
+                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds, EIDs = x.EIDs });
 
             if(id.Trim().All(x => x >= '0' && x <= '9')) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
+            } else if(Regex.IsMatch(id.ToUpper(), "@EI\\d{16}") && users.Any(u => u.EIDs.Contains(id))) {
+                return RedirectToAction("ViewUser", "MyFarms", new { discordId = (users.First(u => u.EIDs.Contains(id))).DiscordId });
             }
 
             //var matchingUser2 = users.FirstOrDefault(x => x.DiscordUsername?.Contains(id) ?? false);
@@ -811,7 +816,11 @@ namespace EGG9000.Site.Controllers {
             //}
 
             id = id.ToLower().Trim();
-            var matchingUsers = users.Where(x => (x.DiscordUsername ?? "").ToLower().Contains(id) || x.EggIncAccounts.Any(y => y.Name.ToLower().Contains(id))).ToList();
+            var matchingUsers = users.Where(x => 
+                (x.DiscordUsername ?? "").ToLower().Contains(id) || 
+                x.Usernames.ToLower().Split(",").Contains(id)
+            ).ToList();
+
             if(matchingUsers.Count == 1) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUsers.First().DiscordId });
             }

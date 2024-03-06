@@ -7,7 +7,7 @@
 	<thead>
 		<tr>
 			<th>Discord User</th>
-			<th colspan="99">EggInc Accounts</th>
+			<th colspan="99">Egg Inc Usernames</th>
 		</tr>
 	</thead>
 	@foreach (var user in Model) {
@@ -15,8 +15,8 @@
 			<td>
 				<a href="/MyFarms/ViewUser?discordId=@(user.DiscordId)"> @user.DiscordUsername </a>
 			</td>
-			@foreach (var ei in user.EggIncAccounts) {
-				<td>@ei.Name</td>
+			@foreach (var username in user.Usernames.Split(",")) {
+				<td>@username</td>
 			}
 		</tr>
 	}

@@ -339,6 +339,24 @@ namespace Ei {
                         { Egg.DarkMatter, 3e12 },
                     } }
                 });
+            ShipFuelTargets.Add(Types.Spaceship.Atreggies, new Dictionary<Types.DurationType, Dictionary<Egg, double>> {
+                    { Types.DurationType.Short, new Dictionary<Egg, double> {
+                        { Egg.Dilithium, 4e12 },
+                        { Egg.Antimatter, 4e12 },
+                        { Egg.DarkMatter, 3e12 },
+                    } },
+                    { Types.DurationType.Long, new Dictionary<Egg, double> {
+                        { Egg.Dilithium, 6e12 },
+                        { Egg.Antimatter, 6e12 },
+                        { Egg.DarkMatter, 4e12 },
+                    } },
+                    { Types.DurationType.Epic, new Dictionary<Egg, double> {
+                        { Egg.Tachyon, 2e12 },
+                        { Egg.Dilithium, 6e12},
+                        { Egg.Antimatter, 6e12 },
+                        { Egg.DarkMatter, 6e12 },
+                    } }
+                });
 
             return ShipFuelTargets[Ship][DurationType];
         }

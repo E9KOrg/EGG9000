@@ -67,6 +67,23 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
+        public string _eventCustomizationsJson { get; set; }
+        [NotMapped]
+        private List<EventCustomization> _eventCustomizations { get; set; }
+        [NotMapped]
+        public List<EventCustomization> EventCustomzations {
+            get {
+                if(_eventCustomizations == null) {
+                    _eventCustomizations = JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
+                }
+                return _eventCustomizations;
+            }
+            set {
+                _eventCustomizations = value;
+                _eventCustomizationsJson = JsonConvert.SerializeObject(value);
+            }
+        }
+
         public string _channelDetailsJson { get; set; }
         [NotMapped]
         private List<ChannelDetail> _channelDetails { get; set; }
