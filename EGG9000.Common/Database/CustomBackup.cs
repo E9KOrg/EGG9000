@@ -112,22 +112,24 @@ namespace EGG9000.Common.Database {
         public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = new();
         [Key(40)]
         public double CraftingXP { get; set; } = 0;
+        [Key(41)]
+        public SpaceMission FuelingMission { get; set; }
 
 
-         /*
-         * The previous formula used here was off by a level or two
-         * 
-         * This formula is tracking the data from:
-         * https://egg-inc.fandom.com/wiki/Piggy_Bank
-         * 
-         * Each time the Piggy Bank is cracked it gains a bonus, 
-         * starting at 2% on the first level, 25% on the second level, 
-         * and 10n+10% after that point (e.g. level 6 would have a 70% bonus
-         * 
-         * NumPiggyBreaks = 1 for a new account, so condition is < 2 => 2% => 1.02
-         * 'Second level' would be NumPiggyBreaks = 2; < 3 => 25% => 1.25
-         * Otherwise => (10 * n + 10)% => ( ([that percentage] / 100) + 1) to determine the scalar
-         */
+        /*
+        * The previous formula used here was off by a level or two
+        * 
+        * This formula is tracking the data from:
+        * https://egg-inc.fandom.com/wiki/Piggy_Bank
+        * 
+        * Each time the Piggy Bank is cracked it gains a bonus, 
+        * starting at 2% on the first level, 25% on the second level, 
+        * and 10n+10% after that point (e.g. level 6 would have a 70% bonus
+        * 
+        * NumPiggyBreaks = 1 for a new account, so condition is < 2 => 2% => 1.02
+        * 'Second level' would be NumPiggyBreaks = 2; < 3 => 25% => 1.25
+        * Otherwise => (10 * n + 10)% => ( ([that percentage] / 100) + 1) to determine the scalar
+        */
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
             get {
@@ -277,6 +279,24 @@ namespace EGG9000.Common.Database {
                 Capacity = m.Capacity,
                 Stars = m.Level
             }).ToList();
+
+            var fm = backup.ArtifactsDb?.FuelingMission ?? null;
+            if(fm != null) {
+                FuelingMission = new SpaceMission {
+                    Ship = fm.Ship,
+                    Duration = fm.DurationType,
+                    Status = fm.Status,
+                    DurationSeconds = (long)fm.DurationSeconds,
+                    StartTime = (long)fm.StartTimeDerived,
+                    Fuels = fm.Fuel.Select(f => new SpaceMissionFuel {
+                        Amount = f.Amount,
+                        Egg = f.Egg
+                    }).ToList(),
+                    Targeting = (int)fm.Ship >= 4 ? fm?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown : Ei.ArtifactSpec.Types.Name.Unknown,
+                    Capacity = fm.Capacity,
+                    Stars = fm.Level
+                };
+            }
 
             FuelAmounts = new Dictionary<Ei.Egg, double>();
             for(var i = 0; i < backup.Artifacts.TankFuels.Count; i++) {

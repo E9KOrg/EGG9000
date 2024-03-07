@@ -33,13 +33,13 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public const string UserId = "EI5223299518300160";
         
-        public static uint ClientVersion = 63;
+        public static uint ClientVersion = 64;
 
         public static Ei.BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new Ei.BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.29.3",
-                Build = "111281",
+                Version = "1.31.0",
+                Build = "111284",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en", 

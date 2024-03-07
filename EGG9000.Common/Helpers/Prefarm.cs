@@ -504,6 +504,20 @@ namespace EGG9000.Common.Helpers {
                 if(user is not null) {
                     missingUser.DBUser = user.User;
                     missingUser.Backup = user.Backup;
+                } else {
+                    var matchingBackups = backups.Where(x => x.Backup is not null).Where(x => missingUser.CoopStatus.UserName.Length > 0 && x.User is not null && !string.IsNullOrEmpty(x.User?.Usernames) && (x.User.Usernames.Contains(missingUser.CoopStatus.UserName))).ToList();
+                    if(matchingBackups is not null && matchingBackups.Count > 0) {
+                        if(matchingBackups.Count > 1) {
+                            var index = matchingBackups.First().User.Usernames.Split(",").ToList().IndexOf(missingUser.CoopStatus.UserName);
+                            if(index > -1 && matchingBackups.Count >= index + 1) {
+                                missingUser.DBUser = matchingBackups.First().User;
+                                missingUser.Backup = matchingBackups[index].Backup;
+                            }
+                        } else {
+                            missingUser.DBUser = matchingBackups.First().User;
+                            missingUser.Backup = matchingBackups.First().Backup;
+                        }
+                    }
                 }
             }
 

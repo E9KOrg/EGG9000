@@ -107,7 +107,8 @@ namespace EGG9000.Common.Database.Entities {
         }
         public bool Banned { get; set; } = false;
         public string ServersBannedFrom { get; set; } = ""; //Comma delimited list of Server IDs
-
+        public string Usernames { get; set; } = ""; //Comma delimited list of Username(s) associated with EggIncAccounts
+        public string EIDs { get; set; } = ""; //Comma delimited list of EID(s) associated with EggIncAccounts
 
         [NotMapped]
         private List<CustomBackup> _backups { get; set; }
@@ -242,8 +243,11 @@ namespace EGG9000.Common.Database.Entities {
         public void UpdateAccounts() {
             if(_eggIncIds is not null)
                 _eggIncIds = null;
-            if(_accounts is not null)
+            if(_accounts is not null) {
                 _contractRegistrationByte = MessagePackSerializer.Serialize(_accounts, lz4Options);
+                Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
+                EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
+            } 
         }
 
         public DateTimeOffset CreateOn { get; set; }
