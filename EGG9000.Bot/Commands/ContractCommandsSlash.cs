@@ -857,12 +857,14 @@ namespace EGG9000.Bot.Commands {
                     var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                     var league = (int)coop.League;
 
+                    _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(coop.League), out var coopGradeEmoji);
                     var embedBuilder = new EmbedBuilder()
                         .WithColor(Color.Green)
                         .WithAuthor(
                             new EmbedAuthorBuilder()
                                 .WithName("Potential Coop Found")
                                 .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp"))
+                        .AddField("Grade", coopGradeEmoji + (coop.AnyLeague ? " (Any Grade) <:ultra:1131045418319495369>" : ""), inline: true)
                         .AddField("Users Assigned", $"{coop.CurrentUsers}/{contract.MaxUsers}", inline: true);
 
                     if(highestEB is not null) embedBuilder.AddField("Highest EB", $"`{highestEB.Backup?.EarningsBonus.ToEggString()}`" ?? "Unknown", inline: false);
