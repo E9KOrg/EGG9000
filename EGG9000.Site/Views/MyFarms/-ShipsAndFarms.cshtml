@@ -24,20 +24,20 @@
     }
 
     void artifactTemplate(EggIncArtifactInstance artifact) {
-        <tr>
-            <td>@artifact.Artifact</td>
-            @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                <td>@Math.Round((artifact.Value) * 100)%</td>
+                <tr>
+                    <td>@artifact.Artifact</td>
+                    @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+                        <td>@Math.Round((artifact.Value) * 100)%</td>
             } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
-                <td>-@artifact.Value</td>
+                        <td>-@artifact.Value</td>
             } else if (artifact.Additive) {
-                <td>+@artifact.Value</td>
+                        <td>+@artifact.Value</td>
             } else if (+artifact.Value < 2) {
-                <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+                        <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
             } else {
-                <td>@(artifact.Value)x</td>
+                        <td>@(artifact.Value)x</td>
             }
-            <td>@properSpacing(artifact.Boost.ToString())</td>
+                    <td>@properSpacing(artifact.Boost.ToString())</td>
         </tr>
     }
 
@@ -53,6 +53,7 @@
             Spaceship.Chickfiant => "801748897243987978",
             Spaceship.Voyegger => "801748952814845962",
             Spaceship.Henerprise => "801748924146384906",
+            Spaceship.Atreggies => "1215022229826314380",
             _ => ""
         };
         if(shipEmoji == "") {
@@ -85,6 +86,12 @@
             _ => "gray"
         };
     }
+
+    List<SpaceMission> iterableMissions = [
+        .. Model.Backup?.SpaceMissions ?? new List<SpaceMission>(),
+    ];
+
+    if (Model.Backup?.FuelingMission is not null) iterableMissions.Add(Model.Backup.FuelingMission);
 }
 
 <script type="text/javascript">
@@ -457,7 +464,7 @@
         var shipImageSize = baseSize * 1.9;
         var imageOffsets = baseSize / 2 + ((baseSize - shipImageSize) / 2);
     }
-    @foreach (var mission in Model.Backup.SpaceMissions ?? new List<SpaceMission>()) {
+    @foreach (var mission in iterableMissions ?? new List<SpaceMission>()) {
         var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
         var epochReturns = (long)(returns.ToUnixTimeSeconds());
         var epochCurrent = (long)(DateTimeOffset.Now.ToUnixTimeSeconds());
@@ -501,9 +508,9 @@
                             @{
                                 var fuelTargets = Ei.MissionInfo.GetFuelTargets(mission.Ship, mission.Duration);
                                 var needsFuel = mission == null || fuelTargets.Any(ft => ft.Value > (mission.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
-                                @if (needsFuel)
+                                        @if (needsFuel)
                                 {
-                                    <div style="color:darkred">❗Needs Fuel</div>
+                                            <div style="color:darkred">❗Needs Fuel</div>
                                 }
                                 foreach (var fuel in mission.Fuels)
                                 {
@@ -514,17 +521,17 @@
                                     if (eggName.StartsWith(" ")) eggName = eggName.Substring(1);
                                     var progressClass = $"{eggName.Replace(" ", "-").ToLower()}-progress-bar";
                                     var barWidth = (80 * (percent / 100)) + "px";
-                                    <div style="width: 60%; margin-top: 2.5px; margin-bottom: 2.5px;">
-                                        <span style="width: 150%; display: flex; align-items: center; height: 35px;">
-                                            <img style="height: 20px; width: 20px;" src="@(eggEmojiUrl)" title="@(eggName)" />&nbsp;
-                                            <span style="width: @barWidth; height: 15px;" class="fuel-progress-bar tooltip-custom @progressClass"></span>
-                                            @if (percent.ToString("N0") == "100"){
-                                                <span class="fuel-progress-text">100% - @fuelAmountsToText(target)</span>
+                                            <div style="width: 60%; margin-top: 2.5px; margin-bottom: 2.5px;">
+                                                <span style="width: 150%; display: flex; align-items: center; height: 35px;">
+                                                    <img style="height: 20px; width: 20px;" src="@(eggEmojiUrl)" title="@(eggName)" />&nbsp;
+                                                    <span style="width: @barWidth; height: 15px;" class="fuel-progress-bar tooltip-custom @progressClass"></span>
+                                                    @if (percent.ToString("N0") == "100"){
+                                                        <span class="fuel-progress-text">100% - @fuelAmountsToText(target)</span>
                                             } else{
-                                                <span class="fuel-progress-text">@(percent.ToString("N0"))% - @fuelAmountsToText(fuel.Amount) / @fuelAmountsToText(target)</span>
+                                                        <span class="fuel-progress-text">@(percent.ToString("N0"))% - @fuelAmountsToText(fuel.Amount) / @fuelAmountsToText(target)</span>
                                             }
-                                        </span>
-                                    </div>
+                                                </span>
+                                            </div>
                                 }
                             }
                         </div>
@@ -721,37 +728,37 @@
                             var standardsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, DurationType.Long, standardsToMax);
                             var extendedsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, DurationType.Epic, extendedsToMax);
 
-                            <tr id="@ship.Key-asc-row-@index" style="height: 38px;" dataMaxed="@(alreadyMaxed.ToString())">
-                                <td id="asc-name-col-@index" align="left" style="padding-left: 5px; font-size: 0.75rem;" dataMaxed="@(alreadyMaxed.ToString())">
-                                    @MissionHelpers.GetProperShipName(ship.Key)
-                                </td>
-                                <td dataMaxed="@(alreadyMaxed.ToString())">
-                                    @if (!alreadyMaxed){
-                                        <select class="blue-text" name="@ship.Key-duration-asc-choice-@index" id="@ship.Key-duration-asc-choice-@index" onchange="durationSelectionChanged(this)">
-                                            <option value="short" class="blue-text">Short</option>
-                                            <option value="standard" class="purple-text">Standard</option>
-                                            <option value="extended" class="orange-text">Extended</option>
-                                        </select>
+                                    <tr id="@ship.Key-asc-row-@index" style="height: 38px;" dataMaxed="@(alreadyMaxed.ToString())">
+                                        <td id="asc-name-col-@index" align="left" style="padding-left: 5px; font-size: 0.75rem;" dataMaxed="@(alreadyMaxed.ToString())">
+                                            @MissionHelpers.GetProperShipName(ship.Key)
+                                        </td>
+                                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                                            @if (!alreadyMaxed){
+                                                <select class="blue-text" name="@ship.Key-duration-asc-choice-@index" id="@ship.Key-duration-asc-choice-@index" onchange="durationSelectionChanged(this)">
+                                                    <option value="short" class="blue-text">Short</option>
+                                                    <option value="standard" class="purple-text">Standard</option>
+                                                    <option value="extended" class="orange-text">Extended</option>
+                                                </select>
                                     }
-                                </td>
-                                <td dataMaxed="@(alreadyMaxed.ToString())">
-                                    @if (!alreadyMaxed){
-                                        <span class="blue-text" id="@ship.Key-number-needed-asc-@index"
-                                              data-short="@shortsToMax" data-standard="@standardsToMax" data-extended="@extendedsToMax">
-                                            @shortsToMax
-                                        </span>
+                                        </td>
+                                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                                            @if (!alreadyMaxed){
+                                                <span class="blue-text" id="@ship.Key-number-needed-asc-@index"
+                                                      data-short="@shortsToMax" data-standard="@standardsToMax" data-extended="@extendedsToMax">
+                                                    @shortsToMax
+                                                </span>
                                     }
-                                </td>
-                                <td dataMaxed="@(alreadyMaxed.ToString())">
-                                    @if (!alreadyMaxed){
-                                        <span class="blue-text" id="@ship.Key-time-needed-asc-@index"
-                                              data-short="@shortsTimeMax" data-standard="@standardsTimeMax" data-extended="@extendedsTimeMax"
-                                              dt-short="@Model.Backup.MinutesToString(shortsTimeMax)" dt-standard="@Model.Backup.MinutesToString(standardsTimeMax)" dt-extended="@Model.Backup.MinutesToString(extendedsTimeMax)">
-                                            @Model.Backup.MinutesToString(shortsTimeMax)
-                                        </span>
+                                        </td>
+                                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                                            @if (!alreadyMaxed){
+                                                <span class="blue-text" id="@ship.Key-time-needed-asc-@index"
+                                                      data-short="@shortsTimeMax" data-standard="@standardsTimeMax" data-extended="@extendedsTimeMax"
+                                                      dt-short="@Model.Backup.MinutesToString(shortsTimeMax)" dt-standard="@Model.Backup.MinutesToString(standardsTimeMax)" dt-extended="@Model.Backup.MinutesToString(extendedsTimeMax)">
+                                                    @Model.Backup.MinutesToString(shortsTimeMax)
+                                                </span>
                                     }
-                                </td>
-                            </tr>
+                                        </td>
+                                    </tr>
                         }
                     }
                 }
@@ -894,15 +901,23 @@
         let totalSeconds = 0;
         for (let i = 0; i < timeStrings.length; i++) {
             const timeString = timeStrings[i].trim();
+            const years = parseInt(timeString.match(/\d+y/)?.[0]?.slice(0, -1) ?? 0);
             const days = parseInt(timeString.match(/\d+d/)?.[0]?.slice(0, -1) ?? 0);
             const hours = parseInt(timeString.match(/\d+h/)?.[0]?.slice(0, -1) ?? 0);
             const minutes = parseInt(timeString.match(/\d+m/)?.[0]?.slice(0, -1) ?? 0);
-            totalSeconds += (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60);
+            totalSeconds += (years * 365 * 24 * 60 * 60) + (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60);
         }
-        const days = Math.floor(totalSeconds / (24 * 60 * 60));
+        const years = Math.floor(totalSeconds / (365 * 24 * 60 * 60));
+        const days = Math.floor(totalSeconds / (24 * 60 * 60)) - (years > 0 ? years * 365 : 0);
         const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
         const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
-        return `${days}d${hours}h${minutes}m`;
+        var returnString = "";
+        if(years > 0) returnString += `${years}y`;
+        if(days > 0) returnString += `${days}d`;
+        if(hours > 0) returnString += `${hours}h`;
+        if(minutes > 0) returnString += `${minutes}m`
+
+        return returnString;
     }
 
     document.addEventListener("DOMContentLoaded", function () {

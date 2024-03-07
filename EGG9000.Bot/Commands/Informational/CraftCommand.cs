@@ -19,6 +19,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using System.Collections.Generic;
+using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class CraftCommand {
@@ -83,9 +84,7 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Components = null; x.Content = contentString; });
         }
 
-        private async static Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
-
-            var levelMultipliers = new List<double>() {
+        private static readonly List<double> LevelMultipliers = [
                 1.00, 1.05, 1.10,
                 1.15, 1.20, 1.25,
                 1.30, 1.35, 1.40,
@@ -96,7 +95,9 @@ namespace EGG9000.Bot.Commands {
                 3.50, 4.00, 4.50,
                 5.00, 6.00, 7.00,
                 8.00, 9.00, 10.00
-            };
+            ];
+
+        private async static Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
 
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
@@ -137,49 +138,82 @@ namespace EGG9000.Bot.Commands {
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
                 var keyAf = coefficientPair.Key;
                 var numCrafted = backup.ArtifactHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Artifact == keyAf.Artifact && a.Artifact.Tier == keyAf.Tier)?.NumberCrafted ?? 0;
-                var numCraftedScalar = Math.Min(1.0, (double)(numCrafted / 400.0));
-                var craftingLevel = backup.GetCraftingLevel();
-                var craftingScalar = levelMultipliers[(int)craftingLevel - 1];
-
                 var baseRates = coefficientPair.Value;
-
-                var baseRareRate = baseRates[0];
-                var baseEpicRate = baseRates[1];
-                var baseLegRate = baseRates[2];
-
-                var scaledRareRate = Math.Max(10.0, baseRareRate / craftingScalar);
-                var scaledEpicRate = Math.Max(10.0, baseEpicRate / craftingScalar);
-                var scaledLegRate = Math.Max(10.0, baseLegRate / craftingScalar);
-
-                var rareThreshold = (baseRareRate > 0) ? Math.Min(0.1, Math.Pow(1.0 / scaledRareRate, 1.0 - numCraftedScalar * 0.3)) : 0.0;
-                var epicThreshold = (baseEpicRate > 0) ? Math.Min(0.1, Math.Pow(1.0 / scaledEpicRate, 1.0 - numCraftedScalar * 0.3)) : 0.0;
-                var legThreshold = (baseLegRate > 0) ? Math.Min(0.1, Math.Pow(1.0 / scaledLegRate, 1.0 - numCraftedScalar * 0.3)) : 0.0;
-
-                var fixedLegThresh = legThreshold;
-                var fixedEpicThresh = Math.Max(0, epicThreshold - fixedLegThresh);
-                var fixedRareThresh = Math.Max(0, rareThreshold - epicThreshold);
-                var fixedCommonThresh = (1 - fixedLegThresh - fixedEpicThresh - fixedRareThresh);
-
-                var dispCommon = fixedCommonThresh * 100;
-                var dispRare = fixedRareThresh * 100;
-                var dispEpic = fixedEpicThresh * 100;
-                var dispLeg = fixedLegThresh * 100;
-
+                var percentages = GetCraftPercentages(numCrafted, backup.GetCraftingLevel(), baseRates);
                 var percentageStrs = new List<string>();
-
-                if(fixedRareThresh > 0 || fixedEpicThresh > 0 || fixedLegThresh > 0) {
+                if(percentages[Rarity.Rare][0] > 0 || percentages[Rarity.Epic][0] > 0 || percentages[Rarity.Legendary][0] > 0) {
                     stringBuilder.AppendLine("\n\n**Your next craft has the following percentage breakdown**:");
-                    //if(fixedCommonThresh > 0) percentageSb.Append($"{dispCommon:f2}% - Common");
-                    if(fixedRareThresh > 0) percentageStrs.Add($"{dispRare:f2}% <:Rare:905959988030226453>");
-                    if(fixedEpicThresh > 0) percentageStrs.Add($"{dispEpic:f2}% <:Epic:905960149720649748>");
-                    if(fixedLegThresh > 0) percentageStrs.Add($"{dispLeg:f2}% <:Legendary:905960165860339722>");
-
+                    if(percentages[Rarity.Rare][0] > 0) percentageStrs.Add($"{percentages[Rarity.Rare][1]:f2}% <:Rare:905959988030226453>");
+                    if(percentages[Rarity.Epic][0] > 0) percentageStrs.Add($"{percentages[Rarity.Epic][1]:f2}% <:Epic:905960149720649748>");
+                    if(percentages[Rarity.Legendary][0] > 0) percentageStrs.Add($"{percentages[Rarity.Legendary][1]:f2}% <:Legendary:905960165860339722>");
                     stringBuilder.AppendLine(string.Join(" | ", percentageStrs));
+                }
+
+                if(quantity > 1) {
+                    var secondNumCrafted = (uint)(numCrafted + quantity);
+                    var secondPercentages = GetCraftPercentages(secondNumCrafted, backup.GetCraftingLevel(), baseRates);
+                    var secondPercentageStrs = new List<string>();
+
+                    var quantityCraftText = "";
+                    switch(quantity.ToString().Last()) {
+                        case '1': quantityCraftText = $"{quantity}st"; break;
+                        case '2': quantityCraftText = $"{quantity}nd"; break;
+                        case '3': quantityCraftText = $"{quantity}rd"; break;
+                        case '4':
+                        case '5':
+                        case '6':
+                        case '7':
+                        case '8':
+                        case '9':
+                        case '0': quantityCraftText = $"{quantity}th"; break;
+                    }
+
+                    if(secondPercentages[Rarity.Rare][0] > 0 || secondPercentages[Rarity.Epic][0] > 0 || secondPercentages[Rarity.Legendary][0] > 0) {
+                        stringBuilder.AppendLine($"\n**Your {quantityCraftText} craft from now has the following percentage breakdown**:");
+                        if(secondPercentages[Rarity.Rare][0] > 0) secondPercentageStrs.Add($"{secondPercentages[Rarity.Rare][1]:f2}% <:Rare:905959988030226453>");
+                        if(secondPercentages[Rarity.Epic][0] > 0) secondPercentageStrs.Add($"{secondPercentages[Rarity.Epic][1]:f2}% <:Epic:905960149720649748>");
+                        if(secondPercentages[Rarity.Legendary][0] > 0) secondPercentageStrs.Add($"{secondPercentages[Rarity.Legendary][1]:f2}% <:Legendary:905960165860339722>");
+                        stringBuilder.AppendLine(string.Join(" | ", secondPercentageStrs));
+                    }
                 }
             }
 
 
             return stringBuilder.ToString();
+        }
+
+        private static Dictionary<Rarity, List<double>> GetCraftPercentages(uint numCrafted, uint craftingLevel, List<double> baseRates) {
+            var numCraftedScalar = Math.Min(1.0, (double)(numCrafted / 400.0));
+            var craftingScalar = LevelMultipliers[(int)craftingLevel - 1];
+
+            var baseRareRate = baseRates[0];
+            var baseEpicRate = baseRates[1];
+            var baseLegRate = baseRates[2];
+
+            var scaledRareRate = Math.Max(10.0, baseRareRate / craftingScalar);
+            var scaledEpicRate = Math.Max(10.0, baseEpicRate / craftingScalar);
+            var scaledLegRate = Math.Max(10.0, baseLegRate / craftingScalar);
+
+            var rareThreshold = (baseRareRate > 0) ? Math.Min(0.1, Math.Pow(1.0 / scaledRareRate, 1.0 - numCraftedScalar * 0.3)) : 0.0;
+            var epicThreshold = (baseEpicRate > 0) ? Math.Min(0.1, Math.Pow(1.0 / scaledEpicRate, 1.0 - numCraftedScalar * 0.3)) : 0.0;
+            var legThreshold = (baseLegRate > 0) ? Math.Min(0.1, Math.Pow(1.0 / scaledLegRate, 1.0 - numCraftedScalar * 0.3)) : 0.0;
+
+            var fixedLegThresh = legThreshold;
+            var fixedEpicThresh = Math.Max(0, epicThreshold - fixedLegThresh);
+            var fixedRareThresh = Math.Max(0, rareThreshold - epicThreshold);
+            var fixedCommonThresh = (1 - fixedLegThresh - fixedEpicThresh - fixedRareThresh);
+
+            var dispCommon = fixedCommonThresh * 100;
+            var dispRare = fixedRareThresh * 100;
+            var dispEpic = fixedEpicThresh * 100;
+            var dispLeg = fixedLegThresh * 100;
+
+            return new() {
+                { Rarity.Common , [fixedCommonThresh, dispCommon] },
+                { Rarity.Rare, [fixedRareThresh, dispRare] },
+                { Rarity.Epic, [fixedEpicThresh, dispEpic] },
+                { Rarity.Legendary, [fixedLegThresh, dispLeg] },
+            };
         }
     }
 }

@@ -5,6 +5,7 @@
 @model Guild
 @inject DiscordSocketClient discord
 @{
+	ViewData["Title"] = "Configure Server";
 	var channelDetails = Model.ChannelDetails;
 	var coopSettings = Model.CoopSettings;
 	var guild = discord.GetGuild(Model.Id);

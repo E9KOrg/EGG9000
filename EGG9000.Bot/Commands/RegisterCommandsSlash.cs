@@ -513,9 +513,8 @@ namespace EGG9000.Bot.Commands {
                 }
             } catch(Exception) { }
 
-
-            await command.DeleteResponseFix();
-            await CleanWelcomeChannel(guild, _client, user);
+            var responseId = command.GetOriginalResponseAsync().Id;
+            await CleanWelcomeChannel(guild, _client, user, responseId);
             if(addedUser) {
                 try {
                     var ebString = $" ({earningsBonus.ToEggString()})";
@@ -532,19 +531,20 @@ namespace EGG9000.Bot.Commands {
                 }
 
             }
+            await command.DeleteResponseFix();
         }
 
-        public static async Task CleanWelcomeChannel(SocketGuild guild, DiscordHostedService _client, IUser socketUser, int chain = 0) {
+        public static async Task CleanWelcomeChannel(SocketGuild guild, DiscordHostedService _client, IUser socketUser, int chain = 0, ulong excludeId = ulong.MaxValue) {
             try {
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel != null) {
                     var messages = await welcomeChannel.GetMessagesAsync().FlattenAsync();
-                    var userMessage = messages.Where(x => x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id || x.Interaction.User.Id == socketUser.Id);
+                    var userMessage = messages.Where(x => (x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id || x?.Interaction?.User?.Id == socketUser.Id) && (excludeId == ulong.MaxValue || x.Id != excludeId));
                     await welcomeChannel.DeleteMessagesBatchAsync(userMessage);
                 }
             } catch(Exception) {
                 if(chain < 3) {
-                    await CleanWelcomeChannel(guild, _client, socketUser, chain++);
+                    await CleanWelcomeChannel(guild, _client, socketUser, chain++, excludeId);
                 }
             }
         }

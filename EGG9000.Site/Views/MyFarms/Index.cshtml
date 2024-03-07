@@ -23,6 +23,7 @@
 
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
+    var isSelf = Model.IsSelf;
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
 
@@ -170,7 +171,7 @@
     }
 </script>
 
-@if (isAdmin) {
+@if ((isAdmin || isLesserAdmin) && !isSelf) {
     <h1>@Model.User.DiscordUsername's Farms</h1>
 } else {
     <h1>My Farms</h1>
@@ -178,7 +179,7 @@
 
 @if (unjoinedCoops.Any()) {
     <div class="alert alert-danger">
-        @if (isAdmin || isLesserAdmin){
+        @if ((isAdmin || isLesserAdmin) && !isSelf){
             <span>@Model.User.DiscordUsername has not joined the following coops they've been assigned.</span>
         } else{
             <span>Pssst... It looks like you haven't joined the following coops that you've been assigned!</span>
@@ -187,19 +188,23 @@
             @foreach (var xref in unjoinedCoops) {
                 <div>
                     <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
-                    @xref.Coop.Contract.Name - @xref.Coop.Name
+                    @if(Model.User.EggIncAccounts.Count > 1) {
+                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name ( @Model.User.EggIncAccounts.FirstOrDefault(a => a.Id == xref.EggIncId)?.Backup.UserName ?? @xref.EggIncId )</span>
+                    } else {
+                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name</span>
+                    }
                     <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/">
                         <img src="/images/discordicon.png" style="max-height: 1em;" />
                     </a>
                 </div>
             }
         </div>
-    </div>
+</div>
 }
 
 @if(Model.User.DMSBlocked){
     <div class="alert alert-danger">
-        @if (isAdmin || isLesserAdmin){
+        @if ((isAdmin || isLesserAdmin) && !isSelf){
             <span><b>@Model.User.DiscordUsername has blocked DMs from EGG9000.</b></span>
         } else{
             <span><b>It looks like you've blocked DMs from EGG9000</b>.<br />This can either be due to Server Privacy settings, or directly blocking the bot.<br />This may lead to missed communications - please resolve this.</span>
@@ -214,7 +219,7 @@
 }
 
 <div>
-    @if (isLesserAdmin) {
+    @if (isLesserAdmin || isAdmin) {
         if (Model.User.TempDisabled) {
             <span style="color: #FF0000">❗User is disabled</span>
         }
@@ -458,7 +463,7 @@
                                                     </tr>
                                                 }
                                             </table>
-                                        </div>
+</div>
 
 
 
@@ -601,4 +606,4 @@
             setInterval(updateLastBackupTime, 1000);
         });
     </script>
-	}
+}

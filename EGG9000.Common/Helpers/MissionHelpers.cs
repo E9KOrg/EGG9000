@@ -21,7 +21,8 @@ namespace EGG9000.Common.Helpers {
             { Spaceship.Galeggtica, 5 },
             { Spaceship.Chickfiant, 5 },
             { Spaceship.Voyegger, 6 },
-            { Spaceship.Henerprise, 8 }
+            { Spaceship.Henerprise, 8 },
+            { Spaceship.Atreggies, 8 },
         };
 
         private static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities = new() {
@@ -86,14 +87,13 @@ namespace EGG9000.Common.Helpers {
                     { DurationType.Epic, new(){ 56, 63, 70, 77, 84, 91, 98, 105, 112 } },
                 }
             },
-            /*
-             * { Spaceship.Unknown, new() {
-             *      { DurationType.Short, new() { 60, 67, 74, 81, 88, 95, 102, 109} },
-             *      { DurationType.Long, new() { 78, 84, 92, 100, 108, 116, 124, 132} },
-             *      { DurationType.Epic, new() { 86, 96, 106, 116, 126, 136, 146, 156 } },
-             *  }
-             * }
-             */
+            { Spaceship.Atreggies, new() {
+                  { DurationType.Short, new() { 60, 67, 74, 81, 88, 95, 102, 109} },
+                  { DurationType.Long, new() { 78, 86, 94, 102, 110, 118, 126, 134} },
+                  { DurationType.Epic, new() { 86, 96, 106, 116, 126, 136, 146, 156 } },
+              }
+            }
+             
         };
 
         private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
@@ -158,12 +158,12 @@ namespace EGG9000.Common.Helpers {
                     { DurationType.Epic, 96 * 60 },
                 }
             },
-            /*{ Spaceship.Unknown, new() {
-                    { DurationType.Short, 24 * 60 },
-                    { DurationType.Long, 48 * 60 },
+            { Spaceship.Atreggies, new() {
+                    { DurationType.Short, 48 * 60 },
+                    { DurationType.Long, 72 * 60 },
                     { DurationType.Epic, 96 * 60 },
                 }
-            },*/
+            },
         };
 
         public static int GetNominalCapacity(this CustomBackup backup, SpaceMission mission) {
@@ -275,6 +275,7 @@ namespace EGG9000.Common.Helpers {
                 Spaceship.Chickfiant => "Defihent",
                 Spaceship.Voyegger => "Voyegger",
                 Spaceship.Henerprise => "Henerprise",
+                Spaceship.Atreggies => "Atreggies Henliner",
                 _ => "How did you get here?"
             };
         }
