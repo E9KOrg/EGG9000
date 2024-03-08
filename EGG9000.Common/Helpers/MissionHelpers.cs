@@ -11,7 +11,11 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
-        public static readonly Dictionary<Spaceship, uint> MaxShipLevels = Root.Get().missionParameters.ToDictionary(mp => mp.shipEnum, mp => (uint)mp.levelMissionRequirements.Count);
+        public static readonly Dictionary<Spaceship, uint> MaxShipLevels 
+            = Root.Get().missionParameters.ToDictionary(
+                mp => mp.shipEnum, 
+                mp => (uint)mp.levelMissionRequirements.Count
+            );
 
         public static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities
             = Root.Get().missionParameters.ToDictionary(
@@ -32,147 +36,6 @@ namespace EGG9000.Common.Helpers {
                     dur => dur.seconds / 60
                 )
             );
-
-        /*private static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities = new() {
-            { Spaceship.ChickenOne, new() {
-                    { DurationType.Tutorial, new(){ 4 } },
-                    { DurationType.Short, new(){ 4 } },
-                    { DurationType.Long, new(){ 5 } },
-                    { DurationType.Epic, new(){ 6 } },
-                }
-            },
-            { Spaceship.ChickenNine, new() {
-                    { DurationType.Short, new(){ 7, 8, 9 } },
-                    { DurationType.Long, new(){ 8, 9, 10 } },
-                    { DurationType.Epic, new(){ 9, 10, 11 } },
-                }
-            },
-            { Spaceship.ChickenHeavy, new() {
-                    { DurationType.Short, new(){ 12, 13, 14, 15 } },
-                    { DurationType.Long, new(){ 14, 16, 18, 20 } },
-                    { DurationType.Epic, new(){ 15, 17, 19, 21 } },
-                }
-            },
-            { Spaceship.Bcr, new() {
-                    { DurationType.Short, new(){ 18, 20, 22, 24, 26 } },
-                    { DurationType.Long, new(){ 20, 22, 24, 26, 28 } },
-                    { DurationType.Epic, new(){ 22, 25, 29, 31, 34 } },
-                }
-            },
-            { Spaceship.MilleniumChicken, new() {
-                    { DurationType.Short, new(){ 10, 11, 12, 13, 14 }},
-                    { DurationType.Long, new(){ 12, 14, 16, 18, 20 } },
-                    { DurationType.Epic, new(){ 14, 16, 18, 20, 22 } },
-                }
-            },
-            { Spaceship.CorellihenCorvette, new() {
-                    { DurationType.Short, new(){ 18, 20, 22, 24, 26 } },
-                    { DurationType.Long, new(){ 21, 23, 25, 27, 29 } },
-                    { DurationType.Epic, new(){ 24, 27, 30, 33, 36 } },
-                }
-            },
-            { Spaceship.Galeggtica, new() {
-                    { DurationType.Short, new(){ 27, 30, 33, 36, 39, 42 } },
-                    { DurationType.Long, new(){ 30, 33, 36, 39, 42, 45 } },
-                    { DurationType.Epic, new(){ 35, 39, 43, 47, 51, 55 }},
-                }
-            },
-            { Spaceship.Chickfiant, new() {
-                    { DurationType.Short, new(){ 20, 22, 24, 26, 28, 30 } },
-                    { DurationType.Long, new(){ 24, 26, 28, 30, 32, 34 } },
-                    { DurationType.Epic, new(){ 28, 31, 34, 37, 40, 43 } },
-                }
-            },
-            { Spaceship.Voyegger, new() {
-                    { DurationType.Short, new(){ 30, 33, 36, 39, 42, 45, 48 } },
-                    { DurationType.Long, new(){ 35, 39, 43, 47, 51, 55, 59 } },
-                    { DurationType.Epic, new(){ 40, 44, 48, 52, 56, 60, 64 } },
-                }
-            },
-            { Spaceship.Henerprise, new() {
-                    { DurationType.Short, new(){ 45, 50, 55, 60, 65, 70, 75, 80, 85 } },
-                    { DurationType.Long, new(){ 50, 56, 62, 68, 74, 80, 86, 92, 98 } },
-                    { DurationType.Epic, new(){ 56, 63, 70, 77, 84, 91, 98, 105, 112 } },
-                }
-            },
-            { Spaceship.Atreggies, new() {
-                  { DurationType.Short, new() { 60, 67, 74, 81, 88, 95, 102, 109} },
-                  { DurationType.Long, new() { 78, 86, 94, 102, 110, 118, 126, 134} },
-                  { DurationType.Epic, new() { 86, 96, 106, 116, 126, 136, 146, 156 } },
-              }
-            }
-             
-        };*/
-
-        /*private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
-            { Spaceship.ChickenOne, new() {
-                    { DurationType.Tutorial, 1 },
-                    { DurationType.Short, 20 },
-                    { DurationType.Long, 60 },
-                    { DurationType.Epic, 2 * 60 },
-                }
-            },
-            { Spaceship.ChickenNine, new() {
-                    { DurationType.Short, 30 },
-                    { DurationType.Long, 60 },
-                    { DurationType.Epic, 3 * 60 },
-                }
-            },
-            { Spaceship.ChickenHeavy, new() {
-                    { DurationType.Short, 45 },
-                    { DurationType.Long, 90 },
-                    { DurationType.Epic, 4 * 60 },
-                }
-            },
-            { Spaceship.Bcr, new() {
-                    { DurationType.Short, 90 },
-                    { DurationType.Long, 4 * 60 },
-                    { DurationType.Epic, 8 * 60 },
-                }
-            },
-            { Spaceship.MilleniumChicken, new() {
-                    { DurationType.Short, 3 * 60 },
-                    { DurationType.Long, 6 * 60 },
-                    { DurationType.Epic, 12 * 60 },
-                }
-            },
-            { Spaceship.CorellihenCorvette, new() {
-                    { DurationType.Short, 4 * 60 },
-                    { DurationType.Long, 12 * 60 },
-                    { DurationType.Epic, 24 * 60 },
-                }
-            },
-            { Spaceship.Galeggtica, new() {
-                    { DurationType.Short, 6 * 60 },
-                    { DurationType.Long, 16 * 60 },
-                    { DurationType.Epic, (24 + 6) * 60 },
-                }
-            },
-            { Spaceship.Chickfiant, new() {
-                    { DurationType.Short, 8 * 60 },
-                    { DurationType.Long, 24 * 60 },
-                    { DurationType.Epic, 48 * 60 },
-                }
-            },
-            { Spaceship.Voyegger, new() {
-                    { DurationType.Short, 12 * 60 },
-                    { DurationType.Long, 36 * 60 },
-                    { DurationType.Epic, 72 * 60 },
-                }
-            },
-            { Spaceship.Henerprise, new() {
-                    { DurationType.Short, 24 * 60 },
-                    { DurationType.Long, 48 * 60 },
-                    { DurationType.Epic, 96 * 60 },
-                }
-            },
-            { Spaceship.Atreggies, new() {
-                    { DurationType.Short, 48 * 60 },
-                    { DurationType.Long, 72 * 60 },
-                    { DurationType.Epic, 96 * 60 },
-                }
-            },
-        };*/
 
         public static int GetNominalCapacity(this CustomBackup backup, SpaceMission mission) {
             if(mission is null || !NominalShipCapacities.ContainsKey(mission.Ship)) return 0;
