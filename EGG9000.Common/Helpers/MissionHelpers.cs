@@ -11,21 +11,29 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
-        public static readonly Dictionary<Spaceship, uint> MaxShipLevels = new() {
-            { Spaceship.ChickenOne, 0 },
-            { Spaceship.ChickenNine, 2 },
-            { Spaceship.ChickenHeavy, 3 },
-            { Spaceship.Bcr, 4 },
-            { Spaceship.MilleniumChicken, 4 },
-            { Spaceship.CorellihenCorvette, 4 },
-            { Spaceship.Galeggtica, 5 },
-            { Spaceship.Chickfiant, 5 },
-            { Spaceship.Voyegger, 6 },
-            { Spaceship.Henerprise, 8 },
-            { Spaceship.Atreggies, 8 },
-        };
+        public static readonly Dictionary<Spaceship, uint> MaxShipLevels = Root.Get().missionParameters.ToDictionary(mp => mp.shipEnum, mp => (uint)mp.levelMissionRequirements.Count);
 
-        private static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities = new() {
+        public static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities
+            = Root.Get().missionParameters.ToDictionary(
+                mp => mp.shipEnum,
+                mp => mp.durations.ToDictionary(
+                    dur => dur.durationTypeEnum,
+                    dur => Enumerable.Range(0, mp.levelMissionRequirements.Count + 1)
+                                     .Select(i => dur.capacity + i * dur.levelCapacityBump)
+                                     .ToList()
+                )
+            );
+
+        private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes
+            = Root.Get().missionParameters.ToDictionary(
+                mp => mp.shipEnum,
+                mp => mp.durations.ToDictionary(
+                    dur => dur.durationTypeEnum,
+                    dur => dur.seconds / 60
+                )
+            );
+
+        /*private static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities = new() {
             { Spaceship.ChickenOne, new() {
                     { DurationType.Tutorial, new(){ 4 } },
                     { DurationType.Short, new(){ 4 } },
@@ -94,9 +102,9 @@ namespace EGG9000.Common.Helpers {
               }
             }
              
-        };
+        };*/
 
-        private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
+        /*private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes = new() {
             { Spaceship.ChickenOne, new() {
                     { DurationType.Tutorial, 1 },
                     { DurationType.Short, 20 },
@@ -164,7 +172,7 @@ namespace EGG9000.Common.Helpers {
                     { DurationType.Epic, 96 * 60 },
                 }
             },
-        };
+        };*/
 
         public static int GetNominalCapacity(this CustomBackup backup, SpaceMission mission) {
             if(mission is null || !NominalShipCapacities.ContainsKey(mission.Ship)) return 0;
