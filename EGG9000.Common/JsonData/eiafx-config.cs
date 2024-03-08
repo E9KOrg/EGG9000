@@ -1,12 +1,13 @@
-﻿using Newtonsoft.Json;
+﻿using Ei;
+using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+
+using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Common.JsonData.EiAfxConfig {
 
@@ -32,6 +33,14 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public int capacity { get; set; }
         public int levelCapacityBump { get; set; }
         public double levelQualityBump { get; set; }
+
+        public DurationType durationTypeEnum {
+            get {
+                if(Enum.TryParse<DurationType>(durationType, ignoreCase: true, out var parsedEnum)) return parsedEnum;
+
+                return DurationType.Tutorial;
+            }
+        }
     }
 
     public class MissionParameter {
@@ -39,6 +48,16 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public List<Duration> durations { get; set; }
         public List<int> levelMissionRequirements { get; set; }
         public int capacityDEPRECATED { get; set; }
+
+        public Spaceship shipEnum { 
+            get {
+                if(Enum.TryParse<Spaceship>(ship, ignoreCase: true, out var parsedEnum)) return parsedEnum;
+
+                if(Enum.TryParse<Spaceship>(ship.Replace("_", ""), ignoreCase: true, out var parsedEnum2)) return parsedEnum2;
+
+                return Spaceship.ChickenOne;
+            }
+        }
     }
 
     public class Root {
@@ -71,7 +90,5 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public string rarity { get; set; }
         public string egg { get; set; }
     }
-
-
 
 }

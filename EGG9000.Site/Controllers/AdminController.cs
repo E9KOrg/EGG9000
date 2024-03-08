@@ -801,12 +801,12 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> SearchID([FromQuery] string id) {
-            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds, x.EIDs }).ToListAsync())
-                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds, EIDs = x.EIDs });
+            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds, x.EIDs, x.Usernames }).ToListAsync())
+                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds, EIDs = x.EIDs, Usernames = x.Usernames });
 
             if(id.Trim().All(x => x >= '0' && x <= '9')) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
-            } else if(Regex.IsMatch(id.ToUpper(), "@EI\\d{16}") && users.Any(u => u.EIDs.Contains(id))) {
+            } else if(Regex.IsMatch(id.ToUpper(), "EI\\d{16}") && users.Any(u => u.EIDs.Contains(id))) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = (users.First(u => u.EIDs.Contains(id))).DiscordId });
             }
 
@@ -815,10 +815,13 @@ namespace EGG9000.Site.Controllers {
             //    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
             //}
 
+            Console.WriteLine("Usernames: \n" + string.Join("\n", users.Select(x => (x.Usernames ?? "").ToLower().Split(",")).ToList()));
+
             id = id.ToLower().Trim();
+            Console.WriteLine("Id: " +  id);
             var matchingUsers = users.Where(x => 
                 (x.DiscordUsername ?? "").ToLower().Contains(id) || 
-                x.Usernames.ToLower().Split(",").Contains(id)
+                (x.Usernames ?? "").ToLower().Split(",").Any(u => u.Contains(id))
             ).ToList();
 
             if(matchingUsers.Count == 1) {
