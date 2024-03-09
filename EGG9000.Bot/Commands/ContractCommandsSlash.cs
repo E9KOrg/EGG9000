@@ -299,7 +299,9 @@ namespace EGG9000.Bot.Commands {
                 var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
                 var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
                 var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);
-                if(coop.DeletedChannel || _client.GetGuild(coop.GuildId).GetChannel(coop.DiscordChannelId) == null) continue;
+                var coopChannel = await _client.GetChannelAsync(coop.DiscordChannelId);
+                if(coopChannel == null) coopChannel = _client.GetGuild(coop.OverflowGuildId).GetChannel(coop.DiscordChannelId);
+                if(coop.DeletedChannel || coopChannel == null) continue;
                 if(details.HasSpots) {
                     newCoop = coop;
                     break;
