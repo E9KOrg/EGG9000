@@ -407,7 +407,7 @@ namespace EGG9000.Bot.Commands {
         //}
 
 
-        [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname, [SlashParam] string grade) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
             if(guildContract == null) {
