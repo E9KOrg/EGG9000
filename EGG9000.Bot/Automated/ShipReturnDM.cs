@@ -54,7 +54,7 @@ namespace EGG9000.Bot.Automated {
                         var fuelingShip = backup.SpaceMissions.FirstOrDefault(m => m.Status == MissionInfo.Types.Status.Fueling);
                         var needsFuel = NeedsFuel(backup);
                         var nextShipDue = DateTimeOffset.FromUnixTimeSeconds(mission.ReturnTime);//.AddMinutes(needsFuel ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes);
-                        var nextShipName = mission.Ship.ToString().Replace("_", " ");
+                        var nextShipName = MissionHelpers.GetProperShipName(mission.Ship);
                         var minutesUntilShipReturns = (DateTimeOffset.Now - nextShipDue).Humanize(2);
 
                         var lastBackupTime = (DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize(2).ShortenTime();
