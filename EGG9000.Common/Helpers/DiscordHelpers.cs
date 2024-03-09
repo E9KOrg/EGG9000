@@ -259,6 +259,12 @@ namespace EGG9000.Bot.Helpers {
                         break;
                 }
 
+                //Hocho
+                if(discordUser.Id == 321314664397144074) {
+                    messages = [
+                        $"Congratulations on this eggmazing achievement {discordUser.Mention}, I remember everything from your eggventure. From joining at 8.7o%, to racing Ashmyne to be our first Xenna, to wiping the floor with everyone and being our first Wecca. Now, we celebrate you reaching Vendafarmer! May you continue to inspire our farmers to reach new EB heights."
+                    ];
+                }
 
 
                 var random = new Random();
@@ -453,7 +459,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckASCRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var ascRole = await _client.GetRoleAsync(GuildChannelType.ASCRole, Guild);
             if(ascRole is not null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipsSent is not null).Any(x => MissionHelpers.HasMaxedShips(x.Backup));
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipsSent is not null).Any(x => x.Backup.HasMaxedShips());
                 var hasRole = DiscordUser.RoleIds.Any(x => x == ascRole.Id);
 
                 if(!hasRole && needsRole) {

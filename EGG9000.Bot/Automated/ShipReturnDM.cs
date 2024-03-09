@@ -183,10 +183,10 @@ namespace EGG9000.Bot.Automated {
         }
 
         private static bool NeedsFuel(CustomBackup backup) {
-            bool needsFuel = true;
+            var needsFuel = true;
             var currentShip = backup.SpaceMissions.FirstOrDefault(x => x.Status == MissionInfo.Types.Status.Fueling);
             if(currentShip != null) {
-                var fuelTargets = Ei.MissionInfo.GetFuelTargets(currentShip.Ship, currentShip.Duration);
+                var fuelTargets = MissionInfo.GetFuelTargets(currentShip.Ship, currentShip.Duration);
                 needsFuel = fuelTargets.Any(ft => ft.Value > (currentShip.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
             }
             return needsFuel;
