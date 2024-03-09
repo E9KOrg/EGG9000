@@ -48,7 +48,9 @@ namespace EGG9000.Common.Database.Entities {
         //public ulong? FailedCategory { get; set; }
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
-        
+
+        public bool AddOutsideCoops { get; set; } = true;
+
         public string _coopSettingsJson { get; set; }
         [NotMapped]
         private List<ServerCoopSetting> _coopSettings { get; set; }

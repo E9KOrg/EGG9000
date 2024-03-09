@@ -309,13 +309,17 @@
 	<div class="card-header">Other Settings</div>
 	<div class="card-body">
 		<div>
-		<label>
-			<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
-		</label>
-		<br/>
-		<label>
-				<input class="custom-input" type="checkbox" value="true" id="RemoveFindCoopSpot" checked="@Model.RemoveFindCoopSpot" /> Remove <button class="btn btn-primary btn-sm" disabled>Find Coop Spot</button> buttons from Co-op channels
-		</label>
+			<label>
+				<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
+			</label>
+			<br/>
+			<label>
+					<input class="custom-input" type="checkbox" value="true" id="RemoveFindCoopSpot" checked="@Model.RemoveFindCoopSpot" /> Remove <button class="btn btn-primary btn-sm" disabled>Find Coop Spot</button> buttons from Co-op channels
+			</label>
+			<br />
+			<label>
+				<input class="custom-input" type="checkbox" value="true" id="AddOutsideCoops" checked="@Model.AddOutsideCoops" /> Add Outside Co-ops from Backups
+			</label>
 		</div>
 		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
 	</div>
@@ -389,7 +393,8 @@
 						GroupRoles: GetCategoryJoins(".GroupRole"),
 						PublicScoreGrid: $("#PublicScoreGrid").is(":checked"),
 						RemoveFindCoopSpot: $("#RemoveFindCoopSpot").is(":checked"),
-						CoopNamePrefix: $("#CoopNamePrefix").val()
+						CoopNamePrefix: $("#CoopNamePrefix").val(),
+						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),
 					})
 			}, function () {
 				document.location = document.location;

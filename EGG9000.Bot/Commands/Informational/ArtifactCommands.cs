@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Commands {
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await _viewInventory(command, dbuser, account, showinchannel);
+            await _viewInventory(command, db, dbuser, account, showinchannel);
         }
 
         [SlashCommand(Description = "View your inventory")]
