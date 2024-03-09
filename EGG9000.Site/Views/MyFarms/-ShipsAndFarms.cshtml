@@ -489,11 +489,11 @@
                         style="stroke-dasharray: @circumfrence @circumfrence; stroke-dashoffset: @initialOffset;"/>
                         <circle class="ship-progress-anti-ring" id="ship-antiring-@index-@shipIndex" stroke-width="@strokeWidth" stroke="gray" fill="transparent" r="@radius" cx="@baseSize" cy="@baseSize"
                         style="stroke-dasharray: @circumfrence @circumfrence; stroke-dashoffset: @initialAntiOffset;" />
-                        <image alt="@mission.Ship.ToString().Replace("_", " ")" x="@imageOffsets" y="@imageOffsets" width="@shipImageSize" height="@shipImageSize" xlink:href="@shipEmojiLink" />
+                        <image alt="@MissionHelpers.GetProperShipName(mission.Ship)" x="@imageOffsets" y="@imageOffsets" width="@shipImageSize" height="@shipImageSize" xlink:href="@shipEmojiLink" />
                     </svg><br/>
                 }
                 <span style="font-size: 1.1rem; color: @durationColor(mission.Duration);">@mission.Duration.ToString().Replace("Epic", "Extended").Replace("Long","Standard")</span><br>
-                @mission.Ship.ToString().Replace("_", " ")<br>
+                @MissionHelpers.GetProperShipName(mission.Ship)<br>
                 <span id="ship-progress-stars-@index-@shipIndex" style="font-size: 1.2rem;">
                     @for (var i = 0; i < MissionHelpers.MaxShipLevels[mission.Ship]; i++) {
                         <span class="ShipCardStar @((i < mission.Stars) ? "GoldenStar" : "GrayStar")">★</span>
