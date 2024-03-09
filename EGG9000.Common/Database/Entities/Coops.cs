@@ -41,6 +41,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool DeletedChannel { get; set; }
         public uint FindChannelErrors { get; set; } = 0;
         public ulong Group { get; set; }
+        public bool AddedFromBackup { get; set; } = false;
 
         public CoopStatusEnum Status { get; set; }
         //public int UnableToFind { get; set; }

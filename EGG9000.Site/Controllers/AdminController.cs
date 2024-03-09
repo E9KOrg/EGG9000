@@ -1124,6 +1124,7 @@ music
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
+            dbGuild.AddOutsideCoops = model.AddOutsideCoops;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1160,6 +1161,7 @@ music
             public bool PublicScoreGrid { get; set; }
             public string CoopNamePrefix { get; set; }
             public bool RemoveFindCoopSpot { get; set; }
+            public bool AddOutsideCoops { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
