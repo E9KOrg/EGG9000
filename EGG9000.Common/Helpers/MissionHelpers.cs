@@ -165,6 +165,7 @@ namespace EGG9000.Common.Helpers {
                     }
                 }
             }
+            if(points > 0 && points < levelMissionRequirements[0]) return points / levelMissionRequirements[0];
             return 0;
         }
 
