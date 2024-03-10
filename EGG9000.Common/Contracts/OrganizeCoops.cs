@@ -44,8 +44,6 @@ namespace EGG9000.Common.Contracts {
 
             FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
           
-
-          
             FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 
             FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
@@ -158,7 +156,7 @@ namespace EGG9000.Common.Contracts {
                 ua.Account.Id != x.Account.Id &&
                 MatchGrade(ua.Account, x.Account, contract) &&
                 MatchGroup(ua.Account, x.Account, contract) &&
-                CheckOnPreviousComplete(ua, contract, new List<UserByAccount>())
+                CheckOnPreviousComplete(ua, contract, [])
             )) return true;
 
             if(contract.HadTwoRewards) {
@@ -169,13 +167,19 @@ namespace EGG9000.Common.Contracts {
                     return true;
                 }
             }
+
+            if(contract.Details.Leggacy && x.Account.RedoLeggacySelection == RedoLeggacyOption.No 
+                && (
+                    x.Account.Backup.Farms.Any(f => f.Completed && f.ContractId == contract.ID) ||
+                    x.Account.Backup.ArchivedFarms.Any(f => f.Completed && f.ContractId == contract.ID)
+                ))
+                return false;
+
             return (!x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed) && !x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed));
         }
 
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool AllowGuilds, int overrideNumber = 0, ulong roleid = 0) {
-            IEnumerable<UserByAccount> matchingAccounts = Accounts.Where(x =>
-                    x.Account.GetGrade() == Grade  || contract.CcOnly 
-                );
+            var matchingAccounts = Accounts.Where(x => x.Account.GetGrade() == Grade || contract.CcOnly );
 
             if(roleid > 0) {
                 matchingAccounts = matchingAccounts.Where(x => x.RoleId == roleid);
