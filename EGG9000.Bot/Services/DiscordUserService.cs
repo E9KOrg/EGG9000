@@ -27,6 +27,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Services {
 
@@ -155,6 +156,7 @@ namespace EGG9000.Common.Services {
             }
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
+                await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, new List<LeaderboardUser>());
                 var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
@@ -162,7 +164,9 @@ namespace EGG9000.Common.Services {
                 var previouslyHere = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id);
                 if(previouslyHere) {
                     dbuser.GuildId = user.Guild.Id;
+                    dbuser.UpdateAccounts();
                     await db.SaveChangesAsync();
+                    await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, new List<LeaderboardUser>());
                     var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                     await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                     return;
