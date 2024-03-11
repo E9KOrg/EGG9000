@@ -145,8 +145,14 @@ namespace EGG9000.Common.Services {
                 return;
             }
 
+            
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser is not null && dbuser.TempDisabled) await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+            if(dbuser is not null && dbuser.TempDisabled) {
+                var welChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
+                var disabledMsg = $"Welcome to the server {user.Mention}! Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.";
+                await welChannel.SendMessageAsync(disabledMsg);
+                await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+            }
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
                 var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
@@ -157,6 +163,8 @@ namespace EGG9000.Common.Services {
                 if(previouslyHere) {
                     dbuser.GuildId = user.Guild.Id;
                     await db.SaveChangesAsync();
+                    var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
+                    await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                     return;
                 }
             }
@@ -164,7 +172,6 @@ namespace EGG9000.Common.Services {
 #if DEV9002
             return;
 #endif
-
             var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
             var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
