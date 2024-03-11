@@ -411,8 +411,13 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client,
             [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contract, 
-            [SlashParam] string coopname,
-            [SlashParam(AutocompleteHandler = typeof(GradeAutoComplete))] uint grade) {
+            [SlashParam] string coopname, [SlashParam(AutocompleteHandler = typeof(GradeAutoComplete))] uint grade
+            [SlashParam(Description = "Is the coop any-grade?",Required = false)] bool anygrade = false) {
+
+            if(grade < 0 || grade > 5) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Specified grade value (`{grade}`) outside of bounds (1-5)."));
+                return;
+            }
 
             var dbContract = db.Contracts.FirstOrDefault(c => c.ID == contract);
             if(contract is null) {
@@ -438,6 +443,7 @@ namespace EGG9000.Bot.Commands {
                     MaxUsers = guildContract.Contract.MaxUsers,
                     Status = CoopStatusEnum.WaitingOnAssigned,
                     League = grade,
+                    AnyLeague = anygrade,
                     CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
                 };
                 db.Coops.Add(coop);
