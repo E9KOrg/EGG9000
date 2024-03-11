@@ -30,6 +30,11 @@
     string emojiDelegage(Match match) {
         return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
     };
+
+    string accountName(EggIncAccount account){
+        return account.Backup?.UserName ?? account.Id.toString();
+    }
+
     var inDB = Model.User.DiscordId > 0;
 
 }
@@ -189,7 +194,7 @@
                 <div>
                     <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
                     @if(Model.User.EggIncAccounts.Count > 1) {
-                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name ( @Model.User.EggIncAccounts.FirstOrDefault(a => a.Id == xref.EggIncId)?.Backup.UserName ?? @xref.EggIncId )</span>
+                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name ( @accountName(Model.User.EggIncAccounts.FirstOrDefault(a => a.Id == xref.EggIncId)) )</span>
                     } else {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name</span>
                     }
