@@ -411,7 +411,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client,
             [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contract, 
-            [SlashParam] string coopname, [SlashParam(AutocompleteHandler = typeof(GradeAutoComplete))] uint grade
+            [SlashParam] string coopname, [SlashParam(AutocompleteHandler = typeof(GradeAutoComplete))] uint grade,
             [SlashParam(Description = "Is the coop any-grade?",Required = false)] bool anygrade = false) {
 
             if(grade < 0 || grade > 5) {
