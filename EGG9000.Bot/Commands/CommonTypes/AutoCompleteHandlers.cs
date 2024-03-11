@@ -17,6 +17,7 @@ using Microsoft.Extensions.Hosting;
 using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+using EGG9000.Common.Database.Entities;
 
 namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
@@ -200,6 +201,16 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     .ToList()
                     .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x));
 
+                await arg.RespondAsync(
+                    result
+                );
+            }
+        }
+
+        public class GradeAutoComplete() : AutoCompleteHandler {
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var result = Enumerable.Range(1, 5).Reverse().ToList()
+                    .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x));
                 await arg.RespondAsync(
                     result
                 );
