@@ -8,13 +8,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
-    {
-        protected override void BuildModel(ModelBuilder modelBuilder)
-        {
+    partial class ApplicationDbContextModelSnapshot : ModelSnapshot {
+        protected override void BuildModel(ModelBuilder modelBuilder) {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "6.0.6")
@@ -22,8 +19,7 @@ namespace EGG9000.Common.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.AutomationLog", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.AutomationLog", b => {
                 b.Property<Guid>("id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -45,8 +41,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AutomationLogs");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b => {
                 b.Property<string>("ID")
                     .HasColumnType("nvarchar(450)");
 
@@ -121,8 +116,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Contracts");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b => {
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -215,8 +209,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Coops");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b => {
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -330,8 +323,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Users");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Demerit", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Demerit", b => {
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -366,8 +358,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Demerit");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Donation", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Donation", b => {
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -391,8 +382,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Donations");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Event", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Event", b => {
                 b.Property<Guid>("id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -426,8 +416,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Events");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.EventCustomization", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.EventCustomization", b => {
                 b.Property<string>("Type")
                     .HasColumnType("nvarchar(450)");
 
@@ -457,8 +446,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("EventCustomizations");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.ExpiringShell", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ExpiringShell", b => {
                 b.Property<Guid>("id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -492,8 +480,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("ExpiringShells");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardCoop", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardCoop", b => {
                 b.Property<Guid>("id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -518,8 +505,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("GlobalLeaderboardCoops");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardUser", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardUser", b => {
                 b.Property<Guid>("id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -565,8 +551,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("GlobalLeaderboardUsers");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Guild", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Guild", b => {
                 b.Property<decimal>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("decimal(20,0)");
@@ -644,8 +629,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Guilds");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.GuildContract", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.GuildContract", b => {
                 b.Property<string>("ContractID")
                     .HasColumnType("nvarchar(450)");
 
@@ -696,8 +680,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("GuildContracts");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Merit", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Merit", b => {
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -723,8 +706,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("Merit");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b => {
                 b.Property<decimal>("UserId")
                     .HasColumnType("decimal(20,0)");
 
@@ -751,8 +733,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("TemporaryRoles");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b => {
                 b.Property<Guid>("ID")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -782,8 +763,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("UpcomingContracts");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b => {
                 b.Property<Guid>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("uniqueidentifier");
@@ -821,8 +801,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("UserCoopStatuses");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopXref", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopXref", b => {
                 b.Property<Guid>("UserId")
                     .HasColumnType("uniqueidentifier");
 
@@ -946,8 +925,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("UserCoopXrefs");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCsHistoryEntry", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCsHistoryEntry", b => {
                 b.Property<string>("CoopIdentifier")
                     .HasColumnType("nvarchar(450)");
 
@@ -968,8 +946,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("UserCsHistoryEntries");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserSnapShot", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserSnapShot", b => {
                 b.Property<Guid>("UserId")
                     .HasColumnType("uniqueidentifier");
 
@@ -996,8 +973,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("UserSnapShots");
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b => {
                 b.Property<string>("Id")
                     .HasColumnType("nvarchar(450)");
 
@@ -1023,8 +999,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetRoles", (string)null);
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b => {
                 b.Property<int>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("int");
@@ -1048,8 +1023,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetRoleClaims", (string)null);
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b => {
                 b.Property<string>("Id")
                     .HasColumnType("nvarchar(450)");
 
@@ -1113,8 +1087,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetUsers", (string)null);
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b => {
                 b.Property<int>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("int");
@@ -1138,8 +1111,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetUserClaims", (string)null);
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b => {
                 b.Property<string>("LoginProvider")
                     .HasColumnType("nvarchar(450)");
 
@@ -1160,8 +1132,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetUserLogins", (string)null);
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b => {
                 b.Property<string>("UserId")
                     .HasColumnType("nvarchar(450)");
 
@@ -1175,8 +1146,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetUserRoles", (string)null);
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b => {
                 b.Property<string>("UserId")
                     .HasColumnType("nvarchar(450)");
 
@@ -1194,8 +1164,7 @@ namespace EGG9000.Common.Migrations
                 b.ToTable("AspNetUserTokens", (string)null);
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
                     .WithMany("Coops")
                     .HasForeignKey("ContractID");
@@ -1203,8 +1172,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("Contract");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Demerit", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Demerit", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.DBUser", "AdminUser")
                     .WithMany("DemeritsGiven")
                     .HasForeignKey("AdminUserId")
@@ -1221,8 +1189,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("User");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Donation", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Donation", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.DBUser", "User")
                     .WithMany()
                     .HasForeignKey("UserId")
@@ -1232,8 +1199,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("User");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.GuildContract", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.GuildContract", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
                     .WithMany("GuildContracts")
                     .HasForeignKey("ContractID")
@@ -1243,8 +1209,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("Contract");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Merit", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Merit", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.DBUser", "AdminUser")
                     .WithMany("MeritsGiven")
                     .HasForeignKey("AdminUserId")
@@ -1261,8 +1226,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("User");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
                     .WithMany()
                     .HasForeignKey("ContractId");
@@ -1270,8 +1234,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("Contract");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.Coop", "Coop")
                     .WithMany()
                     .HasForeignKey("CoopId")
@@ -1287,8 +1250,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("User");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopXref", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopXref", b => {
                 b.HasOne("EGG9000.Common.Database.Entities.Coop", "Coop")
                     .WithMany("UserCoopsXrefs")
                     .HasForeignKey("CoopId")
@@ -1306,8 +1268,7 @@ namespace EGG9000.Common.Migrations
                 b.Navigation("User");
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b => {
                 b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
                     .WithMany()
                     .HasForeignKey("RoleId")
@@ -1315,8 +1276,7 @@ namespace EGG9000.Common.Migrations
                     .IsRequired();
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b => {
                 b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
                     .WithMany()
                     .HasForeignKey("UserId")
@@ -1324,8 +1284,7 @@ namespace EGG9000.Common.Migrations
                     .IsRequired();
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b => {
                 b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
                     .WithMany()
                     .HasForeignKey("UserId")
@@ -1333,8 +1292,7 @@ namespace EGG9000.Common.Migrations
                     .IsRequired();
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b => {
                 b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
                     .WithMany()
                     .HasForeignKey("RoleId")
@@ -1348,8 +1306,7 @@ namespace EGG9000.Common.Migrations
                     .IsRequired();
             });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
-            {
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b => {
                 b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
                     .WithMany()
                     .HasForeignKey("UserId")
@@ -1357,20 +1314,17 @@ namespace EGG9000.Common.Migrations
                     .IsRequired();
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b => {
                 b.Navigation("Coops");
 
                 b.Navigation("GuildContracts");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b => {
                 b.Navigation("UserCoopsXrefs");
             });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b =>
-            {
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b => {
                 b.Navigation("Demerits");
 
                 b.Navigation("DemeritsGiven");
