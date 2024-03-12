@@ -32,7 +32,7 @@
     };
 
     string accountName(EggIncAccount account){
-        return account.Backup?.UserName ?? account.Id.toString();
+        return account.Backup?.UserName ?? account.Id;
     }
 
     var inDB = Model.User.DiscordId > 0;

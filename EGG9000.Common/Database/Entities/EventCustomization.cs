@@ -29,10 +29,10 @@ namespace EGG9000.Common.Database.Entities
             {
                 return JsonConvert.DeserializeObject<EventCustomizationSettings>(_settings ?? "{}");
             }
-
+            set {
+                _settings = JsonConvert.SerializeObject(value);
+            }
         }
-
-
     }
 
     public class EventField
@@ -51,5 +51,13 @@ namespace EGG9000.Common.Database.Entities
         public ulong GuildID { get; set; }
         public decimal MinValue { get; set; }
         public ulong RoleID { get; set; }
+        public string RoleIdString {
+            get {
+                return RoleID.ToString();
+            }
+            set {
+                RoleID = ulong.Parse(value);
+            }
+        }
     }
 }
