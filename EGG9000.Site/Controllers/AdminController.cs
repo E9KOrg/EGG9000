@@ -263,7 +263,8 @@ namespace EGG9000.Site.Controllers {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
                 Guilds = _discord.Guilds.Where(x => x.Id == guildId || guild.OverflowServers.Contains(x.Id)).OrderBy(x => x.Id).Select(x => new GuildDetails {
                     Name = x.Name,
-                    ChannelCount = x.Channels.Where(x => x is not SocketThreadChannel).Count(),
+                    CategoryCount = x.Channels.Where(x => x is SocketCategoryChannel).Count(),
+                    ChannelCount = x.Channels.Where(x => x is not SocketThreadChannel && x is not SocketCategoryChannel).Count(),
                     ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.ToLower().Contains("coops") && !c.Category.Name.ToLower().Contains("finished")),
                     FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.ToLower().Contains("coops") && c.Category.Name.ToLower().Contains("finished")),
                 }).ToList(),
@@ -280,6 +281,7 @@ namespace EGG9000.Site.Controllers {
 
         public class GuildDetails {
             public string Name { get; set; }
+            public int CategoryCount { get; set; }
             public int ChannelCount { get; set; }
             public int ActiveCoops { get; set; }
             public int FinishedCoops { get; set; }
@@ -860,10 +862,7 @@ namespace EGG9000.Site.Controllers {
             //    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
             //}
 
-            Console.WriteLine("Usernames: \n" + string.Join("\n", users.Select(x => (x.Usernames ?? "").ToLower().Split(",")).ToList()));
-
             id = id.ToLower().Trim();
-            Console.WriteLine("Id: " +  id);
             var matchingUsers = users.Where(x => 
                 (x.DiscordUsername ?? "").ToLower().Contains(id) || 
                 (x.Usernames ?? "").ToLower().Split(",").Any(u => u.Contains(id))
