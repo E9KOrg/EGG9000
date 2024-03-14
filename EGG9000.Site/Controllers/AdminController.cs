@@ -264,8 +264,8 @@ namespace EGG9000.Site.Controllers {
                 Guilds = _discord.Guilds.Where(x => x.Id == guildId || guild.OverflowServers.Contains(x.Id)).OrderBy(x => x.Id).Select(x => new GuildDetails {
                     Name = x.Name,
                     ChannelCount = x.Channels.Where(x => x is not SocketThreadChannel).Count(),
-                    ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && !c.Category.Name.Contains("finished")),
-                    FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
+                    ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.ToLower().Contains("coops") && !c.Category.Name.ToLower().Contains("finished")),
+                    FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.ToLower().Contains("coops") && c.Category.Name.ToLower().Contains("finished")),
                 }).ToList(),
                 ContractsToScore = contractsToScore
             });
