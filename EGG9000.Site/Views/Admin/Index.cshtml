@@ -32,6 +32,7 @@
 				<thead>
 					<tr>
 						<th>Server</th>
+						<th>Categories</th>
 						<th>Channels</th>
 						<th>Active Coops</th>
 						<th>🏁 Coops</th>
@@ -45,15 +46,16 @@
 						int available;
 						if (first) {
 							first = false;
-							available = Math.Max(450 - guild.ChannelCount, 0);
+							available = Math.Max(450 - guild.ChannelCount - guild.CategoryCount, 0);
 
 						} else {
-							available = Math.Max(500 - guild.ChannelCount, 0);
+							available = Math.Max(500 - guild.ChannelCount - guild.CategoryCount, 0);
 
 						}
 						availableSum += available;
 						<tr>
 							<td>@guild.Name</td>
+							<td>@guild.CategoryCount</td>
 							<td>@guild.ChannelCount</td>
 							<td>@guild.ActiveCoops</td>
 							<td>@guild.FinishedCoops</td>
@@ -62,7 +64,7 @@
 					}
 				}
 				<tr>
-					<th colspan="4" align="right">Total Channels Available for Co-ops</th>
+					<th colspan="5" align="right">Total Channels Available for Co-ops</th>
 					<td>
 						@availableSum
 					</td>
