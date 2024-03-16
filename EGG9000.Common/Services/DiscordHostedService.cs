@@ -174,15 +174,39 @@ namespace EGG9000.Common.Services {
                 var channelDetails = dbguild.ChannelDetails;
                 var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
                 if(channelDetail == null || channelDetail.Id == 0)
-                    return default(T);
+                    return default;
 
                 return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
             }catch (Exception e) {
                 _logger.LogError(e, "Error getting channel or category");
-                return default(T);
+                return default;
             }
         } 
+    }
 
+    public static class DiscordExtensions {
 
+        public static List<SocketChannel> GetEffectiveChannels(this SocketGuild guild, SocketGuildChannel category = null) {
+            return guild.Channels.Where(c =>
+                (c.GetChannelType() == ChannelType.Category ||
+                c.GetChannelType() == ChannelType.Text ||
+                c.GetChannelType() == ChannelType.Voice ||
+                c.GetChannelType() == ChannelType.Store ||
+                c.GetChannelType() == ChannelType.Forum ||
+                c.GetChannelType() == ChannelType.News ||
+                c.GetChannelType() == ChannelType.Media ||
+                c.GetChannelType() == ChannelType.Stage)
+                && (
+                    category is null || ( 
+                        (c as SocketTextChannel).CategoryId == category?.Id || 
+                        (c as SocketTextChannel).Category == category 
+                    )
+                )
+            ).Select(c => c as SocketChannel).ToList();
+        }
+
+        public static int GetEffectiveChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
+            return guild.GetEffectiveChannels(category).Count;
+        }
     }
 }
