@@ -89,7 +89,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 return await guild.CreateTextChannelAsync(
                     channelName,
                     x => { x.CategoryId = category.Id; },
-                    options: new RequestOptions { CancelToken = cancellationToken, RetryMode = RetryMode.RetryTimeouts }
+                    options: new RequestOptions { CancelToken = cancellationToken }
                 );
             } catch(HttpException dException) {
                 if(dException.DiscordCode == DiscordErrorCode.MaximumGuildChannelsReached) {
