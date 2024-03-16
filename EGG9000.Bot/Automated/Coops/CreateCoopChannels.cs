@@ -112,7 +112,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
                     try {
                         return await CreateTextChannelAsync(overflow.Guild, coop.Name, category.DiscordCategory, cancellationToken);
-                    } catch(Exception) {}
+                    } catch(Exception) { }
                 }
             }
             if(completedCoops is null || completedCoops.Count == 0) {
@@ -157,13 +157,12 @@ namespace EGG9000.Bot.Automated.Coops {
             return null;
         }
 
-
-        private static async Task<List<OverflowServer>> GetOverflowGuildsCounts(SocketGuild guild, ApplicationDbContext db) {
+        private async Task<List<OverflowServer>> GetOverflowGuildsCounts(SocketGuild guild, ApplicationDbContext db) {
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
             if(dbguild == null) { return null; }
             return [
-                new(guild),
-                .. dbguild.OverflowServers.Select(os => new OverflowServer(ServerFunction.Overflow){ Guild = })
+                new(){ Guild = guild },
+                .. dbguild.OverflowServers.Select(os => new OverflowServer(ServerFunction.Overflow){ Guild = _client.Guilds.First(g => g.Id == os)})
             ];
         }
 
