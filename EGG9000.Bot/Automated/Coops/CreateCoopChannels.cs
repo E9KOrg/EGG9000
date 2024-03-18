@@ -26,12 +26,17 @@ using AutoMapper.Internal;
 using MassTransit.Initializers;
 using Discord.Net;
 using MassTransit.Util;
+using Humanizer;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopChannels(IServiceProvider provider) 
             : _UpdaterBase<CreateCoopChannels>(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
 
+        private static readonly int _maxDegreeOfParallelism = 2;
+        private static readonly SemaphoreSlim _semaphore = new(_maxDegreeOfParallelism);
+
         public async override Task Run(object state, CancellationToken cancellationToken) {
+            
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync(cancellationToken);
 
@@ -39,7 +44,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 return;
             }
 
-            foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
+            //Parallelized in the case that one server hangs while waiting on semaphore ownership
+            Parallel.ForEach(coops.GroupBy(x => x.GuildId), async (coopGroups, loopState) => {
+
+                if(cancellationToken.IsCancellationRequested)
+                    return;
+
                 var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
                 var servers = await GetOverflowGuildsCounts(guild, _db);
                 if(servers == null) {
@@ -49,7 +59,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             guild.Name, guild.Id, coopGroups.First().Name,
                             string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync(cancellationToken))
                         );
-                        continue;
+                        return;
                     }
                     guild = _client.Guilds.First(X => X.Id == dbguild.Id);
                     servers = await GetOverflowGuildsCounts(guild, _db);
@@ -57,10 +67,26 @@ namespace EGG9000.Bot.Automated.Coops {
                         coopGroup.GuildId = dbguild.Id;
                     }
                 }
+
+                //Wait for a parallelization slot to open
+                await _semaphore.WaitAsync();
+
                 var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync();
                 _logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
+
+                //Wait on the Server's lock, timeout defined in DiscordHostedService
+                _logger.LogInformation("Waiting on Semaphore lock for guild {guild}", guild.Name);
+                var dtNow = DateTimeOffset.Now;
+                var ownershipAcquired = guild.GetServerSemaphore().WaitOne(DiscordHostedService.GetSemaphoreTimeout());
+                if(ownershipAcquired) {
+                    _logger.LogInformation("Semaphore for guild {guild} unlocked after {timespan}. Continuing.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
+                } else {
+                    _logger.LogInformation("Semaphore for guild {guild} timed out after after {unlockTime} minutes, continuing.", guild.Name, DiscordHostedService.GetSemaphoreTimeout().TotalMinutes);
+                }
+
                 foreach(var coop in coopGroups) {
-                    if(cancellationToken.IsCancellationRequested) return;
+                    if(cancellationToken.IsCancellationRequested)
+                        continue;
 
                     try {
                         var channel = await TryCreateCoopChannel(guild, coop, servers, completedCoops, cancellationToken);
@@ -81,7 +107,15 @@ namespace EGG9000.Bot.Automated.Coops {
                         _logger.LogError(ex, "Error Creating Co-op Channel {coop} in {guild}", coop.Name, guild.Name);
                     }
                 }
-            }
+
+                //Work completed, if we acquired onwership, release it
+                if(ownershipAcquired) {
+                    guild.GetServerSemaphore().Release();
+                }
+
+                //Always release the parallelization semaphore
+                _semaphore.Release();
+            });
         }
 
         private async Task<ITextChannel> CreateTextChannelAsync(SocketGuild guild, string channelName, SocketGuildChannel category, CancellationToken cancellationToken) {
