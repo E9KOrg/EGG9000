@@ -51,7 +51,7 @@ namespace EGG9000.Common.Services {
             _cache = cache;
 
             foreach(var guild in Guilds) {
-                _serverSemaphores.Add(new DiscordSemahpore(guild, new(0, 1)));
+                _serverSemaphores.Add(new DiscordSemahpore(guild, new(1, 1)));
             }
         }
 
