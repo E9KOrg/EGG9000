@@ -195,14 +195,14 @@ namespace EGG9000.Common.Services {
             return _semaphoreTimeoutTime;
         }
     }
-    public class DiscordSemahpore(SocketGuild guild, Semaphore semaphore) {
+    public class DiscordSemahpore(SocketGuild guild, SemaphoreSlim semaphore) {
         public readonly SocketGuild Guild = guild;
-        public readonly Semaphore Semaphore = semaphore;
+        public readonly SemaphoreSlim Semaphore = semaphore;
     }
 
     public static class DiscordExtensions {
 
-        public static Semaphore GetServerSemaphore(this SocketGuild guild) {
+        public static SemaphoreSlim GetServerSemaphore(this SocketGuild guild) {
             return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
         }
 

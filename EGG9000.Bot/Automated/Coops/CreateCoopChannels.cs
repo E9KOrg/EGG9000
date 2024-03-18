@@ -77,7 +77,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 //Wait on the Server's lock, timeout defined in DiscordHostedService
                 _logger.LogInformation("Waiting on Semaphore lock for guild {guild}", guild.Name);
                 var dtNow = DateTimeOffset.Now;
-                var ownershipAcquired = guild.GetServerSemaphore().WaitOne(DiscordHostedService.GetSemaphoreTimeout());
+                var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), cancellationToken);
                 if(ownershipAcquired) {
                     _logger.LogInformation("Semaphore for guild {guild} unlocked after {timespan}. Continuing.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
                 } else {
