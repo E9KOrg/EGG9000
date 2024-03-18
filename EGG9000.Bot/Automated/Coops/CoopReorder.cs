@@ -87,9 +87,9 @@ namespace EGG9000.Bot.Automated.Coops {
             var dtNow = DateTimeOffset.Now;
             var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), cancellationToken);
             if(ownershipAcquired) {
-                _logger.LogInformation("Semaphore for guild {guild} unlocked after {timespan}. Continuing.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
+                _logger.LogInformation("Semaphore for guild {guild} unlocked after {timespan}.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
             } else {
-                _logger.LogInformation("Semaphore for guild {guild} timed out after after {unlockTime} minutes, continuing.", guild.Name, DiscordHostedService.GetSemaphoreTimeout().TotalMinutes);
+                _logger.LogInformation("Semaphore for guild {guild} timed out after after {unlockTime} minutes.", guild.Name, DiscordHostedService.GetSemaphoreTimeout().TotalMinutes);
             }
 
             _logger.LogInformation("Sorting Co-ops for {guildName}", guild.Name);
