@@ -31,6 +31,8 @@ namespace EGG9000.Common.Services {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
+        private static readonly List<DiscordSemahpore> _serverSemaphores = [];
+        private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(3);
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
             _provider = provider;
@@ -47,6 +49,10 @@ namespace EGG9000.Common.Services {
 
             _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             _cache = cache;
+
+            foreach(var guild in Guilds) {
+                _serverSemaphores.Add(new DiscordSemahpore(guild, new(0, 1)));
+            }
         }
 
         public class RestartDiscordExecption(string customMessage, Severity severity) : Exception {
@@ -181,10 +187,24 @@ namespace EGG9000.Common.Services {
                 _logger.LogError(e, "Error getting channel or category");
                 return default;
             }
-        } 
+        }
+        public static List<DiscordSemahpore> GetSemaphores() {
+            return _serverSemaphores;
+        }
+        public static TimeSpan GetSemaphoreTimeout() {
+            return _semaphoreTimeoutTime;
+        }
+    }
+    public class DiscordSemahpore(SocketGuild guild, Semaphore semaphore) {
+        public readonly SocketGuild Guild = guild;
+        public readonly Semaphore Semaphore = semaphore;
     }
 
     public static class DiscordExtensions {
+
+        public static Semaphore GetServerSemaphore(this SocketGuild guild) {
+            return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
+        }
 
         public static List<SocketChannel> GetEffectiveChannels(this SocketGuild guild, SocketGuildChannel category = null) {
             return guild.Channels.Where(c =>
