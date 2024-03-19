@@ -218,8 +218,8 @@ namespace EGG9000.Common.Services {
                 c.GetChannelType() == ChannelType.Stage)
                 && (
                     category is null || ( 
-                        (c as SocketTextChannel).CategoryId == category?.Id || 
-                        (c as SocketTextChannel).Category == category 
+                        (c as SocketTextChannel)?.CategoryId == category?.Id || 
+                        (c as SocketTextChannel)?.Category == category 
                     )
                 )
             ).Select(c => c as IChannel).ToList();
