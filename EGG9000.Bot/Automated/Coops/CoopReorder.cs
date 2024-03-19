@@ -27,7 +27,7 @@ namespace EGG9000.Bot.Automated.Coops {
          * this should run every half hour except for:
          * 10:00, 18:00, 02:00
         */
-        CronExpression.Parse("0,30 0-1,3-9,11-17,19-23"), provider) {
+        CronExpression.Parse("0,30 0-1,3-9,11-17,19-23 * * *"), provider) {
 
         private static readonly int _maxDegreeOfParallelism = 2;
         private static readonly SemaphoreSlim _semaphore = new(_maxDegreeOfParallelism);
