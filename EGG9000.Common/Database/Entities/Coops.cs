@@ -30,7 +30,7 @@ namespace EGG9000.Common.Database.Entities {
         public UInt32 League { get; set; }
         public bool AnyLeague { get; set; }
 
-        public ulong DiscordChannelId { get; set; }
+        /*public ulong DiscordChannelId { get; set; }*/
         public ulong GuildId { get; set; }
         public ulong OverflowGuildId { get; set; }
         public string UpdateMessagesId { get; set; }
@@ -41,6 +41,10 @@ namespace EGG9000.Common.Database.Entities {
         public bool DeletedChannel { get; set; }
         public uint FindChannelErrors { get; set; } = 0;
         public ulong Group { get; set; }
+
+        public ulong ThreadID { get; set; }
+        public ulong ThreadParentChannel { get; set; }
+        public bool ThreadArchived { get; set; } = false;
 
         public CoopStatusEnum Status { get; set; }
         //public int UnableToFind { get; set; }

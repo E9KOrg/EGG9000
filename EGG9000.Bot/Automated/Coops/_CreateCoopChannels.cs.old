@@ -1,4 +1,4 @@
-﻿using Discord;
+﻿/*using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Common.Database;
@@ -207,7 +207,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public int ChannelsLeft { 
                 get {
                     if(Guild == null) return 0;
-                    return (ServerFunction == ServerFunction.Primary ? 450 : 500) - Guild.GetEffectiveChannelCount();
+                    return (ServerFunction == ServerFunction.Primary ? 450 : 500) - Guild.GetInUseChannelCount();
                 }
             }
             private List<CoopCategories> CoopCategories { get; set; }
@@ -225,9 +225,10 @@ namespace EGG9000.Bot.Automated.Coops {
             public int CurrentCount { 
                 get {
                     if(Guild is null) return 0;
-                    return Guild.GetEffectiveChannelCount(DiscordCategory);
+                    return Guild.GetInUseChannelCount(DiscordCategory);
                 } 
             }
         }
     }
 }
+*/

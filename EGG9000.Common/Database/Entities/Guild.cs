@@ -48,7 +48,7 @@ namespace EGG9000.Common.Database.Entities {
         //public ulong? FailedCategory { get; set; }
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
-        
+
         public string _coopSettingsJson { get; set; }
         [NotMapped]
         private List<ServerCoopSetting> _coopSettings { get; set; }
@@ -121,6 +121,9 @@ namespace EGG9000.Common.Database.Entities {
         public string GroupRoles { get; set; }
         public bool PublicScoreGrid { get; set; }
         public bool RemoveFindCoopSpot { get; set; }
+
+        //Contract -> Grade -> Server -> Header channel
+        public Dictionary<Contract, Dictionary<uint, Dictionary<ulong, ulong>>> CoopThreadHeaders { get; set; }
     }
 
     [NotMapped]

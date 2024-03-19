@@ -206,7 +206,7 @@ namespace EGG9000.Common.Services {
             return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
         }
 
-        public static List<SocketChannel> GetEffectiveChannels(this SocketGuild guild, SocketGuildChannel category = null) {
+        public static List<SocketChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
             return guild.Channels.Where(c =>
                 (c.GetChannelType() == ChannelType.Category ||
                 c.GetChannelType() == ChannelType.Text ||
@@ -225,8 +225,19 @@ namespace EGG9000.Common.Services {
             ).Select(c => c as SocketChannel).ToList();
         }
 
-        public static int GetEffectiveChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
-            return guild.GetEffectiveChannels(category).Count;
+        public static int GetInUseChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
+            return guild.GetInUseChannels(category).Count;
+        }
+
+        public static List<SocketThreadChannel> GetInUseThreads(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
+            return guild.ThreadChannels.Where(t =>
+                !t.IsArchived &&
+                (t.ParentChannel == parentChannel || parentChannel == null)
+            ).ToList();
+        }
+
+        public static int GetInUseThreadCount(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
+            return guild.GetInUseThreads(parentChannel).Count;
         }
     }
 }
