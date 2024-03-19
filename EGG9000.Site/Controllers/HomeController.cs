@@ -94,13 +94,13 @@ namespace EGG9000.Site.Controllers {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
             _db.RemoveRange(demerits);
             await _db.SaveChangesAsync();
-            var coops = await _db.Coops.Where(x => !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.Where(c => !c.ThreadArchived).ToListAsync();
 
             var messagesDeleted = 0;
             foreach(var coop in coops) {
-                var channel = (SocketTextChannel)await _discord.GetChannelAsync(coop.DiscordChannelId);
+                var channel = (SocketThreadChannel)await _discord.GetChannelAsync(coop.ThreadID);
 
-                if(channel is not null) {
+                if(channel is not null && !channel.IsArchived) {
                     var messages = await channel.GetMessagesAsync().FlattenAsync();
 
                     var messagesToDeleted = messages.Where(x => x.CreatedAt > DateTimeOffset.Now.AddHours(-10) && x.Author.IsBot && x.Content.Contains("Demerit added to"));
@@ -210,13 +210,13 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> CleanCoopPins() {
-            var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived).ToListAsync();
 
-            var retryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync(new[]{
-                    TimeSpan.FromSeconds(1),
-                    TimeSpan.FromSeconds(2),
-                    TimeSpan.FromSeconds(3)
-                });
+            var retryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync([
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(2),
+                TimeSpan.FromSeconds(3)
+            ]);
 
             var rnd = new Random();
             foreach(var guildGroup in coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId)) {
@@ -226,7 +226,7 @@ namespace EGG9000.Site.Controllers {
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
                     Console.Write(coop.Name);
                     var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
-                    var channel = guild.GetTextChannel(coop.DiscordChannelId);
+                    var channel = guild.GetThreadChannel(coop.ThreadID);
                     if(channel == null) {
                         Console.WriteLine($" Unable to find channel");
                         continue;

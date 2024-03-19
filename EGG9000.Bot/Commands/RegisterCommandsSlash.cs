@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
             await command.DeferAsync();
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync( x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
@@ -196,7 +196,7 @@ namespace EGG9000.Bot.Commands {
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
 
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
@@ -729,9 +729,9 @@ namespace EGG9000.Bot.Commands {
             if(admin) {
                 var lastBuilder = builderList.Last();
                 var infoSeparatorAdded = false;
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived).ToListAsync();
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     lastBuilder.AddField("――――――――――――――――――", "User Information");
                     infoSeparatorAdded = true;

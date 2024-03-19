@@ -1,10 +1,11 @@
 ﻿using Bugsnag;
 using Discord;
 using Discord.WebSocket;
-
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -206,7 +207,7 @@ namespace EGG9000.Common.Services {
             return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
         }
 
-        public static List<SocketChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
+        public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
             return guild.Channels.Where(c =>
                 (c.GetChannelType() == ChannelType.Category ||
                 c.GetChannelType() == ChannelType.Text ||
@@ -217,12 +218,12 @@ namespace EGG9000.Common.Services {
                 c.GetChannelType() == ChannelType.Media ||
                 c.GetChannelType() == ChannelType.Stage)
                 && (
-                    category is null || ( 
-                        (c as SocketTextChannel).CategoryId == category?.Id || 
-                        (c as SocketTextChannel).Category == category 
+                    category is null || (
+                        (c as SocketTextChannel)?.CategoryId == category?.Id ||
+                        (c as SocketTextChannel)?.Category == category
                     )
                 )
-            ).Select(c => c as SocketChannel).ToList();
+            ).Select(c => c as IChannel).ToList();
         }
 
         public static int GetInUseChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
@@ -238,6 +239,20 @@ namespace EGG9000.Common.Services {
 
         public static int GetInUseThreadCount(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
             return guild.GetInUseThreads(parentChannel).Count;
+        }
+
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, SocketGuildChannel category, Coop coop) {
+            if(category is null || category.Id  == 0) return null;
+
+            var name = $"{coop.ContractID}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
+            var channel = await guild.CreateTextChannelAsync(
+                name,
+                p => {p.CategoryId = category.Id;}
+            );
+            if(channel is null) return null;
+
+            await channel.SendMessageAsync(text: "", embed: EmbedHelpers.EmbedSuccess("Temp text here - eventually this will be the contract description for the grade in question."));
+            return guild.GetChannel(channel.Id);
         }
     }
 }

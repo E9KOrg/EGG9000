@@ -18,9 +18,16 @@ using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Humanizer;
+using Cronos;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CoopReorder(IServiceProvider provider) : _UpdaterBase<CoopReorder>(TimeSpan.FromMinutes(30), TimeSpan.Zero, provider) {
+    public class CoopReorder(IServiceProvider provider) : _UpdaterBase<CoopReorder>(
+        /* 
+         * To prevent collision of this job with the higher priority CreateCoopChannels Job, 
+         * this should run every half hour except for:
+         * 10:00, 18:00, 02:00
+        */
+        CronExpression.Parse("0,30 0-1,3-9,11-17,19-23 * * *"), provider) {
 
         private static readonly int _maxDegreeOfParallelism = 2;
         private static readonly SemaphoreSlim _semaphore = new(_maxDegreeOfParallelism);

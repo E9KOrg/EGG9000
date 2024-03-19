@@ -27,6 +27,7 @@ using MassTransit.Initializers;
 using Discord.Net;
 using MassTransit.Util;
 using Humanizer;
+using EGG9000.Common.Contracts;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider) 
@@ -38,7 +39,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && !x.DeletedChannel).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
 
             if(coops is null || coops.Count == 0) {
                 return;
@@ -66,7 +67,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-				var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.DeletedChannel && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync();
+				var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync();
 				_logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
 
                 foreach(var coop in coopGroups) {
@@ -74,8 +75,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         continue;
 
                     try {
-                        var headerChannels = dbguild.CoopThreadHeaders[coop.Contract][coop.League];
-						var (thread, parent) = await TryCreateCoopThread(guild, headerChannels, coop, servers, completedCoops, cancellationToken);
+						var (thread, parent) = await TryCreateCoopThread(guild, coop, servers, completedCoops, cancellationToken);
                         if(thread != null) {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Automated.Coops {
 			}
         }
 
-		private static async Task<IThreadChannel> CreateThreadChannelAsync(SocketGuild guild, string threadName, SocketGuildChannel parentChannel, CancellationToken cancellationToken) {
+		private static async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
                 return await (parentChannel as SocketTextChannel).CreateThreadAsync(
                     threadName,
@@ -112,14 +112,20 @@ namespace EGG9000.Bot.Automated.Coops {
             return null;
         }
 
-        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(SocketGuild guild, Dictionary<ulong, ulong> headerChannels, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops, CancellationToken cancellationToken) {
+        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops, CancellationToken cancellationToken) {
             SocketGuildChannel headerChannel = null;
             foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
-                if (!headerChannels.TryGetValue(server.Guild.Id, out var headerChannelId)) continue;
-                headerChannel = guild.GetChannel(headerChannelId);
+                headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.ContractID}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
+                if(headerChannel is null) {
+                    var categories = await server.GetCoopCategories(_client);
+                    foreach(var category in categories) {
+                        if(headerChannel != null || category.CurrentCount >= 50) continue;
+                        headerChannel = await guild.CreateCoopThreadHeader(category.DiscordCategory, coop);
+                    }
+                }
                 if (headerChannel == null) continue;
                 try {
-                    return (await CreateThreadChannelAsync(server.Guild, coop.Name, headerChannel, cancellationToken), headerChannel);
+                    return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
                 }
                 catch (Exception) { }
 			}
@@ -141,7 +147,7 @@ namespace EGG9000.Bot.Automated.Coops {
 				coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => !t.IsArchived && t.Id == completedCoop.ThreadID);
                 if(coopThread == null){
 					var server = servers.Where(x => x.Guild.Id == completedCoop.GuildId).FirstOrDefault();
-					return (await CreateThreadChannelAsync(server.Guild, coop.Name, headerChannel, cancellationToken), headerChannel);
+					return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
                 } else {
                     _logger.LogInformation("Unable to archive co-op thread for {coop} - was not able to free up space, re-iterating", coop.Name);
                 }

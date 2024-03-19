@@ -121,9 +121,6 @@ namespace EGG9000.Common.Database.Entities {
         public string GroupRoles { get; set; }
         public bool PublicScoreGrid { get; set; }
         public bool RemoveFindCoopSpot { get; set; }
-
-        //Contract -> Grade -> Server -> Header channel
-        public Dictionary<Contract, Dictionary<uint, Dictionary<ulong, ulong>>> CoopThreadHeaders { get; set; }
     }
 
     [NotMapped]
@@ -155,7 +152,7 @@ namespace EGG9000.Common.Database.Entities {
     [NotMapped]
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
-        public UInt64 Id { get; set; }
+        public ulong Id { get; set; }
         public bool ThreadAndChannel { get; set; } = false;
     }
 
