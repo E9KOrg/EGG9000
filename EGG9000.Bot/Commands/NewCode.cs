@@ -28,14 +28,32 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Delete co-op channel from discord and database ", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+        public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db) {
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this posted in a co-op channel?"));
             } else {
                 db.Remove(coop);
                 await db.SaveChangesAsync();
-                await ((SocketTextChannel)command.Channel).DeleteAsync();
+                await ((SocketThreadChannel)command.Channel).ModifyAsync(c => {
+                    c.Archived = true;
+                    c.Locked = true;
+                });
+            }
+        }
+
+        [SlashCommand(Description = "Delete thread for debugging", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task DeleteThread(FauxCommand command, ApplicationDbContext db) {
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            if(coop == null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this posted in a co-op channel?"));
+            } else {
+                coop.ThreadID = 0;
+                coop.ThreadArchived = false;
+                coop.Finished = false;
+                coop.Status = CoopStatusEnum.AllAssignedJoined;
+                await db.SaveChangesAsync();
+                await ((SocketThreadChannel)command.Channel).DeleteAsync();
             }
         }
     }

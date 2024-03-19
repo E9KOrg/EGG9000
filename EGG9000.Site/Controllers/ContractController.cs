@@ -314,7 +314,7 @@ namespace EGG9000.Site.Controllers {
 
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> MoveToCoop([FromQuery] Guid CoopId, [FromQuery] Guid UserId, [FromQuery] String EggIncId) {
+        public async Task<IActionResult> MoveToCoop([FromQuery] Guid CoopId, [FromQuery] Guid UserId, [FromQuery] string EggIncId) {
             var targetCoop = await _db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.Id == CoopId);
             var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == UserId);
 
@@ -327,7 +327,7 @@ namespace EGG9000.Site.Controllers {
             var discordUser = guild.Users.First(x => x.Id == dbuser.DiscordId);
             var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
 
-            var channel = (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
+            var channel = (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
             var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, discordUser, dbuser, channel, null);
 
