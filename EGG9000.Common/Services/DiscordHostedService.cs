@@ -206,7 +206,7 @@ namespace EGG9000.Common.Services {
             return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
         }
 
-        public static List<SocketChannel> GetEffectiveChannels(this SocketGuild guild, SocketGuildChannel category = null) {
+        public static List<IChannel> GetEffectiveChannels(this SocketGuild guild, SocketGuildChannel category = null) {
             return guild.Channels.Where(c =>
                 (c.GetChannelType() == ChannelType.Category ||
                 c.GetChannelType() == ChannelType.Text ||
@@ -222,7 +222,7 @@ namespace EGG9000.Common.Services {
                         (c as SocketTextChannel).Category == category 
                     )
                 )
-            ).Select(c => c as SocketChannel).ToList();
+            ).Select(c => c as IChannel).ToList();
         }
 
         public static int GetEffectiveChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
