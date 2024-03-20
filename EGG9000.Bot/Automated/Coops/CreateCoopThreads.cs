@@ -33,13 +33,10 @@ namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider) 
             : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
 
-        private static readonly int _maxDegreeOfParallelism = 2;
-        private static readonly SemaphoreSlim _semaphore = new(_maxDegreeOfParallelism);
-
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Include(c => c.UserCoopsXrefs).ThenInclude(r => r.User).Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
 
             if(coops is null || coops.Count == 0) {
                 return;
@@ -50,7 +47,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     continue;
 
 				var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
-				var servers = await GetOverflowGuildsCounts(guild, _db);
+                var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => gc.GuildID == guild.Id).ToListAsync();
+                var servers = await GetOverflowGuildsCounts(guild, _db);
 				var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroups.Key.ToString())).FirstOrDefaultAsync(cancellationToken);
 				if (servers == null) {
                     if(dbguild == null) {
@@ -67,7 +65,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-				var completedCoops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync();
+				var completedCoops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync();
 				_logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
 
                 foreach(var coop in coopGroups) {
@@ -75,17 +73,11 @@ namespace EGG9000.Bot.Automated.Coops {
                         continue;
 
                     try {
-						var (thread, parent) = await TryCreateCoopThread(guild, coop, servers, completedCoops, cancellationToken);
+						var (thread, parent) = await TryCreateCoopThread(guildContracts.First(gc => string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase)), guild, coop, servers, completedCoops, cancellationToken);
                         if(thread != null) {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
                             coop.OverflowGuildId = parent.Guild.Id;
-                            _logger.LogInformation("coop.UserCoopsXrefs.Count: {count}", coop.UserCoopsXrefs.Count);
-                            foreach(var user in coop.UserCoopsXrefs) {
-                                try {
-                                    await thread.AddUserAsync(guild.GetUser(user.User.DiscordId));
-                                } catch(Exception) { }
-                            }
                             _logger.LogInformation("Thread created for {coopName}", coop.Name);
                             try {
                                 await _db.SaveChangesAsync(cancellationToken);
@@ -118,7 +110,8 @@ namespace EGG9000.Bot.Automated.Coops {
             return null;
         }
 
-        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops, CancellationToken cancellationToken) {
+        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops, CancellationToken cancellationToken) {
+            var contractEmbed = ContractUpdater.GetContractEmbed(guildContract, guild,(Ei.Contract.Types.PlayerGrade)coop.League);
             SocketGuildChannel headerChannel = null;
             foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
                 headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.ContractID}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
@@ -126,7 +119,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var categories = await server.GetCoopCategories(_client);
                     foreach(var category in categories) {
                         if(headerChannel != null || category.CurrentCount >= 50) continue;
-                        headerChannel = await guild.CreateCoopThreadHeader(category.DiscordCategory, coop);
+                        headerChannel = await guild.CreateCoopThreadHeader(contractEmbed, category.DiscordCategory, coop);
                     }
                 }
                 if (headerChannel == null) continue;
