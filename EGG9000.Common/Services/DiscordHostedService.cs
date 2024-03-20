@@ -16,7 +16,9 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Joins;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -241,7 +243,7 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, SocketGuildChannel category, Coop coop) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
             if(category is null || category.Id  == 0) return null;
 
             var name = $"{coop.ContractID}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
@@ -251,8 +253,22 @@ namespace EGG9000.Common.Services {
             );
             if(channel is null) return null;
 
-            await channel.SendMessageAsync(text: "", embed: EmbedHelpers.EmbedSuccess("Temp text here - eventually this will be the contract description for the grade in question."));
+            await channel.SendMessageAsync(text: "", embed: contractEmbed);
             return guild.GetChannel(channel.Id);
+        }
+
+        public static async Task DeleteCoopThreadHeaders(this Guild guild, DiscordSocketClient client, Contract contract) {
+            List<SocketGuild> guilds = [
+                client.GetGuild(guild.DiscordSeverId),
+                .. guild.OverflowServers.Select(client.GetGuild).ToList()
+            ];
+
+            foreach(var sg in guilds) {
+                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.ID.ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+                foreach(var channel in channels) {
+                    await channel.DeleteAsync();
+                }
+            }
         }
     }
 }

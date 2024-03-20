@@ -659,6 +659,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         coop.CoopCompleted = DateTimeOffset.UtcNow;
                         coop.Status = CoopStatusEnum.Completed;
                         finalChannelUpdate = true;
+                        coop.ThreadArchived = true;
 
                         await _db.SaveChangesAsync();
                         await coopThread.SendMessageAsync($"Coop {coop.Name} is finished!");
@@ -676,9 +677,10 @@ namespace EGG9000.Bot.Automated.Coops {
                             }
                         }*/
 
-                        //Todo: Archive the thread
-
                         await HandleUnjoins(usersNotJoined, guild, users, dbguild, coop, _db, coopThread);
+
+                        //Lock the thread so no more messages can be sent, start the archive timer
+                        await coopThread.ModifyAsync(t => t.Locked = true);
                     }
 
                     if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
@@ -997,6 +999,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     coop.Status = CoopStatusEnum.Failed;
                     finalChannelUpdate = true;
+                    coop.ThreadArchived = true;
                     await _db.SaveChangesAsync();
 
                     /*try {
@@ -1010,10 +1013,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     }*/
 
-                    //Todo: Archive the thread
-
                     await HandleUnjoins(usersNotJoined, guild, users, dbguild, coop, _db, coopThread);
 
+                    //Lock the thread so no more messages can be sent, start the archive timer
+                    await coopThread.ModifyAsync(t => t.Locked = true);
                 }
 
                 timings.Set(6);

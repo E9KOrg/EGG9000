@@ -299,7 +299,8 @@ namespace EGG9000.Bot.Commands {
                 var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
                 var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
                 var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);
-                if(coop.ThreadID == 0 || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsArchived ?? true)) continue;
+                if(coop.ThreadID == 0 || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsLocked ?? true || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsArchived ?? true)))
+                    continue;
                 if(details.HasSpots) {
                     newCoop = coop;
                     break;
@@ -660,10 +661,29 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync(content: "", embed: EmbedError("Unable to find contract, use only in contract channels."));
                 return;
             }
-            guildContract.DeletedChannel = true;
-            await db.SaveChangesAsync();
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
+            await dbGuild.DeleteCoopThreadHeaders(_client, guildContract.Contract);
+
+            //guildContract.DeletedChannel = true;
+            //await db.SaveChangesAsync();
             var channel = (SocketTextChannel)command.Channel;
             await channel.DeleteAsync();
+        }
+
+        [SlashCommand(Description = "Fake a contract being nuked, to delete Thread Headers", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task FakeContractDelete(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contractid) {
+            var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
+            var guildContract = await db.GuildContracts.FirstAsync(gc => gc.GuildID == command.GuildId && gc.Contract == contract);
+
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId);
+
+            if(dbGuild is null) {
+                await command.RespondAsync("Guild is null, get fucked");
+                return;
+            }
+
+            await dbGuild.DeleteCoopThreadHeaders(_client, contract);
+            await command.RespondAsync($"'Deleted' contract {contract.ID}");
         }
 
         [SlashCommand(Description = "Create a co-op with the selected contract for you")]
