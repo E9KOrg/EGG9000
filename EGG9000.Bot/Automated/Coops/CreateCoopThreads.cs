@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.AsQueryable().Include(c => c.UserCoopsXrefs).ThenInclude(r => r.User).Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
 
             if(coops is null || coops.Count == 0) {
                 return;
@@ -80,6 +80,12 @@ namespace EGG9000.Bot.Automated.Coops {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
                             coop.OverflowGuildId = parent.Guild.Id;
+                            _logger.LogInformation("coop.UserCoopsXrefs.Count: {count}", coop.UserCoopsXrefs.Count);
+                            foreach(var user in coop.UserCoopsXrefs) {
+                                try {
+                                    await thread.AddUserAsync(guild.GetUser(user.User.DiscordId));
+                                } catch(Exception) { }
+                            }
                             _logger.LogInformation("Thread created for {coopName}", coop.Name);
                             try {
                                 await _db.SaveChangesAsync(cancellationToken);
