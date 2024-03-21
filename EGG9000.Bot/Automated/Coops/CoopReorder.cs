@@ -1,4 +1,4 @@
-﻿/*using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
@@ -50,7 +50,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     var categories = await _client.GetAllCoopCategories(guild);
 
-                    var coops = await _db.Coops.Include(x => x.Contract).Where(x => !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && (x.OverflowGuildId == 0 || x.OverflowGuildId == guild.Id)).ToListAsync();
+                    var coops = await _db.Coops.Include(x => x.Contract).Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 && !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && (x.OverflowGuildId == 0 || x.OverflowGuildId == guild.Id)).ToListAsync();
 
                     await SortCoops(coops, categories, guild, cancellationToken);
 
@@ -205,4 +205,3 @@ namespace EGG9000.Bot.Automated.Coops {
         }
     }
 }
-*/
