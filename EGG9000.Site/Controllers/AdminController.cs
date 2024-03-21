@@ -23,7 +23,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Migrations;
-
+using EGG9000.Common.Services;
 using Humanizer;
 
 using Microsoft.AspNetCore.Authentication;
@@ -263,7 +263,7 @@ namespace EGG9000.Site.Controllers {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
                 Guilds = _discord.Guilds.Where(x => x.Id == guildId || guild.OverflowServers.Contains(x.Id)).OrderBy(x => x.Id).Select(x => new GuildDetails {
                     Name = x.Name,
-                    ChannelCount = x.Channels.Where(x => x is not SocketThreadChannel).Count(),
+                    ThreadCount = x.GetInUseThreadCount(),
                     ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && !c.Category.Name.Contains("finished")),
                     FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
                 }).ToList(),
@@ -280,7 +280,7 @@ namespace EGG9000.Site.Controllers {
 
         public class GuildDetails {
             public string Name { get; set; }
-            public int ChannelCount { get; set; }
+            public int ThreadCount { get; set; }
             public int ActiveCoops { get; set; }
             public int FinishedCoops { get; set; }
         }
