@@ -92,7 +92,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
             services.AddSingleton<APILink>();
-            services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+            services.AddHostedService(provider => provider.GetService<APILink>());
 
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<LeaderboardUpdater>();
@@ -101,15 +101,19 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
             services.AddHostedService<StaffCoopsMessage>();
             services.AddHostedService<EventUpdater>();
-            //services.AddHostedService<CoopReorder>();
-            //services.AddHostedService<CoopDeleteChannel>();
+            services.AddHostedService<CoopReorder>();
+            services.AddHostedService<CoopDeleteChannel>();
 
             services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
             services.AddSingleton<CoopStatusUpdater>();
-            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.AddHostedService(provider => provider.GetService<CoopStatusUpdater>());
+
+            services.Configure<UpdaterOptions<CoopStatusUpdaterThreads>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
+            services.AddSingleton<CoopStatusUpdaterThreads>();
+            services.AddHostedService(provider => provider.GetService<CoopStatusUpdaterThreads>());
 
             services.AddSingleton<ContractUpdater>();
-            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            services.AddHostedService(provider => provider.GetService<ContractUpdater>());
 
             services.AddHostedService<UserCxpUpdater>();
             services.AddHostedService<NewContracts>();
@@ -123,7 +127,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
 
             services.AddSingleton<JobService>();
-            services.AddHostedService<JobService>(provider => provider.GetService<JobService>());
+            services.AddHostedService(provider => provider.GetService<JobService>());
 
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();
