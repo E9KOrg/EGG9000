@@ -618,7 +618,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
                 //var hasDuplicate = status.Contributors.Count > coop.Contract.MaxUsers;
-                if(!coop.FinishedOrFailed()) {
+                if(!coop.FinalizedFinishedOrFailed()) {
                     await CheckHighestEBJoined(coop, usersWithStatus, coopDetails, coopThread, _db, usersNotJoined);
 
                     if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
@@ -722,9 +722,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     var pingsPerCycle = 1500 / 22;
                     IUserMessage editPingsInto = null;
 
-                    if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage editPingsIntoTest) {
-                        editPingsInto = editPingsIntoTest;
-                        currentContent = editPingsIntoTest.Content;
+                    if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage existingBotMessage) {
+                        editPingsInto = existingBotMessage;
+                        currentContent = existingBotMessage.Content;
                         pingsPerCycle = (1500 - currentContent.Length) / 22;
                     } else {
                         editPingsInto = await coopThread.SendMessageAsync("[Ping into]");
@@ -1003,17 +1003,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     await HandleFinished(db, coopDetails.CoopParticipants, coopThread);
                 }
 
-
-
-
                 timings.Set(6);
 
-
-
-
                 coop.LastStatusUpdate = status;
-
-
                 if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
                     if(missingCount > 0) {
                         if(missingCount <= 20) {
@@ -1143,8 +1135,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     } else {
                         embedBuilder.WithFooter($"Updates Every {updates} Minute{(updates > 1 ? "s" : "")} - Last Updated");
                     }
-
-
 
                     var ends = DiscordHelpers.TimeStamper(TimeSpan.FromSeconds(status.SecondsRemaining));
                     if(status.SecondsRemaining <= 0) {
