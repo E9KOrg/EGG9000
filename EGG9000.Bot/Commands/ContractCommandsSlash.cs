@@ -670,22 +670,6 @@ namespace EGG9000.Bot.Commands {
             await channel.DeleteAsync();
         }
 
-        [SlashCommand(Description = "Fake a contract being nuked, to delete Thread Headers", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FakeContractDelete(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contractid) {
-            var contract = await db.Contracts.FirstAsync(x => x.ID == contractid);
-            var guildContract = await db.GuildContracts.FirstAsync(gc => gc.GuildID == command.GuildId && gc.Contract == contract);
-
-            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId);
-
-            if(dbGuild is null) {
-                await command.RespondAsync("Guild is null, get fucked");
-                return;
-            }
-
-            await dbGuild.DeleteCoopThreadHeaders(_client, contract);
-            await command.RespondAsync($"'Deleted' contract {contract.ID}");
-        }
-
         [SlashCommand(Description = "Create a co-op with the selected contract for you")]
         public static async Task CreateCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [SlashParam(AutocompleteHandler = typeof(CreateCoopContractAutoComplete))] string contractid) {
             await command.DeferAsync();

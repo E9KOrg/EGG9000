@@ -28,6 +28,7 @@ using Discord.Net;
 using MassTransit.Util;
 using Humanizer;
 using EGG9000.Common.Contracts;
+using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider) 
@@ -36,7 +37,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
 
             if(coops is null || coops.Count == 0) {
                 return;
@@ -114,12 +115,26 @@ namespace EGG9000.Bot.Automated.Coops {
             var contractEmbed = ContractUpdater.GetContractEmbed(guildContract, guild,(Ei.Contract.Types.PlayerGrade)coop.League);
             SocketGuildChannel headerChannel = null;
             foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
-                headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.ContractID}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
+                headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
                 if(headerChannel is null) {
                     var categories = await server.GetCoopCategories(_client);
                     foreach(var category in categories) {
                         if(headerChannel != null || category.CurrentCount >= 50) continue;
-                        headerChannel = await guild.CreateCoopThreadHeader(contractEmbed, category.DiscordCategory, coop);
+
+                        var gradeRoleEnum = coop.League switch {
+                            5 => GuildChannelType.GradeAAA,
+                            4 => GuildChannelType.GradeAA,
+                            3 => GuildChannelType.GradeA,
+                            2 => GuildChannelType.GradeB,
+                            1 => GuildChannelType.GradeC,
+                            _ => GuildChannelType.General,
+                        };
+                        SocketRole gradeRole = null;
+                        if(gradeRoleEnum != GuildChannelType.General) {
+                            gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
+                        }
+
+                        headerChannel = await guild.CreateCoopThreadHeader(gradeRole, contractEmbed, category.DiscordCategory, coop);
                     }
                 }
                 if (headerChannel == null) continue;
