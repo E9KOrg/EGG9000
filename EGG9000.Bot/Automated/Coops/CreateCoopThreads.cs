@@ -151,7 +151,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var completedCoop = completedCoops.First();
             completedCoops.Remove(completedCoop);
             var completedCoopParentChannel = (_client.GetChannel(completedCoop.ThreadParentChannel) as SocketTextChannel);
-			var coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => !t.IsArchived && t.Id == completedCoop.ThreadID);
+			var coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => t.IsLocked && !t.IsArchived && t.Id == completedCoop.ThreadID);
             if(coopThread != null) {
                 try {
                     await coopThread.ModifyAsync(a => a.Archived = true);

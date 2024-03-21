@@ -576,21 +576,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 var usersWithoutXref = coopDetails.CoopParticipants.Where(x => x.DBUser is not null && x.Xref is null);
                 List<ulong> usersNeedingChannelPermissions = [];
                 foreach(var user in usersWithoutXref) {
-                    var channeluser = coopDiscordUsers.FirstOrDefault(x => x.Id == user.DBUser.DiscordId); // await coopChannel.GetUserAsync(dbuser.DiscordId);
-                    if(channeluser == null) {
+                    if(!coopDiscordUsers.Any(x => x.Id == user.DBUser.DiscordId)) {
                         usersNeedingChannelPermissions.Add(user.DBUser.DiscordId);
-                        //try {
-                        //    var discorduser = guild.Users.FirstOrDefault(x => x.Id == user.DBUser.DiscordId);
-                        //    if(discorduser != null) {
-                        //        await coopChannel.AddPermissionOverwriteAsync(discorduser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                        //        channeluser = discorduser;
-                        //        _logger.LogInformation("Added Permission for {user} in {coop}", user.DBUser.DiscordUsername, coop.Name);
-                        //    }
-                        //} catch {
-                        //    _logger.LogWarning("Error Adding Permission for {user} in {coop}", user.DBUser.DiscordUsername, coop.Name);
-                        //}
-                    }
-                    if(channeluser != null) {
+                    } else {
                         var xref = new UserCoopXref {
                             WaitingOnStarter = false,
                             UserId = user.DBUser.Id,
@@ -599,7 +587,6 @@ namespace EGG9000.Bot.Automated.Coops {
                             CoopId = coop.Id,
                             CreatedOn = DateTimeOffset.UtcNow,
                             JoinedCoop = true,
-                            //LastStatusTime = lastStatus?.CreatedOn ?? DateTimeOffset.UtcNow,
                             Starter = false,
                             LastStatus = user.CoopStatus is not null ? new ContributionInfoCompact(user.CoopStatus) : null,
                             WasAssigned = false
@@ -608,13 +595,11 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
                 var currentUsers = await coopThread.ExtGetUsersAsync();
-                var threadChannel = guild.TextChannels.First(c => c.Threads.Any(t => t.Id == coopThread.Id));
-                var overwrites = threadChannel.Category.PermissionOverwrites.Where(p => p.Permissions.ViewChannel == PermValue.Allow);
-                List<SocketGuildUser> usersContained = [];
-                foreach(var roleOverwrite in overwrites.Where(o => o.TargetType == PermissionTarget.Role)) {
-                    usersContained.AddRange(guild.GetRole(roleOverwrite.TargetId).Members);
+                var threadChannel = guild.GetChannel(coop.ThreadParentChannel) as SocketTextChannel;
+                var overwrites = threadChannel?.Category?.PermissionOverwrites?.Where(p => p.Permissions.ViewChannel == PermValue.Allow);
+                if(overwrites?.Any() ?? false) {
+                    overwrites.Where(ow => ow.TargetType == PermissionTarget.Role).ToList().ForEach(ow => usersNeedingChannelPermissions.AddRange(guild.GetRole(ow.TargetId).Members.Select(m => m.Id).ToList()));
                 }
-                usersNeedingChannelPermissions.AddRange(usersContained.Distinct().Where(u => !currentUsers.Contains(u)).Select(u => u.Id));
 
                 timings.Set(3);
 
@@ -748,6 +733,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
+                //Clean up any dupes
+                usersNeedingChannelPermissions = usersNeedingChannelPermissions.Distinct().ToList();
                 var pingsLeft = usersNeedingChannelPermissions.Select(id => $"<@{id}>").ToList();
                 if(pingsLeft.Count > 0) {
                     if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage editPingsInto) {
