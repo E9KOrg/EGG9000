@@ -152,12 +152,6 @@ namespace EGG9000.Bot.Commands {
 
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
             foreach(var xref in xrefs) {
-                //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
-                //    ClientVersion = 24,
-                //    ContractIdentifier = coop.ContractID,
-                //    CoopIdentifier = coop.Name,
-                //    PlayerIdentifier = xref.EggIncId,
-                //}, xref.EggIncId);
                 await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
             }
 
@@ -165,38 +159,16 @@ namespace EGG9000.Bot.Commands {
             await Task.Delay(2);
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
-            //if(status.Participants.Count == contract.MaxUsers) {
-            //    foreach(var xref in xrefs) {
-
-            //        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
-            //            ContractIdentifier = coop.ContractID,
-            //            CoopIdentifier = coop.Name.ToLower(),
-            //            Eop = 1, SoulPower = 24, UserId = xref.EggIncId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = xref.EggIncId, BoostTokens = 1, BoostTokensSpent = 1, EggLayingRateBuff = 1, EarningsBuff = 1,
-            //            ProductionParams = new Ei.FarmProductionParams {
-            //                FarmPopulation = 1000, Delivered = 10000, Elr = 0, FarmCapacity = 10000, Ihr = 0, Sr = 0
-            //            }
-            //        }, xref.EggIncId, true);
-
-
-
-            //        var res2 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-            //            ClientVersion = 24,
-            //            ContractIdentifier = coop.ContractID,
-            //            CoopIdentifier = coop.Name,
-            //            PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
-            //        }, coop.CreatorID);
-            //    }
-
-            //    await Task.Delay(2);
-            //    status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-            //}
-
             if(status.Participants.Count < contract.MaxUsers) {
                 logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
+                if(coop.ThreadID != 0) {
+                    await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
+                } else if(coop.DiscordChannelId != 0) {
+                    await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
+                }
 
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();

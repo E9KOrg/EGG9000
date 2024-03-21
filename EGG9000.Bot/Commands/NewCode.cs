@@ -18,7 +18,7 @@ namespace EGG9000.Bot.Commands {
             var wordTwo = words.GetRandomSecondWord(wordOne);
             var code = wordOne + wordTwo + words.GetRandomNumber();
 
-            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            var guild = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId);
 
             var coop = new Coop { Name = code, Created = DateTimeOffset.Now, GuildId = guild.Id };
             db.Coops.Add(coop);
