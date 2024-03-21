@@ -247,6 +247,12 @@ namespace EGG9000.Common.Services {
             if(category is null || category.Id  == 0) return null;
 
             var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
+
+            //Catch possible dupes before they happen
+            Thread.Sleep(1000);
+
+            if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
+
             var channel = await guild.CreateTextChannelAsync(
                 name,
                 p => {p.CategoryId = category.Id;}
