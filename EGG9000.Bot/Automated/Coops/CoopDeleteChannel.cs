@@ -1,4 +1,4 @@
-﻿/*using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
@@ -28,11 +28,11 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public override async Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
             //var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(1) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
 
 
-            coops.AddRange(await _db.Coops.AsQueryable().Where(x => (x.Finished || x.Status == CoopStatusEnum.Failed) && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddDays(-2))).ToListAsync());
+            coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && ( x.Finished || x.Status == CoopStatusEnum.Failed) && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddDays(-2))).ToListAsync());
             //coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.Finished && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddHours(-12))).ToListAsync());
 
 
@@ -65,4 +65,3 @@ namespace EGG9000.Bot.Automated.Coops {
         }
     }
 }
-*/
