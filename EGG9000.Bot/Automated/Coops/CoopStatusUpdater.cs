@@ -616,7 +616,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var timeRemaining = GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline);
 
 
-
+                var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
                 //var hasDuplicate = status.Contributors.Count > coop.Contract.MaxUsers;
                 if(!coop.FinishedOrFailed()) {
                     await CheckHighestEBJoined(coop, usersWithStatus, coopDetails, coopThread, _db, usersNotJoined);
@@ -647,39 +647,28 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     }
 
-
                     if(!coop.Finished && status.Finished()) {
-                        coop.Finished = true;
+                        if(waitingOn.Any()) {
+                            coop.Status = CoopStatusEnum.Completed;
+                            await coopThread.SendMessageAsync($"Coop {coop.Name} is finished, and is waiting for users to check-in!");
+                        } else {
+                            finalChannelUpdate = true;
+                            coop.Status = CoopStatusEnum.CompletedAllCheckIn;
+                            coop.ThreadArchived = true;
+                            await coopThread.SendMessageAsync($"Coop {coop.Name} is finished!");
+
+                            //Lock the thread so no more messages can be sent, start the archive timer
+                            await coopThread.ModifyAsync(t => t.Locked = true);
+                        }
                         coop.CoopCompleted = DateTimeOffset.UtcNow;
-                        coop.Status = CoopStatusEnum.Completed;
-                        finalChannelUpdate = true;
-                        coop.ThreadArchived = true;
+                        coop.Finished = true;
 
                         await _db.SaveChangesAsync();
-                        await coopThread.SendMessageAsync($"Coop {coop.Name} is finished!");
-
-                        /*var finishedCoopCategories = await _client.GetAllFinishedCategories(guild);
-                        foreach(var category in finishedCoopCategories) {
-                            var channelCount = guild.TextChannels.Count(x => x.CategoryId == category.Id);
-                            if(channelCount < 50) {
-                                try {
-                                    await coopThread.ModifyAsync(x => { x.CategoryId = category.Id; });
-                                    break;
-                                } catch(Exception) {
-                                    _logger.LogWarning("Error setting category");
-                                }
-                            }
-                        }*/
-
                         await HandleUnjoins(usersNotJoined, guild, users, dbguild, coop, _db, coopThread);
-
-                        //Lock the thread so no more messages can be sent, start the archive timer
-                        await coopThread.ModifyAsync(t => t.Locked = true);
                     }
 
-                    if(coop.Finished && coop.Status != CoopStatusEnum.Completed) {
-                        coop.Finished = true;
-                        coop.Status = CoopStatusEnum.Completed;
+                    if(coop.Finished && coop.Status != CoopStatusEnum.CompletedAllCheckIn && !waitingOn.Any()) {
+                        coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         finalChannelUpdate = true;
                         try {
                             await _db.SaveChangesAsync();
@@ -714,13 +703,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id)) {
                         Console.WriteLine($"Adding user {userStatus.DiscordUser.Id} as needing to be added to thread");
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
-                        //try {
-                        //    await coopChannel.AddPermissionOverwriteAsync(userStatus.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-                        //    userStatus.Xref.AddedToChannel = true;
-                        //    _logger.LogInformation("Adding user to channel {user}", userStatus.DiscordUser.DisplayName);
-                        //} catch(Exception e) {
-                        //    _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", userStatus.DiscordUser.DisplayName, coop.Name, guild.Name, e.Message);
-                        //}
                     }
 
                     if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
@@ -734,52 +716,28 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
                 //Clean up any dupes
-                usersNeedingChannelPermissions = usersNeedingChannelPermissions.Distinct().ToList();
-                var pingsLeft = usersNeedingChannelPermissions.Select(id => $"<@{id}>").ToList();
-                if(pingsLeft.Count > 0) {
-                    if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage editPingsInto) {
-                        var currentContent = editPingsInto.Content;
-                        //Determine how many 22 character strings we can fit into content
-                        var pingsPerCycle = (1500 - currentContent.Length) / 22;
-                        while(pingsLeft.Count > 0) {
-                            // Remove pingsPerCycle entries from pingsLeft
-                            var pingsToRemove = pingsLeft.Take(pingsPerCycle).ToList();
-                            pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
+                var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList();
+                if(pingsLeft.Any()) {
+                    var currentContent = "";
+                    var pingsPerCycle = 1500 / 22;
+                    IUserMessage editPingsInto = null;
 
-                            // Combine pingsToRemove into a message, append to current content
-                            var message = string.Join(" ", pingsToRemove);
-
-                            await editPingsInto.ModifyAsync(m => m.Content = currentContent + " " + message);
-                            await editPingsInto.ModifyAsync(m => m.Content = currentContent);
-                        }
+                    if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage editPingsIntoTest) {
+                        editPingsInto = editPingsIntoTest;
+                        currentContent = editPingsIntoTest.Content;
+                        pingsPerCycle = (1500 - currentContent.Length) / 22;
                     } else {
-                        var response = await coopThread.SendMessageAsync("[Ping into]");
-                        //Determine how many 22 character strings we can fit into content
-                        var pingsPerCycle = 1500 / 22;
-                        while(pingsLeft.Count > 0) {
-                            // Remove pingsPerCycle entries from pingsLeft
-                            var pingsToRemove = pingsLeft.Take(pingsPerCycle).ToList();
-                            pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
-
-                            // Combine pingsToRemove into a message, append to current content
-                            var message = string.Join(" ", pingsToRemove);
-
-                            await response.ModifyAsync(m => m.Content = message);
-                            await response.ModifyAsync(m => m.Content = "[Ping into]");
-                        }
-                        await response.DeleteAsync();
+                        editPingsInto = await coopThread.SendMessageAsync("[Ping into]");
+                    }
+                    while(pingsLeft.Count > 0) {
+                        await editPingsInto.ModifyAsync(m => m.Content = currentContent + " " + string.Join(" ", pingsLeft.Take(pingsPerCycle).ToList()));
+                        // Remove pingsPerCycle entries from pingsLeft
+                        pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
                     }
                 }
                 var usersNow = await coopThread.ExtGetUsersAsync();
                 var usersAdded = usersNow.Where(un => !currentUsers.Contains(un)).Select(u => u.Id).ToList();
 
-                /*var usersAdded = await _apiLink.AddUsersToChannel(
-                    new EGG9000.Common.SharedModels.CoopPermissions {
-                        ChannelId = coopThread.Id,
-                        GuildId = coopThread.GuildId,
-                        UserIds = usersNeedingChannelPermissions
-                    }
-                );*/
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                     if(xref != null) {
@@ -790,13 +748,10 @@ namespace EGG9000.Bot.Automated.Coops {
                     await _db.SaveChangesAsync();
                 }
 
-
                 //Handle waiting on assigned
                 var missingFromServer = false;
 
-
-
-                if(usersNotJoined.Count == 0 && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
+                if(usersNotJoined.Count == 0 && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed && coop.Status != CoopStatusEnum.CompletedAllCheckIn) {
                     coop.Status = CoopStatusEnum.AllAssignedJoined;
                 } else {
                     var userList = new List<string>();
@@ -879,21 +834,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     lastMessage += $"Coop **{coop.Name}** is ready for the following to join: {string.Join(", ", userList)}\n";
                 }
 
-
-                //var usersAssigned = coop.UserCoopsXrefs.Select(x => {
-                //    var User = users.FirstOrDefault(y => y.Id == x.GetID());
-                //    if(User == null)
-                //        return null;
-                //    var backup = User.Backups?.FirstOrDefault(y => y?.EggIncId == x.EggIncId);
-                //    if(backup == null)
-                //        return null;
-                //    return new {
-                //        User = User,w
-                //        Backup = User.Backups?.First(y => y.EggIncId == x.EggIncId)
-                //    };
-                //}).Where(x => x != null);
-
-
                 var giftInfos = usersWithStatus.Where(x => x.Status is not null && x.Status.FarmInfo is not null && x.FarmStats is not null).Select(x => new {
                     Shipping = x.Status.ContributionRate / x.FarmStats.MaxShippingRate * 100,
                     Habs = x.Status.ProductionParams.FarmPopulation / x.Status.ProductionParams.FarmCapacity * 100,
@@ -944,8 +884,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var farm = userWithDifferentGrade.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
                     lastMessage += $" Warning! Looks like this co-op is the wrong grade and is actually {farm.Grade}";
                 }
-
-                var waitingOn = usersWithStatus.Where(x => !x.Status?.Finalized ?? false);
+;
                 if(status.AllGoalsAchieved && status.Participants.Any(y => !y.Finalized)) {
                     lastMessage += $"\n\nWaiting on the following users to check-in: {string.Join(", ", waitingOn.Select(x => x.DiscordUser?.Mention ?? x.Status.UserName))}";
                 }
@@ -1036,17 +975,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     coop.ThreadArchived = true;
                     await _db.SaveChangesAsync();
 
-                    /*try {
-                        var coopFailedCategory = await _client.GetCategoryAsync(GuildChannelType.FailedCategory, guild);
-                        if(coopFailedCategory is null)
-                            coopFailedCategory = _client.GetGuild(coop.OverflowGuildId).CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("failed") && x.Name.ToLower().Contains("coops"));
-                        if(coopFailedCategory is null)
-                            coopFailedCategory = _client.GetGuild(coop.OverflowGuildId).CategoryChannels.Where(x => x.Name != null).FirstOrDefault(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops"));
-                        await coopThread.ModifyAsync(x => { x.CategoryId = coopFailedCategory.Id; });
-                    } catch(Exception) {
-
-                    }*/
-
                     await HandleUnjoins(usersNotJoined, guild, users, dbguild, coop, _db, coopThread);
 
                     //Lock the thread so no more messages can be sent, start the archive timer
@@ -1086,7 +1014,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 coop.LastStatusUpdate = status;
 
 
-                if(!coop.FinishedOrFailed() || finalChannelUpdate) {
+                if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
                     if(missingCount > 0) {
                         if(missingCount <= 20) {
                             emojis += Convert.ToChar(9311 + missingCount);
