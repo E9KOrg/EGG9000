@@ -107,6 +107,10 @@ namespace EGG9000.Common.Database.Entities {
             return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed;
         }
 
+        public bool FinalizedFinishedOrFailed() {
+            return Status == CoopStatusEnum.CompletedAllCheckIn || Status == CoopStatusEnum.Failed;
+        }
+
         public bool FinishedOrFailedOrExpired() {
             return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now;
         }
@@ -120,6 +124,7 @@ namespace EGG9000.Common.Database.Entities {
         AllAssignedJoined = 12,
         Full = 13,
         Completed = 14,
+        CompletedAllCheckIn = 15,
         Failed = -1
     }
 }
