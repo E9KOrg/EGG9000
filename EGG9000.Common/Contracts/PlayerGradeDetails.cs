@@ -45,7 +45,7 @@ namespace EGG9000.Common.Contracts {
             return GetNameFromLeague((int)league);
         }
 
-        public static String GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
+        public static string GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
             return GetText(grade) + " - " + GetNameFromLeague((int)grade);
         }
 

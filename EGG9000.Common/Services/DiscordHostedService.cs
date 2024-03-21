@@ -1,10 +1,11 @@
 ﻿using Bugsnag;
 using Discord;
 using Discord.WebSocket;
-
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +16,9 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Joins;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -206,7 +209,7 @@ namespace EGG9000.Common.Services {
             return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
         }
 
-        public static List<IChannel> GetEffectiveChannels(this SocketGuild guild, SocketGuildChannel category = null) {
+        public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
             return guild.Channels.Where(c =>
                 (c.GetChannelType() == ChannelType.Category ||
                 c.GetChannelType() == ChannelType.Text ||
@@ -217,16 +220,73 @@ namespace EGG9000.Common.Services {
                 c.GetChannelType() == ChannelType.Media ||
                 c.GetChannelType() == ChannelType.Stage)
                 && (
-                    category is null || ( 
-                        (c as SocketTextChannel)?.CategoryId == category?.Id || 
-                        (c as SocketTextChannel)?.Category == category 
+                    category is null || (
+                        (c as SocketTextChannel)?.CategoryId == category?.Id ||
+                        (c as SocketTextChannel)?.Category == category
                     )
                 )
             ).Select(c => c as IChannel).ToList();
         }
 
-        public static int GetEffectiveChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
-            return guild.GetEffectiveChannels(category).Count;
+        public static int GetInUseChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
+            return guild.GetInUseChannels(category).Count;
+        }
+
+        public static List<SocketThreadChannel> GetInUseThreads(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
+            return guild.ThreadChannels.Where(t =>
+                !t.IsArchived &&
+                (t.ParentChannel == parentChannel || parentChannel == null)
+            ).ToList();
+        }
+
+        public static int GetInUseThreadCount(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
+            return guild.GetInUseThreads(parentChannel).Count;
+        }
+
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, SocketRole leagueRole, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
+            if(category is null || category.Id  == 0) return null;
+
+            var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
+
+            //Catch possible dupes before they happen
+            Thread.Sleep(1000);
+
+            if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
+
+            var channel = await guild.CreateTextChannelAsync(
+                name,
+                p => {p.CategoryId = category.Id;}
+            );
+            if(channel is null) return null;
+            await channel.SendMessageAsync(text: "", embed: contractEmbed);
+
+            if(leagueRole != null) {
+                await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(viewChannel: PermValue.Allow));
+            }
+
+            return guild.GetChannel(channel.Id);
+        }
+
+        public static async Task DeleteCoopThreadHeaders(this Guild guild, DiscordSocketClient client, Contract contract) {
+            List<SocketGuild> guilds = [
+                client.GetGuild(guild.DiscordSeverId),
+                .. guild.OverflowServers.Select(client.GetGuild).ToList()
+            ];
+
+            foreach(var sg in guilds) {
+                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+                foreach(var channel in channels) {
+                    await channel.DeleteAsync();
+                }
+            }
+        }
+
+        public static async Task<List<IGuildUser>> ExtGetUsersAsync (this IThreadChannel channel) {
+            return (await AsyncEnumerableExtensions.FlattenAsync(channel.GetUsersAsync())).ToList();
+        }
+
+        public static string GetE9KName(this Contract contract) {
+            return contract.Name.ToLower().Split(":").Last().Trim().Replace(" ", "-");
         }
     }
 }

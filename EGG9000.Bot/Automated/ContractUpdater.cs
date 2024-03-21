@@ -172,10 +172,40 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsync();
         }
 
+        public static Embed GetContractEmbed(GuildContract guildContract, SocketGuild guild, Ei.Contract.Types.PlayerGrade grade = Ei.Contract.Types.PlayerGrade.GradeUnset) {
+            var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
+            var description = $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
+            description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.TimeStamper(validFor)}";
+            if(guildContract.BoardingGroup < 3)
+                description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
+
+            var embedBuilder = new EmbedBuilder()
+                .WithDescription(description)
+                .WithAuthor(
+                    new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
+                    .WithIconUrl(EggIncEggs.GetEggById((int)guildContract.Contract.Details.Egg).Image));
+
+            var startIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 5 : (int)grade;
+            var endIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 1 : (int)grade;
+
+            for(var i = startIndex; i >= endIndex; i--) {
+                var gradeSpec = guildContract.Contract.Details.GradeSpecs[i - 1];
+                var maxTargetLength = gradeSpec.Goals.Select(x => x.TargetAmount.ToEggString()).Max(x => x.Length);
+                var goals = string.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncEggs.GetReward(x)}"));
+                var length = TimeSpan.FromSeconds(gradeSpec.LengthSeconds);
+                goals += $"\n**Length**: {length.Humanize(precision: 2).ShortenTime()}";
+                if(gradeSpec.Modifiers.Any()) {
+                    goals += "\n**Modifiers:**\n" + string.Join("\n", gradeSpec.Modifiers.Select(x => $"{x.Dimension} {(x.Value < 1 ? $"{x.Value * 100}%" : $"{x.Value}x")}"));
+                }
+                embedBuilder.AddField(PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)i), goals, inline: true);
+            }
+
+            return embedBuilder.Build();
+        }
+
         public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild,  Guild dbGuild, FauxCommand slashCommand = null) {
             try {
                 _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
-
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
 
@@ -184,6 +214,7 @@ namespace EGG9000.Bot.Automated {
                     if(channel != null) {
                         await channel.DeleteAsync();
                     }
+                    await dbGuild.DeleteCoopThreadHeaders(_client, guildContract.Contract);
                     guildContract.DeletedChannel = true;
                     await _db.SaveChangesAsync();
                     return;
@@ -197,38 +228,8 @@ namespace EGG9000.Bot.Automated {
 
                 await UpdateContractChannelName(guildContract, channel, guild);
 
-                var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
-                var league = guildContract.League;
-
-                var newMsgs = new List<string>();
-
-                var description = $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
-                description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.TimeStamper(validFor)}";
-                //description += $"\n[View Co-ops on egg9000.com](https://egg9000.com/Contract/Details?GuildId={guild.Id}&ContractId={guildContract.ContractID}&League={guildContract.League})";
-                if(guildContract.BoardingGroup < 3)
-                    description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
-
-                var embedBuilder = new EmbedBuilder()
-                    .WithDescription(description)
-                    .WithAuthor(
-                        new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
-                        .WithIconUrl(EggIncEggs.GetEggById((int)guildContract.Contract.Details.Egg).Image));
-
-
-                for(var i = 5; i >=  1; i--) {
-                    var gradeSpec = guildContract.Contract.Details.GradeSpecs[i - 1];
-                    var maxTargetLength = gradeSpec.Goals.Select(x => x.TargetAmount.ToEggString()).Max(x => x.Length);
-                    var goals = string.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncEggs.GetReward(x)}"));
-                    var length = TimeSpan.FromSeconds(gradeSpec.LengthSeconds);
-                    goals += $"\n**Length**: {length.Humanize(precision: 2).ShortenTime()}";
-                    if(gradeSpec.Modifiers.Any()) {
-                        goals += "\n**Modifiers:**\n" + string.Join("\n", gradeSpec.Modifiers.Select(x => $"{x.Dimension} {(x.Value < 1 ? $"{x.Value * 100}%" : $"{x.Value}x")}"));
-                    }
-                    embedBuilder.AddField(PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)i), goals, inline: true);
-                }
-
                 var condensedMsgs = new List<string>();
-
+                var newMsgs = new List<string>();
                 var currentMsg = "";
                 for(var i = 0; i < newMsgs.Count; i++) {
                     var msg = newMsgs[i];
@@ -265,14 +266,16 @@ namespace EGG9000.Bot.Automated {
 
                 existingMessages = existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt).ToList();
 
+                var contractEmbed = GetContractEmbed(guildContract, guild);
+
                 if(existingMessages.Count > 0) {
                     await (existingMessages.First() as RestUserMessage).ModifyWithTimeoutAsync(msg => {
-                        msg.Embed = embedBuilder.Build();
+                        msg.Embed = contractEmbed;
                         msg.Content = rawTextMessageAspect;
                         msg.Components = (dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
                     });
                 } else {
-                    await channel.SendMessageAsync(rawTextMessageAspect, embed: embedBuilder.Build(), components: dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
+                    await channel.SendMessageAsync(rawTextMessageAspect, embed: contractEmbed, components: dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
                 }
 
 
@@ -282,50 +285,6 @@ namespace EGG9000.Bot.Automated {
             }
 
         }
-
-        //public void ShowCurrentCoops(GuildContract guildContract, List<CoopDetails> coopsDetails, SocketTextChannel channel, List<string> newMsgs, double targetAmount, bool allStarted) {
-        //    if(guildContract.Status != ContractStatus.Completed && coopsDetails.All(x => x.Coop.Status == CoopStatusEnum.Completed || x.Coop.Finished) && allStarted) {
-        //        guildContract.Status = ContractStatus.Completed;
-        //    }
-
-        //    for(var i = 1; i <= coopsDetails.Count; i++) {
-        //        var coopDetails = coopsDetails[i - 1];
-
-        //        if(coopDetails.Coop.DeletedChannel || !coopDetails.HasSpots || coopDetails.Coop.Finished)
-        //            continue;
-
-        //        if(coopDetails.Coop.Finished && coopDetails.Coop.Status != CoopStatusEnum.Completed) {
-        //            coopDetails.Coop.Status = CoopStatusEnum.Completed;
-        //        }
-
-
-        //        var name = coopDetails.Coop.Status switch {
-        //            CoopStatusEnum.WaitingOnStarter => $"Coop {i} - Waiting on bot to start",
-        //            CoopStatusEnum.WaitingOnAssigned => $"Coop {i} - Waiting on users",
-        //            CoopStatusEnum.AllAssignedJoined => $"Coop {i}",
-        //            CoopStatusEnum.Full => $"Coop {i}",
-        //            CoopStatusEnum.Completed => $"Coop {i} completed! 🎆",
-        //            _ => ""
-        //        };
-
-        //        if(!coopDetails.Coop.Finished) {
-        //            if(coopDetails.TimeRemaining > TimeSpan.Zero) {
-        //                name += $" Completes: {coopDetails.TimeRemaining.Humanize(2).ShortenTime()}";
-        //            }
-        //            if(coopDetails.Coop.CoopEnds < DateTimeOffset.Now) {
-        //                name += $" Expired: {(coopDetails.Coop.CoopEnds - DateTimeOffset.Now).Value.Humanize(2).ShortenTime()} ago";
-        //            } else if((coopDetails.Coop.CoopEnds - DateTimeOffset.Now) < coopDetails.TimeRemaining) {
-        //                name += $" Expires: {(coopDetails.Coop.CoopEnds - DateTimeOffset.Now).Value.Humanize(2).ShortenTime()}";
-        //            }
-        //        }
-
-        //        var userIds = coopDetails.Coop.UserCoopsXrefs.Select(x => x.GetID());
-
-
-
-        //        newMsgs.AddRange(ShowCoopStatus(coopDetails, name, targetAmount, guildContract.Contract.Details.MaxCoopSize));
-        //    }
-        //}
 
         public static string GetLinkToMessage(IMessage message, IGuild guild, ITextChannel channel, string text) {
             if(message == null)
@@ -338,126 +297,6 @@ namespace EGG9000.Bot.Automated {
                 return value;
             return value.Length <= maxLength ? value : value.Substring(0, maxLength);
         }
-
-//        private List<string> ShowCoopStatus(CoopDetails coop, string coopName, double target, uint size, bool alreadyInCoop = false) {
-//            var table = new List<List<FixedWidthCell>> {
-//                new List<FixedWidthCell> {
-//                    new FixedWidthCell("Name", CellAlignment.Center),
-//                    new FixedWidthCell("🐔", CellAlignment.Center),
-//                    new FixedWidthCell("🥚", CellAlignment.Center),
-//                    new FixedWidthCell("📈", CellAlignment.Center, true),
-//                    new FixedWidthCell(coop.CoopParticipants.All(x => string.IsNullOrEmpty(x.Farm?.CoopId)) ? "🟡" : "")
-//                }
-//            };
-//            table.AddRange(coop.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
-//                var timeleft = "";
-//                if(x.TimeLeft.TotalSeconds > 0) {
-//                    timeleft = x.TimeLeft.Humanize(precision: 2).ShortenTime();
-//                } else {
-//                    timeleft = "Time has run out";
-//                }
-//                var emoji = "";
-//                if(x.DiscordUser != null && x.DiscordUser.Roles.Any(r => r.Id == 796512753241161748)) {
-//                    emoji = "🆕";
-//                }
-//                return new List<FixedWidthCell> {
-//                    new FixedWidthCell(Truncate($"{emoji}{x.Name}", 12)),
-//                    //new FixedWidthCell(x.EggsPaidFor.ToEggString()),
-//                    new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
-//                    new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
-//                    new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
-//                    //new FixedWidthCell(x.Tokens.ToString()),
-//                    //new FixedWidthCell(x.BoostTokensSpent.ToString()),
-//                    //new FixedWidthCell(x.TimeSinceUpdate.Humanize(1, minUnit: Humanizer.Localisation.TimeUnit.Minute).ShortenTime()),
-//                    new FixedWidthCell(GetCoopStatus(coop.Coop, x, alreadyInCoop))
-//                };
-//            }));
-
-//            if(coopName != "Expired Farms" && coopName != "Already in coop") {
-//                var percent = $"{coop.PercentProjected / 100:P0}".Replace(",", ""); //$"{coop.Users.Sum(x => x.Projected) / target:P0}";
-
-//                table.Add(new List<FixedWidthCell> {
-//                    new FixedWidthCell($"{coop.CoopParticipants.Count}/{size}"),
-//                    new FixedWidthCell(""),
-//                    new FixedWidthCell(ArgumentsHelper.NumberToString(coop.CoopParticipants.Sum(x => x.Rate) * 60 * 60, false, -1) + "/h", CellAlignment.Right),
-//                    //new FixedWidthCell(""),
-//                    new FixedWidthCell(coop.CoopParticipants.Sum(x => x.Projected).ToEggString(), CellAlignment.Right),
-//                    new FixedWidthCell(percent, CellAlignment.Right),
-//                    new FixedWidthCell(""),
-//                    new FixedWidthCell(""),
-//                    new FixedWidthCell("")
-//                });
-//            }
-
-
-
-//            var tableString = $"{coopName}\n```{GetTable(table)}```\n";
-//            //var startLength = tableString.Length;
-//            //tableString = tableString.Replace("  ", "\t");
-//            var msgs = new List<string>();
-//            while(tableString.Length > 2000) {
-//                var index = tableString.LastIndexOf('\n', 2000);
-//                msgs.Add(tableString[..index] + "```");
-//                tableString = "```" + tableString[index..];
-//            }
-//            msgs.Add(tableString);
-//            return msgs;
-//        }
-
-        //private static string GetCoopStatus(Coop coop, UserFarmDetails user, bool alreadyInCoop) {
-        //    if(alreadyInCoop)
-        //        return $"[{user.Farm?.CoopId ?? user.ArchivedFarm?.CoopId}] Joined {(DateTimeOffset.Now - user.DBUser.Registered.Value).Humanize().ShortenTime()} ago";
-        //    if(coop is not null && user.InCoop && user.DBUser is null)
-        //        return "👽";
-        //    if(coop is not null && user.InCoop)
-        //        return "✔️";
-        //    if(coop is not null && !user.InCoop)
-        //        return $"❌ {user.FarmExpires.Humanize().ShortenTime()}";
-        //    if(!string.IsNullOrEmpty(user.Farm?.CoopId))
-        //        return user.Farm.CoopId;
-        //    if(user.Farm is not null)
-        //        return (user.Farm.BoostTokensReceived - user.Farm.BoostTokensGiven - user.Farm.BoostTokensSpent).ToString();
-        //    return "?";
-        //}
-
-        //private List<string> ShowSoloStatus(CoopsBreakdown coopsBreakdown, Ei.Contract contract, double target) {
-        //    var table = new List<List<FixedWidthCell>> {
-        //        new List<FixedWidthCell> {
-        //            new FixedWidthCell("Name", CellAlignment.Center),
-        //            new FixedWidthCell("🐔", CellAlignment.Center),
-        //            new FixedWidthCell("🥚", CellAlignment.Center),
-        //            new FixedWidthCell("📈", CellAlignment.Center, true),
-        //            new FixedWidthCell(""),
-        //            new FixedWidthCell("⏲️", CellAlignment.Center)
-        //        }
-        //    };
-
-        //    var participants = coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).ToList();
-        //    participants.AddRange(coopsBreakdown.ExpiredFarms);
-
-
-        //    table.AddRange(participants.Where(x => x.NumChickens > 0).OrderBy(x => x.Name).Select(x => {
-        //        return new List<FixedWidthCell> {
-        //            new FixedWidthCell(Truncate(x.Name, 12)),
-        //            new FixedWidthCell(x.NumChickens.ToEggString(), CellAlignment.Right),
-        //            new FixedWidthCell(ArgumentsHelper.NumberToString(x.Rate * 60 * 60, false, -1) + "/h", CellAlignment.Right),
-        //            new FixedWidthCell(x.Projected.ToEggString(), CellAlignment.Right),
-        //            new FixedWidthCell(string.Format("{0:0%}", x.Projected/target) , CellAlignment.Right),
-        //            new FixedWidthCell(x.EggsShipped < target ?  GetTimeRemainingValue(target, x.Rate, x.EggsShipped).Humanize(1, null, Humanizer.Localisation.TimeUnit.Year).ShortenTime() : "Finished", CellAlignment.Right)
-        //        };
-        //    }));
-
-
-        //    var tableString = $"```{FixedWidthTable.GetTable(table)}```";
-        //    var msgs = new List<string>();
-        //    while(tableString.Length > 2000) {
-        //        var index = tableString.LastIndexOf('\n', 2000);
-        //        msgs.Add(string.Concat(tableString.AsSpan(0, index), "```"));
-        //        tableString = string.Concat("```", tableString.AsSpan(index));
-        //    }
-        //    msgs.Add(tableString);
-        //    return msgs;
-        //}
 
         public async Task UpdateContractChannelName(GuildContract guildContract, SocketTextChannel channel, SocketGuild guild) {
             var channelName = guildContract.Contract.Name.Split(":").Last().Trim().Replace(" ", "-");

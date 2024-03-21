@@ -36,7 +36,7 @@ using EGG9000.Common.Contracts;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CoopStatusUpdater : _UpdaterBase<CoopStatusUpdater> {
+    public class CoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<CoopStatusUpdater>(interval, delay, provider) {
 #if DEBUG
         private static TimeSpan delay = TimeSpan.FromMinutes(0);
         private static TimeSpan interval = TimeSpan.FromMinutes(20);
@@ -52,15 +52,10 @@ namespace EGG9000.Bot.Automated.Coops {
             public Guid DBUserId { get; set; }
         }
 
-        public CoopStatusUpdater(
-            IServiceProvider provider
-            ) : base(interval, delay, provider) {
-        }
-
         public override async Task Run(object state, CancellationToken cancellationToken) {
             using(var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()) {
                 var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-                var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
+                var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
                 var throttler = new SemaphoreSlim(3);
@@ -743,8 +738,8 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     var usersAdded = await _apiLink.AddUsersToChannel(
                         new EGG9000.Common.SharedModels.CoopPermissions {
-                            ChannelId = coopChannel.Id, 
-                            GuildId = coopChannel.GuildId, 
+                            ChannelId = coopChannel.Id,
+                            GuildId = coopChannel.GuildId,
                             UserIds = usersNeedingChannelPermissions
                         }
                     );
@@ -943,9 +938,11 @@ namespace EGG9000.Bot.Automated.Coops {
 
                             var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
                             if(gusset is null) {
-                                await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread, 
-                                    new() { Text = $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`):\n" +
-                                    $"```\nMax hab space:\t   {(ulong)scaledMaxChickens:n0}\nCurrent chickens:\t{currentChickens:n0}\n```" });
+                                await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
+                                    new() {
+                                        Text = $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`):\n" +
+                                    $"```\nMax hab space:\t   {(ulong)scaledMaxChickens:n0}\nCurrent chickens:\t{currentChickens:n0}\n```"
+                                    });
                                 u.Xref.GussetCheatDetected = true;
                             }
                         }
@@ -953,7 +950,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var account = u.User?.EggIncAccounts?.FirstOrDefault(a => a.Id.ToLower() == u.Backup?.EggIncId.ToLower());
                             if(account is null || account.TimeCheatsMarkedClean) continue;
                             await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
-                                new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`)"});
+                                new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.DiscordChannelId}> (`{coop.Name}`)" });
                             u.Xref.TimeCheatReported = true; //Set the flag to prevent repetition
                         }
                     }
@@ -1156,7 +1153,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var publicMessage = status.Public ? $"\n**This co-op is public**." : "";
 
                         var embedBuilder = new EmbedBuilder()
-                        .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" + 
+                        .WithDescription($"{gradeMessage}{highestEBMessage}{createdByMessage}{publicMessage}\n" +
                         (
                             (status.Finished()
                             ? "\nThis co-op is finished!"
