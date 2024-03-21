@@ -661,6 +661,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(coop.Finished && coop.Status != CoopStatusEnum.CompletedAllCheckIn && !waitingOn.Any()) {
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         finalChannelUpdate = true;
+
+                        //Lock the thread so no more messages can be sent, start the archive timer
+                        await coopThread.ModifyAsync(t => t.Locked = true);
                         try {
                             await _db.SaveChangesAsync();
                         } catch(Exception) {
