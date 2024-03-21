@@ -174,7 +174,11 @@ namespace EGG9000.Common.Helpers {
                 mention += $"({eggIncName})";
             }
             try {
-                await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                if(targetChannel.GetChannelType() == ChannelType.PrivateThread) {
+                    await (targetChannel as SocketThreadChannel).AddUserAsync(user as SocketGuildUser);
+                } else {
+                    await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                }
             } catch(Exception) {
                 try {
                     await commandChannel.SendMessageAsync(commandChannel.Guild.Id != targetChannel.Guild.Id ? $"{mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**." : "Looks like an error happened, please use /callstaff");

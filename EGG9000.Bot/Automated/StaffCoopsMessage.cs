@@ -43,12 +43,12 @@ namespace EGG9000.Bot.Automated {
                 var adminUsers = await _db.DBUsers.AsQueryable().Where(x => adminDiscordIds.Contains(x.DiscordId)).ToListAsync();
 
                 var adminUserIds = adminUsers.Select(x => x.Id);
-                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => !x.DeletedChannel && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync();
+                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => !x.ThreadArchived && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync();
 
 
                 var adminsWithChannels = adminUsers.OrderBy(x => x.DiscordUsername).Select(u => new {
                     Admin = u,
-                    Channels = coops.Where(c => c.UserCoopsXrefs.Any(xref => u.Id == xref.UserId)).Select(c => $"<#{c.DiscordChannelId}>")
+                    Channels = coops.Where(c => c.UserCoopsXrefs.Any(xref => u.Id == xref.UserId)).Select(c => $"<#{c.ThreadID}>")
                 });
 
                 var channel = guild.GetTextChannel(guildInfo.ChannelID);

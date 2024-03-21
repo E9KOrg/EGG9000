@@ -48,7 +48,7 @@ namespace EGG9000.Common.Database.Entities {
         //public ulong? FailedCategory { get; set; }
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
-        
+
         public string _coopSettingsJson { get; set; }
         [NotMapped]
         private List<ServerCoopSetting> _coopSettings { get; set; }
@@ -152,7 +152,7 @@ namespace EGG9000.Common.Database.Entities {
     [NotMapped]
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
-        public UInt64 Id { get; set; }
+        public ulong Id { get; set; }
         public bool ThreadAndChannel { get; set; } = false;
     }
 
