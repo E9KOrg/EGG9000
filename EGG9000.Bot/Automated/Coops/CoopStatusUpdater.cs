@@ -2,7 +2,6 @@
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System;
 using System.Threading;
@@ -12,25 +11,16 @@ using Discord;
 using Discord.Rest;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using Humanizer;
-using Microsoft.Extensions.Caching.Memory;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using EGG9000.Common.Helpers;
-using Discord.Net;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using EGG9000.Common.Services;
 using static EGG9000.Common.Helpers.Prefarm;
-using static EGG9000.Bot.Automated.Coops.CoopStatusUpdater;
-using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using static Ei.Backup.Types;
-using Microsoft.AspNetCore.Http;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Contracts;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
@@ -88,7 +78,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                         tasks.Add(Task.Run(async () => {
                             try {
-                                await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken, _db);
+                                await ProcessCoop(coop.Id, guild, users, dbguild, _db, cancellationToken);
                             } finally {
                                 throttler.Release();
                             }
@@ -360,7 +350,7 @@ namespace EGG9000.Bot.Automated.Coops {
             };
         }
 
-        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken, ApplicationDbContext db) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, ApplicationDbContext db, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
