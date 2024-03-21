@@ -2,7 +2,6 @@
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Bot.EggIncAPI;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System;
 using System.Threading;
@@ -12,25 +11,17 @@ using Discord;
 using Discord.Rest;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using Humanizer;
-using Microsoft.Extensions.Caching.Memory;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using EGG9000.Common.Helpers;
-using Discord.Net;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using EGG9000.Common.Services;
 using static EGG9000.Common.Helpers.Prefarm;
-using static EGG9000.Bot.Automated.Coops.CoopStatusUpdater;
-using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using static Ei.Backup.Types;
-using Microsoft.AspNetCore.Http;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Contracts;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
@@ -38,7 +29,7 @@ using MassTransit.Testing;
 using MassTransit.Util;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<CoopStatusUpdater>(interval, delay, provider) {
+    public class CoopStatusUpdaterThreads(IServiceProvider provider) : _UpdaterBase<CoopStatusUpdaterThreads>(interval, delay, provider) {
 #if DEBUG
         private static TimeSpan delay = TimeSpan.FromMinutes(0);
         private static TimeSpan interval = TimeSpan.FromMinutes(20);
@@ -57,7 +48,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
 
             var throttler = new SemaphoreSlim(3);
