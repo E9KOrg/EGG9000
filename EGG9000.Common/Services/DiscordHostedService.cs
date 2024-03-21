@@ -243,17 +243,21 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, SocketRole leagueRole, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
             if(category is null || category.Id  == 0) return null;
 
-            var name = $"{coop.ContractID}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
+            var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
             var channel = await guild.CreateTextChannelAsync(
                 name,
                 p => {p.CategoryId = category.Id;}
             );
             if(channel is null) return null;
-
             await channel.SendMessageAsync(text: "", embed: contractEmbed);
+
+            if(leagueRole != null) {
+                await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(viewChannel: PermValue.Allow));
+            }
+
             return guild.GetChannel(channel.Id);
         }
 
@@ -264,11 +268,19 @@ namespace EGG9000.Common.Services {
             ];
 
             foreach(var sg in guilds) {
-                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.ID.ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
                 foreach(var channel in channels) {
                     await channel.DeleteAsync();
                 }
             }
+        }
+
+        public static async Task<List<IGuildUser>> ExtGetUsersAsync (this IThreadChannel channel) {
+            return (await AsyncEnumerableExtensions.FlattenAsync(channel.GetUsersAsync())).ToList();
+        }
+
+        public static string GetE9KName(this Contract contract) {
+            return contract.Name.ToLower().Split(":").Last().Trim().Replace(" ", "-");
         }
     }
 }

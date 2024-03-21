@@ -34,6 +34,8 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Contracts;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using MassTransit.Testing;
+using MassTransit.Util;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<CoopStatusUpdater>(interval, delay, provider) {
@@ -605,7 +607,14 @@ namespace EGG9000.Bot.Automated.Coops {
                         _db.UserCoopXrefs.Add(xref);
                     }
                 }
-
+                var currentUsers = await coopThread.ExtGetUsersAsync();
+                var threadCategory = await coopThread.GetCategoryAsync();
+                var overwrites = threadCategory.PermissionOverwrites.Where(p => p.Permissions.ViewChannel == PermValue.Allow);
+                List<SocketGuildUser> usersContained = [];
+                foreach(var roleOverwrite in overwrites.Where(o => o.TargetType == PermissionTarget.Role)) {
+                    usersContained.AddRange(guild.GetRole(roleOverwrite.TargetId).Members);
+                }
+                usersNeedingChannelPermissions.AddRange(usersContained.Distinct().Where(u => !currentUsers.Contains(u)).Select(u => u.Id));
 
                 timings.Set(3);
 
@@ -739,13 +748,49 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-                var usersAdded = await _apiLink.AddUsersToChannel(
+                var pingsLeft = usersNeedingChannelPermissions.Select(id => $"<@{id}>").ToList();
+                if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage editPingsInto) {
+                    var currentContent = editPingsInto.Content;
+                    //Determine how many 22 character strings we can fit into content
+                    var pingsPerCycle = (1500 - currentContent.Length) / 22;
+                    while(pingsLeft.Count > 0) {
+                        // Remove pingsPerCycle entries from pingsLeft
+                        var pingsToRemove = pingsLeft.Take(pingsPerCycle).ToList();
+                        pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
+
+                        // Combine pingsToRemove into a message, append to current content
+                        var message = string.Join(" ", pingsToRemove);
+
+                        await editPingsInto.ModifyAsync(m => m.Content = currentContent + " " + message);
+                        await editPingsInto.ModifyAsync(m => m.Content = currentContent);
+                    }
+                } else {
+                    var response = await coopThread.SendMessageAsync("[Ping into]");
+                    //Determine how many 22 character strings we can fit into content
+                    var pingsPerCycle = 1500 / 22;
+                    while(pingsLeft.Count > 0) {
+                        // Remove pingsPerCycle entries from pingsLeft
+                        var pingsToRemove = pingsLeft.Take(pingsPerCycle).ToList();
+                        pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
+
+                        // Combine pingsToRemove into a message, append to current content
+                        var message = string.Join(" ", pingsToRemove);
+
+                        await response.ModifyAsync(m => m.Content = message);
+                        await response.ModifyAsync(m => m.Content = "[Ping into]");
+                    }
+                    await response.DeleteAsync();
+                }
+                var usersNow = await coopThread.ExtGetUsersAsync();
+                var usersAdded = usersNow.Where(un => !currentUsers.Contains(un)).Select(u => u.Id).ToList();
+
+                /*var usersAdded = await _apiLink.AddUsersToChannel(
                     new EGG9000.Common.SharedModels.CoopPermissions {
                         ChannelId = coopThread.Id,
                         GuildId = coopThread.GuildId,
                         UserIds = usersNeedingChannelPermissions
                     }
-                );
+                );*/
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                     if(xref != null) {
