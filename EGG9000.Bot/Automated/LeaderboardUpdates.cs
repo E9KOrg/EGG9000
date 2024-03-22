@@ -160,7 +160,7 @@ namespace EGG9000.Bot.Automated {
                             var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
-                                $"({(dbCoop is not null? $"<#{dbCoop.DiscordChannelId}> - `{dbCoop.Name}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
+                                $"({(dbCoop is not null? $"<#{dbCoop.ThreadID}> - `{dbCoop.Name}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
                                 $"for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
                             var result = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });

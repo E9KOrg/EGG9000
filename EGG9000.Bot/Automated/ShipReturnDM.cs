@@ -165,7 +165,7 @@ namespace EGG9000.Bot.Automated {
                         dbuser.NextShipReturnDMDue = NextShipReturnDMDue;
                         //logger.LogInformation("Updating next ship time for {user} to {time}", user.DiscordUsername, NextShipReturnDMDue?.ToString("h:mm") ?? "null");
                     }
-                } catch(Exception e) {
+                } catch(Exception) {
                     //logger.LogError(e, $"UpdateNextShipDM Error");
                 }
             }

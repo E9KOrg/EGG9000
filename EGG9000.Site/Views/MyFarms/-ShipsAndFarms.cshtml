@@ -1050,8 +1050,8 @@
                         <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
                             @(farm.CoopId ?? coop?.Name)
                         </a>
-                        @if (coop is not null && !coop.DeletedChannel) {
-                            <a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                        @if (coop is not null && !coop.ThreadArchived) {
+                            <a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
                         }
                     </div>
                 }
