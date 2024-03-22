@@ -692,7 +692,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
                     if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id)) {
-                        Console.WriteLine($"Adding user {userStatus.DiscordUser.Id} as needing to be added to thread");
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
                     }
 
