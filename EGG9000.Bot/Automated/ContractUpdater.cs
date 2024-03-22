@@ -32,6 +32,7 @@ using Microsoft.Extensions.DependencyInjection;
 using EGG9000.Common.Contracts;
 using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
+using EGG9000.Common.Helpers.Discord;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater : _UpdaterBase<ContractUpdater> {
@@ -221,6 +222,15 @@ namespace EGG9000.Bot.Automated {
                     }
                     await dbGuild.DeleteCoopThreadHeaders(_client, guildContract.Contract);
                     guildContract.DeletedChannel = true;
+
+                    if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.Now.AddMonths(-3) && !guildContract.HasScores) {
+                        var farmersUnion = guild.GetTextChannel(777303939442802710); //#farmers-union
+                        if(farmersUnion is null) farmersUnion = (await _client.GetChannelAsync(777303939442802710) as SocketTextChannel);
+                        if(farmersUnion != null) {
+                            await farmersUnion.SendMessageAsync(text: "", embed: EmbedHelpers.EmbedAlert($"The contract `{guildContract.Contract.GetE9KName(false)}` has finished, and is ready to be scored."));
+                        }
+                    }
+
                     await _db.SaveChangesAsync();
                     return;
                 }

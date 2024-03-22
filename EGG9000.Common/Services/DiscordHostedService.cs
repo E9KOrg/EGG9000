@@ -285,8 +285,12 @@ namespace EGG9000.Common.Services {
             return (await AsyncEnumerableExtensions.FlattenAsync(channel.GetUsersAsync())).ToList();
         }
 
-        public static string GetE9KName(this Contract contract) {
-            return contract.Name.ToLower().Split(":").Last().Trim().Replace(" ", "-");
+        public static string GetE9KName(this Contract contract, bool toLower = true) {
+            return (toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-");
+        }
+
+        public static async Task<SocketTextChannel> GetParentChannel(this IThreadChannel threadChannel) {
+            return (await threadChannel.Guild.GetTextChannelsAsync()).Select(c => c as SocketTextChannel).FirstOrDefault(c => c.Threads.Any(t => t.Id == threadChannel.Id));
         }
     }
 }
