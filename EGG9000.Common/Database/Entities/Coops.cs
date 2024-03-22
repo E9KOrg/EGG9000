@@ -27,10 +27,10 @@ namespace EGG9000.Common.Database.Entities {
 
         public bool ProjectedToFinish { get; set; }
         public bool Finished { get; set; }
-        public UInt32 League { get; set; }
+        public uint League { get; set; }
         public bool AnyLeague { get; set; }
 
-        public ulong DiscordChannelId { get; set; }
+        public ulong DiscordChannelId { get; set; } // V2 - Comment out
         public ulong GuildId { get; set; }
         public ulong OverflowGuildId { get; set; }
         public string UpdateMessagesId { get; set; }
@@ -38,10 +38,14 @@ namespace EGG9000.Common.Database.Entities {
         public string CreatorID { get; set; }
         public DateTimeOffset? LastUpdateToChannel { get; set; }
         public DateTimeOffset? WarningForDeleteChannel { get; set; }
-        public bool DeletedChannel { get; set; }
-        public uint FindChannelErrors { get; set; } = 0;
+        public bool DeletedChannel { get; set; } // V2 - Comment out
+        public uint FindChannelErrors { get; set; } = 0; // V2 - Comment out
         public ulong Group { get; set; }
         public bool AddedFromBackup { get; set; } = false;
+
+        public ulong ThreadID { get; set; }
+        public ulong ThreadParentChannel { get; set; }
+        public bool ThreadArchived { get; set; } = false;
 
         public CoopStatusEnum Status { get; set; }
         //public int UnableToFind { get; set; }
@@ -104,6 +108,10 @@ namespace EGG9000.Common.Database.Entities {
             return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed;
         }
 
+        public bool FinalizedFinishedOrFailed() {
+            return Status == CoopStatusEnum.CompletedAllCheckIn || Status == CoopStatusEnum.Failed;
+        }
+
         public bool FinishedOrFailedOrExpired() {
             return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now;
         }
@@ -117,6 +125,7 @@ namespace EGG9000.Common.Database.Entities {
         AllAssignedJoined = 12,
         Full = 13,
         Completed = 14,
+        CompletedAllCheckIn = 15,
         Failed = -1
     }
 }

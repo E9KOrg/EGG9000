@@ -154,7 +154,7 @@ namespace EGG9000.Common.Database.Entities {
     [NotMapped]
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
-        public UInt64 Id { get; set; }
+        public ulong Id { get; set; }
         public bool ThreadAndChannel { get; set; } = false;
     }
 

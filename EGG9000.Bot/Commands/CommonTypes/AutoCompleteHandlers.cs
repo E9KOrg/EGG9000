@@ -53,7 +53,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+                var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == arg.Channel.Id);
 
                 var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
                 if(coop is null || coop.FinishedOrFailedOrExpired() || eidsIn.Count == 0) {
@@ -174,7 +174,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var users = await _db.UserCoopXrefs.Where(x => x.Coop.DiscordChannelId == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
+                var users = await _db.UserCoopXrefs.Where(x => x.Coop.ThreadID == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
                 if(users.Count == 0) await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -189,7 +189,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Channel.Id);
+                var coop = await _db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Channel.Id);
 
                 if(coop is null || coop.League == 0) {
                     return; //Command only works in a co-op channel and where grade is known.
@@ -225,13 +225,13 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 List<CoopMin> coops = null;
                 if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     coops = await _db.Coops.Include(x => x.Contract)
-                        .Where(x => x.DiscordChannelId == arg.ChannelId)
+                        .Where(x => x.ThreadID == arg.ChannelId)
                         .Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
                 }
 
                 if(coops is null) {
                     coops = await _db.Coops.Include(x => x.Contract)
-                        .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.DeletedChannel && x.GuildId == guild.Id)
+                        .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.ThreadArchived && x.GuildId == guild.Id)
                         .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
                 }
 

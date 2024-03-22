@@ -54,8 +54,8 @@
         Percent = (c.CoopParticipants.Sum(x => x.Projected) / targetAmount).ToString("P0"),
         CoopId = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Id : Guid.Empty,
         HoursToFinish = c.TimeRemaining.TotalHours,
-        DiscordChannelId = c.Coop.DiscordChannelId.ToString(),
-        c.Coop.DeletedChannel,
+        DiscordChannelId = c.Coop.ThreadID.ToString(),
+        c.Coop.ThreadArchived,
         OverflowGuildId = c.Coop.OverflowGuildId.ToString()
     });
 
