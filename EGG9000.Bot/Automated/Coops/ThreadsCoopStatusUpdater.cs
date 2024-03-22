@@ -585,7 +585,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
                 var currentUsers = await coopThread.ExtGetUsersAsync();
-                (await coopThread.GetParentChannel())?.Category?.PermissionOverwrites?.Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
+                (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?.Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
                     .ForEach(ow => usersNeedingChannelPermissions.AddRange(guild.GetRole(ow.TargetId).Members.Select(m => m.Id).ToList()));
 
                 timings.Set(3);

@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
                         }
 
-                        headerChannel = await guild.CreateCoopThreadHeader(gradeRole, contractEmbed, category.DiscordCategory, coop);
+                        headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, contractEmbed, category.DiscordCategory, coop);
                     }
                 }
                 if (headerChannel == null) continue;
