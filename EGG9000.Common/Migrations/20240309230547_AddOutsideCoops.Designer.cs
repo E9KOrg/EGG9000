@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240309230547_AddOutsideCoops")]
+    partial class AddOutsideCoops
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -198,15 +200,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
-
-                    b.Property<bool>("ThreadArchived")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal>("ThreadID")
-                        .HasColumnType("decimal(20,0)");
-
-                    b.Property<decimal>("ThreadParentChannel")
-                        .HasColumnType("decimal(20,0)");
 
                     b.Property<string>("UpdateMessagesId")
                         .HasColumnType("nvarchar(max)");

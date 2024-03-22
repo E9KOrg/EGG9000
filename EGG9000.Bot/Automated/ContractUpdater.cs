@@ -149,8 +149,12 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 foreach(var pCoop in potentialCoops.Where(x => x.userids.Count > 1)) {
+
+                    var dbGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == pCoop.guildid);
+                    if(!dbGuild.AddOutsideCoops) continue;
+
                     var contract = contracts.First(x => x.ID == pCoop.contractid);
-                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.ContractID == pCoop.contractid && EF.Functions.Like(x.Name, pCoop.coopname));
+                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.GuildId == pCoop.guildid && x.ContractID == pCoop.contractid && EF.Functions.Like(x.Name, pCoop.coopname));
                     if(exisitingCoop is not null) {
                         _logger.LogInformation("Co-op {coopname} already exists, skipping", pCoop.coopname);
                         continue;
@@ -159,7 +163,8 @@ namespace EGG9000.Bot.Automated {
                     var coop = new Coop {
                         ContractID = pCoop.contractid, Created = DateTimeOffset.Now, GuildId = pCoop.guildid, Name = pCoop.coopname,
                         MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnAssigned, League = pCoop.grade,
-                        CoopEnds = DateTimeOffset.FromUnixTimeSeconds(pCoop.endtime)
+                        CoopEnds = DateTimeOffset.FromUnixTimeSeconds(pCoop.endtime),
+                        AddedFromBackup = true,
                     };
                     coops.Add(new { Name = coop.Name });
                     _db.Add(coop);

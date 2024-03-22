@@ -285,17 +285,62 @@ namespace EGG9000.Site.Controllers {
             public int FinishedCoops { get; set; }
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        private static readonly List<string> EventTypes = [
+            "prestige-boost", "piggy-boost", "earnings-boost", "gift-boost", "vehicle-sale", "drone-boost", "research-sale", "hab-sale", 
+            "epic-research-sale", "boost-sale", "crafting-sale", "boost-duration", "mission-fuel", "mission-capacity", "shell-sale", "piggy-cap-boost"
+        ];
+
+        public record EventCustomizationModel(
+            List<EventCustomization> Customizations,
+            ulong GuildDiscordID
+        );
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> EventCustomization() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+            //Used for 'default values'
+            var palaceGuild = await _db.Guilds.AsQueryable().FirstOrDefaultAsync(g => g.DiscordSeverId == 656455567858073601);
+            
+            var eventCustomizations = new List<EventCustomization>();
+            foreach(var type in EventTypes) {
+                var guildEventCustomization = guild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
+                if(guildEventCustomization == null && palaceGuild != null) { //Default to palace customizations
+                    Console.WriteLine("Grabbing from Palace");
+                    guildEventCustomization = palaceGuild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
+                }
+                guildEventCustomization ??= new() {
+                    Type = type,
+                };
+                eventCustomizations.Add(guildEventCustomization);
+            }
 
-            return View(await _db.EventCustomizations.AsQueryable().OrderByDescending(x => x.Priority).ToListAsync());
+            return View(eventCustomizations.OrderByDescending(x => x.Priority).ToList());
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> SaveEventCustomization([FromBody] EventCustomization eventCustomization) {
-            _db.Entry(eventCustomization).State = EntityState.Modified;
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
+            var eventCustomizationToSave = guild.EventCustomzations.FirstOrDefault(ec => ec.Type == eventCustomization.Type);
+            
+            var tempNotifs = JsonConvert.DeserializeObject<EventCustomizationSettings>(eventCustomization._settings);
+            tempNotifs.Notifications.ForEach(n => n.GuildID = guild.DiscordSeverId);
+            eventCustomization._settings = JsonConvert.SerializeObject(tempNotifs);
+
+            if(eventCustomizationToSave is null) {
+                guild.EventCustomzations = [
+                    .. guild.EventCustomzations,
+                    eventCustomization
+                ];
+            } else {
+                var cloneList = new List<EventCustomization>(guild.EventCustomzations) {
+                    [guild.EventCustomzations.IndexOf(eventCustomizationToSave)] = eventCustomization
+                };
+                guild.EventCustomzations = cloneList;
+            }
+
             await _db.SaveChangesAsync();
             return Content("Success");
         }
@@ -801,12 +846,12 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> SearchID([FromQuery] string id) {
-            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds, x.EIDs }).ToListAsync())
-                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds, EIDs = x.EIDs });
+            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds, x.EIDs, x.Usernames }).ToListAsync())
+                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds, EIDs = x.EIDs, Usernames = x.Usernames });
 
             if(id.Trim().All(x => x >= '0' && x <= '9')) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
-            } else if(Regex.IsMatch(id.ToUpper(), "@EI\\d{16}") && users.Any(u => u.EIDs.Contains(id))) {
+            } else if(Regex.IsMatch(id.ToUpper(), "EI\\d{16}") && users.Any(u => u.EIDs.Contains(id))) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = (users.First(u => u.EIDs.Contains(id))).DiscordId });
             }
 
@@ -818,7 +863,7 @@ namespace EGG9000.Site.Controllers {
             id = id.ToLower().Trim();
             var matchingUsers = users.Where(x => 
                 (x.DiscordUsername ?? "").ToLower().Contains(id) || 
-                x.Usernames.ToLower().Split(",").Contains(id)
+                (x.Usernames ?? "").ToLower().Split(",").Any(u => u.Contains(id))
             ).ToList();
 
             if(matchingUsers.Count == 1) {
@@ -1121,6 +1166,7 @@ music
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
+            dbGuild.AddOutsideCoops = model.AddOutsideCoops;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1157,6 +1203,7 @@ music
             public bool PublicScoreGrid { get; set; }
             public string CoopNamePrefix { get; set; }
             public bool RemoveFindCoopSpot { get; set; }
+            public bool AddOutsideCoops { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {

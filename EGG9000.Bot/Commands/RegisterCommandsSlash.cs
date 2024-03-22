@@ -120,8 +120,8 @@ namespace EGG9000.Bot.Commands {
             } else if(dbUser.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 dbUser.RemoveID(eggincid);
             } else {
-                Embed[] embedArrayErr = { EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>") };
-                embedArrayErr = embedArrayErr.Concat(AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()).ToArray();
+                Embed[] embedArrayErr = [EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>")];
+                embedArrayErr = [.. embedArrayErr, .. AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()];
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArrayErr; });
                 return;
             }

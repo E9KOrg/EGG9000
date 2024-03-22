@@ -4,6 +4,7 @@
 @using System.Text;
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @using static Ei.MissionInfo.Types;
+@using static EGG9000.Common.Helpers.MissionHelpers;
 @inject DiscordSocketClient DiscordClient
 @model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
 
@@ -488,11 +489,11 @@
                         style="stroke-dasharray: @circumfrence @circumfrence; stroke-dashoffset: @initialOffset;"/>
                         <circle class="ship-progress-anti-ring" id="ship-antiring-@index-@shipIndex" stroke-width="@strokeWidth" stroke="gray" fill="transparent" r="@radius" cx="@baseSize" cy="@baseSize"
                         style="stroke-dasharray: @circumfrence @circumfrence; stroke-dashoffset: @initialAntiOffset;" />
-                        <image alt="@mission.Ship.ToString().Replace("_", " ")" x="@imageOffsets" y="@imageOffsets" width="@shipImageSize" height="@shipImageSize" xlink:href="@shipEmojiLink" />
+                        <image alt="@MissionHelpers.GetProperShipName(mission.Ship)" x="@imageOffsets" y="@imageOffsets" width="@shipImageSize" height="@shipImageSize" xlink:href="@shipEmojiLink" />
                     </svg><br/>
                 }
                 <span style="font-size: 1.1rem; color: @durationColor(mission.Duration);">@mission.Duration.ToString().Replace("Epic", "Extended").Replace("Long","Standard")</span><br>
-                @mission.Ship.ToString().Replace("_", " ")<br>
+                @MissionHelpers.GetProperShipName(mission.Ship)<br>
                 <span id="ship-progress-stars-@index-@shipIndex" style="font-size: 1.2rem;">
                     @for (var i = 0; i < MissionHelpers.MaxShipLevels[mission.Ship]; i++) {
                         <span class="ShipCardStar @((i < mission.Stars) ? "GoldenStar" : "GrayStar")">★</span>
@@ -753,8 +754,8 @@
                                             @if (!alreadyMaxed){
                                                 <span class="blue-text" id="@ship.Key-time-needed-asc-@index"
                                                       data-short="@shortsTimeMax" data-standard="@standardsTimeMax" data-extended="@extendedsTimeMax"
-                                                      dt-short="@Model.Backup.MinutesToString(shortsTimeMax)" dt-standard="@Model.Backup.MinutesToString(standardsTimeMax)" dt-extended="@Model.Backup.MinutesToString(extendedsTimeMax)">
-                                                    @Model.Backup.MinutesToString(shortsTimeMax)
+                                              dt-short="@MissionHelpers.MinutesToString(shortsTimeMax)" dt-standard="@MissionHelpers.MinutesToString(standardsTimeMax)" dt-extended="@MissionHelpers.MinutesToString(extendedsTimeMax)">
+                                            @MissionHelpers.MinutesToString(shortsTimeMax)
                                                 </span>
                                     }
                                         </td>

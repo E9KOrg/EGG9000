@@ -11,6 +11,10 @@
 	List<(object, DateTimeOffset)> allFarms = new List<(object, DateTimeOffset)>();
 	allFarms.AddRange(farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Select(x => ((object)x, x.Started)));
 	allFarms.AddRange(backup.ArchivedFarms?.Where(x => !farms.Any(y => y.ContractId == x.ContractId)).Select(x => ((object)x, x.Started)));
+
+	string LimitToThirty(string input){
+		return (input.Length > 30 ? $"{input.Substring(0, 30)}..." : input);
+	}
 }
 <div class="card" style="margin-top:15px">
 	<h4 class="card-header">Active Farms</h4>
@@ -59,7 +63,7 @@
 								<td>@(contract?.Name ?? farm.ContractId)</td>
 								<td>
 									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-										@(farm.CoopId ?? coop?.Name)
+										@(LimitToThirty(farm.CoopId ?? coop?.Name))
 									</a>
 									@if (coop is not null && !coop.ThreadArchived)
 									{
@@ -138,7 +142,7 @@
 								<td>@(contract?.Name ?? farm.ContractId)</td>
 								<td>
 									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-										@(farm.CoopId ?? coop?.Name)
+										@(LimitToThirty(farm.CoopId ?? coop?.Name))
 									</a>
 									@if (coop is not null && !coop.ThreadArchived) {
 										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
@@ -174,7 +178,7 @@
 								<td>
 									@if (!string.IsNullOrEmpty(farm.CoopId) || (contract?.MaxUsers ?? 0) > 1) {
 										<a href="/coop/@farm.ContractId/@(farm.CoopId)">
-											@(farm.CoopId)
+											@(LimitToThirty(farm.CoopId))
 										</a>
 									} else {
 										<em>Solo</em>
