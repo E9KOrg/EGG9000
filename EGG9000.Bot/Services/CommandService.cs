@@ -55,7 +55,7 @@ namespace EGG9000.Bot.Services {
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(50);
         private ContractUpdater _contractUpdater;
         private CoopStatusUpdater _coopStatusUpdater;
-        private CoopStatusUpdaterThreads _coopStatusUpdaterThreads;
+        private ThreadsCoopStatusUpdater _coopStatusUpdaterThreads;
         private JobService _jobService;
         private Guild _cpGuild;
         private IServiceProvider _provider;
@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Services {
                 Bugsnag.IClient bugsnag,
                 ContractUpdater contractUpdater,
                 CoopStatusUpdater coopStatusUpdater,
-                CoopStatusUpdaterThreads coopStatusUpdaterThreads,
+                ThreadsCoopStatusUpdater coopStatusUpdaterThreads,
                 JobService jobService,
                 ApplicationDbContext context,
                 IServiceProvider serviceProvider,
@@ -177,7 +177,7 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(arg.User);
                         } else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
                             parameters.Add(_coopStatusUpdater);
-                        } else if(parameterInfo.ParameterType == typeof(CoopStatusUpdaterThreads)) {
+                        } else if(parameterInfo.ParameterType == typeof(ThreadsCoopStatusUpdater)) {
                             parameters.Add(_coopStatusUpdaterThreads);
                         } else if(parameterInfo.ParameterType == typeof(ContractUpdater)) {
                             parameters.Add(_contractUpdater);

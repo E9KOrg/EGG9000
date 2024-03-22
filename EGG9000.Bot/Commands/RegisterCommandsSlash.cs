@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, CoopStatusUpdaterThreads coopStatusUpdaterThreads, ILogger logger) {
+        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {

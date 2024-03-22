@@ -108,9 +108,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<CoopStatusUpdater>();
             services.AddHostedService(provider => provider.GetService<CoopStatusUpdater>());
 
-            services.Configure<UpdaterOptions<CoopStatusUpdaterThreads>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
-            services.AddSingleton<CoopStatusUpdaterThreads>();
-            services.AddHostedService(provider => provider.GetService<CoopStatusUpdaterThreads>());
+            services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
+            services.AddSingleton<ThreadsCoopStatusUpdater>();
+            services.AddHostedService(provider => provider.GetService<ThreadsCoopStatusUpdater>());
 
             services.AddSingleton<ContractUpdater>();
             services.AddHostedService(provider => provider.GetService<ContractUpdater>());
