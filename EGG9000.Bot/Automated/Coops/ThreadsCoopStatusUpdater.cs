@@ -533,7 +533,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 await CheckDeflectorChange(coop.LastStatusUpdate, status, coop, usersWithStatus, coopThread, db);
-                await CheckOnCoopFullError(usersWithStatus, coop, status, coop.Contract, coopThread);
 
                 timings.Set("1.1");
                 var usersNotJoined = coopDetails.CoopParticipants.Where(x => x.CoopStatus is null).ToList();
@@ -586,11 +585,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
                 var currentUsers = await coopThread.ExtGetUsersAsync();
-                var threadChannel = guild.GetChannel(coop.ThreadParentChannel) as SocketTextChannel;
-                var overwrites = threadChannel?.Category?.PermissionOverwrites?.Where(p => p.Permissions.ViewChannel == PermValue.Allow);
-                if(overwrites?.Any() ?? false) {
-                    overwrites.Where(ow => ow.TargetType == PermissionTarget.Role).ToList().ForEach(ow => usersNeedingChannelPermissions.AddRange(guild.GetRole(ow.TargetId).Members.Select(m => m.Id).ToList()));
-                }
+                (await coopThread.GetParentChannel())?.Category?.PermissionOverwrites?.Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
+                    .ForEach(ow => usersNeedingChannelPermissions.AddRange(guild.GetRole(ow.TargetId).Members.Select(m => m.Id).ToList()));
 
                 timings.Set(3);
 
@@ -1372,7 +1368,6 @@ namespace EGG9000.Bot.Automated.Coops {
             if(discordUser is null)
                 return;
 
-            var dmChannel = await discordUser.CreateDMChannelAsync();
             var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
             if(dmResult != DMResult.Success) {
                 await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
@@ -1464,15 +1459,6 @@ namespace EGG9000.Bot.Automated.Coops {
             var matches = contributions.Where(x => x.Uuid != currentUserUuid && x.BuffHistory.Count > 0);
             var histories = matches.Select(x => x.BuffHistory.Last());
             return histories.Sum(x => (decimal)x.EggLayingRate - 1);
-        }
-
-        public async Task CheckOnCoopFullError(List<UserWithStatus> usersWithStatus, Coop coop, Ei.ContractCoopStatusResponse status, Contract contract, IThreadChannel coopChannel) {
-            //if(coop.FinishedOrFailedOrExpired || status.Contributors.Count < contract.MaxUsers)
-            //    return;
-            //foreach(var user in usersWithStatus.Where(x => x.Xref is not null && x.Status is not null && x.Status.ContributionAmount == 0 && x.Status.ContributionRate == 0 && !x.Xref.CoopFullWarning)) {
-            //    user.Xref.CoopFullWarning = true;
-            //    await coopChannel.SendMessageAsync($"<@{user.User.DiscordId}>, It looks like you attempted to join the co-op but might have gotten an error about the co-op being full. If you got the error please try using </fixfullcooperror:1111043604178276463>, wait a few minutes, and try joining again.\n\nIf this does not work, please use </callstaff:1095116354169864210>.");
-            //}
         }
 
         public async Task<SocketTextChannel> GetDemeritChannel(Guild dbguild) {

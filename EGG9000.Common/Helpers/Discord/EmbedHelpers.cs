@@ -6,6 +6,10 @@ namespace EGG9000.Common.Helpers.Discord {
             return new EmbedBuilder().WithColor(Color.Blue).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Please wait...").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
 
+        public static Embed EmbedAlert(string text) {
+            return new EmbedBuilder().WithColor(Color.Orange).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Alert").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
+        }
+        
         public static Embed EmbedSuccess(string text) {
             return new EmbedBuilder().WithColor(Color.Green).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Success").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }

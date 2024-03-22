@@ -665,7 +665,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db) {
+        public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
                 await command.RespondAsync(content: "", embed: EmbedError("Unable to find contract, use only in contract channels."));
