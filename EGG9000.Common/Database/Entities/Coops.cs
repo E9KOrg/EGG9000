@@ -41,6 +41,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool DeletedChannel { get; set; } // V2 - Comment out
         public uint FindChannelErrors { get; set; } = 0; // V2 - Comment out
         public ulong Group { get; set; }
+        public bool AddedFromBackup { get; set; } = false;
 
         public ulong ThreadID { get; set; }
         public ulong ThreadParentChannel { get; set; }

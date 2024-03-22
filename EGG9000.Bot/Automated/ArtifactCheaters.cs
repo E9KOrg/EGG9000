@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Threading;
@@ -144,11 +145,16 @@ namespace EGG9000.Bot.Automated {
                     else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
                     var outlierScore = scoreSet[outlier];
 
-                    var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                    if(guild is null) continue;
-
-                    var clientGuild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
+                    var clientGuild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
                     if(clientGuild is null) continue;
+
+                    var dbGuild = dbguilds.FirstOrDefault(x => x.Id == clientGuild.Id);
+                    if(dbGuild is null) continue;
+
+                    var doesCheaterChannelExist = ChannelHelper.DetermineChannelType(dbGuild, clientGuild, GuildChannelType.CheaterThread);
+
+                    //Only run through if the channel exists
+                    if(doesCheaterChannelExist is null) continue;
 
                     var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
 #if DEV9002
@@ -157,7 +163,28 @@ namespace EGG9000.Bot.Automated {
                     var message = $"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 #endif
 
-                    var response = await ChannelHelper.DetermineAndSend(_db, _client, clientGuild, guild, GuildChannelType.CheaterThread, new() { Text = message});
+                    var (B64, Config) = ArtifactHelpers.InventoryB64(outlier);
+                    if(string.IsNullOrEmpty(B64)) {
+                        var sendResponse = await ChannelHelper.DetermineAndSend(_db, _client, dbGuild, clientGuild, GuildChannelType.CheaterThread, new() {
+                            Text = message
+                        });
+                    } else {
+                        var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
+                        var sendResponse = await ChannelHelper.DetermineAndSend(_db, _client, dbGuild, clientGuild, GuildChannelType.CheaterThread, new() {
+                            Text = message,
+                            Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier),
+                            File = image,
+                            SendFile = true,
+                        });
+                        var baseUrl = sendResponse.Embeds.First().Image.ToString();
+                        var formatIndex = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
+                        var imageUrl = formatIndex is int index && index != -1 ? baseUrl[..(index + "&format".Length)] : baseUrl;
+
+                        await sendResponse.ModifyAsync(x => {
+                            x.Content = message;
+                            x.Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier, imageUrl);
+                        });
+                    }
 
                     outlier.AFSWarningSent = true;
                     user.UpdateAccounts();
