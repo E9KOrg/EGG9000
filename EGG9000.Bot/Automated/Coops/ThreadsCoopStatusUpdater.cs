@@ -29,7 +29,7 @@ using MassTransit.Testing;
 using MassTransit.Util;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CoopStatusUpdaterThreads(IServiceProvider provider) : _UpdaterBase<CoopStatusUpdaterThreads>(interval, delay, provider) {
+    public class ThreadsCoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
 #if DEBUG
         private static TimeSpan delay = TimeSpan.FromMinutes(0);
         private static TimeSpan interval = TimeSpan.FromMinutes(20);

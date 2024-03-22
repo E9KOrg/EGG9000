@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
 
         [SlashCommand(Description = "Fix a user getting full co-op error", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, CoopStatusUpdaterThreads coopStatusUpdaterThreads, ILogger logger, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount) {
+        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount) {
             await command.DeferAsync();
             var userid = useraccount.Split("|")[0];
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
@@ -62,7 +62,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Fix for getting full co-op error")]
-        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, CoopStatusUpdaterThreads coopStatusUpdaterThreads, ILogger logger) {
+        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
             var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {
@@ -78,7 +78,7 @@ namespace EGG9000.Bot.Commands {
             await _fixFullCoopError(command, db, _client, coopStatusUpdater, coopStatusUpdaterThreads, logger, dbuser, coop);
         }
 
-        private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, CoopStatusUpdaterThreads coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
+        private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status is null) { //Safeguarding
@@ -515,7 +515,7 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Silently moves to coop (if needed), followed by fixing reference",AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task FixReference(FauxCommand command, CoopStatusUpdater coopStatusUpdater, CoopStatusUpdaterThreads coopStatusUpdaterThreads, DiscordSocketClient discord, ApplicationDbContext db, 
+        public static async Task FixReference(FauxCommand command, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ApplicationDbContext db, 
             [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, 
             [SlashParam(Description = "(Usually not required) Egg Inc Name, will match partial name", Required = false)] string eggincname = "") {
             await command.DeferAsync();
