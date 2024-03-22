@@ -672,7 +672,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
-            await dbGuild.DeleteCoopThreadHeaders(_client, guildContract.Contract);
+            await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract);
 
             //guildContract.DeletedChannel = true;
             //await db.SaveChangesAsync();

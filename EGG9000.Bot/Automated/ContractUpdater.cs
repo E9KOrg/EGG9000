@@ -220,7 +220,7 @@ namespace EGG9000.Bot.Automated {
                     if(channel != null) {
                         await channel.DeleteAsync();
                     }
-                    await dbGuild.DeleteCoopThreadHeaders(_client, guildContract.Contract);
+                    await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract);
                     guildContract.DeletedChannel = true;
 
                     if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.Now.AddMonths(-3) && !guildContract.HasScores) {

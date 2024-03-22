@@ -243,7 +243,7 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeader(this SocketGuild guild, SocketRole leagueRole, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
             if(category is null || category.Id  == 0) return null;
 
             var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
@@ -267,7 +267,7 @@ namespace EGG9000.Common.Services {
             return guild.GetChannel(channel.Id);
         }
 
-        public static async Task DeleteCoopThreadHeaders(this Guild guild, DiscordSocketClient client, Contract contract) {
+        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, Contract contract) {
             List<SocketGuild> guilds = [
                 client.GetGuild(guild.DiscordSeverId),
                 .. guild.OverflowServers.Select(client.GetGuild).ToList()
@@ -289,8 +289,12 @@ namespace EGG9000.Common.Services {
             return (toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-");
         }
 
-        public static async Task<SocketTextChannel> GetParentChannel(this IThreadChannel threadChannel) {
-            return (await threadChannel.Guild.GetTextChannelsAsync()).Select(c => c as SocketTextChannel).FirstOrDefault(c => c.Threads.Any(t => t.Id == threadChannel.Id));
+        public static async Task<SocketTextChannel> GetParentChannelAsync(this IThreadChannel threadChannel) {
+            try {
+                return (await threadChannel.Guild.GetTextChannelAsync(threadChannel.CategoryId ?? ulong.MaxValue)) as SocketTextChannel ?? null;
+            } catch(Exception) {
+                return null;
+            }
         }
     }
 }
