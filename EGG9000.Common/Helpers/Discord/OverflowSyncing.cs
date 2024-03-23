@@ -25,22 +25,22 @@ namespace EGG9000.Common.Helpers.Discord {
             foreach(var command in commands) {
                 var permissions = await ContractsAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", client_secret);
 
-                if(permissions.permissions is null)
+                if(permissions.Permissions is null)
                     continue;
                 foreach(var overflowServer in overflowServers) {
                     var overflowPermissions = new GuildApplicationCommandPermissions {
-                        permissions = new List<Permission>()
+                        Permissions = []
                     };
 
-                    foreach(var p in permissions.permissions) {
+                    foreach(var p in permissions.Permissions) {
                         var np = new Permission {
-                            id = p.type == 1 && p.id != mainServer.EveryoneRole.Id.ToString() ? roleMaps.First(y => y.RoleID.ToString() == p.id).Values.First(y => y.GuildId == overflowServer.Id).RoleId.ToString() : p.id,
-                            permission = p.permission,
-                            type = p.type
+                            Id = p.Type == 1 && p.Id != mainServer.EveryoneRole.Id.ToString() ? roleMaps.First(y => y.RoleID.ToString() == p.Id).Values.First(y => y.GuildId == overflowServer.Id).RoleId.ToString() : p.Id,
+                            PermissionBool = p.PermissionBool,
+                            Type = p.Type
                         };
-                        if(np.type == 3)
+                        if(np.Type == 3)
                             continue;
-                        overflowPermissions.permissions.Add(np);
+                        overflowPermissions.Permissions.Add(np);
                     }
 
                     var overflowCommand = overflowCommands.FirstOrDefault(x => x.Guild.Id == overflowServer.Id && x.Name == command.Name);
@@ -49,9 +49,9 @@ namespace EGG9000.Common.Helpers.Discord {
 
 
                     var match = true;
-                    if(currentOverflowPermissions.permissions is not null && overflowPermissions.permissions.Count == currentOverflowPermissions.permissions.Count) {
-                        foreach(var permission in overflowPermissions.permissions) {
-                            if(!currentOverflowPermissions.permissions.Any(x => x.id == permission.id && x.permission == permission.permission && x.type == permission.type)) {
+                    if(currentOverflowPermissions.Permissions is not null && overflowPermissions.Permissions.Count == currentOverflowPermissions.Permissions.Count) {
+                        foreach(var permission in overflowPermissions.Permissions) {
+                            if(!currentOverflowPermissions.Permissions.Any(x => x.Id == permission.Id && x.PermissionBool == permission.PermissionBool && x.Type == permission.Type)) {
                                 match = false;
                                 break;
                             }
@@ -73,11 +73,11 @@ namespace EGG9000.Common.Helpers.Discord {
             return sb.ToString();
         }
 
-        public static async Task<List<RoleMap>> GetRoleMaps(IList<SocketRole> rolesToSync, IEnumerable<SocketGuild> overflowServers) {
+        public static List<RoleMap> GetRoleMaps(IList<SocketRole> rolesToSync, IEnumerable<SocketGuild> overflowServers) {
             var roleMaps = rolesToSync.Select(x => {
                 var map = new RoleMap {
                     RoleID = x.Id,
-                    Values = new List<(ulong GuildId, ulong RoleId)>()
+                    Values = [],
                 };
                 return map;
             }).ToList();
@@ -93,16 +93,16 @@ namespace EGG9000.Common.Helpers.Discord {
     }
 
     public class Permission {
-        public string id { get; set; }
-        public int type { get; set; }
-        public bool permission { get; set; }
+        public string Id { get; set; }
+        public int Type { get; set; }
+        public bool PermissionBool { get; set; }
     }
 
     public class GuildApplicationCommandPermissions {
-        public string id { get; set; }
-        public string application_id { get; set; }
-        public string guild_id { get; set; }
-        public List<Permission> permissions { get; set; }
+        public string Id { get; set; }
+        public string ApplicationId { get; set; }
+        public string GuildId { get; set; }
+        public List<Permission> Permissions { get; set; }
     }
 
     public class RoleMap {
