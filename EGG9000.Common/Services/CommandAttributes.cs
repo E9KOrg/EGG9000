@@ -74,7 +74,7 @@ namespace EGG9000.Common.Commands {
 
     }
 
-    public interface AutoCompleteHandler {
+    public interface IAutoCompleteHandler {
         public Task Run(SocketAutocompleteInteraction arg);
     }
 }

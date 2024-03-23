@@ -124,23 +124,23 @@ namespace EGG9000.Bot.Commands {
 
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
                 builder.AddField(new EmbedFieldBuilder {
-                    IsInline = false, Name = "Current Details", Value = @$"{currentRank.RankWithSubRank}
-<:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
-<:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
-EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
-Prestiges {backup.NumPrestiges}
-<:Soul_Egg_SE:724341890794913964>/Prestige {(backup.SoulEggs / backup.NumPrestiges).ToEggString(numberOfDecimalPlaces: 3)}
-<:Golden_Egg_GE:692439755798872075> {(ge > 1_000_000_000 ? ge.ToEggString(numberOfDecimalPlaces: 3) : ge.ToString("n0"))}
-<:Piggy_bank:724396277676113955>  {(backup.TotalGEInPiggyBank > 1_000_000_000 ? backup.TotalGEInPiggyBank.ToEggString(numberOfDecimalPlaces: 3) : backup.TotalGEInPiggyBank.ToString("n0"))}
-<:Drone:755719353529270342> {backup.DroneTakedowns.ToString("n0")}
-<:Drone:755719353529270342> Elite {backup.DroneTakedownsElite.ToString("n0")}
-Last Backup <t:{backup.LastBackupTime}:R>
-"
+                    IsInline = false, 
+                    Name = "Current Details", 
+                    Value = 
+                        @$"{currentRank.RankWithSubRank}
+                        <:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
+                        <:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
+                        EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
+                        Prestiges {backup.NumPrestiges}
+                        <:Soul_Egg_SE:724341890794913964>/Prestige {(backup.SoulEggs / backup.NumPrestiges).ToEggString(numberOfDecimalPlaces: 3)}
+                        <:Golden_Egg_GE:692439755798872075> {(ge > 1_000_000_000 ? ge.ToEggString(numberOfDecimalPlaces: 3) : ge.ToString("n0"))}
+                        <:Piggy_bank:724396277676113955>  {(backup.TotalGEInPiggyBank > 1_000_000_000 ? backup.TotalGEInPiggyBank.ToEggString(numberOfDecimalPlaces: 3) : backup.TotalGEInPiggyBank.ToString("n0"))}
+                        <:Drone:755719353529270342> {backup.DroneTakedowns:n0}
+                        <:Drone:755719353529270342> Elite {backup.DroneTakedownsElite:n0}
+                        Last Backup <t:{backup.LastBackupTime}:R>"
                 });
             }
 
-            //await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
-            //await command.DeleteResponseFix();
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = builder.Build();
@@ -172,7 +172,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
                 if(targetCoop.ThreadID != 0) {
                     await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
                 } else if(targetCoop.DiscordChannelId != 0) {
-                    await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
+                    await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
                 }
                 
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
@@ -220,7 +220,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
         [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]

@@ -114,8 +114,7 @@ namespace EGG9000.Bot.Commands {
 
             var settingName = data.Split(",")[0];
 
-            if(dbuser.CoopSetting == null)
-                dbuser.CoopSetting = new CoopSetting();
+            dbuser.CoopSetting ??= new CoopSetting();
             dbuser.CoopSetting[settingName] = !dbuser.CoopSetting[settingName];
             dbuser.CoopSetting = dbuser.CoopSetting;
 

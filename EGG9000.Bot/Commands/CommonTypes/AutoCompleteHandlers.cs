@@ -23,7 +23,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
 
         #region UserAutoCompletes
-        public class UserAccountAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class UserAccountAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class UserAccountChannelSpecificAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class UserAccountChannelSpecificAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -80,11 +80,11 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     }
                 }
 
-                await arg.RespondAsync(null, results.ToArray());
+                await arg.RespondAsync(null, [..results]);
             }
         }
 
-        public class PersonalUserAccountAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class PersonalUserAccountAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     }
                 }
 
-                await arg.RespondAsync(null, results.ToArray());
+                await arg.RespondAsync(null, [..results]);
             }
         }
         #endregion
@@ -116,7 +116,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         *  Was previously being used in `/findcoopforuser` as the staff only command, but was limiting the staff
         *  that could move users to ultra coops to "staff who have ultra"
         */
-        public class ContractAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class ContractAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         /*
          *  Clone of ContractAutoComplete with no limitation on who can select Ultra coops
          */
-        public class StaffContractAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class StaffContractAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -145,7 +145,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class CreateCoopContractAutoComplete(ApplicationDbContext db, DiscordSocketClient client) : AutoCompleteHandler {
+        public class CreateCoopContractAutoComplete(ApplicationDbContext db, DiscordSocketClient client) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
             private readonly DiscordSocketClient _discord = client;
 
@@ -170,7 +170,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class RemoveFromCoopAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class RemoveFromCoopAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -185,7 +185,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         #endregion
 
         #region CoopAutoCompletes
-        public class MoveGradeAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class MoveGradeAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -207,7 +207,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class GradeAutoComplete() : AutoCompleteHandler {
+        public class GradeAutoComplete() : IAutoCompleteHandler {
             public async Task Run(SocketAutocompleteInteraction arg) {
                 var result = Enumerable.Range(1, 5).Reverse().ToList()
                     .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x));
@@ -217,7 +217,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class MoveToCoopCoopNameAutoComplete(ApplicationDbContext db) : AutoCompleteHandler {
+        public class MoveToCoopCoopNameAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -229,13 +229,9 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                         .Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
                 }
 
-                if(coops is null) {
-                    coops = await _db.Coops.Include(x => x.Contract)
-                        .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.ThreadArchived && x.GuildId == guild.Id)
-                        .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
-                }
-
-
+                coops ??= await _db.Coops.Include(x => x.Contract)
+                    .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.ThreadArchived && x.GuildId == guild.Id)
+                    .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
 
                 await arg.RespondAsync(null, coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
             }
@@ -251,7 +247,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
         #region ServicesAutoCompletes
         private static List<AutocompleteResult> _allServicesAndJobs = null;
-        public class ServiceNameAutoComplete(IServiceProvider serviceProvider) : AutoCompleteHandler {
+        public class ServiceNameAutoComplete(IServiceProvider serviceProvider) : IAutoCompleteHandler {
             private readonly IServiceProvider _serviceProvider = serviceProvider;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
@@ -279,13 +275,13 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     results = results.Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
-                await arg.RespondAsync(null, results.OrderBy(x => x.Name).ToArray());
+                await arg.RespondAsync(null, [..results.OrderBy(x => x.Name)]);
             }
         }
         #endregion
 
         #region AFXAutoCompletes
-        public class ArtifactNameAutoComplete() : AutoCompleteHandler {
+        public class ArtifactNameAutoComplete() : IAutoCompleteHandler {
             private readonly EiAfxDataRoot _eiAfxData = EggIncArtifacts.GetEiAfxData();
             public async Task Run(SocketAutocompleteInteraction arg) {
                 IEnumerable<ArtifactFamily> artifactFamilies = [.. _eiAfxData.artifact_families];

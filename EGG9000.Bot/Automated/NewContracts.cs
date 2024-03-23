@@ -37,17 +37,18 @@ using Microsoft.Extensions.Logging;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated {
-    public class NewContracts : _UpdaterBase<NewContracts> {
-        private Words _words;
-        private ContractUpdater _contractUpdater;
-        public NewContracts(
-            IServiceProvider provider, Words words, ContractUpdater contractUpdater
-        ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
-            _words = words;
-            _contractUpdater = contractUpdater;
-        }
+    public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
 
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        private readonly Words _words = words;
+        private readonly ContractUpdater _contractUpdater = contractUpdater;
+
+#if DEV9002 || DEBUG
+        private static readonly bool _debug = true;
+#else
+        private static readonly bool _debug = false;
+#endif
+
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
@@ -56,7 +57,7 @@ namespace EGG9000.Bot.Automated {
             if(contractsResponse == null) {
                 _logger.LogWarning("⚠️ERROR: Invalid Contract Response");
             } else {
-                var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync();
+                var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync(cancellationToken);
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
 
@@ -67,7 +68,7 @@ namespace EGG9000.Bot.Automated {
                         continue;
                     }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
-                    var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+                    var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
 
                     var json = JsonConvert.SerializeObject(contractResponse);
 
@@ -91,7 +92,7 @@ namespace EGG9000.Bot.Automated {
                             _response = json
                         };
                         _db.Contracts.Add(contract);
-                        await _db.SaveChangesAsync();
+                        await _db.SaveChangesAsync(cancellationToken);
 
                         needsUpdate = true;
                     } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
@@ -100,7 +101,7 @@ namespace EGG9000.Bot.Automated {
                             var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
                             _db.RemoveRange(guildContracts);
                         }
-                        _logger.LogInformation("Contract {0} updated", contract.ID);
+                        _logger.LogInformation("Contract {contractid} updated", contract.ID);
                         contract.Description = contractResponse.Description;
                         contract.Name = contractResponse.Name;
                         contract.goals = JsonConvert.SerializeObject(contractResponse.Goals);
@@ -115,11 +116,11 @@ namespace EGG9000.Bot.Automated {
                         contract.egg = contractResponse.Egg.ToString();
                         contract.cc_only = contractResponse.CcOnly;
                         contract._response = json;
-                        await _db.SaveChangesAsync();
+                        await _db.SaveChangesAsync(cancellationToken);
                     }
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
-                    await _db.SaveChangesAsync();
+                    await _db.SaveChangesAsync(cancellationToken);
 
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
@@ -127,9 +128,9 @@ namespace EGG9000.Bot.Automated {
 
 
             try {
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             } catch(Exception) {
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
 
             if(needsUpdate)
@@ -190,14 +191,12 @@ namespace EGG9000.Bot.Automated {
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
                 } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4) {
                     var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
-                    var nextLaunch = (contractDate - contractDate.TimeOfDay) + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
+                    var nextLaunch = contractDate - contractDate.TimeOfDay + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
                     var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
                     if(nextLaunch < currentTime) {
                         guildContract.BoardingGroup++;
                         await _db.SaveChangesAsync();
-#if !DEV9002
-                        _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
-#endif
+                        if(!_debug) _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
                     }
                 }
             }
@@ -213,18 +212,18 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
-#if DEV9002
-            return;
-#endif
+
+            if(_debug) return;
+
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG} for Contract {contract}", guild.Name, skipbg + 1, contract.Name);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
-            var sortedGroupd = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
+            var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
 
-            foreach(var group in sortedGroupd.coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
+            foreach(var group in coopGroups.Where(x => x.bg == (skipbg + 1).ToString())) {
                 _logger.LogInformation("{guild} BG{bg}, Grade {grade}, Count {count} for Contract {contract}", guild.Name, group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2), contract.Name);
                 var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
 
