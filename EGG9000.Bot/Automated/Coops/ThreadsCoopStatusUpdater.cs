@@ -82,7 +82,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     tasks.Add(Task.Run(async () => {
                         try {
-                            await ProcessCoop(coop.Id, guild, users, dbguild, _db, cancellationToken);
+                            await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken);
                         } finally {
                             throttler.Release();
                         }
@@ -333,7 +333,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private static async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
-            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken);
+            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken);
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);
@@ -346,7 +346,7 @@ namespace EGG9000.Bot.Automated.Coops {
             };
         }
 
-        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, ApplicationDbContext db, CancellationToken cancellationToken) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
@@ -390,7 +390,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(xref.CoopSetting is null && user is not null) {
                         xref.CoopSetting = new CoopSetting(xref, user.User, dbguild);
                         if(xref.CoopSetting.PingOnCoopCreated) {
-                            await SendDMWarning(db, guild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created: ", coop);
+                            await SendDMWarning(_db, guild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created: ", coop);
                             xref.CoopSetting.PingOnCoopCreated = false;
                         }
                         xref.UpdateCoopSetting();
@@ -466,7 +466,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                     await Task.Delay(1000, cancellationToken);
-                    var checkStatus = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), cancellationToken, coop.CreatorID);
+                    var checkStatus = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), coop.CreatorID, cancellationToken: cancellationToken);
 
 
                     var kickPlayer = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
@@ -527,7 +527,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 }).ToList();
 
 
-                await CheckDeflectorChange(coop.LastStatusUpdate, status, coop, usersWithStatus, coopThread, db);
+                await CheckDeflectorChange(coop.LastStatusUpdate, status, coop, usersWithStatus, coopThread, _db);
 
                 timings.Set("1.1");
                 var usersNotJoined = coopDetails.CoopParticipants.Where(x => x.CoopStatus is null).ToList();
@@ -744,7 +744,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var xref = userFarmDetails.Xref;
                         try {
                             var user = users.FirstOrDefault(x => x.User.Id == xref.GetID())?.User;
-                            user ??= await db.DBUsers.FirstOrDefaultAsync(x => x.Id == xref.UserId, cancellationToken);
+                            user ??= await _db.DBUsers.FirstOrDefaultAsync(x => x.Id == xref.UserId, cancellationToken);
 
                             var discordUser = user == null ? null : guild.GetUser(user.DiscordId);
 
@@ -774,16 +774,16 @@ namespace EGG9000.Bot.Automated.Coops {
                                 if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                     xref.JoinWarning24TillFinish = true;
                                     await _db.SaveChangesAsync(cancellationToken);
-                                    await SendDMWarning(db, discordUser, coopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
+                                    await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                 } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                     xref.JoinWarning24h = true;
                                     xref.JoinWarning12h = true;
                                     await _db.SaveChangesAsync(cancellationToken);
-                                    await SendDMWarning(db, discordUser, coopThread, $"reminder to join - 24h since added to co-op", coop);
+                                    await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 24h since added to co-op", coop);
                                 } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                     xref.JoinWarning12h = true;
                                     await _db.SaveChangesAsync(cancellationToken);
-                                    await SendDMWarning(db, discordUser, coopThread, $"reminder to join - 12h since added to co-op", coop);
+                                    await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 12h since added to co-op", coop);
                                 }
 
 
@@ -807,7 +807,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
                                     var findGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id || g.OverflowServersJson.Contains(guild.Id.ToString()), cancellationToken);
                                     var findSocketGuild = _client.Guilds.FirstOrDefault(g => g.Id == findGuild.Id);
-                                    var response = ChannelHelper.DetermineAndSend(db, _client, findGuild, findSocketGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+                                    var response = ChannelHelper.DetermineAndSend(_db, _client, findGuild, findSocketGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
                                     await _db.SaveChangesAsync(cancellationToken);
                                 }
                             }
@@ -897,7 +897,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                         var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
                         if(gusset is null) {
-                            await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
+                            await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.CheaterThread,
                                 new() {
                                     Text =
                                     $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.ThreadID}> (`{coop.Name}`):\n" +
@@ -909,7 +909,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && u.Xref is not null && !u.Xref.TimeCheatReported).ToList()) {
                         var account = u.User?.EggIncAccounts?.FirstOrDefault(a => a.Id.ToLower() == u.Backup?.EggIncId.ToLower());
                         if(account is null || account.TimeCheatsMarkedClean) continue;
-                        await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.CheaterThread,
+                        await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.CheaterThread,
                             new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.ThreadID}> (`{coop.Name}`)" }
                         );
                         u.Xref.TimeCheatReported = true; //Set the flag to prevent repetition
@@ -975,15 +975,15 @@ namespace EGG9000.Bot.Automated.Coops {
                 var missingCount = coopDetails.CoopParticipants.Count(x => x.Xref is not null && x.CoopStatus is null);
 
                 if(missingCount == 0) {
-                    await HandlePingOnFull(db, coopDetails.CoopParticipants, coopThread);
+                    await HandlePingOnFull(_db, coopDetails.CoopParticipants, coopThread);
                 }
 
                 if(status.ClearedForExit) {
-                    await HandlePingOnCheckedIn(db, coopDetails.CoopParticipants, coopThread);
+                    await HandlePingOnCheckedIn(_db, coopDetails.CoopParticipants, coopThread);
                 }
 
                 if(coop.FinishedOrFailed()) {
-                    await HandleFinished(db, coopDetails.CoopParticipants, coopThread);
+                    await HandleFinished(_db, coopDetails.CoopParticipants, coopThread);
                 }
 
                 timings.Set(6);

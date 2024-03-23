@@ -131,8 +131,8 @@ namespace EGG9000.Site.Controllers {
 
                 ms2.Position = 0;
                 var sr = new StreamReader(ms2);
-                var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
+                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
+                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
