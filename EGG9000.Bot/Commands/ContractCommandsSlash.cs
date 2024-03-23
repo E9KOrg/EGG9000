@@ -135,7 +135,7 @@ namespace EGG9000.Bot.Commands {
                 if(coop.ThreadID != 0) {
                     await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
                 } else if(coop.DiscordChannelId != 0) {
-                    await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
+                    await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
                 }
                 
 
@@ -536,9 +536,8 @@ namespace EGG9000.Bot.Commands {
             //Primary lookup
             var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id && !x.JoinedCoop);
             //Secondary lookup
-            if(xref == null) {
-                xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id);
-            }
+            xref ??= await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id);
+
             var discordUser = discord.GetUser(dbuser.DiscordId);
             var coopChannel = discord.GetChannel(coop.ThreadID);
             //Lookups failed, a MoveToCoop is needed (run silently)
@@ -556,9 +555,8 @@ namespace EGG9000.Bot.Commands {
             //Relookup xref
             xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id && !x.JoinedCoop);
             //Secondary relookup
-            if(xref == null) {
-                xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id);
-            }
+            xref ??= await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id);
+
             //Failsafe
             if(xref == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Even after a `MoveToCoop`, an Xref could not be found for this user. Try again?"); });
@@ -588,7 +586,7 @@ namespace EGG9000.Bot.Commands {
             if(targetCoop.ThreadID != 0) {
                 await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
             } else if(targetCoop.DiscordChannelId != 0) {
-                await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, db, default);
+                await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
             }
             
 
@@ -708,7 +706,7 @@ namespace EGG9000.Bot.Commands {
                     subAccountBypass = user.EggIncAccounts.FirstOrDefault(x => x.HasActiveSubscription());
                 }
 
-                var userList = new List<UserByAccount> { new UserByAccount {
+                var userList = new List<UserByAccount> { new() {
                     Account = subAccountBypass ?? user.EggIncAccounts.First(),
                     User = user
                 } };
@@ -764,7 +762,7 @@ namespace EGG9000.Bot.Commands {
             var existingXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
             var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
 
-            var userList = new List<UserByAccount> { new UserByAccount {
+            var userList = new List<UserByAccount> { new() {
                     Account = account,
                     User = user
             } };
@@ -786,9 +784,6 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"); });
             //await component.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"));
         }
-
-        private static Dictionary<ulong, SemaphoreSlim> startSemapohores = new();
-        private static SemaphoreSlim dictionarySemaphore = new SemaphoreSlim(1);
 
         [ComponentCommand]
         public static async Task FindCoopSpot(SocketMessageComponent component, ApplicationDbContext db) {
@@ -958,7 +953,7 @@ namespace EGG9000.Bot.Commands {
             var existingXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
             var activeXrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.Now).ToListAsync();
 
-            var userList = new List<UserByAccount> { new UserByAccount {
+            var userList = new List<UserByAccount> { new() {
                 Account = account,
                 User = user
             }};
@@ -981,20 +976,6 @@ namespace EGG9000.Bot.Commands {
             var guild = _client.GetGuild(component.GuildId.Value);
             var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, true); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedSuccess($"Co-op `{coop.Name}` {PlayerGradeDetails.GetEmoji(coop.League)} created for <#{component.ChannelId}>"); });
-        }
-
-        private static async Task<SemaphoreSlim> AwaitStartSemaphore(FauxCommand command) {
-            await dictionarySemaphore.WaitAsync();
-            SemaphoreSlim semaphore;
-            if(startSemapohores.ContainsKey(command.ChannelId.Value)) {
-                semaphore = startSemapohores[command.ChannelId.Value];
-            } else {
-                semaphore = new SemaphoreSlim(1);
-                startSemapohores.Add(command.ChannelId.Value, semaphore);
-            }
-            dictionarySemaphore.Release();
-            await semaphore.WaitAsync();
-            return semaphore;
         }
     }
 }

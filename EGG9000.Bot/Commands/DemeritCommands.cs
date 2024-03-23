@@ -80,9 +80,8 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "List your demerits", AllowInDMs = true)]
         public static async Task Demerits(FauxCommand command, ApplicationDbContext db) {
             try {
-                IUser socketUser = command.User;
+                var socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
-
 
                 var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
                 if(demerits.Count == 0) {
@@ -97,7 +96,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                var demeritDesc = String.Join("\n", demerits.Select(x => {
+                var demeritDesc = string.Join("\n", demerits.Select(x => {
                     var monthAgo = DateTimeOffset.Now.AddMonths(-1);
                     var timeLeft = monthAgo - x.When;
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";

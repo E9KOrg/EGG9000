@@ -68,7 +68,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
         if(serviceCustomize is not null && debug) {
             var method = serviceCustomize.GetMethod("ConfigureServices");
-            method.Invoke(null, new object[] { hostContext, services });
+            method.Invoke(null, [hostContext, services]);
         } else {
 
 #if RELEASE

@@ -31,25 +31,18 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Services {
 
-    public class DiscordUserService : IHostedService {
-        private readonly DiscordHostedService _discord;
-        private IConfiguration _configuration;
-        private APILink _apiLink;
-        private Words _words;
-        private Bugsnag.IClient _bugsnag;
-        private IServiceProvider _provider;
-        private ILogger<DiscordUserService> _logger;
-        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) {
-            _discord = discord;
-            _configuration = Configuration;
-            _apiLink = apilink;
-            _words = words;
-            _bugsnag = bugsnag;
-            _provider = provider;
-            _logger = logger;
-        }
+    public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) : IHostedService {
 
+        private readonly DiscordHostedService _discord = discord;
+        private readonly Bugsnag.IClient _bugsnag = bugsnag;
+        private readonly IServiceProvider _provider = provider;
+        private readonly ILogger<DiscordUserService> _logger = logger;
 
+#if DEV9002 || DEBUG
+        private static readonly bool _debug = false;
+#else
+        private static readonly bool _debug = true;
+#endif
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _discord.UserJoined += Client_UserJoined;
@@ -156,7 +149,7 @@ namespace EGG9000.Common.Services {
             }
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
-                await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, new List<LeaderboardUser>());
+                await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
                 var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
@@ -166,16 +159,15 @@ namespace EGG9000.Common.Services {
                     dbuser.GuildId = user.Guild.Id;
                     dbuser.UpdateAccounts();
                     await db.SaveChangesAsync();
-                    await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, new List<LeaderboardUser>());
+                    await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
                     var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                     await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                     return;
                 }
             }
 
-#if DEV9002
-            return;
-#endif
+            if(_debug) return;
+
             var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
             var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
