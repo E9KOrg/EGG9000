@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Security.Policy;
 using System.Text;
@@ -1257,30 +1258,26 @@ music
             return Redirect($"https://discordapp.com/api/oauth2/authorize?response_type=code&client_id={_configuration.GetConnectionString("ClientId")}&scope=identify%20guilds.join%20applications.commands.permissions.update&state=15773059ghq9183habn&redirect_uri={url}");
         }
 
-        public IActionResult DiscordReturn() {
+        public async Task<IActionResult> DiscordReturn() {
             string code = Request.Query["code"];
 
-            /*Get Access Token from authorization code by making http post request*/
+            // Get Access Token from authorization code by making an HTTP POST request
+            var url = "https://discordapp.com/api/oauth2/token";
+            var parameters = $"client_id={_configuration.GetConnectionString("ClientId")}&client_secret={_configuration.GetConnectionString("ClientSecret")}&grant_type=authorization_code&code={code}&redirect_uri={Url.ActionLink("DiscordReturn")}";
 
-            var webRequest = (HttpWebRequest)WebRequest.Create("https://discordapp.com/api/oauth2/token");
-            webRequest.Method = "POST";
-            var url = Url.ActionLink("DiscordReturn");
-            var parameters = "client_id=" + _configuration.GetConnectionString("ClientId") + "&client_secret=" + _configuration.GetConnectionString("ClientSecret") + "&grant_type=authorization_code&code=" + code + "&redirect_uri=" + url + "";
-            var byteArray = Encoding.UTF8.GetBytes(parameters);
-            webRequest.ContentType = "application/x-www-form-urlencoded";
-            webRequest.ContentLength = byteArray.Length;
-            var postStream = webRequest.GetRequestStream();
+            using var httpClient = new HttpClient();
+            var content = new StringContent(parameters, Encoding.UTF8, "application/x-www-form-urlencoded");
+            var response = await httpClient.PostAsync(url, content);
 
-            postStream.Write(byteArray, 0, byteArray.Length);
-            postStream.Close();
-            var response = webRequest.GetResponse();
-            postStream = response.GetResponseStream();
-            var reader = new StreamReader(postStream);
-            var responseFromServer = reader.ReadToEnd();
-            dynamic jsonObject = JsonConvert.DeserializeObject(responseFromServer);
-            string access_token = jsonObject.access_token;
+            if(response.IsSuccessStatusCode) {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                dynamic jsonObject = JsonConvert.DeserializeObject(responseContent);
+                string access_token = jsonObject.access_token;
 
-            return Redirect("/admin/SyncCommandPermissions?access_token=" + access_token);
+                return Redirect($"/admin/SyncCommandPermissions?access_token={access_token}");
+            } else {
+                return BadRequest("Failed to retrieve access token.");
+            }
         }
 
         public async Task<IActionResult> SyncCommandPermissions(string access_token) {
