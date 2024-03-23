@@ -31,28 +31,15 @@ using EGG9000.Bot.Helpers;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class MyFarmsController : Controller {
-        private readonly ILogger<MyFarmsController> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly APILink _apiLink;
-        private readonly DiscordSocketClient _discord;
+    public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db) : Controller {
 
-        public MyFarmsController(
-            ILogger<MyFarmsController> logger,
-            UserManager<IdentityUser> userManager,
-            DiscordSocketClient discord,
-            RoleManager<IdentityRole> roleManager,
-            APILink apiLink,
-            ApplicationDbContext db) {
-            _roleManager = roleManager;
-            _userManager = userManager;
-            _logger = logger;
-            _apiLink = apiLink;
-            _db = db;
-            _discord = discord;
-        }
+        private readonly ILogger<MyFarmsController> _logger = logger;
+        private readonly ApplicationDbContext _db = db;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+        private readonly APILink _apiLink = apiLink;
+        private readonly DiscordSocketClient _discord = discord;
 
         public async Task<IActionResult> Index() {
             var loginuser = (await _userManager.GetUserAsync(User));
@@ -101,7 +88,7 @@ namespace EGG9000.Site.Controllers {
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             /*var RawBackups = rawBackups;*/
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && (!x.Coop.ThreadArchived && !x.Coop.DeletedChannel) && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
             var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
             var Scoring = scoring;

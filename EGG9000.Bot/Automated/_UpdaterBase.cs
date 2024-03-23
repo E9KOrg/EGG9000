@@ -34,19 +34,19 @@ namespace EGG9000.Bot.Automated {
         private bool initialStart;
         private Timer _timer;
         private Timer _watchDogTimer;
-        private DateTimeOffset _lastAlive;
+        //private DateTimeOffset _lastAlive;
         private readonly SemaphoreSlim _semaphoreSlim = new(1);
         private CancellationTokenSource _cts = new();
         private bool Restarted = false;
 
         private readonly CronExpression _cronExpression;
         private DateTimeOffset _nextRunFromCron;
-        private readonly DateTimeOffset _firstRunDue;
-        private DateTimeOffset _updaterInitiated;
+        /*private readonly DateTimeOffset _firstRunDue;
+        private DateTimeOffset _updaterInitiated;*/
 
         public TimeSpan UpdateInterval;
         private readonly TimeSpan _delayedStart;
-        private readonly DateTime? _lastMessageSent;
+        //private readonly DateTime? _lastMessageSent;
         public DateTime LastStarted;
         public DateTime LastCompleted;
 
@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Automated {
             _nextRunFromCron = _options.DelayStart.HasValue ? 
                 DateTimeOffset.Now + _options.DelayStart.Value : 
                 cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
-            _firstRunDue = _nextRunFromCron;
+            //_firstRunDue = _nextRunFromCron;
         }
 
         private void _initiate(IServiceProvider provider) {
@@ -92,7 +92,7 @@ namespace EGG9000.Bot.Automated {
             _ = ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 
             initialStart = true;
-            _updaterInitiated = DateTimeOffset.Now;
+            //_updaterInitiated = DateTimeOffset.Now;
             _options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>().CurrentValue;
 
         }
@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public void StillAlive() {
-            _lastAlive = DateTimeOffset.Now;
+            //_lastAlive = DateTimeOffset.Now;
         }
 
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
@@ -130,7 +130,7 @@ namespace EGG9000.Bot.Automated {
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
                 try {
                     LastStarted = DateTime.Now;
-                    _lastAlive = DateTimeOffset.Now;
+                    //_lastAlive = DateTimeOffset.Now;
                     var log = new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.Now };
                     _db.AutomationLogs.Add(log);
                     await _db.SaveChangesAsync();
@@ -193,7 +193,7 @@ namespace EGG9000.Bot.Automated {
                         var timer = System.Diagnostics.Stopwatch.StartNew();
                         await _run(null);
                         _logger.LogInformation("Update took {updateTime}", timer.Elapsed.Humanize());
-                        _lastAlive = DateTimeOffset.Now;
+                        //_lastAlive = DateTimeOffset.Now;
                     }
 
 
@@ -242,7 +242,9 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
+#pragma warning disable CS1998
         private static async Task _WatchDog(object state) {
+            _ = state;
             //if(_cronExpression is not null) {
             //    if(_firstRunDue > DateTimeOffset.Now) {
             //        _logger.LogTrace("Watchdog skipped because first run not due.");
@@ -281,8 +283,9 @@ namespace EGG9000.Bot.Automated {
             //    }
             //}
         }
+#pragma warning restore CS1998
 
-        private async Task<bool> AttemptCancel() {
+        /*private async Task<bool> AttemptCancel() {
             _cts.Cancel();
             for(var i = 0; i < 100; i++) {
                 if(_semaphoreSlim.CurrentCount == 0) {
@@ -295,6 +298,6 @@ namespace EGG9000.Bot.Automated {
             if(_semaphoreSlim.CurrentCount == 0)
                 return true;
             return false;
-        }
+        }*/
     }
 }

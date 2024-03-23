@@ -22,21 +22,15 @@ using Microsoft.Extensions.Logging;
 using Cronos;
 
 namespace EGG9000.Bot.Automated {
-    public class HandleGradeChanges : _UpdaterBase<HandleGradeChanges> {
+    public class HandleGradeChanges(IServiceProvider provider) : _UpdaterBase<HandleGradeChanges>(CronExpression.Parse("30 10,18,23 * * 1,3,5"), provider) {
 
-        public HandleGradeChanges(
-            IServiceProvider provider
-        ) : base(CronExpression.Parse("30 10,18,23 * * 1,3,5"), provider) {
-        }
-
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync();
-
+            var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync(cancellationToken);
             var chunkedUsers = users.Chunk(25);
             foreach(var userchunk in chunkedUsers) {
-                this.StillAlive();
+                StillAlive();
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
@@ -57,7 +51,7 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogError(e, "Error checking for grade update");
                     }
                 });
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
         }
     }

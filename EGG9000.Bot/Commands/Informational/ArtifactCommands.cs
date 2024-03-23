@@ -140,7 +140,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             EggIncAccount account = null;
-            int accountIndex = 0;
+            var accountIndex = 0;
             try {
                 accountIndex = int.Parse(useraccount.Split("|")[1]);
                 account = dbUser.EggIncAccounts[accountIndex];
