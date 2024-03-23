@@ -59,27 +59,27 @@ namespace EGG9000.Common.Services {
 
 
 
-        private IMemoryCache _cache;
-        private HttpClient _httpClient;
-        public IConfiguration _configuration;
-        public IServiceProvider _provider;
-        private bool _ReportUpdatedClientVersion;
+        private readonly IMemoryCache _cache;
+        private readonly HttpClient _httpClient;
+        public readonly IConfiguration _configuration;
+        public readonly IServiceProvider _provider;
+        private readonly bool _ReportUpdatedClientVersion;
         private int _LastClientVersion;
-        private DiscordSocketClient _discord;
-        private ILogger<APILink> _logger;
-        private APILinkOptions _settings;
+        private readonly DiscordSocketClient _discord;
+        private readonly ILogger<APILink> _logger;
+        private readonly APILinkOptions _settings;
 
-#if DEBUG
-        private string urlBase => _configuration.GetConnectionString("APILinkURL");
-        //private string urlBase => "https://localhost:44316/Home/";
-#else
-        private string urlBase => _configuration.GetConnectionString("APILinkURL");
-#endif
+        private string urlBase {
+            get {
+                return _configuration.GetConnectionString("APILinkURL");
+            }
+        }
 
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
-            _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
-            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+            _httpClient = new(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }) {
+                Timeout = TimeSpan.FromMinutes(5)
+            };
             _configuration = configuration;
             _provider = provider;
             var options = provider.GetService<IOptionsMonitor<APILinkOptions>>();
@@ -89,7 +89,9 @@ namespace EGG9000.Common.Services {
             _logger = logger;
         }
 
-        private static string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
+        private static string GetUserBackupKey(string UserId) {
+            return $"UserBackup-{UserId}";
+        }
 
         public void AddExistingBackups(IEnumerable<EggIncAccount> accounts) {
             foreach(var account in accounts.Where(x => x.Backup is not null)) {
@@ -114,10 +116,7 @@ namespace EGG9000.Common.Services {
                         account.Backup = backup;
                         user.UpdateAccounts();
                     }
-
-                    if(backup == null) {
-                        backup = account?.Backup;
-                    }
+                    backup ??= account?.Backup;
 
                     if(backup != null) {
                         lUsers.Add(new LeaderboardUser { User = user, Backup = backup });
@@ -286,34 +285,33 @@ namespace EGG9000.Common.Services {
             try {
                 HttpResponseMessage response;
                 var url = $"{urlBase}GetBackup";
-                using(var request = new HttpRequestMessage(HttpMethod.Get, url)) {
-                    //Add content
-                    var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
-                    request.Content = new StringContent(content, Encoding.UTF8, "application/json");
-                    //Add headers
-                    request.Headers.Accept.Clear();
-                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                //Add content
+                var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
+                request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                //Add headers
+                request.Headers.Accept.Clear();
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                    //Send the request
-                    response = await _httpClient.SendAsync(request);
-                    if(response.IsSuccessStatusCode) {
-                        var json = await response.Content.ReadAsStringAsync();
-                        var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
-                        var backupFromResponse = backupResponse.Backup;
-                        if(backupResponse.Unchanged) {
-                            return currentBackup;
-                        }
-                        if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup.UserName)) {
-                            backupFromResponse.UserName = currentBackup.UserName;
-                        }
-                        if(backupResponse.Backup.Farms != null) {
-                            _cache.Set(key, backupFromResponse, DateTimeOffset.Now.AddDays(7));
-                        }
-                        return backupFromResponse;
-                    } else {
-                        var errorContent = response.Content.ReadAsStringAsync();
-                        errorMessage = response.StatusCode.ToString();
+                //Send the request
+                response = await _httpClient.SendAsync(request);
+                if(response.IsSuccessStatusCode) {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
+                    var backupFromResponse = backupResponse.Backup;
+                    if(backupResponse.Unchanged) {
+                        return currentBackup;
                     }
+                    if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup.UserName)) {
+                        backupFromResponse.UserName = currentBackup.UserName;
+                    }
+                    if(backupResponse.Backup.Farms != null) {
+                        _cache.Set(key, backupFromResponse, DateTimeOffset.Now.AddDays(7));
+                    }
+                    return backupFromResponse;
+                } else {
+                    var errorContent = response.Content.ReadAsStringAsync();
+                    errorMessage = response.StatusCode.ToString();
                 }
             } catch(Exception e) {
                 errorMessage = e.Message;
@@ -332,8 +330,8 @@ namespace EGG9000.Common.Services {
             public T Data { get; set; }
         }
 
-        public static IEnumerable<List<T>> Partition<T>(IList<T> source, Int32 size) {
-            for(int i = 0; i < Math.Ceiling(source.Count / (Double)size); i++)
+        public static IEnumerable<List<T>> Partition<T>(IList<T> source, int size) {
+            for(var i = 0; i < Math.Ceiling(source.Count / (double)size); i++)
                 yield return new List<T>(source.Skip(size * i).Take(size));
         }
 
@@ -341,11 +339,7 @@ namespace EGG9000.Common.Services {
             if(string.IsNullOrWhiteSpace(uri))
                 throw new Exception($"{nameof(uri)} can not be null or empty.");
 
-            var paramListForLog = JsonConvert.SerializeObject(param);
-
-
             var url = new Uri(uri, UriKind.Absolute);
-
             try {
 
                 HttpResponseMessage response;

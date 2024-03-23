@@ -31,8 +31,10 @@
         return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
     };
 
-    string accountName(EggIncAccount account){
-        return account.Backup?.UserName ?? account.Id;
+    string accountName(string eggIncId){
+        var account = Model.User.EggIncAccounts.FirstOrDefault(a => a.Id == eggIncId);
+        if (account is null) return eggIncId;
+        return account.Backup?.UserName ?? eggIncId;
     }
 
     var inDB = Model.User.DiscordId > 0;
@@ -194,7 +196,7 @@
                 <div>
                     <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
                     @if(Model.User.EggIncAccounts.Count > 1) {
-                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name ( @accountName(Model.User.EggIncAccounts.FirstOrDefault(a => a.Id == xref.EggIncId)) )</span>
+                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name (@accountName(xref.EggIncId))</span>
                     } else {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name</span>
                     }

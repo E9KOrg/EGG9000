@@ -320,7 +320,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private static async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
-            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken);
+            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken);
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
 
@@ -450,8 +450,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                     await Task.Delay(1000, cancellationToken);
-                    var checkStatus = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), cancellationToken, coop.CreatorID);
-
+                    var checkStatus = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), coop.CreatorID, cancellationToken: cancellationToken);
 
                     var kickPlayer = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
                         ClientVersion = ContractsAPI.ClientVersion,
