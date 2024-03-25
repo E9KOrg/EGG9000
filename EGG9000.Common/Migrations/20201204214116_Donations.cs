@@ -1,8 +1,7 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+using System;
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     public partial class Donations : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

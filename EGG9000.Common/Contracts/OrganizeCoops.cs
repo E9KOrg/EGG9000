@@ -1,27 +1,18 @@
 ﻿using Discord.WebSocket;
-
-using EGG9000.Bot;
-using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
 
-using Google.Protobuf;
-
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(String reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbguild, SocketGuild guild = null, int overrideNumber = 0) {
+        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbguild, SocketGuild guild = null, int overrideNumber = 0) {
             var groups = new List<PotentialCoopGroup>();
-            var excluded = new List<(String reason, UserByAccount account)>();
+            var excluded = new List<(string reason, UserByAccount account)>();
 
             if(dbguild is not null && dbguild.DisableBG) {
                 await guild.DownloadUsersAsync();
@@ -79,7 +70,7 @@ namespace EGG9000.Common.Contracts {
                     continue;
                 var includeBg = new List<int>();
                 if(dbguild is not null && dbguild.DisableBG) {
-                    for(var i = 0; i < dbguild.GroupRoles.Split(",").Count(); i++) {
+                    for(var i = 0; i < dbguild.GroupRoles.Split(",").Length; i++) {
                         var group = new PotentialCoopGroup {
                             Grade = grade,
                             BoardingGroup = i
@@ -89,7 +80,7 @@ namespace EGG9000.Common.Contracts {
                             continue;
                         }
                         groups.Add(group);
-                        group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, 0, grade, contract.Details, new List<int>(), true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
+                        group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, 0, grade, contract.Details, [], true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
                     }
                 } else {
                     var bgLimit = contract.Details.CcOnly ? 4 : 3;
@@ -130,7 +121,7 @@ namespace EGG9000.Common.Contracts {
             return (groups, excluded);
         }
 
-        private static void FilterAccounts(List<UserByAccount> accounts, List<(String, UserByAccount)> excluded, Func<UserByAccount, bool> includeInCoopFilter, string reasonNotIncluded) {
+        private static void FilterAccounts(List<UserByAccount> accounts, List<(string, UserByAccount)> excluded, Func<UserByAccount, bool> includeInCoopFilter, string reasonNotIncluded) {
             excluded.AddRange(accounts.Where(x => !includeInCoopFilter(x)).Select(x => (reasonNotIncluded, x)));
             accounts.RemoveAll(x => !includeInCoopFilter(x));
         }
@@ -197,7 +188,7 @@ namespace EGG9000.Common.Contracts {
 
             var coops = new List<PotentialCoop>();
             for(var i = 0; i < numberOfCoops; i++) {
-                coops.Add(new PotentialCoop { Users = new List<UserByAccount>(), CcOnly = contract.CcOnly });
+                coops.Add(new PotentialCoop { Users = [], CcOnly = contract.CcOnly });
             }
             while(ebGroups.Any(x => x.Value.Count > 0)) {
                 var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
@@ -222,7 +213,7 @@ namespace EGG9000.Common.Contracts {
 
                 //Look through all groups to find other accounts for this user
                 var otherAccounts = ebGroups.SelectMany(x => x.Value.Where(y => y.User.Id == user.User.Id).Select(y => new { Group = x, Account = y })).ToList();
-                if(otherAccounts.Count() > 0) {
+                if(otherAccounts.Count > 0) {
                     //Find out how many other accounts we can add to this coop
                     while(coop.Users.Count + otherAccounts.Count > contract.MaxCoopSize && otherAccounts.Count > 0) {
                         otherAccounts.RemoveAt(otherAccounts.Count - 1);
@@ -244,17 +235,12 @@ namespace EGG9000.Common.Contracts {
             //}
 
             if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1, contract.MaxCoopSize / 2))) {
-                coops = new List<PotentialCoop>();
+                coops = [];
                 includeBG.Add(BoardingGroup);
             } else if(includeBG.Count > 0) {
                 includeBG.RemoveAll(x => true);
             }
             return coops;
-
-
-
         }
-
-
     }
 }

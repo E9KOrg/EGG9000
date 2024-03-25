@@ -1,10 +1,8 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     public partial class CompressXrefContributionInfo : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

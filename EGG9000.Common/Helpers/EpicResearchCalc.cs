@@ -2,8 +2,7 @@
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
-namespace EGG9000.Common.Helpers
-{
+namespace EGG9000.Common.Helpers {
     public class EpicResearchCalc
     {
         public static List<EpicResearchDetail> GetEpicResearchConfig()

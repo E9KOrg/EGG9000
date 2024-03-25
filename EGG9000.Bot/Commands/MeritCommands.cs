@@ -1,21 +1,17 @@
-﻿using Discord;
-using Discord.WebSocket;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
-using EGG9000.Bot.Common.Helpers;
-using System.Diagnostics;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
@@ -29,11 +25,11 @@ namespace EGG9000.Bot.Commands {
 
 
             foreach(var mention in users) {
-                await CreateMerit(reason, db, _client, mention, admin.Id, command.Channel, command);
+                await CreateMerit(reason, db, _client, mention, admin.Id, command);
             }
             await command.DeleteResponseFix();
         }
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, IMessageChannel channel, FauxCommand command = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, FauxCommand command = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -97,14 +93,12 @@ namespace EGG9000.Bot.Commands {
 
                 var merits = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
-                    string msg;
-                    msg = $"There are no merits for {targetUser.Mention}";
-                    await command.RespondAsync(msg);
+                    await command.RespondAsync($"There are no merits for {targetUser.Mention}");
                     return;
                 }
 
                 var i = 1;
-                var meritDesc = String.Join("\n", merits.Select(x => {
+                var meritDesc = string.Join("\n", merits.Select(x => {
                     return $"{i++}: {x.Reason}";
                 }));
 
@@ -118,20 +112,17 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "List your merits", AllowInDMs = true)]
         public static async Task Merits(FauxCommand command, ApplicationDbContext db) {
             try {
-                IUser socketUser = command.User;
+                var socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
-
 
                 var merits = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
-                    string msg;
-                    msg = $"There are no merits for {socketUser.Mention}";
-                    await command.RespondAsync(msg);
+                    await command.RespondAsync($"There are no merits for {socketUser.Mention}");
                     return;
                 }
 
                 var i = 1;
-                var meritDesc = String.Join("\n", merits.Select(x => {
+                var meritDesc = string.Join("\n", merits.Select(x => {
                     return $"{i++}: {x.Reason}";
                 }));
 

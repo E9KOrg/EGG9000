@@ -19,7 +19,7 @@
 //        [ProtoMember(1)]
 //        public UserDetailsProto UserDetails { get; set; }
 
-//        //public string DetailsBase64 { get { return System.Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(UserDetails)); } }
+//        //public string DetailsBase64 { get { return System.Convert.ToBase64String(Encoding.ASCII.GetBytes(UserDetails)); } }
 
 //        public bool Success { get; set; }
 //        public string Error { get; set; }
