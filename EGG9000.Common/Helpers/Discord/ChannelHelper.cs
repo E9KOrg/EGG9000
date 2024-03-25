@@ -1,14 +1,11 @@
-﻿using Discord.WebSocket;
-using EGG9000.Common.Database.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Discord;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Common.Helpers {
     public class ChannelHelper {

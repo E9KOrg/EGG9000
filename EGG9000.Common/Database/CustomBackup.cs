@@ -1,19 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Reflection.Metadata.Ecma335;
-using System.Text;
-using System.Text.RegularExpressions;
-using EGG9000.Bot;
-using EGG9000.Bot.EggIncAPI;
+﻿using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using Ei;
 using Google.Protobuf.Collections;
-
 using MessagePack;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace EGG9000.Common.Database {
     [MessagePackObject]

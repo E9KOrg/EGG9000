@@ -1,43 +1,26 @@
 using Discord;
 using Discord.WebSocket;
+using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Services;
+using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-
-using Humanizer;
-
+using EGG9000.Common.Services;
+using Ei;
 using Microsoft.EntityFrameworkCore;
-
-using Newtonsoft.Json;
-
-using Nito.AsyncEx;
-
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
-
-using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Common.Commands;
-using EGG9000.Common.Contracts;
-using EGG9000.Common.Migrations;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using Bugsnag.Payload;
-using System.Security.Principal;
-using static Ei.Contract.Types;
-using Ei;
-
-using Microsoft.Extensions.Logging;
-using Exception = System.Exception;
-using EGG9000.Bot.Automated.Coops;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using Bugsnag;
+using static EGG9000.Common.Helpers.Prefarm;
+using static Ei.Contract.Types;
+using Exception = System.Exception;
 
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {

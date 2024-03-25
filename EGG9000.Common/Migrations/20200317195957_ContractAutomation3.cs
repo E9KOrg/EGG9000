@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     public partial class ContractAutomation3 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

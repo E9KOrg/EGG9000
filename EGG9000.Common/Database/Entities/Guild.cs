@@ -1,14 +1,9 @@
-﻿
-using EGG9000.Common.Migrations;
-using Newtonsoft.Json;
-
-using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     public class Guild {

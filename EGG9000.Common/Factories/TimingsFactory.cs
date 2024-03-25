@@ -8,10 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Common.Factories {
     public class TimingsFactory(ILogger logger) {

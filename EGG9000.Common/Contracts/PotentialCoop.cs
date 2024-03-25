@@ -1,15 +1,5 @@
-﻿using Discord.WebSocket;
-
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-
-using System;
+﻿using EGG9000.Common.Database.Entities;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Common.Contracts {
     public class PotentialCoopGroup {

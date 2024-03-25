@@ -1,11 +1,5 @@
-﻿using Discord.WebSocket;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using EGG9000.Common.Services;
 using System.Threading.Tasks;
-using EGG9000.Common.Services;
 
 namespace EGG9000.Common.Helpers {
     public static class SlashCommandExtensions {

@@ -1,18 +1,10 @@
 ﻿using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace EGG9000.Common.Database {
     //public class ApplicationDbContext : IDesignTimeDbContextFactory<ApplicationDbContext> {

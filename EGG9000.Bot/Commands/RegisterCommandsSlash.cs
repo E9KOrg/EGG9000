@@ -1,51 +1,32 @@
-﻿using Discord;
-using Discord.Commands;
+﻿using Bugsnag;
+using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Services;
-
-
-using Humanizer;
-
-using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
-
-using Newtonsoft.Json;
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Commands;
-using static EGG9000.Common.Database.Entities.DBUser;
-using EGG9000.Common.Contracts;
-using static EGG9000.Common.Helpers.Prefarm;
-using Ei;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics.Contracts;
-using MassTransit.Initializers;
-using Bugsnag;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using MassTransit.Initializers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Data;
-using Bugsnag.Polyfills;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {

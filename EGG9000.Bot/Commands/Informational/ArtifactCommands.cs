@@ -1,23 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Commands;
-using EGG9000.Common.Services;
-using System.IO;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using Microsoft.EntityFrameworkCore;
-using Discord.WebSocket;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using Discord;
-using System.Text.RegularExpressions;
-using EGG9000.Bot.EggIncAPI;
-using Ei;
 
 namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {

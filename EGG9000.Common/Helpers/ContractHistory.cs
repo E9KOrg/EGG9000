@@ -2,16 +2,9 @@
 
 using Microsoft.Extensions.Logging;
 
-using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Helpers {
     public class ContractScoring {

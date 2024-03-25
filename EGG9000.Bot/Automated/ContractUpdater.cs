@@ -1,38 +1,23 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.Rest;
+using Discord.WebSocket;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Factories;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Services;
+using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Bot.Commands;
-using Discord.Rest;
-using Humanizer;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using System.IO;
-using System.Text.RegularExpressions;
-using Microsoft.Extensions.Caching.Memory;
-using System.Diagnostics;
 using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Common.Helpers;
-using Ei;
-using EGG9000.Common.Migrations;
-using Polly;
-using Microsoft.Data.SqlClient;
-using EGG9000.Common.Services;
-using Microsoft.Extensions.DependencyInjection;
-using EGG9000.Common.Contracts;
-using Microsoft.Extensions.Logging;
-using EGG9000.Common.Factories;
-using EGG9000.Common.Helpers.Discord;
 
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater(IServiceProvider provider) : _UpdaterBase<ContractUpdater>(_updateInterval, TimeSpan.Zero, provider) {
@@ -80,10 +65,10 @@ namespace EGG9000.Bot.Automated {
                 //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
                 //dbusers = dbusers.Take(100).ToList();
                 _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
-                //await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
+                //await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 #else
                 _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
-                await ShipReturnDM.UpdateNextShipDM(dbusers, _db, _logger);
+                await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 #endif
 
                 var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);

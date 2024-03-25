@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 using static EGG9000.Common.Helpers.EggIncBoostTypeEnum;
 

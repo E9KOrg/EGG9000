@@ -1,11 +1,17 @@
-﻿using EGG9000.Common.Database;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.SharedModels;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,18 +22,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.Prefarm;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using EGG9000.Bot.EggIncAPI;
-using Discord;
-using Discord.WebSocket;
-using Microsoft.Extensions.Logging;
-using System.Net.NetworkInformation;
-using EGG9000.Common.SharedModels;
 
 namespace EGG9000.Common.Services {
     public class APILinkOptions {

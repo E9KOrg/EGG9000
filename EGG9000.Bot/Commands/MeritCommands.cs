@@ -1,21 +1,17 @@
-﻿using Discord;
-using Discord.WebSocket;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
-using EGG9000.Bot.Common.Helpers;
-using System.Diagnostics;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {

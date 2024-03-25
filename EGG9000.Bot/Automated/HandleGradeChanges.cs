@@ -1,25 +1,14 @@
-﻿using Discord.WebSocket;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+﻿using Cronos;
 using EGG9000.Bot.EggIncAPI;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Common.Helpers;
+using EGG9000.Common.Database;
 using Ei;
-using Humanizer;
-using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Cronos;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
     public class HandleGradeChanges(IServiceProvider provider) : _UpdaterBase<HandleGradeChanges>(CronExpression.Parse("30 10,18,23 * * 1,3,5"), provider) {

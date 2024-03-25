@@ -1,38 +1,22 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.WebSocket;
-
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-
+using EGG9000.Common.Services;
+using MassTransit.Initializers;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-
-
-using Newtonsoft.Json;
-
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Common.Services;
-using EGG9000.Common.Helpers;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using AutoMapper.Internal;
-using MassTransit.Initializers;
-using Discord.Net;
-using MassTransit.Util;
-using Humanizer;
-using EGG9000.Common.Contracts;
-using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopThreads(IServiceProvider provider) 
-            : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
+    public class CreateCoopThreads(IServiceProvider provider) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
