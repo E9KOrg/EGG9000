@@ -266,7 +266,7 @@ namespace EGG9000.Site.Controllers {
             ulong GuildDiscordID
         );
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> EventCustomization() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
@@ -276,9 +276,13 @@ namespace EGG9000.Site.Controllers {
             var eventCustomizations = new List<EventCustomization>();
             foreach(var type in EventTypes) {
                 var guildEventCustomization = guild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
-                if(guildEventCustomization == null && palaceGuild != null) { //Default to palace customizations
-                    Console.WriteLine("Grabbing from Palace");
-                    guildEventCustomization = palaceGuild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
+                if(guildEventCustomization == null) { 
+                    if(palaceGuild != null) { //Default to palace customizations
+                        guildEventCustomization = palaceGuild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
+                    }
+                    if(guildEventCustomization == null || palaceGuild == null) {
+                        guildEventCustomization = await _db.EventCustomizations.FirstOrDefaultAsync(ec => ec.Type == type);
+                    }
                 }
                 guildEventCustomization ??= new() {
                     Type = type,
@@ -289,7 +293,7 @@ namespace EGG9000.Site.Controllers {
             return View(eventCustomizations.OrderByDescending(x => x.Priority).ToList());
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> SaveEventCustomization([FromBody] EventCustomization eventCustomization) {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
