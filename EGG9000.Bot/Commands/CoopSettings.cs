@@ -1,19 +1,15 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
-
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public class CoopSettingsCommand {
@@ -114,8 +110,7 @@ namespace EGG9000.Bot.Commands {
 
             var settingName = data.Split(",")[0];
 
-            if(dbuser.CoopSetting == null)
-                dbuser.CoopSetting = new CoopSetting();
+            dbuser.CoopSetting ??= new CoopSetting();
             dbuser.CoopSetting[settingName] = !dbuser.CoopSetting[settingName];
             dbuser.CoopSetting = dbuser.CoopSetting;
 

@@ -1,30 +1,22 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.WebSocket;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
-
 using EGG9000.Common.Database;
-
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
-using Discord.Rest;
-using System.Threading;
-using EGG9000.Common.Services;
-using System.Data;
-using Microsoft.Extensions.Logging;
-using Google.Protobuf.WellKnownTypes;
-using MassTransit.Caching.Internals;
-using EGG9000.Common.Helpers;
-using EGG9000.Bot.Common.Helpers;
-using Discord.Net;
-using Microsoft.EntityFrameworkCore;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpersExt {

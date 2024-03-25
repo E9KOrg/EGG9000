@@ -1,8 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.JsonData.EiAfxConfig;
 
-using Ei;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;

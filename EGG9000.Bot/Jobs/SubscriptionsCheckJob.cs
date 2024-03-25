@@ -1,6 +1,4 @@
-﻿using Cronos;
-
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
@@ -10,36 +8,21 @@ using EGG9000.Common.Database.Entities;
 
 using Ei;
 
-using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Jobs {
 
-    public class SubscriptionsCheckJob {
-        private readonly ILogger<SubscriptionsCheckJob> _logger;
-        private readonly DiscordSocketClient _discord;
-        private readonly Bugsnag.IClient _bugsnag;
-        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
-
-
-        public SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IDbContextFactory<ApplicationDbContext> dbFactory) {
-            _logger = logger;
-            _discord = discord;
-            _bugsnag = bugsnag;
-            _dbFactory = dbFactory;
-        }
-
+    public class SubscriptionsCheckJob(ILogger<SubscriptionsCheckJob> logger, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IDbContextFactory<ApplicationDbContext> dbFactory) {
+        private readonly ILogger<SubscriptionsCheckJob> _logger = logger;
+        private readonly DiscordSocketClient _discord = discord;
+        private readonly Bugsnag.IClient _bugsnag = bugsnag;
+        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
 
 #if DEBUG
         //[Job("0 0 */1 * * *")]
@@ -50,13 +33,7 @@ namespace EGG9000.Bot.Jobs {
         public async Task CheckSubscriptions() {
             _logger.LogInformation("Checking subscriptions");
             var db = await _dbFactory.CreateDbContextAsync(); ;
-#if DEBUG
             var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
-            //var users = db.DBUsers.Where(x => x.DiscordId == 899062018194161695).ToList();
-            //users = users.Where(x => x.DiscordId == 899062018194161695).ToList();
-#else
-            var users = db.DBUsers.Where(x => !x.TempDisabled && x.GuildId > 0).ToList();
-#endif
             foreach(var guildGroup in users.GroupBy(x => x.GuildId)) {
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == guildGroup.Key);
                 if(dbguild is null)
@@ -137,7 +114,7 @@ namespace EGG9000.Bot.Jobs {
 
         public static async Task SendUltraLogMessage(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
             var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`) " : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
-            var response = await ChannelHelper.DetermineAndSend(db, _client, dbGuild, guild, GuildChannelType.UltraLog, new() { Text = message});
+            _ = await ChannelHelper.DetermineAndSend(db, _client, dbGuild, guild, GuildChannelType.UltraLog, new() { Text = message});
         }
 
         public async Task CheckRole(ulong? roleid, DBUser dbuser, bool pro, SocketGuildUser user) {

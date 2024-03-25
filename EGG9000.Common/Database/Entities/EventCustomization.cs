@@ -1,14 +1,9 @@
 ﻿using Newtonsoft.Json;
-
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
-using System.Text;
 
-namespace EGG9000.Common.Database.Entities
-{
+namespace EGG9000.Common.Database.Entities {
     public class EventCustomization
     {
         [Key]

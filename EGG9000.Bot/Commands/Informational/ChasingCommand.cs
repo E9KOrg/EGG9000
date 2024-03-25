@@ -4,13 +4,8 @@ using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -44,7 +39,7 @@ namespace EGG9000.Bot.Commands {
         }
         
         [ComponentCommand]
-        public static async Task ChasingAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task ChasingAccountButton(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
 
             var dataObjs = data.Split("|");
             var originalUserId = ulong.Parse(dataObjs[2]);
@@ -64,7 +59,7 @@ namespace EGG9000.Bot.Commands {
             //await component.Channel.SendMessageAsync(contentString);
         }
 
-        private async static Task<string> ChasingStringBuilder(DiscordSocketClient discord, ChasingParameters parameter, ulong guildId, EggIncAccount eggIncAccount, ApplicationDbContext db) {
+        private static async Task<string> ChasingStringBuilder(DiscordSocketClient discord, ChasingParameters parameter, ulong guildId, EggIncAccount eggIncAccount, ApplicationDbContext db) {
             var guild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildId);
 
             var rawUsers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildId && !x.TempDisabled).Select(x => new {
@@ -94,11 +89,11 @@ namespace EGG9000.Bot.Commands {
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:
-                    accounts = accounts.OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+                    accounts = [..accounts.OrderByDescending(x => x.Backup.EarningsBonus)];
                     unit = "EB";
                     break;
                 case ChasingParameters.SE:
-                    accounts = accounts.OrderByDescending(x => x.Backup.SoulEggs).ToList();
+                    accounts = [..accounts.OrderByDescending(x => x.Backup.SoulEggs)];
                     unit = "SE";
                     break;
             }

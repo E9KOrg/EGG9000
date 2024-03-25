@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Contracts {
     public static class PlayerGradeDetails {
@@ -28,7 +23,7 @@ namespace EGG9000.Common.Contracts {
                 Ei.Contract.Types.PlayerGrade.GradeA => "A",
                 Ei.Contract.Types.PlayerGrade.GradeB => "B",
                 Ei.Contract.Types.PlayerGrade.GradeC => "C",
-                _ => "None",
+                _ => "Not Set",
             };
         }
 
@@ -50,20 +45,7 @@ namespace EGG9000.Common.Contracts {
         }
 
         public static string GetNameFromLeague(int league) {
-            switch(league) {
-                case 1:
-                    return "C";
-                case 2:
-                    return "B";
-                case 3:
-                    return "A";
-                case 4:
-                    return "AA";
-                case 5:
-                    return "AAA";
-                default:
-                    return "Not Set";
-            }
+            return GetText((Ei.Contract.Types.PlayerGrade)league);
         }
     }
 }

@@ -1,46 +1,26 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CoopDeleteChannel : _UpdaterBase<CoopDeleteChannel> {
+    public class CoopDeleteChannel(IServiceProvider provider) : _UpdaterBase<CoopDeleteChannel>(TimeSpan.FromMinutes(10), TimeSpan.Zero, provider) {
 
-        public CoopDeleteChannel(
-            IServiceProvider provider
-        ) : base(TimeSpan.FromMinutes(10), TimeSpan.Zero, provider) {
-        }
-
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
-            //var coops = await _db.Coops.AsQueryable().Where(x => x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(1) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync(cancellationToken);
 
-
-            coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && ( x.Finished || x.Status == CoopStatusEnum.Failed) && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddDays(-2))).ToListAsync());
-            //coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.Finished && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddHours(-12))).ToListAsync());
-
+            coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && ( x.Finished || x.Status == CoopStatusEnum.Failed) && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddDays(-2))).ToListAsync(cancellationToken));
 
             foreach(var coop in coops) {
                 var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
-                if(coopChannel == null) {
-                    coopChannel = (ITextChannel)await _client.Rest.GetChannelAsync(coop.DiscordChannelId);
-                }
+                coopChannel ??= (ITextChannel)await _client.Rest.GetChannelAsync(coop.DiscordChannelId);
                 if(coopChannel != null) {
                     try {
                         await coopChannel.DeleteAsync();
@@ -55,13 +35,11 @@ namespace EGG9000.Bot.Automated.Coops {
                     _logger.LogWarning("Unable to find co-op channel for {coopName}", coop.Name);
                 }
                 try {
-                    await _db.SaveChangesAsync();
+                    await _db.SaveChangesAsync(cancellationToken);
                 } catch(Exception) {
-                    await _db.SaveChangesAsync();
+                    await _db.SaveChangesAsync(cancellationToken);
                 }
             }
-
-
         }
     }
 }

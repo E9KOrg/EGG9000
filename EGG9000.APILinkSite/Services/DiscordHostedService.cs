@@ -1,21 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {

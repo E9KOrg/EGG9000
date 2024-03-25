@@ -1,23 +1,17 @@
 ﻿using Bugsnag;
 using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Joins;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,12 +19,12 @@ using System.Threading.Tasks;
 namespace EGG9000.Common.Services {
     public class DiscordHostedService : DiscordSocketClient {
         public bool IsReady { get; private set; }
-        private Microsoft.Extensions.Configuration.IConfiguration _configuration;
-        private ApplicationDbContext _db;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+        private readonly ApplicationDbContext _db;
         private readonly IMemoryCache _cache;
-        private IServiceProvider _provider;
-        private ILogger<DiscordHostedService> _logger;
-        private static DiscordSocketConfig config = new DiscordSocketConfig() {
+        private readonly IServiceProvider _provider;
+        private readonly ILogger<DiscordHostedService> _logger;
+        private static readonly DiscordSocketConfig config = new() {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
@@ -103,9 +97,9 @@ namespace EGG9000.Common.Services {
 
         private Task DiscordHostedService_Ready() {
             IsReady = true;
-            this.SetGameAsync("").Wait();
+            SetGameAsync("").Wait();
 
-            foreach(var guild in this.Guilds) {
+            foreach(var guild in Guilds) {
                 _logger.Log(LogLevel.Information, "Download guild users for {Guild}", guild.Name);
 
                 guild.DownloadUsersAsync().Wait();
@@ -127,12 +121,11 @@ namespace EGG9000.Common.Services {
             return Task.CompletedTask;
         }
 
-        public static string DBGuildsKey = "DBGuildsCache";
+        public static readonly string DBGuildsKey = "DBGuildsCache";
 
         private async Task<Guild> GetDbGuild(SocketGuild guild) {
             if(!_cache.TryGetValue(DBGuildsKey, out List<Guild> guildData)) {
-                var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                guildData = await db.Guilds.ToListAsync();
+                guildData = await _db.Guilds.ToListAsync();
                 _cache.Set(DBGuildsKey, guildData, TimeSpan.FromMinutes(30));
             }
 
@@ -171,10 +164,7 @@ namespace EGG9000.Common.Services {
 
             var channelDetails = dbguild.ChannelDetails;
             var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
-            if(channelDetail == null)
-                return null ;
-
-            return guild.GetRole(channelDetail.Id);
+            return channelDetail == null ? null : guild.GetRole(channelDetail.Id);
         }
         private async Task<T> GetChannelOrCategory<T>(GuildChannelType channelType, SocketGuild guild) where T : IGuildChannel {
             try {

@@ -7,10 +7,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-using EGG9000.Bot.EggIncAPI;
-
-using Google.Protobuf;
-
 using Titanium.Web.Proxy;
 using Titanium.Web.Proxy.EventArguments;
 using Titanium.Web.Proxy.Models;
@@ -85,7 +81,7 @@ namespace TestProxy {
                 //res.Request.WriteTo(ms1);
                 //ms1.Position = 0;
                 //var sr = new StreamReader(ms1);
-                //var dataBytes = ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd());
+                //var dataBytes = Encoding.ASCII.GetBytes(sr.ReadToEnd());
 
                 //var hash = GetHash(dataBytes);
 
@@ -102,7 +98,7 @@ namespace TestProxy {
         public static string GetHash(byte[] byteArray) {
             SHA256 sha256Hash = SHA256.Create();
             var _magic = 0x3b9af419;
-            var _salt = ASCIIEncoding.ASCII.GetBytes(ByteArrayToString(sha256Hash.ComputeHash(ASCIIEncoding.ASCII.GetBytes("THE SECRETS OF THE UNIVERSE WILL BE UNLOCKED"))));
+            var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(sha256Hash.ComputeHash(Encoding.ASCII.GetBytes("THE SECRETS OF THE UNIVERSE WILL BE UNLOCKED"))));
             byteArray[_magic % byteArray.Length] = 0x1b;
             return ByteArrayToString(sha256Hash.ComputeHash(byteArray.Concat(_salt).ToArray()));
         }
