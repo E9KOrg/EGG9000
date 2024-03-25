@@ -1,24 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
+﻿using Cronos;
 using Discord;
-using Discord.WebSocket;
-
-using EGG9000.Common.Services;
 using EGG9000.Common.Database;
-
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Services;
+using Humanizer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
-using Humanizer;
-using Cronos;
-using EGG9000.Common.Database.Entities;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
     public class UpdaterOptions<T> {

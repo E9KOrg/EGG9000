@@ -1,16 +1,9 @@
 ﻿using EGG9000.Bot;
-using EGG9000.Bot.EggIncAPI;
-
-using EGG9000.Common.Helpers;
-
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Text;
-
-using static Ei.MissionInfo.Types;
 using static Ei.Contract.Types;
+using static Ei.MissionInfo.Types;
 
 namespace Ei {
     public partial class EggIncFirstContactResponse {

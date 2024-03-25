@@ -1,25 +1,20 @@
 ﻿
+using ComponentAce.Compression.Libs.zlib;
+using EGG9000.Common.Database.Entities;
+using Ei;
 using Google.Protobuf;
-
 using Microsoft.Extensions.Caching.Memory;
-
-
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO.Compression;
-using ComponentAce.Compression.Libs.zlib;
-using Ei;
-using Newtonsoft.Json;
-using System.Net.Http.Json;
-using System.Text.Unicode;
-using EGG9000.Common.Database.Entities;
-using System.Collections.Generic;
 
 //using static EGG9000.Bot.Automated.LeaderboardUpdater;
 

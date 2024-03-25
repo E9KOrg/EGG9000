@@ -1,33 +1,14 @@
-﻿using Bugsnag.Payload;
-
-using Discord;
-using Discord.Webhook;
+﻿using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Migrations;
-using EGG9000.Common.Services;
-
-using Google.Protobuf;
-
-using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
-
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Commands {
     public class ShipReturnDMSettings {

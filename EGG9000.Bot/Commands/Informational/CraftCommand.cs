@@ -1,24 +1,23 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
-using EGG9000.Common.Extensions;
-using EGG9000.Common.JsonData.EiAfxData;
-using Microsoft.Extensions.Logging;
-using System.Globalization;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
-using System.Collections.Generic;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands {
@@ -32,7 +31,6 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            //await command.DeferAsync(ephemeral: true);
             await command.DeferAsync();
 
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
@@ -41,17 +39,14 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var contentString = "";
-
             if(dbUser.EggIncAccounts.Count == 1) {
-                contentString = await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact);
-                //await command.DeleteOriginalResponseAsync();
-                //await command.Channel.SendMessageAsync(contentString);
-                await command.RespondAsync(contentString);
+                await command.RespondAsync(
+                    await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact)
+                );
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in dbUser.EggIncAccounts) {
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{((int)quality)}|{quantity}|{artifact}|{command.User.Id}");
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{(int)quality}|{quantity}|{artifact}|{command.User.Id}");
                 }
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Embed = null; x.Components = builder.Build(); });
             }
@@ -61,7 +56,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task CraftAccountButton(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task CraftAccountButton(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
 
             var dataObjs = data.Split("|");
             var originalUserId = ulong.Parse(dataObjs[4]);
@@ -85,20 +80,19 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static readonly List<double> LevelMultipliers = [
-                1.00, 1.05, 1.10,
-                1.15, 1.20, 1.25,
-                1.30, 1.35, 1.40,
-                1.45, 1.50, 1.55,
-                1.60, 1.65, 1.70,
-                1.75, 1.85, 2.00,
-                2.25, 2.50, 3.00,
-                3.50, 4.00, 4.50,
-                5.00, 6.00, 7.00,
-                8.00, 9.00, 10.00
-            ];
+            1.00, 1.05, 1.10,
+            1.15, 1.20, 1.25,
+            1.30, 1.35, 1.40,
+            1.45, 1.50, 1.55,
+            1.60, 1.65, 1.70,
+            1.75, 1.85, 2.00,
+            2.25, 2.50, 3.00,
+            3.50, 4.00, 4.50,
+            5.00, 6.00, 7.00,
+            8.00, 9.00, 10.00
+        ];
 
-        private async static Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
-
+        private static async Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
             if(backup == null) {
@@ -201,7 +195,7 @@ namespace EGG9000.Bot.Commands {
             var fixedLegThresh = legThreshold;
             var fixedEpicThresh = Math.Max(0, epicThreshold - fixedLegThresh);
             var fixedRareThresh = Math.Max(0, rareThreshold - epicThreshold);
-            var fixedCommonThresh = (1 - fixedLegThresh - fixedEpicThresh - fixedRareThresh);
+            var fixedCommonThresh = 1 - fixedLegThresh - fixedEpicThresh - fixedRareThresh;
 
             var dispCommon = fixedCommonThresh * 100;
             var dispRare = fixedRareThresh * 100;

@@ -1,19 +1,16 @@
-﻿using System;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using Microsoft.Extensions.DependencyInjection;
+using Polly;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
-using Discord;
-using Discord.WebSocket;
-
-using EGG9000.Bot;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-
-using Polly;
-using EGG9000.Common.Contracts;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {

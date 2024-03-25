@@ -1,9 +1,6 @@
 ﻿
 using Discord;
-using Discord.Net;
 using Discord.WebSocket;
-
-using EGG9000.Bot;
 using EGG9000.Bot.Commands;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.Helpers;
@@ -11,23 +8,13 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
-using Newtonsoft.Json;
-
-
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Services {
 

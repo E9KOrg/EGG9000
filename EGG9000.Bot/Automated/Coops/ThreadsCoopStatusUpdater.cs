@@ -1,33 +1,32 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.Rest;
+using Discord.WebSocket;
+using EGG9000.Bot.Common.Helpers;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using Newtonsoft.Json;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using Discord.Rest;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using Humanizer;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
-using EGG9000.Common.Helpers;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using EGG9000.Common.Services;
-using static EGG9000.Common.Helpers.Prefarm;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using EGG9000.Common.Factories;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.Contracts;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Humanizer;
 using MassTransit.Testing;
 using MassTransit.Util;
-using System.Collections.ObjectModel;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class ThreadsCoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
@@ -53,13 +52,6 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
 
             var throttler = new SemaphoreSlim(3);
-
-#if DEBUG
-                //coops = coops.Where(x => x.GuildId == 770469712064151593).ToList();
-                //coops = coops.Where(x => x.Name.Equals("gasbrink5", StringComparison.OrdinalIgnoreCase)).ToList();
-                //coops = coops.Where(x => x._StatusCompressed is null).ToList();
-#endif
-
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
                 if(cancellationToken.IsCancellationRequested) break;

@@ -1,14 +1,7 @@
-﻿using Discord.WebSocket;
-
-using EGG9000.Common.Commands;
-using EGG9000.Common.Helpers;
+﻿using EGG9000.Common.Commands;
 using EGG9000.Common.Services;
-
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {

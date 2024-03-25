@@ -1,15 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using System.Text;
-using System.Threading.Tasks;
-using EGG9000.Common.Database.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace EGG9000.Site.Areas.Identity.Pages.Account
-{
+namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
     public class RegisterConfirmationModel : PageModel
     {

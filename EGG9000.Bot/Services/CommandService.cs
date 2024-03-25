@@ -1,37 +1,33 @@
 ﻿
 using Discord;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Services;
-using EGG9000.Bot.Helpers;
+using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Commands;
+using EGG9000.Bot.Consumers;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Extensions;
+using EGG9000.Common.Services;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-
-using static EGG9000.Common.Services.FauxCommand;
-using System.IO;
-using MassTransit;
-using EGG9000.Bot.Consumers;
-using EGG9000.Common.Extensions;
-using EGG9000.Bot.Automated.Coops;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Services.FauxCommand;
 
 namespace EGG9000.Bot.Services {
 

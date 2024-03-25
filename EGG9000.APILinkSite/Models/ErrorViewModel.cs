@@ -1,5 +1,3 @@
-using System;
-
 namespace EGG9000.APILinkSite.Models {
     public class ErrorViewModel {
         public string RequestId { get; set; }

@@ -1,24 +1,19 @@
-﻿using Discord.WebSocket;
+﻿using Cronos;
+using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Humanizer;
-using Cronos;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopReorder(IServiceProvider provider) : _UpdaterBase<CoopReorder>(

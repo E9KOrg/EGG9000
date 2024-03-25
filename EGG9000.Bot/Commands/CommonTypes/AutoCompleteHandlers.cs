@@ -1,23 +1,21 @@
-﻿using Discord.WebSocket;
-using Discord;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.Automated;
+using EGG9000.Bot.Services;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using static Ei.Contract.Types;
-using EGG9000.Common.Commands;
-using EGG9000.Bot.Automated;
-using EGG9000.Bot.Services;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using EGG9000.Common.JsonData.EiAfxData;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
-using EGG9000.Common.Database.Entities;
 
 namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
