@@ -150,9 +150,17 @@ namespace EGG9000.Common.Database.Entities {
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
         public ulong Id { get; set; }
-        public bool ThreadAndChannel { get; set; } = false;
     }
 
+    /*
+     * Start a property with the following to indicate..:
+     * 
+     * "/TC/" The ID can either use a channel or a thread - assumed to be channel-only otherwise
+     * "/R/" The ID represents a role that is fillable
+     * 
+     * "Required: " The option is required for the bot to function normally
+     * "Optional: " The option is not required, but a QOL
+     */
     public enum GuildChannelType {
         [Description("Required: Greets new users and handles registering")]
         Welcome = 0,
@@ -237,6 +245,8 @@ namespace EGG9000.Common.Database.Entities {
         [Description("/R/Optional: Role for users that have the Standard Permit (must be paired with Pro Permit role)")]
         StandardPermitRole = 42,
         [Description("/R/Optional: Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
-        ProPermitRole = 43
+        ProPermitRole = 43,
+        [Description("/R/Required: Users with this role will be added to all coop threads")]
+        AllCoopsRole = 44
     }
 }

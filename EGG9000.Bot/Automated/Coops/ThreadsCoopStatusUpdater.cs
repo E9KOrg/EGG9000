@@ -571,9 +571,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         _db.UserCoopXrefs.Add(xref);
                     }
                 }
-                var currentUsers = await coopThread.ExtGetUsersAsync();
-                (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?.Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
-                    .ForEach(ow => usersNeedingChannelPermissions.AddRange(guild.GetRole(ow.TargetId).Members.Select(m => m.Id).ToList()));
 
                 timings.Set(3);
 
@@ -692,8 +689,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
+                var allCoopRole = await _client.GetRoleAsync(GuildChannelType.AllCoopsRole, guild);
+                var currentUsers = await coopThread.ExtGetUsersAsync();
                 //Clean up any dupes
-                var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList();
+                List<string> pingsLeft = [.. usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList()];
+                if(allCoopRole != null) {
+                    pingsLeft.Add(allCoopRole.Mention);
+                }
                 if(pingsLeft.Any()) {
                     var currentContent = "";
                     var pingsPerCycle = 1500 / 22;
@@ -714,14 +716,15 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 var usersNow = await coopThread.ExtGetUsersAsync();
                 var usersAdded = usersNow.Where(un => !currentUsers.Contains(un)).Select(u => u.Id).ToList();
-
+                var anyCoopUsersAdded = false;
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                     if(xref != null) {
                         xref.Xref.AddedToChannel = true;
+                        anyCoopUsersAdded = true;
                     }
                 }
-                if(usersAdded.Count > 0) {
+                if(usersAdded.Count > 0 && anyCoopUsersAdded) {
                     await _db.SaveChangesAsync(cancellationToken);
                 }
 
