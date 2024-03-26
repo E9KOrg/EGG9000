@@ -207,19 +207,24 @@
 			DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
 			var description = (attributes != null && attributes.Any()) ? attributes.First().Description : val.ToString();
 			if (!description.StartsWith("/R/")) continue;
+			var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
+			var role = discord.GetGuild(Model.Id).GetRole(detail.Id);
 			<tr>
 				<td>
-					@description.Replace("Optional: ", "").Replace("/R/", "")
+					@description.Replace("/R/", "")
 				</td>
 				<td>
 					@{
-						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
-									<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
+						<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
 					}
 				</td>
-				<td>
-					@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
-				</td>
+				@if(role != null) {
+					<td style="color: @role.Color.ToString();">
+						@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
+					</td>
+				} else {
+					<td></td>
+				}
 			</tr>
 		}
 	</tbody>

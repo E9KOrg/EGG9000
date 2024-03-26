@@ -70,8 +70,7 @@ namespace EGG9000.Bot.Helpers {
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             var tokenSource2 = new CancellationTokenSource();
             var token2 = tokenSource2.Token;
-            if(options is null)
-                options = new RequestOptions();
+            options ??= new RequestOptions();
             options.CancelToken = token2;
 
             var thread = message.ModifyAsync(msgProperties, options);
@@ -94,36 +93,33 @@ namespace EGG9000.Bot.Helpers {
     }
     public class DiscordHelpers {
         public static async Task<List<(Ei.Contract.Types.PlayerGrade, SocketRole)>> GetGradeRoles(DiscordHostedService _client, SocketGuild guild) {
-            return new List<(Ei.Contract.Types.PlayerGrade, SocketRole)> {
-                        (Ei.Contract.Types.PlayerGrade.GradeAaa, await _client.GetRoleAsync(GuildChannelType.GradeAAA, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeAa, await _client.GetRoleAsync(GuildChannelType.GradeAA, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeA, await _client.GetRoleAsync(GuildChannelType.GradeA, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeB, await _client.GetRoleAsync(GuildChannelType.GradeB, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeC, await _client.GetRoleAsync(GuildChannelType.GradeC, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeUnset, null),
-                    };
+            return [
+                (Ei.Contract.Types.PlayerGrade.GradeAaa, await _client.GetRoleAsync(GuildChannelType.GradeAAA, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeAa, await _client.GetRoleAsync(GuildChannelType.GradeAA, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeA, await _client.GetRoleAsync(GuildChannelType.GradeA, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeB, await _client.GetRoleAsync(GuildChannelType.GradeB, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeC, await _client.GetRoleAsync(GuildChannelType.GradeC, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeUnset, null),
+            ];
         }
 
         public static async Task<SocketRole> CheckRoles(ApplicationDbContext db, SocketGuild guild, SocketGuildUser discordUser, DBUser dbUser, DiscordHostedService _client, List<(Ei.Contract.Types.PlayerGrade, SocketRole)> grades, List<LeaderboardUser> leaderboardUsers) {
-            if(grades is null) {
-                grades = await GetGradeRoles(_client, guild);
-            }
+            grades ??= await GetGradeRoles(_client, guild);
 
             var higherEB = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault();
             if(higherEB.Backup.EggsOfProphecy > 1000) {
                 dbUser.showEB = false;
             }
 
-
-            var registeredRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+            var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
             var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
             if(registeredRole == null && guildRegisteredRole is not null) {
                 await discordUser.AddRoleAsync(guildRegisteredRole);
             }
 
-            var existingRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+            var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
-            var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser, _client);
+            var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser);
 
             await CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
             await CheckHatchlingRole(guild, discordUser, dbUser);
@@ -139,7 +135,7 @@ namespace EGG9000.Bot.Helpers {
             await CheckASCRole(_client, guild, discordUser, dbUser);
 
             if(leaderboardUsers.Count > 0) {
-                await CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
+                await CheckActive(_client, guild, discordUser, leaderboardUsers);
             }
 
             var EarningsBonus = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus.ToEggString() ?? "";
@@ -170,10 +166,10 @@ namespace EGG9000.Bot.Helpers {
                         ]);
                         break;
                     case "Megafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Now you are at least hundreds of millions times stronger than you were since your first chicken. Mega effort to become a {role.Name} with and EB of {EarningsBonus}%! Congratulations on the new rank, {discordUser.Mention}!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",
-                        });
+                        ]);
                         break;
                     case "Gigafarmer":
                         messages.AddRange([
@@ -525,7 +521,7 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        private static async Task CheckActive(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, List<LeaderboardUser> userAccounts) {
+        private static async Task CheckActive(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, List<LeaderboardUser> userAccounts) {
             var activeRole = await _client.GetRoleAsync(GuildChannelType.ActiveRole, Guild);
             if(activeRole != null) {
                 foreach(var account in userAccounts) {
@@ -568,7 +564,7 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        private static async Task<SocketRole> SetRole(SocketGuild guild, IGuildUser DiscordUser, Double EarningsBonus, DBUser dbUser, DiscordHostedService _client) {
+        private static async Task<SocketRole> SetRole(SocketGuild guild, IGuildUser DiscordUser, double EarningsBonus, DBUser dbUser) {
             var currentRole = DiscordUser.RoleIds.Select(y => guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);
