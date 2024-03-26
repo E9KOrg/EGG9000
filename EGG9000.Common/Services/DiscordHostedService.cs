@@ -271,10 +271,6 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public static async Task<List<IGuildUser>> ExtGetUsersAsync (this IThreadChannel channel) {
-            return (await AsyncEnumerableExtensions.FlattenAsync(channel.GetUsersAsync())).ToList();
-        }
-
         public static string GetE9KName(this Contract contract, bool toLower = true) {
             return (toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-");
         }

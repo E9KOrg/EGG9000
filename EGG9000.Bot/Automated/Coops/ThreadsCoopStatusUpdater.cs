@@ -674,8 +674,9 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var threadObj = (coopThread as SocketThreadChannel);
 
+                var currentUsers = await threadObj.GetUsersAsync();
                 foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
-                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id)) {
+                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUsers.Any(u => u.Id == userStatus.DiscordUser.Id)) {
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
                     }
 
@@ -689,13 +690,18 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-                var allCoopRole = await _client.GetRoleAsync(GuildChannelType.AllCoopsRole, guild);
-                var currentUsers = await coopThread.ExtGetUsersAsync();
-                //Clean up any dupes
-                List<string> pingsLeft = [.. usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList()];
-                if(allCoopRole != null) {
-                    pingsLeft.Add(allCoopRole.Mention);
-                }
+                var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
+                List<ulong> roleMembersCaught = [];
+                (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
+                    .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
+                    .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
+                    .ForEach(role => {
+                        if(role.Members.Any(m => !currentUsers.Any(u => u.Id == m.Id) && !roleMembersCaught.Contains(m.Id))) {
+                            pingsLeft.Add(role.Mention);
+                            roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
+                        }
+                    });
+
                 if(pingsLeft.Any()) {
                     var currentContent = "";
                     var pingsPerCycle = 1500 / 22;
@@ -714,17 +720,16 @@ namespace EGG9000.Bot.Automated.Coops {
                         pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
                     }
                 }
-                var usersNow = await coopThread.ExtGetUsersAsync();
+                var usersNow = await threadObj.GetUsersAsync();
                 var usersAdded = usersNow.Where(un => !currentUsers.Contains(un)).Select(u => u.Id).ToList();
-                var anyCoopUsersAdded = false;
+
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                     if(xref != null) {
                         xref.Xref.AddedToChannel = true;
-                        anyCoopUsersAdded = true;
                     }
                 }
-                if(usersAdded.Count > 0 && anyCoopUsersAdded) {
+                if(usersAdded.Count > 0) {
                     await _db.SaveChangesAsync(cancellationToken);
                 }
 
