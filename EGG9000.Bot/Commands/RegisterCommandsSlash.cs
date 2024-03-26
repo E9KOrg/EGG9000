@@ -553,10 +553,6 @@ namespace EGG9000.Bot.Commands {
 
             if(dbuser.TempDisabled) lastBuilder.Footer.Text += $"\n❗User is disabled";
 
-            if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
-                lastBuilder.Footer.Text += $"\nNotes:\n {dbuser.Notes}";
-            }
-
             if(command.Channel is SocketDMChannel) {
                 if(dbuser.GuildId > 0) {
                     lastBuilder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
@@ -683,12 +679,17 @@ namespace EGG9000.Bot.Commands {
                 var lastBuilder = builderList.Last();
                 var infoSeparatorAdded = false;
                 var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived).ToListAsync();
+                var xrefsShortened = false;
+                if(xrefs.Count > 4) {
+                    xrefs = xrefs.OrderByDescending(x => x.CreatedOn).Take(4).ToList();
+                    xrefsShortened = true;
+                }
 
                 var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     lastBuilder.AddField("――――――――――――――――――", "User Information");
                     infoSeparatorAdded = true;
-                    lastBuilder.AddField("Coops", coopsString);
+                    lastBuilder.AddField($"Coops {(xrefsShortened ? "(Shortened List)" : "")}", coopsString);
                 }
 
                 var recentDemeritsString = $"{await DemeritCommands.GetDemerits(user.Id, db)}";
@@ -698,6 +699,14 @@ namespace EGG9000.Bot.Commands {
                         infoSeparatorAdded = true;
                     }
                     lastBuilder.AddField("Recent Demerits", recentDemeritsString);
+                }
+
+                if(!string.IsNullOrEmpty(user.Notes)) {
+                    if(!infoSeparatorAdded) {
+                        lastBuilder.AddField("――――――――――――――――――", "User Information");
+                        infoSeparatorAdded = true;
+                    }
+                    lastBuilder.AddField("Notes", user.Notes);
                 }
             }
 
