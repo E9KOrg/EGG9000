@@ -50,7 +50,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-				var completedCoops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync(cancellationToken);
+                var allCoopsRole = await _client.GetRoleAsync(GuildChannelType.ASCRole, guild);
+                var completedCoops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync(cancellationToken);
 				_logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
 
                 foreach(var coop in coopGroups) {
@@ -68,6 +69,12 @@ namespace EGG9000.Bot.Automated.Coops {
                                 await _db.SaveChangesAsync(cancellationToken);
                             } catch(Exception) {
                                 await _db.SaveChangesAsync(cancellationToken);
+                            }
+                            //If the All Coops role exists, edit-ping users into thread ahead of time
+                            if(allCoopsRole != null) {
+                                var response = await thread.SendMessageAsync(".");
+                                await response.ModifyAsync(m => m.Content = allCoopsRole.Mention);
+                                await response.DeleteAsync();
                             }
                         } else {
                             _logger.LogWarning("Thread NOT created for {coopName}", coop.Name);
