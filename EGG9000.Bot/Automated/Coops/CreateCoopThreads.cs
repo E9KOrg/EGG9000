@@ -100,7 +100,7 @@ namespace EGG9000.Bot.Automated.Coops {
             SocketGuildChannel headerChannel = null;
             foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
                 headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
-                if(headerChannel is null) {
+                if(headerChannel is null && server.ChannelsLeft > 0) {
                     var categories = await server.GetCoopCategories(_client);
                     foreach(var category in categories) {
                         if(headerChannel != null || category.CurrentCount >= 50) continue;
@@ -170,13 +170,13 @@ namespace EGG9000.Bot.Automated.Coops {
             public int ChannelsLeft { 
                 get {
                     if(Guild == null) return 0;
-                    return (ServerFunction == ServerFunction.Primary ? 450 : 500) - Guild.GetInUseChannelCount();
+                    return (ServerFunction == ServerFunction.Primary ? 450 : 495) - Guild.GetInUseChannelCount();
                 }
             }
             public int ThreadsLeft {
                 get {
                     if (Guild == null) return 0;
-                    return (ServerFunction == ServerFunction.Primary ? 900 : 1000) - Guild.GetInUseThreadCount();
+                    return (ServerFunction == ServerFunction.Primary ? 900 : 995) - Guild.GetInUseThreadCount();
                 }
             }
 
@@ -193,7 +193,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public SocketGuildChannel DiscordCategory { get; set; } = discordCategory;
             public int CurrentCount { 
                 get {
-                    if(Guild is null) return 0;
+                    if(Guild is null) return int.MaxValue;
                     return Guild.GetInUseChannelCount(DiscordCategory);
                 } 
             }
