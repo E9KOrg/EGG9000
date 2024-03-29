@@ -41,20 +41,5 @@ namespace EGG9000.Bot.Commands {
                 });
             }
         }
-
-        [SlashCommand(Description = "Delete thread for debugging", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task DeleteThread(FauxCommand command, ApplicationDbContext db) {
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
-            if(coop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this posted in a co-op channel?"));
-            } else {
-                coop.ThreadID = 0;
-                coop.ThreadArchived = false;
-                coop.Finished = false;
-                coop.Status = CoopStatusEnum.AllAssignedJoined;
-                await db.SaveChangesAsync();
-                await ((SocketThreadChannel)command.Channel).DeleteAsync();
-            }
-        }
     }
 }

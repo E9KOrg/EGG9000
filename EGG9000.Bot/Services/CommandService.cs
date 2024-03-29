@@ -157,7 +157,7 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
                             parameters.Add(await _dbContextFactory.CreateDbContextAsync());
                         } else if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
-                            parameters.Add((DiscordSocketClient)_discord);
+                            parameters.Add(_discord);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
                             parameters.Add(_discord);
                         } else if(parameterInfo.ParameterType == typeof(APILink)) {
@@ -428,7 +428,7 @@ namespace EGG9000.Bot.Services {
             }
 
             if(!message.Author.IsBot && message.Interaction == null) {
-                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id);
+                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id || x.DiscordChannelId == message.Channel.Id);
                 if(coop is not null) {
                     var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
                     foreach(var xref in xrefs.Where(x => x.User.DiscordId != message.Author.Id)) {
@@ -436,7 +436,7 @@ namespace EGG9000.Bot.Services {
                             var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
                             var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
                             if(discordUser is null) continue; //Another null check
-                            var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{coop.ThreadID}>, **{author.GetCleanName()}:** {message.Content}", db);
+                            var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{(coop.ThreadID != 0 ? coop.ThreadID : coop.DiscordChannelId)}>, **{author.GetCleanName()}:** {message.Content}", db);
                         }
                     }
                 }

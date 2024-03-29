@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync( x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
@@ -685,7 +685,7 @@ namespace EGG9000.Bot.Commands {
                     xrefsShortened = true;
                 }
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{(x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId)}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     lastBuilder.AddField("――――――――――――――――――", "User Information");
                     infoSeparatorAdded = true;

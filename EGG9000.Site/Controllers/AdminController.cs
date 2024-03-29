@@ -457,12 +457,13 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> DeleteOutsideCoopMessage() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && !x.ThreadArchived).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && !x.DeletedChannel && !x.ThreadArchived).ToListAsync();
 
             var coopsToFix = coops.Where(x => x.UserCoopsXrefs.Any(y => y.OutsideCoop));
 
             foreach(var coop in coopsToFix) {
-                var channel = _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).GetTextChannel(coop.ThreadID);
+                var channel = coop.ThreadID != 0 ? _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).GetTextChannel(coop.ThreadID) :
+                    _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).GetTextChannel(coop.DiscordChannelId);
                 var messages = await channel.GetMessagesAsync().FlattenAsync();
                 foreach(var message in messages.Where(x => x.Content.Contains("has joined another co-op named . Please use the command"))) {
                     Console.WriteLine($"Deleting message from {coop.Name}");
@@ -619,13 +620,13 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Sleepers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var demeritExpires = DateTimeOffset.Now.AddDays(-2);
-            var sleepers = await _db.UserCoopXrefs.AsQueryable().Where(x => x.User.GuildId == guildId && !x.Coop.ThreadArchived).Select(x => new SleeperDetail {
+            var sleepers = await _db.UserCoopXrefs.AsQueryable().Where(x => x.User.GuildId == guildId && !x.Coop.DeletedChannel && !x.Coop.ThreadArchived).Select(x => new SleeperDetail {
                 DiscordName = x.User.DiscordUsername,
                 CurrentSleep = x.HoursSleeping - (x.SiloTimeHours ?? 0),
                 TotalCoopSleep = x.TotalHoursSleeping,
                 CoopName = x.Coop.Name,
                 ContractName = x.Coop.Contract.Name,
-                DiscordChannelId = x.Coop.ThreadID,
+                DiscordChannelId = x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId,
                 GuildId = guildId,
                 Demerits = x.User.Demerits.Where(y => y.When > demeritExpires).ToList(),
                 FreshEgg = x.User.Registered > DateTimeOffset.Now.AddDays(-7)
@@ -665,10 +666,10 @@ namespace EGG9000.Site.Controllers {
                 var overflowGuild = _discord.Guilds.First(x => x.Id == overflowGuildId);
                 await overflowGuild.DownloadUsersAsync();
                 var oneWeekAgo = DateTimeOffset.Now.AddDays(-7);
-                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Ghost {
+                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => !x.Coop.DeletedChannel && !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Ghost {
                     Coop = x.Coop.Name,
                     DiscordId = x.User.DiscordId,
-                    CoopChannel = x.Coop.ThreadID,
+                    CoopChannel = x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId,
                     UserName = x.User.DiscordUsername,
                     CoopId = x.CoopId,
                     UserId = x.UserId,
@@ -851,11 +852,14 @@ namespace EGG9000.Site.Controllers {
             //var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
 
 
-            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
 
             var coopChannels = _discord.Guilds.SelectMany(x => x.TextChannels);
 
-            var coopsWithChannels = coops.Select(c => new CoopWithChannels { Coop = c, MainChannel = coopChannels.FirstOrDefault(x => x.Id == c.ThreadID), ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList() }).ToList();
+            var coopsWithChannels = coops.Select(c => new CoopWithChannels { 
+                Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)), 
+                ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList() 
+            }).ToList();
 
             return View(coopsWithChannels.Where(x => x.ExtraChannels.Any() || x.MainChannel is null).ToList());
         }
@@ -871,11 +875,14 @@ namespace EGG9000.Site.Controllers {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
 
 
-            var coops = await _db.Coops.AsQueryable().Where(x => x.GuildId == guildId && x.ThreadArchived == false).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
 
             var coopChannels = _discord.Guilds.Where(x => x.Id == guildId || dbguild.OverflowServers.Any(y => y == x.Id)).SelectMany(x => x.TextChannels);
 
-            var coopsWithChannels = coops.Select(c => new CoopWithChannels { Coop = c, MainChannel = coopChannels.FirstOrDefault(x => x.Id == c.ThreadID), ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList() }).ToList();
+            var coopsWithChannels = coops.Select(c => new CoopWithChannels {
+                Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)),
+                ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList()
+            }).ToList();
 
             foreach(var channel in coopsWithChannels.Where(x => x.ExtraChannels.Any()).SelectMany(x => x.ExtraChannels)) {
                 await ((ITextChannel)channel).DeleteAsync();

@@ -50,9 +50,12 @@ namespace EGG9000.Common.Services {
                 guildContract.DeletedChannel = true;
                 await db.SaveChangesAsync();
             }
-            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id);
-            if(coop is not null) {
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+            if(coop is not null && coop.ThreadID != 0) {
                 coop.ThreadArchived = true;
+                await db.SaveChangesAsync();
+            } else if(coop is not null && coop.DiscordChannelId != 0) {
+                coop.DeletedChannel = true;
                 await db.SaveChangesAsync();
             }
 
@@ -111,7 +114,7 @@ namespace EGG9000.Common.Services {
                     try {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
                         foreach(var xref in xrefs) {
-                            var coopChannel = (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID);
+                            var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
                             await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                             xref.AddedToChannel = true;
                             await coopChannel.SendMessageAsync($"Here is your co-op {user.Mention}! The co-op name to join is {xref.Coop.Name}");

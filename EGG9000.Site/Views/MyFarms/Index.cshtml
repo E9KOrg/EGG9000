@@ -200,9 +200,16 @@
                     } else {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name</span>
                     }
-                    <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.ThreadID/">
+                    @if(xref.Coop.ThreadID != 0)
+                    {
+                        <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.ThreadID/">
+                            <img src="/images/discordicon.png" style="max-height: 1em;" />
+                        </a>
+                    } else if(xref.Coop.DiscordChannelId != 0){
+                    <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/">
                         <img src="/images/discordicon.png" style="max-height: 1em;" />
                     </a>
+                    }
                 </div>
             }
         </div>
