@@ -35,7 +35,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel."); });
                 return;
@@ -47,7 +47,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Fix for getting full co-op error")]
         public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
-            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel."); });
                 return;
@@ -132,7 +132,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Makes a co-op public", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task MakePublic(FauxCommand command, ApplicationDbContext db) {
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to find coop for channel {command.Channel.Name}"));
                 return;
@@ -157,7 +157,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
             [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] uint newgrade) {
             await command.DeferAsync();
-            var targetCoop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var targetCoop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel."); });
                 return;
@@ -205,7 +205,7 @@ namespace EGG9000.Bot.Commands {
 
             /* MOVING TO NEW COOP */
             var discordUser = _client.GetUser(dbuser.DiscordId);
-            var coopChannel = _client.GetChannel(newCoop.ThreadID);
+            var coopChannel = newCoop.ThreadID != 0 ? _client.GetChannel(newCoop.ThreadID) : _client.GetChannel(newCoop.DiscordChannelId);
 
             var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)command.Channel);
             if(newxref == null) {
@@ -251,7 +251,7 @@ namespace EGG9000.Bot.Commands {
             if(contract.cc_only && !account.HasActiveSubscription()) {
                 return new() { Response = PotentialCoopCode.NonUltra };
             } else if(existingCoop is not null) {
-                return new() { Response = PotentialCoopCode.AlreadyAssigned, ReturnArgs = [existingCoop.Coop.ThreadID.ToString()] };
+                return new() { Response = PotentialCoopCode.AlreadyAssigned, ReturnArgs = [existingCoop.Coop.ThreadID != 0 ? existingCoop.Coop.ThreadID.ToString() : existingCoop.Coop.DiscordChannelId.ToString()] };
             } else if(account.GetGrade() is PlayerGrade.GradeUnset) {
                 return new() { Response = PotentialCoopCode.NoGrade };
             }
@@ -287,7 +287,10 @@ namespace EGG9000.Bot.Commands {
                 var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
                 var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
                 var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);    
-                if(coop.ThreadID == 0 || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsLocked ?? true || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsArchived ?? true)))
+                if(coop.ThreadID != 0 && (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsLocked ?? true || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsArchived ?? true)))
+                    continue;
+
+                if(coop.DiscordChannelId != 0 && (_client.GetGuild(coop.GuildId).GetTextChannel(coop.DiscordChannelId) == null || coop.DeletedChannel))
                     continue;
               
                 if(details.HasSpots) {
@@ -333,7 +336,7 @@ namespace EGG9000.Bot.Commands {
 
             var newCoop = newCoopResponse.FoundCoop;
             var discordUser = _client.GetUser(dbuser.DiscordId);
-            var coopChannel = _client.GetChannel(newCoop.ThreadID);
+            var coopChannel = newCoop.ThreadID != 0 ? _client.GetChannel(newCoop.ThreadID) : _client.GetChannel(newCoop.DiscordChannelId);
 
             var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)command.Channel);
             if(newxref == null) {
@@ -349,7 +352,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Makes this co-op private", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task MakePrivate(FauxCommand command, ApplicationDbContext db) {
             var name = new Regex(@"\w+").Match(command.Channel.Name.ToLower()).Value;
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to find coop for this channel {command.Channel.Name}"));
                 return;
@@ -503,7 +506,7 @@ namespace EGG9000.Bot.Commands {
             [SlashParam(Description = "(Usually not required) Egg Inc Name, will match partial name", Required = false)] string eggincname = "") {
             await command.DeferAsync();
 
-            var coop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id);
+            var coop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in co-op channels."); });
             }
@@ -517,12 +520,12 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == userid);
             var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
             //Primary lookup
-            var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id && !x.JoinedCoop);
+            var xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && (x.Coop.ThreadID == command.Channel.Id || x.Coop.DiscordChannelId == command.Channel.Id) && !x.JoinedCoop);
             //Secondary lookup
-            xref ??= await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id);
+            xref ??= await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && (x.Coop.ThreadID == command.Channel.Id || x.Coop.DiscordChannelId == command.Channel.Id));
 
             var discordUser = discord.GetUser(dbuser.DiscordId);
-            var coopChannel = discord.GetChannel(coop.ThreadID);
+            var coopChannel = coop.ThreadID != 0 ? discord.GetChannel(coop.ThreadID) : discord.GetChannel(coop.DiscordChannelId);
             //Lookups failed, a MoveToCoop is needed (run silently)
             if(xref == null) {
                 var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)command.Channel, true);
@@ -536,9 +539,9 @@ namespace EGG9000.Bot.Commands {
             }
 
             //Relookup xref
-            xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id && !x.JoinedCoop);
+            xref = await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && (x.Coop.ThreadID == command.Channel.Id || x.Coop.DiscordChannelId == command.Channel.Id) && !x.JoinedCoop);
             //Secondary relookup
-            xref ??= await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == command.Channel.Id);
+            xref ??= await db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && (x.Coop.ThreadID == command.Channel.Id || x.Coop.DiscordChannelId == command.Channel.Id));
 
             //Failsafe
             if(xref == null) {
@@ -562,7 +565,7 @@ namespace EGG9000.Bot.Commands {
             xref.FixedUserName = t.UserName;
             await db.SaveChangesAsync();
 
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
             var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
@@ -605,7 +608,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
 
             var discordUser = _client.GetUser(dbuser.DiscordId);
-            var coopChannel = _client.GetChannel(coop.ThreadID);
+            var coopChannel = coop.ThreadID != 0 ? _client.GetChannel(coop.ThreadID) : _client.GetChannel(coop.DiscordChannelId);
 
             var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)command.Channel, silent);
 
@@ -623,7 +626,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
             await command.DeferAsync();
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please use in a co-op channel"); });
                 return;
@@ -697,7 +700,9 @@ namespace EGG9000.Bot.Commands {
                 var accountHasUltra = (subAccountBypass ?? user.EggIncAccounts.First()).HasActiveSubscription();
 
                 if(existContractXrefs is not null && existContractXrefs.Any(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id))) {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existContractXrefs.First().Coop.ThreadID}>"); });
+                    var xref = existContractXrefs.First();
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: " +
+                        $"<#{(xref.Coop.ThreadID != 0 ? xref.Coop.ThreadID : xref.Coop.DiscordChannelId)}>"); });
                     return;
                 }
 
@@ -753,7 +758,9 @@ namespace EGG9000.Bot.Commands {
             var accountHasUltra = account.HasActiveSubscription();
 
             if(existingXrefs.Any(x => x.EggIncId == account.Id)) {
-                await component.UpdateAsync(x => { x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existingXrefs.First().Coop.ThreadID}>"); });
+                var xref = existingXrefs.First();
+                await component.UpdateAsync(x => { x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: " +
+                    $"<#{(xref.Coop.ThreadID != 0 ? xref.Coop.ThreadID : xref.Coop.DiscordChannelId)}>"); });
                 return;
             }
 
@@ -908,7 +915,7 @@ namespace EGG9000.Bot.Commands {
             var coop = await db.Coops.FirstOrDefaultAsync(c => c.GuildId == dbuser.GuildId && c.Name == coopId);
             if(coop is null) return;
 
-            var coopChannel = _client.GetChannel(coop.ThreadID);
+            var coopChannel = coop.ThreadID != 0 ? _client.GetChannel(coop.ThreadID) : _client.GetChannel(coop.DiscordChannelId);
 
             var newxref = await CreateCoopsV2.MoveUser(coop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, null); //The "commandChannel" here is intentionally nulled to prevent sending messages in Contract channels
 
@@ -947,7 +954,9 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(existingXrefs.Any(x => x.EggIncId == account.Id)) {
-                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: <#{existingXrefs.First().Coop.ThreadID}>"); });
+                var xref = existingXrefs.First();
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: " +
+                    $"<#{(xref.Coop.ThreadID != 0 ? xref.Coop.ThreadID : xref.Coop.DiscordChannelId)}>"); });
                 return;
             }
 

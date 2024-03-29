@@ -215,30 +215,22 @@ namespace EGG9000.Site.Controllers {
                 var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildGroup.Key);
 
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
-                    Console.Write(coop.Name);
                     var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
-                    var channel = guild.GetThreadChannel(coop.ThreadID);
+                    var channel = coop.ThreadID != 0 ? guild.GetThreadChannel(coop.ThreadID) : guild.GetTextChannel(coop.DiscordChannelId);
                     if(channel == null) {
-                        Console.WriteLine($" Unable to find channel");
                         continue;
                     }
                     try {
-                        var pinned = await channel.GetMessagesAsync(1000).FlattenAsync(); //await retryPolicy.ExecuteAsync(async () => );
+                        var pinned = await channel.GetMessagesAsync(1000).FlattenAsync();
                         Console.WriteLine(pinned.Count(x => x.IsPinned));
                         foreach(var msg in pinned.Where(x => x.Author.Id == 514257192803893272)) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
                                 if(!UpdateMessageIDs.Contains(msg.Id)) {
                                     await msg.DeleteAsync();
-                                    Console.Write("X");
-                                } else {
-                                    Console.Write("_");
                                 }
                             }
                         }
-                    } catch(Exception e) {
-                        Console.Write(e.Message);
-                    }
-                    Console.WriteLine("");
+                    } catch(Exception) {}
                 }
 
             }

@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             UserCoopXref xref;
-            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
 
             if(targetCoop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError("This command can only be used in a co-op channel"));
