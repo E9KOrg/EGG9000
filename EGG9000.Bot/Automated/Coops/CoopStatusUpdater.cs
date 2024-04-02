@@ -28,8 +28,8 @@ using static EGG9000.Common.Helpers.Prefarm;
 namespace EGG9000.Bot.Automated.Coops {
     public class CoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<CoopStatusUpdater>(interval, delay, provider) {
 #if DEBUG
-        private static TimeSpan readonly delay = TimeSpan.FromMinutes(0);
-        private static TimeSpan readonly interval = TimeSpan.FromMinutes(20);
+        private static readonly TimeSpan  delay = TimeSpan.FromMinutes(0);
+        private static readonly TimeSpan interval = TimeSpan.FromMinutes(20);
 #else
         private static readonly TimeSpan delay = TimeSpan.FromMinutes(2);
         private static readonly TimeSpan interval = TimeSpan.FromMinutes(15);

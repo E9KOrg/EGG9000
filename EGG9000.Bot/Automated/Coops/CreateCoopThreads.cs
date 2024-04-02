@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && !x.DeletedChannel).ToListAsync(cancellationToken);
 
             if(coops is null || coops.Count == 0) {
                 return;
@@ -31,7 +31,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 if (cancellationToken.IsCancellationRequested)
                     continue;
 
-				var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
+				var guild = _client.Guilds.FirstOrDefault(x => x.Id == coopGroups.Key);
+                if(guild is null) {
+                    _logger.LogError("Unable to load guild with the id {guildid}", coopGroups.Key);
+                    continue;
+                }
+
                 var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => gc.GuildID == guild.Id).ToListAsync(cancellationToken);
                 var servers = await GetOverflowGuildsCounts(guild, _db);
 				var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroups.Key.ToString())).FirstOrDefaultAsync(cancellationToken);
