@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace System {
+﻿namespace System {
     public static class StringExtensions {
         public static string PadBoth(this string str, int length) {
             int spaces = length - str.Length;

@@ -1,19 +1,15 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
-
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public class CoopSettingsCommand {
@@ -26,7 +22,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
             }
 
-            var inCoopChannel = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == command.ChannelId);
+            var inCoopChannel = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == command.ChannelId || x.Coop.DiscordChannelId == command.ChannelId));
 
 
             if(inCoopChannel) {
@@ -100,7 +96,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == dbuser.GuildId);
 
-            var xref = await db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == component.ChannelId);
+            var xref = await db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             var props = await MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, db, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
@@ -114,12 +110,11 @@ namespace EGG9000.Bot.Commands {
 
             var settingName = data.Split(",")[0];
 
-            if(dbuser.CoopSetting == null)
-                dbuser.CoopSetting = new CoopSetting();
+            dbuser.CoopSetting ??= new CoopSetting();
             dbuser.CoopSetting[settingName] = !dbuser.CoopSetting[settingName];
             dbuser.CoopSetting = dbuser.CoopSetting;
 
-            var xref = await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == component.ChannelId);
+            var xref = await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             if(xref is not null) {
                 var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
                 setting[settingName] = dbuser.CoopSetting[settingName];
@@ -143,7 +138,7 @@ namespace EGG9000.Bot.Commands {
 
             dbuser.UpdateAccounts();
 
-            var xref = await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && x.Coop.DiscordChannelId == component.ChannelId);
+            var xref = await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
             setting[settingName] = !setting[settingName];
             xref.CoopSetting = setting;

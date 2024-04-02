@@ -1,50 +1,25 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Bot.Commands;
-using Discord.Rest;
-using System.Numerics;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using Humanizer;
-using Microsoft.Extensions.Caching.Memory;
-using static EGG9000.Common.Helpers.Prefarm;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Text.RegularExpressions;
-using EGG9000.Common.Services;
-using Microsoft.Extensions.DependencyInjection;
-using System.IO;
-using System.Net.Http;
-using Microsoft.Extensions.Logging;
-using EGG9000.Common.Migrations;
-using EGG9000.Common.Helpers.Discord;
 
 namespace EGG9000.Bot.Automated {
-    public class ManageOverflow : _UpdaterBase<ManageOverflow> {
+    public class ManageOverflow(IServiceProvider provider) : _UpdaterBase<ManageOverflow>(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), provider) {
 
-        public ManageOverflow(
-            IServiceProvider provider
-            ) : base(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), provider) {
-        }
-
-
-
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var guilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var guilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
 
-            var users = await _db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync();
+            var users = await _db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync(cancellationToken);
             foreach(var guild in guilds) {
                 var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
                 await mainServer.DownloadUsersAsync();
@@ -52,22 +27,22 @@ namespace EGG9000.Bot.Automated {
                 var members = users.Where(x => x.GuildId == guild.Id);
                 var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
 
-                var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync();
+                var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(cancellationToken);
                 membersMissing.ForEach(x => {
                     x.GuildId = 0; x.LastGuild = guild.Id;
                     _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
-                    this.StillAlive();
+                    StillAlive();
                 });
 
                 var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
-                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync();
+                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(cancellationToken);
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
                     _logger.LogInformation("Return member to the guild {name}", x.DiscordUsername);
-                    this.StillAlive();
+                    StillAlive();
                 });
 
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
                 StillAlive();
             }
 
@@ -83,7 +58,7 @@ namespace EGG9000.Bot.Automated {
                 foreach(var server in overflowServers) {
                     await server.DownloadUsersAsync();
                 }
-                await HandleChannelPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
+                await HandleChannelPermissionSyncs(mainServer, overflowServers, cancellationToken);
                 await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
                 _client.RoleUpdated += _client_RoleUpdated;
 
@@ -119,7 +94,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     await u.AddRoleAsync(role);
                     _logger.LogInformation("Adding overflow role for {user}", u.GetName());
-                    this.StillAlive();
+                    StillAlive();
                 }
 
                 foreach(var u in mainServer.Users.Where(x => x.Roles.Count == 1 && x.Roles.Any(y => y.Id == overflowRoleID) && !x.IsBot)) {
@@ -128,7 +103,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     await u.RemoveRoleAsync(role);
                     _logger.LogInformation("Removing overflow role for {user}, it was the only role", u.GetName());
-                    this.StillAlive();
+                    StillAlive();
                 }
 
                 foreach(var u in bothAllWithRole) {
@@ -137,7 +112,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     await u.RemoveRoleAsync(role);
                     _logger.LogInformation("Removing overflow role for {user}, they were in all servers.", u.GetName());
-                    this.StillAlive();
+                    StillAlive();
                 }
 
 
@@ -149,7 +124,7 @@ namespace EGG9000.Bot.Automated {
                     foreach(var u in onlyOverflow) {
                         await u.KickAsync("No longer in main server");
                         _logger.LogInformation("Kicking {user}, no longer in main server", u.GetName());
-                        this.StillAlive();
+                        StillAlive();
                     }
 
                     foreach(var overflowUser in overflowServer.Users) {
@@ -166,7 +141,7 @@ namespace EGG9000.Bot.Automated {
                             } catch(Exception) {
                                 _logger.LogWarning("Unable to change nickname for {user}", mainServerUser.GetName());
                             }
-                            this.StillAlive();
+                            StillAlive();
                         }
                     }
                 }
@@ -209,15 +184,9 @@ namespace EGG9000.Bot.Automated {
                         //}
                     });
                 }
-                this.StillAlive();
+                StillAlive();
             }
         }
-
-
-
-
-
-
 
         private async Task HandleRoleSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             if(guild.RolesToSync is null)
@@ -293,25 +262,24 @@ namespace EGG9000.Bot.Automated {
                 }
 
             }
-
-            //Update role maps
-            //await HandleCommandPermissionSyncs(guild, mainServer, overflowServers, cancellationToken, roleMaps);
         }
 
-        private async Task<MemoryStream> DownloadImage(string url) {
-            using(var httpClient = new HttpClient()) {
-                var imageContent = await httpClient.GetByteArrayAsync(url);
+        /*private static async Task<MemoryStream> DownloadImage(string url) {
+            using var httpClient = new HttpClient();
+            var imageContent = await httpClient.GetByteArrayAsync(url);
 
-                var imageBuffer = new MemoryStream(imageContent);
-                imageBuffer.Position = 0;
-                return imageBuffer;
-            }
-        }
-        private async Task HandleChannelPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            var imageBuffer = new MemoryStream(imageContent) {
+                Position = 0
+            };
+            return imageBuffer;
+        }*/
+
+        private async Task HandleChannelPermissionSyncs(SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             var mainCoopCategory = (await _client.GetAllCoopCategories(mainServer)).First();
             var roles = mainServer.Roles.Where(x => mainCoopCategory.PermissionOverwrites.Any(y => y.TargetType == PermissionTarget.Role && y.TargetId == x.Id)).ToList();
 
             foreach(var overflowServer in overflowServers) {
+                if(cancellationToken.IsCancellationRequested) { continue; }
                 var matches = mainCoopCategory.PermissionOverwrites.Where(y => y.TargetType == PermissionTarget.Role).Select(x => {
                     var mainRole = mainServer.Roles.First(r => r.Id == x.TargetId);
                     return new OverflowPermissionRoleMatch {
@@ -322,7 +290,9 @@ namespace EGG9000.Bot.Automated {
                 });
                 var coopCategories = await _client.GetAllCoopCategories(overflowServer);
                 foreach(var coopCategory in coopCategories) {
+                    if(cancellationToken.IsCancellationRequested) { continue; }
                     foreach(var overwrite in coopCategory.PermissionOverwrites) {
+                        if(cancellationToken.IsCancellationRequested) { continue; }
                         StillAlive();
                         var match = matches.FirstOrDefault(x => x.OverflowRole.Id == overwrite.TargetId);
                         if(match == null) {
@@ -340,20 +310,14 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     foreach(var match in matches.Where(x => !coopCategory.PermissionOverwrites.Any(y => y.TargetId == x.OverflowRole.Id))) {
+                        if(cancellationToken.IsCancellationRequested) { continue; }
                         StillAlive();
                         await coopCategory.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
                     }
-
-                    //Temp to fix missing role permissions
-                    //foreach(var channel in coopCategory.Channels) {
-                    //    foreach(var match in matches.Where(x => !x.OverflowRole.IsEveryone)) {
-                    //        await channel.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
-                    //    }
-                    //}
                 }
             }
         }
-        public bool Compare(OverwritePermissions x, OverwritePermissions y) {
+        public static bool Compare(OverwritePermissions x, OverwritePermissions y) {
             return (
               from l1 in x.GetType().GetFields()
               join l2 in y.GetType().GetFields() on l1.Name equals l2.Name

@@ -1,40 +1,27 @@
-﻿using Discord.WebSocket;
+﻿using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
 using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
-using Discord.Net;
-using EGG9000.Common.Services;
-using static EGG9000.Common.Database.Entities.DBUser;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
-using EGG9000.Bot.Common.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Bot.Automated {
-    public class ShipReturnDM : _UpdaterBase<ShipReturnDM> {
-        public ShipReturnDM(
-            IServiceProvider provider
-        ) : base(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
-        }
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+    public class ShipReturnDM(IServiceProvider provider) : _UpdaterBase<ShipReturnDM>(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
+
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync();
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync(cancellationToken);
             foreach(var user in users) {
                 var discordUser = _client.GetUser(user.DiscordId);
                 if(discordUser == null) {
@@ -54,7 +41,7 @@ namespace EGG9000.Bot.Automated {
                         var fuelingShip = backup.SpaceMissions.FirstOrDefault(m => m.Status == MissionInfo.Types.Status.Fueling);
                         var needsFuel = NeedsFuel(backup);
                         var nextShipDue = DateTimeOffset.FromUnixTimeSeconds(mission.ReturnTime);//.AddMinutes(needsFuel ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes);
-                        var nextShipName = mission.Ship.ToString().Replace("_", " ");
+                        var nextShipName = MissionHelpers.GetProperShipName(mission.Ship);
                         var minutesUntilShipReturns = (DateTimeOffset.Now - nextShipDue).Humanize(2);
 
                         var lastBackupTime = (DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize(2).ShortenTime();
@@ -87,7 +74,7 @@ namespace EGG9000.Bot.Automated {
                                     case 7: tankSize = 500_000_000_000_000; break;
                                 }
 
-                                message += $"\n{String.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncEggs.GetEggById(x.Key).Emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
+                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncEggs.GetEggById(x.Key).Emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
                             }
                         } catch(Exception e) {
                             _bugsnag.Notify(e);
@@ -104,35 +91,35 @@ namespace EGG9000.Bot.Automated {
                             } else {
                                 _logger.LogInformation("Sending late ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
                             }
-                            await Task.Delay(500);
+                            await Task.Delay(500, cancellationToken);
                         } else {
                             _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
                         }
 
                         var dmResult = await BoolSendDm(discordUser, message, _db);
                         if(dmResult != DMResult.Success) {
-                            var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId);
+                            var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId, cancellationToken);
                             var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id ==  dbguild.Id);
                             var response = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, socketGuild, GuildChannelType.WarningMessagesForUser, new() 
                             { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but {(dmResult == DMResult.CannotSendToUser ? "have blocked the bot from sending you DMs" : "Discord is not responding")}" });
                         }
-                        await _db.SaveChangesAsync();
+                        await _db.SaveChangesAsync(cancellationToken);
                     } catch(Exception e) {
                         _bugsnag.Notify(e);
                         _logger.LogError(e, "UpdateNextShipDM Error");
                     }
                 }
             }
-            var timespan = await UpdateNextShipDM(users, _db, _logger, justSent: true);
-            this.ChangeUpdateInterval(timespan);
-            await _db.SaveChangesAsync();
+            var timespan = await UpdateNextShipDM(users, _db);
+            ChangeUpdateInterval(timespan);
+            await _db.SaveChangesAsync(cancellationToken);
         }
 
-        public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db, ILogger logger, bool justSent = false) {
+        public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db) {
             foreach(var user in dbusers.Where(x => x.DMOnShipReturn)) {
                 try {
 
-                    List<ShipDM> currentShipDMs = new List<ShipDM>();
+                    List<ShipDM> currentShipDMs = [];
 
                     foreach(var b in user.EggIncAccounts.Where(x => x.Backup?.SpaceMissions != null)) {
                         var needsFuel = NeedsFuel(b.Backup);
@@ -163,18 +150,14 @@ namespace EGG9000.Bot.Automated {
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {
                         var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == user.Id);
                         dbuser.NextShipReturnDMDue = NextShipReturnDMDue;
-                        //logger.LogInformation("Updating next ship time for {user} to {time}", user.DiscordUsername, NextShipReturnDMDue?.ToString("h:mm") ?? "null");
                     }
-                } catch(Exception e) {
-                    //logger.LogError(e, $"UpdateNextShipDM Error");
-                }
+                } catch(Exception) {}
             }
             await _db.SaveChangesAsync();
 
             var earliestNextTime = dbusers.Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue is not null && x.NextShipReturnDMDue > DateTimeOffset.Now).OrderBy(x => x.NextShipReturnDMDue).FirstOrDefault();
             if(earliestNextTime is not null) {
                 var timeToNext = (earliestNextTime.NextShipReturnDMDue.Value - DateTimeOffset.Now);
-                //logger.LogInformation("Next return time {time}", timeToNext);
                 if(timeToNext > TimeSpan.Zero && timeToNext < TimeSpan.FromMinutes(5)) {
                     return timeToNext;
                 }
@@ -183,10 +166,10 @@ namespace EGG9000.Bot.Automated {
         }
 
         private static bool NeedsFuel(CustomBackup backup) {
-            bool needsFuel = true;
+            var needsFuel = true;
             var currentShip = backup.SpaceMissions.FirstOrDefault(x => x.Status == MissionInfo.Types.Status.Fueling);
             if(currentShip != null) {
-                var fuelTargets = Ei.MissionInfo.GetFuelTargets(currentShip.Ship, currentShip.Duration);
+                var fuelTargets = MissionInfo.GetFuelTargets(currentShip.Ship, currentShip.Duration);
                 needsFuel = fuelTargets.Any(ft => ft.Value > (currentShip.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
             }
             return needsFuel;

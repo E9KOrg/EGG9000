@@ -1,9 +1,6 @@
 ﻿
 using Discord;
-using Discord.Net;
 using Discord.WebSocket;
-
-using EGG9000.Bot;
 using EGG9000.Bot.Commands;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.Helpers;
@@ -11,44 +8,28 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
-using Newtonsoft.Json;
-
-
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {
 
-    public class DiscordUserService : IHostedService {
-        private readonly DiscordHostedService _discord;
-        private IConfiguration _configuration;
-        private APILink _apiLink;
-        private Words _words;
-        private Bugsnag.IClient _bugsnag;
-        private IServiceProvider _provider;
-        private ILogger<DiscordUserService> _logger;
-        public DiscordUserService(IConfiguration Configuration, DiscordHostedService discord, APILink apilink, Words words, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) {
-            _discord = discord;
-            _configuration = Configuration;
-            _apiLink = apilink;
-            _words = words;
-            _bugsnag = bugsnag;
-            _provider = provider;
-            _logger = logger;
-        }
+    public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) : IHostedService {
 
+        private readonly DiscordHostedService _discord = discord;
+        private readonly Bugsnag.IClient _bugsnag = bugsnag;
+        private readonly IServiceProvider _provider = provider;
+        private readonly ILogger<DiscordUserService> _logger = logger;
 
+#if DEV9002 || DEBUG
+        private static readonly bool _debug = false;
+#else
+        private static readonly bool _debug = true;
+#endif
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _discord.UserJoined += Client_UserJoined;
@@ -69,8 +50,11 @@ namespace EGG9000.Common.Services {
                 guildContract.DeletedChannel = true;
                 await db.SaveChangesAsync();
             }
-            var coop = await db.Coops.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
-            if(coop is not null) {
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+            if(coop is not null && coop.ThreadID != 0) {
+                coop.ThreadArchived = true;
+                await db.SaveChangesAsync();
+            } else if(coop is not null && coop.DiscordChannelId != 0) {
                 coop.DeletedChannel = true;
                 await db.SaveChangesAsync();
             }
@@ -128,9 +112,9 @@ namespace EGG9000.Common.Services {
 
                     //Handle assigned co-ops
                     try {
-                        var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.DeletedChannel && !x.AddedToChannel).ToListAsync();
+                        var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
                         foreach(var xref in xrefs) {
-                            var coopChannel = (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
+                            var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
                             await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                             xref.AddedToChannel = true;
                             await coopChannel.SendMessageAsync($"Here is your co-op {user.Mention}! The co-op name to join is {xref.Coop.Name}");
@@ -145,10 +129,17 @@ namespace EGG9000.Common.Services {
                 return;
             }
 
+            
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser is not null && dbuser.TempDisabled) await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+            if(dbuser is not null && dbuser.TempDisabled) {
+                var welChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
+                var disabledMsg = $"Welcome to the server {user.Mention}! Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.";
+                await welChannel.SendMessageAsync(disabledMsg);
+                await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+            }
 
             if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
+                await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
                 var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
@@ -156,14 +147,16 @@ namespace EGG9000.Common.Services {
                 var previouslyHere = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id);
                 if(previouslyHere) {
                     dbuser.GuildId = user.Guild.Id;
+                    dbuser.UpdateAccounts();
                     await db.SaveChangesAsync();
+                    await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
+                    var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
+                    await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                     return;
                 }
             }
 
-#if DEV9002
-            return;
-#endif
+            if(_debug) return;
 
             var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);

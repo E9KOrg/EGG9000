@@ -6,8 +6,6 @@ using EGG9000.Common.Database.Entities;
 
 using Ei;
 
-using Google.Protobuf.WellKnownTypes;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,37 +13,24 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 
 namespace EGG9000.Bot.Automated {
-    public class UserCxpUpdater : _UpdaterBase<UserCxpUpdater> {
+    public class UserCxpUpdater(IServiceProvider provider) : _UpdaterBase<UserCxpUpdater>(_runTime, provider) {
 #if DEBUG
-        //public UserCxpUpdater(
-        //    IServiceProvider provider
-        //) : base(CronExpression.Parse("0 9 * * MON,WED,FRI"), provider) {
-        //}
-        public UserCxpUpdater(
-            IServiceProvider provider
-        ) : base(TimeSpan.MaxValue, TimeSpan.Zero, provider) {
-        }
+        private static readonly CronExpression _runTime = CronExpression.Parse("* * * * *");
 #else
-
-        public UserCxpUpdater(
-            IServiceProvider provider
-        ) : base(CronExpression.Parse("0 9 * * MON,WED,FRI"), provider) {
-        }
+        private static readonly CronExpression _runTime = CronExpression.Parse("0 9 * * MON,WED,FRI");
 #endif
 
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             //Get a list of all users that are a part of a guild
 #if DEBUG
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync();
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync(cancellationToken);
 #else
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync(cancellationToken);
 #endif
 
             //Loop through each user in the DB
@@ -56,10 +41,10 @@ namespace EGG9000.Bot.Automated {
             var userIDs = users.SelectMany(x => x.EggIncAccounts.Select(y => y.Id)).OrderBy(x => random.Next()).ToList();
             _logger.LogInformation("Getting scores");
             //var existingScores = await _db.UserCsHistoryEntries.Where(x => userIDs.Contains(x.EggIncId)).ToListAsync();
-            var existingScores = await _db.UserCsHistoryEntries.ToListAsync();
+            var existingScores = await _db.UserCsHistoryEntries.ToListAsync(cancellationToken);
             _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {
-                this.StillAlive();
+                StillAlive();
                 var scoresToAdd = new List<UserCsHistoryEntry>();
                 var skipped = 0;
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, cancellationToken) => {
@@ -76,7 +61,7 @@ namespace EGG9000.Bot.Automated {
                             }
                             foreach(var score in scores.Contracts) {
                                 //Max length for coop because of weird names
-                                var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier.Substring(0, 100) : score.CoopIdentifier;
+                                var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier[..100] : score.CoopIdentifier;
                                 //Get the score from existing ones
                                 var existingScore = existingScores.FirstOrDefault(x => x.ContractIdentifier == score.Contract.Identifier && x.CoopIdentifier == coopIdentifier && x.EggIncId == account.Id);
 
@@ -96,10 +81,10 @@ namespace EGG9000.Bot.Automated {
                     }
                 });
                 _db.UserCsHistoryEntries.AddRange(scoresToAdd);
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
                 _logger.LogInformation("Saving Changes {count}/{total}, skipped {skipped}", (++count * chunkSize), users.Count, skipped);
             }
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
         }
     }
 }
