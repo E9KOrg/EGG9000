@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId == 0 && !x.DeletedChannel).ToListAsync();
 
             if(coops.Count > 0) {
-                foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
+                foreach(var coopGroups in coops.GroupBy(x => x.GuildId).OrderBy(x => Random.Shared.Next())) {
                     var guild = _client.Guilds.First(x => x.Id == coopGroups.Key);
                     var servers = await GetOverflowGuildsCounts(guild, _db);
                     if(servers == null) {
@@ -88,11 +88,18 @@ namespace EGG9000.Bot.Automated.Coops {
                 var coopCategories = await overflow.GetCoopCategories(_client);
                 foreach(var category in coopCategories.Where(x => x.CurrentCount < 50)) {
                     try {
-                        var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; }, options: new RequestOptions { CancelToken = cancellationToken });
+                        _logger.LogInformation("Attempting to create co-op channel in {overflow} {category}", overflow.Guild.Name, category.DiscordCategory.Name);
+                        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        cts.CancelAfter(150000);
+                        var channel = await overflow.Guild.CreateTextChannelAsync(coop.Name, x => { x.CategoryId = category.DiscordCategory.Id; }, options: new RequestOptions { CancelToken = cts.Token });
                         category.CurrentCount++;
                         overflow.ChannelsLeft--;
                         return channel;
-                    } catch(Exception) { }
+                    } catch(TaskCanceledException e) {
+                        category.CurrentCount++;
+                        overflow.ChannelsLeft--;
+                        _logger.LogError("Error creating co-op channel in {overflow} {category}, timed out. Possible issue with category");
+                    }
                 }
             }
             if(completedCoops.Count() > 0) {
