@@ -17,7 +17,7 @@ namespace EGG9000.Bot.Automated {
             var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date, cancellationToken);
 
             if(!hasSnapshots) {
-                var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync(cancellationToken);
+                var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
                 var snapshots = 0;
                 foreach(var user in users) {
                     try {
@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogTrace("Adding Snapshot for {user}", user.Id);
                                 if(snapshots++ >= 50) {
                                     snapshots = 0;
-                                    await _db.SaveChangesAsync(cancellationToken);
+                                    await _db.SaveChangesAsync(CancellationToken.None);
                                 }
                             }
                         }
@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Automated {
                         _bugsnag.Notify(e);
                     }
                 }
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
         }
     }

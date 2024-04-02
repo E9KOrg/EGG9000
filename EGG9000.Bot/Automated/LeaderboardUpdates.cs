@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Automated {
             timings.Start();
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync(cancellationToken);
+            var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync(CancellationToken.None);
             timings.Set("recentContracts");
             _logger.LogInformation("Getting Xrefs for Leaderboard");
             try {
@@ -47,9 +47,9 @@ namespace EGG9000.Bot.Automated {
 
                 var recentxrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop && x.CreatedOn >= threeWeeksAgo).Select(x => new SimpleXref {
                     UserId = x.UserId, ContractID = x.Coop.ContractID, EggIncId = x.EggIncId, Joined = x.JoinedCoop
-                }).ToListAsync(cancellationToken);
+                }).ToListAsync(CancellationToken.None);
                 timings.Set("recentxrefs");
-                var oldXrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.CreatedOn < threeWeeksAgo).GroupBy(x => x.UserId).Select(x => x.Key).ToListAsync(cancellationToken);
+                var oldXrefs = await _db.UserCoopXrefs.Where(x => x.JoinedCoop && x.CreatedOn < threeWeeksAgo).GroupBy(x => x.UserId).Select(x => x.Key).ToListAsync(CancellationToken.None);
                 timings.Set("oldXrefs");
 
                 if(cancellationToken.IsCancellationRequested)
@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Automated {
 
                 _logger.LogInformation("Getting Users for Leaderboard");
 
-                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
                 timings.Set("dbguilds");
 
 
@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Automated {
 #endif
 
 
-                var dbusers = await userQuery.ToListAsync(cancellationToken);
+                var dbusers = await userQuery.ToListAsync(CancellationToken.None);
                 timings.Set("dbusers");
                 if(cancellationToken.IsCancellationRequested)
                     return;
@@ -119,7 +119,7 @@ namespace EGG9000.Bot.Automated {
 
 
                     var users = lUsers.Where(x => x.User.GuildId == guild.Id).ToList();
-                    var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync(cancellationToken);
+                    var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync(CancellationToken.None);
 
                     //Handle users who are on break, and doing coops
                     var breakCoopsChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.BreakCoopLog);
@@ -137,7 +137,10 @@ namespace EGG9000.Bot.Automated {
                         });
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
-                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), cancellationToken);
+                            if(cancellationToken.IsCancellationRequested)
+                                break;
+
+                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), CancellationToken.None);
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
                             var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
@@ -150,7 +153,7 @@ namespace EGG9000.Bot.Automated {
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();
                         }
-                        await _db.SaveChangesAsync(cancellationToken);
+                        await _db.SaveChangesAsync(CancellationToken.None);
                     }
 
                     //Handle users with suspiciously high Mystical Egg Ratios
@@ -163,6 +166,9 @@ namespace EGG9000.Bot.Automated {
                         ua.Backup != null && (91 * Math.Log10(ua.Backup.SoulEggs / 1e18) + 200 - ua.Backup.EggsOfProphecy) / 10 / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
                         );
                         foreach(var merCheater in merCheaters) {
+                            if(cancellationToken.IsCancellationRequested)
+                                break;
+
                             var mer = (91 * Math.Log10(merCheater.Backup.SoulEggs / 1e18) + 200 - merCheater.Backup.EggsOfProphecy) / 10;
                             var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{merCheater.User.DiscordId}>{(merCheater.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")} may be cheating. MER is higher than expected, at `{mer:n2}`, after `{(int)merCheater.Backup.NumPrestiges}` prestiges.";
@@ -172,7 +178,7 @@ namespace EGG9000.Bot.Automated {
                             merCheater.Account.MERWarningSent = true;
                             merCheater.User.UpdateAccounts();
                         }
-                        await _db.SaveChangesAsync(cancellationToken);
+                        await _db.SaveChangesAsync(CancellationToken.None);
                     }
 
                     //Handle promotions
@@ -207,8 +213,7 @@ namespace EGG9000.Bot.Automated {
                 }
             } catch(Exception e) {
                 _bugsnag.Notify(e);
-                _logger.LogError(e, "**************ERROR in LeaderboardUpdater**********")
-;
+                _logger.LogError(e, "**************ERROR in LeaderboardUpdater**********");
             }
 
 

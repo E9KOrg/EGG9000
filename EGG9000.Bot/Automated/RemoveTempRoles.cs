@@ -12,7 +12,7 @@ namespace EGG9000.Bot.Automated {
         private readonly ApplicationDbContext _db = context;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
-            var rolesToRemove = await _db.TemporaryRoles.Where(x => x.Expires < DateTimeOffset.Now && !x.IsRemoved).ToListAsync(cancellationToken);
+            var rolesToRemove = await _db.TemporaryRoles.Where(x => x.Expires < DateTimeOffset.Now && !x.IsRemoved).ToListAsync(CancellationToken.None);
             foreach(var role in rolesToRemove) {
                 try {
                     var user = _client.Guilds.First(g => g.Id == role.GuildId).GetUser(role.UserId);
@@ -22,7 +22,7 @@ namespace EGG9000.Bot.Automated {
                 }
                 role.IsRemoved = true;
             }
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(CancellationToken.None);
         }
     }
 }
