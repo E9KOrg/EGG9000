@@ -40,7 +40,7 @@ namespace EGG9000.Bot.Automated {
             if(contractsResponse == null) {
                 _logger.LogWarning("⚠️ERROR: Invalid Contract Response");
             } else {
-                var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync(cancellationToken);
+                var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync(CancellationToken.None);
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
 
@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Automated {
                         continue;
                     }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
-                    var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+                    var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
                     var json = JsonConvert.SerializeObject(contractResponse);
 
@@ -75,7 +75,7 @@ namespace EGG9000.Bot.Automated {
                             _response = json
                         };
                         _db.Contracts.Add(contract);
-                        await _db.SaveChangesAsync(cancellationToken);
+                        await _db.SaveChangesAsync(CancellationToken.None);
 
                         needsUpdate = true;
                     } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
@@ -99,11 +99,11 @@ namespace EGG9000.Bot.Automated {
                         contract.egg = contractResponse.Egg.ToString();
                         contract.cc_only = contractResponse.CcOnly;
                         contract._response = json;
-                        await _db.SaveChangesAsync(cancellationToken);
+                        await _db.SaveChangesAsync(CancellationToken.None);
                     }
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
-                    await _db.SaveChangesAsync(cancellationToken);
+                    await _db.SaveChangesAsync(CancellationToken.None);
 
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
@@ -111,9 +111,9 @@ namespace EGG9000.Bot.Automated {
 
 
             try {
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
             } catch(Exception) {
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
 
             if(needsUpdate)

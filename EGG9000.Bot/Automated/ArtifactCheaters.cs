@@ -98,8 +98,8 @@ namespace EGG9000.Bot.Automated {
 
         public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
-            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync(cancellationToken);
+            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
+            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync(CancellationToken.None);
             var scoreSet = new Dictionary<EggIncAccount, double>();
 
             foreach(var user in dbusers) {
@@ -184,7 +184,7 @@ namespace EGG9000.Bot.Automated {
                     outlier.AFSWarningSent = true;
                     user.UpdateAccounts();
                 }
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
 
             return returnScoreset ? scoreSet : [];

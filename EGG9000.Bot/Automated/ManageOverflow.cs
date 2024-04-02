@@ -17,9 +17,9 @@ namespace EGG9000.Bot.Automated {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var guilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+            var guilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
-            var users = await _db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync(cancellationToken);
+            var users = await _db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync(CancellationToken.None);
             foreach(var guild in guilds) {
                 var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
                 await mainServer.DownloadUsersAsync();
@@ -27,7 +27,7 @@ namespace EGG9000.Bot.Automated {
                 var members = users.Where(x => x.GuildId == guild.Id);
                 var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
 
-                var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(cancellationToken);
+                var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
                 membersMissing.ForEach(x => {
                     x.GuildId = 0; x.LastGuild = guild.Id;
                     _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
@@ -35,14 +35,14 @@ namespace EGG9000.Bot.Automated {
                 });
 
                 var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
-                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(cancellationToken);
+                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(CancellationToken.None);
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
                     _logger.LogInformation("Return member to the guild {name}", x.DiscordUsername);
                     StillAlive();
                 });
 
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
                 StillAlive();
             }
 
