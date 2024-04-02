@@ -27,16 +27,13 @@
 	var projectPercentEveryone = Model.CoopDetails.CoopParticipants.Sum(x => x.Projected) / targetAmount * 100;
 	var projectPercentEveryoneStr = PercentString(projectPercentEveryone);
 
-	var discordChannelDeleted = Model.CoopDetails.Coop?.DeletedChannel ?? true;
+	var discordChannelDeleted = ((Model.CoopDetails.Coop?.ThreadID != 0 ? Model.CoopDetails.Coop?.ThreadArchived : Model.CoopDetails.Coop?.DeletedChannel)) ?? true;
 
 
 	var projectPercentWidth = Math.Min(projectPercent, 100) - percent;
 	var projectPercentEveryoneWidth = Math.Min(projectPercentEveryone, 100) - projectPercentWidth - percent;
 
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-
-
-
 }
 
 
@@ -55,7 +52,8 @@
 		@{
 			if (!discordChannelDeleted) {
 				var discordGuildID = Model.CoopDetails.Coop?.OverflowGuildId != default ? Model.CoopDetails.Coop.OverflowGuildId : Model.CoopDetails.Coop.GuildId;
-				var discordChannelID = Model.CoopDetails.Coop?.DiscordChannelId;
+				var discordChannelID = Model.CoopDetails.Coop?.ThreadID;
+				if (discordChannelID == 0) discordChannelID = Model.CoopDetails.Coop?.DiscordChannelId;
 				var discordLink = "discord://discordapp.com/channels/" + discordGuildID + "/" + discordChannelID + "/";
 				<a href="@discordLink" alt="Discord channel link" target="_self"><img style="max-height: 1em;" src="/images/discordicon.png" /> @Model.CoopStatus.CoopIdentifier</a>
 			}

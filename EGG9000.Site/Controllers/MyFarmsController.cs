@@ -1,58 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
-
-using MessagePack;
-
+using Ei;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using EGG9000.Common.Helpers;
-using Discord.WebSocket;
-using Newtonsoft.Json;
-using Ei;
-using Stripe;
-using System.Security.Principal;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Event = EGG9000.Common.Database.Entities.Event;
-using System.Diagnostics.Contracts;
-using static EGG9000.Site.Controllers.HomeController;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using EGG9000.Bot.Helpers;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class MyFarmsController : Controller {
-        private readonly ILogger<MyFarmsController> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly APILink _apiLink;
-        private readonly DiscordSocketClient _discord;
+    public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db) : Controller {
 
-        public MyFarmsController(
-            ILogger<MyFarmsController> logger,
-            UserManager<IdentityUser> userManager,
-            DiscordSocketClient discord,
-            RoleManager<IdentityRole> roleManager,
-            APILink apiLink,
-            ApplicationDbContext db) {
-            _roleManager = roleManager;
-            _userManager = userManager;
-            _logger = logger;
-            _apiLink = apiLink;
-            _db = db;
-            _discord = discord;
-        }
+        private readonly ILogger<MyFarmsController> _logger = logger;
+        private readonly ApplicationDbContext _db = db;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+        private readonly APILink _apiLink = apiLink;
+        private readonly DiscordSocketClient _discord = discord;
 
         public async Task<IActionResult> Index() {
             var loginuser = (await _userManager.GetUserAsync(User));
@@ -101,8 +76,8 @@ namespace EGG9000.Site.Controllers {
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             /*var RawBackups = rawBackups;*/
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
-            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
+            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
             var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);

@@ -1,68 +1,101 @@
-﻿using Discord.WebSocket;
+﻿using Cronos;
+using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CoopReorder : _UpdaterBase<CoopReorder> {
-        public CoopReorder(
-            IServiceProvider provider
-        ) : base(TimeSpan.FromMinutes(30), TimeSpan.Zero, provider) {
-        }
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+    public class CoopReorder(IServiceProvider provider) : _UpdaterBase<CoopReorder>(
+        /* 
+         * To prevent collision of this job with the higher priority CreateCoopChannels Job, 
+         * this should run every half hour except for:
+         * 10:00, 18:00, 02:00
+        */
+        CronExpression.Parse("0,30 0-1,3-9,11-17,19-23 * * *"), provider) {
+
+        private static readonly int _maxDegreeOfParallelism = 2;
+        private static readonly SemaphoreSlim _semaphore = new(_maxDegreeOfParallelism);
+
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             try {
                 var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-                foreach(var dbguild in dbguilds) {
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+
+                //Parallelized in the case that one server runs into an issue with a semaphore lock
+                Parallel.ForEach(dbguilds, async (dbguild, loopState) => {
                     if(cancellationToken.IsCancellationRequested)
-                        continue;
+                        return;
+
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.Id);
                     if(guild == null)
-                        continue;
+                        return;
+
+                    await _semaphore.WaitAsync();
 
                     var categories = await _client.GetAllCoopCategories(guild);
 
-                    var coops = await _db.Coops.Include(x => x.Contract).Where(x => !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && (x.OverflowGuildId == 0 || x.OverflowGuildId == guild.Id)).ToListAsync();
+                    var coops = await _db.Coops.Include(x => x.Contract).Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 && !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && (x.OverflowGuildId == 0 || x.OverflowGuildId == guild.Id)).ToListAsync();
 
-                    await SortCoops(coops, categories, guild);
+                    await SortCoops(coops, categories, guild, cancellationToken);
 
-                    foreach(var overflowId in dbguild.OverflowServers) {
+                    SemaphoreSlim internalSemaphore = new(_maxDegreeOfParallelism);
+
+                    //Parallelized in the case that one overflow server runs into an issue with a semaphore lock
+                    Parallel.ForEach(dbguild.OverflowServers, async (overflowId, loopState) => {
                         if(cancellationToken.IsCancellationRequested)
-                            continue;
+                            return;
+
                         var overflowGuild = _client.Guilds.FirstOrDefault(x => x.Id == overflowId);
                         if(overflowGuild == null) {
                             _logger.LogWarning("Missing overflow guild for {guildName}, overflowId = {overflowId}", guild.Name, overflowId);
-                            continue;
+                            return;
                         }
+
+                        //Wait on max parallelization semaphore
+                        await internalSemaphore.WaitAsync();
+
                         var overflowCategories = await _client.GetAllCoopCategories(overflowGuild);
                         var overflowCoops = await _db.Coops.Include(x => x.Contract).Where(x => !x.Finished && !x.DeletedChannel && x.GuildId == guild.Id && x.OverflowGuildId == overflowId).ToListAsync();
-                        await SortCoops(overflowCoops, overflowCategories, overflowGuild);
-                    }
-                }
+                        await SortCoops(overflowCoops, overflowCategories, overflowGuild, cancellationToken);
+
+                        //Work on overflow server is done, release for parallels
+                        internalSemaphore.Release();
+                    });
+
+                    //Work on server is done, release for parallels
+                    _semaphore.Release();
+                });
             } catch(Exception e) {
+                _semaphore.Release(); //Release parallelization semaphore
                 _logger.LogError(e, "Failed to sort co-ops");
                 _bugsnag.Notify(e);
             }
         }
 
-        private async Task SortCoops(List<Coop> coops, List<SocketCategoryChannel> categories, SocketGuild guild) {
+        private async Task SortCoops(List<Coop> coops, List<SocketCategoryChannel> categories, SocketGuild guild, CancellationToken cancellationToken) {
+            //Wait on the Server's lock, timeout defined in DiscordHostedService
+            _logger.LogInformation("Waiting on Semaphore lock for guild {guild}", guild.Name);
+            var dtNow = DateTimeOffset.Now;
+            var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), cancellationToken);
+            if(ownershipAcquired) {
+                _logger.LogInformation("Semaphore for guild {guild} unlocked after {timespan}.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
+            } else {
+                _logger.LogInformation("Semaphore for guild {guild} timed out after after {unlockTime} minutes.", guild.Name, DiscordHostedService.GetSemaphoreTimeout().TotalMinutes);
+            }
+
             _logger.LogInformation("Sorting Co-ops for {guildName}", guild.Name);
-            coops = coops.OrderBy(x => {
+            coops = [.. coops.OrderBy(x => {
                 //x.CoopEnds
                 var targetAmount = x.Contract.Details.GradeSpecs[(int)x.League - 1].Goals.Last().TargetAmount;
                 var totalAmount = x.LastStatusUpdate?.Participants.Sum(x => x.AmountWithOfflineIgnoreSilo()) ?? 0;
@@ -71,8 +104,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var timeRemaining = Prefarm.GetTimeRemainingValue(targetAmount, totalRate, totalAmount);
 
                 return Math.Min(x.LastStatusUpdate?.SecondsRemaining ?? double.MaxValue, timeRemaining.TotalSeconds);
-            }
-).ToList();
+            })];
 
             var groupCount = Math.Ceiling(coops.Count / 50m);
             var lastCount = coops.Count % 50;
@@ -85,6 +117,8 @@ namespace EGG9000.Bot.Automated.Coops {
             var coopSorts = new List<CoopSort>();
 
             foreach(var coop in coops.Where(x => x.DiscordChannelId > 0)) {
+                if(cancellationToken.IsCancellationRequested)
+                    continue;
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == coop.DiscordChannelId);
                 if(channel == null) {
                     _logger.LogWarning("Unable to find channel for {coopName}", coop.Name);
@@ -117,6 +151,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(currentTry++ > 1000)
                     break;
                 foreach(var coopSort in coopSorts.Where(x => x.NeedsMove)) {
+                    if(cancellationToken.IsCancellationRequested)
+                        continue;
                     if(currentCounts[coopSort.TargetCategoryIndex] < 50) {
                         await coopSort.Channel.ModifyAsync(channel => {
                             try {
@@ -128,19 +164,25 @@ namespace EGG9000.Bot.Automated.Coops {
                         currentCounts[coopSort.TargetCategoryIndex]++;
                         currentCounts[coopSort.CurrentCategoryIndex]--;
                         coopSort.NeedsMove = false;
-                        await Task.Delay(500);
+                        await Task.Delay(500, cancellationToken);
                     }
                 }
             }
 
             for(var i = coopSorts.Count - 1; i >= 0; i--) {
+                if(cancellationToken.IsCancellationRequested)
+                    continue;
                 var coopSort = coopSorts[i];
                 if(coopSort.NeedsReorder) {
                     await coopSort.Channel.ModifyAsync(x => x.Position = coopSort.NewPosition);
-                    await Task.Delay(500);
+                    await Task.Delay(500, cancellationToken);
                 }
             }
 
+            //Work completed, if we acquired onwership, release it
+            if(ownershipAcquired) {
+                guild.GetServerSemaphore().Release();
+            }
         }
 
         private class CoopSort {

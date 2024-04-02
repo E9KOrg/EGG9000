@@ -1,5 +1,4 @@
-﻿using EGG9000.Bot;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;

@@ -127,6 +127,9 @@ namespace EGG9000.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("AddedFromBackup")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("AnyLeague")
                         .HasColumnType("bit");
 
@@ -195,6 +198,15 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<bool>("ThreadArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("ThreadID")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<decimal>("ThreadParentChannel")
+                        .HasColumnType("decimal(20,0)");
 
                     b.Property<string>("UpdateMessagesId")
                         .HasColumnType("nvarchar(max)");
@@ -575,6 +587,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<string>("ActiveStandards")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("AddOutsideCoops")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("AllowGuilds")
                         .HasColumnType("bit");

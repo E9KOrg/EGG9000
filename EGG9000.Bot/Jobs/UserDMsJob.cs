@@ -5,32 +5,20 @@ using Discord.WebSocket;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using Humanizer;
 
 using Microsoft.Extensions.Logging;
 
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Jobs {
 
-    public class UserDMsJob {
-        private readonly ILogger<UserDMsJob> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly DiscordSocketClient _discord;
-        private readonly Bugsnag.IClient _bugsnag;
-
-        public UserDMsJob(ILogger<UserDMsJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord, Bugsnag.IClient bugsnag) {
-            _logger = logger;
-            _db = applicationDbContext;
-            _discord = discord;
-            _bugsnag = bugsnag;
-        }
+    public class UserDMsJob(ILogger<UserDMsJob> logger, ApplicationDbContext applicationDbContext, DiscordSocketClient discord) {
+        private readonly ILogger<UserDMsJob> _logger = logger;
+        private readonly ApplicationDbContext _db = applicationDbContext;
+        private readonly DiscordSocketClient _discord = discord;
 
         [Job("0 */30 * * * *")]
         public async Task WarningBreakExpiring() {

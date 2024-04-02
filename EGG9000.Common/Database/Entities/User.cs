@@ -1,28 +1,16 @@
-﻿
-using Bugsnag.Payload;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Database;
+﻿using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
 
 using Ei;
 
-using Google.Protobuf.WellKnownTypes;
-
 using MessagePack;
 
-using Microsoft.AspNetCore.Identity;
-
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]

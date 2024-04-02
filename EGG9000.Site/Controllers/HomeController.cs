@@ -1,48 +1,39 @@
-﻿using System;
+﻿using Discord;
+using Discord.Rest;
+using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Factories;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using EGG9000.Site.Models;
+using Google.Protobuf;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Polly;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using EGG9000.Site.Models;
-using EGG9000.Common.Database;
-using Microsoft.EntityFrameworkCore;
-using EGG9000.Bot.EggIncAPI;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Authorization;
-using EGG9000.Common.Database.Entities;
-using Microsoft.AspNetCore.Cors;
-using System.Net.Http;
 using System.IO;
-using Google.Protobuf;
-using Discord.WebSocket;
+using System.Linq;
+using System.Net.Http;
+using System.Security.Claims;
 using System.Text;
-using Discord;
-using System.IO.Compression;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System.Reflection;
-using EGG9000.Common.Helpers;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Services;
-using Polly;
-using static EGG9000.Common.Helpers.Prefarm;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Discord.Net;
 using System.Text.RegularExpressions;
-using Discord.Rest;
-using Microsoft.Extensions.Caching.Memory;
-using EGG9000.Bot;
-using Stripe;
 using System.Threading;
-using System.Security.Claims;
-using System.Security.Principal;
-using EGG9000.Common.Contracts;
-using EGG9000.Common.Factories;
-using Microsoft.Data.SqlClient;
-using System.Globalization;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController : Controller {
@@ -94,13 +85,13 @@ namespace EGG9000.Site.Controllers {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
             _db.RemoveRange(demerits);
             await _db.SaveChangesAsync();
-            var coops = await _db.Coops.Where(x => !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.Where(c => !c.ThreadArchived).ToListAsync();
 
             var messagesDeleted = 0;
             foreach(var coop in coops) {
-                var channel = (SocketTextChannel)await _discord.GetChannelAsync(coop.DiscordChannelId);
+                var channel = (SocketThreadChannel)await _discord.GetChannelAsync(coop.ThreadID);
 
-                if(channel is not null) {
+                if(channel is not null && !channel.IsArchived) {
                     var messages = await channel.GetMessagesAsync().FlattenAsync();
 
                     var messagesToDeleted = messages.Where(x => x.CreatedAt > DateTimeOffset.Now.AddHours(-10) && x.Author.IsBot && x.Content.Contains("Demerit added to"));
@@ -131,8 +122,8 @@ namespace EGG9000.Site.Controllers {
 
                 ms2.Position = 0;
                 var sr = new StreamReader(ms2);
-                var base64 = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(ASCIIEncoding.ASCII.GetBytes("data=" + base64));
+                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
+                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
@@ -210,13 +201,13 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> CleanCoopPins() {
-            var coops = await _db.Coops.AsQueryable().Where(x => x.DiscordChannelId != 0 && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived).ToListAsync();
 
-            var retryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync(new[]{
-                    TimeSpan.FromSeconds(1),
-                    TimeSpan.FromSeconds(2),
-                    TimeSpan.FromSeconds(3)
-                });
+            var retryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync([
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(2),
+                TimeSpan.FromSeconds(3)
+            ]);
 
             var rnd = new Random();
             foreach(var guildGroup in coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId)) {
@@ -224,30 +215,22 @@ namespace EGG9000.Site.Controllers {
                 var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildGroup.Key);
 
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
-                    Console.Write(coop.Name);
                     var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
-                    var channel = guild.GetTextChannel(coop.DiscordChannelId);
+                    var channel = coop.ThreadID != 0 ? guild.GetThreadChannel(coop.ThreadID) : guild.GetTextChannel(coop.DiscordChannelId);
                     if(channel == null) {
-                        Console.WriteLine($" Unable to find channel");
                         continue;
                     }
                     try {
-                        var pinned = await channel.GetMessagesAsync(1000).FlattenAsync(); //await retryPolicy.ExecuteAsync(async () => );
+                        var pinned = await channel.GetMessagesAsync(1000).FlattenAsync();
                         Console.WriteLine(pinned.Count(x => x.IsPinned));
                         foreach(var msg in pinned.Where(x => x.Author.Id == 514257192803893272)) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
                                 if(!UpdateMessageIDs.Contains(msg.Id)) {
                                     await msg.DeleteAsync();
-                                    Console.Write("X");
-                                } else {
-                                    Console.Write("_");
                                 }
                             }
                         }
-                    } catch(Exception e) {
-                        Console.Write(e.Message);
-                    }
-                    Console.WriteLine("");
+                    } catch(Exception) {}
                 }
 
             }
