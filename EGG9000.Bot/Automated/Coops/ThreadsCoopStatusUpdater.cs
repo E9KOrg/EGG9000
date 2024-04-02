@@ -706,6 +706,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var currentContent = "";
                     var pingsPerCycle = 1500 / 22;
                     IUserMessage editPingsInto = null;
+                    var deleteAfter = false;
 
                     if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage existingBotMessage) {
                         editPingsInto = existingBotMessage;
@@ -713,12 +714,14 @@ namespace EGG9000.Bot.Automated.Coops {
                         pingsPerCycle = (1500 - currentContent.Length) / 22;
                     } else {
                         editPingsInto = await coopThread.SendMessageAsync("[Ping into]");
+                        deleteAfter = true;
                     }
                     while(pingsLeft.Count > 0) {
                         await editPingsInto.ModifyAsync(m => m.Content = currentContent + " " + string.Join(" ", pingsLeft.Take(pingsPerCycle).ToList()));
                         // Remove pingsPerCycle entries from pingsLeft
                         pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
                     }
+                    if(deleteAfter) await editPingsInto.DeleteAsync();
                 }
                 var usersNow = await threadObj.GetUsersAsync();
                 var usersAdded = usersNow.Where(un => !currentUsers.Contains(un)).Select(u => u.Id).ToList();

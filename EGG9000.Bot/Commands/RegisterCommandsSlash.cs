@@ -240,8 +240,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, apiLink, eggincid, await _client.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
+        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(command, db, apiLink, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
@@ -299,7 +299,7 @@ namespace EGG9000.Bot.Commands {
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("Update ID")).ToArray(); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("EID Updated")).ToArray(); });
 
         }
 

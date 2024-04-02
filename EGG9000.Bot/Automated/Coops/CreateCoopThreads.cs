@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 catch (Exception) { }
 			}
-
+            
             if(completedCoops is null || completedCoops.Count == 0) {
                 return (null, null);
             }
