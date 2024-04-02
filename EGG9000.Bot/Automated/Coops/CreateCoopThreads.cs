@@ -98,28 +98,35 @@ namespace EGG9000.Bot.Automated.Coops {
         private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops) {
             var contractEmbed = ContractUpdater.GetContractEmbed(guildContract, guild,(Ei.Contract.Types.PlayerGrade)coop.League);
             SocketGuildChannel headerChannel = null;
-            foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
+
+            //Check channels that already have an existing header for the contract
+            foreach(var server in servers.Where(x => x.ThreadsLeft > 0 && x.Guild.Channels.Any(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}"))) {
                 headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
-                if(headerChannel is null && server.ChannelsLeft > 0) {
-                    var categories = await server.GetCoopCategories(_client);
-                    foreach(var category in categories) {
-                        if(headerChannel != null || category.CurrentCount >= 50) continue;
+                try {
+                    return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
+                } catch(Exception) { continue; }
+            }
 
-                        var gradeRoleEnum = coop.League switch {
-                            5 => GuildChannelType.GradeAAA,
-                            4 => GuildChannelType.GradeAA,
-                            3 => GuildChannelType.GradeA,
-                            2 => GuildChannelType.GradeB,
-                            1 => GuildChannelType.GradeC,
-                            _ => GuildChannelType.General,
-                        };
-                        SocketRole gradeRole = null;
-                        if(gradeRoleEnum != GuildChannelType.General) {
-                            gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
-                        }
+            //Fall back to creating a new header channel in a server
+            foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
+                var categories = await server.GetCoopCategories(_client);
+                foreach(var category in categories) {
+                    if(headerChannel != null || category.CurrentCount >= 50) continue;
 
-                        headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, contractEmbed, category.DiscordCategory, coop);
+                    var gradeRoleEnum = coop.League switch {
+                        5 => GuildChannelType.GradeAAA,
+                        4 => GuildChannelType.GradeAA,
+                        3 => GuildChannelType.GradeA,
+                        2 => GuildChannelType.GradeB,
+                        1 => GuildChannelType.GradeC,
+                        _ => GuildChannelType.General,
+                    };
+                    SocketRole gradeRole = null;
+                    if(gradeRoleEnum != GuildChannelType.General) {
+                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
                     }
+
+                    headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, contractEmbed, category.DiscordCategory, coop);
                 }
                 if (headerChannel == null) continue;
                 try {
