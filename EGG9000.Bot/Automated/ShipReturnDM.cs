@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync(cancellationToken);
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync(CancellationToken.None);
             foreach(var user in users) {
                 var discordUser = _client.GetUser(user.DiscordId);
                 if(discordUser == null) {
@@ -98,12 +98,12 @@ namespace EGG9000.Bot.Automated {
 
                         var dmResult = await BoolSendDm(discordUser, message, _db);
                         if(dmResult != DMResult.Success) {
-                            var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId, cancellationToken);
+                            var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId, CancellationToken.None);
                             var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id ==  dbguild.Id);
                             var response = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, socketGuild, GuildChannelType.WarningMessagesForUser, new() 
                             { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but {(dmResult == DMResult.CannotSendToUser ? "have blocked the bot from sending you DMs" : "Discord is not responding")}" });
                         }
-                        await _db.SaveChangesAsync(cancellationToken);
+                        await _db.SaveChangesAsync(CancellationToken.None);
                     } catch(Exception e) {
                         _bugsnag.Notify(e);
                         _logger.LogError(e, "UpdateNextShipDM Error");
@@ -112,7 +112,7 @@ namespace EGG9000.Bot.Automated {
             }
             var timespan = await UpdateNextShipDM(users, _db);
             ChangeUpdateInterval(timespan);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(CancellationToken.None);
         }
 
         public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db) {

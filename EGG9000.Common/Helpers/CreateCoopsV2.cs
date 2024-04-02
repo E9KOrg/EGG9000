@@ -85,12 +85,12 @@ namespace EGG9000.Common.Helpers {
             userid ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
-              .WaitAndRetry(new[]
-              {
+              .WaitAndRetry(
+              [
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(3),
                 TimeSpan.FromSeconds(7)
-              });
+              ]);
 
             try {
                 await policy.Execute(async () => await _CreateCoop(ContractID, grade, coop, secondsRemaining, userid, allowAllGrades));
@@ -145,10 +145,7 @@ namespace EGG9000.Common.Helpers {
             };
 
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
-            if(response == null) {
-                throw new Exception();
-            }
-            return response;
+            return response ?? throw new Exception();
         }
 
 
