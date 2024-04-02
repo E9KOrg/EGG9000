@@ -45,7 +45,7 @@ namespace EGG9000.Bot.Automated {
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
 
-            var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(cancellationToken);
+            var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
                 _logger.LogWarning("Response is null for Event Updater");
@@ -69,7 +69,7 @@ namespace EGG9000.Bot.Automated {
 
                     await PostMessages(newEvent, _db);
 
-                    await _db.SaveChangesAsync(cancellationToken);
+                    await _db.SaveChangesAsync(CancellationToken.None);
                 } else {
 
                     var significantChange = false;
@@ -104,9 +104,9 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                 }
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var newName = "game-events";

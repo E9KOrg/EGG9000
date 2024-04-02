@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && !x.DeletedChannel).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(CancellationToken.None);
 
             if(coops is null || coops.Count == 0) {
                 return;
@@ -39,12 +39,12 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => gc.GuildID == guild.Id).ToListAsync(cancellationToken);
                 var servers = await GetOverflowGuildsCounts(guild, _db);
-				var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroups.Key.ToString())).FirstOrDefaultAsync(cancellationToken);
+				var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroups.Key.ToString())).FirstOrDefaultAsync(CancellationToken.None);
 				if (servers == null) {
                     if(dbguild == null) {
                         _logger.LogWarning("Co-op is trying to be made for guild that is not registered, {guildname} {guildid}, Co-op Name {coop}, Users {user}",
                             guild.Name, guild.Id, coopGroups.First().Name,
-                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync(cancellationToken))
+                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync(CancellationToken.None))
                         );
                         continue;
                     }
@@ -55,7 +55,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-                var completedCoops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync(cancellationToken);
+                var completedCoops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync(CancellationToken.None);
 				_logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
 
                 foreach(var coop in coopGroups) {
@@ -70,9 +70,9 @@ namespace EGG9000.Bot.Automated.Coops {
                             coop.OverflowGuildId = parent.Guild.Id;
                             _logger.LogInformation("Thread created for {coopName}", coop.Name);
                             try {
-                                await _db.SaveChangesAsync(cancellationToken);
+                                await _db.SaveChangesAsync(CancellationToken.None);
                             } catch(Exception) {
-                                await _db.SaveChangesAsync(cancellationToken);
+                                await _db.SaveChangesAsync(CancellationToken.None);
                             }
                         } else {
                             _logger.LogWarning("Thread NOT created for {coopName}", coop.Name);

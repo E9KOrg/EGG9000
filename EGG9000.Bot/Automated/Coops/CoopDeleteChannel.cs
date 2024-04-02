@@ -14,9 +14,9 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(3) < DateTimeOffset.Now && !x.DeletedChannel).ToListAsync(CancellationToken.None);
 
-            coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 &&  ( x.Finished || x.Status == CoopStatusEnum.Failed) && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddDays(-2))).ToListAsync(cancellationToken));
+            coops.AddRange(await _db.Coops.AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId != 0 &&  ( x.Finished || x.Status == CoopStatusEnum.Failed) && !x.DeletedChannel && (x.CoopCompleted == null || x.CoopCompleted < DateTimeOffset.Now.AddDays(-2))).ToListAsync(CancellationToken.None));
 
             foreach(var coop in coops) {
                 var coopChannel = (ITextChannel)_client.GetChannel(coop.DiscordChannelId);
@@ -35,9 +35,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     _logger.LogWarning("Unable to find co-op channel for {coopName}", coop.Name);
                 }
                 try {
-                    await _db.SaveChangesAsync(cancellationToken);
+                    await _db.SaveChangesAsync(CancellationToken.None);
                 } catch(Exception) {
-                    await _db.SaveChangesAsync(cancellationToken);
+                    await _db.SaveChangesAsync(CancellationToken.None);
                 }
             }
         }
