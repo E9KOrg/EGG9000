@@ -155,20 +155,28 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
         }
 
-        public static int GetCompledShipsOfDuration(EggIncAccount account, DurationType duration) {
-            var lastShipType = MissionHelpers.MaxShipLevels.Last().Key;
+        public static (int, int) GetCompledShipsOfDuration(EggIncAccount account, DurationType duration) {
+            var maxShipLevels = MissionHelpers.MaxShipLevels.ToList();
+            var lastShipType = maxShipLevels[maxShipLevels.Count - 1].Key;
+            var secondToLastShipType = maxShipLevels[maxShipLevels.Count - 2].Key;
 
             var shipsForLastType = account.Backup.ShipsSent
                 .Where(x => x.ship == lastShipType && x.type == duration)
-                .ToList()
                 .Sum(x => x.count);
-
-            var exploringShips = account.Backup.SpaceMissions
+            var exploringShipsLastType = account.Backup.SpaceMissions
                 .Where(x => x.Ship == lastShipType && x.Status == Status.Exploring && x.Duration == duration)
-                .ToList()
-                .Count;
+                .Count();
+            var resultLastType = shipsForLastType - exploringShipsLastType;
 
-            return shipsForLastType - exploringShips;
+            var shipsForSecondToLastType = account.Backup.ShipsSent
+                .Where(x => x.ship == secondToLastShipType && x.type == duration)
+                .Sum(x => x.count);
+            var exploringShipsSecondToLastType = account.Backup.SpaceMissions
+                .Where(x => x.Ship == secondToLastShipType && x.Status == Status.Exploring && x.Duration == duration)
+                .Count();
+            var resultSecondToLastType = shipsForSecondToLastType - exploringShipsSecondToLastType;
+
+            return (resultLastType, resultSecondToLastType);
         }
 
         [ComponentCommand]
@@ -187,6 +195,10 @@ namespace EGG9000.Bot.Commands {
                 (Spaceship.Henerprise, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
                 (Spaceship.Henerprise, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
                 (Spaceship.Henerprise, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
+                //These are the Henerprise values as it is likely a decent (initial) estimation that the drop rates are similar
+                (Spaceship.Atreggies, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
+                (Spaceship.Atreggies, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
+                (Spaceship.Atreggies, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
             };
 
             var levelMultipliers = new List<double>() {
@@ -257,9 +269,9 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                var extendedCount = GetCompledShipsOfDuration(account, DurationType.Epic);
-                var standardCount = GetCompledShipsOfDuration(account, DurationType.Long);
-                var shortCount = GetCompledShipsOfDuration(account, DurationType.Short);
+                var (linerEpicCount, henEpicCount) = GetCompledShipsOfDuration(account, DurationType.Epic);
+                var (linerLongCount, henLongCount) = GetCompledShipsOfDuration(account, DurationType.Long);
+                var (linerShortCount, henShortCount) = GetCompledShipsOfDuration(account, DurationType.Short);
 
                 var craftCount = GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
                 var legCount = GetLegendaryArtifactCount(account.Backup.ArtifactHall);
@@ -272,7 +284,8 @@ namespace EGG9000.Bot.Commands {
                 sb.AppendLine(
                     $"\nThe **LLC** for **{userName}** is `{newLLC:f2}` (`{newDisplayPercent}`)" +
                     $"\n:tools: Total crafts with legendary possibility: `{craftCount}`" +
-                    $"\n<:Henerprise:801748924146384906> Henerprises: `{extendedCount}` extended / `{standardCount}` standard / `{shortCount}` short" +
+                    $"\n<:Henerprise:801748924146384906> Henerprises: `{henEpicCount}` extended / `{henLongCount}` standard / `{henShortCount}` short" +
+                    $"\n<:Atreggies:1215022229826314380> Atreggies: `{linerEpicCount}` extended / `{linerLongCount}` standard / `{linerShortCount}` short" +
                     $"\n<:leggy:1113516502516248636> Legendaries: `{Math.Round(newExpectedLeggies, 2)}` expected / `{legCount}` acquired"
                 );
             } else {
