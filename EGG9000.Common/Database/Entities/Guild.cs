@@ -1,14 +1,9 @@
-﻿
-using EGG9000.Common.Migrations;
-using Newtonsoft.Json;
-
-using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     public class Guild {
@@ -48,16 +43,16 @@ namespace EGG9000.Common.Database.Entities {
         //public ulong? FailedCategory { get; set; }
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
-        
+
+        public bool AddOutsideCoops { get; set; } = true;
+
         public string _coopSettingsJson { get; set; }
         [NotMapped]
         private List<ServerCoopSetting> _coopSettings { get; set; }
         [NotMapped]
         public List<ServerCoopSetting> CoopSettings {
             get {
-                if(_coopSettings == null) {
-                    _coopSettings = JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
-                }
+                _coopSettings ??= JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
                 return _coopSettings;
             }
             set {
@@ -73,9 +68,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public List<EventCustomization> EventCustomzations {
             get {
-                if(_eventCustomizations == null) {
-                    _eventCustomizations = JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
-                }
+                _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
                 return _eventCustomizations;
             }
             set {
@@ -90,9 +83,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public List<ChannelDetail> ChannelDetails {
             get {
-                if(_channelDetails == null) {
-                    _channelDetails = JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
-                }
+                _channelDetails ??= JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
                 return _channelDetails;
             }
             set {
@@ -152,10 +143,18 @@ namespace EGG9000.Common.Database.Entities {
     [NotMapped]
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
-        public UInt64 Id { get; set; }
-        public bool ThreadAndChannel { get; set; } = false;
+        public ulong Id { get; set; }
     }
 
+    /*
+     * Start a property with the following to indicate..:
+     * 
+     * "/TC/" The ID can either use a channel or a thread - assumed to be channel-only otherwise
+     * "/R/" The ID represents a role that is fillable
+     * 
+     * "Required: " The option is required for the bot to function normally
+     * "Optional: " The option is not required, but a QOL
+     */
     public enum GuildChannelType {
         [Description("Required: Greets new users and handles registering")]
         Welcome = 0,
@@ -179,45 +178,45 @@ namespace EGG9000.Common.Database.Entities {
         WarningMessagesForUser = 9,
         [Description("Optional: Shows limited time shells")]
         LimitedTimeShells = 10,
-        [Description("/R/Optional: Limited time shells notification role")]
+        [Description("/R/Limited time shells notification role")]
         LimitedTimeShellsRole = 11,
         [Description("/TC/Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
-        [Description("/R/Optional: Missing Boarding Group Role")]
+        [Description("/R/Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
-        [Description("/R/Optional: Active Role (participated in a co-op in the last 3 weeks)")]
+        [Description("/R/Active Role (participated in a co-op in the last 3 weeks)")]
         ActiveRole = 15,
-        [Description("/R/Optional: Grade AAA Role")]
+        [Description("/R/Grade AAA Role")]
         GradeAAA = 16,
-        [Description("/R/Optional: Grade AA Role")]
+        [Description("/R/Grade AA Role")]
         GradeAA = 17,
-        [Description("/R/Optional: Grade A Role")]
+        [Description("/R/Grade A Role")]
         GradeA = 18,
-        [Description("/R/Optional: Grade B Role")]
+        [Description("/R/Grade B Role")]
         GradeB = 19,
-        [Description("/R/Optional: Grade C Role")]
+        [Description("/R/Grade C Role")]
         GradeC = 20,
-        [Description("/R/Optional: Game Version Outdated Role")]
+        [Description("/R/Game Version Outdated Role")]
         GameVersionOutdated = 21,
         [Description("/TC/Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
         DemeritLogChannel = 22,
-        [Description("/R/Optional: 'Android' Role")]
+        [Description("/R/'Android' Role")]
         AndroidRole = 24,
-        [Description("/R/Optional: 'iOS/Apple' Role")]
+        [Description("/R/'iOS/Apple' Role")]
         IosRole = 25,
-        [Description("/R/Optional: 'Enlightenment Diamond' Role")]
+        [Description("/R/'Enlightenment Diamond' Role")]
         EnDRole = 26,
-        [Description("/R/Optional: 'Nobel prize in Animal Husbandry' Role")]
+        [Description("/R/'Nobel prize in Animal Husbandry' Role")]
         NAHRole = 27,
-        [Description("/R/Optional: 'All-Star Club' Role")]
+        [Description("/R/'All-Star Club' Role")]
         ASCRole = 28,
         [Description("/TC/Optional: Where /callstaff messages will appear")]
         CallStaffChannel = 29,
-        [Description("/R/Optional: Role for staff to ping in /callstaff instances")]
+        [Description("/R/Role for staff to ping in /callstaff instances")]
         CallStaffTagRole = 30,
-        [Description("/R/Optional: Role for standard subscriptions")]
+        [Description("/R/Role for standard subscriptions")]
         StandardSubscription = 31,
-        [Description("/R/Optional: Role for pro subscriptions")]
+        [Description("/R/Role for pro subscriptions")]
         ProSubscription = 32,
         [Description("Optional: Subscription-Only Contract Category, adding this will prevent sub-only contracts from appearing elsewhere.")]
         SubscriptionContractCategory = 33,
@@ -237,9 +236,11 @@ namespace EGG9000.Common.Database.Entities {
         BreakCoopLog = 40,
         [Description("/TC/Optional: Where players can talk to staff of the server")]
         TalkToStaff = 41,
-        [Description("/R/Optional: Role for users that have the Standard Permit (must be paired with Pro Permit role)")]
+        [Description("/R/Role for users that have the Standard Permit (must be paired with Pro Permit role)")]
         StandardPermitRole = 42,
-        [Description("/R/Optional: Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
-        ProPermitRole = 43
+        [Description("/R/Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
+        ProPermitRole = 43,
+        /*[Description("/R/Users with this role will be added to all coop threads")]
+        AllCoopsRole = 44*/
     }
 }

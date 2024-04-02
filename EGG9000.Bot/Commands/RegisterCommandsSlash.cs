@@ -1,51 +1,32 @@
-﻿using Discord;
-using Discord.Commands;
+﻿using Bugsnag;
+using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Services;
-
-
-using Humanizer;
-
-using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
-
-using Newtonsoft.Json;
-
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Commands;
-using static EGG9000.Common.Database.Entities.DBUser;
-using EGG9000.Common.Contracts;
-using static EGG9000.Common.Helpers.Prefarm;
-using Ei;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics.Contracts;
-using MassTransit.Initializers;
-using Bugsnag;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using MassTransit.Initializers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Data;
-using Bugsnag.Polyfills;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -88,7 +69,7 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                var role = await DiscordHelpers.CheckRoles(db, guild, guildUser, dbUser, _client, null, new List<LeaderboardUser>());
+                var role = await DiscordHelpers.CheckRoles(db, guild, guildUser, dbUser, _client, null, []);
 
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel.Id == command.Channel.Id) {
@@ -120,8 +101,8 @@ namespace EGG9000.Bot.Commands {
             } else if(dbUser.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 dbUser.RemoveID(eggincid);
             } else {
-                Embed[] embedArrayErr = { EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>") };
-                embedArrayErr = embedArrayErr.Concat(AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()).ToArray();
+                Embed[] embedArrayErr = [EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>")];
+                embedArrayErr = [.. embedArrayErr, .. AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()];
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArrayErr; });
                 return;
             }
@@ -134,9 +115,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ILogger logger) {
+        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync( x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
@@ -152,12 +133,6 @@ namespace EGG9000.Bot.Commands {
 
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
             foreach(var xref in xrefs) {
-                //var res2 = await ContractsAPI.Send(new Ei.LeaveCoopRequest {
-                //    ClientVersion = 24,
-                //    ContractIdentifier = coop.ContractID,
-                //    CoopIdentifier = coop.Name,
-                //    PlayerIdentifier = xref.EggIncId,
-                //}, xref.EggIncId);
                 await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
             }
 
@@ -165,38 +140,16 @@ namespace EGG9000.Bot.Commands {
             await Task.Delay(2);
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
-            //if(status.Participants.Count == contract.MaxUsers) {
-            //    foreach(var xref in xrefs) {
-
-            //        var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
-            //            ContractIdentifier = coop.ContractID,
-            //            CoopIdentifier = coop.Name.ToLower(),
-            //            Eop = 1, SoulPower = 24, UserId = xref.EggIncId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = xref.EggIncId, BoostTokens = 1, BoostTokensSpent = 1, EggLayingRateBuff = 1, EarningsBuff = 1,
-            //            ProductionParams = new Ei.FarmProductionParams {
-            //                FarmPopulation = 1000, Delivered = 10000, Elr = 0, FarmCapacity = 10000, Ihr = 0, Sr = 0
-            //            }
-            //        }, xref.EggIncId, true);
-
-
-
-            //        var res2 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-            //            ClientVersion = 24,
-            //            ContractIdentifier = coop.ContractID,
-            //            CoopIdentifier = coop.Name,
-            //            PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
-            //        }, coop.CreatorID);
-            //    }
-
-            //    await Task.Delay(2);
-            //    status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
-            //}
-
             if(status.Participants.Count < contract.MaxUsers) {
                 logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+                if(coop.ThreadID != 0) {
+                    await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                } else if(coop.DiscordChannelId != 0) {
+                    await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                }
 
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
@@ -227,7 +180,7 @@ namespace EGG9000.Bot.Commands {
                         await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
                         return;
                     } else {
-                        await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, new List<LeaderboardUser>());
+                        await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, []);
                         await command.DeleteOriginalResponseAsync();
                         var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
                         var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
@@ -287,14 +240,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, _client, apiLink, eggincid, _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).GetUser(command.User.Id), accountnumber);
+        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(command, db, apiLink, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, _client, apiLink, eggincid, targetUser, accountnumber);
+        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(command, db, apiLink, eggincid, targetUser, accountnumber);
         }
-        public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
+        public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             await command.DeferAsync(ephemeral: true);
             if(targetUser is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
@@ -346,7 +299,7 @@ namespace EGG9000.Bot.Commands {
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("Update ID")).ToArray(); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("EID Updated")).ToArray(); });
 
         }
 
@@ -415,7 +368,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Id = Response.EggIncId, Backup = Response, Group = 1 } },
+                    EggIncAccounts = [new EggIncAccount { Id = Response.EggIncId, Backup = Response, Group = 1 }],
                     CreateOn = DateTimeOffset.Now,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -442,7 +395,7 @@ namespace EGG9000.Bot.Commands {
                 socketGuildUser = (SocketGuildUser)user;
             } catch(Exception) {
                 try {
-                    guild.Users.First(x => x.Id == user.Id);
+                    socketGuildUser = guild.Users.First(x => x.Id == user.Id);
                 } catch(Exception) {
                     socketGuildUser = await _client.Rest.GetGuildUserAsync(guild.Id, user.Id);
                 }
@@ -474,7 +427,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
             }
-            var role = await DiscordHelpers.CheckRoles(db, guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, new List<LeaderboardUser>());
+            var role = await DiscordHelpers.CheckRoles(db, guild, (SocketGuildUser)socketGuildUser, dbuser, _client, null, []);
 
             var roleText = "";
             if(dbuser.EggIncAccounts.Count > 1) {
@@ -600,10 +553,6 @@ namespace EGG9000.Bot.Commands {
 
             if(dbuser.TempDisabled) lastBuilder.Footer.Text += $"\n❗User is disabled";
 
-            if(admin && !showInChannel && !string.IsNullOrWhiteSpace(dbuser.Notes)) {
-                lastBuilder.Footer.Text += $"\nNotes:\n {dbuser.Notes}";
-            }
-
             if(command.Channel is SocketDMChannel) {
                 if(dbuser.GuildId > 0) {
                     lastBuilder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
@@ -622,8 +571,8 @@ namespace EGG9000.Bot.Commands {
                 lastBuilder.Footer.Text += $"\nMissing bot registration date";
             }
 
-            if(guild is not null && dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser && guild.Id == (user as SocketGuildUser).Guild.Id) {
-                _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), (SocketGuildUser)user, dbuser, _client, null, new List<LeaderboardUser>());
+            if(guild is not null && dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser guildUser && guild.Id == guildUser.Guild.Id) {
+                _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), guildUser, dbuser, _client, null, []);
             }
 
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
@@ -697,7 +646,7 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
 
-                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? new List<RewardType>()) ?? "No Filter";
+                var filterStr = string.Join(", ", account.AutoRegisterRewards ?? []) ?? "No Filter";
                 var breakStr = account.OnBreakUntil == default ? "No" : "On break until <t:" + account.OnBreakUntil.ToUnixTimeSeconds() + ":f>";
                 var redoOpt = account.RedoLeggacySelection == default ? RedoLeggacyOption.NotSet : account.RedoLeggacySelection;
                 var redoStr = redoOpt == RedoLeggacyOption.YesThreshold ? $"{redoOpt} {((double)account.RedoScoreThreshold).ToEggString()}" : redoOpt.ToString();
@@ -729,13 +678,18 @@ namespace EGG9000.Bot.Commands {
             if(admin) {
                 var lastBuilder = builderList.Last();
                 var infoSeparatorAdded = false;
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived).ToListAsync();
+                var xrefsShortened = false;
+                if(xrefs.Count > 4) {
+                    xrefs = xrefs.OrderByDescending(x => x.CreatedOn).Take(4).ToList();
+                    xrefsShortened = true;
+                }
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.DiscordChannelId}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{(x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId)}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     lastBuilder.AddField("――――――――――――――――――", "User Information");
                     infoSeparatorAdded = true;
-                    lastBuilder.AddField("Coops", coopsString);
+                    lastBuilder.AddField($"Coops {(xrefsShortened ? "(Shortened List)" : "")}", coopsString);
                 }
 
                 var recentDemeritsString = $"{await DemeritCommands.GetDemerits(user.Id, db)}";
@@ -745,6 +699,14 @@ namespace EGG9000.Bot.Commands {
                         infoSeparatorAdded = true;
                     }
                     lastBuilder.AddField("Recent Demerits", recentDemeritsString);
+                }
+
+                if(!string.IsNullOrEmpty(user.Notes)) {
+                    if(!infoSeparatorAdded) {
+                        lastBuilder.AddField("――――――――――――――――――", "User Information");
+                        infoSeparatorAdded = true;
+                    }
+                    lastBuilder.AddField("Notes", user.Notes);
                 }
             }
 
@@ -891,7 +853,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = db.DBUsers.FirstOrDefault(u => u.DiscordId == user.Id);
             if(dbuser is not null && dbuser.Banned) {
                 var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
-                var bannedServersList = dbuser.ServersBannedFrom?.Split(",").ToList() ?? new List<string>();
+                var bannedServersList = dbuser.ServersBannedFrom?.Split(",").ToList() ?? [];
                 var wasDbBanned = bannedServersList.Contains(dbGuild.Id.ToString());
                 if(wasDbBanned) {
                     bannedServersList.Remove(dbGuild.Id.ToString());
@@ -940,7 +902,7 @@ namespace EGG9000.Bot.Commands {
             if(banaccount) {
                 var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
                 if(dbUser is not null) {
-                    var bannedServersList = dbUser.ServersBannedFrom?.Split(",")?.ToList() ?? new List<string>();
+                    var bannedServersList = dbUser.ServersBannedFrom?.Split(",")?.ToList() ?? [];
                     bannedServersList.Add(dbGuild.Id.ToString());
                     dbUser.ServersBannedFrom = string.Join(",", bannedServersList);
                     dbUser.Banned = true;

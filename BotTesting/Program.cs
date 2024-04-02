@@ -5,11 +5,7 @@ using Discord.WebSocket;
 
 //using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
-using MassTransit;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

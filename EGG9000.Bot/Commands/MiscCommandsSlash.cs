@@ -1,24 +1,24 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.Automated.Coops;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
+using EGG9000.Common.Commands;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
-using Microsoft.Extensions.Logging;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.Common.Helpers;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -124,23 +124,23 @@ namespace EGG9000.Bot.Commands {
 
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
                 builder.AddField(new EmbedFieldBuilder {
-                    IsInline = false, Name = "Current Details", Value = @$"{currentRank.RankWithSubRank}
-<:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
-<:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
-EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
-Prestiges {backup.NumPrestiges}
-<:Soul_Egg_SE:724341890794913964>/Prestige {(backup.SoulEggs / backup.NumPrestiges).ToEggString(numberOfDecimalPlaces: 3)}
-<:Golden_Egg_GE:692439755798872075> {(ge > 1_000_000_000 ? ge.ToEggString(numberOfDecimalPlaces: 3) : ge.ToString("n0"))}
-<:Piggy_bank:724396277676113955>  {(backup.TotalGEInPiggyBank > 1_000_000_000 ? backup.TotalGEInPiggyBank.ToEggString(numberOfDecimalPlaces: 3) : backup.TotalGEInPiggyBank.ToString("n0"))}
-<:Drone:755719353529270342> {backup.DroneTakedowns.ToString("n0")}
-<:Drone:755719353529270342> Elite {backup.DroneTakedownsElite.ToString("n0")}
-Last Backup <t:{backup.LastBackupTime}:R>
-"
+                    IsInline = false, 
+                    Name = "Current Details", 
+                    Value = 
+                        @$"{currentRank.RankWithSubRank}
+                        <:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
+                        <:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
+                        EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
+                        Prestiges {backup.NumPrestiges}
+                        <:Soul_Egg_SE:724341890794913964>/Prestige {(backup.SoulEggs / backup.NumPrestiges).ToEggString(numberOfDecimalPlaces: 3)}
+                        <:Golden_Egg_GE:692439755798872075> {(ge > 1_000_000_000 ? ge.ToEggString(numberOfDecimalPlaces: 3) : ge.ToString("n0"))}
+                        <:Piggy_bank:724396277676113955>  {(backup.TotalGEInPiggyBank > 1_000_000_000 ? backup.TotalGEInPiggyBank.ToEggString(numberOfDecimalPlaces: 3) : backup.TotalGEInPiggyBank.ToString("n0"))}
+                        <:Drone:755719353529270342> {backup.DroneTakedowns:n0}
+                        <:Drone:755719353529270342> Elite {backup.DroneTakedownsElite:n0}
+                        Last Backup <t:{backup.LastBackupTime}:R>"
                 });
             }
 
-            //await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
-            //await command.DeleteResponseFix();
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = builder.Build();
@@ -149,7 +149,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Command only works in co-op channels"));
                 return;
@@ -162,14 +162,19 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
                 await command.RespondAsync("Updating coop...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+                if(targetCoop.ThreadID != 0) {
+                    await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                } else if(targetCoop.DiscordChannelId != 0) {
+                    await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                }
+                
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }
@@ -215,7 +220,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
         [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]

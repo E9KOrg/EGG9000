@@ -1,32 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Claims;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stripe.Checkout;
-using static EGG9000.Common.Helpers.Prefarm;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Site.Controllers {
-    public class DonationController : Controller {
-        private readonly ApplicationDbContext _db;
-        private readonly DiscordSocketClient _discord;
-
-        public DonationController(
-            ApplicationDbContext db,
-            DiscordSocketClient discord
-            ) {
-            _db = db;
-            _discord = discord;
-        }
+    public class DonationController(ApplicationDbContext db, DiscordSocketClient discord) : Controller {
+        private readonly ApplicationDbContext _db = db;
+        private readonly DiscordSocketClient _discord = discord;
 
         public IActionResult Index() {
             return View();
@@ -64,7 +50,7 @@ namespace EGG9000.Site.Controllers {
             }
             //656455568353132546 general
 
-            ulong channelId = test ? 777303939442802710 : (ulong)656455568353132546;
+            var channelId = test ? 777303939442802710 : (ulong)656455568353132546;
             var channel = guild.TextChannels.First(x => x.Id == channelId);
 
 

@@ -1,23 +1,22 @@
-﻿using Discord.WebSocket;
+﻿using Bugsnag.AspNet.Core;
+using Discord.WebSocket;
 using EGG9000.Bot;
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using EGG9000.Common.Services;
-using Bugsnag.AspNet.Core;
+using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Services;
-using NLog;
-using NLog.Web;
-using Microsoft.Extensions.Logging;
+using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
+using EGG9000.Common.Services;
 using MassTransit;
-using EGG9000.Bot.Consumers;
-using EGG9000.Bot.Automated.Coops;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Web;
+using System;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -68,7 +67,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
         if(serviceCustomize is not null && debug) {
             var method = serviceCustomize.GetMethod("ConfigureServices");
-            method.Invoke(null, new object[] { hostContext, services });
+            method.Invoke(null, [hostContext, services]);
         } else {
 
 #if RELEASE
@@ -92,7 +91,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
             services.AddSingleton<APILink>();
-            services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+            services.AddHostedService(provider => provider.GetService<APILink>());
 
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<LeaderboardUpdater>();
@@ -106,14 +105,19 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
             services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
             services.AddSingleton<CoopStatusUpdater>();
-            services.AddHostedService<CoopStatusUpdater>(provider => provider.GetService<CoopStatusUpdater>());
+            services.AddHostedService(provider => provider.GetService<CoopStatusUpdater>());
+
+            services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
+            services.AddSingleton<ThreadsCoopStatusUpdater>();
+            services.AddHostedService(provider => provider.GetService<ThreadsCoopStatusUpdater>());
 
             services.AddSingleton<ContractUpdater>();
-            services.AddHostedService<ContractUpdater>(provider => provider.GetService<ContractUpdater>());
+            services.AddHostedService(provider => provider.GetService<ContractUpdater>());
 
             services.AddHostedService<UserCxpUpdater>();
             services.AddHostedService<NewContracts>();
-            services.AddHostedService<CreateCoopChannels>();
+            services.AddHostedService<CreateCoopThreads>();
+            //services.AddHostedService<CreateCoopChannels>();
             services.AddHostedService<ShipReturnDM>();
             services.AddHostedService<UserSnapShots>();
             services.AddHostedService<ManageOverflow>();
@@ -122,7 +126,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
 
             services.AddSingleton<JobService>();
-            services.AddHostedService<JobService>(provider => provider.GetService<JobService>());
+            services.AddHostedService(provider => provider.GetService<JobService>());
 
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();

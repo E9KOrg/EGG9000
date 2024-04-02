@@ -1,19 +1,16 @@
-﻿using System;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using Microsoft.Extensions.DependencyInjection;
+using Polly;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
-using Discord;
-using Discord.WebSocket;
-
-using EGG9000.Bot;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-
-using Polly;
-using EGG9000.Common.Contracts;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
@@ -174,7 +171,9 @@ namespace EGG9000.Common.Helpers {
                 mention += $"({eggIncName})";
             }
             try {
-                await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                if(targetChannel.GetChannelType() != ChannelType.PrivateThread) {
+                    await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                }
             } catch(Exception) {
                 try {
                     await commandChannel.SendMessageAsync(commandChannel.Guild.Id != targetChannel.Guild.Id ? $"{mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**." : "Looks like an error happened, please use /callstaff");
@@ -184,7 +183,8 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            if(!silent) await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
+            //Always ping when it's a Thread - this is how users are added to the channel
+            if(!silent || targetChannel.GetChannelType() == ChannelType.PrivateThread) await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
             return newxref;
         }
     }

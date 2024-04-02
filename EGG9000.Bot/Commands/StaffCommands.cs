@@ -1,32 +1,27 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
+using EGG9000.Bot.Services;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-
+using EGG9000.Common.Services;
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using static EGG9000.Common.Helpers.Prefarm;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using EGG9000.Common.Services;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System.Diagnostics;
-using EGG9000.Common.Commands;
-using EGG9000.Bot.Services;
+using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordHostedService;
 
 namespace EGG9000.Bot.Commands {
@@ -243,7 +238,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
+        public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
@@ -271,27 +266,25 @@ namespace EGG9000.Bot.Commands {
             var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
             var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
             var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
-            var table = new List<List<FixedWidthCell>> {
-                new List<FixedWidthCell> {
-                    new FixedWidthCell ("Name"),
-                    new FixedWidthCell ("Avg"),
-                    new FixedWidthCell ("Last🏁"),
-                    new FixedWidthCell("Attempts"),
-                    new FixedWidthCell("Status")
-                }
-            };
+            var table = new List<List<FixedWidthCell>> {new() {
+                new("Name"),
+                new("Avg"),
+                new("Last🏁"),
+                new("Attempts"),
+                new("Status")
+            }};
             foreach(var log in lastComplete.OrderBy(x => x.Type)) {
                 var incompletes = await db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
                 var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
-                table.Add(new List<FixedWidthCell> {
-                    new FixedWidthCell (log.Type),
-                    new FixedWidthCell (
+                table.Add([
+                    new(log.Type),
+                    new(
                         averages.Any(x => x.Type == log.Type) ?
                         TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime()
                         : ""),
-                    new FixedWidthCell ((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
-                    new FixedWidthCell (incompletes.Count.ToString()),
-                    new FixedWidthCell (
+                    new((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
+                    new(incompletes.Count.ToString()),
+                    new(
                         (service as IUpdaterService).Running() ?
                             (incompletes.Any(x => !x.Skipped) ?
                             $"Current run {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
@@ -299,14 +292,14 @@ namespace EGG9000.Bot.Commands {
                             )
                         : "Stopped"
                         )
-                });
+                ]);
             }
 
             await command.RespondAsync($"```\n{GetTable(table)}```");
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task RestartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+        public static async Task RestartService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
             var discordHostedService = serviceProvider.GetService<DiscordHostedService>();
 
@@ -347,7 +340,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Stop an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task StopService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+        public static async Task StopService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -379,7 +372,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Run automated service now", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task RunService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+        public static async Task RunService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -408,7 +401,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task StartService(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+        public static async Task StartService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {

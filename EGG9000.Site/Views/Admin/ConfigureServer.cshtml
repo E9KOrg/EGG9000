@@ -181,7 +181,7 @@
 				<td>
 					@{
 						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
-								<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
+									<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
 					}
 				</td>
 				<td>
@@ -207,19 +207,24 @@
 			DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
 			var description = (attributes != null && attributes.Any()) ? attributes.First().Description : val.ToString();
 			if (!description.StartsWith("/R/")) continue;
+			var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
+			var role = discord.GetGuild(Model.Id).GetRole(detail.Id);
 			<tr>
 				<td>
-					@description.Replace("Optional: ", "").Replace("/R/", "")
+					@description.Replace("/R/", "")
 				</td>
 				<td>
 					@{
-						var detail = channelDetails.FirstOrDefault(x => x.ChannelType == val) ?? new ChannelDetail { ChannelType = val };
-								<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
+						<input class="custom-input channelDetail" id="@val.ToString()" value="@detail.Id" />
 					}
 				</td>
-				<td>
-					@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
-				</td>
+				@if(role != null) {
+					<td style="color: @role.Color.ToString();">
+						@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
+					</td>
+				} else {
+					<td></td>
+				}
 			</tr>
 		}
 	</tbody>
@@ -309,13 +314,17 @@
 	<div class="card-header">Other Settings</div>
 	<div class="card-body">
 		<div>
-		<label>
-			<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
-		</label>
-		<br/>
-		<label>
-				<input class="custom-input" type="checkbox" value="true" id="RemoveFindCoopSpot" checked="@Model.RemoveFindCoopSpot" /> Remove <button class="btn btn-primary btn-sm" disabled>Find Coop Spot</button> buttons from Co-op channels
-		</label>
+			<label>
+				<input class="custom-input" type="checkbox" value="true" id="PublicScoreGrid" checked="@Model.PublicScoreGrid" /> Allow everyone to view Score Grid
+			</label>
+			<br/>
+			<label>
+					<input class="custom-input" type="checkbox" value="true" id="RemoveFindCoopSpot" checked="@Model.RemoveFindCoopSpot" /> Remove <button class="btn btn-primary btn-sm" disabled>Find Coop Spot</button> buttons from Co-op channels
+			</label>
+			<br />
+			<label>
+				<input class="custom-input" type="checkbox" value="true" id="AddOutsideCoops" checked="@Model.AddOutsideCoops" /> Add Outside Co-ops from Backups
+			</label>
 		</div>
 		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
 	</div>
@@ -389,7 +398,8 @@
 						GroupRoles: GetCategoryJoins(".GroupRole"),
 						PublicScoreGrid: $("#PublicScoreGrid").is(":checked"),
 						RemoveFindCoopSpot: $("#RemoveFindCoopSpot").is(":checked"),
-						CoopNamePrefix: $("#CoopNamePrefix").val()
+						CoopNamePrefix: $("#CoopNamePrefix").val(),
+						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),
 					})
 			}, function () {
 				document.location = document.location;

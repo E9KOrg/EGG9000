@@ -1,19 +1,12 @@
-﻿using Discord;
-using Discord.WebSocket;
-using EGG9000.Common.Commands;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.JsonData.EiAfxData;
+using MessagePack;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using EGG9000.Common.Database;
-using EGG9000.Common.JsonData.EiAfxData;
-using MessagePack;
-using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
-using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncArtifacts {

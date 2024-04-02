@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     public class Donation {

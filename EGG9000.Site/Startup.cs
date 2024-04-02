@@ -1,42 +1,29 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Bugsnag.AspNet.Core;
+using Discord;
+using Discord.WebSocket;
+using EGG9000.Common.Database;
+using EGG9000.Common.Services;
+using EGG9000.Site.Data;
+using EGG9000.Site.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
-//using EGG9000.Site.Data;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using EGG9000.Common.Database;
-using EGG9000.Site.Services;
-using Microsoft.AspNetCore.Identity.UI.Services;
-using Microsoft.AspNetCore.Cors.Infrastructure;
-using EGG9000.Site.Data;
-using Discord.WebSocket;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.HttpOverrides;
+using System;
+using System.Linq;
 using System.Net;
-using Microsoft.AspNetCore.Http;
-using EGG9000.Common.Services;
-using Microsoft.AspNetCore.ResponseCompression;
-using System.IO.Compression;
-using Discord;
-using Bugsnag.AspNet.Core;
-using Microsoft.AspNetCore.Authentication.OAuth.Claims;
-using Microsoft.AspNetCore.Authentication;
-using EGG9000.Common.Factories;
-using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace EGG9000.Site {
-    public class Startup {
-        public Startup(IConfiguration configuration) => Configuration = configuration;
-
-        public IConfiguration Configuration { get; }
+    public class Startup(IConfiguration configuration) {
+        public IConfiguration Configuration { get; } = configuration;
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {

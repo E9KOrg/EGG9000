@@ -1,33 +1,14 @@
-﻿using Bugsnag.Payload;
-
-using Discord;
-using Discord.Webhook;
+﻿using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Migrations;
-using EGG9000.Common.Services;
-
-using Google.Protobuf;
-
-using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
-
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Bot.Commands {
     public class ShipReturnDMSettings {
@@ -57,7 +38,7 @@ namespace EGG9000.Bot.Commands {
                 eBuilder.Description += "\n\nYou will receive a DM a set number of minutes before a ship is set to return depending on whether the next ship is fully fueled or not. You have the option for a second DM for ships that need fueling, one sent at the 'Needs Fueling' time and a second sent at the 'Full Ship' time.";
                 eBuilder.AddField("If Ship Is Fully Fueled", $"DM sent {user.ShipReturnMinutes} mins before ship is set to return");
 
-                string needsFueling = $"DM sent {(user.ShipReturnStillFuelingMinutes > 0 ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes)} mins before ship is set to return.";
+                var needsFueling = $"DM sent {(user.ShipReturnStillFuelingMinutes > 0 ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes)} mins before ship is set to return.";
                 if(user.ShipReturnDMAfterFuel) {
                     needsFueling += $"\nYou will receive a second DM at {user.ShipReturnMinutes} mins before ship is set to return";
                 }
@@ -118,7 +99,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task SRDFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
-            var isNum = int.TryParse(minsText, out int mins);
+            var isNum = int.TryParse(minsText, out var mins);
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
@@ -148,7 +129,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task SRDNotFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
-            var isNum = int.TryParse(minsText, out int mins);
+            var isNum = int.TryParse(minsText, out var mins);
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));

@@ -1,19 +1,16 @@
-﻿using Humanizer;
-using Discord.WebSocket;
-using EGG9000.Common.Database.Entities;
+﻿using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Services;
+using Humanizer;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using EGG9000.Common.Services;
-using EGG9000.Common.Database;
-using System.Diagnostics;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 using static Ei.ContractCoopStatusResponse.Types;
-using EGG9000.Bot.Helpers;
 
 namespace EGG9000.Common.Helpers {
     public static class Prefarm {
