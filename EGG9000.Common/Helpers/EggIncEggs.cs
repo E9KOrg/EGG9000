@@ -1,9 +1,7 @@
 ﻿using EGG9000.Bot;
 using Humanizer;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Helpers {

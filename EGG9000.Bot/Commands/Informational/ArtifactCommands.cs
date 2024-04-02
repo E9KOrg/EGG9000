@@ -1,21 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Commands;
-using EGG9000.Common.Services;
-using System.IO;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using Microsoft.EntityFrameworkCore;
-using Discord.WebSocket;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using Discord;
-using System.Text.RegularExpressions;
 
 namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Commands {
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await _viewInventory(command, dbuser, account, showinchannel);
+            await _viewInventory(command, db, dbuser, account, showinchannel);
         }
 
         [SlashCommand(Description = "View your inventory")]
@@ -61,10 +61,21 @@ namespace EGG9000.Bot.Commands {
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await _viewInventory(command, dbuser, account);
+            await _viewInventory(command, db, dbuser, account);
         }
 
-        public static async Task _viewInventory(FauxCommand command, DBUser user, EggIncAccount account, bool showInChannel = true) {
+        public static async Task _viewInventory(FauxCommand command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
+            //Pull and save a fresh backup
+            var backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, account.Backup ?? null);
+            account.Backup.ArtifactHall = backup.ArtifactHall;
+            user.UpdateAccounts();
+            await db.SaveChangesAsync();
+
+            if(account.Backup is null || account.Backup.ArtifactHall is null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Backup came back as empty from the Egg, Inc. API."); });
+                return;
+            }
+
             var (B64, Config) = InventoryB64(account);
             if(string.IsNullOrEmpty(B64)) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User inventory could not be converted."); }); return; }
 
@@ -127,7 +138,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             EggIncAccount account = null;
-            int accountIndex = 0;
+            var accountIndex = 0;
             try {
                 accountIndex = int.Parse(useraccount.Split("|")[1]);
                 account = dbUser.EggIncAccounts[accountIndex];

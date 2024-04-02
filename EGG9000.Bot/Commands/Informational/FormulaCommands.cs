@@ -1,20 +1,20 @@
-﻿using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+﻿using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
+using EGG9000.Common.Commands;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Ei;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.MissionInfo.Types;
-using System.Collections.Generic;
-using EGG9000.Bot.EggIncAPI;
-using Ei;
 
 namespace EGG9000.Bot.Commands {
     public static class ForumlaCommands {
@@ -62,7 +62,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             double seQ;
-            double calculateNeededPE(long MER, double se, long pe) {
+            double calculateNeededPE(long MER, long pe) {
                 var result = (-10 * MER) + (91 * Math.Log10(seQ)) + 200;
                 result -= pe;
                 return result;
@@ -80,7 +80,7 @@ namespace EGG9000.Bot.Commands {
             if(MERValue != 0) {
                 MERgoal = MERValue;
             } else {
-                double value = Math.Round(calculateMER(seQ, pe), 1);
+                var value = Math.Round(calculateMER(seQ, pe), 1);
                 if(value < 30) {
                     MERgoal = 30;
                 } else if(value < 40) {
@@ -94,7 +94,7 @@ namespace EGG9000.Bot.Commands {
                 var MERse = calculateNeededSE(MERgoal, seTotal, pe);
                 sb.AppendLine($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nAn additional <:Soul_Egg_SE:724341890794913964>`{MERse}` is needed for MER {MERgoal}");
             } else {
-                var MERpe = Math.Round(calculateNeededPE(MERgoal, seQ, pe), 1);
+                var MERpe = Math.Round(calculateNeededPE(MERgoal, pe), 1);
                 sb.AppendLine($"The **MER** for **{userName}** is `{MER}` (<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` and<:Soul_Egg_SE:724341890794913964>`{seStr}`)\nYou're able to maintain MER {MERgoal} for another <:Egg_of_Prophecy_PE:669981330477547580>`{MERpe}`");
             }
         }
@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Commands {
 
             public int GetShipsCount(Spaceship shipType, DurationType durationType, uint level) {
                 var key = (shipType, durationType, level);
-                return ShipCounts.TryGetValue(key, out int count) ? count : 0;
+                return ShipCounts.TryGetValue(key, out var count) ? count : 0;
             }
         }
 

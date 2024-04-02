@@ -1,13 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.ConstrainedExecution;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 
-namespace EGG9000.Common.Database.Entities
-{
+namespace EGG9000.Common.Database.Entities {
     public class UserCsHistoryEntry {
         public string ContractIdentifier { get; set; }
         public string CoopIdentifier { get; set; }

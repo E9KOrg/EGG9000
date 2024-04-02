@@ -1,17 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-using static EGG9000.Common.Helpers.Prefarm;
-
-namespace EGG9000.Bot
-{
+namespace EGG9000.Bot {
     public class Words
     {
         private readonly Random _rnd;

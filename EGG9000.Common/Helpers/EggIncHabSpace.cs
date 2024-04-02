@@ -1,11 +1,6 @@
 ﻿using EGG9000.Common.Database;
-
-using Newtonsoft.Json;
-
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncHabSpace {

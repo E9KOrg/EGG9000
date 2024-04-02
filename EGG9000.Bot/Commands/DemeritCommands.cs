@@ -1,24 +1,18 @@
-﻿using Discord;
-using Discord.WebSocket;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Services;
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
-
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
-using EGG9000.Bot.Common.Helpers;
-using System.Diagnostics;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
@@ -80,9 +74,8 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "List your demerits", AllowInDMs = true)]
         public static async Task Demerits(FauxCommand command, ApplicationDbContext db) {
             try {
-                IUser socketUser = command.User;
+                var socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
-
 
                 var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
                 if(demerits.Count == 0) {
@@ -97,7 +90,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                var demeritDesc = String.Join("\n", demerits.Select(x => {
+                var demeritDesc = string.Join("\n", demerits.Select(x => {
                     var monthAgo = DateTimeOffset.Now.AddMonths(-1);
                     var timeLeft = monthAgo - x.When;
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
@@ -143,7 +136,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             UserCoopXref xref;
-            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
 
             if(targetCoop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError("This command can only be used in a co-op channel"));
