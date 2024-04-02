@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using System;
+using System.Diagnostics;
+
 
 namespace EGG9000.Site {
     public class Program {

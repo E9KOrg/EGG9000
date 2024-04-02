@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using EGG9000.Bot;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
+using EGG9000.Bot.Consumers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
