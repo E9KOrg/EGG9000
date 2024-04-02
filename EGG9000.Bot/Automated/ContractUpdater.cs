@@ -34,12 +34,12 @@ namespace EGG9000.Bot.Automated {
             times.Start();
 
             var _db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync(cancellationToken);
+            var guildContracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => !x.DeletedChannel).ToListAsync(CancellationToken.None);
             times.Set("guildcontracts");
 
-            var dbGuilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+            var dbGuilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             times.Set("dbguilds");
-            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync(cancellationToken);
+            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync(CancellationToken.None);
             times.Set("coops");
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
 
@@ -58,7 +58,7 @@ namespace EGG9000.Bot.Automated {
                     continue;
 
                 _logger.LogInformation("Running Contracts for {guild}", guild.Name);
-                var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id).ToListAsync(cancellationToken);
+                var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id).ToListAsync(CancellationToken.None);
 
 
 #if DEBUG
@@ -86,7 +86,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-                var contracts = await _db.Contracts.ToListAsync(cancellationToken);
+                var contracts = await _db.Contracts.ToListAsync(CancellationToken.None);
                 var count = 0;
                 var potentialCoops = new List<(string contractid, string coopname, List<Guid> userids, ulong guildid, uint grade, long endtime)>();
                 foreach(var user in dbusers) {
@@ -117,11 +117,11 @@ namespace EGG9000.Bot.Automated {
 
                 foreach(var (contractid, coopname, userids, guildid, grade, endtime) in potentialCoops.Where(x => x.userids.Count > 1)) {
 
-                    var dbGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guildid, cancellationToken);
+                    var dbGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guildid, CancellationToken.None);
                     if(!dbGuild.AddOutsideCoops) continue;
 
                     var contract = contracts.First(x => x.ID == contractid);
-                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.GuildId == guildid && x.ContractID == contractid && EF.Functions.Like(x.Name, coopname), cancellationToken);
+                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.GuildId == guildid && x.ContractID == contractid && EF.Functions.Like(x.Name, coopname), CancellationToken.None);
                     if(exisitingCoop is not null) {
                         _logger.LogInformation("Co-op {coopname} already exists, skipping", coopname);
                         continue;
@@ -135,13 +135,13 @@ namespace EGG9000.Bot.Automated {
                     };
                     coops.Add(new { Name = coop.Name });
                     _db.Add(coop);
-                    await _db.SaveChangesAsync(cancellationToken);
+                    await _db.SaveChangesAsync(CancellationToken.None);
                     count++;
                 }
 
             }
 
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(CancellationToken.None);
         }
 
         public static Embed GetContractEmbed(GuildContract guildContract, SocketGuild guild, Ei.Contract.Types.PlayerGrade grade = Ei.Contract.Types.PlayerGrade.GradeUnset) {

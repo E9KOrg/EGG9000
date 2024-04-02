@@ -28,9 +28,9 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             //Get a list of all users that are a part of a guild
 #if DEBUG
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync(cancellationToken);
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync(CancellationToken.None);
 #else
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync(cancellationToken);
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync(CancellationToken.None);
 #endif
 
             //Loop through each user in the DB
@@ -41,7 +41,7 @@ namespace EGG9000.Bot.Automated {
             var userIDs = users.SelectMany(x => x.EggIncAccounts.Select(y => y.Id)).OrderBy(x => random.Next()).ToList();
             _logger.LogInformation("Getting scores");
             //var existingScores = await _db.UserCsHistoryEntries.Where(x => userIDs.Contains(x.EggIncId)).ToListAsync();
-            var existingScores = await _db.UserCsHistoryEntries.ToListAsync(cancellationToken);
+            var existingScores = await _db.UserCsHistoryEntries.ToListAsync(CancellationToken.None);
             _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {
                 StillAlive();
@@ -81,10 +81,10 @@ namespace EGG9000.Bot.Automated {
                     }
                 });
                 _db.UserCsHistoryEntries.AddRange(scoresToAdd);
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
                 _logger.LogInformation("Saving Changes {count}/{total}, skipped {skipped}", (++count * chunkSize), users.Count, skipped);
             }
-            await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(CancellationToken.None);
         }
     }
 }

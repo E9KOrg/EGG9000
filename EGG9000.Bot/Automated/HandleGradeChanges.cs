@@ -16,7 +16,7 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync(cancellationToken);
+            var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync(CancellationToken.None);
             var chunkedUsers = users.Chunk(25);
             foreach(var userchunk in chunkedUsers) {
                 StillAlive();
@@ -40,7 +40,7 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogError(e, "Error checking for grade update");
                     }
                 });
-                await _db.SaveChangesAsync(cancellationToken);
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
         }
     }
