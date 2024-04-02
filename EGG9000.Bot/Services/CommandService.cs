@@ -427,7 +427,7 @@ namespace EGG9000.Bot.Services {
                 await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
             }
 
-            if(!message.Author.IsBot && message.Interaction == null) {
+            if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {
                 var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id || x.DiscordChannelId == message.Channel.Id);
                 if(coop is not null) {
                     var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
