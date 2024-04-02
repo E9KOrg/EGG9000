@@ -171,9 +171,7 @@ namespace EGG9000.Common.Helpers {
                 mention += $"({eggIncName})";
             }
             try {
-                if(targetChannel.GetChannelType() == ChannelType.PrivateThread) {
-                    await (targetChannel as SocketThreadChannel).AddUserAsync(user as SocketGuildUser);
-                } else {
+                if(targetChannel.GetChannelType() != ChannelType.PrivateThread) {
                     await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                 }
             } catch(Exception) {
@@ -185,7 +183,8 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            if(!silent) await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
+            //Always ping when it's a Thread - this is how users are added to the channel
+            if(!silent || targetChannel.GetChannelType() == ChannelType.PrivateThread) await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
             return newxref;
         }
     }
