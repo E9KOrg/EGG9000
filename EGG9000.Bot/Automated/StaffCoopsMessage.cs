@@ -14,7 +14,7 @@ namespace EGG9000.Bot.Automated {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var dbguilds = await _db.Guilds.ToListAsync(cancellationToken);
+            var dbguilds = await _db.Guilds.ToListAsync(CancellationToken.None);
 
             foreach(var dbguild in dbguilds.Where(x => x.StaffCoopsMessageDetails?.StartsWith("{") ?? false)) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
@@ -24,10 +24,10 @@ namespace EGG9000.Bot.Automated {
 
                 var adminDiscordIds = admins.Select(x => x.Id);
 
-                var adminUsers = await _db.DBUsers.AsQueryable().Where(x => adminDiscordIds.Contains(x.DiscordId)).ToListAsync(cancellationToken);
+                var adminUsers = await _db.DBUsers.AsQueryable().Where(x => adminDiscordIds.Contains(x.DiscordId)).ToListAsync(CancellationToken.None);
 
                 var adminUserIds = adminUsers.Select(x => x.Id);
-                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => ((x.ThreadID != 0 && !x.ThreadArchived) || (x.DiscordChannelId != 0 && !x.DeletedChannel)) && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync(cancellationToken);
+                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => ((x.ThreadID != 0 && !x.ThreadArchived) || (x.DiscordChannelId != 0 && !x.DeletedChannel)) && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync(CancellationToken.None);
 
 
                 var adminsWithChannels = adminUsers.OrderBy(x => x.DiscordUsername).Select(u => new {

@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             try {
                 var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(cancellationToken);
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
                 //Parallelized in the case that one server runs into an issue with a semaphore lock
                 Parallel.ForEach(dbguilds, async (dbguild, loopState) => {
