@@ -993,7 +993,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 coop.LastStatusUpdate = status;
                 if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
-                    if(missingCount > 0) {
+                    if(missingCount > 0 && (DateTimeOffset.Now > coop.Created + TimeSpan.FromHours(12))) {
                         if(missingCount <= 20) {
                             emojis += Convert.ToChar(9311 + missingCount);
                         } else if(missingCount <= 35) {
