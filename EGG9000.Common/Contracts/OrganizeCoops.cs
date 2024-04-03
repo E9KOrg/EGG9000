@@ -159,7 +159,7 @@ namespace EGG9000.Common.Contracts {
                 }
             }
 
-            if(contract.Details.Leggacy && x.Account.RedoLeggacySelection == RedoLeggacyOption.No 
+            if(x.Account.RedoLeggacySelection == RedoLeggacyOption.No 
                 && (
                     x.Account.Backup.Farms.Any(f => f.Completed && f.ContractId == contract.ID) ||
                     x.Account.Backup.ArchivedFarms.Any(f => f.Completed && f.ContractId == contract.ID)
