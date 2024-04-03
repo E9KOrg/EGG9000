@@ -242,7 +242,7 @@ namespace EGG9000.Common.Services {
             Thread.Sleep(1000);
 
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
-
+            
             var channel = await guild.CreateTextChannelAsync(
                 name,
                 p => {p.CategoryId = category.Id;}
@@ -252,6 +252,8 @@ namespace EGG9000.Common.Services {
 
             if(leagueRole != null) {
                 await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(viewChannel: PermValue.Allow));
+                await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(sendMessages: PermValue.Deny));
+                await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(sendMessagesInThreads: PermValue.Allow));
             }
 
             return guild.GetChannel(channel.Id);

@@ -447,24 +447,26 @@ namespace EGG9000.Bot.Services {
                 if(commandTextMatches.Success) {
                     var foundParentCommand = "";
                     var foundCommandText = "";
-                    if(commandTextMatches.Groups[2].Success) {
-                        foundParentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
-                        foundCommandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
-                    } else foundCommandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                    try {
+                        if(commandTextMatches.Groups[2].Success) {
+                            foundParentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                            foundCommandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
+                        } else foundCommandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                    } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-1):\n {exception}", ex); return; }
 
                     var global = false;
                     SocketApplicationCommand discordCommand = null;
                     try {
                         if(foundParentCommand == "") discordCommand = _discordCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundCommandText && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
                         else discordCommand = _discordCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundParentCommand && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
-                    } catch(Exception) { }
+                    } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-2):\n {exception}", ex); return; }
 
                     if(discordCommand == null) {
                         try {
                             if(foundParentCommand == "") discordCommand = _globalCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundCommandText).command;
                             else discordCommand = _globalCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundParentCommand).command;
                             if(discordCommand != null) global = true;
-                        } catch(Exception) { }
+                        } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-3):\n {exception}", ex); return; }
                     }
 
                     if(discordCommand != null) {
@@ -490,7 +492,7 @@ namespace EGG9000.Bot.Services {
                             hasPerms = command.Details.AdminOnly == StaffOnlyLevel.None || (message.Author as SocketGuildUser).GuildPermissions.ToList().Contains(associatedPerm);
                         }
 
-                        var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel).PermissionOverwrites.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny);
+                        var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel)?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
                         if(hasPerms && (parentHasChild || bypass) && canUseCommandsInChannel) {
                             var warningEmbed = EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
                                 $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(foundParentCommand != "" ? $"{foundParentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandTextMatches.Groups[2] : foundCommandText)}:{discordCommand?.Id}> to run it.");
