@@ -20,6 +20,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 using static Ei.Contract.Types;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Exception = System.Exception;
 
 namespace EGG9000.Bot.Commands {
@@ -166,6 +167,7 @@ namespace EGG9000.Bot.Commands {
             var userid = useraccount.Split("|")[0];
             var guid = Guid.Parse(userid);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == command.GuildId || x.OverflowServersJson.Contains(command.GuildId.ToString()));
             var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
 
             /* Find current coop xrefs */
@@ -203,8 +205,29 @@ namespace EGG9000.Bot.Commands {
             }
             /* END Find a new co-op */
 
+
+            //Add the grade role before moving them, to give them access to the header channel (if applicable)
+            var discordUser = _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).GetUser(dbuser.DiscordId);
+            var gradeRole = dbGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == newgrade switch {
+                1 => GuildChannelType.GradeC,
+                2 => GuildChannelType.GradeB,
+                3 => GuildChannelType.GradeA,
+                4 => GuildChannelType.GradeAA,
+                5 => GuildChannelType.GradeAAA,
+                _ => default
+            });
+            if(gradeRole != null) {
+                //Fetch a new backup so they don't lose access to this channel when role update happens
+                var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                if(customBackup?.Farms is not null) {
+                    account.Backup = customBackup;
+                    dbuser.UpdateAccounts();
+                }
+                await discordUser.AddRoleAsync(gradeRole.Id);
+            }
+
             /* MOVING TO NEW COOP */
-            var discordUser = _client.GetUser(dbuser.DiscordId);
             var coopChannel = newCoop.ThreadID != 0 ? _client.GetChannel(newCoop.ThreadID) : _client.GetChannel(newCoop.DiscordChannelId);
 
             var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)command.Channel);
