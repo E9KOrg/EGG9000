@@ -130,17 +130,18 @@ namespace EGG9000.Bot.Commands {
 
             var coefficientPair = BaseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
+                var secondStringBuilder = new StringBuilder();
                 var keyAf = coefficientPair.Key;
                 var numCrafted = backup.ArtifactHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Artifact == keyAf.Artifact && a.Artifact.Tier == keyAf.Tier)?.NumberCrafted ?? 0;
                 var baseRates = coefficientPair.Value;
                 var percentages = GetCraftPercentages(numCrafted, backup.GetCraftingLevel(), baseRates);
                 var percentageStrs = new List<string>();
                 if(percentages[Rarity.Rare][0] > 0 || percentages[Rarity.Epic][0] > 0 || percentages[Rarity.Legendary][0] > 0) {
-                    stringBuilder.AppendLine("\n\n**Your next craft has the following percentage breakdown**:");
+                    secondStringBuilder.AppendLine("\n\n**Your next craft has the following percentage breakdown**:");
                     if(percentages[Rarity.Rare][0] > 0) percentageStrs.Add($"{percentages[Rarity.Rare][1]:f2}% <:Rare:905959988030226453>");
                     if(percentages[Rarity.Epic][0] > 0) percentageStrs.Add($"{percentages[Rarity.Epic][1]:f2}% <:Epic:905960149720649748>");
                     if(percentages[Rarity.Legendary][0] > 0) percentageStrs.Add($"{percentages[Rarity.Legendary][1]:f2}% <:Legendary:905960165860339722>");
-                    stringBuilder.AppendLine(string.Join(" | ", percentageStrs));
+                    secondStringBuilder.AppendLine(string.Join(" | ", percentageStrs));
                 }
 
                 if(quantity > 1) {
@@ -163,12 +164,18 @@ namespace EGG9000.Bot.Commands {
                     }
 
                     if(secondPercentages[Rarity.Rare][0] > 0 || secondPercentages[Rarity.Epic][0] > 0 || secondPercentages[Rarity.Legendary][0] > 0) {
-                        stringBuilder.AppendLine($"\n**Your {quantityCraftText} craft from now has the following percentage breakdown**:");
+                        secondStringBuilder.AppendLine($"\n**Your {quantityCraftText} craft from now has the following percentage breakdown**:");
                         if(secondPercentages[Rarity.Rare][0] > 0) secondPercentageStrs.Add($"{secondPercentages[Rarity.Rare][1]:f2}% <:Rare:905959988030226453>");
                         if(secondPercentages[Rarity.Epic][0] > 0) secondPercentageStrs.Add($"{secondPercentages[Rarity.Epic][1]:f2}% <:Epic:905960149720649748>");
                         if(secondPercentages[Rarity.Legendary][0] > 0) secondPercentageStrs.Add($"{secondPercentages[Rarity.Legendary][1]:f2}% <:Legendary:905960165860339722>");
-                        stringBuilder.AppendLine(string.Join(" | ", secondPercentageStrs));
+                        secondStringBuilder.AppendLine(string.Join(" | ", secondPercentageStrs));
                     }
+                }
+
+                if(stringBuilder.Length + secondStringBuilder.Length < 2000) {
+                    stringBuilder.Append(secondStringBuilder);
+                } else {
+                    stringBuilder.AppendLine("\n**(Message too long to show rarity chances)**");
                 }
             }
 
