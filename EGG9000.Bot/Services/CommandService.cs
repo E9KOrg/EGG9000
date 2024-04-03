@@ -447,24 +447,26 @@ namespace EGG9000.Bot.Services {
                 if(commandTextMatches.Success) {
                     var foundParentCommand = "";
                     var foundCommandText = "";
-                    if(commandTextMatches.Groups[2].Success) {
-                        foundParentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
-                        foundCommandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
-                    } else foundCommandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                    try {
+                        if(commandTextMatches.Groups[2].Success) {
+                            foundParentCommand = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                            foundCommandText = commandTextMatches.Groups[2].Value.ToLower().Trim();
+                        } else foundCommandText = commandTextMatches.Groups[1].Value.ToLower().Trim();
+                    } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-1):\n {exception}", ex); return; }
 
                     var global = false;
                     SocketApplicationCommand discordCommand = null;
                     try {
                         if(foundParentCommand == "") discordCommand = _discordCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundCommandText && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
                         else discordCommand = _discordCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundParentCommand && (x.guildid == (message.Channel as SocketGuildChannel).Guild.Id) || x.guildid == 0).command;
-                    } catch(Exception) { }
+                    } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-2):\n {exception}", ex); return; }
 
                     if(discordCommand == null) {
                         try {
                             if(foundParentCommand == "") discordCommand = _globalCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundCommandText).command;
                             else discordCommand = _globalCommands.First(x => x.command.Type == ApplicationCommandType.Slash && x.command.Name.ToLower() == foundParentCommand).command;
                             if(discordCommand != null) global = true;
-                        } catch(Exception) { }
+                        } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-3):\n {exception}", ex); return; }
                     }
 
                     if(discordCommand != null) {
