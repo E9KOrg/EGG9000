@@ -252,6 +252,8 @@ namespace EGG9000.Common.Services {
 
             if(leagueRole != null) {
                 await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(viewChannel: PermValue.Allow));
+                await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(sendMessages: PermValue.Deny));
+                await channel.AddPermissionOverwriteAsync(leagueRole, new OverwritePermissions(sendMessagesInThreads: PermValue.Allow));
             }
 
             return guild.GetChannel(channel.Id);
