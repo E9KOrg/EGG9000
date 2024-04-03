@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.WebSocket;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
@@ -171,18 +172,22 @@ namespace EGG9000.Bot.Automated {
                 var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == originalRole.Name);
                 if(overflowRole != null) {
                     //await overflowRole.ModifyAsync(async x => {
-                    await overflowRole.ModifyAsync(x => {
-                        x.Name = updatedRole.Name;
-                        x.Color = updatedRole.Color;
-                        x.Permissions = updatedRole.Permissions;
+                    try {
+                        await overflowRole.ModifyAsync(x => {
+                            x.Name = updatedRole.Name;
+                            x.Color = updatedRole.Color;
+                            x.Permissions = updatedRole.Permissions;
 
-                        /**
-                         * Can't sync role icons as the overflows aren't boosted
-                         */
-                        //if(updatedRole.Icon != originalRole.Icon) {
-                        //    x.Icon = new Image(await DownloadImage(updatedRole.GetIconUrl()));
-                        //}
-                    });
+                            /**
+                             * Can't sync role icons as the overflows aren't boosted
+                             */
+                            //if(updatedRole.Icon != originalRole.Icon) {
+                            //    x.Icon = new Image(await DownloadImage(updatedRole.GetIconUrl()));
+                            //}
+                        }, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit});
+                    } catch(Exception) {
+                        //Can be fairly safely ignored, will resync next run
+                    }
                 }
                 StillAlive();
             }

@@ -490,7 +490,7 @@ namespace EGG9000.Bot.Services {
                             hasPerms = command.Details.AdminOnly == StaffOnlyLevel.None || (message.Author as SocketGuildUser).GuildPermissions.ToList().Contains(associatedPerm);
                         }
 
-                        var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel).PermissionOverwrites.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny);
+                        var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel)?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
                         if(hasPerms && (parentHasChild || bypass) && canUseCommandsInChannel) {
                             var warningEmbed = EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
                                 $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(foundParentCommand != "" ? $"{foundParentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandTextMatches.Groups[2] : foundCommandText)}:{discordCommand?.Id}> to run it.");
