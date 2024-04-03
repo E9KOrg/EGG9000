@@ -92,7 +92,6 @@
 
                         <thead>
                             <tr>
-                                @*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
                                 <th>Date</th>
                                 <th>PE</th>
                                 <th style="text-align: right !important;">Soul Eggs</th>
@@ -103,7 +102,6 @@
                         </thead>
                         <tbody>
                             <tr>
-                                @*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
                                 <td>Latest</td>
                                 <td>@Model.backup.EggsOfProphecy</td>
                                 <td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
@@ -111,9 +109,9 @@
                                 <td align="right">@calculateMER(Model.backup.SoulEggs, Model.backup.EggsOfProphecy).ToString()</td>
                                 <td>@Model.backup.NumPrestiges</td>
                             </tr>
-                            @foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
+                            @foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)
+                            .DistinctBy(snapshot => new { snapshot.EggsOfProphecy, snapshot.SoulEggs, snapshot.EarningsBonus, snapshot.Prestiges })) {
                                 <tr>
-                                    @*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
                                     <td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
                                     <td>@snapshot.EggsOfProphecy</td>
                                     <td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
