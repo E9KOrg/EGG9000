@@ -220,6 +220,12 @@ namespace EGG9000.Bot.Commands {
                 //Fetch a new backup so they don't lose access to this channel when role update happens
                 var rawBackup = await ContractsAPI.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+
+                if((uint)customBackup.Grade != newgrade) {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
+                        $"({PlayerGradeDetails.GetEmoji(customBackup.Grade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji(newgrade)}).\nTry forcing a new backup?"); });
+                    return;
+                }
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                     dbuser.UpdateAccounts();
