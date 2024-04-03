@@ -26,9 +26,9 @@ namespace EGG9000.Common.Services {
         private readonly ILogger<DiscordUserService> _logger = logger;
 
 #if DEV9002 || DEBUG
-        private static readonly bool _debug = false;
-#else
         private static readonly bool _debug = true;
+#else
+        private static readonly bool _debug = false;
 #endif
 
         public Task StartAsync(CancellationToken cancellationToken) {

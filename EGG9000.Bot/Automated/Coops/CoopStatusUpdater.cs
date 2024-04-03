@@ -710,7 +710,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 );
                 foreach(var userAdded in usersAdded) {
-                    var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
+                    var xref = coopDetails?.CoopParticipants?.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                     if(xref != null) {
                         xref.Xref.AddedToChannel = true;
                     }

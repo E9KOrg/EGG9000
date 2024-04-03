@@ -39,31 +39,13 @@ namespace EGG9000.Bot.Jobs {
                 if(dbguild is null)
                     continue;
                 var guild = _discord.GetGuild(guildGroup.Key);
-                var standardRoleId = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id;
-                var proRoleId = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id;
+                var standardRoleId = dbguild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
+                var proRoleId = dbguild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
                 await Parallel.ForEachAsync(guildGroup, new ParallelOptions { MaxDegreeOfParallelism = 5 }, async (user, cancellationToken) => {
                     try {
                         foreach(var account in user.EggIncAccounts) {
                             await CheckSubscription(db, _discord, user, account, dbguild, guild);
-                            //var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                            //if(subscriptionStatus.HasStatus && subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.Active || (subscriptionStatus.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds())) {
-                            //    if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
-                            //        await SendUltraLogMessage(user, account, (int)subscriptionStatus.SubscriptionLevel, (int)account.SubscriptionLevel, dbguild, guild);
-                            //        account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
-                            //        user.UpdateAccounts();
-                            //    }
-                            //    if(account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
-                            //        account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
-                            //        user.UpdateAccounts();
-                            //    }
-                            //} else {
-                            //    if(account.SubscriptionLevel.HasValue) {
-                            //        await SendUltraLogMessage(user, account, (int)account.SubscriptionLevel, 0, dbguild, guild);
-                            //        account.SubscriptionLevel = null;
-                            //        user.UpdateAccounts();
-                            //    }
-                            //}
                         }
                         var discorduser = guild.GetUser(user.DiscordId);
                         if(discorduser is not null) {
@@ -117,17 +99,17 @@ namespace EGG9000.Bot.Jobs {
             _ = await ChannelHelper.DetermineAndSend(db, _client, dbGuild, guild, GuildChannelType.UltraLog, new() { Text = message});
         }
 
-        public async Task CheckRole(ulong? roleid, DBUser dbuser, bool pro, SocketGuildUser user) {
-            if(roleid is null)
+        public async Task CheckRole(ulong roleid, DBUser dbuser, bool pro, SocketGuildUser user) {
+            if(roleid == default)
                 return;
-            var needsRole = dbuser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? Ei.UserSubscriptionInfo.Types.Level.Pro : Ei.UserSubscriptionInfo.Types.Level.Standard) && y.HasActiveSubscription());
-            var hasRole = user.Roles.Any(x => x.Id == roleid);
+            var needsRole = dbuser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? UserSubscriptionInfo.Types.Level.Pro : UserSubscriptionInfo.Types.Level.Standard) && y.HasActiveSubscription());
+            var hasRole = user?.Roles?.Any(x => x.Id == roleid) ?? false;
 
             if(hasRole && !needsRole) {
-                await user.RemoveRoleAsync(roleid.Value);
+                await user.RemoveRoleAsync(roleid);
                 _logger.LogInformation("Removed {level} subscription role from {user}", pro ? "pro" : "standard", user.GetCleanName());
             } else if(!hasRole && needsRole) {
-                await user.AddRoleAsync(roleid.Value);
+                await user.AddRoleAsync(roleid);
                 _logger.LogInformation("Added {level} subscription role to {user}", pro ? "pro" : "standard", user.GetCleanName());
             }
         }
