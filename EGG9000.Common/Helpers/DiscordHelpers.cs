@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Helpers {
             await CheckFreshEggsRole(guild, discordUser, dbUser);
             await CheckBG(_client, guild, discordUser, dbUser);
             await CheckPermitRoles(_client, guild, discordUser, dbUser);
-            await CheckGrades(discordUser, dbUser, grades);
+            await CheckGrades(db, _client, discordUser, dbUser, grades);
             await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
             await CheckUserOSRole(_client, guild, discordUser, dbUser);
             await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
@@ -347,16 +347,17 @@ namespace EGG9000.Bot.Helpers {
 
             }
         }
-        private static async Task CheckGrades(IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
+        private static async Task CheckGrades(ApplicationDbContext db, DiscordHostedService _client, IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
             var neededGrades = dbuser.EggIncAccounts.Select(x => x.GetGrade());
 
             var neededRoles = neededGrades.Select(x => grades.First(g => g.grade == x).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();
 
-            var extraRoles = grades.Where(x => x.role is not null)
+            var extraGrades = grades.Where(x => x.role is not null)
                 .Where(g =>
                     !dbuser.EggIncAccounts.Any(a => a.GetGrade() == g.grade) &&
                     DiscordUser.RoleIds.Any(r => r == g.role.Id)
-                ).Select(x => x.role).ToList();
+                ).ToList();
+            var extraRoles = extraGrades.Select(x => x.role).ToList();
 
             if(neededRoles.Count > 0) {
                 GetLogger<DiscordHelpers>().LogInformation("Adding grade roles {roles} for {user}", string.Join(",", neededRoles.Select(x => x.Name)), DiscordUser.GetName());
@@ -365,6 +366,20 @@ namespace EGG9000.Bot.Helpers {
             }
 
             if(extraRoles.Count > 0) {
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+
+                //Handle the case where users rank up, and need to still see existing coops
+                var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
+                foreach(var lostXref in lostXrefs) {
+                    var guild = _client.Guilds.FirstOrDefault(x => x.Channels.Any(c => c.Id == lostXref.Coop.ThreadParentChannel));
+                    if(guild is null) continue;
+                    var header = guild.GetTextChannel(lostXref.Coop.ThreadParentChannel);
+                    if(header is null) continue;
+                    await header.AddPermissionOverwriteAsync(DiscordUser, 
+                        new OverwritePermissions( viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow)
+                    );
+                }
+
                 GetLogger<DiscordHelpers>().LogInformation("Removing grade roles {roles} for {user}", string.Join(",", extraRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.RemoveRolesAsync(extraRoles);
             }
