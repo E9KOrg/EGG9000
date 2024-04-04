@@ -994,16 +994,20 @@ namespace EGG9000.Bot.Automated.Coops {
                 coop.LastStatusUpdate = status;
                 if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
                     if(missingCount > 0) {
-                        if(missingCount <= 20) {
-                            emojis += Convert.ToChar(9311 + missingCount);
-                        } else if(missingCount <= 35) {
-                            emojis += Convert.ToChar(12881 + (missingCount - 21));
-                        } else if(missingCount <= 50) {
-                            emojis += Convert.ToChar(12977 + (missingCount - 36));
+                        
+                        if(DateTimeOffset.Now > (coop.Created + TimeSpan.FromHours(12))) {
+                            if(missingCount <= 20) {
+                                emojis += Convert.ToChar(9311 + missingCount);
+                            } else if(missingCount <= 35) {
+                                emojis += Convert.ToChar(12881 + (missingCount - 21));
+                            } else if(missingCount <= 50) {
+                                emojis += Convert.ToChar(12977 + (missingCount - 36));
+                            } else {
+                                emojis += "❌";
+                            }
                         } else {
-                            emojis += "❌";
+                            emojis += "📶";
                         }
-
 
                         if(
                             !coop.Finished && (
