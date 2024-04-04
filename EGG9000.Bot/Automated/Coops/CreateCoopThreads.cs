@@ -131,7 +131,13 @@ namespace EGG9000.Bot.Automated.Coops {
                         gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
                     }
 
-                    headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, contractEmbed, category.DiscordCategory, coop);
+                    List<SocketRole> ultraRoles = [];
+                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, guild);
+                    if(ultraStandardRole != null) ultraRoles.Add(ultraStandardRole);
+                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, guild);
+                    if(ultraProRole != null) ultraRoles.Add(ultraProRole);
+
+                    headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
                 }
                 if (headerChannel == null) continue;
                 try {

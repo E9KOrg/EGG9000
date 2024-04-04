@@ -233,7 +233,7 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
             if(category is null || category.Id  == 0) return null;
 
             var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
@@ -250,7 +250,17 @@ namespace EGG9000.Common.Services {
             if(channel is null) return null;
             await channel.SendMessageAsync(text: "", embed: contractEmbed);
 
-            if(leagueRole != null) {
+            if(coop.Contract.cc_only && ultraRoles.Count > 0) {
+                foreach( var ultraRole in ultraRoles) {
+                    await channel.AddPermissionOverwriteAsync(ultraRole,
+                        new OverwritePermissions(
+                                viewChannel: PermValue.Allow,
+                                sendMessages: PermValue.Deny,
+                                sendMessagesInThreads: PermValue.Allow
+                            )
+                        );
+                }
+            } else if(leagueRole != null) {
                 await channel.AddPermissionOverwriteAsync(leagueRole, 
                     new OverwritePermissions(
                         viewChannel: PermValue.Allow, 
