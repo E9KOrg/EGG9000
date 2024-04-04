@@ -51,9 +51,9 @@ namespace EGG9000.Common.Contracts {
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
           
             FilterAccounts(accounts, excluded, x => {
-                //With no BGs on guilds, filters are disabled
+                //With no BGs on guilds, filters are disabled - always true
                 if(dbguild is not null && dbguild.DisableBG) {
-                    return false;
+                    return true;
                 }
 
                 //If a player does not have a set grade, we can't check the rewards for that grade
