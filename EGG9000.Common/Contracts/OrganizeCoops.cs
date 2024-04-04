@@ -18,16 +18,16 @@ namespace EGG9000.Common.Contracts {
                 await guild.DownloadUsersAsync();
             }
 
-
-                var accounts = users
-                .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
-                    Account = a,
-                    User = u,
-                    UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
-                    //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
-                    Group = a.GetGroup(contract.Details.CcOnly),
-                    RoleId = dbguild is not null && dbguild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbguild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
-                })).ToList();
+            //Start compiling a list of all eligible accounts
+            var accounts = users
+            .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
+                Account = a,
+                User = u,
+                UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
+                //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
+                Group = a.GetGroup(contract.Details.CcOnly),
+                RoleId = dbguild is not null && dbguild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbguild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
+            })).ToList();
 
             FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
 
@@ -55,10 +55,9 @@ namespace EGG9000.Common.Contracts {
                     return false;
                 }
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
-                var registerRewards = contract.Details.Leggacy && x.Account.LeggacyAutoRegisterRewards != null ? x.Account.LeggacyAutoRegisterRewards : x.Account.AutoRegisterRewards;
+                var registerRewards = (contract.Details.Leggacy && x.Account.LeggacyAutoRegisterRewards?.Count != 0) ? x.Account.LeggacyAutoRegisterRewards ?? [] : x.Account.AutoRegisterRewards ?? [];
                 var ignoreRewards = dbguild is not null && dbguild.DisableBG;
                 return ignoreRewards
-                    || registerRewards == null
                     || registerRewards.Count == 0
                     || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
             }, "Rewards not selected");
