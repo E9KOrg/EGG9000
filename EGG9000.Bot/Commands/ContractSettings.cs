@@ -102,7 +102,7 @@ namespace EGG9000.Bot.Commands {
 
             var buttons = new List<(string, string, ButtonStyle)>();
 
-            if(!dbguild.DisableBG || true) {
+            if(!dbguild.DisableBG) {
                 eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
                 buttons.Add(("Boarding Group", $"MCSBg:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
                 if(account.HasActiveSubscription()) {
