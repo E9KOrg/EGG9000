@@ -1,4 +1,6 @@
-﻿using EGG9000.Bot.Helpers;
+﻿using Discord;
+
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -105,7 +107,12 @@ namespace EGG9000.Bot.Commands {
             }
             sb.AppendLine("```");
 
-            await command.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = EmbedCustom(EmbedType.Success, "EB History", sb.ToString()); });
+            var builder = new EmbedBuilder();
+            builder.Title = "EB History";
+            builder.Description = sb.ToString();
+            builder.Color = Color.DarkGreen;
+
+            await command.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = builder.Build(); });
         }
 
     }
