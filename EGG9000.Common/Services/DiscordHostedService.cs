@@ -111,6 +111,7 @@ namespace EGG9000.Common.Services {
         }
 
         private Task PrintLog(LogMessage msg) {
+            Console.WriteLine(msg.ToString());
             if(msg.ToString().Contains("Rate limit triggered")) {
                 _logger.Log(LogLevel.Trace, "Discord Log: {msg}", msg.Message);
             } else if(msg.Exception is not null) {
