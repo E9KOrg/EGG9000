@@ -228,7 +228,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 }
 
                 coops ??= await _db.Coops.Include(x => x.Contract)
-                    .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.ThreadArchived && x.GuildId == guild.Id)
+                    .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
                     .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
 
                 await arg.RespondAsync(null, coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
