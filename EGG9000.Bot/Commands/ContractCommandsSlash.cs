@@ -445,9 +445,9 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.Contract.ID == dbContract.ID);
+            var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.Contract.ID == dbContract.ID && x.GuildID == command.GuildId);
             if(guildContract == null) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find contract details, have you tagged a contract channel?"));
+                await command.RespondAsync(content: "", embed: EmbedError("Unable to find contract details"));
                 return;
             }
 
