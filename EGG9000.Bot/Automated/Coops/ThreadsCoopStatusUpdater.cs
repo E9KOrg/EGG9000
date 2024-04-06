@@ -392,7 +392,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-                var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).ToList();
+                var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
 
 
                 timings.Set("Start");
@@ -666,8 +666,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 timings.Set(5);
 
-                var threadObj = (coopThread as SocketThreadChannel);
-
+                var threadObj = coopThread as SocketThreadChannel;
                 var currentUsers = coop.UserCoopsXrefs.Where(u => u.JoinedCoop).Select(u => u.User.DiscordId).Distinct().ToList();
                 foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
                     if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUsers.Any(u => u == userStatus.DiscordUser.Id)) {
@@ -985,7 +984,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 coop.LastStatusUpdate = status;
                 if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
                     if(missingCount > 0) {
-                        
                         if(DateTimeOffset.Now > (coop.Created + TimeSpan.FromHours(12))) {
                             if(missingCount <= 20) {
                                 emojis += Convert.ToChar(9311 + missingCount);
@@ -1106,7 +1104,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     ))
                     .WithColor(color)
                     .WithTimestamp(DateTimeOffset.UtcNow)
-                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Image))
+                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).Image))
                     ;
 
 
@@ -1140,7 +1138,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             } else if(coopDetails.PercentProjectedForJoined > goal.TargetAmount) {
                                 title += "☑";
                             }
-                            embedBuilder.AddField(title, $"Target: {goal.TargetAmount.ToEggString()}\nReward: {EggIncEggs.GetReward(goal)}{time}", true);
+                            embedBuilder.AddField(title, $"Target: {goal.TargetAmount.ToEggString()}\nReward: {EggIncStatics.GetReward(goal)}{time}", true);
                         } else {
                             embedBuilder.AddField("\u17B5", "\u17B5", true);
                         }
@@ -1357,9 +1355,9 @@ namespace EGG9000.Bot.Automated.Coops {
             if(discordUser is null)
                 return;
 
-            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
+            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
             if(dmResult != DMResult.Success) {
-                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncEggs.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
             }
         }
 

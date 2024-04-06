@@ -74,7 +74,7 @@ namespace EGG9000.Bot.Automated {
                                     case 7: tankSize = 500_000_000_000_000; break;
                                 }
 
-                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncEggs.GetEggById(x.Key).Emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
+                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncStatics.GetEggById(x.Key).Emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
                             }
                         } catch(Exception e) {
                             _bugsnag.Notify(e);
