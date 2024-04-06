@@ -1,0 +1,103 @@
+﻿using EGG9000.Common.Helpers;
+using Newtonsoft.Json;
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+
+namespace EGG9000.Common.JsonData.EiStatics {
+
+    public class EggIncEgg {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string emoji { get; set; }
+        private string imageUrlEnder { get; set; }
+        public string image { 
+            get {
+                return "https://vignette.wikia.nocookie.net/egg-inc/images/" + imageUrlEnder;
+            }
+        }
+        public double value { get; set; }
+        public double requiredFarmValue { get; set; }
+    }
+
+    public class  EggIncBoost {
+        public string id { get; set; }
+        public string name { get; set; }
+        private string typeString { get; set; }
+        public EggIncBoostTypeEnum type {
+            get {
+                if(Enum.TryParse<EggIncBoostTypeEnum>(typeString, ignoreCase: true, out var parsedEnum)) return parsedEnum;
+
+                return EggIncBoostTypeEnum.UnlimitedHatchery;
+            }
+        }
+        public string emoji { get; set; }
+        private int timeMinutesInt {  get; set; }
+        public TimeSpan timeMinutes {
+            get {
+                return TimeSpan.FromMinutes(timeMinutesInt);
+            }
+        }
+        public int value { get; set; }
+        public int? costGoldenEggs { get; set; }
+        public int? costTokens {  get; set; }
+    }
+
+    public enum EggIncBoostTypeEnum {
+        UnlimitedHatchery,
+        Earnings,
+        InternalHatchery,
+        BoostBeacon,
+        SoulEggs,
+        FarmValue,
+        SoulMirror,
+
+
+        DroneRewards,
+        GoldRewardChance,
+        EggsOfProphecyEffect,
+        CashGiftChance,
+        HostArtifactsOnElightenment,
+        EggValue,
+        BoostEffectiveness,
+        BoostDuration,
+        HabCapacity,
+        EggShippingRate,
+        EnlightenmentEggValue,
+        AwayEarnings,
+        DroneFrequency,
+        SoulEggCollectionRate,
+        ResearchCost,
+        EggLayingRate,
+        CoopMembersEarnings,
+        CoopMembersEggLayingRates,
+        SoulEggBonus,
+        RunningChickenBonus,
+        MaxRunningChickenBonus,
+        HoldToHatch
+    }
+
+    public class Root {
+        public List<EggIncBoost> eggIncBoosts { get; set; }
+        public List<EggIncEgg> eggIncEggs { get; set; }
+        private static Root Instance = null;
+        public static Root Get() {
+            if(Instance != null) {
+                return Instance;
+            }
+
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = assembly.GetManifestResourceNames()
+                .Single(str => str.EndsWith("ei-statics.json"));
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            using var reader = new StreamReader(stream);
+            var json = reader.ReadToEnd();
+            Instance = JsonConvert.DeserializeObject<Root>(json);
+            return Instance;
+        }
+    }
+}

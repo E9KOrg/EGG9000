@@ -178,6 +178,7 @@ namespace EGG9000.Bot.Automated.Coops {
             if(coopThread != null) {
                 if(!coopThread.IsArchived) {
                     _logger.LogInformation("Unable to archive co-op thread for {coop} (already archived) - was not able to free up space, re-iterating", coop.Name);
+                    return (null, null);
                 }
                 try {
                     await coopThread.ModifyAsync(a => a.Archived = true);

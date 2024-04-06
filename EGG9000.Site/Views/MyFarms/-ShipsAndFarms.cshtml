@@ -515,7 +515,7 @@
                                 }
                                 foreach (var fuel in mission.Fuels)
                                 {
-                                    var eggEmojiUrl = $"{EggIncEggs.GetEggById(fuel.Egg)?.Image}";
+                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg)?.Image}";
                                     var target = fuelTargets[fuel.Egg];
                                     var percent = fuel.Amount / target * 100;
                                     var eggName = string.Join(" ", Regex.Split(Enum.GetName(typeof(Ei.Egg), fuel.Egg).ToString(), @"(?=\p{Lu})"));
