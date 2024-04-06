@@ -150,16 +150,16 @@ namespace EGG9000.Bot.Automated.Coops {
                     };
                     SocketRole gradeRole = null;
                     if(gradeRoleEnum != GuildChannelType.General) {
-                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
+                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, server.Guild);
                     }
 
                     List<SocketRole> ultraRoles = [];
-                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, guild);
+                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, server.Guild);
                     if(ultraStandardRole != null) ultraRoles.Add(ultraStandardRole);
-                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, guild);
+                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, server.Guild);
                     if(ultraProRole != null) ultraRoles.Add(ultraProRole);
 
-                    headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
+                    headerChannel = await server.Guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
                 }
                 if(headerChannel == null) continue;
                 try {
