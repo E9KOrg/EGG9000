@@ -137,8 +137,6 @@ namespace EGG9000.Bot.Automated {
                         });
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
-                            if(cancellationToken.IsCancellationRequested)
-                                break;
 
                             var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), CancellationToken.None);
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
