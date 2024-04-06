@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 return await (parentChannel as SocketTextChannel).CreateThreadAsync(
                     threadName,
                     ThreadType.PrivateThread,
-                    ThreadArchiveDuration.ThreeDays,
+                    ThreadArchiveDuration.OneDay,
                     invitable: false, options: new RequestOptions {
                         RatelimitCallback = RateLimit, RetryMode = RetryMode.AlwaysRetry, Timeout = 5000
                     }
@@ -174,8 +174,11 @@ namespace EGG9000.Bot.Automated.Coops {
             var completedCoop = completedCoops.First();
             completedCoops.Remove(completedCoop);
             var completedCoopParentChannel = (_client.GetChannel(completedCoop.ThreadParentChannel) as SocketTextChannel);
-            var coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => t.IsLocked && !t.IsArchived && t.Id == completedCoop.ThreadID);
+            var coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => t.Id == completedCoop.ThreadID);
             if(coopThread != null) {
+                if(!coopThread.IsArchived) {
+                    _logger.LogInformation("Unable to archive co-op thread for {coop} (already archived) - was not able to free up space, re-iterating", coop.Name);
+                }
                 try {
                     await coopThread.ModifyAsync(a => a.Archived = true);
                 } catch(Exception) {
