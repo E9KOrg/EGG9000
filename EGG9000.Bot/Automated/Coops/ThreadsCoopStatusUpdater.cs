@@ -392,7 +392,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-                var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).ToList() : (await coopThread.GetUsersAsync().FlattenAsync()).ToList();
+                var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).ToList();
 
 
                 timings.Set("Start");
@@ -553,7 +553,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var usersWithoutXref = coopDetails.CoopParticipants.Where(x => x.DBUser is not null && x.Xref is null);
                 List<ulong> usersNeedingChannelPermissions = [];
                 foreach(var user in usersWithoutXref) {
-                    if(!coopDiscordUsers.Any(x => x.Id == user.DBUser.DiscordId)) {
+                    if(!coopDiscordUsers.Any(x => x == user.DBUser.DiscordId)) {
                         usersNeedingChannelPermissions.Add(user.DBUser.DiscordId);
                     } else {
                         var xref = new UserCoopXref {
@@ -627,9 +627,6 @@ namespace EGG9000.Bot.Automated.Coops {
                             coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                             coop.ThreadArchived = true;
                             await coopThread.SendMessageAsync($"Coop {coop.Name} is finished!");
-
-                            //Lock the thread so no more messages can be sent, start the archive timer
-                            await coopThread.ModifyAsync(t => t.Locked = true);
                         }
                         coop.CoopCompleted = DateTimeOffset.UtcNow;
                         coop.Finished = true;
@@ -642,9 +639,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         finalChannelUpdate = true;
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         coop.ThreadArchived = true;
-
-                        //Lock the thread so no more messages can be sent, start the archive timer
-                        await coopThread.ModifyAsync(t => t.Locked = true);
                         try {
                             await _db.SaveChangesAsync(CancellationToken.None);
                         } catch(Exception) {
@@ -674,9 +668,9 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var threadObj = (coopThread as SocketThreadChannel);
 
-                var currentUsers = await threadObj.GetUsersAsync();
+                var currentUsers = coop.UserCoopsXrefs.Where(u => u.JoinedCoop).Select(u => u.User.DiscordId).Distinct().ToList();
                 foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
-                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUsers.Any(u => u.Id == userStatus.DiscordUser.Id)) {
+                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUsers.Any(u => u == userStatus.DiscordUser.Id)) {
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
                     }
 
@@ -696,12 +690,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
                     .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
                     .ForEach(role => {
-                        if(role.Members.Any(m => !currentUsers.Any(u => u.Id == m.Id) && !roleMembersCaught.Contains(m.Id))) {
+                        if(role.Members.Any(m => !currentUsers.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
                             pingsLeft.Add(role.Mention);
                             roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
                         }
                     });
 
+                
                 if(pingsLeft.Any()) {
                     var currentContent = "";
                     var pingsPerCycle = 1500 / 22;
@@ -723,9 +718,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     if(deleteAfter) await editPingsInto.DeleteAsync();
                 }
-                var usersNow = await threadObj.GetUsersAsync();
-                var usersAdded = usersNow.Where(un => !currentUsers.Contains(un)).Select(u => u.Id).ToList();
 
+                var usersAdded = usersNeedingChannelPermissions.Distinct().ToList();
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
                     if(xref != null) {
@@ -962,9 +956,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     await _db.SaveChangesAsync(CancellationToken.None);
 
                     await HandleUnjoins(usersNotJoined, users, dbguild, coop, _db, coopThread);
-
-                    //Lock the thread so no more messages can be sent, start the archive timer
-                    await coopThread.ModifyAsync(t => t.Locked = true);
                 }
 
                 timings.Set(6);
