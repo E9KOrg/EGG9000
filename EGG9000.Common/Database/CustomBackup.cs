@@ -1,6 +1,7 @@
 ﻿using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiStatics;
 using Google.Protobuf.Collections;
 using MessagePack;
 using System;

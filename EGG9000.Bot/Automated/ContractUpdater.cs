@@ -155,7 +155,7 @@ namespace EGG9000.Bot.Automated {
                 .WithDescription(description)
                 .WithAuthor(
                     new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
-                    .WithIconUrl(EggIncStatics.GetEggById((int)guildContract.Contract.Details.Egg).Image));
+                    .WithIconUrl(EggIncStatics.GetEggById((int)guildContract.Contract.Details.Egg).image));
 
             var startIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 5 : (int)grade;
             var endIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 1 : (int)grade;
