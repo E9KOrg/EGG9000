@@ -9,6 +9,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiStatics;
 using EGG9000.Common.Services;
 using Humanizer;
 using MassTransit.Testing;
@@ -1104,7 +1105,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     ))
                     .WithColor(color)
                     .WithTimestamp(DateTimeOffset.UtcNow)
-                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).Image))
+                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).image))
                     ;
 
 
@@ -1355,9 +1356,9 @@ namespace EGG9000.Bot.Automated.Coops {
             if(discordUser is null)
                 return;
 
-            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
+            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
             if(dmResult != DMResult.Success) {
-                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).Emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
             }
         }
 

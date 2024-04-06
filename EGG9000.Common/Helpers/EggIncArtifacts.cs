@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using Newtonsoft.Json;
 using System;

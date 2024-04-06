@@ -117,7 +117,7 @@ namespace EGG9000.Bot.EggIncAPI {
         }
 
         public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic) {
-            double baseValue = EggIncStatics.GetEggById(farm.EggType).Value;
+            double baseValue = EggIncStatics.GetEggById(farm.EggType).value;
 
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);
