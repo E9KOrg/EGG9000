@@ -8,6 +8,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using static EGG9000.Common.Helpers.ArtifactHelpers;
+using static Ei.Contract.Types;
+using static Ei.MissionInfo.Types;
+using static Ei.ArtifactSpec.Types;
+using static Ei.GameModifier.Types;
+
 namespace EGG9000.Common.Database {
     [MessagePackObject]
     public class CustomBackup {
@@ -80,7 +86,7 @@ namespace EGG9000.Common.Database {
         [Key(26)]
         public uint TankLevel { get; set; }
         [Key(27)]
-        public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+        public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
@@ -96,7 +102,7 @@ namespace EGG9000.Common.Database {
         [Key(34)]
         public string DeviceId { get; set; } = string.Empty;
         [Key(36)]
-        public List<(Ei.MissionInfo.Types.Spaceship ship, Ei.MissionInfo.Types.DurationType type, int count)> ShipsSent { get; set; }
+        public List<(Spaceship ship, DurationType type, int count)> ShipsSent { get; set; }
         [Key(37)]
         public double SeasonCS { get; set; } = 0;
         [Key(38)]
@@ -170,7 +176,7 @@ namespace EGG9000.Common.Database {
 
         public List<ArtifactCount> GetAvailableArtifacts() {
             if(ArtifactHall is null || ArtifactHall.Count == 0) {
-                return new List<ArtifactCount>();
+                return [];
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
@@ -180,7 +186,7 @@ namespace EGG9000.Common.Database {
 
         public List<ArtifactCount> GetAvailableArtifacts(CustomFarm farm) {
             if(ArtifactHall is null || ArtifactHall.Count == 0) {
-                return new List<ArtifactCount>();
+                return [];
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
@@ -193,10 +199,6 @@ namespace EGG9000.Common.Database {
 
         public uint GetCraftingLevel() {
             uint currentLevel = 1;
-            long[] xpThresholds = { 0, 500, 3000, 8000, 18000, 43000, 93000, 193000, 443000, 943000, 1943000,
-                               3943000, 7943000, 15943000, 30943000, 50943000, 85943000, 145943000, 245943000,
-                               395943000, 595943000, 845943000, 1145943000, 1470943000, 1820943000, 2220943000,
-                               2720943000, 3320943000, 4070943000, 5070943000 };
 
             for(var i = xpThresholds.Length - 1; i >= 0; i--) {
                 if(CraftingXP >= xpThresholds[i]) {
@@ -233,7 +235,7 @@ namespace EGG9000.Common.Database {
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
-            Grade = backup.Contracts.LastCpi?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
+            Grade = backup.Contracts.LastCpi?.Grade ?? PlayerGrade.GradeUnset;
             GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
@@ -268,7 +270,7 @@ namespace EGG9000.Common.Database {
                     Amount = f.Amount,
                     Egg = f.Egg
                 }).ToList(),
-                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown : Ei.ArtifactSpec.Types.Name.Unknown,
+                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Name.Unknown : Name.Unknown,
                 Capacity = m.Capacity,
                 Stars = m.Level
             }).ToList();
@@ -285,7 +287,7 @@ namespace EGG9000.Common.Database {
                         Amount = f.Amount,
                         Egg = f.Egg
                     }).ToList(),
-                    Targeting = (int)fm.Ship >= 4 ? fm?.TargetArtifact ?? Ei.ArtifactSpec.Types.Name.Unknown : Ei.ArtifactSpec.Types.Name.Unknown,
+                    Targeting = (int)fm.Ship >= 4 ? fm?.TargetArtifact ?? Name.Unknown : Name.Unknown,
                     Capacity = fm.Capacity,
                     Stars = fm.Level
                 };
@@ -402,7 +404,7 @@ namespace EGG9000.Common.Database {
                 Habs = farm.Habs.Select(x => (ushort)x).ToList(),
                 LastStepTime = (float)farm.LastStepTime,
                 //ReportedUUIDs = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.UserId).Select(y => y.Uuid)).ToList(), //  contract?.ReportedUuids.ToList(),
-                Grade = contract?.Grade ?? Ei.Contract.Types.PlayerGrade.GradeUnset,
+                Grade = contract?.Grade ?? PlayerGrade.GradeUnset,
                 EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
                 ContributionFinalized = contract?.CoopContributionFinalized ?? false,
                 CoopSimulationEndTime = contract?.CoopSimulationEndTime ?? 0,
@@ -539,7 +541,7 @@ namespace EGG9000.Common.Database {
         [Key(34)]
         public List<string> ReportedUUIDs { get; set; }
         [Key(35)]
-        public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+        public PlayerGrade Grade { get; set; }
         [Key(36)]
         public double EvaluationCxp { get; set; }
         [Key(37)]
@@ -553,13 +555,13 @@ namespace EGG9000.Common.Database {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Entities.Contract contract = null) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Contract contract = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
                 if(coop != null && coop.LastStatusUpdate is not null) {
                     eggLayingBuff = coop.LastStatusUpdate.Participants.Where(x => x.BuffHistory.Any())
                         .Sum(x => x.BuffHistory.Last().EggLayingRate - 1);
-                    ignoreBuff = ignoreBuff ?? (this.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1;
+                    ignoreBuff = ignoreBuff ?? (Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1;
                     if(ignoreBuff.HasValue) {
                         eggLayingBuff -= ignoreBuff.Value;
                     }
@@ -571,10 +573,10 @@ namespace EGG9000.Common.Database {
                 if(coop is not null && (coop.Contract is not null || contract is not null) && coop.League > 1) {
                     //Very uncommon, but contracts may have nerfs/buffs associated with them
                     var modifiers = (coop.Contract ?? contract).Details.GradeSpecs[(int)coop.League - 1].Modifiers;
-                    var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == Ei.GameModifier.Types.GameDimension.EggLayingRate);
+                    var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.EggLayingRate);
                     eggLayRatePerc = eggLayRateMod is not null ? (double)eggLayRateMod.Value : 1.0;
 
-                    var shipCapMod = modifiers.FirstOrDefault(x => x.Dimension == Ei.GameModifier.Types.GameDimension.ShippingCapacity);
+                    var shipCapMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.ShippingCapacity);
                     shipCapPerc = shipCapMod is not null ? (double)shipCapMod.Value : 1.0;
                 }
 
@@ -596,13 +598,13 @@ namespace EGG9000.Common.Database {
     }
 
     public class CustomFarmStats {
-        public Double CurrentShippingRate { get; set; }
-        public Double EggLayingRate { get; set; }
-        public Double MaxShippingRate { get; set; }
-        public Double EggValue { get; set; }
-        public Double Income { get; set; }
-        public Double MaxRunningBonus { get; set; }
-        public Double HabSpace { get; set; }
+        public double CurrentShippingRate { get; set; }
+        public double EggLayingRate { get; set; }
+        public double MaxShippingRate { get; set; }
+        public double EggValue { get; set; }
+        public double Income { get; set; }
+        public double MaxRunningBonus { get; set; }
+        public double HabSpace { get; set; }
         public int InternalHatchery { get; set; }
     }
 
@@ -625,7 +627,7 @@ namespace EGG9000.Common.Database {
         [Key(7)]
         public double ContributionAmount { get; set; }
         [Key(8)]
-        public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+        public PlayerGrade Grade { get; set; }
         [Key(9)]
         public double EvaluationCxp { get; set; }
         [Key(10)]
@@ -702,7 +704,7 @@ namespace EGG9000.Common.Database {
         public List<ushort> Habs { get; set; }
         public float LastStepTime { get; set; }
         public List<string> ReportedUUIDs { get; set; }
-        public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+        public PlayerGrade Grade { get; set; }
         public double EvaluationCxp { get; set; }
         public bool ContributionFinalized { get; set; }
         public uint PEPossible { get; set; }
@@ -713,11 +715,11 @@ namespace EGG9000.Common.Database {
     [MessagePackObject]
     public class SpaceMission {
         [Key(0)]
-        public Ei.MissionInfo.Types.Spaceship Ship { get; set; }
+        public Spaceship Ship { get; set; }
         [Key(1)]
-        public Ei.MissionInfo.Types.DurationType Duration { get; set; }
+        public DurationType Duration { get; set; }
         [Key(2)]
-        public Ei.MissionInfo.Types.Status Status { get; set; }
+        public Status Status { get; set; }
         [Key(3)]
         public List<SpaceMissionFuel> Fuels { get; set; }
         [Key(4)]
@@ -725,7 +727,7 @@ namespace EGG9000.Common.Database {
         [Key(5)]
         public long StartTime { get; set; }
         [Key(6)]
-        public Ei.ArtifactSpec.Types.Name Targeting { get; set; } = Ei.ArtifactSpec.Types.Name.Unknown;
+        public Name Targeting { get; set; } = Name.Unknown;
         [Key(7)]
         public uint Capacity { get; set; } = 0;
         [Key(8)]

@@ -182,39 +182,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentCommand]
         private static async Task LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
 
-            var shipDataTable = new List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> {
-                (Spaceship.Galeggtica, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-                (Spaceship.Galeggtica, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-                (Spaceship.Galeggtica, DurationType.Epic, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-                (Spaceship.Chickfiant, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-                (Spaceship.Chickfiant, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-                (Spaceship.Chickfiant, DurationType.Epic, [0.0, 482.673, 1615.316, 274.828, 431.604, 0.0]),
-                (Spaceship.Voyegger, DurationType.Short, [0.0, 0.0, 9010.667, 8244.540, 3056.498, 1212.981, 654.000]),
-                (Spaceship.Voyegger, DurationType.Long, [579.538, 0.0, 934.343, 372.407, 653.134, 0.0, 0.0]),
-                (Spaceship.Voyegger, DurationType.Epic, [270.244, 133.825, 119.026, 113.645, 105.118, 161.565, 143.500]),
-                (Spaceship.Henerprise, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
-                (Spaceship.Henerprise, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
-                (Spaceship.Henerprise, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
-                //These are the Henerprise values as it is likely a decent (initial) estimation that the drop rates are similar
-                (Spaceship.Atreggies, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
-                (Spaceship.Atreggies, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
-                (Spaceship.Atreggies, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
-            };
-
-            var levelMultipliers = new List<double>() {
-                1.00, 1.05, 1.10,
-                1.15, 1.20, 1.25,
-                1.30, 1.35, 1.40,
-                1.45, 1.50, 1.55,
-                1.60, 1.65, 1.70,
-                1.75, 1.85, 2.00,
-                2.25, 2.50, 3.00,
-                3.50, 4.00, 4.50,
-                5.00, 6.00, 7.00,
-                8.00, 9.00, 10.00
-            };
-
-
             var backup = await ContractsAPI.FirstContact(account.Id);
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is not null && account?.Backup?.ArtifactHall is not null) {
                 var shipsSent = new ShipsSent(backup.Backup);
@@ -235,6 +202,10 @@ namespace EGG9000.Bot.Commands {
                 var afHall = account.Backup.ArtifactHall;
                 var newLLCSum = 0.0;
                 foreach(var craftType in BaseCraftingCoefficients.Where(c => c.Value[2] != 0)) {
+
+                    //Don't account for Lunar totems in LLC calc, re: sync with Menno data
+                    if(craftType.Key.Artifact == "Lunar Totem" && craftType.Key.Tier == 4) continue;
+
                     //Get the number of crafts that have been performed for this artifact
                     var numCrafted = (double)(afHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Tier == craftType.Key.Tier && a.Artifact.Artifact == craftType.Key.Artifact)?.NumberCrafted ?? 0.0);
                     if(numCrafted == 0) continue;
@@ -274,7 +245,7 @@ namespace EGG9000.Bot.Commands {
                 var (linerShortCount, henShortCount) = GetCompledShipsOfDuration(account, DurationType.Short);
 
                 var craftCount = GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
-                var legCount = GetLegendaryArtifactCount(account.Backup.ArtifactHall);
+                var legCount = GetLegendaryArtifactCount(account.Backup.ArtifactHall, llcCount: true);
 
                 var newExpectedLeggies = newLLCSum + sumOfRatios;
                 var newLLC = Math.Round(legCount - newExpectedLeggies, 2);
@@ -294,10 +265,6 @@ namespace EGG9000.Bot.Commands {
         }
         private static int GetCraftingLevel(double CraftingXP) {
             var currentLevel = 1;
-            long[] xpThresholds = [ 0, 500, 3000, 8000, 18000, 43000, 93000, 193000, 443000, 943000, 1943000,
-                               3943000, 7943000, 15943000, 30943000, 50943000, 85943000, 145943000, 245943000,
-                               395943000, 595943000, 845943000, 1145943000, 1470943000, 1820943000, 2220943000,
-                               2720943000, 3320943000, 4070943000, 5070943000 ];
 
             for(var i = xpThresholds.Length - 1; i >= 0; i--) {
                 if(CraftingXP >= xpThresholds[i]) {
