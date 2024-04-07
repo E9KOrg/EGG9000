@@ -1,6 +1,7 @@
 ﻿using EGG9000.Bot;
 using EGG9000.Common.JsonData.EiStatics;
 using Humanizer;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -11,7 +12,11 @@ namespace EGG9000.Common.Helpers {
             return GetEggById((int)egg);
         }
         public static EggIncEgg GetEggById(int id) {
-            return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
+            try {
+                return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
+            } catch(Exception) {
+                return null;
+            }  
         }
 
         private static string ToStartCase(string input) {
@@ -23,7 +28,12 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static EggIncBoost FromId(string id) {
-            return Root.Get().eggIncBoosts.FirstOrDefault(x => x.id == id);
+            try {
+                return Root.Get().eggIncBoosts.FirstOrDefault(x => x.id == id);
+            } catch(Exception) {
+                return null;
+            }
+            
         }
 
         public static string GetReward(Ei.Contract.Types.Goal goal) {

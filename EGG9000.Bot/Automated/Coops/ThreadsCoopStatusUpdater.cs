@@ -347,7 +347,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
                 //** Get Coop
-                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid, cancellationToken);
+                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.Id == coopid, cancellationToken);
                 if(coop == null) {
                     _logger.LogWarning("Unable to find co-op with id {coopid}", coopid);
                     return;
