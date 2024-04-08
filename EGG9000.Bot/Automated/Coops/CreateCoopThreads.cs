@@ -8,7 +8,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
 
 using MassTransit.Initializers;
-
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -147,13 +147,23 @@ namespace EGG9000.Bot.Automated.Coops {
                     };
                     SocketRole gradeRole = null;
                     if(gradeRoleEnum != GuildChannelType.General) {
-                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, server.Guild);
+                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
+                        if(gradeRole != null && guild.Id != server.Guild.Id) {
+                            gradeRole = server.Guild.Roles.FirstOrDefault(r => r.Name == gradeRole.Name);
+                        }
                     }
 
                     List<SocketRole> ultraRoles = [];
-                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, server.Guild);
+                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, guild);
+                    if(ultraStandardRole != null && guild.Id != server.Guild.Id) {
+                        ultraStandardRole = server.Guild.Roles.FirstOrDefault(r => r.Name == ultraStandardRole.Name);
+                    }
                     if(ultraStandardRole != null) ultraRoles.Add(ultraStandardRole);
-                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, server.Guild);
+
+                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, guild);
+                    if(ultraProRole != null && guild.Id != server.Guild.Id) {
+                        ultraProRole = server.Guild.Roles.FirstOrDefault(r => r.Name == ultraProRole.Name);
+                    }
                     if(ultraProRole != null) ultraRoles.Add(ultraProRole);
 
                     headerChannel = await server.Guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
