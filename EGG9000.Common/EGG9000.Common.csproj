@@ -54,6 +54,7 @@
   <ItemGroup>
     <None Remove="JsonData\eiafx-config.json" />
     <None Remove="JsonData\eiafx-data.json" />
+	<None Remove="JsonData\ei-statics.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -111,5 +112,6 @@
     <EmbeddedResource Include="JsonData\eiafx-data.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
+	<EmbeddedResource Include="JsonData\ei-statics.json" />
   </ItemGroup>
 </Project>
