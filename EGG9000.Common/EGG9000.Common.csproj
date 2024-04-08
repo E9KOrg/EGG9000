@@ -112,8 +112,6 @@
     <EmbeddedResource Include="JsonData\eiafx-data.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
-	  <EmbeddedResource Include="JsonData\ei-statics.json">
-		  <CopyToOutputDirectory>Never</CopyToOutputDirectory> 
-	  </EmbeddedResource>
+	<EmbeddedResource Include="JsonData\ei-statics.json" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 ﻿@using Discord.WebSocket;
+@using EGG9000.Common.JsonData.EiStatics
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
 @using System.Text;
@@ -25,20 +26,20 @@
     }
 
     void artifactTemplate(EggIncArtifactInstance artifact) {
-                <tr>
-                    <td>@artifact.Artifact</td>
-                    @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                        <td>@Math.Round((artifact.Value) * 100)%</td>
-            } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
-                        <td>-@artifact.Value</td>
-            } else if (artifact.Additive) {
-                        <td>+@artifact.Value</td>
-            } else if (+artifact.Value < 2) {
-                        <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
-            } else {
-                        <td>@(artifact.Value)x</td>
-            }
-                    <td>@properSpacing(artifact.Boost.ToString())</td>
+        <tr>
+            <td>@artifact.Artifact</td>
+                @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+                    <td>@Math.Round((artifact.Value) * 100)%</td>
+                } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
+                            <td>-@artifact.Value</td>
+                } else if (artifact.Additive) {
+                            <td>+@artifact.Value</td>
+                } else if (+artifact.Value < 2) {
+                            <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+                } else {
+                            <td>@(artifact.Value)x</td>
+                }
+            <td>@properSpacing(artifact.Boost.ToString())</td>
         </tr>
     }
 
@@ -515,7 +516,7 @@
                                 }
                                 foreach (var fuel in mission.Fuels)
                                 {
-                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg)?.Image}";
+                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg)?.image}";
                                     var target = fuelTargets[fuel.Egg];
                                     var percent = fuel.Amount / target * 100;
                                     var eggName = string.Join(" ", Regex.Split(Enum.GetName(typeof(Ei.Egg), fuel.Egg).ToString(), @"(?=\p{Lu})"));
