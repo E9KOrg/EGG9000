@@ -282,17 +282,17 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        //public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners {
+        //    get {
+        //        throw new NotImplementedException();
+        //    }
+        //}
 
-        public InteractionContextType? ContextType {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        //public InteractionContextType? ContextType {
+        //    get {
+        //        throw new NotImplementedException();
+        //    }
+        //}
 
         public GuildPermissions Permissions {
             get {
