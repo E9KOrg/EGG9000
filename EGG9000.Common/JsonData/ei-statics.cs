@@ -13,7 +13,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
         public int id { get; set; }
         public string name { get; set; }
         public string emoji { get; set; }
-        private string imageUrlEnder { get; set; }
+        public string imageUrlEnder { get; set; }
         public string image { 
             get {
                 return "https://vignette.wikia.nocookie.net/egg-inc/images/" + imageUrlEnder;
@@ -26,7 +26,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
     public class  EggIncBoost {
         public string id { get; set; }
         public string name { get; set; }
-        private string typeString { get; set; }
+        public string typeString { get; set; }
         public EggIncBoostTypeEnum type {
             get {
                 if(Enum.TryParse<EggIncBoostTypeEnum>(typeString, ignoreCase: true, out var parsedEnum)) return parsedEnum;
@@ -35,7 +35,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
             }
         }
         public string emoji { get; set; }
-        private int timeMinutesInt {  get; set; }
+        public int timeMinutesInt {  get; set; }
         public TimeSpan timeMinutes {
             get {
                 return TimeSpan.FromMinutes(timeMinutesInt);
