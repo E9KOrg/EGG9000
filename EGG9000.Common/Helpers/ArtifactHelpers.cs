@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Common.Helpers {
 
@@ -23,6 +24,45 @@ namespace EGG9000.Common.Helpers {
 
     public static class ArtifactHelpers {
 
+        public static readonly long[] xpThresholds = [
+            0, 500, 3000, 8000, 18000, 43000, 93000, 193000, 443000, 943000, 1943000,
+            3943000, 7943000, 15943000, 30943000, 50943000, 85943000, 145943000, 245943000,
+            395943000, 595943000, 845943000, 1145943000, 1470943000, 1820943000, 2220943000,
+            2720943000, 3320943000, 4070943000, 5070943000
+        ];
+
+        public static readonly List<double> levelMultipliers = [
+            1.00, 1.05, 1.10,
+            1.15, 1.20, 1.25,
+            1.30, 1.35, 1.40,
+            1.45, 1.50, 1.55,
+            1.60, 1.65, 1.70,
+            1.75, 1.85, 2.00,
+            2.25, 2.50, 3.00,
+            3.50, 4.00, 4.50,
+            5.00, 6.00, 7.00,
+            8.00, 9.00, 10.00
+        ];
+
+        public static readonly List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipDataTable = [
+            (Spaceship.Galeggtica, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            (Spaceship.Galeggtica, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            (Spaceship.Galeggtica, DurationType.Epic, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            (Spaceship.Chickfiant, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            (Spaceship.Chickfiant, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            (Spaceship.Chickfiant, DurationType.Epic, [0.0, 482.673, 1615.316, 274.828, 431.604, 0.0]),
+            (Spaceship.Voyegger, DurationType.Short, [0.0, 0.0, 9010.667, 8244.540, 3056.498, 1212.981, 654.000]),
+            (Spaceship.Voyegger, DurationType.Long, [579.538, 0.0, 934.343, 372.407, 653.134, 0.0, 0.0]),
+            (Spaceship.Voyegger, DurationType.Epic, [270.244, 133.825, 119.026, 113.645, 105.118, 161.565, 143.500]),
+            (Spaceship.Henerprise, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
+            (Spaceship.Henerprise, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
+            (Spaceship.Henerprise, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
+            //These are the Henerprise values as it is likely a decent (initial) estimation that the drop rates are similar
+            (Spaceship.Atreggies, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
+            (Spaceship.Atreggies, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
+            (Spaceship.Atreggies, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
+        ];
+
         public static string GetArtifactFairnessScoreString(List<ArtifactCount> ArtifactHall) {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? "0 (null artifact hall)" : GetArtifactFairnessScore(ArtifactHall).ToString("E");
         }
@@ -31,7 +71,7 @@ namespace EGG9000.Common.Helpers {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
 
-        public readonly static Dictionary<EggIncArtifactInstance, List<double>> BaseCraftingCoefficients = new() {
+        public static readonly Dictionary<EggIncArtifactInstance, List<double>> BaseCraftingCoefficients = new() {
             { new() { Artifact = "Lunar Totem", Tier = 2}, new() { 30, 0, 0} },
             { new() { Artifact = "Lunar Totem", Tier = 3}, new() { 20, 0, 0} },
             { new() { Artifact = "Lunar Totem", Tier = 4}, new() { 30, 250, 1500} },
@@ -240,8 +280,9 @@ namespace EGG9000.Common.Helpers {
             return (artifactHall is null || artifactHall.Count == 0) ? 0 : (uint)artifactHall.Where(a => (a.Artifact.Tier == 4 && a.Artifact.Artifact != "Lunar Totem") || (a.Artifact.Tier == 3 && a.Artifact.Artifact == "Tungsten Ankh")).Sum(c => c.NumberCrafted);
         }
 
-        public static int GetLegendaryArtifactCount(List<ArtifactCount> artifactHall) {
-            return artifactHall?.Where(a => a.Artifact?.Rarity == 4).Count() ?? 0;
+        public static int GetLegendaryArtifactCount(List<ArtifactCount> artifactHall, bool llcCount = false) {
+            //Don't account for leg totems in LLC count
+            return artifactHall?.Where(a => a.Artifact?.Rarity == 4 && (!llcCount || a.Artifact.Artifact != "Lunar Totem")).Count() ?? 0;
         }
 
         public static string GetAfxSetString(List<EggIncArtifactInstance> set) {

@@ -172,11 +172,6 @@ namespace EGG9000.Common.Helpers {
             var points = backup.ShipsSent.Where(x => x.ship == ship).ToList().Sum(s => s.count * ((int)s.type < 3 ? (1 + ((int)s.type * .4)) : 0));
             double sum = LevelRequirements[ship].Sum();
 
-            if(ship == Spaceship.Atreggies) {
-                Console.WriteLine("Points: " + points);
-                Console.WriteLine("Sum: " + sum);
-            }
-
             return (points == 0 ? 0 : (points / sum > 1 ? 1 : points / sum));
         }
 

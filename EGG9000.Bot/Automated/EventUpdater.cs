@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Automated {
             var customization = dbguild.EventCustomzations?.FirstOrDefault(ec => ec.Type == customEvent.Type);
             if(customization is null) {
                 //The only time this should happen is when we first push this live
-                if(palaceGuild?.EventCustomzations is null || palaceGuild.EventCustomzations.Any(e => e.Type == customEvent.Type)) return null;
+                if(palaceGuild?.EventCustomzations is null || !palaceGuild.EventCustomzations.Any(e => e.Type == customEvent.Type)) return null;
                 customization = palaceGuild.EventCustomzations?.FirstOrDefault(ec => ec.Type == customEvent.Type);
             }
             return customization;
@@ -274,7 +274,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public static Embed GetEmbed(Event e, EventCustomization eventC, bool CrossOut = false, bool Ended = false) {
+        public static Embed GetEmbed(Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = (1 - e.Multiplier) * 100;
