@@ -9,6 +9,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -111,7 +113,7 @@ namespace EGG9000.Common.Services {
         }
 
         private Task PrintLog(LogMessage msg) {
-            Console.WriteLine(msg.ToString());
+            Console.WriteLine(JsonConvert.SerializeObject(msg, Formatting.Indented));
             if(msg.ToString().Contains("Rate limit triggered")) {
                 _logger.Log(LogLevel.Trace, "Discord Log: {msg}", msg.Message);
             } else if(msg.Exception is not null) {
