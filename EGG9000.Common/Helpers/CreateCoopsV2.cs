@@ -162,7 +162,7 @@ namespace EGG9000.Common.Helpers {
                 WasAssigned = true
             };
 
-            var eggEmoji = EggIncEggs.GetEggById((int)targetCoop.Contract.Details.Egg).Emoji;
+            var eggEmoji = EggIncStatics.GetEggById((int)targetCoop.Contract.Details.Egg).emoji;
             var mention = user.Mention;
             if(dbuser.EggIncAccounts.Count > 1) {
                 mention += $"({eggIncName})";

@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using Newtonsoft.Json;
 using System;
@@ -120,54 +121,35 @@ namespace EGG9000.Common.Helpers {
         public static Tier GetTier(int afxId, int tierNumber) {
             var data = GetEiAfxData();
             // Should be do so, because stone fragment tiers have a different afx_id.
-            var artifact = data.artifact_families.FirstOrDefault(x => x.tiers.Any(y => y.afx_id == afxId));
-            if(artifact is null) {
-                throw new Exception("Unable to locate artifact family with afx_id: " + afxId);
-            }
+            var artifact = data.artifact_families.FirstOrDefault(x => x.tiers.Any(y => y.afx_id == afxId)) 
+                ?? throw new Exception("Unable to locate artifact family with afx_id: " + afxId);
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == tierNumber);
-            if(tier is null) {
-                throw new Exception($"Unable to locate tier {tierNumber} for {artifact.name}");
-            }
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == tierNumber)
+                ?? throw new Exception($"Unable to locate tier {tierNumber} for {artifact.name}");
 
             return tier;
         }
 
         public static int SlotCount(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
-            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
-            if(artifact is null) {
-                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
-            }
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase)) 
+                ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
-            if(tier is null) {
-                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
-            }
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier) 
+                ?? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
 
-            if(!tier.has_rarities)
-                return 0;
+            if(!tier.has_rarities) return 0;
             var rarity = tier.effects.FirstOrDefault(x => x.afx_rarity == instance.Rarity - 1);
-            if(rarity is null) {
-                throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}");
-            }
-
-            return rarity.slots ?? 0;
+            return rarity is null
+                ? throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}")
+                : rarity.slots ?? 0;
         }
 
         public static string GetProperNameFromJson(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
-            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
-            if(artifact is null) {
-                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
-            }
-
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
             var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
-            if(tier is null) {
-                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
-            }
-
-            return tier.name;
+            return tier is null ? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}") : tier.name;
         }
 
         public static string GetTierName(EggIncArtifactInstance instance) {
@@ -185,21 +167,13 @@ namespace EGG9000.Common.Helpers {
             }
 
             var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier + (artifact.type.Equals("Stone", StringComparison.OrdinalIgnoreCase) && !isFragment ? 1 : 0));
-            if(tier is null) {
-                throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
-            }
-
-            return tier.name;
+            return tier is null ? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}") : tier.name;
         }
 
         public static string GetNameFromJson(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
             var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
-            if(artifact is null) {
-                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
-            }
-
-            return artifact.id;
+            return artifact is null ? throw new Exception("Unable to locate artifact family: " + instance.Artifact) : artifact.id;
         }
 
 

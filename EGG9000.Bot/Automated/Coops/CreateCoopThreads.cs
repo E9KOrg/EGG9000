@@ -60,8 +60,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         coopGroup.GuildId = dbguild.Id;
                     }
                 }
-
-                var completedCoops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && (x.Status == CoopStatusEnum.Completed || x.Status == CoopStatusEnum.Failed)).OrderBy(x => x.CoopCompleted).ToListAsync(CancellationToken.None);
                 _logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
 
                 int i = 0;
@@ -72,12 +70,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(i++ > 5) {
                         i = 0;
                         _logger.LogInformation("Sleeping for 2 seconds");
-                        await Task.Delay(2000);
+                        await Task.Delay(2000, CancellationToken.None);
                     }
 
-                    await Task.Delay(500);
+                    await Task.Delay(500, CancellationToken.None);
                     try {
-                        var (thread, parent) = await TryCreateCoopThread(guildContracts.First(gc => string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase)), guild, coop, servers, completedCoops);
+                        var (thread, parent) = await TryCreateCoopThread(guildContracts.First(gc => string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase)), guild, coop, servers);
                         if(thread != null) {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
@@ -100,12 +98,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
-                
-                
                 return await (parentChannel as SocketTextChannel).CreateThreadAsync(
                     threadName,
                     ThreadType.PrivateThread,
-                    ThreadArchiveDuration.ThreeDays,
+                    ThreadArchiveDuration.OneDay,
                     invitable: false, options: new RequestOptions {
                         RatelimitCallback = RateLimit, RetryMode = RetryMode.AlwaysRetry, Timeout = 5000
                     }
@@ -118,11 +114,12 @@ namespace EGG9000.Bot.Automated.Coops {
             return null;
         }
 
-        private async Task RateLimit(IRateLimitInfo info) {
+        private Task RateLimit(IRateLimitInfo info) {
             Console.WriteLine(JsonConvert.SerializeObject(info, Formatting.Indented));
+            return Task.CompletedTask;
         }
 
-        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers, List<Coop> completedCoops) {
+        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers) {
             var contractEmbed = ContractUpdater.GetContractEmbed(guildContract, guild, (Ei.Contract.Types.PlayerGrade)coop.League);
             SocketGuildChannel headerChannel = null;
 
@@ -150,16 +147,16 @@ namespace EGG9000.Bot.Automated.Coops {
                     };
                     SocketRole gradeRole = null;
                     if(gradeRoleEnum != GuildChannelType.General) {
-                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
+                        gradeRole = await _client.GetRoleAsync(gradeRoleEnum, server.Guild);
                     }
 
                     List<SocketRole> ultraRoles = [];
-                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, guild);
+                    var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, server.Guild);
                     if(ultraStandardRole != null) ultraRoles.Add(ultraStandardRole);
-                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, guild);
+                    var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, server.Guild);
                     if(ultraProRole != null) ultraRoles.Add(ultraProRole);
 
-                    headerChannel = await guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
+                    headerChannel = await server.Guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
                 }
                 if(headerChannel == null) continue;
                 try {
@@ -167,28 +164,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 } catch(Exception) { }
             }
 
-            if(completedCoops is null || completedCoops.Count == 0) {
-                return (null, null);
-            }
-
-            var completedCoop = completedCoops.First();
-            completedCoops.Remove(completedCoop);
-            var completedCoopParentChannel = (_client.GetChannel(completedCoop.ThreadParentChannel) as SocketTextChannel);
-            var coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => t.IsLocked && !t.IsArchived && t.Id == completedCoop.ThreadID);
-            if(coopThread != null) {
-                try {
-                    await coopThread.ModifyAsync(a => a.Archived = true);
-                } catch(Exception) {
-                    await coopThread.ModifyAsync(a => a.Archived = true);
-                }
-                coopThread = completedCoopParentChannel.Threads.FirstOrDefault(t => !t.IsArchived && t.Id == completedCoop.ThreadID);
-                if(coopThread == null) {
-                    var server = servers.Where(x => x.Guild.Id == completedCoop.GuildId).FirstOrDefault();
-                    return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
-                } else {
-                    _logger.LogInformation("Unable to archive co-op thread for {coop} - was not able to free up space, re-iterating", coop.Name);
-                }
-            }
             return (null, null);
         }
 

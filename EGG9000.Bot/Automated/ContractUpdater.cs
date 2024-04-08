@@ -155,7 +155,7 @@ namespace EGG9000.Bot.Automated {
                 .WithDescription(description)
                 .WithAuthor(
                     new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
-                    .WithIconUrl(EggIncEggs.GetEggById((int)guildContract.Contract.Details.Egg).Image));
+                    .WithIconUrl(EggIncStatics.GetEggById((int)guildContract.Contract.Details.Egg).image));
 
             var startIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 5 : (int)grade;
             var endIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 1 : (int)grade;
@@ -163,7 +163,7 @@ namespace EGG9000.Bot.Automated {
             for(var i = startIndex; i >= endIndex; i--) {
                 var gradeSpec = guildContract.Contract.Details.GradeSpecs[i - 1];
                 var maxTargetLength = gradeSpec.Goals.Select(x => x.TargetAmount.ToEggString()).Max(x => x.Length);
-                var goals = string.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncEggs.GetReward(x)}"));
+                var goals = string.Join("\n", gradeSpec.Goals.Select(x => $"`{x.TargetAmount.ToEggString().PadLeft(maxTargetLength)}` {EggIncStatics.GetReward(x)}"));
                 var length = TimeSpan.FromSeconds(gradeSpec.LengthSeconds);
                 goals += $"\n**Length**: {length.Humanize(precision: 2).ShortenTime()}";
                 if(gradeSpec.Modifiers.Any()) {

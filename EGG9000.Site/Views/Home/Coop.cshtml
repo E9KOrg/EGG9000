@@ -98,7 +98,7 @@
 							@Model.GoalDetails[i].Goal.TargetAmount.ToEggString()
 							<img src="/images/Egg_@((int)Model.Contract?.Details.Egg).png" class="Emoji" />
 							<br />
-							<span style="white-space: nowrap">@Html.Raw(EmojiToImage(EggIncEggs.GetReward(Model.GoalDetails[i].Goal)))</span>
+							<span style="white-space: nowrap">@Html.Raw(EmojiToImage(EggIncStatics.GetReward(Model.GoalDetails[i].Goal)))</span>
 						</div>
 					</div>
 				}
