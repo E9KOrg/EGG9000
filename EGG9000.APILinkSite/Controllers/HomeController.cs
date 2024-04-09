@@ -39,7 +39,7 @@ namespace EGG9000.APILinkSite.Controllers {
 
         public async Task<IActionResult> GetBackups([FromBody] List<BackupRequest> requests) {
             var queue = new ConcurrentQueue<BackupResponse>();
-            await ForEachAsync(requests, 10, async (request) => {
+            await ForEachAsync(requests, 4, async (request) => {
                 queue.Enqueue(await _getBackup(request));
             });
 

@@ -699,7 +699,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
                 }
-
+                timings.Set(5.1);
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
                 List<ulong> roleMembersCaught = [];
                 (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
@@ -712,7 +712,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     });
 
-                
+                timings.Set(5.2);
                 if(pingsLeft.Any()) {
                     var currentContent = "";
                     var pingsPerCycle = 1500 / 22;
@@ -734,7 +734,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     if(deleteAfter) await editPingsInto.DeleteAsync();
                 }
-
+                timings.Set(5.3);
                 var usersAdded = usersNeedingChannelPermissions.Distinct().ToList();
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
@@ -748,7 +748,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 //Handle waiting on assigned
                 var missingFromServer = false;
-
+                timings.Set(5.4);
                 if(usersNotJoined.Count == 0 && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed && coop.Status != CoopStatusEnum.CompletedAllCheckIn) {
                     coop.Status = CoopStatusEnum.AllAssignedJoined;
                 } else {
@@ -828,7 +828,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     lastMessage += $"Coop **{coop.Name}** is ready for the following to join: {string.Join(", ", userList)}\n";
                 }
-
+                timings.Set(5.5);
                 var giftInfos = usersWithStatus.Where(x => x.Status is not null && x.Status.FarmInfo is not null && x.FarmStats is not null).Select(x => new {
                     Shipping = x.Status.ContributionRate / x.FarmStats.MaxShippingRate * 100,
                     Habs = x.Status.ProductionParams.FarmPopulation / x.Status.ProductionParams.FarmCapacity * 100,
@@ -872,7 +872,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 lastMessage += $"\n</coopsettings:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "coopsettings")?.Id ?? 0}> Receive DM pings for various events in the co-op";
                 lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "fixfullcooperror")?.Id ?? 0}> If you get the error co-op is full, try running this command to free up the space.";
 
-
+                timings.Set(5.6);
 
                 var userWithDifferentGrade = usersWithStatus.FirstOrDefault(x => x.Backup is not null && x.Backup.Farms.Any(y => y.CoopId is not null && y.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase) && (uint)y.Grade != coop.League));
                 if(!coop.FinishedOrFailed() && userWithDifferentGrade is not null) {
