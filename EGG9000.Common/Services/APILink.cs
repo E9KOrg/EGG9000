@@ -159,7 +159,7 @@ namespace EGG9000.Common.Services {
                 var tasks = new List<Task>();
                 var responses = new ConcurrentQueue<ApiResponse<List<Ei.EggIncFirstContactResponse>>>();
                 var url = $"{urlBase}GetBackups";
-                var partitions = Partition(backupsNeeded, 250);
+                var partitions = Partition(backupsNeeded, 25);
                 var i = 1;
                 foreach(var partition in partitions) {
                     if(token.IsCancellationRequested)

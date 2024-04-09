@@ -24,6 +24,9 @@ namespace EGG9000.Common.Factories {
         public void Set(int num) {
             Set(num.ToString());
         }
+        public void Set(double num) {
+            Set(num.ToString());
+        }
         public void Set(string name) {
             times.Add((name, stopwatch.Elapsed));
             _logger?.LogTrace("Timing: {name} {time}", name, stopwatch.Elapsed.Humanize().ShortenTime());

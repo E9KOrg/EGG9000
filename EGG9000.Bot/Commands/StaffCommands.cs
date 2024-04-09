@@ -391,7 +391,7 @@ namespace EGG9000.Bot.Commands {
                 jobService.RunJob(serviceName);
             }
             if(!(service as IUpdaterService).Running()) {
-                await command.RespondAsync($"The service {serviceName} is already stopped.");
+                await command.RespondAsync($"The service {serviceName} is already running.");
                 return;
             }
             await command.RespondAsync($"Attempting to run {serviceName}");
