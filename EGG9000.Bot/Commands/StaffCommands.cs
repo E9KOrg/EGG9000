@@ -8,6 +8,9 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Humanizer;
+
+using MassTransit.SagaStateMachine;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -428,6 +431,21 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
+        }
+
+        [SlashCommand(Description = "Ping everyone in a co-op with a message", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task PingEveryoneInCoop(FauxCommand command, [SlashParam] string message, ApplicationDbContext db) {
+            var coop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.ChannelId);
+            if(coop == null) {
+                await command.RespondAsync($"Error finding co-op for this thread", ephemeral: true); 
+                return;
+            }
+
+            await command.RespondAsync($"Pinging now", ephemeral: true);
+
+            var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
+
+            await command.Channel.SendMessageAsync($"{pings} {message}");
         }
     }
 }
