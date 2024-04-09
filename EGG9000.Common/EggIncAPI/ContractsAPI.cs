@@ -1,10 +1,16 @@
 ﻿
 using ComponentAce.Compression.Libs.zlib;
+
 using EGG9000.Common.Database.Entities;
+
 using Ei;
+
 using Google.Protobuf;
+
 using Microsoft.Extensions.Caching.Memory;
+
 using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,7 +41,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 Build = "111284",
                 Platform = "IOS",
                 Country = "US",
-                Language = "en", 
+                Language = "en",
                 Debug = false
             };
             if(!noUserID) {
@@ -242,57 +248,53 @@ namespace EGG9000.Bot.EggIncAPI {
                 SecondsFullGametime = 391564.659540082,
                 SoulEggs = 570149167.28294,
                 CurrentClientVersion = ClientVersion,
-                Debug = false, 
+                Debug = false,
             }, "EI4765194876354560", true);
         }
 
         public static async Task<ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, string EIID = null, List<UserCoopXref> xrefs = null, CancellationToken cancellationToken = default) {
-            try {
-                var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
-                using var client = new HttpClient(handler);
-                client.BaseAddress = new Uri(BaseAddressNew);
+            var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
+            using var client = new HttpClient(handler);
+            client.BaseAddress = new Uri(BaseAddressNew);
 
-                var ms1 = new MemoryStream();
-                var model = new ContractCoopStatusRequest {
-                    ContractIdentifier = ContractName,
-                    CoopIdentifier = CoopName.ToLower(),
-                    Rinfo = GetInfo(EIID ?? UserId),
-                    UserId = EIID ?? UserId,
-                    ClientVersion = ClientVersion
-                };
-                model.WriteTo(ms1);
-                ms1.Position = 0;
-                var sr = new StreamReader(ms1);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
-                client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-                var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
+            var ms1 = new MemoryStream();
+            var model = new ContractCoopStatusRequest {
+                ContractIdentifier = ContractName,
+                CoopIdentifier = CoopName.ToLower(),
+                Rinfo = GetInfo(EIID ?? UserId),
+                UserId = EIID ?? UserId,
+                ClientVersion = ClientVersion
+            };
+            model.WriteTo(ms1);
+            ms1.Position = 0;
+            var sr = new StreamReader(ms1);
+            var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
+            var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+            client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+            client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+            bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+            var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
 
-                if(response.IsSuccessStatusCode) {
-                    var r = await response.Content.ReadAsStringAsync(cancellationToken);
-                    var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
+            if(response.IsSuccessStatusCode) {
+                var r = await response.Content.ReadAsStringAsync(cancellationToken);
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
 
 
-                    var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
-                    coopStatus.Success = true;
-                    if(xrefs != null && coopStatus.Participants.Any(x => x.UserName == "[departed]")) {
-                        var departed = coopStatus.Participants.First(x => x.UserName == "[departed]");
-                        var matchingUser = xrefs.Where(x => x.LastStatus is not null).FirstOrDefault(x => x.LastStatus.ContributionAmount == departed.ContributionAmount);
-                        if(matchingUser is not null) {
-                            departed.UserName = matchingUser.LastStatus.UserName;
-                        }
+                var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
+                coopStatus.Success = true;
+                if(xrefs != null && coopStatus.Participants.Any(x => x.UserName == "[departed]")) {
+                    var departed = coopStatus.Participants.First(x => x.UserName == "[departed]");
+                    var matchingUser = xrefs.Where(x => x.LastStatus is not null).FirstOrDefault(x => x.LastStatus.ContributionAmount == departed.ContributionAmount);
+                    if(matchingUser is not null) {
+                        departed.UserName = matchingUser.LastStatus.UserName;
                     }
-                    return coopStatus;
-                } else {
-                    return null;
                 }
-
-            } catch(Exception) {
+                return coopStatus;
+            } else {
                 return null;
             }
+
         }
 
         public static T GetFromAuthenticatedMessage<T>(byte[] authenticatedMessage) where T : IMessage, new() {
@@ -302,7 +304,7 @@ namespace EGG9000.Bot.EggIncAPI {
             if(authMessageDecoded.Compressed) {
                 using var outMemoryStream = new MemoryStream();
                 using var outZStream = new ZOutputStream(outMemoryStream);
-                using Stream inMemoryStream = new MemoryStream([..authMessageDecoded.Message]);
+                using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
                 CopyStream(inMemoryStream, outZStream);
                 outZStream.finish();
                 message.MergeFrom(outMemoryStream.ToArray());
@@ -319,7 +321,7 @@ namespace EGG9000.Bot.EggIncAPI {
             if(authMessageDecoded.Compressed) {
                 using var outMemoryStream = new MemoryStream();
                 using var outZStream = new ZOutputStream(outMemoryStream);
-                using Stream inMemoryStream = new MemoryStream([..authMessageDecoded.Message]);
+                using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
                 CopyStream(inMemoryStream, outZStream);
                 outZStream.finish();
                 message.MergeFrom(outMemoryStream.ToArray());
@@ -344,7 +346,7 @@ namespace EGG9000.Bot.EggIncAPI {
             var _magic = 0x3b9af419;
             var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(sha256Hash.ComputeHash(Encoding.ASCII.GetBytes("THE SECRETS OF THE UNIVERSE WILL BE UNLOCKED"))));
             byteArray[_magic % byteArray.Length] = 0x1b;
-            return ByteArrayToString(sha256Hash.ComputeHash([..byteArray.Concat(_salt)]));
+            return ByteArrayToString(sha256Hash.ComputeHash([.. byteArray.Concat(_salt)]));
         }
 
         public static string ByteArrayToString(byte[] ba) {

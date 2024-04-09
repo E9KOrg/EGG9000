@@ -52,6 +52,10 @@ namespace EGG9000.Bot.Automated.Coops {
             var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(CancellationToken.None);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
+#if DEBUG
+            coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+#endif
+
             var throttler = new SemaphoreSlim(3);
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -66,8 +70,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 var tasks = new List<Task>();
 
                 var rng = new Random();
-                //foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
-                foreach(var coop in guildCoops) {
+                foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
+                //foreach(var coop in guildCoops) {
                     if(cancellationToken.IsCancellationRequested) break;
 
                     while(!await throttler.WaitAsync(5000, cancellationToken)) {
@@ -75,7 +79,11 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     tasks.Add(Task.Run(async () => {
                         try {
+                            var sw = new Stopwatch();
+                            sw.Start();
                             await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken);
+                            sw.Stop();
+                            _logger.LogTrace("Finished processing {coopName}, Time: {time}", coop.Name, sw.Elapsed.Humanize());
                         } finally {
                             throttler.Release();
                         }
@@ -344,10 +352,11 @@ namespace EGG9000.Bot.Automated.Coops {
             timings.Start();
             string coopName = null;
             try {
+                timings.Set("Pre-Setup");
                 using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
                 //** Get Coop
-                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.Id == coopid, cancellationToken);
+                var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid, cancellationToken);
                 if(coop == null) {
                     _logger.LogWarning("Unable to find co-op with id {coopid}", coopid);
                     return;
@@ -396,9 +405,15 @@ namespace EGG9000.Bot.Automated.Coops {
                 var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
 
 
-                timings.Set("Start");
+                timings.Set("GetStatus");
 
-                var statusReponse = await GetStatus(coop, coopThread, cancellationToken);
+                var statusReponse = new StatusResponse();
+                try {
+                    statusReponse = await GetStatus(coop, coopThread, cancellationToken);
+                } catch(TaskCanceledException) {
+                    _logger.LogWarning("Timeout getting status for {coopName}", coop.Name);
+                    return;
+                }
 
                 timings.Set("Got status");
 
@@ -668,9 +683,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 timings.Set(5);
 
                 var threadObj = coopThread as SocketThreadChannel;
-                var currentUsers = coop.UserCoopsXrefs.Where(u => u.JoinedCoop).Select(u => u.User.DiscordId).Distinct().ToList();
+                //var currentUsers = coop.UserCoopsXrefs.Where(u => u.JoinedCoop).Select(u => u.User.DiscordId).Distinct().ToList();
+                var currentUserDiscordIds = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).Select(x => users.FirstOrDefault(u => u.User.Id == x.UserId)).Where(x => x is not null).Select(x => x.User.DiscordId);
                 foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
-                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUsers.Any(u => u == userStatus.DiscordUser.Id)) {
+                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUserDiscordIds.Any(u => u == userStatus.DiscordUser.Id)) {
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
                     }
 
@@ -690,7 +706,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
                     .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
                     .ForEach(role => {
-                        if(role.Members.Any(m => !currentUsers.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
+                        if(role.Members.Any(m => !currentUserDiscordIds.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
                             pingsLeft.Add(role.Mention);
                             roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
                         }
@@ -980,7 +996,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     await HandleFinished(_db, coopDetails.CoopParticipants, coopThread);
                 }
 
-                timings.Set(6);
+                timings.Set(7);
 
                 coop.LastStatusUpdate = status;
                 if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
@@ -1066,12 +1082,13 @@ namespace EGG9000.Bot.Automated.Coops {
                                 await coopThread.ModifyAsync(x => x.Name = coopname);
                                 break;
                             } catch(Exception) {
+                                _logger.LogInformation("Error updating thread name for {coopName}, delaying...", coop.Name);
                                 await Task.Delay(new Random().Next(500), cancellationToken);
                             }
                         }
                     }
 
-
+                    timings.Set(8);
 
                     if(lastMessage != "")
                         msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
@@ -1184,7 +1201,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         embedBuilder.AddField("Final Amount", status.TotalAmount.ToEggString(), inline: true);
                         embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
                     }
-
+                    timings.Set(9);
                     await UpdateChannel(msgs, embedBuilder.Build(), coopThread, coop, statusReponse.DiscordMessages);
                 }
 
@@ -1198,7 +1215,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var times = timings.Finished();
 
-                //_logger.LogInformation("Co-op timings {timings} - {coop}", String.Join(",", times.Select(x => $"{x.name}:{x.time.Humanize().ShortenTime()}")), coop.Name);
+                _logger.LogTrace("Co-op timings {timings} - {coop}", String.Join(",", times.Select(x => $"{x.name}:{x.time.Humanize().ShortenTime()}")), coop.Name);
             } catch(Exception e) {
                 _logger.LogError(e, "Error in co-op {coopid}", coopName ?? coopid.ToString());
                 _bugsnag.Notify(e);

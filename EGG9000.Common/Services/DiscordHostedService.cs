@@ -113,27 +113,32 @@ namespace EGG9000.Common.Services {
         }
 
         private Task PrintLog(LogMessage msg) {
-            Console.WriteLine(JsonConvert.SerializeObject(msg, Formatting.Indented));
-            if(msg.ToString().Contains("Rate limit triggered")) {
-                _logger.Log(LogLevel.Trace, "Discord Log: {msg}", msg.Message);
-            } else if(msg.Exception is not null) {
+            if(msg.Exception is not null) {
                 _logger.LogError(msg.Exception, "Discord Log: Exception Thrown");
             } else {
-                _logger.Log(LogLevel.Information, "Discord Log: {msg}", msg.Message);
+                _logger.LogInformation("Discord Log: {msg}", msg.Message);
             }
             return Task.CompletedTask;
         }
 
         public static readonly string DBGuildsKey = "DBGuildsCache";
 
+        private readonly SemaphoreSlim _dbGuildsKeySemaphore = new SemaphoreSlim(1, 1);
         private async Task<Guild> GetDbGuild(SocketGuild guild) {
-            if(!_cache.TryGetValue(DBGuildsKey, out List<Guild> guildData)) {
-                guildData = await _db.Guilds.ToListAsync();
-                _cache.Set(DBGuildsKey, guildData, TimeSpan.FromMinutes(30));
+            await _dbGuildsKeySemaphore.WaitAsync();
+            try {
+                if(!_cache.TryGetValue(DBGuildsKey, out List<Guild> guildData)) {
+                    guildData = await _db.Guilds.ToListAsync();
+                    _cache.Set(DBGuildsKey, guildData, TimeSpan.FromMinutes(30));
+                }
+                _dbGuildsKeySemaphore.Release();
+                return guildData.First(x => x.Id == guild.Id || x.OverflowServers.Any(y => y == guild.Id));
+            } catch(Exception) { 
+                _dbGuildsKeySemaphore.Release();
+                throw;
             }
-
-            return guildData.First(x => x.Id == guild.Id || x.OverflowServers.Any(y => y == guild.Id));
         }
+
         public async Task<List<SocketCategoryChannel>> GetAllCoopCategories(SocketGuild guild) {
             var dbguild = await GetDbGuild(guild);
             if(guild.Id == dbguild.Id) {
