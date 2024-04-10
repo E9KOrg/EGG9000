@@ -865,7 +865,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 //Checking if users are gusset glitching
                 var afCheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
-                if(afCheaterChannel != null) {
+                if(afCheaterChannel != null && !status.AllGoalsAchieved) {
                     var contractScalar = coop.Contract.Details?.GradeSpecs[((int)coop.League) - 1]?.Modifiers?.FirstOrDefault(m => m.Dimension == Ei.GameModifier.Types.GameDimension.HabCapacity)?.Value ?? 1;
                     foreach(var u in usersWithStatus.Where(x => x.Xref is not null && !x.Xref.GussetCheatDetected)) {
                         var farm = u.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
