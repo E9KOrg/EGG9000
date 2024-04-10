@@ -1,8 +1,10 @@
 ﻿
 using Discord;
 using Discord.WebSocket;
+using EGG9000.Bot;
 using EGG9000.Bot.Commands;
 using EGG9000.Bot.Common.Helpers;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -13,8 +15,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace EGG9000.Common.Services {
 
@@ -129,31 +133,31 @@ namespace EGG9000.Common.Services {
                 return;
             }
 
-            
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser is not null && dbuser.TempDisabled) {
-                var welChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
-                var disabledMsg = $"Welcome to the server {user.Mention}! Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.";
-                await welChannel.SendMessageAsync(disabledMsg);
-                await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
-            }
-
-            if(dbuser != null && dbuser.GuildId == user.Guild.Id) {
-                await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
-                var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
-                await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
-                return;
-            } else if(dbuser is not null && dbuser.GuildId == 0) {
-                var previouslyHere = await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id);
-                if(previouslyHere) {
-                    dbuser.GuildId = user.Guild.Id;
-                    dbuser.UpdateAccounts();
-                    await db.SaveChangesAsync();
-                    await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
-                    var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!" }, _logger);
-                    await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
+            if(dbuser is not null) {
+                if(dbuser.TempDisabled) {
+                    var disabledMsg = $"Welcome to the server {user.Mention}! Looks like you have previously been `/disable`-d, please wait for someone from staff to reach out to discuss this.";
+                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() { Text = disabledMsg }, _logger);
+                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
                     return;
                 }
+                dbuser.EggIncAccounts.ForEach(async account => {
+                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    if(rawBackup is null || rawBackup.Backup is null) return;
+                    var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                    account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;
+                });
+                if(dbuser.GuildId == 0 && await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id)) {
+                    dbuser.GuildId = user.Guild.Id;
+                }
+                dbuser.UpdateAccounts();
+                await db.SaveChangesAsync();
+                var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
+                var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
+                var roleText = role is not null ? $" You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}" : "";
+                var response = await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(dbuser.GuildId), GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
+                await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
+                return;
             }
 
             if(_debug) return;
