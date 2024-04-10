@@ -1,0 +1,52 @@
+﻿@model (List<Demerit> Demerits, string GuildName)
+@{
+    ViewData["Title"] = "Latest Demerits";
+
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+
+    var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
+    string emojiDelegage(Match match)
+    {
+        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
+    };
+}
+
+<table class="table table-striped">
+    <caption style="caption-side: top; text-align: center; font-weight: bold;">Latest Demerits for @Model.GuildName</caption>
+    <thead>
+        <tr>
+            <th class="text-left">Date</th>
+            <th>User</th>
+            <th>Reason</th>
+            @if (isAdmin)
+            {
+                <th></th>
+            }
+        </tr>
+    </thead>
+    @if (Model.Demerits.Count > 0)
+    {
+        <tbody>
+            @foreach (var demerit in Model.Demerits.OrderByDescending(x => x.When))
+            {
+                <tr class="@(demerit.When < DateTimeOffset.Now.AddMonths(-1) && !demerit.Permanent ? "Expired" : "")">
+                    <td style="white-space: nowrap">@demerit.When.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>@(demerit.User.DiscordUsername)</td>
+                    <td> @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage))</td>
+                    @if (isAdmin)
+                    {
+                        <td><a href="/admin/removedemerit?id=@demerit.Id" title="Remove Demerit">X</a></td>
+                    }
+                </tr>
+            }
+        </tbody>
+    }
+    else
+    {
+        <tbody>
+            <tr style="padding: 20px; margin-top:20px; text-align: center">
+                <td colspan="@(isAdmin ? "4" : "3")">No recent demerits.</td>
+            </tr>
+        </tbody>
+    }
+</table>
