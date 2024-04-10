@@ -12,6 +12,9 @@ namespace EGG9000.Common.Helpers {
                 try {
                     return (true, await db.SaveChangesAsync(cancellationToken));
                 } catch(Exception) {
+                    //Slight delay between attempts
+                    await Task.Delay(100, cancellationToken);
+                    //If we reached max retry count, exit
                     if(currentRetry >= retryCount) return (false, currentRetry);
                     currentRetry++;
                 }
