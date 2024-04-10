@@ -601,27 +601,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = true;
                         await coopChannel.SendMessageAsync($"Coop {coop.Name} is now projected to finish!");
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = false;
                         await coopChannel.SendMessageAsync($"Coop {coop.Name} is **no longer** projected to finish.");
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
 
@@ -654,14 +640,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         coop.Finished = true;
                         coop.Status = CoopStatusEnum.Completed;
                         finalChannelUpdate = true;
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
                 }
 
@@ -1210,12 +1189,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
 
-                try {
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                } catch(Exception) {
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                }
-
+                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
 
                 var times = timings.Finished();
 
@@ -1224,12 +1198,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogError(e, "Error in co-op {coopid}", coopName ?? coopid.ToString());
                 _bugsnag.Notify(e);
             }
-        }
-
-        public static int GetDigit(int number, int digit) {
-            for(var i = 0; i < digit - 1; i++)
-                number /= 10;
-            return number % 10;
         }
 
         public async Task HandleSleeping(UserFarmDetails user, ITextChannel coopChannel, Coop coop, ApplicationDbContext _db, Guild dbguild) {

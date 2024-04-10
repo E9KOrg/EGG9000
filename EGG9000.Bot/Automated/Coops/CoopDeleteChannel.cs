@@ -1,6 +1,7 @@
 ﻿using Discord;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,11 +35,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     coop.DeletedChannel = true;
                     _logger.LogWarning("Unable to find co-op channel for {coopName}", coop.Name);
                 }
-                try {
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                } catch(Exception) {
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                }
+                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
             }
         }
     }

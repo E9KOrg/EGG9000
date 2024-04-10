@@ -611,27 +611,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = true;
                         await coopThread.SendMessageAsync($"Coop {coop.Name} is now projected to finish!");
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = false;
                         await coopThread.SendMessageAsync($"Coop {coop.Name} is **no longer** projected to finish.");
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(!coop.Finished && status.Finished()) {
@@ -655,14 +641,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         finalChannelUpdate = true;
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         coop.ThreadArchived = true;
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
                 }
 
