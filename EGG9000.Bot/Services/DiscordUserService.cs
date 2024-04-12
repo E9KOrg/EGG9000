@@ -54,6 +54,7 @@ namespace EGG9000.Common.Services {
                 var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
                 await dbGuild.DeleteCoopThreadHeadersAsync(_discord, guildContract.Contract);
                 guildContract.DeletedChannel = true;
+                await db.SaveChangesAsync();
                 return;
             }
             var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
