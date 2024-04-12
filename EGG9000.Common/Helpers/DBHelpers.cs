@@ -1,0 +1,25 @@
+﻿using EGG9000.Common.Database;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace EGG9000.Common.Helpers {
+    public static class DBHelpers {
+
+        public static async Task<(bool, int)> SaveChangesAsyncRetry(this ApplicationDbContext db, int retryCount = 1, CancellationToken cancellationToken = default) {
+            var currentRetry = 0;
+            while(true) {
+                try {
+                    return (true, await db.SaveChangesAsync(cancellationToken));
+                } catch(Exception) {
+                    //Slight delay between attempts
+                    await Task.Delay(100, cancellationToken);
+                    //If we reached max retry count, exit
+                    if(currentRetry >= retryCount) return (false, currentRetry);
+                    currentRetry++;
+                }
+            }
+        }
+
+    }
+}

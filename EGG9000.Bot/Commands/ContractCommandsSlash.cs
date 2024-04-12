@@ -689,8 +689,8 @@ namespace EGG9000.Bot.Commands {
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
             await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract);
 
-            //guildContract.DeletedChannel = true;
-            //await db.SaveChangesAsync();
+            guildContract.DeletedChannel = true;
+            await db.SaveChangesAsync();
             var channel = (SocketTextChannel)command.Channel;
             await channel.DeleteAsync();
         }

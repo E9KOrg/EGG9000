@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
 using MassTransit.Initializers;
@@ -81,11 +82,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             coop.ThreadParentChannel = parent.Id;
                             coop.OverflowGuildId = parent.Guild.Id;
                             _logger.LogInformation("Thread created for {coopName}", coop.Name);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            }
+                            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                         } else {
                             _logger.LogWarning("Thread NOT created for {coopName}", coop.Name);
                         }
@@ -166,7 +163,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     if(ultraProRole != null) ultraRoles.Add(ultraProRole);
 
-                    headerChannel = await server.Guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop);
+                    headerChannel = await server.Guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop, _logger);
                 }
                 if(headerChannel == null) continue;
                 try {
