@@ -53,10 +53,16 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+            //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+            //coops = coops.Where(x => x.Id == Guid.Parse("72fea962-0e1d-4ab0-b56e-08dc53f75398")).ToList();
+            coops = coops.Take(20).ToList();
 #endif
 
-            var throttler = new SemaphoreSlim(3);
+
+            var totalCoops = coops.Count();
+            var completedCoops = 0;
+
+            var throttler = new SemaphoreSlim(5);
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
                 if(cancellationToken.IsCancellationRequested) break;
@@ -66,6 +72,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     continue;
                 await guild.DownloadUsersAsync();
                 _logger.LogInformation("Coops for guild: {guildName}, Count {count}", guild.Name, guildCoops.Count());
+                var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
 
                 var tasks = new List<Task>();
 
@@ -74,23 +81,35 @@ namespace EGG9000.Bot.Automated.Coops {
                 //foreach(var coop in guildCoops) {
                     if(cancellationToken.IsCancellationRequested) break;
 
-                    while(!await throttler.WaitAsync(5000, cancellationToken)) {
+                    while(!await throttler.WaitAsync(20000, cancellationToken)) {
                         _logger.LogInformation("Waiting on throttle");
                     }
                     tasks.Add(Task.Run(async () => {
                         try {
                             var sw = new Stopwatch();
                             sw.Start();
-                            await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken);
+                            await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken, slashCommands);
                             sw.Stop();
-                            _logger.LogTrace("Finished processing {coopName}, Time: {time}", coop.Name, sw.Elapsed.Humanize());
+                            var completed = Interlocked.Increment(ref completedCoops);
+                            _logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, totalCoops);
                         } finally {
                             throttler.Release();
                         }
                     }, cancellationToken));
                 }
 
-                await Task.WhenAll(tasks);
+                var watchdogCancellationSource = new CancellationTokenSource();
+                var watchdogCancelToken = watchdogCancellationSource.Token;
+                var watchdogTask = Task.Delay(TimeSpan.FromMinutes(10), watchdogCancelToken);
+                var allTasks = Task.WhenAll(tasks);
+                var completedTask = await Task.WhenAny(allTasks, watchdogTask);
+
+                if(completedTask == watchdogTask) { // Timeout occurred
+                    watchdogCancellationSource.Cancel();
+                    _logger.LogWarning("Watchdog Task Called");
+                }
+
+                
 
                 _logger.LogInformation("Co-op Count: {count}, Successful: {successful}, Error: {errors}, Guild: {guild}", guildCoops.Count(), tasks.Count(x => !x.IsFaulted), tasks.Count(x => x.IsFaulted), guild.Name);
             }
@@ -347,7 +366,7 @@ namespace EGG9000.Bot.Automated.Coops {
             };
         }
 
-        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken, List<SocketApplicationCommand> slashCommands) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
@@ -738,7 +757,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var usersAdded = usersNeedingChannelPermissions.Distinct().ToList();
                 foreach(var userAdded in usersAdded) {
                     var xref = coopDetails.CoopParticipants.FirstOrDefault(x => x.DiscordUser?.Id == userAdded);
-                    if(xref != null) {
+                    if(xref?.Xref != null) {
                         xref.Xref.AddedToChannel = true;
                     }
                 }
@@ -835,7 +854,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     x.Status.UserName,
                     x.Status.ProductionParams.FarmPopulation
                 });
-
                 var personToGiftTo = giftInfos
                     .Where(x =>
                         x.Shipping < 97 &&
@@ -861,11 +879,11 @@ namespace EGG9000.Bot.Automated.Coops {
                 } else if(coopDetails.CoopParticipants.Any(y => y.CoopStatus is not null && y.FarmStats is not null)) {
                     lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n\n";
                 }
-
+                timings.Set(5.53);
                 //New commands list, each is a quick-link to start using the command
                 lastMessage += "__Co-op Commands (click to use):__\n";
 
-                var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
+                timings.Set(5.54);
                 if(_client.GetChannelAsync(GuildChannelType.CallStaffChannel, guild) != null) {
                     lastMessage += $"\n</callstaff:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "callstaff")?.Id ?? 0}> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                 }
