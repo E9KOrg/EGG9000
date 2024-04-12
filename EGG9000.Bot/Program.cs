@@ -101,12 +101,12 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
             services.AddHostedService<StaffCoopsMessage>();
             services.AddHostedService<EventUpdater>();
-            //services.AddHostedService<CoopReorder>();
+            services.AddHostedService<CoopReorder>();
             services.AddHostedService<CoopDeleteChannel>();
 
-            //services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
-            //services.AddSingleton<CoopStatusUpdater>();
-            //services.AddHostedService(provider => provider.GetService<CoopStatusUpdater>());
+            services.Configure<UpdaterOptions<CoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
+            services.AddSingleton<CoopStatusUpdater>();
+            services.AddHostedService(provider => provider.GetService<CoopStatusUpdater>());
 
             services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
             services.AddSingleton<ThreadsCoopStatusUpdater>();
