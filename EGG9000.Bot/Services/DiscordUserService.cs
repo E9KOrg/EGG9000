@@ -51,8 +51,10 @@ namespace EGG9000.Common.Services {
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guildContract = await db.GuildContracts.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
             if(guildContract is not null) {
+                var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
+                await dbGuild.DeleteCoopThreadHeadersAsync(_discord, guildContract.Contract);
                 guildContract.DeletedChannel = true;
-                await db.SaveChangesAsync();
+                return;
             }
             var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
             if(coop is not null && coop.ThreadID != 0) {
@@ -62,7 +64,6 @@ namespace EGG9000.Common.Services {
                 coop.DeletedChannel = true;
                 await db.SaveChangesAsync();
             }
-
         }
 
         public Task StopAsync(CancellationToken cancellationToken) {
