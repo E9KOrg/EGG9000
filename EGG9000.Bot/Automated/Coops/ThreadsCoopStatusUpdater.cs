@@ -630,27 +630,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = true;
                         await coopThread.SendMessageAsync($"Coop {coop.Name} is now projected to finish!");
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = false;
                         await coopThread.SendMessageAsync($"Coop {coop.Name} is **no longer** projected to finish.");
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(!coop.Finished && status.Finished()) {
@@ -674,14 +660,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         finalChannelUpdate = true;
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         coop.ThreadArchived = true;
-                        try {
-                            await _db.SaveChangesAsync(CancellationToken.None);
-                        } catch(Exception) {
-                            await Task.Delay(100, cancellationToken);
-                            try {
-                                await _db.SaveChangesAsync(CancellationToken.None);
-                            } catch(Exception) { }
-                        }
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
                 }
 
@@ -904,7 +883,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 //Checking if users are gusset glitching
                 var afCheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
-                if(afCheaterChannel != null) {
+                if(afCheaterChannel != null && !status.AllGoalsAchieved) {
                     var contractScalar = coop.Contract.Details?.GradeSpecs[((int)coop.League) - 1]?.Modifiers?.FirstOrDefault(m => m.Dimension == Ei.GameModifier.Types.GameDimension.HabCapacity)?.Value ?? 1;
                     foreach(var u in usersWithStatus.Where(x => x.Xref is not null && !x.Xref.GussetCheatDetected)) {
                         var farm = u.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());

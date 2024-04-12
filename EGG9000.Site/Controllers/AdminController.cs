@@ -143,6 +143,23 @@ namespace EGG9000.Site.Controllers {
         }
 
 
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        public async Task<ActionResult> LatestDemerits() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var demerits = await _db.Demerit.AsQueryable().Include(d => d.User).Where(d => d.User.GuildId == guildId).ToListAsync();
+
+            return View((demerits, dbguild.Name));
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        public async Task<IActionResult> RemoveDemerit([FromQuery] Guid id) {
+            var demerit = _db.Demerit.FirstOrDefault(x => x.Id == id);
+            _db.Remove(demerit);
+            await _db.SaveChangesAsync();
+            return Redirect(Request.Headers["Referer"].ToString());
+        }
+
         public async Task<IActionResult> LookForLargeJump() {
             var snapshots = await _db.UserSnapShots.ToListAsync();
 

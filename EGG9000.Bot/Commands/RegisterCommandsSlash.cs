@@ -27,6 +27,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -504,25 +505,42 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Get a users status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketUser user, [SlashParam(Required = false)] bool ShowInChannel = false) {
-            return _userstatus(command, db, _client, apiLink, user, true, ShowInChannel);
+        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, [SlashParam] SocketUser user, [SlashParam(Required = false)] bool showinchannel = false, 
+            [SlashParam(Required = false, Description = "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false ) {
+            return _userstatus(command, db, _client, apiLink, user, true, showinchannel, pullfreshbackup);
         }
 
         [SlashCommand(Description = "Get your status", AllowInDMs = true)]
         public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
-            return _userstatus(command, db, _client, apiLink, command.User, false, false);
+            return _userstatus(command, db, _client, apiLink, command.User);
         }
-        public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = false) {
+        public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
                 return;
             }
-
             if(dbuser.EggIncAccounts == null || dbuser.EggIncAccounts.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No registered accounts found for <@{user.Id}>"); });
                 return;
+            }
+
+            //Pull a fresh backup before userstatus
+            if(pullFreshBackup) {
+                foreach(var account in dbuser.EggIncAccounts) {
+                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    if(rawBackup is null || rawBackup.Backup is null) {
+                        await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
+                        return;
+                    }
+                    var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                    if(customBackup?.Farms is not null) {
+                        account.Backup = customBackup;
+                    }
+                }
+                dbuser.UpdateAccounts();
+                await db.SaveChangesAsync();
             }
 
             var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);

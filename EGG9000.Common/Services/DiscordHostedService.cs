@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using Humanizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +32,7 @@ namespace EGG9000.Common.Services {
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
         private static readonly List<DiscordSemahpore> _serverSemaphores = [];
-        private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(3);
+        private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
             _provider = provider;
@@ -241,21 +242,36 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, Coop coop) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, Coop coop, ILogger logger) {
             if(category is null || category.Id  == 0) return null;
 
             var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
-
-            //Catch possible dupes before they happen
-            Thread.Sleep(1000);
-
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
-            
+
+            //Wait on the Server's lock, timeout defined in DiscordHostedService
+            logger.LogInformation("CreateCoopThreadHeaderAsync: Waiting on Semaphore lock for guild {guild}", guild.Name);
+            var dtNow = DateTimeOffset.Now;
+            var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), CancellationToken.None);
+            if(ownershipAcquired) {
+                logger.LogInformation("CreateCoopThreadHeaderAsync: Semaphore for guild {guild} unlocked after {timespan}.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
+            } else {
+                logger.LogInformation("CreateCoopThreadHeaderAsync: Semaphore for guild {guild} timed out after after {unlockTime} minutes.", guild.Name, DiscordHostedService.GetSemaphoreTimeout().TotalMinutes);
+            }
+
+            //Check again
+            if(guild.Channels.Any(c => c.Name == name)) {
+                if(ownershipAcquired) guild.GetServerSemaphore().Release();
+                return guild.Channels.First(c => c.Name == name);
+            }
+
             var channel = await guild.CreateTextChannelAsync(
                 name,
                 p => {p.CategoryId = category.Id;}
             );
-            if(channel is null) return null;
+            if(channel is null) {
+                if(ownershipAcquired) guild.GetServerSemaphore().Release();
+                return null;
+            }
             await channel.SendMessageAsync(text: "", embed: contractEmbed);
 
             if(coop.Contract.cc_only && ultraRoles.Count > 0) {
@@ -278,6 +294,7 @@ namespace EGG9000.Common.Services {
                 );
             }
 
+            if(ownershipAcquired) guild.GetServerSemaphore().Release();
             return guild.GetChannel(channel.Id);
         }
 
@@ -296,7 +313,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
-            return (toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-");
+            return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
         }
 
         public static async Task<SocketTextChannel> GetParentChannelAsync(this IThreadChannel threadChannel) {
