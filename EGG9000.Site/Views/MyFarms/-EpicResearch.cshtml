@@ -1,30 +1,14 @@
-﻿@using static EGG9000.Common.Helpers.EpicResearchCalc
-@model (List<EpicResearchDetail> epicResearchConfig, CustomBackup backup, EggIncAccount account);
+﻿@using EGG9000.Common.JsonData.EIEpicResearch;
+@model (List<EpicResearchItem> epicResearchConfig, CustomBackup backup, EggIncAccount account);
 @{
 	foreach (var research in Model.epicResearchConfig) {
-		research.MappedBackupResearch = Model.backup.EpicResearch.FirstOrDefault(o => o.Id == research.Id) ?? new CustomResearch { Level = 0};
-	}
-
-	// Only add once, this partial view is called multiple times on MyFarms render for Multiple EI accounts.
-	if(!Model.epicResearchConfig.Any(o => o.Title == "Hyperloop"))  
-	{
-		Model.epicResearchConfig.Add(new EpicResearchDetail {
-			Costs = new int[] { 50_000 },
-			Desc = "One time purchase to allow use of hyperloop trains",
-			Title = "Hyperloop",
-			Order = 99,
-			MappedBackupResearch = new CustomResearch { Level = Model.backup.HyperloopPurchased ? (uint)1 : (uint)0 }
-		});
-	}
-	if(!Model.epicResearchConfig.Any(o => o.Title == "Fuel Tank"))
-	{
-		Model.epicResearchConfig.Add(new EpicResearchDetail {
-			Costs = new int[] { 50_000, 250_000, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000 },
-			Desc = "Store extra eggs to be used as fuel for rockets",
-			Title = "Fuel Tank",
-			Order = 99,
-			MappedBackupResearch = new CustomResearch { Level = Model.backup.TankLevel }
-		});
+		if (research.title == "Hyperloop") {
+			research.MappedBackupResearch = new CustomResearch { Level = Model.backup.HyperloopPurchased ? (uint)1 : (uint)0 };
+		} else if(research.title == "Fuel Tank") {
+			research.MappedBackupResearch = new CustomResearch { Level = Model.backup.TankLevel };
+		} else{
+			research.MappedBackupResearch = Model.backup.EpicResearch.FirstOrDefault(o => o.Id == research.id) ?? new CustomResearch { Level = 0 };
+		}
 	}
 
 	var rawBankGE = Model.backup.TotalGEInPiggyBank;
@@ -67,7 +51,7 @@
 							</span>
 						</span>
 					</td>
-					<td class="d-none d-md-table-cell">{{epicResearch.desc}}</td>
+					<td class="d-none d-md-table-cell">{{epicResearch.description}}</td>
 					<td class="d-none d-md-table-cell">
 						<span class="badge"
 							  ng-class="{ 'badge-danger': epicResearch.mappedBackupResearch.level == 0, 'badge-warning': epicResearch.mappedBackupResearch.level < epicResearch.costs.length, 'badge-success': epicResearch.mappedBackupResearch.level == epicResearch.costs.length }">
@@ -82,10 +66,10 @@
 					</td>
 					<td ng-if-end class="text-right">{{GetCostForLevels(epicResearch) | number:0}}</td>
 				</tr>
-				@if (Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Length) > 0){
+				@if (Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Count) > 0){
 					<tr class="collapsible-er-row toggleHide">
 						<td colspan="6" style="text-align: center; color:coral">
-							<b>@Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Length) completed Epic Research items hidden</b>
+							<b>@Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Count) completed Epic Research items hidden</b>
 						</td>
 					</tr>
 				}

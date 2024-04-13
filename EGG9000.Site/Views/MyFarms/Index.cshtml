@@ -3,7 +3,7 @@
 @using EGG9000.Common.Helpers
 @using Microsoft.AspNetCore.Html
 @using static EGG9000.Site.Controllers.MyFarmsController
-@using static EGG9000.Common.Helpers.EpicResearchCalc
+@using EGG9000.Common.JsonData.EIEpicResearch;
 @inject DiscordSocketClient discordClient
 @{
     ViewData["Title"] = "Index";
@@ -14,7 +14,7 @@
 
     List<UserCoopXref> unjoinedCoops = Model.UnjoinedCoops.ToList();
 
-    List<EpicResearchDetail> epicResearchConfig = Model.EpicResearchConfig;
+    List<EpicResearchItem> epicResearchConfig = Model.EpicResearchConfig;
 
     Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs = Model.UncompletedPEContracts;
 
@@ -276,9 +276,6 @@
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
         var backup = account.Backup;
-        //Remove existing "tank" and "hyperloop" options
-        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Hyperloop"));
-        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Fuel Tank"));
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1) {
