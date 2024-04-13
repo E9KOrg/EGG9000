@@ -222,7 +222,7 @@ namespace EGG9000.Common.Contracts {
 
                 coop.Users.Add(user);
                 if(coop.Grade == Ei.Contract.Types.PlayerGrade.GradeUnset) {
-                    coop.Grade = user.Account.GetGrade();
+                    coop.Grade = contract.CcOnly ? Ei.Contract.Types.PlayerGrade.GradeAaa : user.Account.GetGrade();
                 }
 
                 //Remove user from group so they don't get added to another coop
