@@ -699,16 +699,24 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 timings.Set(5.1);
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
-                List<ulong> roleMembersCaught = [];
-                (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
-                    .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
-                    .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
-                    .ForEach(role => {
-                        if(role.Members.Any(m => !currentUserDiscordIds.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
-                            pingsLeft.Add(role.Mention);
-                            roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
-                        }
-                    });
+                if(!coop.RolesAddedToThread) {
+                    List<ulong> roleMembersCaught = [];
+                    try {
+                        (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
+                            .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
+                            .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
+                            .ForEach(role => {
+                                if(role.Members.Any(m => !currentUserDiscordIds.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
+                                    pingsLeft.Add(role.Mention);
+                                    roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
+                                }
+                            });
+                        coop.RolesAddedToThread = true;
+                        await _db.SaveChangesAsyncRetry(1);
+                    } catch(Exception) {
+                        _logger.LogInformation("Failed to compile role pings for {coop}", coopName);
+                    }
+                }
 
                 timings.Set(5.2);
                 if(pingsLeft.Any()) {
