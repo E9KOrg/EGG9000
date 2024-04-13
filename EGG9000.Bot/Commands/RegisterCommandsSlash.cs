@@ -35,15 +35,16 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Use to move registration to a different discord server")]
         public static async Task MoveServer(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
+            await command.DeferAsync();
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             if(dbUser == null) {
-                await command.RespondAsync($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
             } else if(dbUser.GuildId == guild.Id) {
                 if(dbUser.TempDisabled) {
-                    await command.RespondAsync($"It looks like you have been disabled, ask staff for help.");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"It looks like you have been disabled, ask staff for help."); });
                 } else {
-                    await command.RespondAsync($"Already configured for the current server, you should get your roles during the next Leaderboard update.");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Already configured for the current server, you should get your roles during the next Leaderboard update."); });
                 }
             } else {
                 await command.RespondAsync($"Please wait...");
@@ -53,15 +54,15 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
-                //var Response = await ContractsAPI.FirstContact(user.EggIncIds.First().Id);
+                if(dbUser.EggIncAccounts is null || dbUser.EggIncAccounts.Count == 0) {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning("There are no Egg, Inc. accounts registered to your Discord account. Please `/register` your EID."); });
+                    return;
+                }
+
                 var Response = await apiLink.GetBackup(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
-
-                //var role = await DiscordHelpers.SetRole(guild, guildUser, earningsBonus, bugsnag);
-
-
                 var dbguild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
                 if(dbguild != null && dbguild.OverflowServers.Count > 0) {
                     var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
@@ -79,12 +80,12 @@ namespace EGG9000.Bot.Commands {
                     var response = await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.General, new() { Text =  text });
                     await CleanWelcomeChannel(guild, _client, command.User);
                 } else {
-                    await command.ModifyOriginalResponseAsync("Registration has been moved");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("Registration has been moved"); });
                 }
             }
         }
 
-        [SlashCommand(Description = "Removed registered EggInc ID from your account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        [SlashCommand(Description = "Removed registered EggInc ID from a user's account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketUser targetUser) {
             return _RemoveID(command, db, apiLink, eggincid, targetUser.Id);
         }
