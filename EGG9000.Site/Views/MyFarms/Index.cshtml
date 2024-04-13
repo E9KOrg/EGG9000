@@ -241,7 +241,8 @@
 </div>
 
 <div style="padding-bottom: 10px;">
-    <span style="margin-right:10px;"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
+    <span style="margin-right:10px;" title="Click to copy" id="discord-name-copy-button" onclick="copyIdToClipboard('@Model.User.DiscordUsername.Split(" (")[0]', 'copy-notification-discord-name')"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
+    <div class="copy-notification" id="copy-notification-discord-name">Discord username copied!</div>
     <span style="margin:5px;" title="Click to copy" id="discord-id-copy-button" onclick="copyIdToClipboard('@Model.User.DiscordId', 'copy-notification-discord')"><b><u>Discord ID</u></b>: @Model.User.DiscordId</span>
     <div class="copy-notification" id="copy-notification-discord">Discord ID copied!</div>
     @if (Model.User.GuildId == 0) {
