@@ -59,6 +59,10 @@ namespace EGG9000.Common.Services {
             }
             var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
             if(coop is not null && coop.ThreadID != 0) {
+                await ((SocketThreadChannel)_discord.GetChannel(arg.Id)).ModifyAsync(c => {
+                    c.Archived = true;
+                    c.Locked = true;
+                });
                 coop.ThreadArchived = true;
                 await db.SaveChangesAsync();
             } else if(coop is not null && coop.DiscordChannelId != 0) {
