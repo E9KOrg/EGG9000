@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -52,6 +52,7 @@
   </ItemGroup>
 
   <ItemGroup>
+	<None Remove="JsonData\ei-epic-research.json"/>
     <None Remove="JsonData\eiafx-config.json" />
     <None Remove="JsonData\eiafx-data.json" />
 	<None Remove="JsonData\ei-statics.json" />
@@ -113,5 +114,6 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
 	<EmbeddedResource Include="JsonData\ei-statics.json" />
+	<EmbeddedResource Include="JsonData\ei-epic-research.json" />
   </ItemGroup>
 </Project>

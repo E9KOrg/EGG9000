@@ -1,0 +1,227 @@
+{
+  "epicResearchItems": [
+    {
+      "order": 1,
+      "id": "hold_to_hatch",
+      "_firstCost": 10,
+      "_lastCost": 500,
+      "_numLevels": 15,
+      "title": "Hold to Hatch",
+      "description": "Hold chicken button +2 chickens per second"
+    },
+    {
+      "order": 2,
+      "id": "epic_hatchery",
+      "_firstCost": 2,
+      "_lastCost": 1000,
+      "_numLevels": 20,
+      "title": "Epic Hatchery",
+      "description": "Increase hatchery refill rate by 10%"
+    },
+    {
+      "order": 3,
+      "id": "silo_capacity",
+      "_firstCost": 5,
+      "_lastCost": 2000,
+      "_numLevels": 20,
+      "title": "Silo Capacity",
+      "description": "Increase away time per silo by 6 min"
+    },
+    {
+      "order": 4,
+      "id": "accounting_tricks",
+      "_firstCost": 100,
+      "_lastCost": 10000,
+      "_numLevels": 20,
+      "title": "Accounting Tricks",
+      "description": "Increase farm valuation by 5%"
+    },
+    {
+      "order": 5,
+      "id": "epic_internal_incubators",
+      "_firstCost": 50,
+      "_lastCost": 10000,
+      "_numLevels": 20,
+      "title": "Epic Int. Hatcheries",
+      "description": "Increase internal hatchery rate by 5%"
+    },
+    {
+      "order": 6,
+      "id": "cheaper_contractors",
+      "_firstCost": 50,
+      "_lastCost": 4000,
+      "_numLevels": 10,
+      "title": "Cheaper Contractors",
+      "description": "Reduce hen house build costs by 5%"
+    },
+    {
+      "order": 7,
+      "id": "bust_unions",
+      "_firstCost": 50,
+      "_lastCost": 4000,
+      "_numLevels": 10,
+      "title": "Bust Unions",
+      "description": "Reduce vehicle hire costs by 5%"
+    },
+    {
+      "order": 8,
+      "id": "cheaper_research",
+      "_firstCost": 100,
+      "_lastCost": 8000,
+      "_numLevels": 10,
+      "title": "Lab Upgrade",
+      "description": "Reduce research costs by 5%"
+    },
+    {
+      "order": 9,
+      "id": "epic_clucking",
+      "_firstCost": 100,
+      "_lastCost": 10000,
+      "_numLevels": 20,
+      "title": "Epic Clucking",
+      "description": "+0.1% egg value bonus for each running chicken"
+    },
+    {
+      "order": 10,
+      "id": "epic_multiplier",
+      "_firstCost": 50,
+      "_lastCost": 10000,
+      "_numLevels": 100,
+      "title": "Epic Multiplier",
+      "description": "Increase max running chicken bonus by 2.0x!"
+    },
+    {
+      "order": 11,
+      "id": "drone_rewards",
+      "_firstCost": 50,
+      "_lastCost": 2000,
+      "_numLevels": 20,
+      "title": "Drone Rewards",
+      "description": "Increase your chances for bigger drone rewards by 10%"
+    },
+    {
+      "order": 12,
+      "id": "video_doubler_time",
+      "_firstCost": 100,
+      "_lastCost": 5000,
+      "_numLevels": 12,
+      "title": "Video Doubler Time",
+      "description": "Increase video doubler time by 30 min."
+    },
+    {
+      "order": 13,
+      "id": "int_hatch_calm",
+      "_firstCost": 250,
+      "_lastCost": 10000,
+      "_numLevels": 20,
+      "title": "Internal Hatchery Calm",
+      "description": "Increase internal hatchery rate by 10% while away"
+    },
+    {
+      "order": 14,
+      "id": "soul_eggs",
+      "_firstCost": 500,
+      "_lastCost": 5000,
+      "_numLevels": 140,
+      "title": "Soul Food",
+      "description": "Increase bonus per soul egg by +1%"
+    },
+    {
+      "order": 15,
+      "id": "prestige_bonus",
+      "_firstCost": 2000,
+      "_lastCost": 20000,
+      "_numLevels": 20,
+      "title": "Prestige Bonus",
+      "description": "Earn +10% soul eggs when you prestige"
+    },
+    {
+      "order": 16,
+      "id": "epic_egg_laying",
+      "_firstCost": 250,
+      "_lastCost": 50000,
+      "_numLevels": 20,
+      "title": "Epic Comfy Nests",
+      "description": "Increase egg laying rate by 5%"
+    },
+    {
+      "order": 17,
+      "id": "transportation_lobbyist",
+      "_firstCost": 250,
+      "_lastCost": 5000,
+      "_numLevels": 30,
+      "title": "Transportation Lobbyists",
+      "description": "Increase vehicle capacity by 5%"
+    },
+    {
+      "order": 18,
+      "id": "int_hatch_sharing",
+      "_firstCost": 100,
+      "_lastCost": 2500,
+      "_numLevels": 10,
+      "title": "Internal Hatchery Sharing",
+      "description": "Full habs' internal hatcheries send +10% chicks to other habs"
+    },
+    {
+      "order": 19,
+      "id": "hold_to_research",
+      "_firstCost": 5000,
+      "_lastCost": 20000,
+      "_numLevels": 20,
+      "title": "Hold to Research",
+      "description": "Increase repetition rate when holding down research button by 25%"
+    },
+    {
+      "order": 20,
+      "id": "prophecy_bonus",
+      "_firstCost": 100000,
+      "_lastCost": 1000000,
+      "_numLevels": 5,
+      "title": "Prophecy Bonus",
+      "description": "Increase bonus per egg of prophecy by +1% (compounding)"
+    },
+    {
+      "order": 21,
+      "id": "afx_mission_time",
+      "_firstCost": 5000,
+      "_lastCost": 200000,
+      "_numLevels": 60,
+      "title": "FTL Drive Upgrades",
+      "description": "Reduce Artifact mission time of FTL ships by 1%"
+    },
+    {
+      "order": 22,
+      "id": "afx_mission_capacity",
+      "_firstCost": 50000,
+      "_lastCost": 1000000,
+      "_numLevels": 10,
+      "title": "Zero-G Quantum Containment",
+      "description": "Increase Artifact mission capacity by 5%"
+    },
+    {
+      "order": 99,
+      "id": "nter_hyperloop_trains",
+      "_firstCost": 50000,
+      "_lastCost": 50000,
+      "_numLevels": 1,
+      "title": "Hyperloop",
+      "description": "One time purchase to allow use of hyperloop trains"
+    },
+    {
+      "order": 100,
+      "id": "nter_fuel_tank",
+      "_overrideCosts": [
+        50000,
+        250000,
+        1000000,
+        2000000,
+        3000000,
+        4000000,
+        5000000
+      ],
+      "_numLevels": 7,
+      "title": "Fuel Tank",
+      "description": "Store extra eggs to be used as fuel for rockets"
+    }
+  ]
+}
