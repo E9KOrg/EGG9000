@@ -374,6 +374,8 @@ namespace EGG9000.Bot.Helpers {
                     if(guild is null) continue;
                     var header = guild.GetTextChannel(lostXref.Coop.ThreadParentChannel);
                     if(header is null) continue;
+                    //Make sure user is in the server
+                    if(header.Guild.GetUser(DiscordUser.Id) is null) continue;
                     try {
                         await header.AddPermissionOverwriteAsync(DiscordUser,
                             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow)
