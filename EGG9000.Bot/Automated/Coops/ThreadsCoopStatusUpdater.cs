@@ -655,6 +655,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             finalChannelUpdate = true;
                             coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                             coop.ThreadArchived = true;
+                            await coopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay);
                             await coopThread.SendMessageAsync($"Coop {coop.Name} is finished!");
                         }
                         coop.CoopCompleted = DateTimeOffset.UtcNow;
@@ -668,6 +669,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         finalChannelUpdate = true;
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         coop.ThreadArchived = true;
+                        await coopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay);
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
                 }
