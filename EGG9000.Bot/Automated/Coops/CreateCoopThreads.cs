@@ -98,7 +98,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 return await (parentChannel as SocketTextChannel).CreateThreadAsync(
                     name: threadName,
                     type: ThreadType.PrivateThread,
-                    // Inherit 24h auto-archive timer from header channels
+                    autoArchiveDuration: ThreadArchiveDuration.OneWeek, //Initially one week (don't archive)
                     invitable: false,
                     options: new RequestOptions {
                         RatelimitCallback = RateLimit, RetryMode = RetryMode.AlwaysRetry, Timeout = 5000
