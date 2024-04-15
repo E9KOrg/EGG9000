@@ -266,7 +266,10 @@ namespace EGG9000.Common.Services {
 
             var channel = await guild.CreateTextChannelAsync(
                 name,
-                p => {p.CategoryId = category.Id;}
+                props => {
+                    props.CategoryId = category.Id;
+                    props.AutoArchiveDuration = ThreadArchiveDuration.OneDay;
+                }
             );
             if(channel is null) {
                 if(ownershipAcquired) guild.GetServerSemaphore().Release();
