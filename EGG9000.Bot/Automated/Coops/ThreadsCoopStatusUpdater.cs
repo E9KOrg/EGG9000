@@ -419,7 +419,15 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 await _db.SaveChangesAsync(CancellationToken.None);
 
-
+                //Make sure the thread isn't archived before continuing
+                if(coopThread.IsArchived) {
+                    try {
+                        await coopThread.ModifyAsync(t => t.Archived = false);
+                    } catch(Exception) {
+                        _logger.LogError("Could not un-archive thread for {coop}.", coop.Name);
+                        return;
+                    }
+                }
 
                 var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
 
