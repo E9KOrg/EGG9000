@@ -362,7 +362,6 @@ namespace EGG9000.Bot.Helpers {
             if(neededRoles.Count > 0) {
                 GetLogger<DiscordHelpers>().LogInformation("Adding grade roles {roles} for {user}", string.Join(",", neededRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.AddRolesAsync(neededRoles);
-
             }
 
             if(extraRoles.Count > 0) {
@@ -375,11 +374,14 @@ namespace EGG9000.Bot.Helpers {
                     if(guild is null) continue;
                     var header = guild.GetTextChannel(lostXref.Coop.ThreadParentChannel);
                     if(header is null) continue;
-                    await header.AddPermissionOverwriteAsync(DiscordUser, 
-                        new OverwritePermissions( viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow)
-                    );
+                    //Make sure user is in the server
+                    if(header.Guild.GetUser(DiscordUser.Id) is null) continue;
+                    try {
+                        await header.AddPermissionOverwriteAsync(DiscordUser,
+                            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow)
+                        );
+                    } catch(HttpException) { continue; }
                 }
-
                 GetLogger<DiscordHelpers>().LogInformation("Removing grade roles {roles} for {user}", string.Join(",", extraRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.RemoveRolesAsync(extraRoles);
             }

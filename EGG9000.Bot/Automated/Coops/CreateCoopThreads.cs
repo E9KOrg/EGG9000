@@ -96,10 +96,11 @@ namespace EGG9000.Bot.Automated.Coops {
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
                 return await (parentChannel as SocketTextChannel).CreateThreadAsync(
-                    threadName,
-                    ThreadType.PrivateThread,
-                    ThreadArchiveDuration.OneDay,
-                    invitable: false, options: new RequestOptions {
+                    name: threadName,
+                    type: ThreadType.PrivateThread,
+                    autoArchiveDuration: ThreadArchiveDuration.OneWeek, //Initially one week (don't archive)
+                    invitable: false,
+                    options: new RequestOptions {
                         RatelimitCallback = RateLimit, RetryMode = RetryMode.AlwaysRetry, Timeout = 5000
                     }
                 );

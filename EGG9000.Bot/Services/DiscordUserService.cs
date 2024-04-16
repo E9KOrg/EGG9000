@@ -19,6 +19,7 @@ using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using static System.Collections.Specialized.BitVector32;
 
 namespace EGG9000.Common.Services {
 
@@ -59,6 +60,10 @@ namespace EGG9000.Common.Services {
             }
             var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
             if(coop is not null && coop.ThreadID != 0) {
+                await ((SocketThreadChannel)_discord.GetChannel(arg.Id)).ModifyAsync(c => {
+                    c.Archived = true;
+                    c.Locked = true;
+                });
                 coop.ThreadArchived = true;
                 await db.SaveChangesAsync();
             } else if(coop is not null && coop.DiscordChannelId != 0) {
@@ -138,8 +143,9 @@ namespace EGG9000.Common.Services {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser is not null) {
                 if(dbuser.TempDisabled) {
-                    var disabledMsg = $"Welcome to the server {user.Mention}! Looks like you have previously been `/disable`-d, please wait for someone from staff to reach out to discuss this.";
-                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() { Text = disabledMsg }, _logger);
+                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() { 
+                        Text = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this."
+                    }, _logger);
                     await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
                     return;
                 }
@@ -168,9 +174,7 @@ namespace EGG9000.Common.Services {
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
             var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
             var talkChannel = ChannelHelper.DetermineChannelType(dbguild, _discord.GetGuild(dbguild.DiscordSeverId), GuildChannelType.TalkToStaff);
-            var talkChannelMention = talkChannel != null ? (talkChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)talkChannel).Mention
-                : ((SocketThreadChannel)talkChannel).Mention) : null;
-            if(talkChannelMention != null) msg += $" If you have any questions feel free to ask us in {talkChannelMention}, we are glad you are here!";
+            if(talkChannel is not null) msg += $" If you have any questions feel free to ask us in {((SocketTextChannel)talkChannel).Mention}, we are glad you are here!";
 
             await welcomeChannel.SendMessageAsync(msg);
         }

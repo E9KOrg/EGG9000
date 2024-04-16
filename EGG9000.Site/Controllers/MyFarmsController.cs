@@ -3,7 +3,7 @@ using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EIEpicResearch;
 using EGG9000.Common.Services;
 using Ei;
 using Microsoft.AspNetCore.Authorization;
@@ -78,7 +78,7 @@ namespace EGG9000.Site.Controllers {
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
             var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
-            var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
+            var EpicResearchConfig = Root.Get().epicResearchItems;
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
@@ -95,7 +95,7 @@ namespace EGG9000.Site.Controllers {
             List<UserSnapShot> SnapShots,
             List<UserCoopXref> UnjoinedCoops,
             List<Coop> JoinedCoops,
-            List<EpicResearchCalc.EpicResearchDetail> EpicResearchConfig,
+            List<EpicResearchItem> EpicResearchConfig,
             List<(string EggIncId, MyContracts MyContracts)> Scoring,
             Guild DBGuild,
             Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,

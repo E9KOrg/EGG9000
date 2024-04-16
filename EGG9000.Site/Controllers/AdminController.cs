@@ -144,12 +144,17 @@ namespace EGG9000.Site.Controllers {
 
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
-        public async Task<ActionResult> LatestDemerits() {
+        public async Task<ActionResult> LatestDemerits([FromQuery] int count = 100) {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
-            var demerits = await _db.Demerit.AsQueryable().Include(d => d.User).Where(d => d.User.GuildId == guildId).ToListAsync();
+            var demerits = await _db.Demerit.AsQueryable().Include(d => d.User).Where(d => d.User.GuildId == guildId).OrderByDescending(d => d.When).ToListAsync();
+            var limited = false;
+            if(demerits.Count > count) {
+                limited = true;
+                demerits = demerits.Take(count).ToList();
+            }
 
-            return View((demerits, dbguild.Name));
+            return View((demerits, dbguild.Name, count, limited));
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
