@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this being in a co-op thread?"));
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this being run in a co-op thread?"));
                 return;
             }
             db.Remove(coop);
