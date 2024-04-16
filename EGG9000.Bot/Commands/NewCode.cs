@@ -31,15 +31,16 @@ namespace EGG9000.Bot.Commands {
         public static async Task DeleteCoop(FauxCommand command, ApplicationDbContext db) {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this posted in a co-op channel?"));
-            } else {
-                db.Remove(coop);
-                await db.SaveChangesAsync();
-                await ((SocketThreadChannel)command.Channel).ModifyAsync(c => {
-                    c.Archived = true;
-                    c.Locked = true;
-                });
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find co-op, is this being run in a co-op thread?"));
+                return;
             }
+            db.Remove(coop);
+            await db.SaveChangesAsync();
+            await ((SocketThreadChannel)command.Channel).ModifyAsync(c => {
+                c.Archived = true;
+                c.Locked = true;
+            });
+            await command.RespondAsync(content: "", embed: EmbedSuccess("Coop deleted from DB."));
         }
     }
 }

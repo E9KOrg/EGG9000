@@ -419,7 +419,15 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 await _db.SaveChangesAsync(CancellationToken.None);
 
-
+                //Make sure the thread isn't archived before continuing
+                if(coopThread.IsArchived) {
+                    try {
+                        await coopThread.ModifyAsync(t => t.Archived = false);
+                    } catch(Exception) {
+                        _logger.LogError("Could not un-archive thread for {coop}.", coop.Name);
+                        return;
+                    }
+                }
 
                 var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
 
@@ -647,6 +655,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             finalChannelUpdate = true;
                             coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                             coop.ThreadArchived = true;
+                            await coopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay);
                             await coopThread.SendMessageAsync($"Coop {coop.Name} is finished!");
                         }
                         coop.CoopCompleted = DateTimeOffset.UtcNow;
@@ -660,6 +669,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         finalChannelUpdate = true;
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         coop.ThreadArchived = true;
+                        await coopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay);
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
                 }
@@ -699,16 +709,24 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 timings.Set(5.1);
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
-                List<ulong> roleMembersCaught = [];
-                (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
-                    .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
-                    .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
-                    .ForEach(role => {
-                        if(role.Members.Any(m => !currentUserDiscordIds.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
-                            pingsLeft.Add(role.Mention);
-                            roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
-                        }
-                    });
+                if(!coop.RolesAddedToThread) {
+                    List<ulong> roleMembersCaught = [];
+                    try {
+                        (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
+                            .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
+                            .Select(ow => guild.GetRole(ow.TargetId)).Where(r => r != null).ToList()
+                            .ForEach(role => {
+                                if(role.Members.Any(m => !currentUserDiscordIds.Any(u => u == m.Id) && !roleMembersCaught.Contains(m.Id))) {
+                                    pingsLeft.Add(role.Mention);
+                                    roleMembersCaught.AddRange(role.Members.Select(m => m.Id).ToList());
+                                }
+                            });
+                        coop.RolesAddedToThread = true;
+                        await _db.SaveChangesAsyncRetry(1);
+                    } catch(Exception) {
+                        _logger.LogInformation("Failed to compile role pings for {coop}", coopName);
+                    }
+                }
 
                 timings.Set(5.2);
                 if(pingsLeft.Any()) {

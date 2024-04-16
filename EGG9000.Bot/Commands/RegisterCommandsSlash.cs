@@ -35,15 +35,16 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Use to move registration to a different discord server")]
         public static async Task MoveServer(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
+            await command.DeferAsync();
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             if(dbUser == null) {
-                await command.RespondAsync($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
             } else if(dbUser.GuildId == guild.Id) {
                 if(dbUser.TempDisabled) {
-                    await command.RespondAsync($"It looks like you have been disabled, ask staff for help.");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"It looks like you have been disabled, ask staff for help."); });
                 } else {
-                    await command.RespondAsync($"Already configured for the current server, you should get your roles during the next Leaderboard update.");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Already configured for the current server, you should get your roles during the next Leaderboard update."); });
                 }
             } else {
                 await command.RespondAsync($"Please wait...");
@@ -53,15 +54,15 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
-                //var Response = await ContractsAPI.FirstContact(user.EggIncIds.First().Id);
+                if(dbUser.EggIncAccounts is null || dbUser.EggIncAccounts.Count == 0) {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning("There are no Egg, Inc. accounts registered to your Discord account. Please `/register` your EID."); });
+                    return;
+                }
+
                 var Response = await apiLink.GetBackup(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
-
-                //var role = await DiscordHelpers.SetRole(guild, guildUser, earningsBonus, bugsnag);
-
-
                 var dbguild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
                 if(dbguild != null && dbguild.OverflowServers.Count > 0) {
                     var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
@@ -79,12 +80,12 @@ namespace EGG9000.Bot.Commands {
                     var response = await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.General, new() { Text =  text });
                     await CleanWelcomeChannel(guild, _client, command.User);
                 } else {
-                    await command.ModifyOriginalResponseAsync("Registration has been moved");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("Registration has been moved"); });
                 }
             }
         }
 
-        [SlashCommand(Description = "Removed registered EggInc ID from your account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        [SlashCommand(Description = "Removed registered EggInc ID from a user's account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task RemoveID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam] string eggincid, [SlashParam] SocketUser targetUser) {
             return _RemoveID(command, db, apiLink, eggincid, targetUser.Id);
         }
@@ -894,38 +895,72 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser targetUser, [SlashParam] string intReason, [SlashParam(Required=false)] bool banaccount = false) {
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser[] users, [SlashParam] string reason, [SlashParam(Required=false)] bool banaccount = false) {
             await command.DeferAsync();
-            var kickedWithoutDm = false;
-            var dmChannel = await targetUser.CreateDMChannelAsync();
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
-            if(banaccount) {
-                var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
-                if(dbUser is not null) {
-                    var bannedServersList = dbUser.ServersBannedFrom?.Split(",")?.ToList() ?? [];
-                    bannedServersList.Add(dbGuild.Id.ToString());
-                    dbUser.ServersBannedFrom = string.Join(",", bannedServersList);
-                    dbUser.Banned = true;
-                    await db.SaveChangesAsync();
+
+            var kicklist = new List<ulong>();
+            var banlist = new List<ulong>();
+            var exceptionList = new List<ulong>();
+            foreach(var targetUser in users) {
+                var kickedWithoutDm = false;
+                var dmChannel = await targetUser.CreateDMChannelAsync();
+
+                if(banaccount) {
+                    var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
+                    if(dbUser is not null) {
+                        var bannedServersList = dbUser.ServersBannedFrom?.Split(",")?.ToList() ?? [];
+                        bannedServersList.Add(dbGuild.Id.ToString());
+                        dbUser.ServersBannedFrom = string.Join(",", bannedServersList);
+                        dbUser.Banned = true;
+                        await db.SaveChangesAsync();
+                    }
+                }
+                try {
+                    await dmChannel.SendMessageAsync($"You have been {(banaccount ? "banned" : "kicked")} from {guild.Name} for the reason: {reason}.");
+                } catch(HttpException) {
+                    kickedWithoutDm = true;
+                }
+
+                //Check if running user has ban perms
+                var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
+                var canBan = banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers);
+
+                try {
+                    var execDiscordUser = (targetUser as SocketGuildUser);
+                    if(execDiscordUser is null) {
+                        if(users.Length > 1) {
+                            exceptionList.Add(targetUser.Id);
+                            continue;
+                        } else {
+                            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been {(canBan ? "banned" : "kicked")} from the server.{(canBan ? $" \n\n**The DB Ban was applied to the user's account.**" : "")}"); });
+                            return;
+                        }
+                    }
+                    await (canBan ? execDiscordUser.BanAsync(0, reason) : execDiscordUser.KickAsync(reason));
+                    if(users.Length > 1) {
+                        kicklist.Add(targetUser.Id);
+                    } else {
+                        await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
+                        return;
+                    }
+                    continue;
+                } catch(Exception) {
+                    if(users.Length > 1) {
+                        exceptionList.Add(targetUser.Id);
+                    } else {
+                        await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been {(canBan ? "banned" : "kicked")} from the server.{(canBan ? $" \n\n**The DB Ban was applied to the user's account.**" : "")}"); });
+                        return;
+                    }
+                    continue;
                 }
             }
-            try {
-                await dmChannel.SendMessageAsync($"You have been {(banaccount ? "banned" : "kicked")} from {guild.Name} for the reason: {intReason}\n\nHere is an appeal form if you would like the rejoin the server: https://forms.gle/NqrqnDZzJ7YaqpAfA");
-            } catch(HttpException) {
-                kickedWithoutDm = true;
-            }
 
-            //Check if running user has ban perms
-            var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == command.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == command.User.Id);
-            var canBan = (banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers));
-
-            try {
-                var execDiscordUser = (targetUser as SocketGuildUser);
-                await (canBan ? execDiscordUser.BanAsync(0, intReason) : execDiscordUser.KickAsync(intReason));
-                await command.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
-            } catch(Exception) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. The user may not have been {(canBan ? "banned" : "kicked")} from the server.{(canBan ? $" \n\n**The DB Ban was applied to the user's account.**" : "")}"); });
+            if(users.Length > 1) {
+                var message = $"{(kicklist.Count > 0 ? "Kicked: " + string.Join(", ", kicklist.Select(id => $"<@{id}>")) : "")}";
+                if(exceptionList.Count > 0) message += "\n\n**Did not kick**: " + string.Join(", ", exceptionList.Select(id => $"<@{id}>"));
+                await command.ModifyOriginalResponseAsync(message);
             }
         }
     }

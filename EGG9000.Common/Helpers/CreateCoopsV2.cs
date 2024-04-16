@@ -19,7 +19,7 @@ namespace EGG9000.Common.Helpers {
 
             string EIID = null;
 
-            foreach(var account in accounts) {
+            foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
                 var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
                 if(r?.Grade == grade) {
                     EIID = account.Account.Id;

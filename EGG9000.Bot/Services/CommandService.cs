@@ -387,6 +387,16 @@ namespace EGG9000.Bot.Services {
                     }
                     return users.ToArray();
                 }
+                if(parameterInfo.ParameterType == typeof(SocketUser[])) {
+                    var users = new List<SocketUser>();
+                    for(var i = 1; i <= 10; i++) {
+                        var option = FindOption($"{name}{i}", fauxCommand.Data.Options);
+                        if(option != null) {
+                            users.Add((SocketUser)option.Value);
+                        }
+                    }
+                    return users.ToArray();
+                }
                 if(parameterInfo.ParameterType == typeof(SocketGuildUser)) {
                     var value = FindOption(name, fauxCommand.Data.Options)?.Value;
                     try {
@@ -541,6 +551,12 @@ namespace EGG9000.Bot.Services {
                     });
                 }
                 AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand, [..choices]);
+                return;
+            }
+            if(parameterInfo.ParameterType == typeof(SocketUser[])) {
+                for(var i = 1; i <= 10; i++) {
+                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i <= 1 && slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand);
+                }
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
