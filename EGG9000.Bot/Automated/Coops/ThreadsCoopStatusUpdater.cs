@@ -1015,37 +1015,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 coop.LastStatusUpdate = status;
                 if(!coop.FinalizedFinishedOrFailed() || finalChannelUpdate) {
-                    if(missingCount > 0) {
-                        if(DateTimeOffset.Now > (coop.Created + TimeSpan.FromHours(12))) {
-                            if(missingCount <= 20) {
-                                emojis += Convert.ToChar(9311 + missingCount);
-                            } else if(missingCount <= 35) {
-                                emojis += Convert.ToChar(12881 + (missingCount - 21));
-                            } else if(missingCount <= 50) {
-                                emojis += Convert.ToChar(12977 + (missingCount - 36));
-                            } else {
-                                emojis += "❌";
-                            }
-                        } else {
-                            emojis += "📶";
-                        }
-
-                        if(
-                            !coop.Finished && (
-                                timeRemaining.TotalHours < 24
-                                || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(24).TotalSeconds
-                            )
-                        ) {
-                            emojis += "🔺";
-                        }
-                    } else if(
-                            !coop.FinishedOrFailed() && (
-                                timeRemaining.TotalHours < 3
-                                || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
-                            ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
-                        ) {
-                        emojis += "🔘";
-                    }
 
                     var color = Color.DarkGrey;
                     if(coop.Status == CoopStatusEnum.Failed) {
@@ -1053,6 +1022,39 @@ namespace EGG9000.Bot.Automated.Coops {
                     } else if(coop.Finished) {
                         emojis += "🏁";
                     } else {
+
+                        if(missingCount > 0) {
+                            if(DateTimeOffset.Now > (coop.Created + TimeSpan.FromHours(12))) {
+                                if(missingCount <= 20) {
+                                    emojis += Convert.ToChar(9311 + missingCount);
+                                } else if(missingCount <= 35) {
+                                    emojis += Convert.ToChar(12881 + (missingCount - 21));
+                                } else if(missingCount <= 50) {
+                                    emojis += Convert.ToChar(12977 + (missingCount - 36));
+                                } else {
+                                    emojis += "❌";
+                                }
+                            } else {
+                                emojis += "📶";
+                            }
+
+                            if(
+                                !coop.Finished && (
+                                    timeRemaining.TotalHours < 24
+                                    || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(24).TotalSeconds
+                                )
+                            ) {
+                                emojis += "🔺";
+                            }
+                        } else if(
+                                !coop.FinishedOrFailed() && (
+                                    timeRemaining.TotalHours < 3
+                                    || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
+                                ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
+                            ) {
+                            emojis += "🔘";
+                        }
+
 
                         var percent = coopDetails.PercentProjectedForJoined;
 
@@ -1076,19 +1078,21 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(percent < 100 && coopDetails.PercentProjected >= 100) {
                             emojis += "💹";
                         }
+
+                        if(missingFromServer) {
+                            emojis += "👻";
+                        }
+
+                        if(coopDetails.CoopParticipants.Any(x => x.Xref is null) && !status.Public && !coop.Finished) {
+                            emojis += "👽";
+                        }
+
+                        if(coopDetails.CoopParticipants.Count > coop.Contract.MaxUsers) {
+                            emojis += "🤢";
+                        }
+
                     }
 
-                    if(missingFromServer) {
-                        emojis += "👻";
-                    }
-
-                    if(coopDetails.CoopParticipants.Any(x => x.Xref is null) && !status.Public && !coop.Finished) {
-                        emojis += "👽";
-                    }
-
-                    if(coopDetails.CoopParticipants.Count > coop.Contract.MaxUsers) {
-                        emojis += "🤢";
-                    }
 
                     var coopname = emojis + coop.Name;
                     if(coopThread.Name != coopname) {
