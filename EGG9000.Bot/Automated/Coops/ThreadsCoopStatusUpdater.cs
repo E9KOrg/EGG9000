@@ -59,9 +59,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #endif
 
 
-            var totalCoops = coops.Count();
             var completedCoops = 0;
-
             var throttler = new SemaphoreSlim(5);
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -91,7 +89,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             await ProcessCoop(coop.Id, guild, users, dbguild, slashCommands, cancellationToken);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
-                            _logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, totalCoops);
+                            _logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
                         } finally {
                             throttler.Release();
                         }

@@ -208,7 +208,8 @@ namespace EGG9000.Bot.Commands {
 
 
             //Add the grade role before moving them, to give them access to the header channel (if applicable)
-            var discordUser = _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).GetUser(dbuser.DiscordId);
+            var currentGuild = _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId);
+            var discordUser = currentGuild.GetUser(dbuser.DiscordId);
             var gradeRole = dbGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == newgrade switch {
                 1 => GuildChannelType.GradeC,
                 2 => GuildChannelType.GradeB,
@@ -218,6 +219,10 @@ namespace EGG9000.Bot.Commands {
                 _ => default
             });
             if(gradeRole != null) {
+                //Get the main guild
+                var mainGuild = _client.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
+                var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
+
                 //Fetch a new backup so they don't lose access to this channel when role update happens
                 var rawBackup = await ContractsAPI.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
@@ -231,7 +236,13 @@ namespace EGG9000.Bot.Commands {
                     account.Backup = customBackup;
                     dbuser.UpdateAccounts();
                 }
-                await discordUser.AddRoleAsync(gradeRole.Id);
+                await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);
+                if(mainGuild.Id != currentGuild.Id) {
+                    var currentGuildSocketRole = currentGuild.Roles.FirstOrDefault(r => r.Name == socketGradeRole.Name);
+                    if(currentGuildSocketRole != null) {
+                        await discordUser.AddRoleAsync(currentGuildSocketRole.Id);
+                    }
+                }
             }
 
             /* MOVING TO NEW COOP */
