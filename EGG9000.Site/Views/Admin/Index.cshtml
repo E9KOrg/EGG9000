@@ -22,6 +22,10 @@
 <a href="/admin/inactiveplayers" class="btn btn-primary">Inactive Players</a>
 <a href="/admin/automatedtasks" class="btn btn-primary">Automated Tasks</a>
 <a href="/admin/latestdemerits" class="btn btn-primary">Latest Demerits</a>
+@if (Model.Guild.AllowGuilds)
+{
+	<a href="/admin/guilds" class="btn btn-primary">Guilds</a>
+}
 
 <div class="clearfix">
 	<div class="float-left card">

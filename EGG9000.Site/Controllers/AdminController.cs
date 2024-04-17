@@ -260,6 +260,7 @@ namespace EGG9000.Site.Controllers {
                     ActiveCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && !c.Category.Name.Contains("finished")),
                     FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
                 }).ToList(),
+                Guild = guild,
                 ContractsToScore = contractsToScore
             });
         }
@@ -269,6 +270,7 @@ namespace EGG9000.Site.Controllers {
             public List<GuildDetails> Guilds { get; set; }
             public Dictionary<DateTimeOffset, int[]> Days { get; set; }
             public List<Contract> ContractsToScore { get; set; }
+            public Guild Guild { get; set; }
         }
 
         public class GuildDetails {
@@ -1309,6 +1311,11 @@ music
             var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(guild, mainServer, overflowServers, roleMaps, access_token, _configuration.GetConnectionString("Token"));
 
             return Content(output);
+        }
+
+        public async Task<IActionResult> Guilds() {
+            var users = await _db.DBUsers.Where(x => x.GuildId == GetGuildID()).ToListAsync();
+            return View(users);
         }
     }
 }
