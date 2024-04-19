@@ -1,5 +1,9 @@
 ﻿using EGG9000.Common.Database.Entities;
 using Ei;
+using Humanizer;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -11,8 +15,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Common.Helpers {
@@ -44,24 +51,73 @@ namespace EGG9000.Common.Helpers {
             8.00, 9.00, 10.00
         ];
 
-        public static readonly List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipDataTable = [
-            (Spaceship.Galeggtica, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Galeggtica, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Galeggtica, DurationType.Epic, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Chickfiant, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Chickfiant, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Chickfiant, DurationType.Epic, [0.0, 482.673, 1615.316, 274.828, 431.604, 0.0]),
-            (Spaceship.Voyegger, DurationType.Short, [0.0, 0.0, 9010.667, 8244.540, 3056.498, 1212.981, 654.000]),
-            (Spaceship.Voyegger, DurationType.Long, [579.538, 0.0, 934.343, 372.407, 653.134, 0.0, 0.0]),
-            (Spaceship.Voyegger, DurationType.Epic, [270.244, 133.825, 119.026, 113.645, 105.118, 161.565, 143.500]),
-            (Spaceship.Henerprise, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
-            (Spaceship.Henerprise, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
-            (Spaceship.Henerprise, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
-            //These are the Henerprise values as it is likely a decent (initial) estimation that the drop rates are similar
-            (Spaceship.Atreggies, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
-            (Spaceship.Atreggies, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
-            (Spaceship.Atreggies, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
-        ];
+        private class MennoAPIData {
+            public string shipTypeName { get; set; }
+            public Spaceship Ship {
+                get {
+                    if(!Enum.TryParse<Spaceship>(shipTypeName, ignoreCase: true, out var spaceship)) {
+                        return Spaceship.ChickenOne;
+                    }
+                    return spaceship;
+                }
+            }
+            public string shipDurationTypeName { get; set; }
+            public DurationType DurationType {
+                get {
+                    if(!Enum.TryParse<DurationType>(shipDurationTypeName, ignoreCase: true, out var durationType)) {
+                        return DurationType.Tutorial;
+                    }
+                    return durationType;
+                }
+            }
+            public int shipLevel { get; set; }
+            public double shipsNeededPerLegendary { get; set; }
+        }
+
+        private static HttpClient _httpClient;
+        private static readonly string MennoAPIURL = "https://eggincdatacollection.azurewebsites.net/";
+        private static readonly string APIEndpoint = "api/GetLLCData";
+        private static readonly string MennoDataKey = "MennoDataCache";
+        public static async Task<List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)>> GetShipDataTable(IMemoryCache _cache, ILogger _logger) {
+            if(!_cache.TryGetValue(MennoDataKey, out List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> mennoData)) {
+                mennoData = await GetNewMennoData(_logger);
+                _cache.Set(MennoDataKey, mennoData, TimeSpan.FromHours(6));
+            }
+
+            return mennoData;
+        }
+
+        private static async Task<List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)>> GetNewMennoData(ILogger _logger) {
+            _httpClient ??= new() {
+                BaseAddress = new Uri(MennoAPIURL)
+            };
+            //Dispose of any junk requests left over, prevent mem leaks
+            _httpClient.CancelPendingRequests();
+            try {
+                var response = await _httpClient.GetAsync(APIEndpoint);
+                response.EnsureSuccessStatusCode();
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var shipDataArray = JsonConvert.DeserializeObject<MennoAPIData[]>(jsonResponse);
+
+                _logger.LogInformation("Menno Ship Coefficients were refreshed at {refreshTime}, and will be invalidated again at {invalidationTime}", DateTimeOffset.Now.Humanize(), DateTimeOffset.Now.AddHours(6).Humanize());
+
+                return shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
+                    .SelectMany(shipGrouping => shipGrouping.GroupBy(sg => sg.Ship)
+                        .Select(durationGrouping => (
+                            ship: durationGrouping.First().Ship,
+                            type: durationGrouping.First().DurationType,
+                            legendaryDropRates: durationGrouping
+                                .OrderBy(d => d.shipLevel)
+                                .Select(d => d.shipsNeededPerLegendary)
+                                .ToList()
+                        )
+                    )
+                ).ToList();
+            } catch(HttpRequestException ex) {
+                _logger.LogError("Failed to load Menno Ship Coefficients from API: {exception}", ex);
+                return null;
+            }
+        }
 
         public static string GetArtifactFairnessScoreString(List<ArtifactCount> ArtifactHall) {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? "0 (null artifact hall)" : GetArtifactFairnessScore(ArtifactHall).ToString("E");
