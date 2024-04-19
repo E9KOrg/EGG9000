@@ -1,4 +1,5 @@
-﻿using EGG9000.Bot.EggIncAPI;
+﻿using Discord;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
@@ -7,8 +8,11 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Ei;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -131,7 +135,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
-        public static async Task Llc(FauxCommand command, ApplicationDbContext db) {
+        public static async Task Llc(FauxCommand command, ApplicationDbContext db, IMemoryCache _cache, ILogger _logger) {
             await command.DeferAsync();
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
@@ -149,7 +153,7 @@ namespace EGG9000.Bot.Commands {
                 if(dbUser.EggIncAccounts.Count > 1) {
                     sb.AppendLine($"\n**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})**");
                 }
-                await LLCCalculate(account, sb, dbUser.DiscordUsername);
+                await LLCCalculate(account, sb, dbUser.DiscordUsername, _cache, _logger);
             }
             
             await command.ModifyOriginalResponseAsync(x => x.Content = sb.ToString());
@@ -179,15 +183,35 @@ namespace EGG9000.Bot.Commands {
             return (resultLastType, resultSecondToLastType);
         }
 
+        [SlashCommand(Description="Testing")]
+        public static async Task GetCachedLLCCoeffs(FauxCommand command, IMemoryCache _cache, ILogger _logger) {
+            await command.DeferAsync();
+            var cachedCoeffs = await GetShipDataTable(_cache, _logger);
+            var coeffsString = "";
+            cachedCoeffs.ForEach(c => {
+                coeffsString += c.ship + " " + c.type + " [" + string.Join(", ", c.legendaryDropRates) + "]\n";
+            });
+            var bytes = Encoding.UTF8.GetBytes(coeffsString);
+            await command.RespondWithFileAsync(attachment: new FileAttachment(new MemoryStream(bytes), "Coefficients.txt"), text: "bruh");
+        }
+
         [ComponentCommand]
-        private static async Task LLCCalculate(EggIncAccount account, StringBuilder sb, string userName) {
+        private static async Task LLCCalculate(EggIncAccount account, StringBuilder sb, string userName, IMemoryCache _cache, ILogger _logger) {
 
             var backup = await ContractsAPI.FirstContact(account.Id);
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is not null && account?.Backup?.ArtifactHall is not null) {
+                var shipCoefficientTable = await GetShipDataTable(_cache, _logger);
+
+                //Catch the case where the cache is invalidated, and the API returns an error
+                if(shipCoefficientTable is null) {
+                    sb.AppendLine($"Ship coefficients were not cached, and Menno's API did not respond to refresh them. Please try again later.");
+                    return;
+                }
+
                 var shipsSent = new ShipsSent(backup.Backup);
 
                 var sumOfRatios = 0.0;
-                foreach(var (ship, type, dropRates) in shipDataTable) {
+                foreach(var (ship, type, dropRates) in shipCoefficientTable) {
                     var rateIndex = 0;
                     foreach(var rate in dropRates) {
                         if(rate == 0.0) {
