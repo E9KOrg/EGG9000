@@ -327,11 +327,9 @@ namespace EGG9000.Bot.Commands {
                 var userids = coop.UserCoopsXrefs.Select(x => x.UserId).ToList();
                 var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
                 var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
-                var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);    
-                if(coop.ThreadID != 0 && (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsLocked ?? true || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsArchived ?? true)))
-                    continue;
+                var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);
 
-                if(coop.DiscordChannelId != 0 && (_client.GetGuild(coop.GuildId).GetTextChannel(coop.DiscordChannelId) == null || coop.DeletedChannel))
+                if(coop.ThreadID == 0 || coop.ThreadArchived)
                     continue;
               
                 if(details.HasSpots) {
