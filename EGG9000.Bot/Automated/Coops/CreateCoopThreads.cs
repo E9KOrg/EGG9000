@@ -198,7 +198,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public int ThreadsLeft {
                 get {
                     if(Guild == null) return 0;
-                    return (ServerFunction == ServerFunction.Primary ? 900 : 995) - Guild.GetInUseThreadCount();
+                    return (ServerFunction == ServerFunction.Primary ? 975 : 995) - Guild.GetInUseThreadCount();
                 }
             }
 
