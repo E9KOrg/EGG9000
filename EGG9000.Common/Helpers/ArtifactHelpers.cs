@@ -1,5 +1,11 @@
-﻿using EGG9000.Common.Database.Entities;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.JsonData.EiAfxConfig;
 using Ei;
+using Humanizer;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -11,8 +17,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Common.Helpers {
@@ -24,44 +34,89 @@ namespace EGG9000.Common.Helpers {
 
     public static class ArtifactHelpers {
 
-        public static readonly long[] xpThresholds = [
-            0, 500, 3000, 8000, 18000, 43000, 93000, 193000, 443000, 943000, 1943000,
-            3943000, 7943000, 15943000, 30943000, 50943000, 85943000, 145943000, 245943000,
-            395943000, 595943000, 845943000, 1145943000, 1470943000, 1820943000, 2220943000,
-            2720943000, 3320943000, 4070943000, 5070943000
-        ];
+        private class MennoAPIData {
+            public string shipTypeName { get; set; }
+            public Spaceship Ship {
+                get {
+                    if(!Enum.TryParse<Spaceship>(shipTypeName, ignoreCase: true, out var spaceship)) {
+                        return Spaceship.ChickenOne;
+                    }
+                    return spaceship;
+                }
+            }
+            public string shipDurationTypeName { get; set; }
+            public DurationType DurationType {
+                get {
+                    if(!Enum.TryParse<DurationType>(shipDurationTypeName, ignoreCase: true, out var durationType)) {
+                        return DurationType.Tutorial;
+                    }
+                    return durationType;
+                }
+            }
+            public int shipLevel { get; set; }
+            public double shipsNeededPerLegendary { get; set; }
+        }
 
-        public static readonly List<double> levelMultipliers = [
-            1.00, 1.05, 1.10,
-            1.15, 1.20, 1.25,
-            1.30, 1.35, 1.40,
-            1.45, 1.50, 1.55,
-            1.60, 1.65, 1.70,
-            1.75, 1.85, 2.00,
-            2.25, 2.50, 3.00,
-            3.50, 4.00, 4.50,
-            5.00, 6.00, 7.00,
-            8.00, 9.00, 10.00
-        ];
+        private static HttpClient _httpClient;
+        private static readonly string MennoAPIURL = "https://eggincdatacollection.azurewebsites.net/";
+        private static readonly string APIEndpoint = "api/GetLLCData";
+        private static readonly string MennoDataKey = "MennoDataCache";
+        public static async Task<List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)>> GetShipDataTable(IMemoryCache _cache, ILogger _logger) {
+            if(!_cache.TryGetValue(MennoDataKey, out List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> mennoData)) {
+                mennoData = await GetNewMennoData(_logger);
+                _cache.Set(MennoDataKey, mennoData, TimeSpan.FromHours(6));
+            }
 
-        public static readonly List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipDataTable = [
-            (Spaceship.Galeggtica, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Galeggtica, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Galeggtica, DurationType.Epic, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Chickfiant, DurationType.Short, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Chickfiant, DurationType.Long, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
-            (Spaceship.Chickfiant, DurationType.Epic, [0.0, 482.673, 1615.316, 274.828, 431.604, 0.0]),
-            (Spaceship.Voyegger, DurationType.Short, [0.0, 0.0, 9010.667, 8244.540, 3056.498, 1212.981, 654.000]),
-            (Spaceship.Voyegger, DurationType.Long, [579.538, 0.0, 934.343, 372.407, 653.134, 0.0, 0.0]),
-            (Spaceship.Voyegger, DurationType.Epic, [270.244, 133.825, 119.026, 113.645, 105.118, 161.565, 143.500]),
-            (Spaceship.Henerprise, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
-            (Spaceship.Henerprise, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
-            (Spaceship.Henerprise, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
-            //These are the Henerprise values as it is likely a decent (initial) estimation that the drop rates are similar
-            (Spaceship.Atreggies, DurationType.Short, [2535.522, 1263.428, 1410.754, 594.269, 501.500, 615.863, 422.235, 483.407]),
-            (Spaceship.Atreggies, DurationType.Long, [0.0, 300.548, 203.415, 319.529, 165.267, 87.388, 84.260, 103.098]),
-            (Spaceship.Atreggies, DurationType.Epic, [55.675, 51.978, 36.620, 38.262, 30.459, 27.887, 25.055, 24.977]),
-        ];
+            return mennoData;
+        }
+
+        public static uint GetCraftingLevel(double CraftingXP) {
+            uint currentLevel = 1;
+            var xpThresholds = Root.Get().craftingLevelXpThresholds;
+            for(var i = xpThresholds.Count - 1; i >= 0; i--) {
+                if(CraftingXP >= xpThresholds[i]) {
+                    currentLevel = (uint)i + 1;
+                    break;
+                }
+            }
+            return currentLevel;
+        }
+
+        public static uint GetCraftingLevel(this CustomBackup backup) {
+            return GetCraftingLevel(backup.CraftingXP);
+        }
+
+        private static async Task<List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)>> GetNewMennoData(ILogger _logger) {
+            _httpClient ??= new() {
+                BaseAddress = new Uri(MennoAPIURL)
+            };
+            //Dispose of any junk requests left over, prevent mem leaks
+            _httpClient.CancelPendingRequests();
+            try {
+                var response = await _httpClient.GetAsync(APIEndpoint);
+                response.EnsureSuccessStatusCode();
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                var shipDataArray = JsonConvert.DeserializeObject<MennoAPIData[]>(jsonResponse);
+
+                _logger.LogInformation("Menno Ship Coefficients were refreshed at {refreshTime}, and will be invalidated again at {invalidationTime}", DateTimeOffset.Now.Humanize(), DateTimeOffset.Now.AddHours(6).Humanize());
+
+                return shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
+                    .SelectMany(shipGrouping => shipGrouping.GroupBy(sg => sg.Ship)
+                        .Select(durationGrouping => (
+                            ship: durationGrouping.First().Ship,
+                            type: durationGrouping.First().DurationType,
+                            legendaryDropRates: durationGrouping
+                                .OrderBy(d => d.shipLevel)
+                                .Select(d => d.shipsNeededPerLegendary)
+                                .ToList()
+                        )
+                    )
+                ).ToList();
+            } catch(HttpRequestException ex) {
+                _logger.LogError("Failed to load Menno Ship Coefficients from API: {exception}", ex);
+                return null;
+            }
+        }
 
         public static string GetArtifactFairnessScoreString(List<ArtifactCount> ArtifactHall) {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? "0 (null artifact hall)" : GetArtifactFairnessScore(ArtifactHall).ToString("E");
@@ -70,60 +125,6 @@ namespace EGG9000.Common.Helpers {
         public static BigInteger GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
-
-        public static readonly Dictionary<EggIncArtifactInstance, List<double>> BaseCraftingCoefficients = new() {
-            { new() { Artifact = "Lunar Totem", Tier = 2}, new() { 30, 0, 0} },
-            { new() { Artifact = "Lunar Totem", Tier = 3}, new() { 20, 0, 0} },
-            { new() { Artifact = "Lunar Totem", Tier = 4}, new() { 30, 250, 1500} },
-            { new() { Artifact = "Light of Eggendil", Tier = 2 }, new() { 15, 0, 0 } },
-            { new() { Artifact = "Light of Eggendil", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Light of Eggendil", Tier = 4 }, new() { 0, 100, 1000 } },
-            { new() { Artifact = "Book of Basan", Tier = 3 }, new() { 0, 100, 0 } },
-            { new() { Artifact = "Book of Basan", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Tachyon Deflector", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Tachyon Deflector", Tier = 4 }, new() { 120, 500, 1200 } },
-            { new() { Artifact = "Ship in a Bottle", Tier = 3 }, new() { 10, 400, 1200 } },
-            { new() { Artifact = "Ship in a Bottle", Tier = 4 }, new() { 100, 400, 1200 } },
-            { new() { Artifact = "Titanium Actuator", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Titanium Actuator", Tier = 4 }, new() { 0, 200, 1000 } },
-            { new() { Artifact = "Dilithium Monocle", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Quantum Metronome", Tier = 2 }, new() { 15, 0, 0 } },
-            { new() { Artifact = "Quantum Metronome", Tier = 3 }, new() { 10, 80, 0 } },
-            { new() { Artifact = "Quantum Metronome", Tier = 4 }, new() { 33, 160, 1000 } },
-            { new() { Artifact = "Phoenix Feather", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Phoenix Feather", Tier = 4 }, new() { 40, 0, 1000 } },
-            { new() { Artifact = "The Chalice", Tier = 2 }, new() { 0, 80, 0 } },
-            { new() { Artifact = "The Chalice", Tier = 3 }, new() { 10, 100, 0 } },
-            { new() { Artifact = "The Chalice", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Interstellar Compass", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Interstellar Compass", Tier = 4 }, new() { 40, 200, 1000 } },
-            { new() { Artifact = "Carved Rainstick", Tier = 4 }, new() { 0, 170, 1000 } },
-            { new() { Artifact = "Beak of Midas", Tier = 3 }, new() { 11, 0, 0 } },
-            { new() { Artifact = "Beak of Midas", Tier = 4 }, new() { 50, 0, 1500 } },
-            { new() { Artifact = "Mercury's Lens", Tier = 2 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Mercury's Lens", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Mercury's Lens", Tier = 4 }, new() { 40, 250, 1000 } },
-            { new() { Artifact = "Neodymium Medallion", Tier = 2 }, new() { 12, 0, 0 } },
-            { new() { Artifact = "Neodymium Medallion", Tier = 3 }, new() { 0, 150, 0 } },
-            { new() { Artifact = "Neodymium Medallion", Tier = 4 }, new() { 40, 200, 1000 } },
-            { new() { Artifact = "Gusset", Tier = 2 }, new() { 0, 100, 0 } },
-            { new() { Artifact = "Gusset", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Gusset", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Tungsten Ankh", Tier = 2 }, new() { 25, 0, 0 } },
-            { new() { Artifact = "Tungsten Ankh", Tier = 3 }, new() { 10, 0, 1000 } },
-            { new() { Artifact = "Tungsten Ankh", Tier = 4 }, new() { 40, 0, 1000 } },
-            { new() { Artifact = "Aurelian Brooch", Tier = 3 }, new() { 10, 100, 0 } },
-            { new() { Artifact = "Aurelian Brooch", Tier = 4 }, new() { 40, 180, 1000 } },
-            { new() { Artifact = "Vial of Martian Dust", Tier = 2 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Vial of Martian Dust", Tier = 3 }, new() { 0, 100, 0 } },
-            { new() { Artifact = "Vial of Martian Dust", Tier = 4 }, new() { 40, 0, 1000 } },
-            { new() { Artifact = "Demeters Necklace", Tier = 2 }, new() { 30, 0, 0 } },
-            { new() { Artifact = "Demeters Necklace", Tier = 3 }, new() { 20, 100, 0 } },
-            { new() { Artifact = "Demeters Necklace", Tier = 4 }, new() { 40, 140, 1000 } },
-            { new() { Artifact = "Puzzle Cube", Tier = 2 }, new() { 0, 80, 0 } },
-            { new() { Artifact = "Puzzle Cube", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Puzzle Cube", Tier = 4 }, new() { 50, 170, 1000 } },
-        };
 
         public static int GetAFOrder(string AF) {
             return AF switch {
