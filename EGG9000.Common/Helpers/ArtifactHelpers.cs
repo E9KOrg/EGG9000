@@ -1,4 +1,6 @@
-﻿using EGG9000.Common.Database.Entities;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.JsonData.EiAfxConfig;
 using Ei;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
@@ -17,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,6 +68,22 @@ namespace EGG9000.Common.Helpers {
             }
 
             return mennoData;
+        }
+
+        public static uint GetCraftingLevel(double CraftingXP) {
+            uint currentLevel = 1;
+            var xpThresholds = Root.Get().craftingLevelXpThresholds;
+            for(var i = xpThresholds.Count - 1; i >= 0; i--) {
+                if(CraftingXP >= xpThresholds[i]) {
+                    currentLevel = (uint)i + 1;
+                    break;
+                }
+            }
+            return currentLevel;
+        }
+
+        public static uint GetCraftingLevel(this CustomBackup backup) {
+            return GetCraftingLevel(backup.CraftingXP);
         }
 
         private static async Task<List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)>> GetNewMennoData(ILogger _logger) {
