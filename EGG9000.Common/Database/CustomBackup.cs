@@ -196,19 +196,6 @@ namespace EGG9000.Common.Database {
             return artifacts.Where(x => x.Count > 0).ToList();
         }
 
-        public uint GetCraftingLevel() {
-            uint currentLevel = 1;
-            var xpThresholds = JsonData.EiAfxConfig.Root.Get().craftingLevelXpThresholds;
-
-            for(var i = xpThresholds.Count - 1; i >= 0; i--) {
-                if(CraftingXP >= xpThresholds[i]) {
-                    currentLevel = (uint)i + 1;
-                    break;
-                }
-            }
-            return currentLevel;
-        }
-
         public CustomBackup() { }
 
         public CustomBackup(Ei.Backup backup, CustomBackup lastBackup = null) {
