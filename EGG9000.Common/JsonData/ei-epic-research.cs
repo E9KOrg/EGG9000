@@ -43,7 +43,7 @@ namespace EGG9000.Common.JsonData.EIEpicResearch {
     public class Root {
         public List<EpicResearchItem> epicResearchItems { get; set; }
 
-        public static Root Instance = null;
+        private static Root Instance = null;
         public static Root Get() {
             if (Instance != null) {
                 return Instance;
