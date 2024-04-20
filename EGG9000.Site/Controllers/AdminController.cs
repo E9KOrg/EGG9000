@@ -847,18 +847,16 @@ namespace EGG9000.Site.Controllers {
 
             if(id.Trim().All(x => x >= '0' && x <= '9')) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
-            } else if(Regex.IsMatch(id.ToUpper(), "EI\\d{16}") && users.Any(u => u.EIDs.Contains(id))) {
-                return RedirectToAction("ViewUser", "MyFarms", new { discordId = (users.First(u => u.EIDs.Contains(id))).DiscordId });
+            } else if(Regex.IsMatch(id.ToUpper(), "EI\\d{16}") && users.Any(u => u.EIDs.Split(",").Contains(id) && u.DiscordId != default)) {
+                id = id.ToUpper();
+                var matchingEidUser = users.FirstOrDefault(u => u.EIDs.Split(",").Contains(id) && u.DiscordId != default);
+                if(matchingEidUser is null) return View(new List<DBUser>());
+                return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingEidUser.DiscordId});
             }
-
-            //var matchingUser2 = users.FirstOrDefault(x => x.DiscordUsername?.Contains(id) ?? false);
-            //if(matchingUser2 != null) {
-            //    return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingUser2.DiscordId });
-            //}
 
             id = id.ToLower().Trim();
             var matchingUsers = users.Where(x => 
-                (x.DiscordUsername ?? "").ToLower().Contains(id) || 
+                (x.DiscordUsername ?? "").ToLower().Contains(id) ||
                 (x.Usernames ?? "").ToLower().Split(",").Any(u => u.Contains(id))
             ).ToList();
 
