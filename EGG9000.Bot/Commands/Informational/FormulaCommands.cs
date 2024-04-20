@@ -5,6 +5,7 @@ using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.Services;
 using Ei;
 using Microsoft.EntityFrameworkCore;
@@ -183,24 +184,12 @@ namespace EGG9000.Bot.Commands {
             return (resultLastType, resultSecondToLastType);
         }
 
-        [SlashCommand(Description="Testing")]
-        public static async Task GetCachedLLCCoeffs(FauxCommand command, IMemoryCache _cache, ILogger _logger) {
-            await command.DeferAsync();
-            var cachedCoeffs = await GetShipDataTable(_cache, _logger);
-            var coeffsString = "";
-            cachedCoeffs.ForEach(c => {
-                coeffsString += c.ship + " " + c.type + " [" + string.Join(", ", c.legendaryDropRates) + "]\n";
-            });
-            var bytes = Encoding.UTF8.GetBytes(coeffsString);
-            await command.RespondWithFileAsync(attachment: new FileAttachment(new MemoryStream(bytes), "Coefficients.txt"), text: "bruh");
-        }
-
         [ComponentCommand]
         private static async Task LLCCalculate(EggIncAccount account, StringBuilder sb, string userName, IMemoryCache _cache, ILogger _logger) {
-
             var backup = await ContractsAPI.FirstContact(account.Id);
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is not null && account?.Backup?.ArtifactHall is not null) {
                 var shipCoefficientTable = await GetShipDataTable(_cache, _logger);
+                var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
 
                 //Catch the case where the cache is invalidated, and the API returns an error
                 if(shipCoefficientTable is null) {
@@ -225,7 +214,7 @@ namespace EGG9000.Bot.Commands {
 
                 var afHall = account.Backup.ArtifactHall;
                 var newLLCSum = 0.0;
-                foreach(var craftType in BaseCraftingCoefficients.Where(c => c.Value[2] != 0)) {
+                foreach(var craftType in baseCraftingCoefficients.Where(c => c.Value[2] != 0)) {
 
                     //Don't account for Lunar totems in LLC calc, re: sync with Menno data
                     if(craftType.Key.Artifact == "Lunar Totem" && craftType.Key.Tier == 4) continue;
@@ -248,7 +237,7 @@ namespace EGG9000.Bot.Commands {
                         //Calculate "assumed" or simulated crafting level
                         var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
                         //Retrieve the multiplier offset for this level (-1 due to returning "display value" vs. index)
-                        var simulatedMultiplier = levelMultipliers[simulatedCraftingLevel - 1];
+                        var simulatedMultiplier = Root.Get().craftingLevelMultipliers[simulatedCraftingLevel - 1];
 
                         //Calculate the true rate based on simulated multiplier
                         var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);
@@ -289,8 +278,9 @@ namespace EGG9000.Bot.Commands {
         }
         private static int GetCraftingLevel(double CraftingXP) {
             var currentLevel = 1;
+            var xpThresholds = Root.Get().craftingLevelXpThresholds;
 
-            for(var i = xpThresholds.Length - 1; i >= 0; i--) {
+            for(var i = xpThresholds.Count - 1; i >= 0; i--) {
                 if(CraftingXP >= xpThresholds[i]) {
                     currentLevel = i + 1;
                     break;

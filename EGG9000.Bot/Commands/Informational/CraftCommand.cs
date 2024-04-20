@@ -6,6 +6,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
@@ -79,19 +80,6 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Components = null; x.Content = contentString; });
         }
 
-        private static readonly List<double> LevelMultipliers = [
-            1.00, 1.05, 1.10,
-            1.15, 1.20, 1.25,
-            1.30, 1.35, 1.40,
-            1.45, 1.50, 1.55,
-            1.60, 1.65, 1.70,
-            1.75, 1.85, 2.00,
-            2.25, 2.50, 3.00,
-            3.50, 4.00, 4.50,
-            5.00, 6.00, 7.00,
-            8.00, 9.00, 10.00
-        ];
-
         private static async Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
@@ -128,7 +116,8 @@ namespace EGG9000.Bot.Commands {
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
             stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "You have enough GE!" : "You do not have enough GE!");
 
-            var coefficientPair = BaseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
+            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
+            var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
                 var secondStringBuilder = new StringBuilder();
                 var keyAf = coefficientPair.Key;
@@ -150,17 +139,25 @@ namespace EGG9000.Bot.Commands {
                     var secondPercentageStrs = new List<string>();
 
                     var quantityCraftText = "";
-                    switch(quantity.ToString().Last()) {
-                        case '1': quantityCraftText = $"{quantity}st"; break;
-                        case '2': quantityCraftText = $"{quantity}nd"; break;
-                        case '3': quantityCraftText = $"{quantity}rd"; break;
-                        case '4':
-                        case '5':
-                        case '6':
-                        case '7':
-                        case '8':
-                        case '9':
-                        case '0': quantityCraftText = $"{quantity}th"; break;
+                    if(quantity >= 11 && quantity <= 13) {
+                        switch(quantity) {
+                            case 11: quantityCraftText = "11th"; break;
+                            case 12: quantityCraftText = "12th"; break;
+                            case 13: quantityCraftText = "13th"; break;
+                        }
+                    } else {
+                        switch(quantity.ToString().Last()) {
+                            case '1': quantityCraftText = $"{quantity}st"; break;
+                            case '2': quantityCraftText = $"{quantity}nd"; break;
+                            case '3': quantityCraftText = $"{quantity}rd"; break;
+                            case '4':
+                            case '5':
+                            case '6':
+                            case '7':
+                            case '8':
+                            case '9':
+                            case '0': quantityCraftText = $"{quantity}th"; break;
+                        }
                     }
 
                     if(secondPercentages[Rarity.Rare][0] > 0 || secondPercentages[Rarity.Epic][0] > 0 || secondPercentages[Rarity.Legendary][0] > 0) {
@@ -185,7 +182,7 @@ namespace EGG9000.Bot.Commands {
 
         private static Dictionary<Rarity, List<double>> GetCraftPercentages(uint numCrafted, uint craftingLevel, List<double> baseRates) {
             var numCraftedScalar = Math.Min(1.0, (double)(numCrafted / 400.0));
-            var craftingScalar = LevelMultipliers[(int)craftingLevel - 1];
+            var craftingScalar = Root.Get().craftingLevelMultipliers[(int)craftingLevel - 1];
 
             var baseRareRate = baseRates[0];
             var baseEpicRate = baseRates[1];

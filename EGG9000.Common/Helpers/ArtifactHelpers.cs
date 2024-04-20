@@ -31,26 +31,6 @@ namespace EGG9000.Common.Helpers {
 
     public static class ArtifactHelpers {
 
-        public static readonly long[] xpThresholds = [
-            0, 500, 3000, 8000, 18000, 43000, 93000, 193000, 443000, 943000, 1943000,
-            3943000, 7943000, 15943000, 30943000, 50943000, 85943000, 145943000, 245943000,
-            395943000, 595943000, 845943000, 1145943000, 1470943000, 1820943000, 2220943000,
-            2720943000, 3320943000, 4070943000, 5070943000
-        ];
-
-        public static readonly List<double> levelMultipliers = [
-            1.00, 1.05, 1.10,
-            1.15, 1.20, 1.25,
-            1.30, 1.35, 1.40,
-            1.45, 1.50, 1.55,
-            1.60, 1.65, 1.70,
-            1.75, 1.85, 2.00,
-            2.25, 2.50, 3.00,
-            3.50, 4.00, 4.50,
-            5.00, 6.00, 7.00,
-            8.00, 9.00, 10.00
-        ];
-
         private class MennoAPIData {
             public string shipTypeName { get; set; }
             public Spaceship Ship {
@@ -126,60 +106,6 @@ namespace EGG9000.Common.Helpers {
         public static BigInteger GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
             return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
-
-        public static readonly Dictionary<EggIncArtifactInstance, List<double>> BaseCraftingCoefficients = new() {
-            { new() { Artifact = "Lunar Totem", Tier = 2}, new() { 30, 0, 0} },
-            { new() { Artifact = "Lunar Totem", Tier = 3}, new() { 20, 0, 0} },
-            { new() { Artifact = "Lunar Totem", Tier = 4}, new() { 30, 250, 1500} },
-            { new() { Artifact = "Light of Eggendil", Tier = 2 }, new() { 15, 0, 0 } },
-            { new() { Artifact = "Light of Eggendil", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Light of Eggendil", Tier = 4 }, new() { 0, 100, 1000 } },
-            { new() { Artifact = "Book of Basan", Tier = 3 }, new() { 0, 100, 0 } },
-            { new() { Artifact = "Book of Basan", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Tachyon Deflector", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Tachyon Deflector", Tier = 4 }, new() { 120, 500, 1200 } },
-            { new() { Artifact = "Ship in a Bottle", Tier = 3 }, new() { 10, 400, 1200 } },
-            { new() { Artifact = "Ship in a Bottle", Tier = 4 }, new() { 100, 400, 1200 } },
-            { new() { Artifact = "Titanium Actuator", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Titanium Actuator", Tier = 4 }, new() { 0, 200, 1000 } },
-            { new() { Artifact = "Dilithium Monocle", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Quantum Metronome", Tier = 2 }, new() { 15, 0, 0 } },
-            { new() { Artifact = "Quantum Metronome", Tier = 3 }, new() { 10, 80, 0 } },
-            { new() { Artifact = "Quantum Metronome", Tier = 4 }, new() { 33, 160, 1000 } },
-            { new() { Artifact = "Phoenix Feather", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Phoenix Feather", Tier = 4 }, new() { 40, 0, 1000 } },
-            { new() { Artifact = "The Chalice", Tier = 2 }, new() { 0, 80, 0 } },
-            { new() { Artifact = "The Chalice", Tier = 3 }, new() { 10, 100, 0 } },
-            { new() { Artifact = "The Chalice", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Interstellar Compass", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Interstellar Compass", Tier = 4 }, new() { 40, 200, 1000 } },
-            { new() { Artifact = "Carved Rainstick", Tier = 4 }, new() { 0, 170, 1000 } },
-            { new() { Artifact = "Beak of Midas", Tier = 3 }, new() { 11, 0, 0 } },
-            { new() { Artifact = "Beak of Midas", Tier = 4 }, new() { 50, 0, 1500 } },
-            { new() { Artifact = "Mercury's Lens", Tier = 2 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Mercury's Lens", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Mercury's Lens", Tier = 4 }, new() { 40, 250, 1000 } },
-            { new() { Artifact = "Neodymium Medallion", Tier = 2 }, new() { 12, 0, 0 } },
-            { new() { Artifact = "Neodymium Medallion", Tier = 3 }, new() { 0, 150, 0 } },
-            { new() { Artifact = "Neodymium Medallion", Tier = 4 }, new() { 40, 200, 1000 } },
-            { new() { Artifact = "Gusset", Tier = 2 }, new() { 0, 100, 0 } },
-            { new() { Artifact = "Gusset", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Gusset", Tier = 4 }, new() { 0, 150, 1000 } },
-            { new() { Artifact = "Tungsten Ankh", Tier = 2 }, new() { 25, 0, 0 } },
-            { new() { Artifact = "Tungsten Ankh", Tier = 3 }, new() { 10, 0, 1000 } },
-            { new() { Artifact = "Tungsten Ankh", Tier = 4 }, new() { 40, 0, 1000 } },
-            { new() { Artifact = "Aurelian Brooch", Tier = 3 }, new() { 10, 100, 0 } },
-            { new() { Artifact = "Aurelian Brooch", Tier = 4 }, new() { 40, 180, 1000 } },
-            { new() { Artifact = "Vial of Martian Dust", Tier = 2 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Vial of Martian Dust", Tier = 3 }, new() { 0, 100, 0 } },
-            { new() { Artifact = "Vial of Martian Dust", Tier = 4 }, new() { 40, 0, 1000 } },
-            { new() { Artifact = "Demeters Necklace", Tier = 2 }, new() { 30, 0, 0 } },
-            { new() { Artifact = "Demeters Necklace", Tier = 3 }, new() { 20, 100, 0 } },
-            { new() { Artifact = "Demeters Necklace", Tier = 4 }, new() { 40, 140, 1000 } },
-            { new() { Artifact = "Puzzle Cube", Tier = 2 }, new() { 0, 80, 0 } },
-            { new() { Artifact = "Puzzle Cube", Tier = 3 }, new() { 10, 0, 0 } },
-            { new() { Artifact = "Puzzle Cube", Tier = 4 }, new() { 50, 170, 1000 } },
-        };
 
         public static int GetAFOrder(string AF) {
             return AF switch {
