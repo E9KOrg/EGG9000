@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
@@ -42,7 +43,8 @@ namespace EGG9000.Bot.Commands {
 
             if(dbUser.EggIncAccounts.Count == 1) {
                 await command.RespondAsync(
-                    await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact)
+                    content: "",
+                    embeds: (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact)).ToArray()
                 );
             } else {
                 var builder = new ComponentBuilder();
@@ -74,13 +76,12 @@ namespace EGG9000.Bot.Commands {
             var quantity = int.Parse(dataObjs[2]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[3]);
 
-            var contentString = await CraftStringBuilder(account, quantity, quality, requestedArtifact);
-            //await component.UpdateAsync(x => { x.Components = null; x.Content = "Success"; });
-            //await component.Channel.SendMessageAsync(contentString);
-            await component.UpdateAsync(x => { x.Components = null; x.Content = contentString; });
+            var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact);
+            await component.UpdateAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        private static async Task<string> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
+        private static async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
+            var embeds = new List<Embed>();
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
             if(backup == null) {
@@ -94,27 +95,43 @@ namespace EGG9000.Bot.Commands {
             var crafter = new Crafter(backup.ArtifactHall);
             var basket = crafter.GetCraft(quantity, (int)quality, requestedArtifact.id);
 
-            stringBuilder.AppendFormat($"```{"Name",-20}{"Using",-8}{"Need",-8}{"Cost",-8}");
-            stringBuilder.AppendLine();
-            stringBuilder.Append("―――――――――――――――――――――――――――――――――――――――――――");
-            stringBuilder.AppendLine();
-
             var ingredients = from kvp in basket.GetIngredients()
                               orderby EggIncArtifacts.GetFamilyShorthand(kvp.Value.Tier.family) ascending, kvp.Value.Tier.tier_number descending
                               select kvp;
-            foreach(var ingredient in ingredients) {
-                stringBuilder.AppendFormat($"{$"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}",-20}");
-                stringBuilder.AppendFormat($"{ingredient.Value.Use.Format(),-8}");
-                stringBuilder.AppendFormat($"{ingredient.Value.GetNeed(),-8}");
-                stringBuilder.AppendFormat($"{ingredient.Value.Cost.Format(),-8}");
-                stringBuilder.AppendLine();
-            }
 
+            var longestIngredientLength = ingredients.Max(i => $"T{i.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(i.Value.Tier.family)}".Length) + 3;
+            stringBuilder.AppendLine($"```");
+            // Create headers with proper alignment and padding
+            stringBuilder.AppendFormat("{0,-" + longestIngredientLength + "}", "Name");
+            stringBuilder.AppendFormat("{0,-9}", "In Inv");
+            stringBuilder.AppendFormat("{0,-8}", "Need");
+            stringBuilder.AppendFormat("{0,-8}", "Cost");
+            stringBuilder.AppendLine(new string('―', longestIngredientLength + 22));
+
+            foreach(var ingredient in ingredients) {
+                // Build the formatted ingredient name
+                var formattedIngredient = $"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}";
+                stringBuilder.AppendFormat("{0,-" + longestIngredientLength + "}", formattedIngredient);
+                stringBuilder.AppendFormat("{0,-9}", ingredient.Value.Use.Format());
+                stringBuilder.AppendFormat("{0,-8}", ingredient.Value.GetNeed());
+                stringBuilder.AppendFormat("{0,-8}", ingredient.Value.Cost.Format());
+                stringBuilder.AppendLine(); // Add a new line after each ingredient
+            }
             stringBuilder.AppendLine("```");
-            stringBuilder.Append($"Total Cost: **{basket.GetTotalCost().ToString("#,0", new CultureInfo("en-US"))} GE**");
+            var ingredientEmbed = new EmbedBuilder()
+                .WithColor(Color.DarkGreen)
+                .WithDescription(stringBuilder.ToString())
+                .WithAuthor(new EmbedAuthorBuilder()
+                .WithName("Ingredients")
+                .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp"))
+                .Build();
+            embeds.Add(ingredientEmbed);
+
+            stringBuilder = new();
+            stringBuilder.Append($"Total Cost: <:Golden_Egg_GE:692439755798872075> **{basket.GetTotalCost().ToString("#,0", new CultureInfo("en-US"))}**");
             stringBuilder.AppendLine();
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
-            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "You have enough GE!" : "You do not have enough GE!");
+            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "_You have enough <:Golden_Egg_GE:692439755798872075>!_" : "_You do not have enough <:Golden_Egg_GE:692439755798872075>!_");
 
             var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
             var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
@@ -168,16 +185,20 @@ namespace EGG9000.Bot.Commands {
                         secondStringBuilder.AppendLine(string.Join(" | ", secondPercentageStrs));
                     }
                 }
-
-                if(stringBuilder.Length + secondStringBuilder.Length < 2000) {
-                    stringBuilder.Append(secondStringBuilder);
-                } else {
-                    stringBuilder.AppendLine("\n**(Message too long to show rarity chances)**");
-                }
+                stringBuilder.Append(secondStringBuilder);
             }
 
+            var costAndOddsEmbed = new EmbedBuilder()
+                .WithColor(Color.DarkGreen)
+                .WithDescription(stringBuilder.ToString())
+                .WithAuthor(new EmbedAuthorBuilder()
+                .WithName("Cost & Odds")
+                .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp"))
+                .Build();
+            embeds.Add(costAndOddsEmbed);
 
-            return stringBuilder.ToString();
+
+            return embeds;
         }
 
         private static Dictionary<Rarity, List<double>> GetCraftPercentages(uint numCrafted, uint craftingLevel, List<double> baseRates) {
