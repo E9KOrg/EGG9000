@@ -59,9 +59,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #endif
 
 
-            var totalCoops = coops.Count();
             var completedCoops = 0;
-
             var throttler = new SemaphoreSlim(5);
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -88,10 +86,10 @@ namespace EGG9000.Bot.Automated.Coops {
                         try {
                             var sw = new Stopwatch();
                             sw.Start();
-                            await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken, slashCommands);
+                            await ProcessCoop(coop.Id, guild, users, dbguild, slashCommands, cancellationToken);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
-                            _logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, totalCoops);
+                            _logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
                         } finally {
                             throttler.Release();
                         }
@@ -366,7 +364,7 @@ namespace EGG9000.Bot.Automated.Coops {
             };
         }
 
-        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken, List<SocketApplicationCommand> slashCommands) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, List<SocketApplicationCommand> slashCommands, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
@@ -392,15 +390,11 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(coopHeaderChannel != null) {
                             coopThread = (await coopHeaderChannel.GetActiveThreadsAsync()).FirstOrDefault(t => t.Id == coop.ThreadID);
                         }
-                    } catch(Exception) {
-                    }
+                    } catch(Exception) {}
                 }
 
                 if(coopThread == null) {
                     _logger.LogWarning("ERROR FINDING THREAD FOR CO-OP: {coopName}", coop.Name);
-                    Console.WriteLine($"Setting thread ID to 0 for {coop.Name}");
-                    coop.ThreadID = 0;
-                    await _db.SaveChangesAsync(CancellationToken.None);
                     return;
                 }
 
@@ -722,7 +716,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 }
                             });
                         coop.RolesAddedToThread = true;
-                        await _db.SaveChangesAsyncRetry(1);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     } catch(Exception) {
                         _logger.LogInformation("Failed to compile role pings for {coop}", coopName);
                     }
@@ -1224,17 +1218,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     await UpdateChannel(msgs, embedBuilder.Build(), coopThread, coop, statusReponse.DiscordMessages);
                 }
 
-
-                try {
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                } catch(Exception) {
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                }
+                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
 
 
                 var times = timings.Finished();
 
-                _logger.LogTrace("Co-op timings {timings} - {coop}", String.Join(",", times.Select(x => $"{x.name}:{x.time.Humanize().ShortenTime()}")), coop.Name);
+                _logger.LogTrace("Co-op timings {timings} - {coop}", string.Join(",", times.Select(x => $"{x.name}:{x.time.Humanize().ShortenTime()}")), coop.Name);
             } catch(Exception e) {
                 _logger.LogError(e, "Error in co-op {coopid}", coopName ?? coopid.ToString());
                 _bugsnag.Notify(e);
