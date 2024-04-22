@@ -13,6 +13,7 @@ using EGG9000.Common.Extensions;
 using EGG9000.Common.Services;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -56,6 +57,7 @@ namespace EGG9000.Bot.Services {
         private readonly List<(SocketApplicationCommand command, ulong guildid)> _globalCommands = [];
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+        private readonly IMemoryCache _cache;
         public CommandService(IConfiguration Configuration,
                 DiscordHostedService discord,
                 APILink apilink,
@@ -68,7 +70,8 @@ namespace EGG9000.Bot.Services {
                 ApplicationDbContext context,
                 IServiceProvider serviceProvider,
                 ILogger<CommandService> logger,
-                IPublishEndpoint publishEndpoint, IDbContextFactory<ApplicationDbContext> dbContextFactory
+                IPublishEndpoint publishEndpoint, IDbContextFactory<ApplicationDbContext> dbContextFactory,
+                IMemoryCache cache
             ) {
             _discord = discord;
             _apilink = apilink;
@@ -85,6 +88,7 @@ namespace EGG9000.Bot.Services {
             _provider = serviceProvider;
             _logger = logger;
             _dbContextFactory = dbContextFactory;
+            _cache = cache;
             logger.LogInformation($"Initiating CommandService");
         }
 
@@ -180,8 +184,10 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_bugsnag);
                         } else if(parameterInfo.ParameterType == typeof(ILogger)) {
                             parameters.Add(_logger);
+                        }else if(parameterInfo.ParameterType == typeof(IMemoryCache)) {
+                            parameters.Add(_cache);
                         } else {
-                            throw new ArgumentException($"Missing the type for {parameterInfo.Name}");
+                            throw new ArgumentException($"Parameter `{parameterInfo.Name}` is of type `{parameterInfo.ParameterType}`, which has not been implemented to be passed to commands.");
                         }
                     }
 
