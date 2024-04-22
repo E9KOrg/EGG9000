@@ -433,7 +433,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync($"Started {serviceName}");
         }
 
-        [SlashCommand(Description = "Ping everyone in a co-op with a message", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        [SlashCommand(Description = "Ping everyone in a co-op with a message", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task PingEveryoneInCoop(FauxCommand command, [SlashParam] string message, ApplicationDbContext db) {
             var coop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.ChannelId);
             if(coop == null) {
