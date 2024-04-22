@@ -118,7 +118,7 @@ namespace EGG9000.Bot.Commands {
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
                 if(coop.ThreadID != 0) {
                     var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
-                    await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, slashCommands);
+                    await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, slashCommands, default);
                 } else if(coop.DiscordChannelId != 0) {
                     await coopStatusUpdater.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
                 }
@@ -208,7 +208,8 @@ namespace EGG9000.Bot.Commands {
 
 
             //Add the grade role before moving them, to give them access to the header channel (if applicable)
-            var discordUser = _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).GetUser(dbuser.DiscordId);
+            var currentGuild = _client.Guilds.FirstOrDefault(g => g.Id == command.GuildId);
+            var discordUser = currentGuild.GetUser(dbuser.DiscordId);
             var gradeRole = dbGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == newgrade switch {
                 1 => GuildChannelType.GradeC,
                 2 => GuildChannelType.GradeB,
@@ -218,6 +219,10 @@ namespace EGG9000.Bot.Commands {
                 _ => default
             });
             if(gradeRole != null) {
+                //Get the main guild
+                var mainGuild = _client.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
+                var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
+
                 //Fetch a new backup so they don't lose access to this channel when role update happens
                 var rawBackup = await ContractsAPI.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
@@ -231,7 +236,13 @@ namespace EGG9000.Bot.Commands {
                     account.Backup = customBackup;
                     dbuser.UpdateAccounts();
                 }
-                await discordUser.AddRoleAsync(gradeRole.Id);
+                await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);
+                if(mainGuild.Id != currentGuild.Id) {
+                    var currentGuildSocketRole = currentGuild.Roles.FirstOrDefault(r => r.Name == socketGradeRole.Name);
+                    if(currentGuildSocketRole != null) {
+                        await discordUser.AddRoleAsync(currentGuildSocketRole.Id);
+                    }
+                }
             }
 
             /* MOVING TO NEW COOP */
@@ -316,11 +327,9 @@ namespace EGG9000.Bot.Commands {
                 var userids = coop.UserCoopsXrefs.Select(x => x.UserId).ToList();
                 var users = await db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
                 var usersWithBackups = users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x })).ToList();
-                var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);    
-                if(coop.ThreadID != 0 && (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsLocked ?? true || (_client.GetGuild(coop.GuildId).GetThreadChannel(coop.ThreadID)?.IsArchived ?? true)))
-                    continue;
+                var details = new CoopDetails(coop, contract, (uint)account.GetGrade(), usersWithBackups, _client, coop.LastStatusUpdate);
 
-                if(coop.DiscordChannelId != 0 && (_client.GetGuild(coop.GuildId).GetTextChannel(coop.DiscordChannelId) == null || coop.DeletedChannel))
+                if(coop.ThreadID == 0 || coop.ThreadArchived)
                     continue;
               
                 if(details.HasSpots) {
@@ -370,7 +379,7 @@ namespace EGG9000.Bot.Commands {
 
             var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)command.Channel);
             if(newxref == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}"));
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server.\n**User was not moved to a coop.**" : "")}"));
                 return;
             }
             db.Add(newxref);
@@ -601,7 +610,7 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
             if(targetCoop.ThreadID != 0) {
                 var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
-                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, slashCommands);
+                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, slashCommands, default);
             } else if(targetCoop.DiscordChannelId != 0) {
                 await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
             }

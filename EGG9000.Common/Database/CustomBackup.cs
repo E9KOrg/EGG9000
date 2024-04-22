@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static Ei.Contract.Types;
 using static Ei.MissionInfo.Types;
 using static Ei.ArtifactSpec.Types;
@@ -195,18 +194,6 @@ namespace EGG9000.Common.Database {
 
             farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList().ForEach(f => f.Artifacts.ForEach(a => artifacts.First(x => x.Artifact.Equals(a)).Count--));
             return artifacts.Where(x => x.Count > 0).ToList();
-        }
-
-        public uint GetCraftingLevel() {
-            uint currentLevel = 1;
-
-            for(var i = xpThresholds.Length - 1; i >= 0; i--) {
-                if(CraftingXP >= xpThresholds[i]) {
-                    currentLevel = (uint)i + 1;
-                    break;
-                }
-            }
-            return currentLevel;
         }
 
         public CustomBackup() { }

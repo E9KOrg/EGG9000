@@ -110,26 +110,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
         #region ContractAutoCompletes
         /*
-        *  Currently un-used. If we open up `/findcoopforuser` to users in the future, this is what we should use.
-        *  Was previously being used in `/findcoopforuser` as the staff only command, but was limiting the staff
-        *  that could move users to ultra coops to "staff who have ultra"
-        */
-        public class ContractAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
-            private readonly ApplicationDbContext _db = db;
-
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
-                var hasSubscriptionAccounts = dbUser.EggIncAccounts.Where(x => x.HasActiveSubscription()).Any();
-
-                var contracts = await _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).Select(x => new { x.ID, x.Name }).ToListAsync();
-                var stringArg = (string)arg.Data.Current.Value;
-                if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
-
-                await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
-            }
-        }
-
-        /*
          *  Clone of ContractAutoComplete with no limitation on who can select Ultra coops
          */
         public class StaffContractAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {

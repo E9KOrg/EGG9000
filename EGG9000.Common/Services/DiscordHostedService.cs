@@ -316,6 +316,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
+            if(contract is null) return "";
             return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
         }
 
