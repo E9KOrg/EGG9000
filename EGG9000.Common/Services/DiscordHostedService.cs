@@ -310,13 +310,13 @@ namespace EGG9000.Common.Services {
             foreach(var sg in guilds) {
                 var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
                 foreach(var channel in channels) {
-                    await channel.DeleteAsync();
+                    //await channel.DeleteAsync();
                 }
             }
         }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
-            if(contract is null) return "";
+            if(contract is null) return "unknown-contract";
             return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
         }
 
