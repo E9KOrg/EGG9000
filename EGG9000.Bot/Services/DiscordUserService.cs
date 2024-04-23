@@ -50,9 +50,10 @@ namespace EGG9000.Common.Services {
 
         private async Task HandleChannelDeleted(SocketChannel arg) {
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var guildContract = await db.GuildContracts.FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
+            var guildContract = await db.GuildContracts.Include(x => x.Contract).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
             if(guildContract is not null) {
                 var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
+                _logger.LogInformation("Deleting header channels for {contract} because discord report the contract channel was deleted", guildContract.Contract.Name);
                 await dbGuild.DeleteCoopThreadHeadersAsync(_discord, guildContract.Contract);
                 guildContract.DeletedChannel = true;
                 await db.SaveChangesAsync();

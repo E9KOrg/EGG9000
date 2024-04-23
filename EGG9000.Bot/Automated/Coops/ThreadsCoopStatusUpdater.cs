@@ -688,7 +688,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 //var currentUsers = coop.UserCoopsXrefs.Where(u => u.JoinedCoop).Select(u => u.User.DiscordId).Distinct().ToList();
                 var currentUserDiscordIds = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).Select(x => users.FirstOrDefault(u => u.User.Id == x.UserId)).Where(x => x is not null).Select(x => x.User.DiscordId);
                 foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
-                    if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUserDiscordIds.Any(u => u == userStatus.DiscordUser.Id)) {
+                    if(!userStatus.Xref.AddedToChannel) {
+                        usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
+                    } else if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUserDiscordIds.Any(u => u == userStatus.DiscordUser.Id)) {
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
                     }
 
