@@ -689,13 +689,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client) {
+        public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, ILogger _logger) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {
                 await command.RespondAsync(content: "", embed: EmbedError("Unable to find contract, use only in contract channels."));
                 return;
             }
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
+            _logger.LogInformation("Deleting header channels for {} because the contract channel was deleted", guildContract.Contract.Name);
             await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract);
 
             guildContract.DeletedChannel = true;

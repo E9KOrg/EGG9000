@@ -186,6 +186,7 @@ namespace EGG9000.Bot.Automated {
                     if(channel != null) {
                         await channel.DeleteAsync();
                     }
+                    _logger.LogInformation("Deleting header channels for {contract} because the contract is expired.", guildContract.Contract.Name);
                     await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract);
                     guildContract.DeletedChannel = true;
 
