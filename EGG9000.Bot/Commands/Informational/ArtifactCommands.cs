@@ -34,7 +34,7 @@ namespace EGG9000.Bot.Commands {
             await _viewInventory(command, db, dbuser, account, showinchannel);
         }
 
-        [SlashCommand(Description = "View your inventory")]
+        [SlashCommand(Description = "View your inventory", AllowInDMs = true)]
         public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
             await command.DeferAsync();
             var userid = useraccount.Split("|")[0];
