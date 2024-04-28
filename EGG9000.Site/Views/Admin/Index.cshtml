@@ -1,4 +1,5 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
+@using static EGG9000.Common.Helpers.CreateCoopsV2;
 @{
 	ViewData["Title"] = "Admin";
 	var days = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
@@ -50,10 +51,10 @@
 						int available;
 						if (first) {
 							first = false;
-							available = Math.Max(900 - guild.ThreadCount, 0);
+							available = Math.Max(PrimaryMaxThreads - guild.ThreadCount, 0);
 
 						} else {
-							available = Math.Max(1000 - guild.ThreadCount, 0);
+							available = Math.Max(OverflowMaxThreads - guild.ThreadCount, 0);
 
 						}
 						availableSum += available;

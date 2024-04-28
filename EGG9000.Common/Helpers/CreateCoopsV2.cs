@@ -14,6 +14,16 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
+
+        //Overflow moved from 500 -> 495 to account for any ghosting like we saw with Overflow 1
+        public const int PrimaryMaxChannels = 450;
+        public const int OverflowMaxChannels = 495;
+
+        //Leave above 970 so Discord does it's auto-pruning
+        //Overflow moved from 1000 -> 995 to account for any ghosting like we saw with Overflow 1
+        public const int PrimaryMaxThreads = 975;
+        public const int OverflowMaxThreads = 995;
+
         public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group, bool allowAllGrades) {
             var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
