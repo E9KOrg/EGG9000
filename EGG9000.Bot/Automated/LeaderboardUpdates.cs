@@ -6,6 +6,7 @@ using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,18 +22,11 @@ using static EGG9000.Common.Helpers.Prefarm;
 namespace EGG9000.Bot.Automated {
     public class LeaderboardUpdater(IServiceProvider provider) : _UpdaterBase<LeaderboardUpdater>(UpdateTime, delayedStart: TimeSpan.FromMinutes(5), provider) {
         public static readonly TimeSpan UpdateTime = TimeSpan.FromMinutes(60);
-        public static readonly List<UserX> _users;
-
-        public class UserX {
-            public SocketGuildUser SocketGuildUser { get; set; }
-            public Guid DBUserId { get; set; }
-        }
 
         private class BreakCooper {
             public LeaderboardUser User { get; set; }
             public CustomFarm Farm { get; set; }
         }
-
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(_logger);
@@ -154,7 +148,8 @@ namespace EGG9000.Bot.Automated {
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();
                         }
-                        await _db.SaveChangesAsync(CancellationToken.None);
+
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     //Handle users with suspiciously high Mystical Egg Ratios
@@ -179,7 +174,7 @@ namespace EGG9000.Bot.Automated {
                             merCheater.Account.MERWarningSent = true;
                             merCheater.User.UpdateAccounts();
                         }
-                        await _db.SaveChangesAsync(CancellationToken.None);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     //Handle promotions

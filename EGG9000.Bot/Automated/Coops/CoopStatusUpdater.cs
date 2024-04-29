@@ -37,12 +37,6 @@ namespace EGG9000.Bot.Automated.Coops {
 #endif
         private readonly Dictionary<ulong, SocketTextChannel> _demeritChannels = [];
 
-
-        public class UserX {
-            public SocketGuildUser SocketGuildUser { get; set; }
-            public Guid DBUserId { get; set; }
-        }
-
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
