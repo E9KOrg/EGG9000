@@ -60,22 +60,22 @@ namespace EGG9000.Common.Services {
             public Severity Severity { get; set; } = severity;
         }
 
-        public Task RestartAsync() {
+        public async Task RestartAsync() {
             if(ConnectionState != ConnectionState.Connected) {
                 throw new RestartDiscordExecption("Not connected yet - cannot restart.", Severity.Warning);
             }
 
             try {
                 //Logout subtasks
-                LogoutAsync();
-                StopAsync().Wait();
+                await LogoutAsync();
+                await StopAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
                 while(ConnectionState == ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Disconnected...");
 
                 //Log back in
-                LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
-                StartAsync().Wait();
+                await LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]);
+                await StartAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
                 while(ConnectionState != ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Ready");
@@ -83,7 +83,7 @@ namespace EGG9000.Common.Services {
                 throw new RestartDiscordExecption(ex.Message, Severity.Error);
             }
 
-            return Task.CompletedTask;
+            return;
         }
 
         //public Task StartAsync(CancellationToken cancellationToken) {
@@ -193,6 +193,12 @@ namespace EGG9000.Common.Services {
         public static List<DiscordSemahpore> GetSemaphores() {
             return _serverSemaphores;
         }
+        public static DiscordSemahpore AddSemaphore(SocketGuild guild) {
+            if(guild is null) return null;
+            if(_serverSemaphores.Any(s => s.Guild.Id == guild.Id)) return null;
+            _serverSemaphores.Add(new(guild, new(1, 1)));
+            return _serverSemaphores.First(s => s.Guild.Id == guild.Id);
+        }
         public static TimeSpan GetSemaphoreTimeout() {
             return _semaphoreTimeoutTime;
         }
@@ -205,7 +211,10 @@ namespace EGG9000.Common.Services {
     public static class DiscordExtensions {
 
         public static SemaphoreSlim GetServerSemaphore(this SocketGuild guild) {
-            return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
+            if(guild is null) return null;
+            var ss = DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild);
+            ss ??= DiscordHostedService.AddSemaphore(guild);
+            return ss?.Semaphore ?? null;
         }
 
         public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
@@ -251,7 +260,7 @@ namespace EGG9000.Common.Services {
             //Wait on the Server's lock, timeout defined in DiscordHostedService
             logger.LogInformation("CreateCoopThreadHeaderAsync: Waiting on Semaphore lock for guild {guild}", guild.Name);
             var dtNow = DateTimeOffset.Now;
-            var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), CancellationToken.None);
+            var ownershipAcquired = await guild?.GetServerSemaphore()?.WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), CancellationToken.None);
             if(ownershipAcquired) {
                 logger.LogInformation("CreateCoopThreadHeaderAsync: Semaphore for guild {guild} unlocked after {timespan}.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
             } else {
@@ -309,8 +318,13 @@ namespace EGG9000.Common.Services {
 
             foreach(var sg in guilds) {
                 var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+                
+                // Safety measure - there should never be more than 5 channels in the same guild,
+                // so if this happens, the pattern matching failed.
+                if(channels.Count() > 5) continue;
+
                 foreach(var channel in channels) {
-                    //await channel.DeleteAsync();
+                    await channel.DeleteAsync();
                 }
             }
         }
