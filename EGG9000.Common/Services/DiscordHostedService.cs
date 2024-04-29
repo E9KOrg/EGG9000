@@ -18,6 +18,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Common.Services {
     public class DiscordHostedService : DiscordSocketClient {
@@ -330,7 +331,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
-            if(contract is null) return "unknown-contract";
+            if(contract is null || string.IsNullOrEmpty(contract.Name) ) return "unknown-contract";
             return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
         }
 
