@@ -311,7 +311,7 @@ namespace EGG9000.Bot.Commands {
                     await discordHostedService.RestartAsync();
                     await command.RespondAsync(content: "", embed: EmbedSuccess("DiscordHostedService restarted."));
                     return;
-                } catch(RestartDiscordExecption ex) {
+                } catch(RestartDiscordException ex) {
                     await command.RespondAsync(content: "", embed: EmbedError($"**Exception caught:**\n\n{ex.CustomMessage}"));
                 }
             }
