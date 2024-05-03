@@ -1,10 +1,14 @@
 ﻿using Bugsnag;
+
 using Discord;
 using Discord.WebSocket;
+
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+
 using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,10 +32,10 @@ namespace EGG9000.Common.Services {
         private readonly IServiceProvider _provider;
         private readonly ILogger<DiscordHostedService> _logger;
         private static readonly DiscordSocketConfig config = new() {
-            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages | 
+            GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages |
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
         };
-        private static readonly List<DiscordSemahpore> _serverSemaphores = [];
+        private static readonly List<DiscordSemaphore> _serverSemaphores = [];
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
             _configuration = Configuration;
@@ -44,25 +48,25 @@ namespace EGG9000.Common.Services {
             StartAsync().Wait();
 
             _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
-            while(ConnectionState != ConnectionState.Connected) {}
+            while(ConnectionState != ConnectionState.Connected) { }
             _logger.Log(LogLevel.Information, "Discord Ready");
 
             _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             _cache = cache;
 
             foreach(var guild in Guilds) {
-                _serverSemaphores.Add(new DiscordSemahpore(guild, new(1, 1)));
+                _serverSemaphores.Add(new DiscordSemaphore(guild, new(1, 1)));
             }
         }
 
-        public class RestartDiscordExecption(string customMessage, Severity severity) : Exception {
+        public class RestartDiscordException(string customMessage, Severity severity) : Exception {
             public string CustomMessage { get; set; } = customMessage;
             public Severity Severity { get; set; } = severity;
         }
 
         public Task RestartAsync() {
             if(ConnectionState != ConnectionState.Connected) {
-                throw new RestartDiscordExecption("Not connected yet - cannot restart.", Severity.Warning);
+                throw new RestartDiscordException("Not connected yet - cannot restart.", Severity.Warning);
             }
 
             try {
@@ -80,7 +84,7 @@ namespace EGG9000.Common.Services {
                 while(ConnectionState != ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Ready");
             } catch(Exception ex) {
-                throw new RestartDiscordExecption(ex.Message, Severity.Error);
+                throw new RestartDiscordException(ex.Message, Severity.Error);
             }
 
             return Task.CompletedTask;
@@ -134,7 +138,7 @@ namespace EGG9000.Common.Services {
                 }
                 _dbGuildsKeySemaphore.Release();
                 return guildData.First(x => x.Id == guild.Id || x.OverflowServers.Any(y => y == guild.Id));
-            } catch(Exception) { 
+            } catch(Exception) {
                 _dbGuildsKeySemaphore.Release();
                 throw;
             }
@@ -185,19 +189,22 @@ namespace EGG9000.Common.Services {
                     return default;
 
                 return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
-            }catch (Exception e) {
+            } catch(Exception e) {
                 _logger.LogError(e, "Error getting channel or category");
                 return default;
             }
         }
-        public static List<DiscordSemahpore> GetSemaphores() {
+        public static List<DiscordSemaphore> GetSemaphores() {
             return _serverSemaphores;
         }
         public static TimeSpan GetSemaphoreTimeout() {
             return _semaphoreTimeoutTime;
         }
+        public static void AddSemaphore(DiscordSemaphore discordSemaphore) {
+            _serverSemaphores.Add(discordSemaphore);
+        }
     }
-    public class DiscordSemahpore(SocketGuild guild, SemaphoreSlim semaphore) {
+    public class DiscordSemaphore(SocketGuild guild, SemaphoreSlim semaphore) {
         public readonly SocketGuild Guild = guild;
         public readonly SemaphoreSlim Semaphore = semaphore;
     }
@@ -205,7 +212,12 @@ namespace EGG9000.Common.Services {
     public static class DiscordExtensions {
 
         public static SemaphoreSlim GetServerSemaphore(this SocketGuild guild) {
-            return DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild).Semaphore;
+            var discordSemaphore = DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild);
+            if(discordSemaphore is null) {
+                discordSemaphore = new DiscordSemaphore(guild, new(1, 1));
+                DiscordHostedService.AddSemaphore(discordSemaphore);
+            }
+            return discordSemaphore.Semaphore;
         }
 
         public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
@@ -243,7 +255,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, Coop coop, ILogger logger) {
-            if(category is null || category.Id  == 0) return null;
+            if(category is null || category.Id == 0) return null;
 
             var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
@@ -278,7 +290,7 @@ namespace EGG9000.Common.Services {
             await channel.SendMessageAsync(text: "", embed: contractEmbed);
 
             if(coop.Contract.cc_only && ultraRoles.Count > 0) {
-                foreach( var ultraRole in ultraRoles) {
+                foreach(var ultraRole in ultraRoles) {
                     await channel.AddPermissionOverwriteAsync(ultraRole,
                         new OverwritePermissions(
                                 viewChannel: PermValue.Allow,
@@ -288,10 +300,10 @@ namespace EGG9000.Common.Services {
                         );
                 }
             } else if(leagueRole != null) {
-                await channel.AddPermissionOverwriteAsync(leagueRole, 
+                await channel.AddPermissionOverwriteAsync(leagueRole,
                     new OverwritePermissions(
-                        viewChannel: PermValue.Allow, 
-                        sendMessages: PermValue.Deny, 
+                        viewChannel: PermValue.Allow,
+                        sendMessages: PermValue.Deny,
                         sendMessagesInThreads: PermValue.Allow
                     )
                 );
