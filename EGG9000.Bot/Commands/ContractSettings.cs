@@ -66,6 +66,8 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+            } else if(dbuser.GuildId == 0) {
+                await command.RespondAsync(content: "", embed: EmbedError($"It looks like the bot is unable to see what server you are registered with, please use the command `/moveserver` and then try this command again."), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             } else {
                 await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
             }
