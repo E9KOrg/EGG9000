@@ -178,7 +178,6 @@ namespace EGG9000.Bot.Automated {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
 
                 var customization = await GetCustomizationAsync(_db, dbguild, newEvent);
-                if(customization is null) continue;
 
                 var embed = GetEmbed(newEvent, customization, false, false);
 
@@ -227,7 +226,6 @@ namespace EGG9000.Bot.Automated {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
 
                 var customization = await GetCustomizationAsync(_db, dbguild, currentEvent);
-                if(customization is null) continue;
 
                 var embed = GetEmbed(currentEvent, customization, Ended, Crossout);
 
@@ -278,16 +276,20 @@ namespace EGG9000.Bot.Automated {
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = (1 - e.Multiplier) * 100;
-            var description = $"**{e.Subtitle}**\n{eventC.Description}";
+            var description = $"**{e.Subtitle}**\n";
             description = description.Replace("{{percent}}", percent.ToString()).Replace("{{multiplier}}", multiplier.ToString());
             var title = "";
-            switch(eventC.Type) {
-                case "prestige-boost":
-                    title = $"{multiplier}x <:Egg_soul_SE:724341890794913964> Soul Egg";
-                    break;
-                case "piggy-boost":
-                    title = $"{multiplier}x <:Piggy_bank:724396277676113955> Piggy Bank Growth";
-                    break;
+
+            if(eventC is not null) {
+                description += eventC.Description;
+                switch(eventC.Type) {
+                    case "prestige-boost":
+                        title = $"{multiplier}x <:Egg_soul_SE:724341890794913964> Soul Egg";
+                        break;
+                    case "piggy-boost":
+                        title = $"{multiplier}x <:Piggy_bank:724396277676113955> Piggy Bank Growth";
+                        break;
+                }
             }
             if(Ended) {
                 title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
@@ -309,18 +311,21 @@ namespace EGG9000.Bot.Automated {
                 embed.WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751");
             }
 
-            if(!string.IsNullOrWhiteSpace(eventC.ThumbnailURL)) {
+            if(!string.IsNullOrWhiteSpace(eventC?.ThumbnailURL)) {
                 embed.WithThumbnailUrl(eventC.ThumbnailURL);
             }
-            foreach(var tip in JsonConvert.DeserializeObject<List<dynamic>>(eventC.Fields)) {
-                var value = ((string)tip.Value).Replace("{{equivalent_multiplier}}", equivalent_multiplier.ToString());
-                value = value.Replace("{{percent}}", percent.ToString());
-                value = value.Replace("{{multiplier}}", multiplier.ToString());
-                var name = ((string)tip.Name).Replace("{{multiplier}}", multiplier.ToString());
-                if(CrossOut) {
-                    embed.AddField($"~~{name}~~", $"~~{value}~~");
-                } else {
-                    embed.AddField(name, value);
+
+            if(eventC is not null) {
+                foreach(var tip in JsonConvert.DeserializeObject<List<dynamic>>(eventC.Fields)) {
+                    var value = ((string)tip.Value).Replace("{{equivalent_multiplier}}", equivalent_multiplier.ToString());
+                    value = value.Replace("{{percent}}", percent.ToString());
+                    value = value.Replace("{{multiplier}}", multiplier.ToString());
+                    var name = ((string)tip.Name).Replace("{{multiplier}}", multiplier.ToString());
+                    if(CrossOut) {
+                        embed.AddField($"~~{name}~~", $"~~{value}~~");
+                    } else {
+                        embed.AddField(name, value);
+                    }
                 }
             }
 
