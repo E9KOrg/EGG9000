@@ -8,6 +8,8 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
+using Humanizer;
+
 using MassTransit.Initializers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,49 +37,46 @@ namespace EGG9000.Bot.Automated.Coops {
                 return;
             }
 
-            foreach(var coopGroups in coops.GroupBy(x => x.GuildId)) {
+            var guildIDs = coops.Select(x => x.GuildId).Distinct().ToArray();
+            var contractIDs = coops.Select(x => x.ContractID).Distinct().ToArray();
+            var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => guildIDs.Contains(gc.GuildID) && contractIDs.Contains(gc.ContractID)).ToListAsync(cancellationToken);
+
+
+            foreach(var coopGroup in coops.GroupBy(x => x.GuildId)) {
                 if(cancellationToken.IsCancellationRequested)
                     continue;
 
-                var guild = _client.Guilds.FirstOrDefault(x => x.Id == coopGroups.Key);
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == coopGroup.Key);
                 if(guild is null) {
-                    _logger.LogError("Unable to load guild with the id {guildid}", coopGroups.Key);
+                    _logger.LogError("Unable to load guild with the id {guildid}", coopGroup.Key);
                     continue;
                 }
 
-                var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => gc.GuildID == guild.Id).ToListAsync(cancellationToken);
                 var servers = await GetOverflowGuildsCounts(guild, _db);
-                var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroups.Key.ToString())).FirstOrDefaultAsync(CancellationToken.None);
+                var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroup.Key.ToString())).FirstOrDefaultAsync(CancellationToken.None);
                 if(servers == null) {
                     if(dbguild == null) {
                         _logger.LogWarning("Co-op is trying to be made for guild that is not registered, {guildname} {guildid}, Co-op Name {coop}, Users {user}",
-                            guild.Name, guild.Id, coopGroups.First().Name,
-                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroups.First().Id).Select(x => x.User.DiscordUsername).ToListAsync(CancellationToken.None))
+                            guild.Name, guild.Id, coopGroup.First().Name,
+                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroup.First().Id).Select(x => x.User.DiscordUsername).ToListAsync(CancellationToken.None))
                         );
                         continue;
                     }
                     guild = _client.Guilds.First(X => X.Id == dbguild.Id);
                     servers = await GetOverflowGuildsCounts(guild, _db);
-                    foreach(var coopGroup in coopGroups) {
-                        coopGroup.GuildId = dbguild.Id;
+                    foreach(var coop in coopGroup) {
+                        coop.GuildId = dbguild.Id;
                     }
                 }
-                _logger.LogInformation("Coop Counts {count} {guild}", coopGroups.Count(), guild.Name);
+                _logger.LogInformation("Coop Counts {count} {guild}", coopGroup.Count(), guild.Name);
 
-                int i = 0;
-                foreach(var coop in coopGroups) {
+                foreach(var coop in coopGroup) {
                     if(cancellationToken.IsCancellationRequested)
                         continue;
 
-                    if(i++ > 5) {
-                        i = 0;
-                        _logger.LogInformation("Sleeping for 2 seconds");
-                        await Task.Delay(2000, CancellationToken.None);
-                    }
-
-                    await Task.Delay(500, CancellationToken.None);
                     try {
-                        var (thread, parent) = await TryCreateCoopThread(guildContracts.First(gc => string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase)), guild, coop, servers);
+                        var guildContract = guildContracts.First(gc => gc.GuildID == guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
+                        var (thread, parent) = await TryCreateCoopThread(guildContract, guild, coop, servers);
                         if(thread != null) {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
@@ -95,15 +95,19 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
-                return await (parentChannel as SocketTextChannel).CreateThreadAsync(
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
+                var thread = await (parentChannel as SocketTextChannel).CreateThreadAsync(
                     name: threadName,
                     type: ThreadType.PrivateThread,
                     autoArchiveDuration: ThreadArchiveDuration.OneWeek, //Initially one week (don't archive)
                     invitable: false,
                     options: new RequestOptions {
-                        RatelimitCallback = RateLimit, RetryMode = RetryMode.AlwaysRetry, Timeout = 5000
+                        RatelimitCallback = RateLimit, CancelToken = cts.Token
                     }
                 );
+                cts.Dispose();
+                return thread;
             } catch(HttpException dException) {
                 if(dException.DiscordCode == DiscordErrorCode.MaximumActiveThreadsReached) {
                     //Expected?
@@ -113,7 +117,12 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private Task RateLimit(IRateLimitInfo info) {
-            Console.WriteLine(JsonConvert.SerializeObject(info, Formatting.Indented));
+            _logger.LogWarning("Rate Limit - Limit:{Limit} Remaining:{Remaining} RetryAfter:{RetryAfter} Reset:{Reset} ResetAfter:{After}",
+                               info.Limit,
+                               info.Remaining,
+                               TimeSpan.FromSeconds(info.RetryAfter ?? 0).Humanize(precision: 2).ShortenTime(),
+                               info.Reset?.Humanize().ShortenTime(),
+                               info.ResetAfter?.Humanize(precision: 2).ShortenTime());
             return Task.CompletedTask;
         }
 
@@ -126,7 +135,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
                 try {
                     return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
-                } catch(Exception) { continue; }
+                } catch(TaskCanceledException) {
+                    _logger.LogWarning("Canceled create thread call due to timeout on {coopname}", coop.Name);
+                    continue;
+                } catch(Exception) { 
+                    continue; 
+                }
             }
 
             //Fall back to creating a new header channel in a server
@@ -169,6 +183,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(headerChannel == null) continue;
                 try {
                     return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
+                } catch(TaskCanceledException) {
+                    _logger.LogWarning("Canceled create thread call due to timeout on {coopname}", coop.Name);
                 } catch(Exception) { }
             }
 
