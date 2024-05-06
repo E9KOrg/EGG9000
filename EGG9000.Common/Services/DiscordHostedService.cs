@@ -22,6 +22,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Common.Services {
     public class DiscordHostedService : DiscordSocketClient {
@@ -64,22 +65,22 @@ namespace EGG9000.Common.Services {
             public Severity Severity { get; set; } = severity;
         }
 
-        public Task RestartAsync() {
+        public async Task RestartAsync() {
             if(ConnectionState != ConnectionState.Connected) {
                 throw new RestartDiscordException("Not connected yet - cannot restart.", Severity.Warning);
             }
 
             try {
                 //Logout subtasks
-                LogoutAsync();
-                StopAsync().Wait();
+                await LogoutAsync();
+                await StopAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
                 while(ConnectionState == ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Disconnected...");
 
                 //Log back in
-                LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
-                StartAsync().Wait();
+                await LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]);
+                await StartAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
                 while(ConnectionState != ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Ready");
@@ -87,7 +88,7 @@ namespace EGG9000.Common.Services {
                 throw new RestartDiscordException(ex.Message, Severity.Error);
             }
 
-            return Task.CompletedTask;
+            return;
         }
 
         //public Task StartAsync(CancellationToken cancellationToken) {
@@ -311,7 +312,7 @@ namespace EGG9000.Common.Services {
             return guild.GetChannel(channel.Id);
         }
 
-        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, Contract contract) {
+        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, Contract contract, ILogger logger) {
             List<SocketGuild> guilds = [
                 client.GetGuild(guild.DiscordSeverId),
                 .. guild.OverflowServers.Select(client.GetGuild).ToList()
@@ -319,14 +320,24 @@ namespace EGG9000.Common.Services {
 
             foreach(var sg in guilds) {
                 var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+
+                // Safety measure - there should never be more than 5 channels in the same guild,
+                // so if this happens, the pattern matching failed.
+                if(channels.Count() > 5) {
+                    logger.LogError("Pattern matching failed for {guild} with the following channels: {channels} (They were not deleted)", sg.Name, String.Join(",", channels.Select(x => x.Name)));
+                    continue;
+                    
+                }
+
                 foreach(var channel in channels) {
-                    //await channel.DeleteAsync();
+                    await channel.DeleteAsync();
                 }
             }
         }
 
+
         public static string GetE9KName(this Contract contract, bool toLower = true) {
-            if(contract is null) return "unknown-contract";
+            if(contract is null || string.IsNullOrEmpty(contract.Name) ) return "unknown-contract";
             return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
         }
 
