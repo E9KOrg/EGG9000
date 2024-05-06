@@ -106,7 +106,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool FinishedOrFailed() {
-            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed;
+            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || Status == CoopStatusEnum.CompletedAllCheckIn;
         }
 
         public bool FinalizedFinishedOrFailed() {
@@ -114,7 +114,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool FinishedOrFailedOrExpired() {
-            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now;
+            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now || Status == CoopStatusEnum.CompletedAllCheckIn;
         }
     }
 
