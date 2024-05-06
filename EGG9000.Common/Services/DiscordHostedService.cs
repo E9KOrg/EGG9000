@@ -262,7 +262,7 @@ namespace EGG9000.Common.Services {
             //Wait on the Server's lock, timeout defined in DiscordHostedService
             logger.LogInformation("CreateCoopThreadHeaderAsync: Waiting on Semaphore lock for guild {guild}", guild.Name);
             var dtNow = DateTimeOffset.Now;
-            var ownershipAcquired = await guild?.GetServerSemaphore()?.WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), CancellationToken.None);
+            var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), CancellationToken.None);
             if(ownershipAcquired) {
                 logger.LogInformation("CreateCoopThreadHeaderAsync: Semaphore for guild {guild} unlocked after {timespan}.", guild.Name, TimeSpan.FromSeconds(DateTimeOffset.Now.ToUnixTimeSeconds() - dtNow.ToUnixTimeSeconds()).Humanize());
             } else {
