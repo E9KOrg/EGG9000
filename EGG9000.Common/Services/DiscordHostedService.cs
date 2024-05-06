@@ -194,14 +194,17 @@ namespace EGG9000.Common.Services {
                 return default;
             }
         }
-        public static List<DiscordSemaphore> GetSemaphores() {
-            return _serverSemaphores;
+        public static SemaphoreSlim GetOrCreateSemaphore(SocketGuild guild) {
+            var semaphore = _serverSemaphores.FirstOrDefault(s => s.Guild == guild);
+            if(semaphore is null) {
+                semaphore = new DiscordSemaphore(guild, new(1, 1));
+                _serverSemaphores.Add(semaphore);
+            }
+
+            return semaphore.Semaphore;
         }
         public static TimeSpan GetSemaphoreTimeout() {
             return _semaphoreTimeoutTime;
-        }
-        public static void AddSemaphore(DiscordSemaphore discordSemaphore) {
-            _serverSemaphores.Add(discordSemaphore);
         }
     }
     public class DiscordSemaphore(SocketGuild guild, SemaphoreSlim semaphore) {
@@ -212,12 +215,7 @@ namespace EGG9000.Common.Services {
     public static class DiscordExtensions {
 
         public static SemaphoreSlim GetServerSemaphore(this SocketGuild guild) {
-            var discordSemaphore = DiscordHostedService.GetSemaphores().FirstOrDefault(s => s.Guild == guild);
-            if(discordSemaphore is null) {
-                discordSemaphore = new DiscordSemaphore(guild, new(1, 1));
-                DiscordHostedService.AddSemaphore(discordSemaphore);
-            }
-            return discordSemaphore.Semaphore;
+            return DiscordHostedService.GetOrCreateSemaphore(guild);
         }
 
         public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
