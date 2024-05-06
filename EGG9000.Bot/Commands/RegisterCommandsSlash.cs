@@ -782,7 +782,7 @@ namespace EGG9000.Bot.Commands {
         }
 
 
-        [SlashCommand(Description = "Have to bot keep add your EB to your nickname in this server (will auto update)")]
+        [SlashCommand(Description = "Have the bot add your EB to your nickname in this server (will auto update)")]
         public static async Task ShowEB(FauxCommand command, ApplicationDbContext db) {
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
