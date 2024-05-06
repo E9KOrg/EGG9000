@@ -47,6 +47,7 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
             //guildGroups = guildGroups.Where(x => x.Key == dbguilds.First(x => x.Name.Contains("ingham")).DiscordSeverId);
+            dbGuilds = dbGuilds.Where(x => x.Id == 1113544827750076567).ToList();
 #endif
 
             foreach(var dbguild in dbGuilds) {
@@ -64,7 +65,7 @@ namespace EGG9000.Bot.Automated {
 #if DEBUG
                 //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
                 //dbusers = dbusers.Take(100).ToList();
-                _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
                 //await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 #else
                 _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
@@ -97,7 +98,6 @@ namespace EGG9000.Bot.Automated {
 
                         var farms = account.Backup.Farms.Where(x =>
                             x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset &&
-                            !x.Completed &&
                             !coops.Any(c => c.Name.Equals(x.CoopId, StringComparison.OrdinalIgnoreCase)) &&
                             !string.IsNullOrWhiteSpace(x.CoopId) && x.TimeAccepted > DateTimeOffset.Now.AddDays(-7).ToUnixTimeSeconds()
                         );
