@@ -312,7 +312,7 @@ namespace EGG9000.Common.Services {
             return guild.GetChannel(channel.Id);
         }
 
-        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, Contract contract) {
+        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, Contract contract, ILogger logger) {
             List<SocketGuild> guilds = [
                 client.GetGuild(guild.DiscordSeverId),
                 .. guild.OverflowServers.Select(client.GetGuild).ToList()
@@ -320,16 +320,21 @@ namespace EGG9000.Common.Services {
 
             foreach(var sg in guilds) {
                 var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
-                
+
                 // Safety measure - there should never be more than 5 channels in the same guild,
                 // so if this happens, the pattern matching failed.
-                if(channels.Count() > 5) continue;
+                if(channels.Count() > 5) {
+                    logger.LogError("Pattern matching failed for {guild} with the following channels: {channels} (They were not deleted)", sg.Name, String.Join(",", channels.Select(x => x.Name)));
+                    continue;
+                    
+                }
 
                 foreach(var channel in channels) {
                     await channel.DeleteAsync();
                 }
             }
         }
+
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
             if(contract is null || string.IsNullOrEmpty(contract.Name) ) return "unknown-contract";

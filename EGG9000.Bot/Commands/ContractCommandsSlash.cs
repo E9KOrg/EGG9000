@@ -697,7 +697,7 @@ namespace EGG9000.Bot.Commands {
             }
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
             _logger.LogInformation("Deleting header channels for {} because the contract channel was deleted", guildContract.Contract.Name);
-            await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract);
+            await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract, _logger);
 
             guildContract.DeletedChannel = true;
             await db.SaveChangesAsync();
