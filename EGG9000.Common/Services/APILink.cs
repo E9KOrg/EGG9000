@@ -297,7 +297,7 @@ namespace EGG9000.Common.Services {
                     if(backupResponse.Unchanged) {
                         return currentBackup;
                     }
-                    if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup.UserName)) {
+                    if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup?.UserName)) {
                         backupFromResponse.UserName = currentBackup.UserName;
                     }
                     if(backupResponse.Backup.Farms != null) {
