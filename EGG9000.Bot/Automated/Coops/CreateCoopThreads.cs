@@ -7,6 +7,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+using static EGG9000.Common.Helpers.CreateCoopsV2;
 
 using Humanizer;
 
@@ -208,13 +209,13 @@ namespace EGG9000.Bot.Automated.Coops {
             public int ChannelsLeft {
                 get {
                     if(Guild == null) return 0;
-                    return (ServerFunction == ServerFunction.Primary ? 450 : 495) - Guild.GetInUseChannelCount();
+                    return (ServerFunction == ServerFunction.Primary ? PrimaryMaxChannels : OverflowMaxChannels) - Guild.GetInUseChannelCount();
                 }
             }
             public int ThreadsLeft {
                 get {
                     if(Guild == null) return 0;
-                    return (ServerFunction == ServerFunction.Primary ? 975 : 995) - Guild.GetInUseThreadCount();
+                    return (ServerFunction == ServerFunction.Primary ? PrimaryMaxThreads : OverflowMaxThreads) - Guild.GetInUseThreadCount();
                 }
             }
 

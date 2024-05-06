@@ -64,7 +64,7 @@ namespace EGG9000.Bot.Jobs {
                 });
             }
 
-            await db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+            await db.SaveChangesAsyncRetry(retryCount: 2, cancellationToken: CancellationToken.None);
             _logger.LogInformation("Finished checking subscriptions");
         }
 
