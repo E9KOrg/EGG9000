@@ -219,7 +219,7 @@ namespace EGG9000.Bot.Automated {
 
                 if(_cronExpression is not null) {
 
-                } else { 
+                } else {
                     await _timer.DisposeAsync();
                     _timer = null;
                 }
@@ -230,6 +230,7 @@ namespace EGG9000.Bot.Automated {
                 }
                 _semaphoreSlim.Release();
                 _logger.LogInformation("STOP: Stopped successfully");
+            } catch(TaskCanceledException) { 
             } catch(Exception e) {
                 _bugsnag.Notify(e);
                 _logger.LogError(e, "Error stopping");
