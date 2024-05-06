@@ -493,7 +493,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            foreach(var missingUser in coopParticipants.Where(x => x.Xref is null && x.CoopStatus is not null)) {
+            foreach(var missingUser in coopParticipants.Where(x => x.Xref is null && x.CoopStatus is not null && x.Backup is null)) {
                 var user = backups.Where(x => x.Backup is not null).FirstOrDefault(x => missingUser.CoopStatus.UserName.Length > 0 && x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
                 if(user is not null) {
                     missingUser.DBUser = user.User;
