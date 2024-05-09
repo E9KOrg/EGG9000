@@ -266,7 +266,8 @@ namespace EGG9000.Site.Controllers {
                     //FinishedCoops = x.TextChannels.Where(c => c.Category != null).Count(c => c.Category.Name.Contains("coops") && c.Category.Name.Contains("finished")),
                 }).ToList(),
                 Guild = guild,
-                ContractsToScore = contractsToScore
+                ContractsToScore = contractsToScore,
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && x.Status ==  CoopStatusEnum.WaitingOnAssigned && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now)
             });
         }
 
@@ -276,6 +277,7 @@ namespace EGG9000.Site.Controllers {
             public Dictionary<DateTimeOffset, int[]> Days { get; set; }
             public List<Contract> ContractsToScore { get; set; }
             public Guild Guild { get; set; }
+            public int CoopsWithoutThreads { get; set; }
         }
 
         public class GuildDetails {
