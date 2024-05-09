@@ -25,86 +25,98 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
+        private const int THREAD_CREATION_DELAY = 2;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
+            ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && !x.DeletedChannel).ToListAsync(CancellationToken.None);
-
-            if(coops is null || coops.Count == 0) {
-                return;
-            }
-
-            var guildIDs = coops.Select(x => x.GuildId).Distinct().ToArray();
-            var contractIDs = coops.Select(x => x.ContractID).Distinct().ToArray();
-            var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => guildIDs.Contains(gc.GuildID) && contractIDs.Contains(gc.ContractID)).ToListAsync(cancellationToken);
 
 
-            foreach(var coopGroup in coops.GroupBy(x => x.GuildId)) {
-                if(cancellationToken.IsCancellationRequested)
-                    continue;
+            List<Coop> allCoops;
+            while(
+                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && !x.DeletedChannel).ToListAsync(CancellationToken.None))
+                .Count > 0) {
+                if(cancellationToken.IsCancellationRequested) return;
 
-                var guild = _client.Guilds.FirstOrDefault(x => x.Id == coopGroup.Key);
-                if(guild is null) {
-                    _logger.LogError("Unable to load guild with the id {guildid}", coopGroup.Key);
-                    continue;
-                }
+                var guildIDs = allCoops.Select(x => x.GuildId).Distinct().ToArray();
 
-                var servers = await GetOverflowGuildsCounts(guild, _db);
-                var dbguild = await _db.Guilds.Where(x => x.OverflowServersJson.Contains(coopGroup.Key.ToString())).FirstOrDefaultAsync(CancellationToken.None);
-                if(servers == null) {
-                    if(dbguild == null) {
-                        _logger.LogWarning("Co-op is trying to be made for guild that is not registered, {guildname} {guildid}, Co-op Name {coop}, Users {user}",
-                            guild.Name, guild.Id, coopGroup.First().Name,
-                            string.Join(", ", await _db.UserCoopXrefs.Where(x => x.CoopId == coopGroup.First().Id).Select(x => x.User.DiscordUsername).ToListAsync(CancellationToken.None))
-                        );
-                        continue;
-                    }
-                    guild = _client.Guilds.First(X => X.Id == dbguild.Id);
-                    servers = await GetOverflowGuildsCounts(guild, _db);
-                    foreach(var coop in coopGroup) {
-                        coop.GuildId = dbguild.Id;
+
+                var coops = new List<Coop>();
+
+                while(allCoops.Count > 0 && coops.Count < 20) {
+                    foreach(var guildID in guildIDs) {
+                        var coop = allCoops.FirstOrDefault(x => x.GuildId == guildID);
+                        if(coop != null) {
+                            coops.Add(coop);
+                            allCoops.Remove(coop);
+                        }
                     }
                 }
-                _logger.LogInformation("Coop Counts {count} {guild}", coopGroup.Count(), guild.Name);
 
-                foreach(var coop in coopGroup) {
-                    if(cancellationToken.IsCancellationRequested)
-                        continue;
+
+
+                var contractIDs = coops.Select(x => x.ContractID).Distinct().ToArray();
+                var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => guildIDs.Contains(gc.GuildID) && contractIDs.Contains(gc.ContractID)).ToListAsync(cancellationToken);
+                var dbguilds = await _db.Guilds.Where(x => guildIDs.Contains(x.Id)).ToListAsync(cancellationToken);
+
+                var guildsWithOverflow = new List<(SocketGuild Guild, List<OverflowServer> Servers, DateTimeOffset LastAccessed)>();
+
+                foreach(var guild in _client.Guilds.Where(x => coops.Any(y => y.GuildId == x.Id)).OrderBy(x => x.Id == _CPGuildId)) {
+                    guildsWithOverflow.Add((guild, await GetOverflowGuildsCounts(guild, _db), DateTimeOffset.MinValue));
+                }
+
+
+                foreach(var coop in coops) {
+                    if(cancellationToken.IsCancellationRequested) return;
+                    var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId);
+
+                    if(guildWithOverflow.LastAccessed.AddSeconds(THREAD_CREATION_DELAY) > DateTimeOffset.Now) {
+                        var timeToDelay = guildWithOverflow.LastAccessed.AddSeconds(THREAD_CREATION_DELAY) - DateTimeOffset.Now;
+                        _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), guildWithOverflow.Guild.Name);
+                        await Task.Delay(timeToDelay);
+                    }
+
 
                     try {
-                        var guildContract = guildContracts.First(gc => gc.GuildID == guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
-                        var (thread, parent) = await TryCreateCoopThread(guildContract, guild, coop, servers);
+                        var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
+                        var (thread, parent) = await TryCreateCoopThread(guildContract, guildWithOverflow.Guild, coop, guildWithOverflow.Servers);
                         if(thread != null) {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
                             coop.OverflowGuildId = parent.Guild.Id;
-                            _logger.LogInformation("Thread created for {coopName}", coop.Name);
+                            _logger.LogInformation("Thread created for {coopName} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
                             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                            await Task.Delay(6100); //A thread can be created every about 6 seconds
                         } else {
-                            _logger.LogWarning("Thread NOT created for {coopName}", coop.Name);
+                            _logger.LogWarning("Thread NOT created for {coopName} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
                         }
                     } catch(Exception ex) {
-                        _logger.LogError(ex, "Error Creating Co-op Thread {coop} in {guild}", coop.Name, guild.Name);
+                        _logger.LogError(ex, "Error Creating Co-op Thread {coop} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
+                    } finally {
+                        guildWithOverflow.LastAccessed = DateTimeOffset.Now;
                     }
                 }
+
+
             }
         }
 
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
                 var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(30));
+                cts.CancelAfter(TimeSpan.FromSeconds(1800));
                 var thread = await (parentChannel as SocketTextChannel).CreateThreadAsync(
                     name: threadName,
                     type: ThreadType.PrivateThread,
                     autoArchiveDuration: ThreadArchiveDuration.OneWeek, //Initially one week (don't archive)
                     invitable: false,
                     options: new RequestOptions {
-                        RatelimitCallback = RateLimit, CancelToken = cts.Token
+                        RatelimitCallback = (IRateLimitInfo info) => RateLimit(info, threadName), CancelToken = cts.Token
                     }
                 );
                 cts.Dispose();
@@ -117,13 +129,15 @@ namespace EGG9000.Bot.Automated.Coops {
             return null;
         }
 
-        private Task RateLimit(IRateLimitInfo info) {
-            _logger.LogWarning("Rate Limit - Limit:{Limit} Remaining:{Remaining} RetryAfter:{RetryAfter} Reset:{Reset} ResetAfter:{After}",
+        private Task RateLimit(IRateLimitInfo info, string threadName) {
+            _logger.LogWarning("Rate Limit for {thread}- Limit:{Limit} Remaining:{Remaining} RetryAfter:{RetryAfter} Reset:{Reset} ResetAfter:{After}",
+                               threadName,
                                info.Limit,
                                info.Remaining,
                                TimeSpan.FromSeconds(info.RetryAfter ?? 0).Humanize(precision: 2).ShortenTime(),
                                info.Reset?.Humanize().ShortenTime(),
-                               info.ResetAfter?.Humanize(precision: 2).ShortenTime());
+                               info.ResetAfter?.Humanize(precision: 2).ShortenTime()
+                               );
             return Task.CompletedTask;
         }
 
@@ -139,8 +153,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 } catch(TaskCanceledException) {
                     _logger.LogWarning("Canceled create thread call due to timeout on {coopname}", coop.Name);
                     continue;
-                } catch(Exception) { 
-                    continue; 
+                } catch(Exception) {
+                    continue;
                 }
             }
 
