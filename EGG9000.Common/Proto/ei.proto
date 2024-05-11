@@ -2,7 +2,27 @@ syntax = "proto2";
 
 package ei;
 
-import "Proto/common.proto";
+enum Platform {
+    UNKNOWN_PLATFORM = 0;
+    IOS = 1;
+    DROID = 2;
+}
+
+enum DeviceFormFactor {
+    UNKNOWN_DEVICE = 0;
+    PHONE = 1;
+    TABLET = 2;
+}
+
+enum AdNetwork {
+    VUNGLE = 0;
+    CHARTBOOST = 1;
+    AD_COLONY = 2;
+    HYPER_MX = 3;
+    UNITY = 4;
+    FACEBOOK = 5;
+    APPLOVIN = 6;
+}
 
 message Vector3 {
     optional float x = 1;
@@ -45,6 +65,7 @@ message Backup {
         optional bool max_enabled = 26;
         optional bool hide_cc_status = 28;
         optional bool contracts_widget_enabled = 29;
+        optional bool artifact_sparkle = 30;
         optional double last_backup_time = 24;
         optional bool coppa_queried = 7;
         optional bool coppa_restricted = 8;
@@ -156,7 +177,7 @@ message Backup {
         optional uint32 tank_level = 15;
         repeated double tank_fuels = 16;
         repeated double tank_limits = 18;
-        optional ei.MissionInfo.Spaceship last_fueled_ship = 9;
+        optional MissionInfo.Spaceship last_fueled_ship = 9;
         optional double inventory_score = 10;
         optional double crafting_xp = 17;
         optional bool enabled = 11;
@@ -293,7 +314,7 @@ message EggIncFirstContactRequest {
     optional string device_id = 5;
     optional string username = 6;
     optional uint32 client_version = 2;
-    optional aux.Platform platform = 3;
+    optional Platform platform = 3;
 }
 
 message EggIncFirstContactResponse {
@@ -312,7 +333,7 @@ message EggIncFirstContactResponse {
 }
 
 message EggIncAdConfig {
-    repeated aux.AdNetwork network_priority = 1;
+    repeated AdNetwork network_priority = 1;
 }
 
 message DailyGiftInfo {
@@ -790,7 +811,7 @@ message ContractCoopStatusResponse {
         optional bool leech = 16;
         optional bool finalized = 22;
         optional bool time_cheat_detected = 7;
-        optional aux.Platform platform = 5;
+        optional Platform platform = 5;
         optional string push_id = 9;
         optional uint32 ban_votes = 10;
         optional bool autojoined = 17;
@@ -915,7 +936,7 @@ message CreateCoopRequest {
     optional uint32 league = 9;
     optional Contract.PlayerGrade grade = 12;
     optional bool points_replay = 15;
-    optional aux.Platform platform = 6;
+    optional Platform platform = 6;
     optional uint32 client_version = 7;
 }
 
@@ -935,7 +956,7 @@ message JoinCoopRequest {
     optional uint32 league = 9;
     optional Contract.PlayerGrade grade = 13;
     optional bool points_replay = 14;
-    optional aux.Platform platform = 5;
+    optional Platform platform = 5;
     optional double seconds_remaining = 11;
     optional uint32 client_version = 7;
 }
@@ -964,7 +985,7 @@ message AutoJoinCoopRequest {
     optional Contract.PlayerGrade grade = 12;
     optional bool points_replay = 14;
     optional double seconds_remaining = 5;
-    optional aux.Platform platform = 6;
+    optional Platform platform = 6;
     optional uint32 client_version = 7;
 }
 
@@ -1430,7 +1451,8 @@ message AdAttributionInfo {
 message ArtifactsClientInfo {
     optional double mission_capacity_mult = 1;
     optional double mission_duration_mult = 2;
-    optional double mission_ftl_duration_mult = 4;
+    optional double mission_ftl_duration_research_mult = 4;
+    optional double mission_capacity_research_mult = 6;
     
     repeated LaunchCount launch_counts = 3;
     message LaunchCount {
@@ -1438,6 +1460,8 @@ message ArtifactsClientInfo {
         optional uint32 num_launches = 2;
         optional double launch_points = 3;
     }
+    
+    optional double last_server_launch_count_sum_time = 5;
 }
 
 message MissionInfo {
@@ -2306,7 +2330,7 @@ message UserSubscriptionInfo {
     
     optional Level next_subscription_level = 15;
     optional bool lock_next_subscription_level = 18;
-    optional aux.Platform platform = 10;
+    optional Platform platform = 10;
     optional string original_transaction_id = 1;
     optional string linked_transaction_id = 16;
     optional bool acknowledged = 17;
