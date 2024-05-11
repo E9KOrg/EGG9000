@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
@@ -10,12 +11,16 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+
 using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
@@ -124,9 +129,9 @@ namespace EGG9000.Bot.Commands {
 
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
                 builder.AddField(new EmbedFieldBuilder {
-                    IsInline = false, 
-                    Name = "Current Details", 
-                    Value = 
+                    IsInline = false,
+                    Name = "Current Details",
+                    Value =
                         @$"{currentRank.RankWithSubRank}
                         <:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
                         <:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
@@ -175,7 +180,7 @@ namespace EGG9000.Bot.Commands {
                 } else if(targetCoop.DiscordChannelId != 0) {
                     await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
                 }
-                
+
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }
@@ -256,41 +261,61 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Get help from staff, please give details")]
-        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false)
-        {
+        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+            await command.DeferAsync(ephemeral: keepPrivate);
             var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
 
             if(guildFind is null) {
-                await command.RespondAsync("Callstaff cannot be sent, guild not found.");
+                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, guild not found.");
                 return;
             } else if(!guildFind.HasChannel(GuildChannelType.CallStaffChannel)) {
-                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
+                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
                 return;
             }
 
             var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
 
             if(socketGuild is null) {
-                await command.RespondAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
+                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
                 return;
             }
 
             var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
             var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
             var infoText = $"Staff has been called ({details})";
-            var message = $"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
+            var message = $"{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
 
-            var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message });
+            if(keepPrivate) {
+                var channelForThreads = await ChannelHelper.GetTextChannel(db, _client, guildFind, socketGuild, GuildChannelType.PrivateCallStaff);
+                if(channelForThreads is not null) {
+                    var thread = await channelForThreads.CreateThreadAsync(name: $"{command.User.GlobalName ?? command.User.Username} [callstaff]", type: ThreadType.PrivateThread);
+                    var messageToPing = await thread.SendMessageAsync(".");
+                    await messageToPing.ModifyAsync(x => x.Content = staffTag);
+                    await messageToPing.DeleteAsync();
+                    await thread.SendMessageAsync(message);
 
-            if(response is null) {
-                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
-                return;
+                    var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message + " " + thread.Mention });
+
+                    await command.ModifyOriginalResponseAsync($"{infoText}, they should respond in {thread.Mention}");
+
+                    return;
+                }
             }
 
-            await command.RespondAsync(infoText, ephemeral: keepPrivate);
-            if(keepPrivate) {
-                var dmResult = await BoolSendDm(command.User, infoText, db);
-                if(dmResult != DMResult.Success) await command.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+            {
+                var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message });
+
+                if(response is null) {
+                    await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
+                    return;
+                }
+
+                await command.ModifyOriginalResponseAsync(infoText);
+
+                if(keepPrivate) {
+                    var dmResult = await BoolSendDm(command.User, infoText, db);
+                    if(dmResult != DMResult.Success) await command.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                }
             }
         }
     }
