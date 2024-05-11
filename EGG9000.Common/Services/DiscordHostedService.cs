@@ -178,7 +178,14 @@ namespace EGG9000.Common.Services {
 
             var channelDetails = dbguild.ChannelDetails;
             var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
-            return channelDetail == null ? null : guild.GetRole(channelDetail.Id);
+            var role = channelDetail == null ? null : guild.GetRole(channelDetail.Id);
+            if(role == null) {
+                var mainRole = Guilds.SelectMany(x => x.Roles.Where(x => x.Id == channelDetail.Id)).FirstOrDefault();
+                if(mainRole is not null) {
+                    role = guild.Roles.FirstOrDefault(x => x.Name == mainRole.Name);
+                }
+            }
+            return role;
         }
         private async Task<T> GetChannelOrCategory<T>(GuildChannelType channelType, SocketGuild guild) where T : IGuildChannel {
             try {

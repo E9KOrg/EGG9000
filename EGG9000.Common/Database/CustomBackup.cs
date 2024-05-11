@@ -619,6 +619,8 @@ namespace EGG9000.Common.Database {
         public double EvaluationCxp { get; set; }
         [Key(10)]
         public byte NumGoalsAchieved { get; set; }
+        [Key(11)]
+        public List<string> ReportedUUIDs { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
@@ -632,6 +634,7 @@ namespace EGG9000.Common.Database {
             League = localContract.League;
             ContributionAmount = localContract.CoopLastUploadedContribution;
             Grade = localContract.Grade;
+            
             if(localContract.Evaluation != null) {
                 EvaluationCxp = localContract?.Evaluation?.Cxp ?? 0.0;
             }
@@ -643,6 +646,7 @@ namespace EGG9000.Common.Database {
             PEPossible += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
             PEGained += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
             NumGoalsAchieved = (byte)localContract.NumGoalsAchieved;
+            ReportedUUIDs = localContract.ReportedUuids.ToList();
         }
     }
 

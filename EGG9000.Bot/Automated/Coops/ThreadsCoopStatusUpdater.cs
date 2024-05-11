@@ -49,18 +49,22 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived).ToListAsync(CancellationToken.None);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.Now).ToListAsync(CancellationToken.None);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
 #if DEBUG
             //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("72fea962-0e1d-4ab0-b56e-08dc53f75398")).ToList();
-            coops = coops.Take(20).ToList();
+            //coops = coops.Take(20).ToList();
 #endif
 
 
             var completedCoops = 0;
+#if DEBUG
+            var throttler = new SemaphoreSlim(1);
+#else
             var throttler = new SemaphoreSlim(5);
+#endif
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
                 if(cancellationToken.IsCancellationRequested) break;
@@ -113,257 +117,6 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public class UserWithStatus {
-            public CustomBackup Backup { get; set; }
-            public Ei.ContractCoopStatusResponse.Types.ContributionInfo Status { get; set; }
-            public DBUser User { get; set; }
-            public TimeSpan? Sleeping { get; set; }
-            public UserCoopXref Xref { get; set; }
-            public SocketGuildUser DiscordUser { get; set; }
-            public double SiloTime { get; set; }
-            public CustomFarmStats FarmStats { get; set; }
-        }
-
-        public static string Truncate(string value, int maxLength) {
-            if(string.IsNullOrEmpty(value))
-                return value;
-            return value.Length <= maxLength ? value : value[..maxLength];
-        }
-
-
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Contract contract) {
-            var table = new List<List<FixedWidthCell>> {new () {
-                new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
-                new("Discord", CellAlignment.Center),
-                new("EB", CellAlignment.Center),
-                new("Total", CellAlignment.Center),
-                new("Rate", CellAlignment.Center),
-                new("📈", CellAlignment.Center),
-                new("%", CellAlignment.Center),
-                new("🟡", CellAlignment.Center, true),
-                new("⏲️", CellAlignment.Center, true),
-                new("Silo"),
-                new(""),
-            }};
-            var everyoneJoined = coopDetails.CoopParticipants.All(x => x.CoopStatus is not null);
-
-            table.AddRange(coopDetails.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
-                var sleeping = x.OfflineTime.TotalMinutes > x.SiloTimeMinutes ? "💤" : "";
-
-                if(x.OfflineTime.TotalMinutes > x.SiloTimeMinutes) {
-                    sleeping = $"💤 Empty Silos {x.OfflineTime.Add(TimeSpan.FromMinutes(0 - x.SiloTimeMinutes)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()}";
-                }
-
-                if(coopDetails.Coop.FinishedOrFailed())
-                    sleeping = "";
-
-                if(x.CoopStatus?.TimeCheatDetected ?? false)
-                    sleeping += " ⏱️";
-
-
-                //var eb = Math.Pow(10, x.Status.SoulPower) * 100;
-                var percent = coopDetails.GetProjectedShare(x);
-
-                if(x.DBUser is null) {
-
-                }
-
-                return new List<FixedWidthCell> {
-                    new(Truncate((everyoneJoined || x.DBUser is null ? "" : x.CoopStatus is not null ? "✅" : "❌") + (x.DBUser is null ? "👽" : "") + Regex.Replace(x.CoopStatus?.UserName ?? x.Backup?.UserName, @"\p{Cs}", ""), 11)),
-                    new(Truncate(Regex.Replace(x.DiscordUser?.GetCleanName() ?? "", @"\p{Cs}", ""), 11)),
-                    new(x.EarningsBonus.ToEggString(), CellAlignment.Right),
-                    new(x.EggsShipped.ToEggString(), CellAlignment.Right),
-                    new($"{(x.Rate * 3600).ToEggString()}/h", CellAlignment.Right),
-                    new(x.Projected.ToEggString(), CellAlignment.Right),
-                    new($"{Math.Round(percent)}%", CellAlignment.Right),
-                    new(x.BoostTokens.ToString()),
-                    new(x.OfflineTime.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
-                    new(TimeSpan.FromMinutes((double)x.SiloTimeMinutes).Humanize(2, maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
-                    new(sleeping),
-                };
-            }));
-
-
-
-            var lstr = new List<string>();
-
-
-
-            var tableString = $"```{GetTable(table)}```";
-
-            var msgs = new List<string>();
-
-            while(tableString.Length > 2000) {
-                var index = tableString.LastIndexOf('\n', 1997);
-
-                msgs.Add(tableString[..index] + "```");
-                tableString = "```" + tableString[index..];
-            }
-
-            msgs.Add(tableString);
-
-            return msgs;
-        }
-
-        private async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
-            var sw = new Stopwatch();
-            sw.Restart();
-            var times = new List<long>();
-
-            msgs = msgs.Where(x => x != "").ToList();
-
-            msgs.Insert(0, "@@@EMBED");
-
-            //Reserve up to 5 msgs
-            for(var i = msgs.Count; i < (coop.MaxUsers > 40 ? 5 : 4); i++) {
-                msgs.Add("\u17B5");
-            }
-            if(string.IsNullOrWhiteSpace(coop.UpdateMessagesId)) {
-                var UpdateMessagesID = new List<ulong>();
-                foreach(var msg in msgs) {
-                    IUserMessage post;
-                    if(msg == "@@@EMBED") {
-                        post = await coopChannel.SendMessageAsync(embed: embed);
-                    } else {
-                        post = await coopChannel.SendMessageAsync(msg);
-                    }
-                    UpdateMessagesID.Add(post.Id);
-                    await post.PinAsync();
-                }
-                coop.UpdateMessagesId = JsonConvert.SerializeObject(UpdateMessagesID);
-                try {
-                    var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                    await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
-                } catch(TimeoutException) {
-                    var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                    await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
-                }
-            } else {
-                var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
-                var NewUpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
-
-                if(coopChannel != null) {
-
-                    var pinnedMessages = false;
-                    for(var i = 0; i < msgs.Count; i++) {
-                        if(UpdateMessageIDs.Count > i) {
-                            try {
-                                var post = (RestUserMessage)existingMessages.FirstOrDefault(x => x.Id == UpdateMessageIDs[i]);
-                                if(post == null) {
-                                    if(msgs[i] == "@@@EMBED") {
-                                        post = (RestUserMessage)await coopChannel.SendMessageAsync(embed: embed);
-                                    } else {
-                                        post = (RestUserMessage)await coopChannel.SendMessageAsync(msgs[i]);
-                                    }
-                                    NewUpdateMessageIDs.Remove(UpdateMessageIDs[i]);
-                                    NewUpdateMessageIDs.Add(post.Id);
-                                } else {
-                                    if(msgs[i] == "@@@EMBED") {
-                                        await post.ModifyWithTimeoutAsync(msg => { msg.Embed = embed; msg.Content = null; });
-                                    } else {
-                                        var changes = post.Content.CompareChanges(msgs[i]);
-                                        if(changes > 0) {
-                                            await post.ModifyWithTimeoutAsync(msg => msg.Content = msgs[i]);
-                                        } else {
-                                        }
-                                    }
-                                }
-                                if(!post.IsPinned) {
-                                    pinnedMessages = true;
-                                    await post.PinAsync();
-                                }
-                            } catch(Exception e) {
-                                _logger.LogError(e, "Error updating messages");
-                                _bugsnag.Notify(e);
-                            }
-                        } else {
-                            if(msgs[i] == "@@@EMBED") {
-                                var post = await coopChannel.SendMessageAsync(embed: embed);
-                                NewUpdateMessageIDs.Add(post.Id);
-                                pinnedMessages = true;
-                                await post.PinAsync();
-                            } else {
-                                var post = await coopChannel.SendMessageAsync(msgs[i]);
-                                NewUpdateMessageIDs.Add(post.Id);
-                                pinnedMessages = true;
-                                await post.PinAsync();
-                            }
-                        }
-
-                    }
-                    if(pinnedMessages) {
-                        try {
-                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                            await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
-                        } catch(TimeoutException) {
-                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                            await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
-                        }
-                    }
-
-                }
-                coop.UpdateMessagesId = JsonConvert.SerializeObject(NewUpdateMessageIDs);
-            }
-        }
-
-        private class StatusResponse {
-            public Ei.ContractCoopStatusResponse Status { get; set; }
-            public List<IMessage> DiscordMessages { get; set; }
-        }
-
-        private static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
-            var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
-
-            IEnumerable<IMessage> discordMessages;
-            try {
-
-                discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : [];
-            } catch(Exception) {
-                try {
-                    await Task.Delay(100, cancellationToken);
-                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : [];
-
-                } catch(Exception) {
-                    await Task.Delay(100, cancellationToken);
-                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : [];
-                }
-            }
-
-            var messages = new List<IMessage>();
-            foreach(var id in UpdateMessageIDs) {
-                var message = discordMessages.FirstOrDefault(x => x.Id == id);
-                if(message == null) {
-                    for(var i = 0; i < 10; i++) {
-                        try {
-                            message = await coopChannel.GetMessageAsync(id, options: new RequestOptions { CancelToken = cancellationToken });
-                            break;
-                        } catch(Exception) {
-                            await Task.Delay(500, cancellationToken);
-                        }
-                    }
-                    message ??= await coopChannel.GetMessageAsync(id, options: new RequestOptions { CancelToken = cancellationToken });
-                }
-                if(message != null)
-                    messages.Add(message);
-            }
-
-            return messages;
-        }
-
-        private static async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
-            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken);
-            var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
-
-            await Task.WhenAll(statusTask, messageTask);
-            if(statusTask.Result is null) {
-
-            }
-            return new StatusResponse {
-                Status = statusTask.Result,
-                DiscordMessages = messageTask.Result
-            };
-        }
-
         public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, List<SocketApplicationCommand> slashCommands, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
@@ -386,11 +139,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(coopThread == null) {
                     var restguild = await _client.Rest.GetGuildAsync(guild.Id);
                     try {
+
                         var coopHeaderChannel = await restguild.GetTextChannelAsync(coop.ThreadParentChannel);
                         if(coopHeaderChannel != null) {
                             coopThread = (await coopHeaderChannel.GetActiveThreadsAsync()).FirstOrDefault(t => t.Id == coop.ThreadID);
                         }
-                    } catch(Exception) {}
+                    } catch(Exception) { }
                 }
 
                 if(coopThread == null) {
@@ -520,6 +274,42 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, _client, statusReponse.Status);
 
+
+
+                //** Verify if people have access to the parent channel
+                var gradeRoleEnum = coop.League switch {
+                    5 => GuildChannelType.GradeAAA,
+                    4 => GuildChannelType.GradeAA,
+                    3 => GuildChannelType.GradeA,
+                    2 => GuildChannelType.GradeB,
+                    1 => GuildChannelType.GradeC,
+                    _ => GuildChannelType.General,
+                };
+                SocketRole gradeRole = null;
+                if(gradeRoleEnum != GuildChannelType.General) {
+                    gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
+                }
+                foreach(var participant in coopDetails.CoopParticipants.Where(x => x.DBUser is not null)) {
+                    var overflowGuildUser = guild.GetUser(participant.DBUser.DiscordId);
+                    if(overflowGuildUser is not null && !overflowGuildUser.Roles.Any(x => x.Id == gradeRole.Id || x.Name.Contains("ULTRA")) && participant.CoopStatus?.UserName != "[departed]") {
+                        var headChannel = guild.GetTextChannel(coopThread.CategoryId.Value);
+                        if(!headChannel.PermissionOverwrites.Any(x => x.TargetId == overflowGuildUser.Id)) {
+                            await headChannel.AddPermissionOverwriteAsync(overflowGuildUser, OverwritePermissions.DenyAll(headChannel).Modify(viewChannel: PermValue.Allow));
+
+                            if(!coop.FinishedOrFailedOrExpired()) {
+                                await coopThread.SendMessageAsync($"Fixing permission for {overflowGuildUser.Mention}");
+                            }
+                        }
+
+                    }
+
+                }
+
+                //** Handle creation account not being kicked from co-op
+                if(coopDetails.CoopParticipants.Any(x => x.Account?.Id == ContractsAPI.UserId) && !coop.FinishedOrFailedOrExpired()) {
+                    var success = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {  Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = ContractsAPI.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = ContractsAPI.UserId, RequestingUserId = ContractsAPI.UserId, Rinfo = ContractsAPI.GetInfo(ContractsAPI.UserId) }, ContractsAPI.UserId);
+                    _logger.LogInformation("Attempted to kick co-op creator to free up spot for {co-op}, it returned {status}", coop.Name, success.ToString());
+                }
 
                 var participantsInCoopButWithoutXref = coopDetails.CoopParticipants.Where(x =>
                     x.DBUser is not null &&
@@ -1230,6 +1020,261 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogError(e, "Error in co-op {coopid}", coopName ?? coopid.ToString());
                 _bugsnag.Notify(e);
             }
+        }
+
+
+
+        public class UserWithStatus {
+            public CustomBackup Backup { get; set; }
+            public Ei.ContractCoopStatusResponse.Types.ContributionInfo Status { get; set; }
+            public DBUser User { get; set; }
+            public TimeSpan? Sleeping { get; set; }
+            public UserCoopXref Xref { get; set; }
+            public SocketGuildUser DiscordUser { get; set; }
+            public double SiloTime { get; set; }
+            public CustomFarmStats FarmStats { get; set; }
+        }
+
+        public static string Truncate(string value, int maxLength) {
+            if(string.IsNullOrEmpty(value))
+                return value;
+            return value.Length <= maxLength ? value : value[..maxLength];
+        }
+
+
+    
+
+        private async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
+            var sw = new Stopwatch();
+            sw.Restart();
+            var times = new List<long>();
+
+            msgs = msgs.Where(x => x != "").ToList();
+
+            msgs.Insert(0, "@@@EMBED");
+
+            //Reserve up to 5 msgs
+            for(var i = msgs.Count; i < (coop.MaxUsers > 40 ? 5 : 4); i++) {
+                msgs.Add("\u17B5");
+            }
+            if(string.IsNullOrWhiteSpace(coop.UpdateMessagesId)) {
+                var UpdateMessagesID = new List<ulong>();
+                foreach(var msg in msgs) {
+                    IUserMessage post;
+                    if(msg == "@@@EMBED") {
+                        post = await coopChannel.SendMessageAsync(embed: embed);
+                    } else {
+                        post = await coopChannel.SendMessageAsync(msg);
+                    }
+                    UpdateMessagesID.Add(post.Id);
+                    await post.PinAsync();
+                }
+                coop.UpdateMessagesId = JsonConvert.SerializeObject(UpdateMessagesID);
+                try {
+                    var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
+                    await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
+                } catch(TimeoutException) {
+                    var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
+                    await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
+                }
+            } else {
+                var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
+                var NewUpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
+
+                if(coopChannel != null) {
+
+                    var pinnedMessages = false;
+                    for(var i = 0; i < msgs.Count; i++) {
+                        if(UpdateMessageIDs.Count > i) {
+                            try {
+                                var post = (RestUserMessage)existingMessages.FirstOrDefault(x => x.Id == UpdateMessageIDs[i]);
+                                if(post == null) {
+                                    if(msgs[i] == "@@@EMBED") {
+                                        post = (RestUserMessage)await coopChannel.SendMessageAsync(embed: embed);
+                                    } else {
+                                        post = (RestUserMessage)await coopChannel.SendMessageAsync(msgs[i]);
+                                    }
+                                    NewUpdateMessageIDs.Remove(UpdateMessageIDs[i]);
+                                    NewUpdateMessageIDs.Add(post.Id);
+                                } else {
+                                    if(msgs[i] == "@@@EMBED") {
+                                        await post.ModifyWithTimeoutAsync(msg => { msg.Embed = embed; msg.Content = null; });
+                                    } else {
+                                        var changes = post.Content.CompareChanges(msgs[i]);
+                                        if(changes > 0) {
+                                            await post.ModifyWithTimeoutAsync(msg => msg.Content = msgs[i]);
+                                        } else {
+                                        }
+                                    }
+                                }
+                                if(!post.IsPinned) {
+                                    pinnedMessages = true;
+                                    await post.PinAsync();
+                                }
+                            } catch(Exception e) {
+                                _logger.LogError(e, "Error updating messages");
+                                _bugsnag.Notify(e);
+                            }
+                        } else {
+                            if(msgs[i] == "@@@EMBED") {
+                                var post = await coopChannel.SendMessageAsync(embed: embed);
+                                NewUpdateMessageIDs.Add(post.Id);
+                                pinnedMessages = true;
+                                await post.PinAsync();
+                            } else {
+                                var post = await coopChannel.SendMessageAsync(msgs[i]);
+                                NewUpdateMessageIDs.Add(post.Id);
+                                pinnedMessages = true;
+                                await post.PinAsync();
+                            }
+                        }
+
+                    }
+                    if(pinnedMessages) {
+                        try {
+                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
+                            await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
+                        } catch(TimeoutException) {
+                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
+                            await coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
+                        }
+                    }
+
+                }
+                coop.UpdateMessagesId = JsonConvert.SerializeObject(NewUpdateMessageIDs);
+            }
+        }
+
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Contract contract) {
+            var table = new List<List<FixedWidthCell>> {new () {
+                new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
+                new("Discord", CellAlignment.Center),
+                new("EB", CellAlignment.Center),
+                new("Total", CellAlignment.Center),
+                new("Rate", CellAlignment.Center),
+                new("📈", CellAlignment.Center),
+                new("%", CellAlignment.Center),
+                new("🟡", CellAlignment.Center, true),
+                new("⏲️", CellAlignment.Center, true),
+                new("Silo"),
+                new(""),
+            }};
+            var everyoneJoined = coopDetails.CoopParticipants.All(x => x.CoopStatus is not null);
+
+            table.AddRange(coopDetails.CoopParticipants.OrderByDescending(x => x.Projected).Select(x => {
+                var sleeping = x.OfflineTime.TotalMinutes > x.SiloTimeMinutes ? "💤" : "";
+
+                if(x.OfflineTime.TotalMinutes > x.SiloTimeMinutes) {
+                    sleeping = $"💤 Empty Silos {x.OfflineTime.Add(TimeSpan.FromMinutes(0 - x.SiloTimeMinutes)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()}";
+                }
+
+                if(coopDetails.Coop.FinishedOrFailed())
+                    sleeping = "";
+
+                if(x.CoopStatus?.TimeCheatDetected ?? false)
+                    sleeping += " ⏱️";
+
+
+                //var eb = Math.Pow(10, x.Status.SoulPower) * 100;
+                var percent = coopDetails.GetProjectedShare(x);
+
+                if(x.DBUser is null) {
+
+                }
+
+                return new List<FixedWidthCell> {
+                    new(Truncate((everyoneJoined || x.DBUser is null ? "" : x.CoopStatus is not null ? "✅" : "❌") + (x.DBUser is null ? "👽" : "") + Regex.Replace(x.CoopStatus?.UserName ?? x.Backup?.UserName, @"\p{Cs}", ""), 11)),
+                    new(Truncate(Regex.Replace(x.DiscordUser?.GetCleanName() ?? "", @"\p{Cs}", ""), 11)),
+                    new(x.EarningsBonus.ToEggString(), CellAlignment.Right),
+                    new(x.EggsShipped.ToEggString(), CellAlignment.Right),
+                    new($"{(x.Rate * 3600).ToEggString()}/h", CellAlignment.Right),
+                    new(x.Projected.ToEggString(), CellAlignment.Right),
+                    new($"{Math.Round(percent)}%", CellAlignment.Right),
+                    new(x.BoostTokens.ToString()),
+                    new(x.OfflineTime.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
+                    new(TimeSpan.FromMinutes((double)x.SiloTimeMinutes).Humanize(2, maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
+                    new(sleeping),
+                };
+            }));
+
+
+
+            var lstr = new List<string>();
+
+
+
+            var tableString = $"```{GetTable(table)}```";
+
+            var msgs = new List<string>();
+
+            while(tableString.Length > 2000) {
+                var index = tableString.LastIndexOf('\n', 1997);
+
+                msgs.Add(tableString[..index] + "```");
+                tableString = "```" + tableString[index..];
+            }
+
+            msgs.Add(tableString);
+
+            return msgs;
+        }
+
+        private class StatusResponse {
+            public Ei.ContractCoopStatusResponse Status { get; set; }
+            public List<IMessage> DiscordMessages { get; set; }
+        }
+
+        private static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
+            var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
+
+            IEnumerable<IMessage> discordMessages;
+            try {
+
+                discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : [];
+            } catch(Exception) {
+                try {
+                    await Task.Delay(100, cancellationToken);
+                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : [];
+
+                } catch(Exception) {
+                    await Task.Delay(100, cancellationToken);
+                    discordMessages = UpdateMessageIDs.Count > 0 ? await coopChannel.GetMessagesAsync(UpdateMessageIDs.First(), Direction.After, 12, options: new RequestOptions { CancelToken = cancellationToken }).FlattenAsync() : [];
+                }
+            }
+
+            var messages = new List<IMessage>();
+            foreach(var id in UpdateMessageIDs) {
+                var message = discordMessages.FirstOrDefault(x => x.Id == id);
+                if(message == null) {
+                    for(var i = 0; i < 10; i++) {
+                        try {
+                            message = await coopChannel.GetMessageAsync(id, options: new RequestOptions { CancelToken = cancellationToken });
+                            break;
+                        } catch(Exception) {
+                            await Task.Delay(500, cancellationToken);
+                        }
+                    }
+                    message ??= await coopChannel.GetMessageAsync(id, options: new RequestOptions { CancelToken = cancellationToken });
+                }
+                if(message != null)
+                    messages.Add(message);
+            }
+
+            return messages;
+        }
+
+        private static async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
+            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken);
+            var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
+
+            await Task.WhenAll(statusTask, messageTask);
+            if(statusTask.Result is null) {
+
+            }
+            return new StatusResponse {
+                Status = statusTask.Result,
+                DiscordMessages = messageTask.Result
+            };
         }
 
         public static int GetDigit(int number, int digit) {
