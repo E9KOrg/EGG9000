@@ -212,6 +212,8 @@ namespace EGG9000.Common.Database.Entities {
         ASCRole = 28,
         [Description("/TC/Optional: Where /callstaff messages will appear")]
         CallStaffChannel = 29,
+        [Description("Optional: Where private /callstaff threads will be created, needs to be a channel accessible to everyone")]
+        PrivateCallStaff = 45,
         [Description("/R/Role for staff to ping in /callstaff instances")]
         CallStaffTagRole = 30,
         [Description("/R/Role for standard subscriptions")]

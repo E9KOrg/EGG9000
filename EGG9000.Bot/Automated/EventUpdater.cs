@@ -186,6 +186,7 @@ namespace EGG9000.Bot.Automated {
 
                 RestUserMessage message = null;
                 var notification = customization.Settings.Notifications?
+                    .Where(x => x.MinValue > 0)
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
 
@@ -193,7 +194,8 @@ namespace EGG9000.Bot.Automated {
                 if(newEvent.CcOnly) {
                     //Send to non-CCs without ping
                     if(eventChannel != null) {
-                        message = await eventChannel.SendMessageAsync(null, embed: embed);
+                        var ultraNotification = customization.Settings.Notifications?.FirstOrDefault(x => x.MinValue == -1);
+                        message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
                     }
 
                     //If the CC event channel was found, that's where we'll ping for CC events
