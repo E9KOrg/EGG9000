@@ -1,14 +1,21 @@
 ﻿using Discord;
 using Discord.WebSocket;
+
+using EGG9000.Bot.Automated;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
+
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
@@ -24,8 +31,8 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(dbUser.EggIncAccounts.Count == 1) {
-                var contentString = await ChasingStringBuilder(discord, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
-                await command.ModifyOriginalResponseAsync($"**{parameter} Chasing**:\n{contentString}");
+                var embed = await ChasingStringBuilder(discord, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; });
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in dbUser.EggIncAccounts) {
@@ -49,17 +56,19 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
+            await component.DeferAsync();
+
             var dbUser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null) return;
             var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var parameter = (ChasingParameters)int.Parse(dataObjs[1]);
 
-            var contentString = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, account, db);
-            await component.UpdateAsync(x => { x.Components = null; x.Content = $"**{parameter} Chasing**:\n{contentString}"; });
+            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; });
             //await component.Channel.SendMessageAsync(contentString);
         }
 
-        private static async Task<string> ChasingStringBuilder(DiscordSocketClient discord, ChasingParameters parameter, ulong guildId, EggIncAccount eggIncAccount, ApplicationDbContext db) {
+        private static async Task<Embed> ChasingStringBuilder(DiscordSocketClient discord, ChasingParameters parameter, ulong guildId, EggIncAccount eggIncAccount, ApplicationDbContext db) {
             var guild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildId);
 
             var rawUsers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildId && !x.TempDisabled).Select(x => new {
@@ -105,16 +114,20 @@ namespace EGG9000.Bot.Commands {
             var counter = 0;
             var start = userIndex != accounts.Count - 1 ? userIndex - 3 : userIndex - 4;
 
+            var table = new List<List<FixedWidthCell>>();
+
             for(var i = start; counter < 5; i++) {
                 if(i >= 0 && i < accounts.Count) {
                     switch(parameter) {
                         case ChasingParameters.EB:
-                            stringBuilder.AppendFormat($"`{accounts[i].Backup.UserName, -20}{accounts[i].Backup.EarningsBonus.ToEggString(true, 2), 8} {unit}`");
-                            stringBuilder.AppendLine();
+                            table.Add(new () { new((i + 1).ToString()), new(ContractUpdater.Truncate(accounts[i].Backup.UserName, 17)), new ($"{accounts[i].Backup.EarningsBonus.ToEggString(true, 2)} {unit}", CellAlignment.Right)  });
+                            //stringBuilder.AppendFormat($"`{accounts[i].Backup.UserName, -20}{accounts[i].Backup.EarningsBonus.ToEggString(true, 2), 8} {unit}`");
+                            //stringBuilder.AppendLine();
                             break;
                         case ChasingParameters.SE:
-                            stringBuilder.AppendFormat($"`{accounts[i].Backup.UserName, -20}{accounts[i].Backup.SoulEggs.ToEggString(true, 2), 8} {unit}`");
-                            stringBuilder.AppendLine();
+                            table.Add(new() { new((i + 1).ToString()), new(ContractUpdater.Truncate(accounts[i].Backup.UserName, 17)), new($"{accounts[i].Backup.SoulEggs.ToEggString(true, 2)} {unit}", CellAlignment.Right) });
+                            //stringBuilder.AppendFormat($"`{accounts[i].Backup.UserName, -20}{accounts[i].Backup.SoulEggs.ToEggString(true, 2), 8} {unit}`");
+                            //stringBuilder.AppendLine();
                             break;
                     }
 
@@ -125,7 +138,19 @@ namespace EGG9000.Bot.Commands {
                     break;
                 }
             }
-            return stringBuilder.ToString();
+
+            //return stringBuilder.ToString();
+
+            var rows = FixedWidthTable.GetTableListFormatted(table);
+
+            var builder = new EmbedBuilder {
+                Title = $"{parameter} Chasing",
+                Description = string.Join("\n", rows),
+                
+            };
+
+
+            return builder.WithAuthor(new EmbedAuthorBuilder().WithName("What is this?").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
         public enum ChasingParameters {
             EB = 0,
