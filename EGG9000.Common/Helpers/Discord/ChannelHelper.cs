@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Common.Helpers {
             var discordGuildProper = (dbGuildProper == dbGuild) ? discordGuild : _client.GetGuild(dbGuildProper.Id);
 
             var channel = DetermineChannelType(dbGuildProper, discordGuildProper, channelType);
-            if(channel is null ) return null;
+            if(channel is null) return null;
 
             if(channel.GetType() == typeof(SocketThreadChannel)) {
                 if(message.SendFile) {
@@ -67,6 +67,19 @@ namespace EGG9000.Bot.Common.Helpers {
                 if(logger is not null) logger.LogWarning("DetermineAndSend called, expected type of SocketTextChannel or SocketThreadChannel. Instead found type of {type}", channel.GetType());
                 return null;
             }
+        }
+
+        public static async Task<SocketTextChannel> GetTextChannel(ApplicationDbContext db, DiscordSocketClient _client, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType) {
+            var dbGuildProper = await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString())) ?? dbGuild;
+            var discordGuildProper = (dbGuildProper == dbGuild) ? discordGuild : _client.GetGuild(dbGuildProper.Id);
+
+            var channel = DetermineChannelType(dbGuildProper, discordGuildProper, channelType);
+
+            if(channel is not null && channel.GetType() == typeof(SocketTextChannel)) {
+                return (SocketTextChannel)channel;
+            }
+
+            return null;
         }
     }
 }
