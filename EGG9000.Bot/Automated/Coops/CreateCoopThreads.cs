@@ -26,10 +26,17 @@ using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopThreads(IServiceProvider provider) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
-        private const int THREAD_CREATION_DELAY = 2;
+    public class CreateCoopThreads : _UpdaterBase<CreateCoopThreads> {
+        private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater;
+        public CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : base(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
+            _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
+        }
+
+
+        private const double THREAD_CREATION_DELAY = 4.5;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -91,14 +98,23 @@ namespace EGG9000.Bot.Automated.Coops {
                             coop.OverflowGuildId = parent.Guild.Id;
                             _logger.LogInformation("Thread created for {coopName} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
                             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
-                            await Task.Delay(6100); //A thread can be created every about 6 seconds
+                            guildWithOverflow.LastAccessed = DateTimeOffset.Now;
+
+                            var slashCommands = (await guildWithOverflow.Guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
+                            var users = (await _db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
+                            var dbguild = dbguilds.FirstOrDefault(x => x.Id == guildWithOverflow.Guild.Id);
+
+                            var overflowGuild = coop.OverflowGuildId > 0 ? _client.GetGuild(coop.OverflowGuildId) : guildWithOverflow.Guild;
+
+                            await _threadsCoopStatusUpdater.ProcessCoop(coop.Id, overflowGuild, users, dbguild, slashCommands, cancellationToken); 
+
                         } else {
                             _logger.LogWarning("Thread NOT created for {coopName} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
                         }
                     } catch(Exception ex) {
                         _logger.LogError(ex, "Error Creating Co-op Thread {coop} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
-                    } finally {
                         guildWithOverflow.LastAccessed = DateTimeOffset.Now;
+
                     }
                 }
 
