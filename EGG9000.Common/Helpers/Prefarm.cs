@@ -419,6 +419,7 @@ namespace EGG9000.Common.Helpers {
             //Add joined participants
             if(status is not null) {
                 foreach(var participant in status.Participants) {
+
                     //Try and match UUID
                     var backup = backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)));
                     //UserWithBackup backup = null;
@@ -426,6 +427,7 @@ namespace EGG9000.Common.Helpers {
                         var thisXref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == backup.User.Id && x.EggIncId == backup.Backup.EggIncId);
                         coopParticipants.Add(new UserFarmDetails(coop, thisXref, participant, contract, backup, discord, league));
                     } else {
+                        if(participant.UserName == "[departed]") continue;
                         UserCoopXref xref = null;
                         if(coop is not null) {
 
@@ -494,6 +496,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             foreach(var missingUser in coopParticipants.Where(x => x.Xref is null && x.CoopStatus is not null && x.Backup is null)) {
+                if(missingUser.CoopStatus.UserName == "[departed]") continue;
                 var user = backups.Where(x => x.Backup is not null).FirstOrDefault(x => missingUser.CoopStatus.UserName.Length > 0 && x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
                 if(user is not null) {
                     missingUser.DBUser = user.User;
@@ -515,6 +518,9 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
+            if(coopParticipants.Any(x => x.Name.ToLower() == "kendrome" && !coop.FinishedOrFailedOrExpired())) {
+
+            }
             return coopParticipants;
         }
 
