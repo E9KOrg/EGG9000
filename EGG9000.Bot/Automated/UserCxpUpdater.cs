@@ -44,12 +44,14 @@ namespace EGG9000.Bot.Automated {
             var existingScores = await _db.UserCsHistoryEntries.ToListAsync(CancellationToken.None);
             _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {
+                if(cancellationToken.IsCancellationRequested) break;
                 StillAlive();
                 var scoresToAdd = new List<UserCsHistoryEntry>();
                 var skipped = 0;
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, cancellationToken) => {
                     //Loop through each account of the user
                     foreach(var account in user.EggIncAccounts.Where(x => x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
+                        if(cancellationToken.IsCancellationRequested) break;
                         try {
 
                             //Get every score of the user's contracts
