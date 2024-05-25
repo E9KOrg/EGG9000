@@ -146,7 +146,7 @@ namespace EGG9000.Common.Helpers {
                 SecondsRemaining = secondsRemaining,
                 UserId = userid,
                 UserName = userid,
-                Platform = Aux.Platform.Droid,
+                Platform = Ei.Platform.Droid,
                 ClientVersion = 54,
                 SoulPower = 4624103542699216300,
                 Eop = 4632655904192331776,
