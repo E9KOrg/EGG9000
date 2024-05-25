@@ -179,7 +179,7 @@ namespace EGG9000.Common.Services {
             var channelDetails = dbguild.ChannelDetails;
             var channelDetail = channelDetails.FirstOrDefault(x => x.ChannelType == channelType);
             var role = channelDetail == null ? null : guild.GetRole(channelDetail.Id);
-            if(role == null) {
+            if(role == null && channelDetail != null) {
                 var mainRole = Guilds.SelectMany(x => x.Roles.Where(x => x.Id == channelDetail.Id)).FirstOrDefault();
                 if(mainRole is not null) {
                     role = guild.Roles.FirstOrDefault(x => x.Name == mainRole.Name);
