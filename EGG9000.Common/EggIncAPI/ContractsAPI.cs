@@ -369,7 +369,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 var ms1 = new MemoryStream();
                 new EggIncFirstContactRequest {
                     ClientVersion = ClientVersion,
-                    Platform = Aux.Platform.Droid,
+                    Platform = Ei.Platform.Droid,
                     UserId = UserId
                 }.WriteTo(ms1);
                 //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
@@ -436,7 +436,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 var ms1 = new MemoryStream();
                 new EggIncFirstContactRequest {
                     ClientVersion = ClientVersion,
-                    Platform = Aux.Platform.Droid,
+                    Platform = Ei.Platform.Droid,
                     EiUserId = UserId,
                     DeviceId = UserId,
                     Username = "",
@@ -499,7 +499,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 var ms1 = new MemoryStream();
                 var request = new EggIncFirstContactRequest {
                     ClientVersion = ClientVersion,
-                    Platform = Aux.Platform.Droid,
+                    Platform = Ei.Platform.Droid,
                     EiUserId = UserId,
                     DeviceId = UserId,
                     Username = "",

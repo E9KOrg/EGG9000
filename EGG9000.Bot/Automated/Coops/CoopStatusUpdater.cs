@@ -428,7 +428,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var joinResponse = await ContractsAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
-                        UserId = coop.CreatorID, ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Aux.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
+                        UserId = coop.CreatorID, ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
                     }, coop.CreatorID, false);
 
 
