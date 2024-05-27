@@ -116,7 +116,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var contracts = await _db.Contracts.Where(x => x.GoodUntil > DateTimeOffset.Now).Select(x => new { x.ID, x.Name }).ToListAsync();
+                var contracts = await _db.Contracts.Where(x => x.MaxUsers >  1 && x.GoodUntil > DateTimeOffset.Now).Select(x => new { x.ID, x.Name }).ToListAsync();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
                 await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
@@ -135,7 +135,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
                 var hasSubscriptionAccounts = dbUser?.EggIncAccounts.Where(x => x.HasActiveSubscription()).Any() ?? false;
 
-                var contracts = _db.Contracts.Where(x => hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only)).ToList();
+                var contracts = _db.Contracts.Where(x => x.MaxUsers > 1 && (hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only))).ToList();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
                 if(guild is not null && !guild.DisableBG && !isStaff) {
@@ -145,19 +145,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
                 var contractObjs = contracts.Select(x => new { x.ID, x.Name }).ToList();
                 await arg.RespondAsync(null, contractObjs.Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
-            }
-        }
-
-        public class RemoveFromCoopAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
-            private readonly ApplicationDbContext _db = db;
-
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                var users = await _db.UserCoopXrefs.Where(x => x.Coop.ThreadID == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
-                if(users.Count == 0) await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
-                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
-                }
-                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).ToList().Select(x => new AutocompleteResult(x.DiscordUsername + " - " + x.User.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)", x.UserId.ToString())));
             }
         }
         #endregion
@@ -192,6 +179,19 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 await arg.RespondAsync(
                     result
                 );
+            }
+        }
+
+        public class RemoveFromCoopAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
+            private readonly ApplicationDbContext _db = db;
+
+            public async Task Run(SocketAutocompleteInteraction arg) {
+                var users = await _db.UserCoopXrefs.Where(x => x.Coop.ThreadID == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
+                if(users.Count == 0) await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
+                if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
+                    users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).ToList().Select(x => new AutocompleteResult(x.DiscordUsername + " - " + x.User.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)", x.UserId.ToString())));
             }
         }
 
