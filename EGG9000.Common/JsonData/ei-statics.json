@@ -390,9 +390,9 @@
     },
     {
       "id": 8,
-      "imageUrlEnder": "0/0f/Egg_8.png",
-      "emoji": "<:Egg_18:720623152023076955>",
-      "name": "Immortality",
+      "imageUrlEnder": "e/eb/Egg_8_New.png",
+      "emoji": "<:CRISPR_Egg:1255740319828545567>",
+      "name": "CRISPR",
       "value": 12500,
       "requiredFarmValue": 9.4E+22
     },
