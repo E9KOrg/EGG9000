@@ -313,7 +313,7 @@ namespace EGG9000.Site.Controllers {
             var eventTypes = currentCustomizations.Select(x => x.Type).ToList();
             var periodicalsResponse = await ContractsAPI.GetPeriodicalsAsync();
             var missingTypes = periodicalsResponse.Events.Events.Where(x => !eventTypes.Contains(x.Type)).Select(x => x.Type).ToList();
-            eventTypes.AddRange(eventTypes);
+            eventTypes.AddRange(missingTypes);
 
             foreach(var type in eventTypes) {
                 var guildEventCustomization = guild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
