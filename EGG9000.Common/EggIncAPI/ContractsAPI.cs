@@ -32,13 +32,13 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
         public const string BaseAddressNew = "https://www.auxbrain.com/";
         public const string UserId = "EI5223299518300160";
-        public static uint ClientVersion { get; set; } = 66;
+        public static uint ClientVersion { get; set; } = 67;
 
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.31.0",
-                Build = "111284",
+                Version = "1.33.0",
+                Build = "111290",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en",
