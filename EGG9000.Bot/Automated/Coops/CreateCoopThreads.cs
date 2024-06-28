@@ -28,16 +28,20 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using static EGG9000.Common.Helpers.Prefarm;
 using System.Collections.Concurrent;
+using MassTransit.Internals;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads : _UpdaterBase<CreateCoopThreads> {
         private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater;
-        public CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : base(TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(0), provider) {
+        public CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : base(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
             _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
         }
 
 
         private const double THREAD_CREATION_DELAY = 6;
+
+        private Dictionary<string, int> CoopsTimeoutCounter = new();
+
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -83,6 +87,23 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 foreach(var coop in coops) {
+                    if(coop.ContractID is null) {
+                        if(CoopsTimeoutCounter.ContainsKey(coop.Name)) {
+                            if(CoopsTimeoutCounter[coop.Name] > 60) {
+                                _logger.LogWarning("Unable to create channel for coop {coop} because the contract is null", coop.Name);
+                                CoopsTimeoutCounter[coop.Name] = 0;
+                            } else {
+                                CoopsTimeoutCounter[coop.Name]++;
+                                if(allCoops.All(x => CoopsTimeoutCounter.ContainsKey(x.Name))) {
+                                    goto ExitWhile;
+                                }
+                            }
+                        } else {
+                            _logger.LogWarning("Unable to create channel for coop {coop} because the contract is null", coop.Name);
+                            CoopsTimeoutCounter.Add(coop.Name, 1);
+                        }
+                        continue;
+                    }
                     if(cancellationToken.IsCancellationRequested) return;
                     var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId);
 
@@ -136,6 +157,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
             }
 
+            ExitWhile:
 
             if(tasks.Count > 0) {
                 var watchdogCancellationSource = new CancellationTokenSource();
