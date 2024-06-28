@@ -61,9 +61,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
 #if DEBUG
             //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+            coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("72fea962-0e1d-4ab0-b56e-08dc53f75398")).ToList();
             //coops = coops.Take(20).ToList();
-            coops = [.. coops.Where(x => x.Name == "HaltFilm93")];
+            //coops = [.. coops.Where(x => x.Name == "HaltFilm93")];
 #endif
 
 

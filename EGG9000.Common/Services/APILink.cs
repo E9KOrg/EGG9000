@@ -152,8 +152,6 @@ namespace EGG9000.Common.Services {
                 }
             }
 
-            //_logger.LogInformation("Backups from cache {count}", backups.Count);
-
             if(backupsNeeded.Count > 0) {
                 var throttler = new SemaphoreSlim(2);
                 var tasks = new List<Task>();
@@ -213,15 +211,6 @@ namespace EGG9000.Common.Services {
                 }
 
                 await Task.WhenAll(tasks);
-
-
-                //foreach(var partition in Partition(backupsNeeded, 100)) {
-                //var response = await SendAsync<List<Ei.EggIncFirstContactResponse>>(url, partition, HttpMethod.Get);
-                foreach(var response in responses) {
-                    //var response = task.Result;
-
-
-                }
             }
             return backups;
         }
