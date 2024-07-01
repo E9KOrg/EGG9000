@@ -27,6 +27,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public string custom_eggs { get; set; }
 
+        [NotMapped]
         public List<CustomEgg> CustomEggs => JsonConvert.DeserializeObject<List<CustomEgg>>(custom_eggs);
 
         [NotMapped]
