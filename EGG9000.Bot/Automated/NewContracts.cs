@@ -5,6 +5,7 @@ using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
@@ -43,6 +45,7 @@ namespace EGG9000.Bot.Automated {
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync(CancellationToken.None);
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
+                var customEggs = contractsResponse.Contracts.CustomEggs.ToList();
 
                 CheckUpdateInterval(existingContracts);
 
@@ -54,6 +57,8 @@ namespace EGG9000.Bot.Automated {
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
                     var json = JsonConvert.SerializeObject(contractResponse);
+
+                    var matchingCustomEggs = customEggs.Where(ce => ce.Identifier == contractResponse.Identifier || ce.Value == (int)contractResponse.Egg).ToList();
 
                     if(contract == null) {
                         contract = new Contract {
@@ -72,7 +77,8 @@ namespace EGG9000.Bot.Automated {
                             length_seconds = contractResponse.LengthSeconds,
                             egg = contractResponse.Egg.ToString(),
                             cc_only = contractResponse.CcOnly,
-                            _response = json
+                            _response = json,
+                            custom_eggs = JsonConvert.SerializeObject(new List<CustomEgg>())
                         };
                         _db.Contracts.Add(contract);
                         await _db.SaveChangesAsync(CancellationToken.None);
@@ -99,6 +105,7 @@ namespace EGG9000.Bot.Automated {
                         contract.egg = contractResponse.Egg.ToString();
                         contract.cc_only = contractResponse.CcOnly;
                         contract._response = json;
+                        contract.custom_eggs = JsonConvert.SerializeObject(matchingCustomEggs);
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
 
