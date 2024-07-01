@@ -944,7 +944,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 .WithTimestamp(DateTimeOffset.UtcNow)
                 ;
 
-                if(coop.Contract.Details.HasCustomEggId) {
+                if(coop.Contract.Details.HasCustomEggId && coop.Contract.Details.Egg == Ei.Egg.CustomEgg) {
                     embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}")
                         .WithIconUrl(
                             coop.Contract.CustomEggs?.FirstOrDefault()?.Icon?.Url ?? EggIncStatics.GetEggById(1).image

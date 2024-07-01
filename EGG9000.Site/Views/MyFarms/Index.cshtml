@@ -194,7 +194,11 @@
         <div class="font-weight-bold" style="margin-top:10px;">
             @foreach (var xref in unjoinedCoops) {
                 <div>
-                    <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
+                    @if(xref.Coop.Contract.Details.HasCustomEggId && xref.Coop.Contract.Details.Egg == Ei.Egg.CustomEgg) {
+                        <img style="max-height: 30px;" src="@xref.Coop.Contract.CustomEggs?.FirstOrDefault()?.Icon?.Url ?? @("Egg_1.png")"/>
+                    } else {
+                        <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
+                    }
                     @if(Model.User.EggIncAccounts.Count > 1) {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name (@accountName(xref.EggIncId))</span>
                     } else {

@@ -1017,7 +1017,7 @@
                 <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
             } else if (farm.ContractId != null) {
                 var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-                if(contract.Details.HasCustomEggId) {
+                if(contract.Details.HasCustomEggId && contract.Details.Egg == Ei.Egg.CustomEgg) {
                     <h4 class="card-header"><img src="@contract.CustomEggs?.FirstOrDefault()?.Icon.Url ?? @("/images/Egg_1.png")" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
                 } else {
                     <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>

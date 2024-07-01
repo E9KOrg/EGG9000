@@ -153,7 +153,7 @@ namespace EGG9000.Bot.Automated {
 
             var embedBuilder = new EmbedBuilder().WithDescription(description);
             var author = new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}");
-            if(guildContract.Contract.Details.HasCustomEggId) {
+            if(guildContract.Contract.Details.HasCustomEggId && guildContract.Contract.Details.Egg == Ei.Egg.CustomEgg) {
                 author.WithIconUrl(guildContract.Contract.CustomEggs?.FirstOrDefault()?.Icon?.Url ?? EggIncStatics.GetEggById(1).image);
             } else {
                 author.WithIconUrl(EggIncStatics.GetEggById((int)guildContract.Contract.Details.Egg).image);
