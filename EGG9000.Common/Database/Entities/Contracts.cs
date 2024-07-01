@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Ei;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -23,6 +24,10 @@ namespace EGG9000.Common.Database.Entities {
         public string _response { get; set; }
 
         public bool HadTwoRewards { get; set; }
+
+        public string custom_eggs { get; set; }
+
+        public List<CustomEgg> CustomEggs => JsonConvert.DeserializeObject<List<CustomEgg>>(custom_eggs);
 
         [NotMapped]
         private Ei.Contract _details { get; set; }
