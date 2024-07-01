@@ -78,7 +78,7 @@ namespace EGG9000.Bot.Automated {
                             egg = contractResponse.Egg.ToString(),
                             cc_only = contractResponse.CcOnly,
                             _response = json,
-                            custom_eggs = ""
+                            custom_eggs = JsonConvert.SerializeObject(new List<CustomEgg>())
                         };
                         _db.Contracts.Add(contract);
                         await _db.SaveChangesAsync(CancellationToken.None);
