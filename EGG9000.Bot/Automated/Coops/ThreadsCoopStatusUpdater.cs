@@ -942,8 +942,16 @@ namespace EGG9000.Bot.Automated.Coops {
                 ))
                 .WithColor(color)
                 .WithTimestamp(DateTimeOffset.UtcNow)
-                .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).image))
                 ;
+
+                if(coop.Contract.Details.HasCustomEggId) {
+                    embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}")
+                        .WithIconUrl(
+                            coop.Contract.CustomEggs?.FirstOrDefault()?.Icon?.Url ?? EggIncStatics.GetEggById(1).image
+                        ));
+                } else {
+                    embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).image));
+                }
 
 
                 var updates = UpdateInterval.TotalMinutes;
