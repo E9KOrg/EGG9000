@@ -151,11 +151,15 @@ namespace EGG9000.Bot.Automated {
             if(guildContract.BoardingGroup < 3)
                 description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
 
-            var embedBuilder = new EmbedBuilder()
-                .WithDescription(description)
-                .WithAuthor(
-                    new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}")
-                    .WithIconUrl(EggIncStatics.GetEggById((int)guildContract.Contract.Details.Egg).image));
+            var embedBuilder = new EmbedBuilder().WithDescription(description);
+            var author = new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}");
+            if(guildContract.Contract.Details.HasCustomEggId) {
+                author.WithIconUrl(guildContract.Contract.CustomEggs?.FirstOrDefault()?.Icon?.Url ?? EggIncStatics.GetEggById(1).image);
+            } else {
+                author.WithIconUrl(EggIncStatics.GetEggById((int)guildContract.Contract.Details.Egg).image);
+            }
+
+            embedBuilder.WithAuthor(author);
 
             var startIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 5 : (int)grade;
             var endIndex = grade == Ei.Contract.Types.PlayerGrade.GradeUnset ? 1 : (int)grade;
