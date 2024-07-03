@@ -5,6 +5,8 @@ using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiAfxConfig;
+
 using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +60,8 @@ namespace EGG9000.Bot.Automated {
 
                     var json = JsonConvert.SerializeObject(contractResponse);
 
-                    var matchingCustomEggs = customEggs.Where(ce => ce.Identifier == contractResponse.Identifier || ce.Value == (int)contractResponse.Egg).ToList();
+                    var matchingCustomEggs = JsonConvert.SerializeObject(customEggs.Where(ce => ce.Identifier == contractResponse.CustomEggId).ToList());
+                    
 
                     if(contract == null) {
                         contract = new Contract {
@@ -77,8 +80,7 @@ namespace EGG9000.Bot.Automated {
                             length_seconds = contractResponse.LengthSeconds,
                             egg = contractResponse.Egg.ToString(),
                             cc_only = contractResponse.CcOnly,
-                            _response = json,
-                            custom_eggs = JsonConvert.SerializeObject(new List<CustomEgg>())
+                            _response = json
                         };
                         _db.Contracts.Add(contract);
                         await _db.SaveChangesAsync(CancellationToken.None);
@@ -105,9 +107,11 @@ namespace EGG9000.Bot.Automated {
                         contract.egg = contractResponse.Egg.ToString();
                         contract.cc_only = contractResponse.CcOnly;
                         contract._response = json;
-                        contract.custom_eggs = JsonConvert.SerializeObject(matchingCustomEggs);
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
+
+                    if(contract.custom_eggs != matchingCustomEggs)
+                        contract.custom_eggs = matchingCustomEggs;
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync(CancellationToken.None);

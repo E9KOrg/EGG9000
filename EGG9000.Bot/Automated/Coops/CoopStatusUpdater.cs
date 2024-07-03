@@ -1097,7 +1097,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     ))
                     .WithColor(color)
                     .WithTimestamp(DateTimeOffset.UtcNow)
-                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).image))
+                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract).image))
                     ;
 
 
@@ -1339,9 +1339,9 @@ namespace EGG9000.Bot.Automated.Coops {
             if(discordUser is null)
                 return;
 
-            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
+            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
             if(dmResult != DMResult.Success) {
-                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
             }
         }
 

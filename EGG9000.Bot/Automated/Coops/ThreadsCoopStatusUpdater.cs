@@ -89,7 +89,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var rng = new Random();
                 foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
-                    //foreach(var coop in guildCoops) {
                     if(cancellationToken.IsCancellationRequested) break;
 
                     while(!await throttler.WaitAsync(20000, cancellationToken)) {
@@ -102,7 +101,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             await ProcessCoop(coop.Id, guild, users, dbguild, slashCommands, cancellationToken);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
-                            _logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
+                            //_logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
                         } finally {
                             throttler.Release();
                         }
@@ -944,14 +943,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 .WithTimestamp(DateTimeOffset.UtcNow)
                 ;
 
-                if(coop.Contract.Details.HasCustomEggId) {
-                    embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}")
-                        .WithIconUrl(
-                            coop.Contract.CustomEggs?.FirstOrDefault()?.Icon?.Url ?? EggIncStatics.GetEggById(1).image
-                        ));
-                } else {
-                    embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).image));
-                }
+                
+                embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract).image));
 
 
                 var updates = UpdateInterval.TotalMinutes;
@@ -1451,9 +1444,9 @@ public static async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser 
     if(discordUser is null)
         return;
 
-    var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
+    var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
     if(dmResult != DMResult.Success) {
-        await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggById((int)coop.Contract.Details.Egg).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+        await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
     }
 }
 

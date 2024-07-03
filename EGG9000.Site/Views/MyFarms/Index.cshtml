@@ -194,7 +194,7 @@
         <div class="font-weight-bold" style="margin-top:10px;">
             @foreach (var xref in unjoinedCoops) {
                 <div>
-                    <img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />
+                    <img style="max-height: 30px;" src="@(EggIncStatics.GetEggByContract(xref.Coop.Contract).image)" />
                     @if(Model.User.EggIncAccounts.Count > 1) {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name (@accountName(xref.EggIncId))</span>
                     } else {
