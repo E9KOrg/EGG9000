@@ -172,7 +172,7 @@ namespace EGG9000.Common.Helpers {
                 WasAssigned = true
             };
 
-            var eggEmoji = EggIncStatics.GetEggById((int)targetCoop.Contract.Details.Egg).emoji;
+            var eggEmoji = EggIncStatics.GetEggById((int)targetCoop.Contract.Details.Egg, targetCoop.Contract).emoji;
             var mention = user.Mention;
             if(dbuser.EggIncAccounts.Count > 1) {
                 mention += $"({eggIncName})";

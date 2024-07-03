@@ -516,7 +516,7 @@
                                 }
                                 foreach (var fuel in mission.Fuels)
                                 {
-                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg)?.image}";
+                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg, null)?.image}";
                                     var target = fuelTargets[fuel.Egg];
                                     var percent = fuel.Amount / target * 100;
                                     var eggName = string.Join(" ", Regex.Split(Enum.GetName(typeof(Ei.Egg), fuel.Egg).ToString(), @"(?=\p{Lu})"));
@@ -1017,11 +1017,7 @@
                 <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
             } else if (farm.ContractId != null) {
                 var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-                if(contract.Details.HasCustomEggId) {
-                    <h4 class="card-header"><img src="@contract.CustomEggs?.FirstOrDefault()?.Icon.Url ?? @("/images/Egg_1.png")" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
-                } else {
-                    <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
-                }
+                <h4 class="card-header"><img src="@(EggIncStatics.GetEggByContract(contract).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
             } else {
                 <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
             }

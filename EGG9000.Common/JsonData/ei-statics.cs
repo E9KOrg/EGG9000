@@ -1,4 +1,7 @@
 ﻿using EGG9000.Common.Helpers;
+
+using Ei;
+
 using Newtonsoft.Json;
 
 using System;
@@ -16,6 +19,8 @@ namespace EGG9000.Common.JsonData.EiStatics {
         public string imageUrlEnder { get; set; }
         public string image { 
             get {
+                if(imageUrlEnder.StartsWith("http"))
+                    return imageUrlEnder;
                 return "https://vignette.wikia.nocookie.net/egg-inc/images/" + imageUrlEnder;
             }
         }

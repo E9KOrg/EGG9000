@@ -1,4 +1,5 @@
 ﻿using EGG9000.Bot;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.JsonData.EiStatics;
 using Humanizer;
 using System;
@@ -8,12 +9,23 @@ using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncStatics {
-        public static EggIncEgg GetEggById(Ei.Egg egg) {
-            return GetEggById((int)egg);
+        public static EggIncEgg GetEggByContract(Contract contract) {
+            return GetEggById(contract.Details.Egg, contract);
         }
-        public static EggIncEgg GetEggById(int id) {
-            try {
-                return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
+        public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract) {
+            return GetEggById((int)egg, contract);
+        }
+        public static EggIncEgg GetEggById(int id, Contract contract) {
+           try {
+                if(id == 200) {
+                    var customEgg = contract.CustomEggs.First();
+                    return new EggIncEgg {
+                         value = customEgg.Value,
+                         imageUrlEnder = customEgg.Icon.Url
+                    };
+                } else {
+                    return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
+                }
             } catch(Exception) {
                 return null;
             }  

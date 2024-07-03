@@ -1,4 +1,5 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 
@@ -116,8 +117,8 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseValue;
         }
 
-        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic) {
-            double baseValue = EggIncStatics.GetEggById(farm.EggType).value;
+        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract) {
+            double baseValue = EggIncStatics.GetEggById(farm.EggType, contract).value;
 
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);

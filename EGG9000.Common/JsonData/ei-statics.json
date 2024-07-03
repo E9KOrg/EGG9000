@@ -518,6 +518,13 @@
       "emoji": "<:Egg_pumpkin:730169310646894752>",
       "name": "Pumpkin",
       "value": 0.99
+    },
+    {
+      "id": 200,
+      "imageUrlEnder": "",
+      "emoji": "",
+      "name": "CustomEgg",
+      "value": 4.99
     }
   ]
 }

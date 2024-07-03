@@ -44,7 +44,8 @@ namespace EGG9000.Common.Services {
         }
 
 
-        public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
+        public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+            //public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
             if(_socketCommandBase is not null && _socketCommandBase.HasResponded)
                 await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
             else if(_socketCommandBase is not null)
@@ -81,14 +82,6 @@ namespace EGG9000.Common.Services {
             throw new NotImplementedException();
         }
 
-        Task<IUserMessage> IDiscordInteraction.FollowupAsync(string text, Embed[] embeds, bool isTTS, bool ephemeral, AllowedMentions allowedMentions, MessageComponent components, Embed embed, RequestOptions options) {
-            throw new NotImplementedException();
-        }
-
-        Task<IUserMessage> IDiscordInteraction.FollowupWithFilesAsync(IEnumerable<FileAttachment> attachments, string text, Embed[] embeds, bool isTTS, bool ephemeral, AllowedMentions allowedMentions, MessageComponent components, Embed embed, RequestOptions options) {
-            throw new NotImplementedException();
-        }
-
         public async Task<IUserMessage> GetOriginalResponseAsync(RequestOptions options = null) {
             return _socketCommandBase is null ? _message : await _socketCommandBase?.GetOriginalResponseAsync(options);
         }
@@ -112,6 +105,19 @@ namespace EGG9000.Common.Services {
         }
 
         public Task RespondWithPremiumRequiredAsync(RequestOptions options = null) {
+            throw new NotImplementedException();
+        }
+
+
+        public Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+            throw new NotImplementedException();
+        }
+
+        public Task<IUserMessage> FollowupAsync(string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+            throw new NotImplementedException();
+        }
+
+        public Task<IUserMessage> FollowupWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
             throw new NotImplementedException();
         }
 
@@ -295,6 +301,18 @@ namespace EGG9000.Common.Services {
         //}
 
         public GuildPermissions Permissions {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        public InteractionContextType? ContextType {
             get {
                 throw new NotImplementedException();
             }
