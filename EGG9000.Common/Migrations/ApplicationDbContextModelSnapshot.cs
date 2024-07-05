@@ -95,6 +95,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<bool>("coop_allowed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("custom_eggs")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("debug")
                         .HasColumnType("bit");
 

@@ -4,14 +4,10 @@
 
 namespace EGG9000.Common.Migrations
 {
-    public partial class CustomEggsReplacement : Migration
+    public partial class CustomEggsPart2 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "custom_eggs",
-                table: "Contracts");
-
             migrationBuilder.AddColumn<double>(
                 name: "egg_value",
                 table: "Contracts",
@@ -25,12 +21,6 @@ namespace EGG9000.Common.Migrations
             migrationBuilder.DropColumn(
                 name: "egg_value",
                 table: "Contracts");
-
-            migrationBuilder.AddColumn<string>(
-                name: "custom_eggs",
-                table: "Contracts",
-                type: "nvarchar(max)",
-                nullable: true);
         }
     }
 }

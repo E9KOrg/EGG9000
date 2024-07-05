@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240705225956_CustomEggsReplacement")]
-    partial class CustomEggsReplacement
+    [Migration("20240705230945_CustomEggsPart2")]
+    partial class CustomEggsPart2
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -96,6 +96,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<bool>("coop_allowed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("custom_eggs")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("debug")
                         .HasColumnType("bit");

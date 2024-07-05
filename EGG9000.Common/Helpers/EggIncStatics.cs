@@ -15,17 +15,18 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract, List<DBCustomEgg> customEggs) {
-            return GetEggById((int)egg, contract.Details.CustomEggId ?? "", customEggs);
+            return GetEggById((int)egg, contract, customEggs);
         }
 
-        public static EggIncEgg GetEggById(int id, string customIdentifier, List<DBCustomEgg> customEggs) {
+        public static EggIncEgg GetEggById(int id, Contract contract, List<DBCustomEgg> customEggs) {
            try {
                 if(id == 200) {
-                    var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == customIdentifier);
+                    var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == (contract.Details?.CustomEggId ?? "INVALID"));
+                    var failBackEgg = contract.CustomEggs.First();
                     return new EggIncEgg {
-                        value = customEgg.Value,
-                        imageUrlEnder = customEgg.Icon.URL,
-                        emoji = $"<{customEgg.EmojiName}:{customEgg.EmojiId}>"
+                        value = customEgg?.Value ?? failBackEgg?.Value ?? 0,
+                        imageUrlEnder = customEgg?.Icon.URL ?? failBackEgg?.Icon.Url ?? "",
+                        emoji = customEgg is not null ? $"<{customEgg.EmojiName}:{customEgg.EmojiId}>" : "<:Edible_Egg:712424206276755516>"
                     };
                 } else {
                     return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);

@@ -186,6 +186,9 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
 
+                    if(contract.custom_eggs != matchingCustomEggs)
+                        contract.custom_eggs = matchingCustomEggs;
+
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync(CancellationToken.None);
 
