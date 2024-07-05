@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
@@ -8,6 +9,8 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiAfxConfig;
 
 using Ei;
+using Humanizer;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,7 +18,9 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,7 +52,47 @@ namespace EGG9000.Bot.Automated {
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync(CancellationToken.None);
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
-                var customEggs = contractsResponse.Contracts.CustomEggs.ToList();
+                var customEggs = contractsResponse.Contracts.CustomEggs?.ToList() ?? [];
+                var dbCustomEggs = _db.CustomEggs;
+                var newCustomEggs = customEggs.Where(ce => !dbCustomEggs.Any(e => e.Identifier == ce.Identifier));
+
+                if(newCustomEggs.Any()) {
+#if DEV9002 || DEBUG
+                    // DEV9K Overflow Server
+                    var emojiServer = _client.GetGuild(1130233910966620290);
+#else
+                    // Cluckingham Overflow 4
+                    var emojiServer = _client.GetGuild(1147264073659064420);
+#endif
+                    if(emojiServer != null) { 
+                        foreach(var newEgg in newCustomEggs) {
+                            var emojiName = newEgg.Name.Titleize().Replace(" ", "_") + "_Egg";
+                            var existingEmotes = await emojiServer.GetEmotesAsync();
+                            var emote = existingEmotes.FirstOrDefault(e => e.Name == emojiName);
+                            if(emote is null) {
+                                // Download the image from aux
+                                var imageUrl = newEgg.Icon.Url.ToString();
+                                byte[] imageBytes;
+                                var _httpClient = new HttpClient();
+                                using var response = await _httpClient.GetAsync(imageUrl, CancellationToken.None);
+                                response.EnsureSuccessStatusCode();
+                                imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
+
+                                // Convert the image to a stream, then to a Discord Image
+                                using var imageStream = new MemoryStream(imageBytes);
+                                var discordImage = new Image(imageStream);
+
+                                // Upload the image as a GuildEmote
+                                emote = await emojiServer.CreateEmoteAsync(emojiName, discordImage);
+                            }
+
+                            if(emote != null && emote.Id != 0) {
+                                var dbEgg = new DBCustomEgg(newEgg, emote);
+                                await _db.CustomEggs.AddAsync(dbEgg, CancellationToken.None);
+                            }
+                        }
+                    }
+                }
 
                 CheckUpdateInterval(existingContracts);
 
