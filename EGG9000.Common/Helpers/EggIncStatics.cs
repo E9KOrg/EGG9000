@@ -1,4 +1,5 @@
 ﻿using EGG9000.Bot;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.JsonData.EiStatics;
 using Humanizer;
@@ -9,19 +10,22 @@ using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncStatics {
-        public static EggIncEgg GetEggByContract(Contract contract) {
-            return GetEggById(contract.Details.Egg, contract);
+        public static EggIncEgg GetEggByContract(Contract contract, List<DBCustomEgg> customEggs) {
+            return GetEggById(contract.Details.Egg, contract, customEggs);
         }
-        public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract) {
-            return GetEggById((int)egg, contract);
+
+        public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract, List<DBCustomEgg> customEggs) {
+            return GetEggById((int)egg, contract.Details.CustomEggId ?? "", customEggs);
         }
-        public static EggIncEgg GetEggById(int id, Contract contract) {
+
+        public static EggIncEgg GetEggById(int id, string customIdentifier, List<DBCustomEgg> customEggs) {
            try {
                 if(id == 200) {
-                    var customEgg = contract.CustomEggs.First();
+                    var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == customIdentifier);
                     return new EggIncEgg {
-                         value = customEgg.Value,
-                         imageUrlEnder = customEgg.Icon.Url
+                        value = customEgg.Value,
+                        imageUrlEnder = customEgg.Icon.URL,
+                        emoji = $"<{customEgg.EmojiName}:{customEgg.EmojiId}>"
                     };
                 } else {
                     return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);

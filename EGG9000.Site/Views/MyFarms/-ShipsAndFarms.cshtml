@@ -7,7 +7,7 @@
 @using static Ei.MissionInfo.Types;
 @using static EGG9000.Common.Helpers.MissionHelpers;
 @inject DiscordSocketClient DiscordClient
-@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts)
+@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts, List<DBCustomEgg> CustomEggs)
 
 @{
     string properCaseAndSuffix(string inputString, int number){
@@ -516,7 +516,7 @@
                                 }
                                 foreach (var fuel in mission.Fuels)
                                 {
-                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg, null)?.image}";
+                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg, null, Model.CustomEggs)?.image}";
                                     var target = fuelTargets[fuel.Egg];
                                     var percent = fuel.Amount / target * 100;
                                     var eggName = string.Join(" ", Regex.Split(Enum.GetName(typeof(Ei.Egg), fuel.Egg).ToString(), @"(?=\p{Lu})"));
@@ -1017,7 +1017,7 @@
                 <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
             } else if (farm.ContractId != null) {
                 var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-                <h4 class="card-header"><img src="@(EggIncStatics.GetEggByContract(contract).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+                <h4 class="card-header"><img src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
             } else {
                 <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
             }

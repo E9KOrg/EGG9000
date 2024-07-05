@@ -8,6 +8,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
 using EGG9000.Site.Models;
 using Google.Protobuf;
@@ -809,7 +810,8 @@ namespace EGG9000.Site.Controllers {
             var model = new CoopModel {
                 
                 DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.Like(x.Name, CoopId)),
-                Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId)
+                Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
+                CustomEggs = await _db.CustomEggs.ToListAsync()
             };
             model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? new List<UserCoopXref>());
 
@@ -922,6 +924,7 @@ namespace EGG9000.Site.Controllers {
             public List<GoalDetails> GoalDetails { get; set; }
             public double Progress { get; set; }
             public CoopDetails CoopDetails { get; set; }
+            public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
         public class CoopUserInfo {

@@ -306,7 +306,7 @@ namespace EGG9000.Site.Controllers {
 
             var channel = targetCoop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID) : (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
-            var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, discordUser, dbuser, channel, null);
+            var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, db, discordUser, dbuser, channel, null);
 
             if(xref == null) {
                 return Json(new { error = $"Unable to add permissions for {dbuser.DiscordUsername}, likely not in overflow server" });

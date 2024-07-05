@@ -116,7 +116,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
-                        var (thread, parent) = await TryCreateCoopThread(guildContract, guildWithOverflow.Guild, coop, guildWithOverflow.Servers);
+                        var (thread, parent) = await TryCreateCoopThread(guildContract, _db, guildWithOverflow.Guild, coop, guildWithOverflow.Servers);
                         if(thread != null) {
                             coop.ThreadID = thread.Id;
                             coop.ThreadParentChannel = parent.Id;
@@ -210,8 +210,8 @@ namespace EGG9000.Bot.Automated.Coops {
             return Task.CompletedTask;
         }
 
-        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers) {
-            var contractEmbed = ContractUpdater.GetContractEmbed(guildContract, guild, (Ei.Contract.Types.PlayerGrade)coop.League);
+        private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, ApplicationDbContext db, SocketGuild guild, Coop coop, List<OverflowServer> servers) {
+            var contractEmbed = await ContractUpdater.GetContractEmbed(guildContract, db, guild, (Ei.Contract.Types.PlayerGrade)coop.League);
             SocketGuildChannel headerChannel = null;
 
             //Check channels that already have an existing header for the contract

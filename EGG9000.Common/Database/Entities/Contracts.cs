@@ -25,10 +25,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public bool HadTwoRewards { get; set; }
 
-        public string custom_eggs { get; set; }
-
-        [NotMapped]
-        public List<CustomEgg> CustomEggs => JsonConvert.DeserializeObject<List<CustomEgg>>(custom_eggs);
+        public double egg_value { get; set; }
 
         [NotMapped]
         private Ei.Contract _details { get; set; }
