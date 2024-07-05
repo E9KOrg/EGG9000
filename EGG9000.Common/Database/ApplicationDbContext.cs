@@ -41,6 +41,7 @@ namespace EGG9000.Common.Database {
         public DbSet<Event> Events { get; set; }
         public DbSet<EventCustomization> EventCustomizations { get; set; }
         public DbSet<Donation> Donations { get; set; }
+        public DbSet<DBCustomEgg> CustomEggs { get; set; }
 
         public DbSet<GlobalLeaderboardCoop> GlobalLeaderboardCoops { get; set; }
         public DbSet<GlobalLeaderboardUser> GlobalLeaderboardUsers { get; set; }

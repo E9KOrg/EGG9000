@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Ei;
 using MessagePack;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
@@ -11,23 +10,7 @@ namespace EGG9000.Common.Database.Entities {
 
     [Table("CustomEggs")]
     public class DBCustomEgg {
-        [Key(0)]
-        public string Identifier { get; set; }
-        [Key(1)]
-        public string Name { get; set; }
-        [Key(2)]
-        public string Description { get; set; }
-        [Key(3)]
-        public double Value { get; set; }
-        [Key(4)]
-        public DBCustomEggIcon Icon { get; set; }
-        [Key(5)]
-        public List<DBCustomEggModifier> Modifiers { get; set; }
-        [Key(6)]
-        public string EmojiName { get; set; }
-        [Key(7)]
-        public ulong EmojiId { get; set; }
-
+        public DBCustomEgg() { }
         public DBCustomEgg(CustomEgg customEgg, GuildEmote emoji) {
             Identifier = customEgg.Identifier;
             Name = customEgg.Name;
@@ -39,6 +22,45 @@ namespace EGG9000.Common.Database.Entities {
             EmojiName = emoji.Name;
             EmojiId = emoji.Id;
         }
+
+        public string Identifier { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public double Value { get; set; }
+        public byte[] _iconBytes { get; set; }
+        [NotMapped]
+        private DBCustomEggIcon _icon { get; set; }
+        [NotMapped]
+        public DBCustomEggIcon Icon {
+            get {
+                if(_icon != null) return _icon;
+                if(_iconBytes == null) return null;
+                _icon = MessagePackSerializer.Deserialize<DBCustomEggIcon>(_iconBytes);
+                return _icon;
+            }
+            set {
+                _icon = value;
+                _iconBytes = MessagePackSerializer.Serialize(value);
+            }
+        }
+        public byte[] _modifiersBytes { get; set; }
+        [NotMapped]
+        private List<DBCustomEggModifier> _modifiers { get; set; }
+        [NotMapped]
+        public List<DBCustomEggModifier> Modifiers { 
+            get {
+                if(_modifiers != null) return _modifiers;
+                if(_modifiersBytes == null) return null;
+                _modifiers = MessagePackSerializer.Deserialize<List<DBCustomEggModifier>>(_modifiersBytes);
+                return _modifiers;
+            }
+            set {
+                _modifiers = value;
+                _modifiersBytes = MessagePackSerializer.Serialize(value);
+            }
+        }
+        public string EmojiName { get; set; }
+        public ulong EmojiId { get; set; }
     }
 
     [MessagePackObject]
