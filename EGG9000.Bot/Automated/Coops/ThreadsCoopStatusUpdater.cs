@@ -141,6 +141,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
 
+                if(coop.ContractID == "test-contract") {
+                    return;
+                }
+
                 //** Get Coop Thread
                 IThreadChannel coopThread = guild.ThreadChannels.FirstOrDefault(x => x.Id == coop.ThreadID);
 

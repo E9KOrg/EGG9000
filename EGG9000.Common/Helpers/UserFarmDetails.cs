@@ -37,7 +37,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup?.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, coop);
+                FarmStats = Farm?.WithStats(Backup, coop, null, contract);
                 if(Farm is null)
                     ArchivedFarm = Backup?.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
@@ -60,7 +60,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, coop);
+                FarmStats = Farm?.WithStats(Backup, coop, contract: contract);
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
@@ -80,7 +80,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, null);
+                FarmStats = Farm?.WithStats(Backup, null, contract: contract);
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;

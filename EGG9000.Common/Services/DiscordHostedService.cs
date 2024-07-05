@@ -260,10 +260,10 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, Coop coop, ILogger logger) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, Contract contract, ILogger logger) {
             if(category is null || category.Id == 0) return null;
 
-            var name = $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}";
+            var name = $"{contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(league).ToLower()}";
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
 
             //Wait on the Server's lock, timeout defined in DiscordHostedService
@@ -295,7 +295,7 @@ namespace EGG9000.Common.Services {
             }
             await channel.SendMessageAsync(text: "", embed: contractEmbed);
 
-            if(coop.Contract.cc_only && ultraRoles.Count > 0) {
+            if(contract.cc_only && ultraRoles.Count > 0) {
                 foreach(var ultraRole in ultraRoles) {
                     await channel.AddPermissionOverwriteAsync(ultraRole,
                         new OverwritePermissions(
