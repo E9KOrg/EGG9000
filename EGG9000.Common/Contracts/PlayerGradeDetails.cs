@@ -47,5 +47,9 @@ namespace EGG9000.Common.Contracts {
         public static string GetNameFromLeague(int league) {
             return GetText((Ei.Contract.Types.PlayerGrade)league);
         }
+
+        public static Ei.Contract.Types.PlayerGrade GetGradeFromLeague(uint league) {
+            return (Ei.Contract.Types.PlayerGrade)league;
+        }
     }
 }
