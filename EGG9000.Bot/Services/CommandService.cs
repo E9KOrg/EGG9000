@@ -195,6 +195,8 @@ namespace EGG9000.Bot.Services {
                     await (Task)command.MethodInfo.Invoke(null, [..parameters]);
                 } catch(UserNotInServerException unfe) {
                     await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
+                } catch(InvalidOperationException) {
+                    await arg.RespondAsync(text: "", embed: EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"));
                 } catch(Exception e) {
                     try {
                         _bugsnag.Notify(e);
