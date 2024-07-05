@@ -41,7 +41,7 @@
 	<div class="card-header text-center">
 		<!--@Model.CoopStatus.CoopIdentifier-->
 		<span class="text-nowrap">
-			<img src="@(EggIncStatics.GetEggByContract(Model.Contract).image)" class="EggThumb" />
+			<img src="@(EggIncStatics.GetEggByContract(Model.Contract, Model.CustomEggs).image)" class="EggThumb" />
 			@Model.Contract?.Name;
 			<img alt="@(((Ei.Contract.Types.PlayerGrade)Model.League).ToString().Replace("_", " "))" src="@((PlayerGradeDetails.GetImage((Ei.Contract.Types.PlayerGrade)Model.League)))" style="width: 20px; height: 20px;" />
 		</span>
