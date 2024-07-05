@@ -82,8 +82,9 @@ namespace EGG9000.Site.Controllers {
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
+            var dbCustomEggs = await _db.CustomEggs.ToListAsync();
 
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, isSelf));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
 
         public record MyFarmsModel(
@@ -99,6 +100,7 @@ namespace EGG9000.Site.Controllers {
             List<(string EggIncId, MyContracts MyContracts)> Scoring,
             Guild DBGuild,
             Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,
+            List<DBCustomEgg> CustomEggs,
             bool IsSelf
         );
 

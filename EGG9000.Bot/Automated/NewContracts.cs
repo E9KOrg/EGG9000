@@ -15,6 +15,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -53,7 +56,7 @@ namespace EGG9000.Bot.Automated {
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
                 var customEggs = contractsResponse.Contracts.CustomEggs?.ToList() ?? [];
-                var dbCustomEggs = _db.CustomEggs;
+                var dbCustomEggs = await _db.CustomEggs.ToListAsync(CancellationToken.None);
                 var newCustomEggs = customEggs.Where(ce => !dbCustomEggs.Any(e => e.Identifier == ce.Identifier));
 
                 if(newCustomEggs.Any()) {
@@ -64,9 +67,10 @@ namespace EGG9000.Bot.Automated {
                     // Cluckingham Overflow 4
                     var emojiServer = _client.GetGuild(1147264073659064420);
 #endif
+                    var dbNeedsUpdate = false;
                     if(emojiServer != null) { 
                         foreach(var newEgg in newCustomEggs) {
-                            var emojiName = newEgg.Name.Titleize().Replace(" ", "_") + "_Egg";
+                            var emojiName = newEgg.Name.ToLowerInvariant().Transform(To.TitleCase).Replace(" ", "_") + "_Egg";
                             var existingEmotes = await emojiServer.GetEmotesAsync();
                             var emote = existingEmotes.FirstOrDefault(e => e.Name == emojiName);
                             if(emote is null) {
@@ -78,19 +82,45 @@ namespace EGG9000.Bot.Automated {
                                 response.EnsureSuccessStatusCode();
                                 imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
 
+                                // Check if the image is larger than 256KB, if so scale it down
+                                // Because of file headers, etc. we aim to mutate down to 200KB
+                                // If that is STILL too big, repeatedly scale by 0.9x until the file is small enough
+                                const int maxSizeInBytes = 200 * 1024;
+                                const double scaleFactorStep = 0.9;
+
+                                while(imageBytes.Length > maxSizeInBytes) {
+                                    using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
+
+                                    // Calculate the new size to maintain aspect ratio
+                                    var scaleFactor = Math.Sqrt((double)maxSizeInBytes / imageBytes.Length) * scaleFactorStep;
+                                    var newWidth = (int)(image.Width * scaleFactor);
+                                    var newHeight = (int)(image.Height * scaleFactor);
+
+                                    // Resize the image
+                                    image.Mutate(x => x.Resize(newWidth, newHeight));
+
+                                    // Save the resized image to a byte array
+                                    using var ms = new MemoryStream();
+                                    image.Save(ms, new PngEncoder());
+                                    imageBytes = ms.ToArray();
+                                }
+
                                 // Convert the image to a stream, then to a Discord Image
                                 using var imageStream = new MemoryStream(imageBytes);
-                                var discordImage = new Image(imageStream);
+                                var discordImage = new Discord.Image(imageStream);
 
                                 // Upload the image as a GuildEmote
                                 emote = await emojiServer.CreateEmoteAsync(emojiName, discordImage);
                             }
 
                             if(emote != null && emote.Id != 0) {
+                                _logger.LogInformation("New Custom Egg \"{newEgg}\" added to DB, with Emoji Name/ID: <{emoteName}:{emoteId}>", newEgg.Name, emote.Name, emote);
                                 var dbEgg = new DBCustomEgg(newEgg, emote);
                                 await _db.CustomEggs.AddAsync(dbEgg, CancellationToken.None);
+                                dbNeedsUpdate = true;
                             }
                         }
+                        if(dbNeedsUpdate) await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
                     }
                 }
 
@@ -138,6 +168,7 @@ namespace EGG9000.Bot.Automated {
                             _db.RemoveRange(guildContracts);
                         }
                         _logger.LogInformation("Contract {contractid} updated", contract.ID);
+                        contract._response = json;
                         contract.Description = contractResponse.Description;
                         contract.Name = contractResponse.Name;
                         contract.goals = JsonConvert.SerializeObject(contractResponse.Goals);
@@ -150,13 +181,10 @@ namespace EGG9000.Bot.Automated {
                         contract.debug = contractResponse.Debug;
                         contract.length_seconds = contractResponse.LengthSeconds;
                         contract.egg = contractResponse.Egg.ToString();
+                        contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.CustomEggs.ToListAsync(CancellationToken.None)).value;
                         contract.cc_only = contractResponse.CcOnly;
-                        contract._response = json;
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
-
-                    if(contract.custom_eggs != matchingCustomEggs)
-                        contract.custom_eggs = matchingCustomEggs;
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync(CancellationToken.None);

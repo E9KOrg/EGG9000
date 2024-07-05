@@ -96,7 +96,7 @@
 						<div class="ProgressLine"></div>
 						<div class="GoalText @(i == 1 && Model.GoalDetails.Count > 2 ? "GoalTextMiddle" : "")">
 							@Model.GoalDetails[i].Goal.TargetAmount.ToEggString()
-							<img src="@(EggIncStatics.GetEggByContract(Model.Contract).image)" class="Emoji" />
+							<img src="@(EggIncStatics.GetEggByContract(Model.Contract, Model.CustomEggs).image)" class="Emoji" />
 							<br />
 							<span style="white-space: nowrap">@Html.Raw(EmojiToImage(EggIncStatics.GetReward(Model.GoalDetails[i].Goal)))</span>
 						</div>
@@ -142,7 +142,7 @@
 							<th title="Habs Filled Percent" class="right">🏠</th>
 							<th title="Shipping Used Capacity" class="right">🚚</th>
 							<th title="Current Contribution" class="right">
-								<img src="@(EggIncStatics.GetEggByContract(Model.Contract).image)" class="Emoji" />
+								<img src="@(EggIncStatics.GetEggByContract(Model.Contract, Model.CustomEggs).image)" class="Emoji" />
 							</th>
 							<th title="Hourly Rate" class="right">Rate</th>
 							@if (Model.CoopStatus.SecondsRemaining > 0) {
