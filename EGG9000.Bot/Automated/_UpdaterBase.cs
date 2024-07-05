@@ -161,7 +161,6 @@ namespace EGG9000.Bot.Automated {
         public Task StartAsync(CancellationToken cancellationToken) {
             try {
                 _cts ??= new CancellationTokenSource();
-                initialStart = false;
 
                 if(_cronExpression is not null) {
                     _ = LoopForCronExpression();
@@ -170,6 +169,7 @@ namespace EGG9000.Bot.Automated {
                     _timer = new Timer(_runTimer, null, initialStart ? _delayedStart : TimeSpan.Zero, UpdateInterval);
                     _watchDogTimer = new Timer(async (state) => await _WatchDog(state), null, UpdateInterval * 2, UpdateInterval * 2);
                 }
+                initialStart = false;
             } catch(Exception e) {
                 _bugsnag.Notify(e);
                 _logger.LogError(e, "Error starting");
