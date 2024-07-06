@@ -81,10 +81,10 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Clear ALL custom eggs from the DB, and remove Emoji.", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task ClearCustomEggs(FauxCommand command, ApplicationDbContext db, IMemoryCache _cache, DiscordSocketClient client) {
+        public static async Task ClearCustomEggs(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
             await command.DeferAsync();
 
-            var customEggs = await db.GetCustomEggsAsync(_cache);
+            var customEggs = await db.GetCustomEggsAsync();
 
             foreach(var egg in customEggs) {
 #if DEV9002 || DEBUG
@@ -102,9 +102,9 @@ namespace EGG9000.Bot.Commands {
                 db.CustomEggs.Remove(egg);
             }
             await db.SaveChangesAsync();
-            EggIncStatics.InvalidateCustomEggs(_cache);
+            db._cache.InvalidateCustomEggs();
 
-            await command.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await db.GetCustomEggsAsync(_cache)).Count}");
+            await command.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await db.GetCustomEggsAsync()).Count}");
         }
 
         private class RemoveCleanUser {

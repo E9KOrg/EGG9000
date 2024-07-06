@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -61,11 +62,10 @@ namespace EGG9000.Common.Database {
         //    //    {
         //    //    }
 
+        public readonly IMemoryCache _cache;
         [ActivatorUtilitiesConstructor]
-        public ApplicationDbContext(IConfiguration configuration) : base(GetOptions(configuration)) {
-        }
-
-        public ApplicationDbContext(string connstring) : base(GetOptions(connstring)) {
+        public ApplicationDbContext(IConfiguration configuration, IMemoryCache cache) : base(GetOptions(configuration)) {
+            _cache = cache;
         }
 
         private static DbContextOptions GetOptions(IConfiguration configuration) {
@@ -76,14 +76,6 @@ namespace EGG9000.Common.Database {
             //Console.WriteLine(Configuration.GetConnectionString("DefaultConnection"));
             return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), configuration["ConnectionStrings:DefaultConnection"], options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
         }
-
-        private static DbContextOptions GetOptions(string connString) {
-            //if(connString == null)
-            //return GetOptions();
-            return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), connString, options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
-        }
-
-
 
 
         protected override void OnModelCreating(ModelBuilder builder) {

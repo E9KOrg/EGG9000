@@ -38,7 +38,7 @@ using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class ThreadsCoopStatusUpdater(IServiceProvider provider, IMemoryCache cache) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
+    public class ThreadsCoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
 #if DEBUG
         private static readonly TimeSpan delay = TimeSpan.FromMinutes(0);
         private static readonly TimeSpan interval = TimeSpan.FromMinutes(20);
@@ -47,7 +47,6 @@ namespace EGG9000.Bot.Automated.Coops {
         private static readonly TimeSpan interval = TimeSpan.FromMinutes(15);
 #endif
         private readonly Dictionary<ulong, SocketTextChannel> _demeritChannels = [];
-        private readonly IMemoryCache _cache = cache;
 
 
         public class UserX {
@@ -292,7 +291,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 coop.League = (uint)status.Grade;
             }
 
-            var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, await _db.GetCustomEggsAsync(_cache), _client, statusReponse.Status);
+            var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, await _db.GetCustomEggsAsync(), _client, statusReponse.Status);
 
 
 
@@ -376,7 +375,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var awayTime = Research.GetTotalSiloCapacity(user.Backup);
                     var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId == coop.Name.ToLower());
                     if(farm != null) {
-                        user.FarmStats = farm.WithStats(user.Backup, coop, await _db.GetCustomEggsAsync(_cache));
+                        user.FarmStats = farm.WithStats(user.Backup, coop, await _db.GetCustomEggsAsync());
                         user.SiloTime = awayTime * farm.SilosOwned;
                         var siloTimeHours = user.SiloTime / 60;
                         if(user.Xref is not null && user.Xref.SiloTimeHours != siloTimeHours) {
@@ -950,7 +949,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 ;
 
                 
-                embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract, await _db.GetCustomEggsAsync(_cache)).image));
+                embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract, await _db.GetCustomEggsAsync()).image));
 
 
                 var updates = UpdateInterval.TotalMinutes;
@@ -1450,9 +1449,9 @@ public async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discord
     if(discordUser is null)
         return;
 
-    var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync(_cache)).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
+    var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
     if(dmResult != DMResult.Success) {
-        await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync(_cache)).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+        await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
     }
 }
 

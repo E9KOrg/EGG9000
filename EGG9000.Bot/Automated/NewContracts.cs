@@ -33,11 +33,10 @@ using Contract = EGG9000.Common.Database.Entities.Contract;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace EGG9000.Bot.Automated {
-    public class NewContracts(IServiceProvider provider, IMemoryCache cache, Words words, ContractUpdater contractUpdater) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
+    public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
 
         private readonly Words _words = words;
         private readonly ContractUpdater _contractUpdater = contractUpdater;
-        private readonly IMemoryCache _cache = cache;
 
 #if DEV9002 || DEBUG
         private static readonly bool _debug = true;
@@ -58,7 +57,7 @@ namespace EGG9000.Bot.Automated {
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
                 var customEggs = contractsResponse.Contracts.CustomEggs?.ToList() ?? [];
-                var dbCustomEggs = await _db.GetCustomEggsAsync(_cache);
+                var dbCustomEggs = await _db.GetCustomEggsAsync();
                 var newCustomEggs = customEggs.Where(ce => !dbCustomEggs.Any(e => e.Identifier == ce.Identifier));
 
                 if(newCustomEggs.Any()) {
@@ -124,7 +123,7 @@ namespace EGG9000.Bot.Automated {
                         }
                         if(dbNeedsUpdate) {
                             await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
-                            _cache.InvalidateCustomEggs();
+                            _db._cache.InvalidateCustomEggs();
                         }
                     }
                 }
@@ -186,7 +185,7 @@ namespace EGG9000.Bot.Automated {
                         contract.debug = contractResponse.Debug;
                         contract.length_seconds = contractResponse.LengthSeconds;
                         contract.egg = contractResponse.Egg.ToString();
-                        contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync(_cache)).value;
+                        contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
                         contract.cc_only = contractResponse.CcOnly;
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }

@@ -187,7 +187,7 @@ namespace EGG9000.Common.Helpers {
             }
         }   
 
-        public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, IMemoryCache _cache, GuildContract guildContract, DiscordSocketClient discord, uint league) {
+        public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract, DiscordSocketClient discord, uint league) {
             var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildContract.GuildID).ToListAsync();
             var backups = dbusers.Where(x => x.GuildId == guildContract.GuildID).SelectMany(y => y.EggIncAccounts.Where(x => x.Backup is not null).Select(x => new UserWithBackup {
                 User = y,
@@ -203,7 +203,7 @@ namespace EGG9000.Common.Helpers {
             var missingUsers = await db.DBUsers.Where(x => missingXrefUsers.Contains(x.Id)).ToListAsync();
             backups.AddRange(missingUsers.SelectMany(u => u.EggIncAccounts.Where(x => x.Backup is not null).Select(b => new UserWithBackup { User = u, Backup = b.Backup })));
 
-            var customEggs = await db.GetCustomEggsAsync(_cache);
+            var customEggs = await db.GetCustomEggsAsync();
 
             var coopsBreakdown = GetBreakdown(coops, backups, guildContract, customEggs, discord, league);
             return coopsBreakdown;

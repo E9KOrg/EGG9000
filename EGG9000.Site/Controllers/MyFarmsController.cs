@@ -22,7 +22,7 @@ using Event = EGG9000.Common.Database.Entities.Event;
 namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
-        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db, IMemoryCache _cache) : Controller {
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -84,7 +84,7 @@ namespace EGG9000.Site.Controllers {
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
-            var dbCustomEggs = await _db.GetCustomEggsAsync(_cache);
+            var dbCustomEggs = await _db.GetCustomEggsAsync();
 
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
@@ -129,7 +129,7 @@ namespace EGG9000.Site.Controllers {
             return View(new EarningsBoostCalculatorModel {
                 Backup = user.EggIncAccounts.First().Backup,
                 Event = boostEvent,
-                CustomEggs = await _db.GetCustomEggsAsync(_cache)
+                CustomEggs = await _db.GetCustomEggsAsync()
             });
         }
 
@@ -190,7 +190,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
             var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == CoopId);
-            var customEggs = await _db.GetCustomEggsAsync(_cache);
+            var customEggs = await _db.GetCustomEggsAsync();
             return View((coop, customEggs));
         }
     }
