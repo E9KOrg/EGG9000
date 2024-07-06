@@ -3,13 +3,30 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.JsonData.EiStatics;
 using Humanizer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
-    public class EggIncStatics {
+    public static class EggIncStatics {
+        
+        private static readonly string CustomEggsKey = "CustomEggsCache";
+        public static async Task<List<DBCustomEgg>> GetCustomEggsAsync(this ApplicationDbContext db, IMemoryCache _cache) {
+            if(!_cache.TryGetValue(CustomEggsKey, out List<DBCustomEgg> customEggs)) {
+                customEggs = await db.CustomEggs.ToListAsync(System.Threading.CancellationToken.None);
+                _cache.Set(CustomEggsKey, customEggs, TimeSpan.FromDays(1));
+            }
+            return customEggs;
+        }
+
+        public static void InvalidateCustomEggs(this IMemoryCache _cache) {
+            _cache.Set(CustomEggsKey, new List<DBCustomEgg>(), TimeSpan.FromSeconds(1));
+        }
+        
         public static EggIncEgg GetEggByContract(Contract contract, List<DBCustomEgg> customEggs) {
             return GetEggById(contract.Details.Egg, contract, customEggs);
         }

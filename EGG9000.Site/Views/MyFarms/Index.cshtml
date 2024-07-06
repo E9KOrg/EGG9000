@@ -396,7 +396,7 @@
                 </div>
                 <div class="tab-pane" id="artifactcombos@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User));
+                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User, Model.CustomEggs));
                     }
                 </div>
 
@@ -489,7 +489,7 @@
                 <div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
                     @{
                         Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
-                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.User, scores, index));
+                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.CustomEggs, Model.User, scores, index));
                     }
                 </div>
 
@@ -503,6 +503,7 @@
                     @{
                         var newModel = new EarningsBoostCalculatorModel();
                         newModel.Backup = backup;
+                        newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
                 </div>

@@ -29,18 +29,15 @@ using Microsoft.Extensions.Configuration;
 using static EGG9000.Common.Helpers.Prefarm;
 using System.Collections.Concurrent;
 using MassTransit.Internals;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopThreads : _UpdaterBase<CreateCoopThreads> {
-        private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater;
-        public CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : base(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
-            _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
-        }
-
-
+    public class CreateCoopThreads(IServiceProvider provider, IMemoryCache cache, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
+        private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
-        private Dictionary<string, int> CoopsTimeoutCounter = new();
+        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
+        private readonly IMemoryCache _cache = cache;
 
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
@@ -337,7 +334,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             _logger.LogInformation("Creating header channel for {contract} {grade} in {server}", GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League), OverflowSocketGuild.Name);
 
-            var contractEmbed = await ContractUpdater.GetContractEmbed(GuildContract, db, MainSocketGuild, (Ei.Contract.Types.PlayerGrade)League);
+            var contractEmbed = await ContractUpdater.GetContractEmbed(GuildContract, db, _cache, MainSocketGuild, (Ei.Contract.Types.PlayerGrade)League);
             var categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
             var category = categories.OrderBy(x => x.DiscordCategory.Position).First(x => x.CurrentCount < 50);
             return await OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger);

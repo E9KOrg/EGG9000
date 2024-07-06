@@ -8,6 +8,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
 using EGG9000.Site.Models;
 using Google.Protobuf;
@@ -625,15 +626,17 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
             var leaderboard = await _getLeaderboard(user.GuildId);
+            var customEggs = await _db.GetCustomEggsAsync(_cache);
 
-            return View(leaderboard);
+            return View((leaderboard, customEggs));
         }
 
         public async Task<IActionResult> EnlightenmentTest() {
             var guild = await _db.Guilds.AsQueryable().FirstAsync();
             var leaderboard = await _getLeaderboard(guild.Id);
+            var customEggs = await _db.GetCustomEggsAsync(_cache);
 
-            return View("Enlightenment", leaderboard);
+            return View("Enlightenment", (leaderboard, customEggs));
         }
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
@@ -810,13 +813,13 @@ namespace EGG9000.Site.Controllers {
                 
                 DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.Like(x.Name, CoopId)),
                 Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
-                CustomEggs = await _db.CustomEggs.ToListAsync()
+                CustomEggs = await _db.GetCustomEggsAsync(_cache)
             };
             model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? new List<UserCoopXref>());
 
             if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                 var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), await _db.GetCustomEggsAsync(_cache), _discord, model.CoopStatus);
 
                 var missing = cd.CoopParticipants.Where(x => !x.Joined).ToList();
                 var departed = model.CoopStatus.Participants.Where(x => x.UserName == "[departed]").ToList();
@@ -893,7 +896,7 @@ namespace EGG9000.Site.Controllers {
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
 
             model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), await _db.GetCustomEggsAsync(_cache), _discord, model.CoopStatus);
 
             return View(model);
         }

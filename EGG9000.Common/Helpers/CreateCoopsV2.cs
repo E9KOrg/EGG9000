@@ -6,6 +6,7 @@ using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using System;
@@ -160,7 +161,7 @@ namespace EGG9000.Common.Helpers {
         }
 
 
-        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, string EggIncId, string eggIncName, ApplicationDbContext db, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
+        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, string EggIncId, string eggIncName, ApplicationDbContext db, IMemoryCache _cache, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,
@@ -173,7 +174,7 @@ namespace EGG9000.Common.Helpers {
                 WasAssigned = true
             };
 
-            var eggEmoji = EggIncStatics.GetEggById(targetCoop.Contract.Details.Egg, targetCoop.Contract, await db.CustomEggs.ToListAsync()).emoji;
+            var eggEmoji = EggIncStatics.GetEggById(targetCoop.Contract.Details.Egg, targetCoop.Contract, await db.GetCustomEggsAsync(_cache)).emoji;
             var mention = user.Mention;
             if(dbuser.EggIncAccounts.Count > 1) {
                 mention += $"({eggIncName})";

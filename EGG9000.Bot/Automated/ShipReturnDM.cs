@@ -5,6 +5,7 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -16,7 +17,9 @@ using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Bot.Automated {
-    public class ShipReturnDM(IServiceProvider provider) : _UpdaterBase<ShipReturnDM>(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
+    public class ShipReturnDM(IServiceProvider provider, IMemoryCache cache) : _UpdaterBase<ShipReturnDM>(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
+
+        private readonly IMemoryCache _cache = cache;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -74,7 +77,7 @@ namespace EGG9000.Bot.Automated {
                                     case 7: tankSize = 500_000_000_000_000; break;
                                 }
 
-                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(async x => $"{EggIncStatics.GetEggById(x.Key, null, await _db.CustomEggs.ToListAsync()).emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
+                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(async x => $"{EggIncStatics.GetEggById(x.Key, null, await _db.GetCustomEggsAsync(_cache)).emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
                             }
                         } catch(Exception e) {
                             _bugsnag.Notify(e);

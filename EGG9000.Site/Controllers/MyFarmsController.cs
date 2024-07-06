@@ -3,6 +3,7 @@ using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EIEpicResearch;
 using EGG9000.Common.Services;
 using Ei;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -20,7 +22,7 @@ using Event = EGG9000.Common.Database.Entities.Event;
 namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
-        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db) : Controller {
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db, IMemoryCache _cache) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -82,7 +84,7 @@ namespace EGG9000.Site.Controllers {
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
-            var dbCustomEggs = await _db.CustomEggs.ToListAsync();
+            var dbCustomEggs = await _db.GetCustomEggsAsync(_cache);
 
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
@@ -126,13 +128,15 @@ namespace EGG9000.Site.Controllers {
 
             return View(new EarningsBoostCalculatorModel {
                 Backup = user.EggIncAccounts.First().Backup,
-                Event = boostEvent
+                Event = boostEvent,
+                CustomEggs = await _db.GetCustomEggsAsync(_cache)
             });
         }
 
         public class EarningsBoostCalculatorModel {
             public CustomBackup Backup { get; set; }
             public Event Event { get; set; }
+            public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
         public async Task<IActionResult> Roles() {
@@ -186,7 +190,8 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
             var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == CoopId);
-            return View(coop);
+            var customEggs = await _db.GetCustomEggsAsync(_cache);
+            return View((coop, customEggs));
         }
     }
 }

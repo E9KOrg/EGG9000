@@ -542,7 +542,7 @@ namespace EGG9000.Common.Database {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Contract contract = null) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, Contract contract = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
                 if(coop != null && coop.LastStatusUpdate is not null) {
@@ -574,7 +574,7 @@ namespace EGG9000.Common.Database {
                 _stats.MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this) * shipCapPerc;
                 _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff * eggLayRatePerc;
                 _stats.CurrentShippingRate = Math.Min(_stats.MaxShippingRate, _stats.EggLayingRate);
-                _stats.EggValue = Research.GetEggValue(this, contract.egg_value, backup.EpicResearch) * EggIncArtifacts.GetEggValueMutiple(this);
+                _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch, contract, customEggs) * EggIncArtifacts.GetEggValueMutiple(this);
                 _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier;
                 _stats.MaxRunningBonus = Research.MaxRunningBonus(this, backup.EpicResearch) + EggIncArtifacts.GetMaxRunningBonusAdditive(this);
                 _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * EggIncArtifacts.GetHabSpaceMultiple(this);
