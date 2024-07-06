@@ -15,10 +15,10 @@ namespace EGG9000.Common.Helpers {
     public static class EggIncStatics {
         
         private static readonly string CustomEggsKey = "CustomEggsCache";
-        public static async Task<List<DBCustomEgg>> GetCustomEggsAsync(this ApplicationDbContext db, IMemoryCache _cache) {
-            if(!_cache.TryGetValue(CustomEggsKey, out List<DBCustomEgg> customEggs)) {
+        public static async Task<List<DBCustomEgg>> GetCustomEggsAsync(this ApplicationDbContext db) {
+            if(!db._cache.TryGetValue(CustomEggsKey, out List<DBCustomEgg> customEggs)) {
                 customEggs = await db.CustomEggs.ToListAsync(System.Threading.CancellationToken.None);
-                _cache.Set(CustomEggsKey, customEggs, TimeSpan.FromDays(1));
+                db._cache.Set(CustomEggsKey, customEggs, TimeSpan.FromDays(1));
             }
             return customEggs;
         }
