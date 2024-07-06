@@ -122,7 +122,10 @@ namespace EGG9000.Bot.Automated {
                                 dbNeedsUpdate = true;
                             }
                         }
-                        if(dbNeedsUpdate) await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
+                        if(dbNeedsUpdate) {
+                            await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
+                            _cache.InvalidateCustomEggs();
+                        }
                     }
                 }
 
