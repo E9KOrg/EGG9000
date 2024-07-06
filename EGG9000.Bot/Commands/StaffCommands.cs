@@ -12,6 +12,7 @@ using Humanizer;
 using MassTransit.SagaStateMachine;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -80,10 +81,10 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Clear ALL custom eggs from the DB, and remove Emoji.", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task ClearCustomEggs(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
+        public static async Task ClearCustomEggs(FauxCommand command, ApplicationDbContext db, IMemoryCache _cache, DiscordSocketClient client) {
             await command.DeferAsync();
 
-            var customEggs = db.CustomEggs;
+            var customEggs = await db.GetCustomEggsAsync(_cache);
 
             foreach(var egg in customEggs) {
 #if DEV9002 || DEBUG
@@ -101,8 +102,9 @@ namespace EGG9000.Bot.Commands {
                 db.CustomEggs.Remove(egg);
             }
             await db.SaveChangesAsync();
+            EggIncStatics.InvalidateCustomEggs(_cache);
 
-            await command.ModifyOriginalResponseAsync(r => r.Content = $"Size before: {customEggs.Count()}\nSize after: {db.CustomEggs.Count()}");
+            await command.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await db.GetCustomEggsAsync(_cache)).Count}");
         }
 
         private class RemoveCleanUser {

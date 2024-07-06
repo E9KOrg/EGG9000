@@ -11,6 +11,7 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -20,9 +21,10 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated {
-    public class ContractUpdater(IServiceProvider provider) : _UpdaterBase<ContractUpdater>(_updateInterval, TimeSpan.Zero, provider) {
+    public class ContractUpdater(IServiceProvider provider, IMemoryCache cache) : _UpdaterBase<ContractUpdater>(_updateInterval, TimeSpan.Zero, provider) {
         public static readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(90);
         public readonly List<UserX> _users = [];
+        private readonly IMemoryCache _cache = cache;
 
         public class UserX {
             public SocketGuildUser SocketGuildUser { get; set; }
@@ -144,7 +146,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsync(CancellationToken.None);
         }
 
-        public static async Task<Embed> GetContractEmbed(GuildContract guildContract, ApplicationDbContext db, SocketGuild guild, Ei.Contract.Types.PlayerGrade grade = Ei.Contract.Types.PlayerGrade.GradeUnset) {
+        public static async Task<Embed> GetContractEmbed(GuildContract guildContract, ApplicationDbContext db, IMemoryCache _cache, SocketGuild guild, Ei.Contract.Types.PlayerGrade grade = Ei.Contract.Types.PlayerGrade.GradeUnset) {
             var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
             var description = $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
             description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.TimeStamper(validFor)}";
@@ -154,7 +156,7 @@ namespace EGG9000.Bot.Automated {
             var embedBuilder = new EmbedBuilder().WithDescription(description);
             var author = new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}");
             
-            author.WithIconUrl(EggIncStatics.GetEggByContract(guildContract.Contract, await db.CustomEggs.ToListAsync(CancellationToken.None)).image);
+            author.WithIconUrl(EggIncStatics.GetEggByContract(guildContract.Contract, await db.GetCustomEggsAsync(_cache)).image);
 
             embedBuilder.WithAuthor(author);
 
@@ -249,7 +251,7 @@ namespace EGG9000.Bot.Automated {
 
                 existingMessages = [.. existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt)];
 
-                var contractEmbed = await GetContractEmbed(guildContract, _db, guild);
+                var contractEmbed = await GetContractEmbed(guildContract, _db, _cache, guild);
 
                 if(existingMessages.Count > 0) {
                     await (existingMessages.First() as RestUserMessage).ModifyWithTimeoutAsync(msg => {

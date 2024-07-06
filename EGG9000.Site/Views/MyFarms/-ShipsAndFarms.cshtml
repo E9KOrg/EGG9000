@@ -1012,7 +1012,7 @@
     if (farm.FarmType != Ei.FarmType.Empty) {
         var coop = Model.JoinedCoops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.InvariantCultureIgnoreCase));
         var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-        var farmStats = farm.WithStats(Model.Backup, coop,null, contract);
+        var farmStats = farm.WithStats(Model.Backup, coop, Model.CustomEggs, null, contract);
         <div style="display: inline-block;" class="card">
             @if (farm.FarmType == Ei.FarmType.Home) {
                 <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>

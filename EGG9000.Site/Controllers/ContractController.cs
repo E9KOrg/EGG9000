@@ -10,6 +10,7 @@ using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -22,12 +23,13 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class ContractController(ApplicationDbContext db, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<ContractController> logger) : Controller {
+    public class ContractController(ApplicationDbContext db, IMemoryCache cache, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<ContractController> logger) : Controller {
         private readonly ApplicationDbContext _db = db;
         private readonly DiscordSocketClient _discord = discord;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<ContractController> _logger = logger;
+        private readonly IMemoryCache _cache = cache;
 
         public async Task<IActionResult> Index() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
@@ -219,7 +221,7 @@ namespace EGG9000.Site.Controllers {
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId);
 
 
-                var coopsBreakdown = await GetBreakdown(_db, guildContract, _discord, League);
+                var coopsBreakdown = await GetBreakdown(_db, _cache, guildContract, _discord, League);
 
                 ViewBag.Discord = _discord;
 
@@ -306,7 +308,7 @@ namespace EGG9000.Site.Controllers {
 
             var channel = targetCoop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID) : (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
-            var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, db, discordUser, dbuser, channel, null);
+            var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, db, _cache, discordUser, dbuser, channel, null);
 
             if(xref == null) {
                 return Json(new { error = $"Unable to add permissions for {dbuser.DiscordUsername}, likely not in overflow server" });
@@ -380,6 +382,8 @@ namespace EGG9000.Site.Controllers {
 
             var groupRoles = dbguild.DisableBG ? dbguild.GroupRoles?.Split(",").Select(ulong.Parse).ToArray() : [];
 
+            var customEggs = await _db.GetCustomEggsAsync(_cache);
+
             var guild = _discord.GetGuild(guildid);
             await guild.DownloadUsersAsync();
             times.Set("Download Guild Users");
@@ -388,7 +392,7 @@ namespace EGG9000.Site.Controllers {
                 var details = new CoopDetails(coop, contract, coop.League, coop.UserCoopsXrefs.SelectMany(xref => {
                     var user = users.First(u => u.Id == xref.UserId);
                     return user.EggIncAccounts.Select(acc => new UserWithBackup { Account = acc, Backup = acc.Backup, User = xref.User });
-                }).ToList(), _discord, coop.LastStatusUpdate);
+                }).ToList(), customEggs, _discord, coop.LastStatusUpdate);
 
                 return details.CoopParticipants.Where(p => p.DBUser is not null && p.DBUser.GuildId == guildid).Select(p => {
                     var role = groupRoles.Length > 0 ? dbguild.GroupRoles.Split(",").FirstOrDefault(gr => guild.GetUser(p.DBUser.DiscordId)?.Roles.Any(r => r.Id.ToString() == gr) ?? false) : "";
