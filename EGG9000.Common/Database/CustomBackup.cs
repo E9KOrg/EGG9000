@@ -107,11 +107,13 @@ namespace EGG9000.Common.Database {
         [Key(38)]
         public double TotalCS { get; set; } = 0;
         [Key(39)]
-        public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = new();
+        public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = [];
         [Key(40)]
         public double CraftingXP { get; set; } = 0;
         [Key(41)]
         public SpaceMission FuelingMission { get; set; }
+        [Key(42)]
+        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached = [];
 
 
         /*
@@ -280,16 +282,46 @@ namespace EGG9000.Common.Database {
                 };
             }
 
-            FuelAmounts = new Dictionary<Ei.Egg, double>();
+            FuelAmounts = [];
             for(var i = 0; i < backup.Artifacts.TankFuels.Count; i++) {
                 if(backup.Artifacts.TankFuels[i] > 0)
                     FuelAmounts.Add((Ei.Egg)(i + 1), backup.Artifacts.TankFuels[i]);
             }
 
-            MaxFarmSizeReached = new Dictionary<Ei.Egg, ulong>();
+            MaxFarmSizeReached = [];
             for(var i = 0; i < backup.Game.MaxFarmSizeReached.Count; i++) {
                 if(backup.Game.MaxFarmSizeReached[i] > 0)
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
+            }
+
+            CustomEggMaxFarmSizeReached = [];
+            try {
+                Console.WriteLine("backup.Contracts.CustomEggInfo.length: " + backup.Contracts.CustomEggInfo.ToList().Count);
+                foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
+                    var allContractList = backup.Contracts.Archive;
+                    allContractList.AddRange(backup.Contracts.Contracts);
+
+                    Console.WriteLine("allContractList.Count: " + allContractList.Count);
+
+                    Console.WriteLine("customEgg contracts: " + allContractList.Where(c => c.Contract.Egg == Ei.Egg.CustomEgg).ToList().Count);
+                    Console.WriteLine("MaxFarmSizeReached contracts: " + allContractList.Where(c => c.MaxFarmSizeReached > 0).ToList().Count);
+                    Console.WriteLine("CustomEggId match: " + allContractList.Where(c => c.Contract.CustomEggId == customEgg.Identifier).ToList().Count);
+
+                    var matchingContracts = allContractList.Where(f =>
+                        f?.MaxFarmSizeReached > 0
+                        && f.Contract.Egg == Ei.Egg.CustomEgg
+                        && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
+                    ).ToList();
+
+                    if(!matchingContracts.Any()) continue;
+
+                    CustomEggMaxFarmSizeReached.Add(
+                        customEgg.Identifier,
+                        (ulong)matchingContracts.Max(f => f.MaxFarmSizeReached)
+                    );
+                }
+            } catch(Exception ex) {
+                Console.WriteLine("\n\nWEEE WOOOO:\n" + ex.Message + "\n\n" + ex.StackTrace);
             }
 
 
@@ -427,6 +459,22 @@ namespace EGG9000.Common.Database {
 
 
             Farms.Add(customFarm);
+        }
+
+        public uint GetColleggtibleLevel(DBCustomEgg customEgg) {
+            return GetColleggtibleLevel(customEgg.Identifier);
+        }
+
+        public uint GetColleggtibleLevel(string identifier) {
+            if(CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize)) {
+                return farmSize switch {
+                    > 10000000000 => 4,
+                    > 1000000000 => 3,
+                    > 100000000 => 2,
+                    > 10000000 => 1,
+                    _ => 0
+                };
+            } else return 0;
         }
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts) {

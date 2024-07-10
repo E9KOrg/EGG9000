@@ -61,6 +61,12 @@ namespace EGG9000.Common.Database.Entities {
         }
         public string EmojiName { get; set; }
         public ulong EmojiId { get; set; }
+        [NotMapped]
+        public string Emoji {
+            get {
+                return $"<:{EmojiName}:{EmojiId}>";
+            }
+        }
     }
 
     [MessagePackObject]
