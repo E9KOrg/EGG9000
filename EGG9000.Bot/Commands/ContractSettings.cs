@@ -453,24 +453,6 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, toggleState, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, toggleState); });
         }
 
-        [SlashCommand(Description = "Show all of your custom eggs' max farm sizes")]
-        public static async Task CustomEggFarmSizes(FauxCommand command, ApplicationDbContext db) {
-            var user = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == command.User.Id);
-            var accounts = user.EggIncAccounts;
-            
-            var sb = new StringBuilder();
-            
-            foreach(var account in accounts) {
-                var backup = account.Backup;
-                sb.AppendLine($"**For {backup.UserName}:\n**");
-                foreach(var entry in backup.CustomEggMaxFarmSizeReached) {
-                    sb.AppendLine(entry.Key + ": " + entry.Value);
-                }
-            }
-
-            await command.RespondAsync(sb.ToString());
-        }
-
         [ComponentCommand]
         public static MessageComponent ColleggtiblesComponents(DBUser dbuser, bool enabled, int index) {
             var builder = new ComponentBuilder();
