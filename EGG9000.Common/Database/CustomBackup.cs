@@ -295,33 +295,21 @@ namespace EGG9000.Common.Database {
             }
 
             CustomEggMaxFarmSizeReached = [];
-            try {
-                Console.WriteLine("backup.Contracts.CustomEggInfo.length: " + backup.Contracts.CustomEggInfo.ToList().Count);
-                foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
-                    var allContractList = backup.Contracts.Archive;
-                    allContractList.AddRange(backup.Contracts.Contracts);
+            foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
+                var allContractList = backup.Contracts.Archive;
+                allContractList.AddRange(backup.Contracts.Contracts);
+                var matchingContracts = allContractList.Where(f =>
+                    f?.MaxFarmSizeReached > 0
+                    && f.Contract.Egg == Ei.Egg.CustomEgg
+                    && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
+                ).ToList();
 
-                    Console.WriteLine("allContractList.Count: " + allContractList.Count);
+                if(!matchingContracts.Any()) continue;
 
-                    Console.WriteLine("customEgg contracts: " + allContractList.Where(c => c.Contract.Egg == Ei.Egg.CustomEgg).ToList().Count);
-                    Console.WriteLine("MaxFarmSizeReached contracts: " + allContractList.Where(c => c.MaxFarmSizeReached > 0).ToList().Count);
-                    Console.WriteLine("CustomEggId match: " + allContractList.Where(c => c.Contract.CustomEggId == customEgg.Identifier).ToList().Count);
-
-                    var matchingContracts = allContractList.Where(f =>
-                        f?.MaxFarmSizeReached > 0
-                        && f.Contract.Egg == Ei.Egg.CustomEgg
-                        && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
-                    ).ToList();
-
-                    if(!matchingContracts.Any()) continue;
-
-                    CustomEggMaxFarmSizeReached.Add(
-                        customEgg.Identifier,
-                        (ulong)matchingContracts.Max(f => f.MaxFarmSizeReached)
-                    );
-                }
-            } catch(Exception ex) {
-                Console.WriteLine("\n\nWEEE WOOOO:\n" + ex.Message + "\n\n" + ex.StackTrace);
+                CustomEggMaxFarmSizeReached.Add(
+                    customEgg.Identifier,
+                    (ulong)matchingContracts.Max(f => f.MaxFarmSizeReached)
+                );
             }
 
 
