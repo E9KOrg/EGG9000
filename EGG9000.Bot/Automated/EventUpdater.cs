@@ -228,6 +228,7 @@ namespace EGG9000.Bot.Automated {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
 
                 var customization = await GetCustomizationAsync(_db, dbguild, currentEvent);
+                if(customization == null) return;
 
                 var embed = GetEmbed(currentEvent, customization, Ended, Crossout);
 

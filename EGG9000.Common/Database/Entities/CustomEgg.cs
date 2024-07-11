@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Ei;
+using Google.Protobuf.Reflection;
 using MessagePack;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
@@ -115,6 +117,12 @@ namespace EGG9000.Common.Database.Entities {
 
         public GameDimension GetGameDimension() {
             return (GameDimension)Dimension;
+        }
+
+        public string GetReadbleGameDimnension() {
+            var type = ((GameDimension)Dimension).GetType();
+            var name = Enum.GetName(type, Dimension);
+            return type.GetField(name).GetCustomAttributes(false).OfType<OriginalNameAttribute>().SingleOrDefault()?.Name ?? Dimension.ToString();
         }
     }
 }
