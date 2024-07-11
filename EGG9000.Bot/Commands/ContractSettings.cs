@@ -466,8 +466,8 @@ namespace EGG9000.Bot.Commands {
         [ComponentCommand]
         public static async Task<Embed> ColleggtiblesEmbed(ApplicationDbContext db, DBUser dbuser, EggIncAccount account, bool enabled) {
             var customEggs = await db.GetCustomEggsAsync();
-            var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat levels in a contract. " +
-                $"Each Colleggtible egg has 4 levels, each of which is better than the last, and is unlocked at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
+            var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat populations farming a contract of that egg. " +
+                $"Each Colleggtible egg has 4 levels, which all provide the same type of buff, at different efficacies. Levels unlock at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
                 $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(account.Backup, customEggs)}\n" +
                 $"You can enable this option to be automatically assigned to all Colleggtible Contracts that you do not have at max level already.";
 
@@ -479,12 +479,18 @@ namespace EGG9000.Bot.Commands {
             foreach(var customEgg in customEggs) {
                 var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg);
                 if(colleggtibleLevel == 0) {
-                    sb.AppendLine($"{customEgg.Emoji} - _Not unlocked!_");
+                    sb.AppendLine($"{customEgg.Emoji} - _Not unlocked_ {GetTheoreticalModifierString(customEgg)}");
                 } else {
-                    sb.AppendLine($"{customEgg.Emoji} - Level {colleggtibleLevel}: {GetModifierString(customEgg.Modifiers[(int)colleggtibleLevel - 1])}");
+                    sb.AppendLine($"{customEgg.Emoji} - **Level {colleggtibleLevel}: {GetModifierString(customEgg.Modifiers[(int)colleggtibleLevel - 1])}**");
                 }
             }
             return sb.ToString();
+        }
+
+        private static string GetTheoreticalModifierString(DBCustomEgg egg) {
+            var firstMod = egg.Modifiers.First();
+            var dimensionString = firstMod.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
+            return $"({((firstMod.Value < 1) ? "-" : "+")} {dimensionString})";
         }
 
         private static string GetModifierString(DBCustomEggModifier modifier) {
@@ -496,8 +502,7 @@ namespace EGG9000.Bot.Commands {
             } else {
                 value -= 1;
             }
-            var dimension = modifier.GetGameDimension();
-            var dimensionString = dimension.ToString().Replace("_", " ").ToLowerInvariant().Titleize();
+            var dimensionString = modifier.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
 
             return $"{(negative ? "-" : "+")}{(int)(value * 100)}% {dimensionString}";
         }
