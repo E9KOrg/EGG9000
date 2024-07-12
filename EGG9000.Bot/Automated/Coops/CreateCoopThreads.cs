@@ -256,7 +256,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             if(lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) > DateTimeOffset.Now) {
                 var timeToDelay = lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) - DateTimeOffset.Now;
-                _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel.Guild.Name);
+                _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
                 await Task.Delay(timeToDelay);
             }
             return headerChannel;
