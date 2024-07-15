@@ -465,7 +465,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize]
-        public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0, [FromQuery] int prefix = 0) {
+        public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] string year = "", [FromQuery] ulong guildid = 0, [FromQuery] int prefix = 0) {
 
 
             var timings = new TimingsFactory(_logger).Start();
@@ -474,6 +474,21 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
+            var maxYearInt = (DateTimeOffset.Now.Month >= 7 && DateTimeOffset.Now.Day >= 15) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
+            if (!int.TryParse(year, out var yearInt)) {
+                yearInt = maxYearInt;
+            }
+            if(yearInt >= DateTimeOffset.Now.Year) {
+                yearInt = maxYearInt;
+            }
+
+            var yearList = new List<int>();
+            for(var i = 2023; i <= maxYearInt; i++) {
+                yearList.Add(i);
+            }
+
+            ViewBag.Years = yearList;
+            ViewBag.Year = yearInt;
             ViewBag.Oldest = oldest;
             ViewBag.SortBy = sortby;
 
@@ -495,7 +510,7 @@ namespace EGG9000.Site.Controllers {
                 var eggincids = accounts.Select(x => x.Account.Id).ToList();
 
 
-                var eggDayDate = new DateTime(2023, 07, 14, 11, 0, 0);
+                var eggDayDate = new DateTime(yearInt, 07, 14, 11, 0, 0);
                 var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
                 timings.Set("postEggDaySnapshots");
                 var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
