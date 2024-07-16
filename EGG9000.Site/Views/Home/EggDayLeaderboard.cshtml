@@ -9,10 +9,7 @@
 
 	var myAccounts = Model.Where(x => x.UserAccount.User.DiscordId.ToString() == discordId);
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-
-	//var guild = discord.GetGuild(Model.First().UserAccount.User.GuildId);
 }
-
 
 @if (myAccounts.Count() == 1) {
 	<a class="btn btn-secondary" href="#@myAccounts.First().UserAccount.Account.Id">Jump to me</a>
@@ -63,18 +60,37 @@
 			}
 </style>
 <div>
-Sort by
-<a href="?sortby=eb&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">EB Gain</button></a>
-<a href="?sortby=se&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">SE Gain</button></a>
-<a href="?sortby=seper&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">% Gain</button></a>
-<a href="?sortby=prestige&prefix=@(ViewBag.prefix)"><button class="btn btn-primary">Prestiges</button></a>
+	Year Selector<br />
+	@foreach(var year in ViewBag.years) {
+		if(ViewBag.year == year) {
+			<a href="?sortby=@(ViewBag.sortby)&prefix=@(ViewBag.prefix)&year=@(year)"><button disabled class="btn btn-secondary disabled">@year</button></a>
+		} else {
+			<a href="?sortby=@(ViewBag.sortby)&prefix=@(ViewBag.prefix)&year=@(year)"><button class="btn btn-primary">@year</button></a>
+		}
+	}
 </div>
+<br />
 <div>
-	Filter by
-@foreach(var prefix in SIPrefix.Prefixes) {
-    <a href="?sortby=@(ViewBag.sortby)&prefix=@prefix.Base"><button class="btn btn-primary">@prefix.Name</button></a>
-}
+	Sort by<br />
+	<a href="?sortby=eb&prefix=@(ViewBag.prefix)&year=@(ViewBag.year)"><button disabled="@(ViewBag.sortby == "eb")" class="btn @(ViewBag.sortby == "eb" ? "btn-secondary disabled" : "btn-primary")">EB Gain</button></a>
+	<a href="?sortby=se&prefix=@(ViewBag.prefix)&year=@(ViewBag.year)"><button disabled="@(ViewBag.sortby == "se")" class="btn @(ViewBag.sortby == "se" ? "btn-secondary disabled" : "btn-primary")">SE Gain</button></a>
+	<a href="?sortby=seper&prefix=@(ViewBag.prefix)&year=@(ViewBag.year)"><button disabled="@(ViewBag.sortby == "seper")" class="btn @(ViewBag.sortby == "seper" ? "btn-secondary disabled" : "btn-primary")">% Gain</button></a>
+	<a href="?sortby=prestige&prefix=@(ViewBag.prefix)&year=@(ViewBag.year)"><button disabled="@(ViewBag.sortby == "prestige")" class="btn @(ViewBag.sortby == "prestige" ? "btn-secondary disabled" : "btn-primary")">Prestiges</button></a>
+	@if (ViewBag?.sortby != null && ViewBag?.sortby != "") {
+		<a href="?prefix=@(ViewBag.prefix)&year=@(ViewBag.year)"><button class="btn btn-danger">Clear</button></a>
+	}
 </div>
+<br />
+<div>
+	Filter by<br />
+	@foreach(var prefix in SIPrefix.Prefixes) {
+		<a href="?sortby=@(ViewBag.sortby)&prefix=@(prefix.Base)&year=@(ViewBag.year)"><button disabled="@(ViewBag.prefix == prefix.Base)" class="btn @(ViewBag.prefix == prefix.Base ? "btn-secondary disabled" : "btn-primary")">@prefix.Name.Titleize()</button></a>
+	}
+	@if (ViewBag.prefix != null && ViewBag?.prefix != 0) {
+		<a href="?sortby=@(ViewBag.sortby)&year=@(ViewBag.year)"><button class="btn btn-danger">Clear</button></a>
+	}
+</div>
+<br />
 <div class="row">
 	<div class="col">
 		<table class="table table-striped table-sm">
@@ -82,10 +98,7 @@ Sort by
 				<tr>
 					<th></th>
 					<th style="text-align: left;">Name</th>
-@*					<th><img src="~/images/Egg_soul.png" alt="Soul Eggs" /></th>
-					<th><img src="~/images/Egg_of_Prophecy.png" alt="Eggs of Prophecy" /></th>
-					<th>EB</th>
-*@					<th>EB Gain</th>
+					<th>EB Gain</th>
 					<th>SE Gain</th>
 					<th>% Gain</th>
 					<th>Prestiges</th>
