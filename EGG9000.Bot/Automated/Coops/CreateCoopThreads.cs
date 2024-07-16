@@ -29,18 +29,14 @@ using Microsoft.Extensions.Configuration;
 using static EGG9000.Common.Helpers.Prefarm;
 using System.Collections.Concurrent;
 using MassTransit.Internals;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopThreads : _UpdaterBase<CreateCoopThreads> {
-        private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater;
-        public CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : base(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
-            _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
-        }
-
-
+    public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
+        private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
-        private Dictionary<string, int> CoopsTimeoutCounter = new();
+        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
 
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
@@ -93,7 +89,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     guildsWithOverflow.Add((guild, await GetOverflowGuildsCounts(guild, _db), DateTimeOffset.MinValue));
                 }
 
-                var headerChannels = await GetOrCreateHeaderChannelsForCoops(coops, dbguilds, guildContracts);
+                var headerChannels = await GetOrCreateHeaderChannelsForCoops(_db, coops, dbguilds, guildContracts);
 
 
                 foreach(var coop in coops) {
@@ -126,7 +122,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
-
                         var headerChannel = await GetHeaderChannelAndWait(headerChannels, coop);
                         if(headerChannel == null) {
                             _logger.LogError("Unable to get header channel for {coop} in contract {contract}", coop.Name, guildContract.ContractID);
@@ -262,7 +257,7 @@ namespace EGG9000.Bot.Automated.Coops {
             return headerChannel;
         }
 
-        private async Task<List<HeaderChannelsForGuild>> GetOrCreateHeaderChannelsForCoops(List<Coop> coops, List<Guild> guilds, List<GuildContract> guildContracts) {
+        private async Task<List<HeaderChannelsForGuild>> GetOrCreateHeaderChannelsForCoops(ApplicationDbContext db, List<Coop> coops, List<Guild> guilds, List<GuildContract> guildContracts) {
             List<HeaderChannelsForGuild> headerChannelsForGuilds = new();
             foreach(var guild in guilds) {
                 HeaderChannelsForGuild headerChannelsForGuild = new HeaderChannelsForGuild { GuildId = guild.Id };
@@ -279,18 +274,18 @@ namespace EGG9000.Bot.Automated.Coops {
                             foreach(var overflow in guild.OverflowServers) {
                                 var overflowServer = _client.Guilds.First(x => x.Id == overflow);
 
-                                var headerChannel = await GetOrCreateHeaderChannel(contractGroup.Key.League, overflowServer, mainServer, guildContract);
+                                var headerChannel = await GetOrCreateHeaderChannel(db, contractGroup.Key.League, overflowServer, mainServer, guildContract);
                                 headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = overflowServer.Id, League = contractGroup.Key.League });
 
                             }
                         } else {
                             var overflowServer = _client.Guilds.First(x => x.Id == guild.OverflowServers.First());
-                            var headerChannel = await GetOrCreateHeaderChannel(contractGroup.Key.League, overflowServer, mainServer, guildContract);
+                            var headerChannel = await GetOrCreateHeaderChannel(db, contractGroup.Key.League, overflowServer, mainServer, guildContract);
                             headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = mainServer.Id, League = contractGroup.Key.League });
 
                         }
                     } else {
-                        var headerChannel = await GetOrCreateHeaderChannel(contractGroup.Key.League, mainServer, mainServer, guildContract);
+                        var headerChannel = await GetOrCreateHeaderChannel(db, contractGroup.Key.League, mainServer, mainServer, guildContract);
                         headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = mainServer.Id, League = contractGroup.Key.League});
                     }
                 }
@@ -299,7 +294,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
 
-        private async Task<SocketGuildChannel> GetOrCreateHeaderChannel(uint League, SocketGuild OverflowSocketGuild, SocketGuild MainSocketGuild, GuildContract GuildContract) {
+        private async Task<SocketGuildChannel> GetOrCreateHeaderChannel(ApplicationDbContext db, uint League, SocketGuild OverflowSocketGuild, SocketGuild MainSocketGuild, GuildContract GuildContract) {
             var headerChannel = OverflowSocketGuild.Channels.FirstOrDefault(c => c.Name == $"{GuildContract.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(League).ToLower()}");
             if(headerChannel != null) {
                 return headerChannel;
@@ -338,7 +333,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             _logger.LogInformation("Creating header channel for {contract} {grade} in {server}", GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League), OverflowSocketGuild.Name);
 
-            var contractEmbed = ContractUpdater.GetContractEmbed(GuildContract, MainSocketGuild, (Ei.Contract.Types.PlayerGrade)League);
+            var contractEmbed = await ContractUpdater.GetContractEmbed(GuildContract, db, MainSocketGuild, (Ei.Contract.Types.PlayerGrade)League);
             var categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
             var category = categories.OrderBy(x => x.DiscordCategory.Position).First(x => x.CurrentCount < 50);
             return await OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger);

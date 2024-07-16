@@ -12,6 +12,7 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -467,7 +468,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     coop.League = (uint)status.Grade;
                 }
 
-                var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, _client, statusReponse.Status);
+                var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, await _db.GetCustomEggsAsync(), _client, statusReponse.Status);
 
 
                 var participantsInCoopButWithoutXref = coopDetails.CoopParticipants.Where(x =>
@@ -515,7 +516,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var awayTime = Research.GetTotalSiloCapacity(user.Backup);
                         var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId == coop.Name.ToLower());
                         if(farm != null) {
-                            user.FarmStats = farm.WithStats(user.Backup, coop);
+                            user.FarmStats = farm.WithStats(user.Backup, coop, await _db.GetCustomEggsAsync());
                             user.SiloTime = awayTime * farm.SilosOwned;
                             var siloTimeHours = user.SiloTime / 60;
                             if(user.Xref is not null && user.Xref.SiloTimeHours != siloTimeHours) {
@@ -1097,7 +1098,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     ))
                     .WithColor(color)
                     .WithTimestamp(DateTimeOffset.UtcNow)
-                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract).image))
+                    .WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract, await _db.GetCustomEggsAsync()).image))
                     ;
 
 
@@ -1335,13 +1336,13 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
+        public async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discordUser, ITextChannel coopChannel, string Message, Coop coop) {
             if(discordUser is null)
                 return;
 
-            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
+            var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
             if(dmResult != DMResult.Success) {
-                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                await coopChannel.SendMessageAsync($"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
             }
         }
 
@@ -1383,7 +1384,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         }
 
-        public static async Task CheckHighestEBJoined(Coop coop, List<UserWithStatus> usersWithStatus, CoopDetails coopDetails, ITextChannel coopChannel, ApplicationDbContext _db, List<UserFarmDetails> usersNotJoined) {
+        public async Task CheckHighestEBJoined(Coop coop, List<UserWithStatus> usersWithStatus, CoopDetails coopDetails, ITextChannel coopChannel, ApplicationDbContext _db, List<UserFarmDetails> usersNotJoined) {
             if(usersWithStatus.Any(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup.EggIncId)) {
@@ -1398,7 +1399,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static async Task CheckCompleteOnCheckIn(Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel, ApplicationDbContext _db) {
+        public async Task CheckCompleteOnCheckIn(Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel, ApplicationDbContext _db) {
             var anybodyWithPingSetting = usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnCompleteOnCheckIn ?? false);
 
             if(anybodyWithPingSetting.Any()) {
@@ -1411,7 +1412,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static async Task CheckDeflectorChange(Ei.ContractCoopStatusResponse prevStatus, Ei.ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel, ApplicationDbContext _db) {
+        public async Task CheckDeflectorChange(Ei.ContractCoopStatusResponse prevStatus, Ei.ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, ITextChannel coopChannel, ApplicationDbContext _db) {
             if(prevStatus == null || coop.FinishedOrFailed() || coop.CoopEnds < DateTimeOffset.Now) {
                 return;
             }

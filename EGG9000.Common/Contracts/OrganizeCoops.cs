@@ -176,6 +176,10 @@ namespace EGG9000.Common.Contracts {
                 }
             }
 
+            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
+                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
+            }
+
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.No 
                 && (
                     x.Account.Backup.Farms.Any(f => f.Completed && f.ContractId == contract.ID) ||
