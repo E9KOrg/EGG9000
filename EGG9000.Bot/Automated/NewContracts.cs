@@ -29,6 +29,8 @@ namespace EGG9000.Bot.Automated {
         private readonly Words _words = words;
         private readonly ContractUpdater _contractUpdater = contractUpdater;
 
+        public const int MIN_HOURS_TO_CREATE_COOPS = 8;
+
 #if DEV9002 || DEBUG
         private static readonly bool _debug = true;
 #else
@@ -173,12 +175,12 @@ namespace EGG9000.Bot.Automated {
 
                     _db.GuildContracts.Add(guildContract);
                     await _db.SaveChangesAsync();
-                    if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(8)) {
+                    if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
                         _ = OrganizeAndLaunch(contract, guild, 0);
                     }
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4 && contract.ContractTime >= TimeSpan.FromHours(8)) {
+                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4 && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
                     var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
                     var nextLaunch = contractDate - contractDate.TimeOfDay + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
                     var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
