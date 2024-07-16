@@ -482,7 +482,8 @@ namespace EGG9000.Site.Controllers {
             }
 
 
-            if(!_cache.TryGetValue($"EGL{guildid}", out List<EggDayResults> results)) {
+            var cacheKey = $"EGL{guildid}-{yearInt}";
+            if(!_cache.TryGetValue(cacheKey, out List<EggDayResults> results)) {
                 var users = await _db.DBUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).ToListAsync();
 
                 timings.Set("Users");
@@ -518,7 +519,7 @@ namespace EGG9000.Site.Controllers {
                         StartEB = pre.EarningsBonus
                     };
                 }).Where(x => x is not null).ToList();
-                _cache.Set($"EGL{guildid}", results, TimeSpan.FromMinutes(5));
+                _cache.Set(cacheKey, results, TimeSpan.FromMinutes(5));
             }
 
 
