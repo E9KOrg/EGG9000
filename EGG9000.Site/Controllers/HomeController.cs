@@ -497,8 +497,10 @@ namespace EGG9000.Site.Controllers {
 
 
                 var eggDayDate = new DateTime(yearInt, 07, 14, 11, 0, 0);
-                var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
+                // Snapshots from 16th @ Midnight (after event is over)
+                var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate.AddDays(1)).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
                 timings.Set("postEggDaySnapshots");
+                // Snapshots from 14th @ Midnight (before event started)
                 var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
                 timings.Set("preEggDaySnapshots");
 
