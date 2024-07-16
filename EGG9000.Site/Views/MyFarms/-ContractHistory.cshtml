@@ -1,5 +1,5 @@
 ﻿@using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, DBUser User, Ei.MyContracts scores, int index)
+@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, List<DBCustomEgg> CustomEggs, DBUser User, Ei.MyContracts scores, int index)
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
@@ -134,7 +134,7 @@
 
 							UserFarmDetails userFarmDetails = null;
 							if (coop is not null) {
-								userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
+								userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
 							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm?.ContractId)?.Evaluation;
@@ -171,7 +171,7 @@
 							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Score.HasValue && x.EggIncId == backup.EggIncId);
 							UserFarmDetails userFarmDetails = null;
 							if (xref is not null) {
-								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, discordClient).FirstOrDefault(x => x.Backup == backup);
+								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
 							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)?.Evaluation;

@@ -8,6 +8,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
 using EGG9000.Site.Models;
 using Google.Protobuf;
@@ -36,33 +37,17 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
-    public class HomeController : Controller {
-        private readonly ILogger<HomeController> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly DiscordSocketClient _discord;
-        private readonly APILink _apiLink;
-        private readonly IMemoryCache _cache;
-        private readonly SignInManager<IdentityUser> _signInManager;
+    public class HomeController(ILogger<HomeController> logger, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<IdentityUser> signInManager,
+        DiscordSocketClient discord, APILink apiLink, ApplicationDbContext db, IMemoryCache cache) : Controller {
 
-        public HomeController(
-            ILogger<HomeController> logger,
-            UserManager<IdentityUser> userManager,
-            RoleManager<IdentityRole> roleManager,
-            SignInManager<IdentityUser> signInManager,
-            DiscordSocketClient discord,
-            APILink apiLink,
-            ApplicationDbContext db, IMemoryCache cache) {
-            _discord = discord;
-            _roleManager = roleManager;
-            _userManager = userManager;
-            _logger = logger;
-            _apiLink = apiLink;
-            _db = db;
-            _cache = cache;
-            _signInManager = signInManager;
-        }
+        private readonly ILogger<HomeController> _logger = logger;
+        private readonly ApplicationDbContext _db = db;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+        private readonly DiscordSocketClient _discord = discord;
+        private readonly APILink _apiLink = apiLink;
+        private readonly IMemoryCache _cache = cache;
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
 
 #if DEBUG || DEV9002
         public async Task<IActionResult> DebugLogin([FromQuery] string id) {
@@ -625,15 +610,17 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
             var leaderboard = await _getLeaderboard(user.GuildId);
+            var customEggs = await _db.GetCustomEggsAsync();
 
-            return View(leaderboard);
+            return View((leaderboard, customEggs));
         }
 
         public async Task<IActionResult> EnlightenmentTest() {
             var guild = await _db.Guilds.AsQueryable().FirstAsync();
             var leaderboard = await _getLeaderboard(guild.Id);
+            var customEggs = await _db.GetCustomEggsAsync();
 
-            return View("Enlightenment", leaderboard);
+            return View("Enlightenment", (leaderboard, customEggs));
         }
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
@@ -809,13 +796,14 @@ namespace EGG9000.Site.Controllers {
             var model = new CoopModel {
                 
                 DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.Like(x.Name, CoopId)),
-                Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId)
+                Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
+                CustomEggs = await _db.GetCustomEggsAsync()
             };
             model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? new List<UserCoopXref>());
 
             if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                 var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), await _db.GetCustomEggsAsync(), _discord, model.CoopStatus);
 
                 var missing = cd.CoopParticipants.Where(x => !x.Joined).ToList();
                 var departed = model.CoopStatus.Participants.Where(x => x.UserName == "[departed]").ToList();
@@ -892,7 +880,7 @@ namespace EGG9000.Site.Controllers {
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
 
             model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), _discord, model.CoopStatus);
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? new List<UserWithBackup>(), await _db.GetCustomEggsAsync(), _discord, model.CoopStatus);
 
             return View(model);
         }
@@ -922,6 +910,7 @@ namespace EGG9000.Site.Controllers {
             public List<GoalDetails> GoalDetails { get; set; }
             public double Progress { get; set; }
             public CoopDetails CoopDetails { get; set; }
+            public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
         public class CoopUserInfo {

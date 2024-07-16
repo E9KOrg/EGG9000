@@ -6,7 +6,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
+using Humanizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -15,6 +15,7 @@ using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
@@ -142,6 +143,9 @@ namespace EGG9000.Bot.Commands {
 
             eBuilder.AddField("Auto-Assign 2 -> 3 Contracts", account.DoTwoToThreeContracts ? "Yes" : "No");
             buttons.Add(("2 -> 3 Setting", $"MCSTwoToThree:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+
+            eBuilder.AddField("Auto-Assign Colleggtibles", account.DoUnfinishedCollegtibles ? "Yes" : "No");
+            buttons.Add(("Colleggtibles Setting", $"MCSColleggtible:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
             buttons.Add(("Set Break", $"MCSBreak:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
 
@@ -420,6 +424,87 @@ namespace EGG9000.Bot.Commands {
                 $"\n- If set to `Yes`, you will be automatically assigned a co-op for these \"`2 -> 3`\" Leggacy Contracts.";
 
             return MenuEmbedTemplate("2 -> 3 Contract Reward Menu", twoToThreeMessage, account, dbuser).AddField("Auto-Assign 2 -> 3 Contracts", enabled ? "Yes" : "No").Build();
+        }
+        #endregion
+
+        #region Colleggtibles
+        [ComponentCommand]
+        public static async Task MCSColleggtible(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+
+            await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, account.DoUnfinishedCollegtibles, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, account.DoUnfinishedCollegtibles); });
+        }
+
+        [ComponentCommand]
+        public static async Task MCSToggleColleggtible(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            var toggleState = data.Split(",")[2] == "t";
+
+            account.DoUnfinishedCollegtibles = toggleState;
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+
+            await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, toggleState, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, toggleState); });
+        }
+
+        [ComponentCommand]
+        public static MessageComponent ColleggtiblesComponents(DBUser dbuser, bool enabled, int index) {
+            var builder = new ComponentBuilder();
+            var row = new ActionRowBuilder()
+                .WithButton(enabled ? "Disable Colleggtible Auto-Assignments" : "Enable Colleggtible Auto-Assignments", $"MCSToggleColleggtible:{index},{dbuser.DiscordId},{(enabled ? "f" : "t")}")
+                .WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
+            builder.AddRow(row);
+            return builder.Build();
+        }
+
+        [ComponentCommand]
+        public static async Task<Embed> ColleggtiblesEmbed(ApplicationDbContext db, DBUser dbuser, EggIncAccount account, bool enabled) {
+            var customEggs = await db.GetCustomEggsAsync();
+            var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat populations farming a contract of that egg. " +
+                $"Each Colleggtible egg has 4 levels, which all provide the same type of buff, at different efficacies. Levels unlock at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
+                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(account.Backup, customEggs)}\n" +
+                $"You can enable this option to be automatically assigned to all Colleggtible Contracts that you do not have at max level already.";
+
+            return MenuEmbedTemplate("Colleggtibles Contract Menu", colleggtiblesMessage, account, dbuser).AddField("Auto-Assign Colleggtibles", enabled ? "Yes" : "No").Build();
+        }
+
+        private static string getAccountColleggtibles(CustomBackup backup, List<DBCustomEgg> customEggs) {
+            var sb = new StringBuilder();
+            foreach(var customEgg in customEggs) {
+                var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg);
+                if(colleggtibleLevel == 0) {
+                    sb.AppendLine($"{customEgg.Emoji} - _Not unlocked_ {GetTheoreticalModifierString(customEgg)}");
+                } else {
+                    sb.AppendLine($"{customEgg.Emoji} - **Level {colleggtibleLevel}: {GetModifierString(customEgg.Modifiers[(int)colleggtibleLevel - 1])}**");
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static string GetTheoreticalModifierString(DBCustomEgg egg) {
+            var firstMod = egg.Modifiers.First();
+            var dimensionString = firstMod.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
+            return $"({((firstMod.Value < 1) ? "-" : "+")} {dimensionString})";
+        }
+
+        private static string GetModifierString(DBCustomEggModifier modifier) {
+            var value = modifier.Value;
+            var negative = false;
+            if(value < 1) {
+                value = 1 - value;
+                negative = true;
+            } else {
+                value -= 1;
+            }
+            var dimensionString = modifier.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
+
+            return $"{(negative ? "-" : "+")}{(int)(value * 100)}% {dimensionString}";
         }
         #endregion
 

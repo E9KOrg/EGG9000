@@ -12,6 +12,7 @@ using Humanizer;
 using MassTransit.SagaStateMachine;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -77,6 +78,33 @@ namespace EGG9000.Bot.Commands {
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
             }
+        }
+
+        [SlashCommand(Description = "Clear ALL custom eggs from the DB, and remove Emoji.", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task ClearCustomEggs(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
+            await command.DeferAsync();
+
+            var customEggs = await db.GetCustomEggsAsync();
+
+            foreach(var egg in customEggs) {
+#if DEV9002 || DEBUG
+                // DEV9K Overflow Server
+                var emojiServer = client.GetGuild(1130233910966620290);
+#else
+                // Cluckingham Overflow 4
+                var emojiServer = client.GetGuild(1147264073659064420);
+#endif
+                if(emojiServer != null) {
+                    var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
+                    await emojiServer.DeleteEmoteAsync(emote);
+                }
+
+                db.CustomEggs.Remove(egg);
+            }
+            await db.SaveChangesAsync();
+            db._cache.InvalidateCustomEggs();
+
+            await command.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await db.GetCustomEggsAsync()).Count}");
         }
 
         private class RemoveCleanUser {

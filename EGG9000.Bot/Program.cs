@@ -44,6 +44,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.ShutdownTimeout = TimeSpan.FromMinutes(5);
         });
 
+        services.AddMemoryCache();
+
         services.AddDbContext<ApplicationDbContext>(options => {
             options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
             options.EnableSensitiveDataLogging(true);
@@ -55,7 +57,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         });
 
         services.AddSingleton<Words>();
-        services.AddMemoryCache();
 
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 

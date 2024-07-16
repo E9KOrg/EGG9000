@@ -117,9 +117,8 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseValue;
         }
 
-        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract) {
-            double baseValue = EggIncStatics.GetEggById(farm.EggType, contract).value;
-
+        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract, List<DBCustomEgg> customEggs) {
+            double baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;

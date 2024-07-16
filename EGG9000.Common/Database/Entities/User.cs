@@ -399,6 +399,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool TimeCheatsMarkedClean { get; set; } = false;
         [Key(38)]
         public bool DoTwoToThreeContracts { get; set; } = false;
+        [Key(39)]
+        public bool DoUnfinishedCollegtibles { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)

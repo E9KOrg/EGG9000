@@ -5,6 +5,7 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -74,7 +75,7 @@ namespace EGG9000.Bot.Automated {
                                     case 7: tankSize = 500_000_000_000_000; break;
                                 }
 
-                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncStatics.GetEggById(x.Key, null).emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
+                                message += $"\n{string.Join("\n", backup.FuelAmounts.Select(async x => $"{EggIncStatics.GetEggById(x.Key, null, await _db.GetCustomEggsAsync()).emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
                             }
                         } catch(Exception e) {
                             _bugsnag.Notify(e);
