@@ -107,11 +107,13 @@ namespace EGG9000.Common.Database {
         [Key(38)]
         public double TotalCS { get; set; } = 0;
         [Key(39)]
-        public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = new();
+        public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = [];
         [Key(40)]
         public double CraftingXP { get; set; } = 0;
         [Key(41)]
         public SpaceMission FuelingMission { get; set; }
+        [Key(42)]
+        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached = [];
 
 
         /*
@@ -280,16 +282,34 @@ namespace EGG9000.Common.Database {
                 };
             }
 
-            FuelAmounts = new Dictionary<Ei.Egg, double>();
+            FuelAmounts = [];
             for(var i = 0; i < backup.Artifacts.TankFuels.Count; i++) {
                 if(backup.Artifacts.TankFuels[i] > 0)
                     FuelAmounts.Add((Ei.Egg)(i + 1), backup.Artifacts.TankFuels[i]);
             }
 
-            MaxFarmSizeReached = new Dictionary<Ei.Egg, ulong>();
+            MaxFarmSizeReached = [];
             for(var i = 0; i < backup.Game.MaxFarmSizeReached.Count; i++) {
                 if(backup.Game.MaxFarmSizeReached[i] > 0)
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
+            }
+
+            CustomEggMaxFarmSizeReached = [];
+            foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
+                var allContractList = backup.Contracts.Archive;
+                allContractList.AddRange(backup.Contracts.Contracts);
+                var matchingContracts = allContractList.Where(f =>
+                    f?.MaxFarmSizeReached > 0
+                    && f.Contract.Egg == Ei.Egg.CustomEgg
+                    && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
+                ).ToList();
+
+                if(!matchingContracts.Any()) continue;
+
+                CustomEggMaxFarmSizeReached.Add(
+                    customEgg.Identifier,
+                    (ulong)matchingContracts.Max(f => f.MaxFarmSizeReached)
+                );
             }
 
 
@@ -429,6 +449,22 @@ namespace EGG9000.Common.Database {
             Farms.Add(customFarm);
         }
 
+        public uint GetColleggtibleLevel(DBCustomEgg customEgg) {
+            return GetColleggtibleLevel(customEgg.Identifier);
+        }
+
+        public uint GetColleggtibleLevel(string identifier) {
+            if(CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize)) {
+                return farmSize switch {
+                    > 10000000000 => 4,
+                    > 1000000000 => 3,
+                    > 100000000 => 2,
+                    > 10000000 => 1,
+                    _ => 0
+                };
+            } else return 0;
+        }
+
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts) {
             foreach(var contract in contracts) {
                 ArchivedFarms.Add(new CustomArchivedFarms(contract));
@@ -542,7 +578,7 @@ namespace EGG9000.Common.Database {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, double? ignoreBuff = null, Contract contract = null) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, Contract contract = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
                 if(coop != null && coop.LastStatusUpdate is not null) {
@@ -574,7 +610,7 @@ namespace EGG9000.Common.Database {
                 _stats.MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this) * shipCapPerc;
                 _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff * eggLayRatePerc;
                 _stats.CurrentShippingRate = Math.Min(_stats.MaxShippingRate, _stats.EggLayingRate);
-                _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch, contract) * EggIncArtifacts.GetEggValueMutiple(this);
+                _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch, contract, customEggs) * EggIncArtifacts.GetEggValueMutiple(this);
                 _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier;
                 _stats.MaxRunningBonus = Research.MaxRunningBonus(this, backup.EpicResearch) + EggIncArtifacts.GetMaxRunningBonusAdditive(this);
                 _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * EggIncArtifacts.GetHabSpaceMultiple(this);
