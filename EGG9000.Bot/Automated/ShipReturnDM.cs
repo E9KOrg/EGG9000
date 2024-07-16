@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Automated {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
+            var dbEggs = await _db.GetCustomEggsAsync();
             var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync(CancellationToken.None);
             foreach(var user in users) {
                 var discordUser = _client.GetUser(user.DiscordId);
@@ -74,7 +74,6 @@ namespace EGG9000.Bot.Automated {
                                     case 6: tankSize = 400_000_000_000_000; break;
                                     case 7: tankSize = 500_000_000_000_000; break;
                                 }
-                                var dbEggs = await _db.GetCustomEggsAsync();
                                 message += $"\n{string.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncStatics.GetEggById(x.Key, null, dbEggs).emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
                             }
                         } catch(Exception e) {
