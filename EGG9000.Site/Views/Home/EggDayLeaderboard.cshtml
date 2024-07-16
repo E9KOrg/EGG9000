@@ -15,7 +15,7 @@
 	<a class="btn btn-secondary" href="#@myAccounts.First().UserAccount.Account.Id">Jump to me</a>
 } else if (myAccounts.Count() > 1) {
 	foreach (var account in myAccounts) {
-		<a class="btn btn-secondary" href="#@account.UserAccount.Account.Id">Jump to @account.UserAccount.Account.Name</a>
+		<a class="btn btn-secondary" href="#@account.UserAccount.Account.Id">Jump to @(account.UserAccount.Account.Backup?.UserName ?? account.UserAccount.Account.Name)</a>
 	}
 }
 <style>
