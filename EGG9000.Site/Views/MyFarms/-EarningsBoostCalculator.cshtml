@@ -107,7 +107,7 @@
             $scope.farms = @Html.Raw(
                 Json.Serialize(
                     Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
-                        var farm = x.WithStats(Model.Backup, null);
+                    var farm = x.WithStats(Model.Backup, null, Model.CustomEggs);
                         var name = x.FarmType == Ei.FarmType.Home ? "Home" : $"{x.ContractId} ({x.CoopId})";
                         return new {
                             Name = name,

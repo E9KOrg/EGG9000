@@ -185,16 +185,16 @@ namespace EGG9000.Bot.Automated {
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
 
                 RestUserMessage message = null;
-                var notification = customization.Settings.Notifications?
+                var notification = customization?.Settings?.Notifications?
                     .Where(x => x.MinValue > 0)
                     .OrderByDescending(x => x.MinValue)
-                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId) ?? null;
 
                 //If the event is subscriber-only
                 if(newEvent.CcOnly) {
                     //Send to non-CCs without ping
                     if(eventChannel != null) {
-                        var ultraNotification = customization.Settings.Notifications?.FirstOrDefault(x => x.MinValue == -1);
+                        var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
                         message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
                     }
 

@@ -1,27 +1,49 @@
 ﻿using EGG9000.Bot;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.JsonData.EiStatics;
 using Humanizer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
-    public class EggIncStatics {
-        public static EggIncEgg GetEggByContract(Contract contract) {
-            return GetEggById(contract.Details.Egg, contract);
+    public static class EggIncStatics {
+        
+        private static readonly string CustomEggsKey = "CustomEggsCache";
+        public static async Task<List<DBCustomEgg>> GetCustomEggsAsync(this ApplicationDbContext db) {
+            if(!db._cache.TryGetValue(CustomEggsKey, out List<DBCustomEgg> customEggs)) {
+                customEggs = await db.CustomEggs.ToListAsync(System.Threading.CancellationToken.None);
+                db._cache.Set(CustomEggsKey, customEggs, TimeSpan.FromDays(1));
+            }
+            return customEggs;
         }
-        public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract) {
-            return GetEggById((int)egg, contract);
+
+        public static void InvalidateCustomEggs(this IMemoryCache _cache) {
+            _cache.Set(CustomEggsKey, new List<DBCustomEgg>(), TimeSpan.FromSeconds(1));
         }
-        public static EggIncEgg GetEggById(int id, Contract contract) {
+        
+        public static EggIncEgg GetEggByContract(Contract contract, List<DBCustomEgg> customEggs) {
+            return GetEggById(contract.Details.Egg, contract, customEggs);
+        }
+
+        public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract, List<DBCustomEgg> customEggs) {
+            return GetEggById((int)egg, contract, customEggs);
+        }
+
+        public static EggIncEgg GetEggById(int id, Contract contract, List<DBCustomEgg> customEggs) {
            try {
                 if(id == 200) {
-                    var customEgg = contract.CustomEggs.First();
+                    var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == (contract.Details?.CustomEggId ?? "INVALID"));
+                    var failBackEgg = contract.CustomEggs.First();
                     return new EggIncEgg {
-                         value = customEgg.Value,
-                         imageUrlEnder = customEgg.Icon.Url
+                        value = customEgg?.Value ?? failBackEgg?.Value ?? 0,
+                        imageUrlEnder = customEgg?.Icon.URL ?? failBackEgg?.Icon.Url ?? "",
+                        emoji = customEgg is not null ? $"<{customEgg.EmojiName}:{customEgg.EmojiId}>" : "<:Edible_Egg:712424206276755516>"
                     };
                 } else {
                     return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
