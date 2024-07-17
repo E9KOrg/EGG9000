@@ -1,31 +1,17 @@
-﻿using Discord;
-using Discord.WebSocket;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-
-using Humanizer;
-
-using Microsoft.EntityFrameworkCore;
-
-using Newtonsoft.Json;
-
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
@@ -39,11 +25,11 @@ namespace EGG9000.Bot.Commands {
 
 
             foreach(var mention in users) {
-                await CreateMerit(reason, db, _client, mention, admin.Id, command.Channel, command);
+                await CreateMerit(reason, db, _client, mention, admin.Id, command);
             }
             await command.DeleteResponseFix();
         }
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, IMessageChannel channel, FauxCommand command = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, FauxCommand command = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -63,13 +49,7 @@ namespace EGG9000.Bot.Commands {
                 if(guildFind is not null) {
                     var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
                     if(socketGuild is not null) {
-                        var meritChannelObj = guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.MeritLogChannel);
-                        if(meritChannelObj is not null) {
-                            var meritChannel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == meritChannelObj.Id);
-                            if(meritChannel is not null) {
-                                await meritChannel.SendMessageAsync($"{target.Mention}: {merit.Reason} (Merits: {count})");
-                            }
-                        }
+                        var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.MeritLogChannel, new() { Text = $"{target.Mention}: {merit.Reason} (Merits: {count})" });
                     }
                 }
             }
@@ -100,7 +80,8 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit removed for {user.Mention}, they currently have {count} merits");
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -112,46 +93,43 @@ namespace EGG9000.Bot.Commands {
 
                 var merits = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
-                    string msg;
-                    msg = $"There are no merits for {targetUser.Mention}";
-                    await command.RespondAsync(msg);
+                    await command.RespondAsync($"There are no merits for {targetUser.Mention}");
                     return;
                 }
 
                 var i = 1;
-                var meritDesc = String.Join("\n", merits.Select(x => {
+                var meritDesc = string.Join("\n", merits.Select(x => {
                     return $"{i++}: {x.Reason}";
                 }));
 
                 await command.RespondAsync($"Merit info for {targetUser.Mention}\n{meritDesc}");
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
         [SlashCommand(Description = "List your merits", AllowInDMs = true)]
         public static async Task Merits(FauxCommand command, ApplicationDbContext db) {
             try {
-                IUser socketUser = command.User;
+                var socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
-
 
                 var merits = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
-                    string msg;
-                    msg = $"There are no merits for {socketUser.Mention}";
-                    await command.RespondAsync(msg);
+                    await command.RespondAsync($"There are no merits for {socketUser.Mention}");
                     return;
                 }
 
                 var i = 1;
-                var meritDesc = String.Join("\n", merits.Select(x => {
+                var meritDesc = string.Join("\n", merits.Select(x => {
                     return $"{i++}: {x.Reason}";
                 }));
 
                 await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 

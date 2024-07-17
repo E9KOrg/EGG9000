@@ -5,11 +5,7 @@ using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
-
 using Ei;
-
-using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,23 +20,32 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
-    public class EventUpdater : _UpdaterBase<EventUpdater> {
-
-        public EventUpdater(
-                IServiceProvider provider
-            ) : base(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
+    public class EventUpdater(IServiceProvider provider) : _UpdaterBase<EventUpdater>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
+        private class EventWithCustom {
+            public Event Event { get; set; }
+            public EventCustomization Customization { get; set; }
         }
 
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        public static async Task<EventCustomization> GetCustomizationAsync(ApplicationDbContext _db, Guild dbguild, Event customEvent) {
+            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var palaceGuild = dbguilds.FirstOrDefault(g => g.Id == 656455567858073601);
+            var customization = dbguild.EventCustomzations?.FirstOrDefault(ec => ec.Type == customEvent.Type);
+            if(customization is null) {
+                //The only time this should happen is when we first push this live
+                if(palaceGuild?.EventCustomzations is null || !palaceGuild.EventCustomzations.Any(e => e.Type == customEvent.Type)) return null;
+                customization = palaceGuild.EventCustomzations?.FirstOrDefault(ec => ec.Type == customEvent.Type);
+            }
+            return customization;
+        }
+
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             await CheckShells(_db);
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
 
-            var eventCustomizations = await _db.EventCustomizations.AsQueryable().ToListAsync();
-
-            var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync();
+            var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
                 _logger.LogWarning("Response is null for Event Updater");
@@ -51,28 +56,20 @@ namespace EGG9000.Bot.Automated {
 
             foreach(var e in endedEvents) {
                 e.Ended = true;
-                var customization = eventCustomizations.First(x => x.Type == e.Type);
-                var embed = GetEmbed(e, customization, Ended: true);
-                await UpdateMessages(e, embed, customization, _db);
+                await UpdateMessages(e, _db, Ended: true);
             }
 
             var events = response.Events.Events.ToList();
             foreach(var evt in events) {
                 var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == evt.Identifier);
-                var customization = eventCustomizations.FirstOrDefault(x => x.Type == evt.Type);
-                if(customization is null) {
-                    continue;
-                }
                 if(currentEvent == null) {
                     var newEvent = new Event(evt);
                     _db.Add(newEvent);
                     recentEvents.Add(newEvent);
 
-                    var embed = GetEmbed(newEvent, customization);
+                    await PostMessages(newEvent, _db);
 
-                    await PostMessages(newEvent, embed, customization, _db);
-
-                    await _db.SaveChangesAsync();
+                    await _db.SaveChangesAsync(CancellationToken.None);
                 } else {
 
                     var significantChange = false;
@@ -100,19 +97,16 @@ namespace EGG9000.Bot.Automated {
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
                         if(significantChange) {
-                            var embed = GetEmbed(currentEvent, customization, false);
-                            var crossOutEmbed = GetEmbed(currentEvent, customization, true);
-                            await UpdateMessages(currentEvent, crossOutEmbed, customization, _db);
-                            await PostMessages(currentEvent, embed, customization, _db);
+                            await UpdateMessages(currentEvent, _db, Crossout: true);
+                            await PostMessages(currentEvent, _db);
                         } else if (timeChange) {
-                            var embed = GetEmbed(currentEvent, customization, false);
-                            await UpdateMessages(currentEvent, embed, customization, _db);
+                            await UpdateMessages(currentEvent, _db);
                         }
                     }
                 }
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var newName = "game-events";
@@ -122,13 +116,16 @@ namespace EGG9000.Bot.Automated {
                 /* 'Normal' Game Events channel*/
                 var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(channel != default) {
-                    var eventsWithCustom = recentEvents.Where(x => !x.Ended && !x.CcOnly).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
+                    var eventsWithCustom = recentEvents.Where(x => !x.Ended && !x.CcOnly).Select(async x => new EventWithCustom {
+                        Event = x,
+                        Customization = await GetCustomizationAsync(_db, dbguild, x)
+                    }).Select(t => t.Result).ToList();
 
                     foreach(var e in eventsWithCustom) {
-                        if(e.Custom.Priority > 0 || true) {
-                            stackedEmoji += e.Custom.Emoji ?? "";
+                        if(e.Customization?.Priority > 0 || true) {
+                            stackedEmoji += e.Customization?.Emoji ?? "";
                         } else {
-                            singleEmoji = e.Custom.Emoji ?? "";
+                            singleEmoji = e.Customization?.Emoji ?? "";
                         }
                     }
                     if(stackedEmoji.Length > 0) {
@@ -150,12 +147,16 @@ namespace EGG9000.Bot.Automated {
                 /* Subscriber-Only Game Events channel */
                 var ccChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 if(ccChannel != null) {
-                    var ccEventsWithCustom = recentEvents.Where(x => !x.Ended && x.CcOnly).Select(x => new { Event = x, Custom = eventCustomizations.First(y => y.Type == x.Type) }).OrderByDescending(x => x.Custom.Priority);
+                    var ccEventsWithCustom = recentEvents.Where(x => !x.Ended && x.CcOnly).Select(async x => new EventWithCustom {
+                        Event = x,
+                        Customization = await GetCustomizationAsync(_db, dbguild, x)
+                    }).Select(t => t.Result).ToList();
+
                     foreach(var se in ccEventsWithCustom) {
-                        if(se.Custom.Priority > 0 || true) {
-                            stackedEmoji += se.Custom.Emoji ?? "";
+                        if(se.Customization?.Priority > 0 || true) {
+                            stackedEmoji += se.Customization?.Emoji ?? "";
                         } else {
-                            singleEmoji = se.Custom.Emoji ?? "";
+                            singleEmoji = se.Customization?.Emoji ?? "";
                         }
                     }
                     if(stackedEmoji.Length > 0) {
@@ -170,25 +171,32 @@ namespace EGG9000.Bot.Automated {
                 }
             }
         }
-        private async Task PostMessages(Event newEvent, Embed embed, EventCustomization customization, ApplicationDbContext _db) {
+        private async Task PostMessages(Event newEvent, ApplicationDbContext _db) {
             var messageIds = new List<ulong>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
 
+                var customization = await GetCustomizationAsync(_db, dbguild, newEvent);
+
+                var embed = GetEmbed(newEvent, customization, false, false);
+
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
 
-                RestUserMessage message;
-                var notification = customization.Settings.Notifications?
+                RestUserMessage message = null;
+                var notification = customization?.Settings?.Notifications?
+                    .Where(x => x.MinValue > 0)
                     .OrderByDescending(x => x.MinValue)
-                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId) ?? null;
 
                 //If the event is subscriber-only
                 if(newEvent.CcOnly) {
-                    
                     //Send to non-CCs without ping
-                    message = await eventChannel.SendMessageAsync(null, embed: embed);
+                    if(eventChannel != null) {
+                        var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
+                        message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
+                    }
 
                     //If the CC event channel was found, that's where we'll ping for CC events
                     if(ccEventChannel != null) {
@@ -198,21 +206,30 @@ namespace EGG9000.Bot.Automated {
                     }
                 } else {
                     //Only send to non-CC channel, with ping
-                    message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                    if(eventChannel != null) {
+                        message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                    }
                 }
 
+                
                 //Always add the message id
-                messageIds.Add(message.Id);
+                if(message != null)
+                    messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
 
         }
 
-        private async Task UpdateMessages(Event currentEvent, Embed embed, EventCustomization customization, ApplicationDbContext _db) {
+        private async Task UpdateMessages(Event currentEvent, ApplicationDbContext _db, bool Ended = false, bool Crossout = false) {
             var messageIds = JsonConvert.DeserializeObject<List<ulong>>(currentEvent.MessageIds);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
+            var palaceGuild = dbguilds.FirstOrDefault(g => g.Id == 656455567858073601);
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+
+                var customization = await GetCustomizationAsync(_db, dbguild, currentEvent);
+
+                var embed = GetEmbed(currentEvent, customization, Ended, Crossout);
 
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(eventChannel != null) {
@@ -220,6 +237,7 @@ namespace EGG9000.Bot.Automated {
                         try {
                             var message = (RestUserMessage)await eventChannel.GetMessageAsync(mid);
                             if(message != null) {
+
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
                                     .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
@@ -256,32 +274,34 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public static Embed GetEmbed(Event e, EventCustomization eventC, bool CrossOut = false, bool Ended = false) {
+        public static Embed GetEmbed(Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = (1 - e.Multiplier) * 100;
-            var description = $"**{e.Subtitle}**\n{eventC.Description}";
+            var description = $"**{e.Subtitle}**\n";
             description = description.Replace("{{percent}}", percent.ToString()).Replace("{{multiplier}}", multiplier.ToString());
             var title = "";
-            switch(eventC.Type) {
-                case "prestige-boost":
-                    title = $"{multiplier}x <:Egg_soul_SE:724341890794913964> Soul Egg";
-                    break;
-                case "piggy-boost":
-                    title = $"{multiplier}x <:Piggy_bank:724396277676113955> Piggy Bank Growth";
-                    break;
+
+            if(eventC is not null) {
+                description += eventC.Description;
+                switch(eventC.Type) {
+                    case "prestige-boost":
+                        title = $"{multiplier}x <:Egg_soul_SE:724341890794913964> Soul Egg";
+                        break;
+                    case "piggy-boost":
+                        title = $"{multiplier}x <:Piggy_bank:724396277676113955> Piggy Bank Growth";
+                        break;
+                }
             }
             if(Ended) {
                 title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
             } else {
                 title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R>, ( <t:{e.Ends.ToUnixTimeSeconds()}> )";
             }
-            Color color = Color.Blue;
-            if(CrossOut) {
-                color = Color.Red;
-            } else if(Ended) {
-                color = Color.DarkGrey;
-            }
+            var color = Color.Blue;
+            if(CrossOut) color = Color.Red;
+            else if(Ended) color = Color.DarkGrey;
+
             var embed = new EmbedBuilder()
                 .WithTitle(CrossOut ? $"~~{title}~~" : title)
                 .WithColor(color)
@@ -293,18 +313,21 @@ namespace EGG9000.Bot.Automated {
                 embed.WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751");
             }
 
-            if(!string.IsNullOrWhiteSpace(eventC.ThumbnailURL)) {
+            if(!string.IsNullOrWhiteSpace(eventC?.ThumbnailURL)) {
                 embed.WithThumbnailUrl(eventC.ThumbnailURL);
             }
-            foreach(var tip in JsonConvert.DeserializeObject<List<dynamic>>(eventC.Fields)) {
-                var value = ((string)tip.Value).Replace("{{equivalent_multiplier}}", equivalent_multiplier.ToString());
-                value = value.Replace("{{percent}}", percent.ToString());
-                value = value.Replace("{{multiplier}}", multiplier.ToString());
-                var name = ((string)tip.Name).Replace("{{multiplier}}", multiplier.ToString());
-                if(CrossOut) {
-                    embed.AddField($"~~{name}~~", $"~~{value}~~");
-                } else {
-                    embed.AddField(name, value);
+
+            if(eventC is not null) {
+                foreach(var tip in JsonConvert.DeserializeObject<List<dynamic>>(eventC.Fields)) {
+                    var value = ((string)tip.Value).Replace("{{equivalent_multiplier}}", equivalent_multiplier.ToString());
+                    value = value.Replace("{{percent}}", percent.ToString());
+                    value = value.Replace("{{multiplier}}", multiplier.ToString());
+                    var name = ((string)tip.Name).Replace("{{multiplier}}", multiplier.ToString());
+                    if(CrossOut) {
+                        embed.AddField($"~~{name}~~", $"~~{value}~~");
+                    } else {
+                        embed.AddField(name, value);
+                    }
                 }
             }
 
@@ -314,7 +337,7 @@ namespace EGG9000.Bot.Automated {
         public async Task CheckShells(ApplicationDbContext db) {
             var config = await ContractsAPI.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, ContractsAPI.UserId, true);
 
-
+            if(config is null) return; // This randomly failed while I was working
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
 
             var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.Now.AddHours(-1));
@@ -357,12 +380,12 @@ namespace EGG9000.Bot.Automated {
             await db.SaveChangesAsync();
         }
 
-        public Embed GetShellEmbed(ExpiringShell expiringShell) {
+        public static Embed GetShellEmbed(ExpiringShell expiringShell) {
             var shell = JsonConvert.DeserializeObject<ShellObjectSpec>(expiringShell.Json);
             var embed = new EmbedBuilder()
                 .WithColor(shell.SecondsRemaining > 0 ? Color.Blue : Color.DarkGrey)
                 .WithAuthor("Egg, Inc Limited Time Shell", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
-                .WithDescription($"New {expiringShell.AssetType.ToString()}: {expiringShell.Name} for {expiringShell.Price}<:tickets:998630687831769189>\nExpires <t:{DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining).ToUnixTimeSeconds()}:R>")
+                .WithDescription($"New {expiringShell.AssetType}: {expiringShell.Name} for {expiringShell.Price}<:tickets:998630687831769189>\nExpires <t:{DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining).ToUnixTimeSeconds()}:R>")
                 ;
             return embed.Build();
 
@@ -378,7 +401,7 @@ namespace EGG9000.Bot.Automated {
                         var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                         var channel = await _client.GetChannelAsync(GuildChannelType.LimitedTimeShells, guild);
                         if(channel is not null) {
-                            ulong? ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
+                            var ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
 
                             var message = await channel.SendMessageAsync(ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null, embed: embed);
 
@@ -391,7 +414,7 @@ namespace EGG9000.Bot.Automated {
                     foreach(var message in messageIDs) {
                         var channel = _client.GetChannel(message.Item1);
                         var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel?.Id));
-                        ulong? ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
+                        var ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
                         if(channel is not null) {
                             await (channel as SocketTextChannel).ModifyMessageAsync(message.Item2, msg => { msg.Embed = embed; msg.Content = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null; });
                         }

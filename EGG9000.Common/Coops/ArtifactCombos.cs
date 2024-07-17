@@ -1,8 +1,9 @@
-﻿using EGG9000.Bot;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiStatics;
+using EGG9000.Common.Migrations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,12 +11,12 @@ using static EGG9000.Common.Coops.ArtifactCombos;
 
 namespace EGG9000.Common.Coops {
     public class ArtifactCombos {
-        public static List<EggIncArtifactInstance> FindBestCombo(CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon, bool allowChangingStones, Microsoft.Extensions.Logging.ILogger logger) {
+        public static List<EggIncArtifactInstance> FindBestCombo(CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon, bool allowChangingStones, List<DBCustomEgg> customEggs, Microsoft.Extensions.Logging.ILogger logger) {
             if(!allowChangingStones) {
                 var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone")).Select(x => new ArtifactInstanceStats(x.Artifact)).Where(x => x.Shipping > 1 || x.EggLaying > 1);
 
 
-                return Process(available, backup, farm, coop, withTachyon);
+                return Process(available, backup, farm, coop, customEggs, withTachyon);
             } else {
                 var timings = new TimingsFactory(logger).Start();
 
@@ -58,7 +59,7 @@ namespace EGG9000.Common.Coops {
 
                 timings.Set("All Combos Generated");
 
-                var list = Process(allStoneCombos, backup, farm, coop, withTachyon);
+                var list = Process(allStoneCombos, backup, farm, coop, customEggs, withTachyon);
                 timings.Finished();
                 return list;
 
@@ -96,12 +97,12 @@ namespace EGG9000.Common.Coops {
             return newCombos;
         }
 
-        private static List<EggIncArtifactInstance> Process(IEnumerable<ArtifactInstanceStats> available, CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon) {
+        private static List<EggIncArtifactInstance> Process(IEnumerable<ArtifactInstanceStats> available, CustomBackup backup, CustomFarm farm, Coop coop, List<DBCustomEgg> customEggs, bool withTachyon) {
             var farmWithoutArtifacts = new CustomFarm {
                 CommonResearch = farm.CommonResearch,
                 Habs = farm.Habs, TrainLength = farm.TrainLength, NumChickens = farm.NumChickens, EggType = farm.EggType, Artifacts = new List<EggIncArtifactInstance>(), Vehicles = farm.Vehicles
             };
-            var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1);
+            var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, customEggs, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1, coop.Contract);
 
             var currentSet = new ArtifactSet(
                 new List<ArtifactInstanceStats> {

@@ -1,41 +1,26 @@
-﻿using Discord.WebSocket;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+﻿using Cronos;
 using EGG9000.Bot.EggIncAPI;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using EGG9000.Bot.Helpers;
-using Discord;
-using EGG9000.Common.Helpers;
+using EGG9000.Common.Database;
 using Ei;
-using Humanizer;
-using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
-    public class HandleGradeChanges : _UpdaterBase<HandleGradeChanges> {
+    public class HandleGradeChanges(IServiceProvider provider) : _UpdaterBase<HandleGradeChanges>(CronExpression.Parse("30 10,18,23 * * 1,3,5"), provider) {
 
-        public HandleGradeChanges(
-            IServiceProvider provider
-        ) : base(TimeSpan.FromHours(0.5), TimeSpan.FromMinutes(15), provider) {
-        }
-
-        public override async Task Run(object state, CancellationToken cancellationToken) {
+        public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync();
-
-            var chunkedUsers = users.Chunk(100);
+            var users = await _db.DBUsers.Where(x => x.GuildId == 656455567858073601).ToListAsync(CancellationToken.None);
+            var chunkedUsers = users.Chunk(25);
             foreach(var userchunk in chunkedUsers) {
-                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (user, token) => {
+                StillAlive();
+                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                             var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
@@ -44,7 +29,7 @@ namespace EGG9000.Bot.Automated {
                                 continue;
                             }
                             if(r?.Grade != account.LastGrade) {
-                                _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Name, account.LastGrade, r.Grade);
+                                _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Backup?.UserName, account.LastGrade, r.Grade);
                                 account.PromotionTime = DateTimeOffset.Now;
                                 account.LastGrade = r.Grade;
                                 user.UpdateAccounts();
@@ -55,7 +40,7 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogError(e, "Error checking for grade update");
                     }
                 });
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(CancellationToken.None);
             }
         }
     }

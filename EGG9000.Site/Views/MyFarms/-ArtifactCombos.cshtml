@@ -1,9 +1,10 @@
 ﻿@using Discord.WebSocket;
+@using EGG9000.Common.JsonData.EiStatics
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @inject DiscordSocketClient DiscordClient
-@model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user)
+@model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
 @{
     void artifactCell(EggIncArtifactInstance artifact, EggIncArtifactInstance current = null) {
         var changed = current != null && !artifact.Equals(current);
@@ -105,7 +106,7 @@
             Artifacts = newArtifacts,
             Vehicles = farm.Vehicles
         };
-        var stats = newFarm.WithStats(Model.Backup, coop, null, Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId));
+        var stats = newFarm.WithStats(Model.Backup, coop, Model.CustomEggs, null, Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId));
         var currentTachyon = farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var newTachyon = newArtifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
         var tachyonDifference = (newTachyon - 1) - (currentTachyon - 1) + 1;
@@ -113,7 +114,7 @@
         return (stats.CurrentShippingRate, coopNewRate);
     }
 }
-@try {
+@{
     var farms = Model.Backup.Farms.Where(x => x.FarmType == Ei.FarmType.Contract && x.CoopSimulationEndTime == 0).ToList();
     if (farms.Count == 0) {
         <div class="card" style="margin-top:15px">
@@ -138,33 +139,30 @@
                 var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
                 var isHome = farm.FarmType == Ei.FarmType.Home;
 
-
-                var farmStats = farm.WithStats(Model.Backup, coop);
+                var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+                var farmStats = farm.WithStats(Model.Backup, coop, Model.CustomEggs, null, contract);
                 if(coop is null) {
                     continue;
                 }
                 var usersWithBackups = isHome ? new List<UserWithBackup>() : coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
-                var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, DiscordClient, coop.LastStatusUpdate);
+                var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, Model.CustomEggs, DiscordClient, coop.LastStatusUpdate);
                 var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
 
-
-                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, null));
+                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, Model.CustomEggs, null));
                 var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
-                var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, null));
+                var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, Model.CustomEggs, null));
                 var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
 
-
-                var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, null));
+                var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, Model.CustomEggs, null));
                 var withoutTachyonS = GetChangedRate(farm, bestWithoutTachyonS, coop, coopDetails);
-                var bestWithTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, null));
+                var bestWithTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, Model.CustomEggs, null));
                 var withTachyonS = GetChangedRate(farm, bestWithTachyonS, coop, coopDetails);
 
-
-                <div class="card">
+               <div class="card">
                     @if (isHome) {
                         <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
                     } else {
-                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
                     }
 
                     <table class="table table-sm" style="margin-bottom: 0;">
@@ -250,65 +248,67 @@
 
             }
         </div>
-        <style>
-            .different {
-                background-color: #fcffde;
-            }
 
-            .bootstrap-dark .different {
-                background-color: #2f301e;
-            }
-
-            .better {
-                background-color: #deffe0;
-            }
-
-            .bootstrap-dark .better {
-                background-color: #274629;
-            }
-
-            .Stones {
-                padding-left: 12px;
-                margin-top: -3px;
-            }
-
-                .Stones > div {
-                    display: inline-block;
-                }
-
-            .card {
-                margin-bottom: 15px;
-            }
-
-            .table td, .table th {
-                padding-left: 0.5rem !important;
-                padding-right: 0.5rem !important;
-            }
-
-            .table thead th {
-                text-align: center;
-            }
-
-            .flex {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: space-between;
-                gap: 15px;
-            }
-
-
-                .flex > div {
-                    flex: 1;
-                }
-
-            tr th:first-child {
-                vertical-align: middle;
-                text-align: center;
-            }
-        </style>
     }
-} catch (Exception ex) {
-    <div class="alert alert-danger" role="alert">
-        @ex.Message
-    </div>
+// } catch (Exception ex) {
+//     <div class="alert alert-danger" role="alert">
+//         @ex.Message
+//     </div>
 }
+
+<style>
+    .different {
+        background-color: #fcffde;
+    }
+
+    .bootstrap-dark .different {
+        background-color: #2f301e;
+    }
+
+    .better {
+        background-color: #deffe0;
+    }
+
+    .bootstrap-dark .better {
+        background-color: #274629;
+    }
+
+    .Stones {
+        padding-left: 12px;
+        margin-top: -3px;
+    }
+
+        .Stones > div {
+            display: inline-block;
+        }
+
+    .card {
+        margin-bottom: 15px;
+    }
+
+    .table td, .table th {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    .table thead th {
+        text-align: center;
+    }
+
+    .flex {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 15px;
+    }
+
+
+        .flex > div {
+            flex: 1;
+        }
+
+    tr th:first-child {
+        vertical-align: middle;
+        text-align: center;
+    }
+</style>

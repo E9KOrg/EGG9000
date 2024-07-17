@@ -1,7 +1,4 @@
 ﻿using Cronos;
-
-using EGG9000.Common.Commands;
-
 using Humanizer;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -12,22 +9,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Services {
-    public class JobService : IHostedService {
-        private readonly ILogger<JobService> _logger;
-        private readonly IServiceProvider _provider;
+    public class JobService(ILogger<JobService> logger, IServiceProvider serviceProvider, Bugsnag.IClient bugsnag) : IHostedService {
+        private readonly ILogger<JobService> _logger = logger;
+        private readonly IServiceProvider _provider = serviceProvider;
         private List<Job> _jobs;
-        private readonly Bugsnag.IClient _bugsnag;
-
-        public JobService(ILogger<JobService> logger, IServiceProvider serviceProvider, Bugsnag.IClient bugsnag) {
-            _logger = logger;
-            _provider = serviceProvider;
-            _bugsnag = bugsnag;
-        }
+        private readonly Bugsnag.IClient _bugsnag = bugsnag;
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
@@ -56,10 +46,12 @@ namespace EGG9000.Bot.Services {
                     var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.Now).OrderBy(x => x.NextRun);
                     foreach(var job in jobs) {
                         job.NextRun = GetNextRun(job.Details.Cron);
-                        _logger.LogInformation($"Running Job {job.DeclaringType.Name}.{job.Name}, Current time: {DateTimeOffset.Now.ToString("h:mm:ss:ff")}, next run at {job.NextRun.ToString("h:mm:ss:ff")}");
+                        _logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
+                            job.DeclaringType.Name, job.Name, $"{DateTimeOffset.Now:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
                         var timer = System.Diagnostics.Stopwatch.StartNew();
                         await RunJobAsync(job);
-                        _logger.LogInformation($"{job.DeclaringType.Name}.{job.Name} took {timer.Elapsed.Humanize()}");
+                        _logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
+                            job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
                     }
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
@@ -71,14 +63,29 @@ namespace EGG9000.Bot.Services {
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
-                    _logger.LogTrace($"Next job {nextJob.DeclaringType.Name}.{nextJob.Name} in {delay.TotalSeconds} seconds, delaying for {delay.TotalSeconds} seconds");
-                    await Task.Delay((int)delay.TotalMilliseconds);
+                    _logger.LogTrace("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
+                        nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
+                    await Task.Delay((int)delay.TotalMilliseconds, cancellationToken);
                 } else {
                       _logger.LogTrace($"No jobs found, delaying for 1 second");
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, cancellationToken);
                 }
 
             }
+        }
+
+        public void RunJob(string jobName) {
+            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            job.NextRun = DateTimeOffset.Now;
+        }
+
+        public void StopJob(string jobName) {
+            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            job.NextRun = DateTimeOffset.Now.AddYears(1);
+        }
+        public void StarJob(string jobName) {
+            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            job.NextRun = GetNextRun(job.MethodInfo.GetCustomAttribute<JobAttribute>().Cron);
         }
 
         public Task StopAsync(CancellationToken cancellationToken) {
@@ -88,11 +95,10 @@ namespace EGG9000.Bot.Services {
 
         private async Task RunJobAsync(Job job) {
             var jobClass = ActivatorUtilities.CreateInstance(_provider, job.DeclaringType);
-            Task result = (Task)job.DeclaringType.GetMethod(job.Name).Invoke(jobClass, null);
-            await result;
+            await (Task)job.DeclaringType.GetMethod(job.Name).Invoke(jobClass, null);
         }
 
-        private DateTimeOffset GetNextRun(string cron) {
+        private static DateTimeOffset GetNextRun(string cron) {
             return CronExpression.Parse(cron, CronFormat.IncludeSeconds).GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
         }
 
@@ -107,11 +113,7 @@ namespace EGG9000.Bot.Services {
     }
 
     [AttributeUsage(AttributeTargets.Method)]
-    public class JobAttribute : System.Attribute {
-        public string Cron;
-        public JobAttribute(string cronExpression) {
-            Cron = cronExpression;
-        }
+    public class JobAttribute(string cronExpression) : Attribute {
+        public string Cron = cronExpression;
     }
-
 }

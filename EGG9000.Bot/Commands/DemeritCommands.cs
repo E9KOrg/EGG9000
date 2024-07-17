@@ -1,35 +1,23 @@
-﻿using Discord;
-using Discord.WebSocket;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.Common.Helpers;
+using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-
+using EGG9000.Common.Services;
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
-
-using Newtonsoft.Json;
-
-
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using EGG9000.Common.Services;
-using EGG9000.Common.Commands;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         [SlashCommand(Description = "Add demerit to user", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task AddDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
+        public static async Task AddDemerit(FauxCommand command, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -50,15 +38,12 @@ namespace EGG9000.Bot.Commands {
                 await command.RespondAsync(message);
 
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
-                var demeritChannel = await discordClient.GetChannelAsync(GuildChannelType.DemeritLogChannel, dbguild);
-                if(demeritChannel is not null) {
-                    if(count >= 3) {
-                        message = $"**{message}**";
-                    }
-                    await demeritChannel.SendMessageAsync(message);
-                }
+                var socketGuild = discordClient.Guilds.FirstOrDefault(g => g.Id == dbguild.Id);
+
+                var response = await ChannelHelper.DetermineAndSend(db, _client, dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -81,16 +66,16 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit removed for {user.Mention}, they currently have {count} demerits");
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
         [SlashCommand(Description = "List your demerits", AllowInDMs = true)]
         public static async Task Demerits(FauxCommand command, ApplicationDbContext db) {
             try {
-                IUser socketUser = command.User;
+                var socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
-
 
                 var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
                 if(demerits.Count == 0) {
@@ -105,7 +90,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                var demeritDesc = String.Join("\n", demerits.Select(x => {
+                var demeritDesc = string.Join("\n", demerits.Select(x => {
                     var monthAgo = DateTimeOffset.Now.AddMonths(-1);
                     var timeLeft = monthAgo - x.When;
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
@@ -113,7 +98,8 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
         [SlashCommand(Description = "List demerits for user", AdminOnly = StaffOnlyLevel.Admin)]
@@ -125,7 +111,8 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
-                await command.RespondAsync($"⚠️ERROR: Bot error - {e.Message} : {e.StackTrace} : {e.Data}");
+                var frame = new StackTrace(e, true).GetFrame(0);
+                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
             }
         }
 
@@ -137,7 +124,7 @@ namespace EGG9000.Bot.Commands {
                 return msg;
             }
 
-            var demeritDesc = String.Join("\n", demerits.Select(x => {
+            var demeritDesc = string.Join("\n", demerits.Select(x => {
                 var monthAgo = DateTimeOffset.Now.AddMonths(-1);
                 var timeLeft = monthAgo - x.When;
                 return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
@@ -148,18 +135,24 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
-            UserCoopXref xref;
-            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.DiscordChannelId == command.Channel.Id);
-            xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
+            List<UserCoopXref> xref;
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
 
-            if(xref == null) {
-                await command.RespondAsync($"⚠️ERROR: Unabled to find user");
+            if(targetCoop == null) {
+                await command.RespondAsync(content: "", embed: EmbedError("This command can only be used in a co-op channel"));
                 return;
             }
 
-            xref.NoDemerit = true;
+            xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).ToListAsync();
+
+            if(xref.Count == 0) {
+                await command.RespondAsync(content: "", embed: EmbedError("Unable to find user reference in co-op"));
+                return;
+            }
+
+            xref.ForEach(x => x.NoDemerit = true);
             await db.SaveChangesAsync();
-            await command.RespondAsync($"{user?.Mention ?? xref.User.DiscordUsername} will not receive automated demerits in this co-op.");
+            await command.RespondAsync($"{user.Mention} will not receive automated demerits in this co-op.");
         }
     }
 }

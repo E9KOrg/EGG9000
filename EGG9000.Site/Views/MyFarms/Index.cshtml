@@ -3,7 +3,7 @@
 @using EGG9000.Common.Helpers
 @using Microsoft.AspNetCore.Html
 @using static EGG9000.Site.Controllers.MyFarmsController
-@using static EGG9000.Common.Helpers.EpicResearchCalc
+@using EGG9000.Common.JsonData.EIEpicResearch;
 @inject DiscordSocketClient discordClient
 @{
     ViewData["Title"] = "Index";
@@ -14,36 +14,29 @@
 
     List<UserCoopXref> unjoinedCoops = Model.UnjoinedCoops.ToList();
 
-    List<EpicResearchDetail> epicResearchConfig = Model.EpicResearchConfig;
+    List<EpicResearchItem> epicResearchConfig = Model.EpicResearchConfig;
 
     Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs = Model.UncompletedPEContracts;
 
     List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = Model.Scoring;
     Guild dbguild = Model.DBGuild;
 
-    @*Func<EggIncArtifactInstance, object> artifactTemplate = @<span>
-		<span>@item.Artifact</span>
-		@if(item.Additive) {
-		<span>+@item.Value</span>
-		} else if(item.Value < 2) {
-		<span>@Math.Round((item.Value - 1) * 100)%</span>
-		} else {
-		<span>@(item.Value)x</span>
-		}
-		<span>@item.Boost</span>
-		</span>;*@
-
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
-    List<Ei.Backup> rawBackups = Model.RawBackups;
-
+    var isSelf = Model.IsSelf;
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
 
     string emojiDelegage(Match match) {
         return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
     };
-    List<Merit> merits = Model.Merits;
+
+    string accountName(string eggIncId){
+        var account = Model.User.EggIncAccounts.FirstOrDefault(a => a.Id == eggIncId);
+        if (account is null) return eggIncId;
+        return account.Backup?.UserName ?? eggIncId;
+    }
+
     var inDB = Model.User.DiscordId > 0;
 
 }
@@ -68,6 +61,70 @@
     .tab-pane .container {
         padding: 0px;
     }
+
+    .Expired td {
+        opacity: 60%;
+    }
+
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+
+        .tooltip-custom:hover .tooltiptext-custom {
+            display: inline-block;
+            z-index: 3;
+            position: absolute;
+            bottom: 25px; /* Adjust this value as needed */
+            left: 50%;
+            transform: translateX(-50%); /* Center the tooltip */
+        }
+
+    .tooltiptext-custom {
+        display: none;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: nowrap;
+        text-align: center; /* Center the text within the tooltip */
+        position: absolute;
+    }
+
+        .tooltiptext-custom .bootstrap-dark {
+            background-color: rgba(33, 37, 41, 0.95);
+        }
+
+        .tooltiptext-custom .bootstrap {
+            background-color: rgba(130, 135, 140, 0.95);
+        }
+
+    .bootstrap-dark .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+
+    .bootstrap .speech-bubble {
+        background-color: rgba(130, 135, 140, 0.95);
+    }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px; /* Adjust the padding to your preference */
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+        /* Create the triangle */
+        .speech-bubble :after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -15px; /* Half of the triangle's width */
+            border-width: 15px; /* Adjust the size of the triangle */
+            border-style: solid;
+            border-color: #ccc transparent transparent transparent;
+        }
+
 </style>
 
 <script>
@@ -88,38 +145,95 @@
             }, 2000);
         }
     }
+
+    function formatEpochToTime(epochSeconds, full) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, invert to assume counting up.
+            timeDifference *= -1;
+        }
+
+        var months = Math.floor(timeDifference / 2592000); // 2592000 seconds in a month (30 days)
+        var weeks = Math.floor((timeDifference % 2592000) / 604800); // 604800 seconds in a week
+        var days = Math.floor(((timeDifference % 2592000) % 604800) / 86400); // 86400 seconds in a day
+        var hours = Math.floor(((timeDifference % 2592000) % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor(((timeDifference % 2592000) % 3600) / 60); // 60 seconds in a minute
+        var seconds = timeDifference % 60; // 60 seconds in a minute
+
+        // Format the result as "XwXdXhXmXs"
+        var result = (
+            "" +
+            (months > 0 ? `${months}M` : "") +
+            (weeks > 0 ? `${weeks}w` : "") +
+            (days > 0 ? `${days}d` : "") +
+            (hours > 0 && (months == 0 && weeks == 0 || full) ? `${hours}h` : "") +
+            ((minutes > 0 && (months == 0 && weeks == 0 && days == 0 && hours < 10 || full)) ? `${minutes}m` : "") +
+            ((seconds > 0 && ((minutes < 10 && hours == 0 && days == 0 && weeks == 0 && months == 0) || full)) ? `${seconds}s` : "")
+        ) ?? "0s";
+        if (result == "") result = "0s"; // If the time is empty, display "0s"
+
+        return result;
+    }
 </script>
 
-@if (isAdmin) {
-    <h1>@Model.User.DiscordUsername Farms</h1>
+@if ((isAdmin || isLesserAdmin) && !isSelf) {
+    <h1>@Model.User.DiscordUsername's Farms</h1>
 } else {
     <h1>My Farms</h1>
 }
 
 @if (unjoinedCoops.Any()) {
-    @if (isAdmin) {
-        <div class="alert alert-danger">
-            @Model.User.DiscordUsername has not joined the following coops they've been assigned.
-            <div class="font-weight-bold" style="margin-top:10px;">
-                @foreach (var xref in unjoinedCoops) {
-                    <div><img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />@xref.Coop.Contract.Name - @xref.Coop.Name<a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a></div>
-                }
-            </div>
+    <div class="alert alert-danger">
+        @if ((isAdmin || isLesserAdmin) && !isSelf){
+            <span>@Model.User.DiscordUsername has not joined the following coops they've been assigned.</span>
+        } else{
+            <span>Pssst... It looks like you haven't joined the following coops that you've been assigned!</span>
+        }
+        <div class="font-weight-bold" style="margin-top:10px;">
+            @foreach (var xref in unjoinedCoops) {
+                <div>
+                    <img style="max-height: 30px;" src="@(EggIncStatics.GetEggByContract(xref.Coop.Contract, Model.CustomEggs).image)" />
+                    @if(Model.User.EggIncAccounts.Count > 1) {
+                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name (@accountName(xref.EggIncId))</span>
+                    } else {
+                        <span>@xref.Coop.Contract.Name - @xref.Coop.Name</span>
+                    }
+                    @if(xref.Coop.ThreadID != 0)
+                    {
+                        <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.ThreadID/">
+                            <img src="/images/discordicon.png" style="max-height: 1em;" />
+                        </a>
+                    } else if(xref.Coop.DiscordChannelId != 0){
+                    <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/">
+                        <img src="/images/discordicon.png" style="max-height: 1em;" />
+                    </a>
+                    }
+                </div>
+            }
         </div>
-    } else {
-        <div class="alert alert-danger">
-            Pssst... It looks like you haven't joined the following coops that you've been assigned!
+    </div>
+}
+
+@if(Model.User.DMSBlocked){
+    <div class="alert alert-danger">
+        @if ((isAdmin || isLesserAdmin) && !isSelf){
+            <span><b>@Model.User.DiscordUsername has blocked DMs from EGG9000.</b></span>
+        } else{
+            <span><b>It looks like you've blocked DMs from EGG9000</b>.<br />This can either be due to Server Privacy settings, or directly blocking the bot.<br />This may lead to missed communications - please resolve this.</span>
             <div class="font-weight-bold" style="margin-top:10px;">
-                @foreach (var xref in unjoinedCoops) {
-                    <div>><img style="max-height: 30px;" src="/images/Egg_@((int)xref.Coop.Contract.Details.Egg).png" />@xref.Coop.Contract.Name - @xref.Coop.Name<a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a></div>
-                }
+                <a href="https://support.discord.com/hc/en-us/articles/217916488-Blocking-Privacy-Settings-">
+                    <img style="max-height: 30px" src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"/> 
+                    See this Discord support article for help fixing this issue.
+                </a>
             </div>
-        </div>
-    }
+        }
+    </div>
 }
 
 <div>
-    @if (isLesserAdmin) {
+    @if (isLesserAdmin || isAdmin) {
         if (Model.User.TempDisabled) {
             <span style="color: #FF0000">❗User is disabled</span>
         }
@@ -127,7 +241,8 @@
 </div>
 
 <div style="padding-bottom: 10px;">
-    <span style="margin-right:10px;"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
+    <span style="margin-right:10px;" title="Click to copy" id="discord-name-copy-button" onclick="copyIdToClipboard('@Model.User.DiscordUsername.Split(" (")[0]', 'copy-notification-discord-name')"><b><u>Discord Name</u></b>: @Model.User.DiscordUsername</span>
+    <div class="copy-notification" id="copy-notification-discord-name">Discord username copied!</div>
     <span style="margin:5px;" title="Click to copy" id="discord-id-copy-button" onclick="copyIdToClipboard('@Model.User.DiscordId', 'copy-notification-discord')"><b><u>Discord ID</u></b>: @Model.User.DiscordId</span>
     <div class="copy-notification" id="copy-notification-discord">Discord ID copied!</div>
     @if (Model.User.GuildId == 0) {
@@ -161,10 +276,6 @@
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
         var backup = account.Backup;
-        //Remove existing "tank" and "hyperloop" options
-        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Hyperloop"));
-        epicResearchConfig.Remove(epicResearchConfig.FirstOrDefault(x => x.Title == "Fuel Tank"));
-        var rawBackup = rawBackups.First(x => x.EiUserId == backup.EggIncId);
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1) {
@@ -178,23 +289,28 @@
                 }
                 <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
                 <div class="copy-notification" id="copy-notification-eid-@index">EID copied!</div>
-                <span style="margin-right:10px;"><b><u>Last Backup</u></b>: @((DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize())</span>
-                @if (backup.MaxEggReached < Ei.Egg.Enlightenment)
-                {
+                <span style="margin-right:10px;">
+                    <b><u>Last Backup</u></b>: 
+                    <span class="tooltip-custom">
+                        <span id="last-backup-disp-@index" data-lb="@backup.LastBackupTime"></span>
+                        <script>document.getElementById('last-backup-disp-@index').textContent = formatEpochToTime(@backup.LastBackupTime, false);</script>
+                        <span id="last-backup-tooltip-@index" class="tooltiptext-custom speech-bubble"></span>
+                    </span>
+                </span>
+                @if (backup.MaxEggReached < Ei.Egg.Enlightenment) {
                     <span style="margin-right:10px;"><b><u>Highest Egg</u></b>: @backup.MaxEggReached</span>
                 }
                 <br>
-                @if (!dbguild.DisableBG) {
+                @if (dbguild is not null && !dbguild.DisableBG) {
                     if (account.Group == 0) {
                         <span style="margin-right:10px; color: #FFAA33"><b>⚠️Boarding Group Not Set</b></span>
                     } else {
                         <span style="margin-right:10px;"><b><u>Boarding Group @account.Group</u></b></span>
                     }
-                    if(account.SubscriptionLevel is not null) {
+                    if (account.HasActiveSubscription()) {
                         if (account.UltraGroup == 0) {
                             <span style="margin-right:10px; color: #FFAA33"><b>⚠️Ultra Boarding Group Not Set</b></span>
-                        }
-                        else {
+                        } else {
                             <span style="margin-right:10px;"><b><u>Ultra Boarding Group @account.UltraGroup</u></b></span>
                         }
                     }
@@ -207,19 +323,27 @@
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
-                @if((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
+                @if ((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
                     <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.LeggacyAutoRegisterRewards)</span>
                 }
                 <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
                     @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
-                    } else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
+                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra) {
+                        @string.Join("", "Yes (No ultra-redos)")
+                    } 
+                    else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
                         @string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS)")
+                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch) {
+                        @string.Join("", "Yes (If other account matches)")
                     } else {
                         @string.Join("", "No")
                     }
                 </span>
+                @if(account?.LatestRunningScore != 0){
+                    <br /><span><b><u>Latest Running Score</u></b>: @account.LatestRunningScore.ToString("G3")</span>
+                }
             </div>
 
             <ul class="nav nav-tabs" role="tablist">
@@ -234,7 +358,7 @@
                     <a class="nav-link" data-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
                 </li>
                 @if (inDB) {
-                    var tabName = isAdmin ? $"Merits ({merits.Count}) & Demerits" : $"Merits ({merits.Count})";
+                    var tabName = isAdmin ? $"Merits ({Model.Merits.Count}) & Demerits ({Model.Demerits.Count})" : $"Merits & Demerits";
                     <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">@tabName</a>
                     </li>
@@ -253,23 +377,26 @@
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
                 </li>
+                <!--<li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#inventoryview(index)" role="tab" aria-selected="false">Inventory View</a>
+                </li>-->
             </ul>
 
             <div class="tab-content">
                 <div class="tab-pane" style="margin-top:20px" id="shipsfarms@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ShipsandFarms", (backup, Model.JoinedCoops, contracts));
+                        await Html.RenderPartialAsync("-ShipsandFarms", (index, backup, Model.JoinedCoops, contracts, Model.CustomEggs));
                     }
                 </div>
 
                 <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup));
+                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup, account));
                     }
                 </div>
                 <div class="tab-pane" id="artifactcombos@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User));
+                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User, Model.CustomEggs));
                     }
                 </div>
 
@@ -282,7 +409,7 @@
                                         <div class="card" style="margin-top:20px">
                                             <table class="table table-striped">
                                                 <caption style="caption-side: top; text-align: center; font-weight: bold;"><u>Merits</u></caption>
-                                                @if (merits.Count > 0) {
+                                                @if (Model.Merits.Count > 0) {
                                                     <tbody>
                                                         <tr>
                                                             <th class="text-left">Date</th>
@@ -293,9 +420,9 @@
                                                         </tr>
                                                     </tbody>
                                                     <tbody>
-                                                        @foreach (var merit in merits) {
+                                                        @foreach (var merit in Model.Merits) {
                                                             <tr>
-                                                                <td>@merit.When.ToString("yyyy-MM-dd")</td>
+                                                                <td style="white-space: nowrap">@merit.When.ToString("yyyy-MM-dd")</td>
                                                                 <td> @Html.Raw(emojiReplace.Replace(merit.Reason, emojiDelegage))</td>
                                                                 @if (isAdmin) {
                                                                     <td><a href="/myfarms/removemerit?id=@merit.Id" title="Remove Merit">X</a></td>
@@ -310,9 +437,6 @@
                                                 }
                                             </table>
                                         </div>
-
-
-
                                     }
                                 </div>
                                 <div class="col-sm">
@@ -321,20 +445,20 @@
                                         <div class="card" style="margin-top:20px">
                                             <table class="table table-striped">
                                                 <caption style="caption-side: top; text-align: center; font-weight: bold;">Demerits</caption>
-                                                @if (demerits.Count > 0 && isAdmin) {
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-left">Date</th>
-                                                            <th>Reason</th>
-                                                            @if (isAdmin) {
-                                                                <th></th>
-                                                            }
-                                                        </tr>
-                                                    </thead>
+                                                <thead>
+                                                    <tr>
+                                                        <th class="text-left">Date</th>
+                                                        <th>Reason</th>
+                                                        @if (isAdmin) {
+                                                            <th></th>
+                                                        }
+                                                    </tr>
+                                                </thead>
+                                                @if (Model.Demerits.Count > 0) {
                                                     <tbody>
-                                                        @foreach (var demerit in demerits) {
-                                                            <tr>
-                                                                <td>@demerit.When.ToString("yyyy-MM-dd")</td>
+                                                        @foreach (var demerit in demerits.OrderByDescending(x => x.When)) {
+                                                            <tr class="@(demerit.When < DateTimeOffset.Now.AddMonths(-1) && !demerit.Permanent ? "Expired" : "")">
+                                                                <td style="white-space: nowrap">@demerit.When.ToString("yyyy-MM-dd")</td>
                                                                 <td> @Html.Raw(emojiReplace.Replace(demerit.Reason, emojiDelegage))</td>
                                                                 @if (isAdmin) {
                                                                     <td><a href="/myfarms/removedemerit?id=@demerit.Id" title="Remove Demerit">X</a></td>
@@ -343,19 +467,12 @@
                                                         }
                                                     </tbody>
                                                 } else {
-                                                    <tbody>
-                                                        <tr style="text-align: center">
-                                                            <td style="text-align: center">
-                                                                <span style="display: inline-block; padding: 20px;">No demerits for user.</span>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
+                                                    <tr style="padding: 20px; margin-top:20px; text-align: center">
+                                                        <td>No demerits for user.</td>
+                                                    </tr>
                                                 }
                                             </table>
                                         </div>
-
-
-
                                     }
                                 </div>
                             </div>
@@ -372,7 +489,7 @@
                 <div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
                     @{
                         Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
-                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.User, scores));
+                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.CustomEggs, Model.User, scores, index));
                     }
                 </div>
 
@@ -386,109 +503,60 @@
                     @{
                         var newModel = new EarningsBoostCalculatorModel();
                         newModel.Backup = backup;
+                        newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
                 </div>
+                <!--<div class="tab-pane; justify-content-center" id="inventoryview@(index)" role="tabpanel">
+                    /*@{
+                        //await Html.RenderPartialAsync("-InventoryView", (account, index));
+                    }*/
+                </div>-->
 
             </div>
         </div>
     }
 </div>
 
-@{
-
-
-    //(IHtmlContent, DateTimeOffset) GetActiveFarm(CustomFarm farm) {
-    //	var coop = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId)?.Coop;
-    //	var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-    //	var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
-    //	var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-    //	IHtmlContent html =
-    //@<tr>
-    //		<td>@(contract?.Name ?? farm.ContractId)</td>
-    //		<td>
-    //			<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
-    //				@(farm.CoopId ?? coop?.Name)
-    //			</a>
-    //		</td>
-    //		<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-    //		<td>@(farm.Completed ? "✔️" : "")</td>
-    //		@if (contract != null && contract.MaxUsers <= 1) {
-    //			<td colspan="2">Solo</td>
-    //		} else {
-    //			<td>
-    //				@xref?.Score?.ToString("G2")
-    //			</td>
-    //			<td>
-    //				@xref?.RunningScore?.ToString("G2")
-    //			</td>
-    //		}
-    //		@*<td>@farm.BoostsUsed</td>*@
-    //		<td>@farm.NumChickens.ToEggString()</td>
-    //		<td>@farm.EggsPaidFor.ToEggString()</td>
-    //		<td>
-    //			@if (lastUpdate != null) {
-    //				var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-    //				@percent.ToString("P0")
-    //			}
-    //		</td>
-    //		@if (isAdmin) {
-    //			<td>@farm.TimeCheatsDetected</td>
-    //			<td>@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
-    //		}
-    //		<td>@farm.BoostTokensReceived</td>
-    //		<td>@farm.BoostTokensSpent</td>
-    //		<td>@farm.BoostTokensGiven</td>
-    //	</tr>
-    //;
-
-    //	return (html, farm.Started);
-    //}
-
-    //(IHtmlContent, DateTimeOffset) GetArchivedFarm(CustomArchivedFarms farm) {
-    //	var xref = Model.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
-    //	var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
-    //	IHtmlContent html =
-    //@<tr>
-    //	<td>@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)</td>
-    //	<td>
-    //		<a href="/coop/@farm.ContractId/@(farm.CoopName)">
-    //			@(farm.CoopName)
-    //		</a>
-    //	</td>
-    //	<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-    //	<td>@(farm.Completed ? "✔️" : "")</td>
-    //	<td>
-    //		@xref?.Score?.ToString("G2")
-    //	</td>
-    //	<td>
-    //		@xref?.RunningScore?.ToString("G2")
-    //	</td>
-    //	@if (lastUpdate != null) {
-    //			var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
-    //			<td></td>
-    //			@*<td></td>*@
-    //			<td>@lastUpdate.ContributionAmount.ToEggString()</td>
-    //			<td>@percent.ToString("P0").Replace(" ", "")</td>
-    //			<td>@lastUpdate.TimeCheatDetected</td>
-    //			<td></td>
-    //			<td></td>
-    //			<td>@lastUpdate.BoostTokensSpent</td>
-    //			<td></td>
-    //		} else {
-    //			<td colspan="99"></td>
-    //		}
-
-    //	</tr>
-    //	;
-    //	return (html, farm.Started);
-    //}
-}
-
 @section Scripts {
     <script>
+
+        function formatEpochToLocalDateTime(epochSeconds) {
+            // Convert the epoch time to milliseconds and create a Date object
+            var date = new Date(epochSeconds * 1000);
+
+            // Get date and time components
+            var year = date.getFullYear();
+            var month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+            var day = String(date.getDate()).padStart(2, '0');
+            var hours = String(date.getHours()).padStart(2, '0');
+            var minutes = String(date.getMinutes()).padStart(2, '0');
+            var seconds = String(date.getSeconds()).padStart(2, '0');
+
+            // Format the result as "YYYY-MM-DD HH:mm:ss"
+            var result = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            return result;
+        }
+
+        function updateLastBackupTime() {
+            var elements = document.querySelectorAll('[id^="last-backup-disp"]');
+            elements.forEach(function (el) {
+                var timeData = parseInt(el.getAttribute('data-lb'));
+                el.textContent = formatEpochToTime(timeData, false);
+                var index = el.id.replace('last-backup-disp-', '');
+
+                var fullTime = formatEpochToTime(timeData, true);
+                var localTime = formatEpochToLocalDateTime(timeData);
+                var newInnerHTML = `${fullTime} ago <br><span style="color: grey;">(</span> ${localTime} <span style="color: grey;">)</span>`;
+
+                document.getElementById('last-backup-tooltip-' + index).innerHTML = newInnerHTML;
+            });
+        }
+
         $(document).ready(() => {
             let url = location.href.replace(/\/$/, "");
+
+            updateLastBackupTime();
 
             if (location.hash) {
                 const hash = url.split("#");
@@ -518,10 +586,11 @@
                 history.replaceState(null, null, newUrl);
             });
 
-            $("#ArchivedFarmsSearch").keyup(function () {
-                var terms = $("#ArchivedFarmsSearch").val().split(" ");
-                var showAll = $("#ArchivedFarmsSearch").val().trim().length == 0;
-                $('#ArchivedFarmsTBody tr').each(function (index) {
+            $("[id^='ArchivedFarmsSearch']").keyup(function () {
+                var terms = $(this).val().split(" ");
+                var showAll = $(this).val().trim().length == 0;
+                var index = $(this).attr('id').replace("ArchivedFarmsSearch", "");
+                $('#ArchivedFarmsTBody' + index + ' tr').each(function (index) {
                     var row = $(this);
                     var name = row.data("name");
                     var coop = row.data("coop");
@@ -540,6 +609,8 @@
                     }
                 });
             });
+
+            setInterval(updateLastBackupTime, 1000);
         });
     </script>
-	}
+}

@@ -1,27 +1,22 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.WebSocket;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
-
 using EGG9000.Common.Database;
-
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
-using Discord.Rest;
-using System.Threading;
-using EGG9000.Common.Services;
-using System.Data;
-using Microsoft.Extensions.Logging;
-using Google.Protobuf.WellKnownTypes;
-using MassTransit.Caching.Internals;
-using EGG9000.Common.Helpers;
 
 namespace EGG9000.Bot.Helpers {
     public static class DiscordHelpersExt {
@@ -48,11 +43,34 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
+        public enum DMResult {
+            Success = 0,
+            CannotSendToUser = 1,
+            DiscordError = 2,
+        };
+
+        public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
+            if(dmUser is null || dmUser?.Id is null) return DMResult.CannotSendToUser;
+            DBUser dbUser = null;
+            var result = DMResult.Success;
+            try {
+                dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
+                var dmChannel = await dmUser.CreateDMChannelAsync();
+                if(dmChannel is null) return DMResult.DiscordError;
+                await dmChannel.SendMessageAsync(message);
+            } catch(HttpException ex) {
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
+            } catch (Exception) {
+                return DMResult.CannotSendToUser;
+            }
+            if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
+            return result;
+        }
+
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             var tokenSource2 = new CancellationTokenSource();
             var token2 = tokenSource2.Token;
-            if(options is null)
-                options = new RequestOptions();
+            options ??= new RequestOptions();
             options.CancelToken = token2;
 
             var thread = message.ModifyAsync(msgProperties, options);
@@ -75,52 +93,49 @@ namespace EGG9000.Bot.Helpers {
     }
     public class DiscordHelpers {
         public static async Task<List<(Ei.Contract.Types.PlayerGrade, SocketRole)>> GetGradeRoles(DiscordHostedService _client, SocketGuild guild) {
-            return new List<(Ei.Contract.Types.PlayerGrade, SocketRole)> {
-                        (Ei.Contract.Types.PlayerGrade.GradeAaa, await _client.GetRoleAsync(GuildChannelType.GradeAAA, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeAa, await _client.GetRoleAsync(GuildChannelType.GradeAA, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeA, await _client.GetRoleAsync(GuildChannelType.GradeA, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeB, await _client.GetRoleAsync(GuildChannelType.GradeB, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeC, await _client.GetRoleAsync(GuildChannelType.GradeC, guild)),
-                        (Ei.Contract.Types.PlayerGrade.GradeUnset, null),
-                    };
+            return [
+                (Ei.Contract.Types.PlayerGrade.GradeAaa, await _client.GetRoleAsync(GuildChannelType.GradeAAA, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeAa, await _client.GetRoleAsync(GuildChannelType.GradeAA, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeA, await _client.GetRoleAsync(GuildChannelType.GradeA, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeB, await _client.GetRoleAsync(GuildChannelType.GradeB, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeC, await _client.GetRoleAsync(GuildChannelType.GradeC, guild)),
+                (Ei.Contract.Types.PlayerGrade.GradeUnset, null),
+            ];
         }
 
-        public static async Task<SocketRole> CheckRoles(SocketGuild guild, SocketGuildUser discordUser, DBUser dbUser, DiscordHostedService _client, List<(Ei.Contract.Types.PlayerGrade, SocketRole)> grades, List<LeaderboardUser> leaderboardUsers) {
-            if(grades is null) {
-                grades = await GetGradeRoles(_client, guild);
-            }
+        public static async Task<SocketRole> CheckRoles(ApplicationDbContext db, SocketGuild guild, SocketGuildUser discordUser, DBUser dbUser, DiscordHostedService _client, List<(Ei.Contract.Types.PlayerGrade, SocketRole)> grades, List<LeaderboardUser> leaderboardUsers) {
+            grades ??= await GetGradeRoles(_client, guild);
 
             var higherEB = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault();
             if(higherEB.Backup.EggsOfProphecy > 1000) {
                 dbUser.showEB = false;
             }
 
-
-            var registeredRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+            var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
             var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
             if(registeredRole == null && guildRegisteredRole is not null) {
                 await discordUser.AddRoleAsync(guildRegisteredRole);
             }
 
-            var existingRole = (discordUser as SocketGuildUser).Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+            var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
 
-            var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser, _client);
+            var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser);
 
             await CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
             await CheckHatchlingRole(guild, discordUser, dbUser);
             await CheckFreshEggsRole(guild, discordUser, dbUser);
             await CheckBG(_client, guild, discordUser, dbUser);
-            await CheckPermitRoles(guild, discordUser, dbUser);
-            await CheckGrades(guild, discordUser, dbUser, grades);
+            await CheckPermitRoles(_client, guild, discordUser, dbUser);
+            await CheckGrades(db, _client, discordUser, dbUser, grades);
             await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
             await CheckUserOSRole(_client, guild, discordUser, dbUser);
-            await CheckUnjoined(guild, discordUser, dbUser);
+            await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
             await CheckEnDRole(_client, guild, discordUser, dbUser);
             await CheckNAHRole(_client, guild, discordUser, dbUser);
             await CheckASCRole(_client, guild, discordUser, dbUser);
 
             if(leaderboardUsers.Count > 0) {
-                await CheckActive(_client, guild, discordUser, dbUser, leaderboardUsers);
+                await CheckActive(_client, guild, discordUser, leaderboardUsers);
             }
 
             var EarningsBonus = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus.ToEggString() ?? "";
@@ -129,102 +144,117 @@ namespace EGG9000.Bot.Helpers {
 
             if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) {
                 var messages = new List<string> {
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
-                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",                            };
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
+                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!"
+                };
 
                 switch(role.Name.Split(" ").First()) {
                     case "Farmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
-                        });
+                        ]);
                         break;
                     case "Kilofarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Wow, {discordUser.Mention}! A {role.Name} already? Your wonders never cease to amaze me! Congrats on the new rank and EB of {EarningsBonus}%!.",
-                        });
+                        ]);
                         break;
                     case "Megafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Now you are at least hundreds of millions times stronger than you were since your first chicken. Mega effort to become a {role.Name} with and EB of {EarningsBonus}%! Congratulations on the new rank, {discordUser.Mention}!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",
-                        });
+                        ]);
                         break;
                     case "Gigafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Gigafarmer, sweet! Your numbers are increasing along with your eggsperience!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
-                        });
+                        ]);
                         break;
                     case "Terafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Keep going, next up: Petafarmer!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Chickens won't hatch themselves, get back to farming!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
                         $"Choo Choo! All aboard the <:Egg_soul_SE:724341890794913964> train with our new {role.Name}. {discordUser.Mention} is driving the train with an EB of {EarningsBonus}%, jump on now!",
-                        });
+                        ]);
                         break;
                     case "Petafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! More chickens, more eggs, higher earnings means more <:Egg_soul_SE:724341890794913964>. Keep hatching!",
                         $"With great EB comes great responsibility. Congrats on hitting an EB of {EarningsBonus}%, {discordUser.Mention}! This means you are officially a {role.Name}. Now get back out there - those wormholes aren’t going to dampen themselves!",
-                                                        });
+                                                        ]);
                         break;
                     case "Exafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You really like eggs, eh? Eggciting hobby, isnt it?",
                         $"You’ve finally reached the rank of { role.Name}, { discordUser.Mention}! Wow. It seems like just yesterday you were running your first chickens. Celebrate!",
                         $"{ role.Name}: achieved. What’s next, { discordUser.Mention}? This calls for omelets. Anyone have eggs? Congrats on the impressive EB of { EarningsBonus}%!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
-                        $"Choo Choo!All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { EarningsBonus}%, jump on now!",
+                        $"Choo Choo! All aboard the <:Egg_soul_SE:724341890794913964> train with our new { role.Name }. { discordUser.Mention} is driving the train with an EB of { EarningsBonus}%, jump on now!",
                         $"Congrats { discordUser.Mention}, you are a { role.Name} now with an EB of { EarningsBonus}%! How eggciting!",
-                        });
+                        ]);
                         break;
                     case "Zettafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. Afraid of heights, {discordUser.Mention}? I hope not, you're climbing higher and higher up the leaderboard!",
                         $"Did anyone else see that blur go by? I think it was {discordUser.Mention} on their way to LEVELING UP TO THE RANK OF {role.Name} with an EB of {EarningsBonus}%! Awesome!",
                         $"Is it just me, or does this place smell like an EB of {EarningsBonus}%? Congrats on achieving the level of {role.Name}, {discordUser.Mention}!",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%! Eggstraordinary work, there’s no stopping you, {discordUser.Mention}!",
-                        });
+                        $"Eggciting times, {discordUser.Mention}! Your hard work has paid off, and you've reached the {role.Name} rank with an EB of {EarningsBonus}%. Keep the momentum going!",
+                        $"Major kudos, {discordUser.Mention}! The farm is buzzing with excitement as you secure the {role.Name} rank with an impressive EB of {EarningsBonus}%. Well done!",
+                        ]);
                         break;
                     case "Yottafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"What an effort! Make way for {discordUser.Mention} and their eggcellent EB of {EarningsBonus}%! You are now a {role.Name}. Very impressive!",
                         $"We have a new {role.Name} among us! Congratulations on the rank, and the mighty EB of {EarningsBonus}%, {discordUser.Mention}!",
-                        $"{EarningsBonus}% !That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
-                        });
+                        $"{EarningsBonus}%! That’s a milestone right there.You obviously know what you’re doing { discordUser.Mention}. Congratulations, you are now a {role.Name}!",
+                         $"Fantastic news, {discordUser.Mention}! You've achieved the impressive rank of {role.Name} with an EB of {EarningsBonus}%. Your dedication is truly eggstraordinary!",
+                        $"Bravo, {discordUser.Mention}! You've cracked it! The new rank of {role.Name} is now yours, and with an EB of {EarningsBonus}%, the sky's the limit!",
+                        ]);
                         break;
                     case "Xennafarmer":
+                        messages.AddRange([
+                        $"Hold on tight, everyone! {discordUser.Mention} just soared into the prestigious rank of {role.Name} with an astonishing EB of {EarningsBonus}%! Unbelievable dedication and hard work!",
+                        $"Lights, camera, action! {discordUser.Mention} takes the spotlight as they achieve the remarkable rank of {role.Name} with an extraordinary EB of {EarningsBonus}%. Your commitment is truly commendable!",
+                        $"Breaking news: {discordUser.Mention} has reached the elite status of {role.Name} with an exceptional EB of {EarningsBonus}%. The farm has never seen such excellence before. Congratulations!",
+                        $"Way to go, {discordUser.Mention}! You've leveled up to {role.Name} with an EB of {EarningsBonus}%. The farm has never looked better under your management!",
+                        $"Incredible news, {discordUser.Mention}! You're now rocking the {role.Name} rank with an impressive EB of {EarningsBonus}%. Your commitment is truly commendable!",
+                        ]);
+                        break;
                     case "Weccafarmer":
-                        messages.AddRange(new List<string> {
+                        messages.AddRange([
                         $"Speechless. Absolutely speechless. The grind is real, {discordUser.Mention}! Congratulations on the very impressive rank of {role.Name} with the incredible EB of {EarningsBonus}%!",
-                        });
+                        $"Alert! {discordUser.Mention} has just ascended to the remarkable rank of {role.Name} with a jaw-dropping EB of {EarningsBonus}%! The farm is buzzing with your incredible achievement!",
+                        $"The farm is shaking with excitement as {discordUser.Mention} conquers the challenging path to become a {role.Name} with an impressive EB of {EarningsBonus}%. Your hard work is truly paying off!",
+                        $"Outstanding achievement, {discordUser.Mention}! Your dedication and effort have propelled you to the prestigious rank of {role.Name} with an EB of {EarningsBonus}%. Keep shining!",
+                        $"Cheers to you, {discordUser.Mention}! Your farm is flourishing, and so is your rank. Congratulations on achieving {role.Name} with an EB of {EarningsBonus}%. Well deserved!",
+                        ]);
+                        break;
+                    case "Vendafarmer":
+                        messages = [
+                        $"Step aside, everyone! {discordUser.Mention} has officially reached the top tier as a {role.Name} with an absolutely outstanding EB of {EarningsBonus}%. Your dedication is an inspiration to us all!",
+                        ];
                         break;
                 }
-
 
 
                 var random = new Random();
                 var index = random.Next(messages.Count);
 
                 //Attempt to find the "separate channel for rankup messages" channel, if it's been set
-                var altRankupChannel = await _client.GetChannelAsync(GuildChannelType.AltRankup, guild);
-
+                var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.AltRankup, new() { Text = messages[index] });
                 //If it can't be found, use 'General' instead
-                if(altRankupChannel == null) {
-                    var generalChannel = await _client.GetChannelAsync(GuildChannelType.General, guild);
-                    await generalChannel.SendMessageAsync(messages[index]);
-                } else {
-                    await altRankupChannel.SendMessageAsync(messages[index]);
-                }
+                if(response == null) await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = messages[index] });
             }
 
             return role;
@@ -285,56 +315,73 @@ namespace EGG9000.Bot.Helpers {
             return ($"<t:{time.ToUnixTimeSeconds()}:{ender}>");
         }
 
+        private static async Task CheckPermitRoles(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser dbUser) {
+            var standardPermitRole = await _client.GetRoleAsync(GuildChannelType.StandardPermitRole, Guild);
+            var proPermitRole = await _client.GetRoleAsync(GuildChannelType.ProPermitRole, Guild);
 
-        public static ulong ProPermitRoleID = 966017147350446121;
-        public static ulong StandardPermitRoleID = 966017278078517248;
-        private static async Task CheckPermitRoles(SocketGuild Guild, IGuildUser DiscordUser, DBUser dbUser) {
-            if(Guild.Roles.Any(x => x.Id == ProPermitRoleID)) {
-                var hasPro = DiscordUser.RoleIds.Any(x => x == ProPermitRoleID);
-                var hasStandard = DiscordUser.RoleIds.Any(x => x == StandardPermitRoleID); ;
+            if(standardPermitRole is not null && proPermitRole is not null) {
+                var hasPro = DiscordUser.RoleIds.Any(x => x == proPermitRole.Id);
+                var hasStandard = DiscordUser.RoleIds.Any(x => x == standardPermitRole.Id); ;
 
                 var needsPro = dbUser.EggIncAccounts.Any(x => x.Backup.PermitLevel == 1);
                 var needsStandard = dbUser.EggIncAccounts.Any(x => x.Backup.PermitLevel == 0);
 
 
                 if(!hasPro && needsPro) {
-                    await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
+                    await DiscordUser.AddRoleAsync(proPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Adding ProPermit role for {user}", DiscordUser.GetName());
                 }
                 if(hasPro && !needsPro) {
-                    await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == ProPermitRoleID));
+                    await DiscordUser.RemoveRoleAsync(proPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing ProPermit role for {user}", DiscordUser.GetName());
                 }
                 if(!hasStandard && needsStandard) {
-                    await DiscordUser.AddRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
+                    await DiscordUser.AddRoleAsync(standardPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Adding StandardPermit role for {user}", DiscordUser.GetName());
 
                 }
                 if(hasStandard && !needsStandard) {
-                    await DiscordUser.RemoveRoleAsync(Guild.Roles.First(x => x.Id == StandardPermitRoleID));
+                    await DiscordUser.RemoveRoleAsync(standardPermitRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing StandardPermit role for {user}", DiscordUser.GetName());
                 }
 
             }
         }
-        private static async Task CheckGrades(SocketGuild Guild, IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
+        private static async Task CheckGrades(ApplicationDbContext db, DiscordHostedService _client, IGuildUser DiscordUser, DBUser dbuser, List<(Ei.Contract.Types.PlayerGrade grade, SocketRole role)> grades) {
             var neededGrades = dbuser.EggIncAccounts.Select(x => x.GetGrade());
 
             var neededRoles = neededGrades.Select(x => grades.First(g => g.grade == x).role).Where(x => x is not null && !DiscordUser.RoleIds.Any(y => y == x.Id)).ToList();
 
-            var extraRoles = grades.Where(x => x.role is not null)
+            var extraGrades = grades.Where(x => x.role is not null)
                 .Where(g =>
                     !dbuser.EggIncAccounts.Any(a => a.GetGrade() == g.grade) &&
                     DiscordUser.RoleIds.Any(r => r == g.role.Id)
-                ).Select(x => x.role).ToList();
+                ).ToList();
+            var extraRoles = extraGrades.Select(x => x.role).ToList();
 
             if(neededRoles.Count > 0) {
                 GetLogger<DiscordHelpers>().LogInformation("Adding grade roles {roles} for {user}", string.Join(",", neededRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.AddRolesAsync(neededRoles);
-
             }
 
             if(extraRoles.Count > 0) {
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+
+                //Handle the case where users rank up, and need to still see existing coops
+                var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
+                foreach(var lostXref in lostXrefs) {
+                    var guild = _client.Guilds.FirstOrDefault(x => x.Channels.Any(c => c.Id == lostXref.Coop.ThreadParentChannel));
+                    if(guild is null) continue;
+                    var header = guild.GetTextChannel(lostXref.Coop.ThreadParentChannel);
+                    if(header is null) continue;
+                    //Make sure user is in the server
+                    if(header.Guild.GetUser(DiscordUser.Id) is null) continue;
+                    try {
+                        await header.AddPermissionOverwriteAsync(DiscordUser,
+                            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow)
+                        );
+                    } catch(HttpException) { continue; }
+                }
                 GetLogger<DiscordHelpers>().LogInformation("Removing grade roles {roles} for {user}", string.Join(",", extraRoles.Select(x => x.Name)), DiscordUser.GetName());
                 await DiscordUser.RemoveRolesAsync(extraRoles);
             }
@@ -410,7 +457,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckASCRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var ascRole = await _client.GetRoleAsync(GuildChannelType.ASCRole, Guild);
             if(ascRole is not null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipsSent is not null).Any(x => MissionHelpers.HasMaxedShips(x.Backup));
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && x.Backup.ShipsSent is not null).Any(x => x.Backup.HasMaxedShips());
                 var hasRole = DiscordUser.RoleIds.Any(x => x == ascRole.Id);
 
                 if(!hasRole && needsRole) {
@@ -424,16 +471,18 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        private static async Task CheckUnjoined(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+        private static async Task CheckUnjoined(SocketGuild Guild, IGuildUser DiscordUser, LeaderboardUser luser) {
+            if(luser?.RecentXrefs is null)
+                return;
             var unjoinedRole = Guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
             if(unjoinedRole != null) {
                 var hasUnjoined = DiscordUser.RoleIds.Any(x => x == unjoinedRole.Id);
-                var needsUnjoined = user.GuildCoops <= 0;
+                var needsUnjoined = luser.RecentXrefs.Count == 0 || luser.RecentXrefs.All(x => !x.Joined);
 
-                if(!hasUnjoined && needsUnjoined) {
-                    await DiscordUser.AddRoleAsync(unjoinedRole);
-                    GetLogger<DiscordHelpers>().LogInformation("Adding unjoined Role for {user}", DiscordUser.GetName());
-                }
+                //if(!hasUnjoined && needsUnjoined) {
+                //    await DiscordUser.AddRoleAsync(unjoinedRole);
+                //    GetLogger<DiscordHelpers>().LogInformation("Adding unjoined Role for {user}", DiscordUser.GetName());
+                //}
                 if(hasUnjoined && !needsUnjoined) {
                     await DiscordUser.RemoveRoleAsync(unjoinedRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing outdated unjoined Role for {user}", DiscordUser.GetName());
@@ -475,7 +524,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckFreshEggsRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var freshEggRole = Guild.Roles.FirstOrDefault(x => x.Id == 761005564615983152);
             if(freshEggRole != null) {
-                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-7);
+                var needsRole = user.Registered is not null && user.Registered > DateTimeOffset.Now.AddDays(-7);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == freshEggRole.Id);
 
                 if(!hasRole && needsRole) {
@@ -489,7 +538,7 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        private static async Task CheckActive(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user, List<LeaderboardUser> userAccounts) {
+        private static async Task CheckActive(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, List<LeaderboardUser> userAccounts) {
             var activeRole = await _client.GetRoleAsync(GuildChannelType.ActiveRole, Guild);
             if(activeRole != null) {
                 foreach(var account in userAccounts) {
@@ -532,7 +581,7 @@ namespace EGG9000.Bot.Helpers {
             }
         }
 
-        private static async Task<SocketRole> SetRole(SocketGuild guild, IGuildUser DiscordUser, Double EarningsBonus, DBUser dbUser, DiscordHostedService _client) {
+        private static async Task<SocketRole> SetRole(SocketGuild guild, IGuildUser DiscordUser, double EarningsBonus, DBUser dbUser) {
             var currentRole = DiscordUser.RoleIds.Select(y => guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);

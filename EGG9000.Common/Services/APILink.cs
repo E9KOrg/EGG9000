@@ -1,11 +1,17 @@
-﻿using EGG9000.Common.Database;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.SharedModels;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,17 +22,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.Prefarm;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using EGG9000.Bot.EggIncAPI;
-using Discord;
-using Discord.WebSocket;
-using Microsoft.Extensions.Logging;
-using System.Net.NetworkInformation;
 
 namespace EGG9000.Common.Services {
     public class APILinkOptions {
@@ -45,40 +41,40 @@ namespace EGG9000.Common.Services {
     }
 
     public class APILink : IHostedService {
-//        //private static string urlBase = "http://localhost:5014/Home/";
+        //        //private static string urlBase = "http://localhost:5014/Home/";
 
-//#if DEBUG
-//        //private static string urlBase = "http://localhost:5014/Home/";
-//        //private static string urlBase = "https://localhost:44316/Home/";
-//        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
-//#else
-//        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
-//#endif
-
-
+        //#if DEBUG
+        //        //private static string urlBase = "http://localhost:5014/Home/";
+        //        //private static string urlBase = "https://localhost:44316/Home/";
+        //        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+        //#else
+        //        private static string urlBase = "http://egg9000apilinksite.sglade.com/Home/";
+        //#endif
 
 
-        private IMemoryCache _cache;
-        private HttpClient _httpClient;
-        public IConfiguration _configuration;
-        public IServiceProvider _provider;
-        private bool _ReportUpdatedClientVersion;
+
+
+        private readonly IMemoryCache _cache;
+        private readonly HttpClient _httpClient;
+        public readonly IConfiguration _configuration;
+        public readonly IServiceProvider _provider;
+        private readonly bool _ReportUpdatedClientVersion;
         private int _LastClientVersion;
-        private DiscordSocketClient _discord;
-        private ILogger<APILink> _logger;
-        private APILinkOptions _settings;
+        private readonly DiscordSocketClient _discord;
+        private readonly ILogger<APILink> _logger;
+        private readonly APILinkOptions _settings;
 
-#if DEBUG
-        private string urlBase => _configuration.GetConnectionString("APILinkURL");
-        //private string urlBase => "http://localhost:5014/Home/";
-#else
-        private string urlBase => _configuration.GetConnectionString("APILinkURL");
-#endif
+        private string urlBase {
+            get {
+                return _configuration.GetConnectionString("APILinkURL");
+            }
+        }
 
         public APILink(IConfiguration configuration, IServiceProvider provider, DiscordSocketClient discord, ILogger<APILink> logger) {
             _cache = new MemoryCache(new MemoryCacheOptions { });
-            _httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate });
-            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+            _httpClient = new(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }) {
+                Timeout = TimeSpan.FromMinutes(5)
+            };
             _configuration = configuration;
             _provider = provider;
             var options = provider.GetService<IOptionsMonitor<APILinkOptions>>();
@@ -88,7 +84,9 @@ namespace EGG9000.Common.Services {
             _logger = logger;
         }
 
-        private string GetUserBackupKey(string UserId) => $"UserBackup-{UserId}";
+        private static string GetUserBackupKey(string UserId) {
+            return $"UserBackup-{UserId}";
+        }
 
         public void AddExistingBackups(IEnumerable<EggIncAccount> accounts) {
             foreach(var account in accounts.Where(x => x.Backup is not null)) {
@@ -113,19 +111,16 @@ namespace EGG9000.Common.Services {
                         account.Backup = backup;
                         user.UpdateAccounts();
                     }
-
-                    if(backup == null) {
-                        backup = account?.Backup;
-                    }
+                    backup ??= account?.Backup;
 
                     if(backup != null) {
                         lUsers.Add(new LeaderboardUser { User = user, Backup = backup });
                     } else {
-                        _logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
+                        //_logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
                     }
                 }
             }
-            _logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
+            //_logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
             await db.SaveChangesAsync();
             return lUsers;
         }
@@ -139,7 +134,7 @@ namespace EGG9000.Common.Services {
                     return null;
 
                 var key = GetUserBackupKey(eggIncId);
-                CustomBackup currentBackup;
+                CustomBackup currentBackup = null;
                 float lastBackupTime = -1;
                 if(!forceAll && _cache.TryGetValue(key, out currentBackup)) {
                     if(currentBackup.Farms is not null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
@@ -153,18 +148,16 @@ namespace EGG9000.Common.Services {
                     }
                 }
                 if(eggIncId.StartsWith("EI")) {
-                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime });
+                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime});
                 }
             }
-
-            _logger.LogInformation("Backups from cache {count}", backups.Count);
 
             if(backupsNeeded.Count > 0) {
                 var throttler = new SemaphoreSlim(2);
                 var tasks = new List<Task>();
                 var responses = new ConcurrentQueue<ApiResponse<List<Ei.EggIncFirstContactResponse>>>();
                 var url = $"{urlBase}GetBackups";
-                var partitions = Partition(backupsNeeded, 250);
+                var partitions = Partition(backupsNeeded, 25);
                 var i = 1;
                 foreach(var partition in partitions) {
                     if(token.IsCancellationRequested)
@@ -176,6 +169,10 @@ namespace EGG9000.Common.Services {
                     tasks.Add(Task.Run(async () => {
                         try {
                             var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
+                            if(response.Data is null) {
+                                _logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
+                                return;
+                            }
                             _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
                             foreach(var backupResponse in response.Data) {
                                 var key = GetUserBackupKey(backupResponse.EggIncId);
@@ -186,14 +183,15 @@ namespace EGG9000.Common.Services {
                                     }
                                 }
                                 if(!backupResponse.Backup.EmptyBackup) {
-                                    if(_ReportUpdatedClientVersion && 
-                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion && 
+                                    if(_ReportUpdatedClientVersion &&
+                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion &&
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
                                         _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
                                         var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
                                         if(kendromedmchannel is not null) {
                                             await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                            ContractsAPI.ClientVersion = (uint)_LastClientVersion;
                                         } else {
                                             _logger.LogError("Unable to get DM channel for Kendrome");
                                         }
@@ -213,22 +211,54 @@ namespace EGG9000.Common.Services {
                 }
 
                 await Task.WhenAll(tasks);
-
-
-                //foreach(var partition in Partition(backupsNeeded, 100)) {
-                //var response = await SendAsync<List<Ei.EggIncFirstContactResponse>>(url, partition, HttpMethod.Get);
-                foreach(var response in responses) {
-                    //var response = task.Result;
-
-
-                }
             }
             return backups;
         }
 
+        public async Task<List<ulong>> AddUsersToChannel(CoopPermissions coopPermissions) {
+            coopPermissions.UserIds = coopPermissions.UserIds.Distinct().ToList();
+            try {
+                var guild = _discord.Guilds.FirstOrDefault(x => x.Id == coopPermissions.GuildId);
+                if(guild.Users.Any(x => x.Id == 1174941840684892352)) {
+                    var url = $"{urlBase}AddUsersToChannel";
+                    var response = await SendAsync<List<ulong>>(url, coopPermissions, HttpMethod.Post);
+                    if(response.Data is null) {
+                        _logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}. Adding via EGG9000", response.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
+                        return [];
+                    }
+                    return response.Data;
+                } else {
+                    return await AddUsersToChannelWithEGG900(coopPermissions, guild);
+                }
+            } catch(Exception e) {
+                _logger.LogError("Error adding users to channel {error}, Channel: {coopChannel}, Guild: {guild}", e.Message, coopPermissions.ChannelId, coopPermissions.GuildId);
+            }
+            return [];
+        }
+
+        public async Task<List<ulong>> AddUsersToChannelWithEGG900(CoopPermissions coopPermissions, SocketGuild guild) {
+            var coopChannel = guild.GetChannel(coopPermissions.ChannelId) as SocketTextChannel;
+            List<ulong> addedUsers = [];
+            foreach(var userid in coopPermissions.UserIds) {
+                var user = guild.GetUser(userid);
+                try {
+                    if(coopChannel.GetChannelType() == ChannelType.PrivateThread) {
+                        await (coopChannel as SocketThreadChannel).AddUserAsync(user);
+                    } else {
+                        await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                    }
+                    addedUsers.Add(userid);
+                    //_logger.LogInformation("Adding user to channel {user}", user.DisplayName);
+                } catch(Exception e) {
+                   _logger.LogWarning("Unable able to add {user} to {coop} in {server} ({error})", user.DisplayName, coopChannel.Name, guild.Name, e.Message);
+                }
+            }
+            return addedUsers;
+        }
+
         public async Task<CustomBackup> GetBackup(string UserId) {
             var key = GetUserBackupKey(UserId);
-            CustomBackup currentBackup;
+            CustomBackup currentBackup = null;
             float lastBackupTime = -123;
             if(_cache.TryGetValue(key, out currentBackup)) {
                 if(currentBackup.Farms != null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
@@ -239,30 +269,33 @@ namespace EGG9000.Common.Services {
             try {
                 HttpResponseMessage response;
                 var url = $"{urlBase}GetBackup";
-                using(var request = new HttpRequestMessage(HttpMethod.Get, url)) {
-                    //Add content
-                    var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
-                    request.Content = new StringContent(content, Encoding.UTF8, "application/json");
-                    //Add headers
-                    request.Headers.Accept.Clear();
-                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                //Add content
+                var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
+                request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                //Add headers
+                request.Headers.Accept.Clear();
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                    //Send the request
-                    response = await _httpClient.SendAsync(request);
-                    if(response.IsSuccessStatusCode) {
-                        var json = await response.Content.ReadAsStringAsync();
-                        var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
-                        if(backupResponse.Unchanged) {
-                            return currentBackup;
-                        }
-                        if(backupResponse.Backup.Farms != null) {
-                            _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
-                        }
-                        return backupResponse.Backup;
-                    } else {
-                        var errorContent = response.Content.ReadAsStringAsync();
-                        errorMessage = response.StatusCode.ToString();
+                //Send the request
+                response = await _httpClient.SendAsync(request);
+                if(response.IsSuccessStatusCode) {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
+                    var backupFromResponse = backupResponse.Backup;
+                    if(backupResponse.Unchanged) {
+                        return currentBackup;
                     }
+                    if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup?.UserName)) {
+                        backupFromResponse.UserName = currentBackup.UserName;
+                    }
+                    if(backupResponse.Backup.Farms != null) {
+                        _cache.Set(key, backupFromResponse, DateTimeOffset.Now.AddDays(7));
+                    }
+                    return backupFromResponse;
+                } else {
+                    var errorContent = response.Content.ReadAsStringAsync();
+                    errorMessage = response.StatusCode.ToString();
                 }
             } catch(Exception e) {
                 errorMessage = e.Message;
@@ -281,8 +314,8 @@ namespace EGG9000.Common.Services {
             public T Data { get; set; }
         }
 
-        public static IEnumerable<List<T>> Partition<T>(IList<T> source, Int32 size) {
-            for(int i = 0; i < Math.Ceiling(source.Count / (Double)size); i++)
+        public static IEnumerable<List<T>> Partition<T>(IList<T> source, int size) {
+            for(var i = 0; i < Math.Ceiling(source.Count / (double)size); i++)
                 yield return new List<T>(source.Skip(size * i).Take(size));
         }
 
@@ -290,11 +323,7 @@ namespace EGG9000.Common.Services {
             if(string.IsNullOrWhiteSpace(uri))
                 throw new Exception($"{nameof(uri)} can not be null or empty.");
 
-            var paramListForLog = JsonConvert.SerializeObject(param);
-
-
             var url = new Uri(uri, UriKind.Absolute);
-
             try {
 
                 HttpResponseMessage response;
@@ -338,7 +367,7 @@ namespace EGG9000.Common.Services {
 
         public async Task StartAsync(CancellationToken cancellationToken) {
             if(_settings.AsyncLoadCache) {
-                _logger.LogInformation("Async Loading Users");
+                //_logger.LogInformation("Async Loading Users");
                 _ = GetUsers();
             } else {
                 await GetUsers();
@@ -346,14 +375,14 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task GetUsers() {
-            _logger.LogInformation("Getting User Backups for Cache");
+            // _logger.LogInformation("Getting User Backups for Cache");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
             var backups = usersTask.SelectMany(x => x.EggIncAccounts);
             if(backups != null) {
                 AddExistingBackups(backups);
             }
-            _logger.LogInformation("Finished Getting User Backups for Cache");
+            //_logger.LogInformation("Finished Getting User Backups for Cache");
 
         }
 

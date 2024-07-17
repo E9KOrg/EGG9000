@@ -1,4 +1,4 @@
-﻿@model List<LeaderboardUser>
+﻿@model (List<LeaderboardUser> Users, List<DBCustomEgg> CustomEggs)
 @inject Discord.WebSocket.DiscordSocketClient discord
 @{
     ViewData["Title"] = "Enlightenment";
@@ -6,9 +6,9 @@
     var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
     List<UserSnapShot> snapshots = ViewBag.Snapshots;
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-    var accounts = Model.Where(x => x.Backup.Farms.Any(y => y.EggType == Ei.Egg.Enlightenment) ).Select(x => { //&& x.Backup.EggIncId == "EI6229292070993920"
+    var accounts = Model.Users.Where(x => x.Backup.Farms.Any(y => y.EggType == Ei.Egg.Enlightenment) ).Select(x => { //&& x.Backup.EggIncId == "EI6229292070993920"
         var farm = x.Backup.Farms.First(y => y.EggType == Ei.Egg.Enlightenment);
-        var stats = farm.WithStats(x.Backup, null);
+        var stats = farm.WithStats(x.Backup, null, Model.CustomEggs);
         Console.WriteLine(JsonConvert.SerializeObject(farm, Formatting.Indented));
         return new {
             x.Backup,

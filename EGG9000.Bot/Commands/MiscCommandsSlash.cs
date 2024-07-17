@@ -1,26 +1,16 @@
 ﻿using Discord;
 using Discord.WebSocket;
+
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Bot.Automated.Coops;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Helpers;
-using Humanizer;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
-using static EGG9000.Common.Helpers.Prefarm;
-using EGG9000.Common.Services;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
 using Microsoft.Extensions.Logging;
@@ -32,25 +22,39 @@ using static EGG9000.Common.Helpers.FAQHelper;
 using System.ComponentModel;
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 
+using Humanizer;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+
+using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.Prefarm;
+
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            await command.RespondAsync("Getting backups...");
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+            await command.DeferAsync();
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
-            var builder = new EmbedBuilder();
-            builder.Title = $"EB Tracking";
-            foreach(var id in user.EggIncAccounts) {
+            var builder = new EmbedBuilder {
+                Title = $"EB Tracking"
+            };
+            foreach(var id in dbUser.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
-                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
-                if(user.EggIncAccounts.Count > 1) {
+                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup, backup);
+                if(dbUser.EggIncAccounts.Count > 1) {
                     builder.AddField("――――――――――――――――――", $"**{backup.UserName}**");
                 }
 
@@ -60,26 +64,31 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Last EB", $"{id.LastEB.ToEggString()}\n{DiscordHelpers.TimeStamper(id.LastEBTime.Value, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
                 }
 
-                builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
-
-                if(id.LastEBTime.HasValue) {
-                    var change = backup.EarningsBonus - id.LastEB;
-                    var percentChange = change / id.LastEB * 100d;
-                    if(percentChange >= 10)
-                        percentChange = Math.Round(percentChange);
-                    var digits = (int)Math.Log10(percentChange) - 2;
-                    var format = $"F{(digits < 1 ? -digits + 2 : 0)}";
-                    var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
-                    builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                if(backup.EarningsBonus == 0) {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is not responding correctly.\nPlease try again later."); });
+                    logger.LogWarning("Warning: TrackEB 0 EB detected for {username}", backup.UserName ?? id.Name ?? id.Id);
+                    return;
                 } else {
-                    builder.AddField("First Update", "No previous EB to compare to", true);
-                }
+                    builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
 
-                id.LastEB = backup.EarningsBonus;
-                id.LastEBTime = backupDate;
+                    if(id.LastEBTime.HasValue) {
+                        var change = backup.EarningsBonus - id.LastEB;
+                        var percentChange = change / id.LastEB * 100d;
+
+                        var format = Math.Abs(percentChange - Math.Round(percentChange)) < 0.01 ? "F0" : "F2";
+
+                        var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
+                        builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                    } else {
+                        builder.AddField("First Update", "No previous EB to compare to", true);
+                    }
+
+                    id.LastEB = backup.EarningsBonus;
+                    id.LastEBTime = backupDate;
+                }
             }
 
-            user.UpdateAccounts();
+            dbUser.UpdateAccounts();
             await db.SaveChangesAsync();
             await command.ModifyOriginalResponseAsync(x => {
                 x.Embed = builder.Build();
@@ -89,20 +98,21 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "How many SE/PE needed for next rank up", AllowInDMs = true)]
         public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
-            await command.RespondAsync("Getting backups...", ephemeral: !ShowInChannel);
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
-            if(user == null) {
-                await command.RespondAsync("⚠️ERROR: Unable to find backups for this user");
+            await command.DeferAsync(ephemeral: !ShowInChannel);
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
-            var builder = new EmbedBuilder();
-            builder.Title = $"Next Rank Details";
-            foreach(var id in user.EggIncAccounts) {
+            var builder = new EmbedBuilder() {
+                Title = "Next Rank Details"
+            };
+            foreach(var id in dbUser.EggIncAccounts) {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
-                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup);
+                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup, backup);
                 var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
 
                 var nextRankText = "";
@@ -112,7 +122,7 @@ namespace EGG9000.Bot.Commands {
                         break;
                 }
 
-                builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
+                builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (dbUser.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextSubRank.First().Rank} [{nextSubRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
 
                 var nextRank = SIPrefix.GetNextRankInfo(backup, false);
                 var currentRank = SIPrefix.GetPrefixFromEB(backup.EarningsBonus);
@@ -124,28 +134,28 @@ namespace EGG9000.Bot.Commands {
                             break;
                     }
 
-                    builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (user.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
+                    builder.AddField(new EmbedFieldBuilder { IsInline = true, Name = (dbUser.EggIncAccounts.Count > 1 ? $"{backup.UserName}\n" : "") + $"{nextRank.First().Rank} [{nextRank.First().EarningsBonus.ToEggString()}]", Value = nextRankText });
                 }
 
                 var ge = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
                 builder.AddField(new EmbedFieldBuilder {
-                    IsInline = false, Name = "Current Details", Value = @$"{currentRank.RankWithSubRank}
-<:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
-<:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
-EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
-Prestiges {backup.NumPrestiges}
-<:Soul_Egg_SE:724341890794913964>/Prestige {(backup.SoulEggs / backup.NumPrestiges).ToEggString(numberOfDecimalPlaces: 3)}
-<:Golden_Egg_GE:692439755798872075> {(ge > 1_000_000_000 ? ge.ToEggString(numberOfDecimalPlaces: 3) : ge.ToString("n0"))}
-<:Piggy_bank:724396277676113955>  {(backup.TotalGEInPiggyBank > 1_000_000_000 ? backup.TotalGEInPiggyBank.ToEggString(numberOfDecimalPlaces: 3) : backup.TotalGEInPiggyBank.ToString("n0"))}
-<:Drone:755719353529270342> {backup.DroneTakedowns.ToString("n0")}
-<:Drone:755719353529270342> Elite {backup.DroneTakedownsElite.ToString("n0")}
-Last Backup <t:{backup.LastBackupTime}:R>
-"
+                    IsInline = false,
+                    Name = "Current Details",
+                    Value =
+                        @$"{currentRank.RankWithSubRank}
+                        <:Egg_of_Prophecy_PE:669981330477547580>{backup.EggsOfProphecy}
+                        <:Soul_Egg_SE:724341890794913964>{backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}
+                        EB {backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}
+                        Prestiges {backup.NumPrestiges}
+                        <:Soul_Egg_SE:724341890794913964>/Prestige {(backup.SoulEggs / backup.NumPrestiges).ToEggString(numberOfDecimalPlaces: 3)}
+                        <:Golden_Egg_GE:692439755798872075> {(ge > 1_000_000_000 ? ge.ToEggString(numberOfDecimalPlaces: 3) : ge.ToString("n0"))}
+                        <:Piggy_bank:724396277676113955>  {(backup.TotalGEInPiggyBank > 1_000_000_000 ? backup.TotalGEInPiggyBank.ToEggString(numberOfDecimalPlaces: 3) : backup.TotalGEInPiggyBank.ToString("n0"))}
+                        <:Drone:755719353529270342> {backup.DroneTakedowns:n0}
+                        <:Drone:755719353529270342> Elite {backup.DroneTakedownsElite:n0}
+                        Last Backup <t:{backup.LastBackupTime}:R>"
                 });
             }
 
-            //await command.Channel.SendMessageAsync($"{command.User.Mention} used the command `/nextrank`", embed: builder.Build());
-            //await command.DeleteResponseFix();
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = builder.Build();
@@ -154,9 +164,9 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync($"⚠️ERROR: Command only works in co-op channels");
+                await command.RespondAsync(content: "", embed: EmbedError($"Command only works in co-op channels"));
                 return;
             }
 
@@ -167,14 +177,20 @@ Last Backup <t:{backup.LastBackupTime}:R>
         }
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, DiscordSocketClient discord, ContractUpdater contractUpdater, APILink apiLink) {
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, CoopStatusUpdater coopStatusUpdater, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
                 await command.RespondAsync("Updating coop...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default, db);
+                if(targetCoop.ThreadID != 0) {
+                    var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
+                    await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, slashCommands, default);
+                } else if(targetCoop.DiscordChannelId != 0) {
+                    await coopStatusUpdater.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                }
+
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }
@@ -183,19 +199,13 @@ Last Backup <t:{backup.LastBackupTime}:R>
             if(targetGuildContract != null) {
                 await command.RespondAsync("Updating contract...", ephemeral: true);
                 var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
-
-                //var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
-                //var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-                //var backups = await apiLink.GetUserBackups(dbusers, db);
-                //var backups = dbusers.Where(x => x.Backups is not null).SelectMany(x => x.Backups.Where(y => x.EggIncAccounts.Any(eid => eid.Id == y.EggIncId)).Select(y => new LeaderboardUser { User = x, Backup = y })).ToList();
-
-                await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, command);
+                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
+                await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, dbguild, command);
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
-                //await command.DeleteOriginalResponseAsync();
                 return;
             }
 
-            await command.RespondAsync($"⚠️ERROR: Command only works in contract or co-op channels");
+            await command.RespondAsync(content: "", embed: EmbedError($"Command only works in contract or co-op channels"));
         }
 
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
@@ -226,7 +236,7 @@ Last Backup <t:{backup.LastBackupTime}:R>
 
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Count(), ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
+            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
         [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
@@ -250,45 +260,71 @@ Last Backup <t:{backup.LastBackupTime}:R>
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
 
+        [ComponentCommand]
+        public static async Task WhatIsRSC(SocketMessageComponent component) {
+            var rscText = "The Contract Eggspert role is awarded to the top 10 highest scoring players of each scored contract, as well as the top-performers in Grades C, B, and A. The role will be removed after 7 days, and serves only to recognize eggceptional performance.\n\n" +
+                "Score is determined by comparing a player's `Total Eggs Delivered` to the 100 closest players in EB (50 above, 50 below). The number (score) next to a name denotes how many times greater than average the user's total was. I.e., a score of 1 is average, a score of 2 is double the average, etc.\n\n" +
+                "Contracts are scored manually by Palace staff once all Palace coops have finished, and the contract has expired. You can read more about scoring, and Running Score, in this announcement: https://discord.com/channels/656455567858073601/698270110279925770/939264092445745163";
+            var rscEmbed = new EmbedBuilder().WithColor(Color.LighterGrey).WithDescription(rscText).WithAuthor(new EmbedAuthorBuilder().WithName("What is this?").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
+
+            await component.RespondAsync(text: "", embed: rscEmbed, ephemeral: true);
+        }
+
         [SlashCommand(Description = "Get help from staff, please give details")]
-        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+            await command.DeferAsync(ephemeral: keepPrivate);
             var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
 
             if(guildFind is null) {
-                await command.RespondAsync("Callstaff cannot be sent, guild not found.");
+                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, guild not found.");
                 return;
             } else if(!guildFind.HasChannel(GuildChannelType.CallStaffChannel)) {
-                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
+                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
                 return;
             }
 
-            var socketGuild = client.Guilds.First(x => x.Id == guildFind.Id);
+            var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
 
             if(socketGuild is null) {
-                await command.RespondAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
-                return;
-            }
-
-            var channel = socketGuild.TextChannels.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffChannel).Id);
-
-            if(channel is null) {
-                await command.RespondAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
+                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
                 return;
             }
 
             var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
             var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
-
             var infoText = $"Staff has been called ({details})";
+            var message = $"{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
 
-            await channel.SendMessageAsync($"{staffTag}{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}");
-            await command.RespondAsync(infoText, ephemeral: keepPrivate);
             if(keepPrivate) {
-                var dmChannel = await command.User.CreateDMChannelAsync();
-                try {
-                    var message = await dmChannel.SendMessageAsync(infoText);
-                } catch(Exception) {
-                    await command.Channel.SendMessageAsync($"Private callstaff sent. (DMs are blocked)");
+                var channelForThreads = await ChannelHelper.GetTextChannel(db, _client, guildFind, socketGuild, GuildChannelType.PrivateCallStaff);
+                if(channelForThreads is not null) {
+                    var thread = await channelForThreads.CreateThreadAsync(name: $"{command.User.GlobalName ?? command.User.Username} [callstaff]", type: ThreadType.PrivateThread);
+                    var messageToPing = await thread.SendMessageAsync(".");
+                    await messageToPing.ModifyAsync(x => x.Content = staffTag);
+                    await messageToPing.DeleteAsync();
+                    await thread.SendMessageAsync(message);
+
+                    var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message + " " + thread.Mention });
+
+                    await command.ModifyOriginalResponseAsync($"{infoText}, they should respond in {thread.Mention}");
+
+                    return;
+                }
+            }
+
+            {
+                var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message });
+
+                if(response is null) {
+                    await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
+                    return;
+                }
+
+                await command.ModifyOriginalResponseAsync(infoText);
+
+                if(keepPrivate) {
+                    var dmResult = await BoolSendDm(command.User, infoText, db);
+                    if(dmResult != DMResult.Success) await command.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
                 }
             }
         }

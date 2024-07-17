@@ -1,14 +1,7 @@
-﻿using Discord.WebSocket;
-
-using EGG9000.Common.Commands;
-using EGG9000.Common.Helpers;
+﻿using EGG9000.Common.Commands;
 using EGG9000.Common.Services;
-
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
@@ -21,11 +14,11 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Test to see if bot is alive/check version", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task Ping(FauxCommand command, [SlashParam(Required = false)] bool showInChannel = false) {
 
-            string gitVersion = String.Empty;
+            var gitVersion = string.Empty;
     
-            using(Stream stream = Assembly.GetExecutingAssembly()
+            using(var stream = Assembly.GetExecutingAssembly()
                     .GetManifestResourceStream("EGG9000.Bot.version.txt"))
-            using(StreamReader reader = new StreamReader(stream)) {
+            using(var reader = new StreamReader(stream)) {
                 gitVersion = reader.ReadToEnd();
             }
 

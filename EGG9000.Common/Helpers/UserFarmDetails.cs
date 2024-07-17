@@ -1,6 +1,4 @@
 ﻿using Discord.WebSocket;
-
-using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
@@ -9,8 +7,6 @@ using EGG9000.Common.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Prefarm;
 
@@ -29,7 +25,7 @@ namespace EGG9000.Common.Helpers {
         public UInt32 League { get; set; }
         public EggIncAccount Account { get; set;}
 
-        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(coopStatus is null)
                 throw new ArgumentNullException(null, "coopStatus");
             Xref = xref;
@@ -42,7 +38,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup?.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, coop);
+                FarmStats = Farm?.WithStats(Backup, coop, customEggs, null, contract);
                 if(Farm is null)
                     ArchivedFarm = Backup?.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
@@ -50,7 +46,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Coop coop, UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Coop coop, UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(xref is null)
                 throw new ArgumentNullException(null, "xref");
             if(userWithbackup is null)
@@ -65,7 +61,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, coop);
+                FarmStats = Farm?.WithStats(Backup, coop, customEggs, contract: contract);
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
@@ -73,7 +69,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(userWithbackup is null)
                 throw new ArgumentNullException(null, "userWithBackup");
             if(userWithbackup.Backup is null)
@@ -85,7 +81,7 @@ namespace EGG9000.Common.Helpers {
                 Backup = userWithbackup.Backup;
                 Account = userWithbackup.Account;
                 Farm = Backup.Farms.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, null);
+                FarmStats = Farm?.WithStats(Backup, null, customEggs, contract: contract);
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;

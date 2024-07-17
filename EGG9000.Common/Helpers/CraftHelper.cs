@@ -1,7 +1,6 @@
 ﻿using Discord.Interactions;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
-using Ei;
 using System;
 using System.Collections.Generic;
 using System.Linq;

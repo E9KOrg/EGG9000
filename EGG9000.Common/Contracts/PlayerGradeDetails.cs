@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Contracts {
     public static class PlayerGradeDetails {
@@ -28,16 +23,15 @@ namespace EGG9000.Common.Contracts {
                 Ei.Contract.Types.PlayerGrade.GradeA => "A",
                 Ei.Contract.Types.PlayerGrade.GradeB => "B",
                 Ei.Contract.Types.PlayerGrade.GradeC => "C",
-                _ => "None",
+                _ => "Not Set",
             };
         }
 
         public static string GetImage(uint league) {
             return GetImage((Ei.Contract.Types.PlayerGrade)league);
         }
-            public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
-                var emoji = GetEmoji(grade);
-
+        public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
+            var emoji = GetEmoji(grade);
             var rgx = new Regex(@":(\d+)>");
             var id = rgx.Match(emoji).Groups[1];
             return $"https://cdn.discordapp.com/emojis/{id}.png?v=1";
@@ -46,25 +40,16 @@ namespace EGG9000.Common.Contracts {
             return GetNameFromLeague((int)league);
         }
 
-        public static String GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
+        public static string GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
             return GetText(grade) + " - " + GetNameFromLeague((int)grade);
         }
 
         public static string GetNameFromLeague(int league) {
-            switch(league) {
-                case 1:
-                    return "C";
-                case 2:
-                    return "B";
-                case 3:
-                    return "A";
-                case 4:
-                    return "AA";
-                case 5:
-                    return "AAA";
-                default:
-                    return "Not Set";
-            }
+            return GetText((Ei.Contract.Types.PlayerGrade)league);
+        }
+
+        public static Ei.Contract.Types.PlayerGrade GetGradeFromLeague(uint league) {
+            return (Ei.Contract.Types.PlayerGrade)league;
         }
     }
 }

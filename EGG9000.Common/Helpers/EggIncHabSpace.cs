@@ -1,11 +1,6 @@
 ﻿using EGG9000.Common.Database;
-
-using Newtonsoft.Json;
-
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Common.Helpers {
     public class EggIncHabSpace {
@@ -29,7 +24,7 @@ namespace EGG9000.Common.Helpers {
         //    }
         //}
 
-        public static Double GetBaseHabSpace(CustomFarm farm) {
+        public static double GetBaseHabSpace(CustomFarm farm) {
             double baseSpace = 0;
             if(farm?.Habs == null)
                 return baseSpace;
@@ -37,6 +32,21 @@ namespace EGG9000.Common.Helpers {
                 var hab = Habs.FirstOrDefault(x => x.id == habId);
                 if(hab != null) {
                     baseSpace += hab.baseHabSpace;
+                }
+            }
+
+            return baseSpace;
+        }
+
+        public static double GetScaledHabSpace(CustomFarm farm, double allScalar, double portalScalar) {
+            double baseSpace = 0;
+            if(farm?.Habs == null)
+                return baseSpace;
+            foreach(var habId in farm.Habs) {
+                var hab = Habs.FirstOrDefault(x => x.id == habId);
+                if(hab != null) {
+                    if(hab.id >= 17) baseSpace += hab.baseHabSpace * portalScalar * allScalar;
+                    else baseSpace += hab.baseHabSpace * allScalar;
                 }
             }
 

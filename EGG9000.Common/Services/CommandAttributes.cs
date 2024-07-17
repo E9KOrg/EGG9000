@@ -1,10 +1,8 @@
-﻿using Discord.Interactions;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Commands {
@@ -41,6 +39,7 @@ namespace EGG9000.Common.Commands {
         public string Description = "";
         public bool Required = true;
         public Type AutocompleteHandler;
+        public bool PositiveOnly = false;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
@@ -73,7 +72,7 @@ namespace EGG9000.Common.Commands {
 
     }
 
-    public interface AutoCompleteHandler {
+    public interface IAutoCompleteHandler {
         public Task Run(SocketAutocompleteInteraction arg);
     }
 }

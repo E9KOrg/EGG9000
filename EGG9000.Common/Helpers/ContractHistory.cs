@@ -2,16 +2,9 @@
 
 using Microsoft.Extensions.Logging;
 
-using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Helpers {
     public class ContractScoring {
@@ -23,24 +16,23 @@ namespace EGG9000.Common.Helpers {
             foreach(var coop in coops.Where(x => x.LastStatusUpdate != null)) {
                 var coopStatus = coop.LastStatusUpdate;
                 foreach(var xref in coop.UserCoopsXrefs.Where(x => x.JoinedCoop)) {
-                    //var contribution = coop.LastStatusUpdate.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
-                    //if(contribution != null) {
+
                     var maxAmount = contract.Details.GradeSpecs[(int)coop.League - 1].Goals.OrderBy(x => x.TargetAmount).Last().TargetAmount;
-                    //var lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
                     var archiveFarm = xref.User.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Backup?.ArchivedFarms.FirstOrDefault(x => x.CoopId == xref.Coop.Name.ToLower());
 
+                    ContributionInfoCompact lastStatus = null;
 
-                    Ei.ContractCoopStatusResponse.Types.ContributionInfo lastStatus = null;
+                    if(xref.LastStatus is not null)
+                        lastStatus = xref.LastStatus;
 
-                    if(xref.Status is not null)
-                        lastStatus = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(xref.Status);
+                    if(lastStatus is null && coopStatus.Contributors.Any(x => x.UserId == xref.EggIncId))
+                        lastStatus = new ContributionInfoCompact(coopStatus.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId));
 
-                    if(lastStatus is null)
-                        lastStatus = coopStatus.Contributors.FirstOrDefault(x => x.UserId == xref.EggIncId);
+                    if(lastStatus is null && coopStatus.Contributors.Any(x => x.ContributionAmount == archiveFarm?.ContributionAmount))
+                        lastStatus = new ContributionInfoCompact(coopStatus.Contributors.FirstOrDefault(x => x.ContributionAmount == archiveFarm?.ContributionAmount));
 
-                    if(lastStatus is null)
-                        lastStatus = coopStatus.Contributors.FirstOrDefault(x => x.ContributionAmount == archiveFarm?.ContributionAmount);
                     xrefcount++;
+
                     if(lastStatus is null) {
                         skipped++;
                         continue;
@@ -57,7 +49,6 @@ namespace EGG9000.Common.Helpers {
                         League = coop.League,
                         xref = xref,
                     });
-                    //}
                 }
             }
             histories = histories.GroupBy(x => x.UserId).Select(x => x.OrderBy(y => y.EggsShipped).First()).ToList();
@@ -77,13 +68,13 @@ namespace EGG9000.Common.Helpers {
                         averageEggs += historiesOrderedBySoulPower[averageIndex].EggsShipped;
                         count++;
                     }
-                    averageEggs = averageEggs / count;
+                    averageEggs /= count;
 
                     historiesOrderedBySoulPower[currentIndex].Score = count == 0 ? 1 : (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
                 }
             }
 
-            return histories.OrderBy(x => x.Score).ToList();
+            return [.. histories.OrderBy(x => x.Score)];
         }
         public class UserContractScore {
             public Guid UserId;

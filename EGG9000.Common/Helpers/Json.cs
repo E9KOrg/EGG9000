@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
-using System.Text;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 namespace EGG9000.Common.Helpers {
     public class IgnoreHasResolver : DefaultContractResolver {

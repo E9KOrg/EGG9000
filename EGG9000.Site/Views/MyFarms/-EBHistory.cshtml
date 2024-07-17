@@ -1,4 +1,12 @@
 ﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts)
+@{
+    string calculateMER(double se, ulong pe) {
+        se = se / 1e18;
+        var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
+        return String.Format(result % 1 == 0 ? "{0:0}" : "{0:0.00}", result);
+    }
+}
+
 <div class="container">
     <div class="row">
         <div class="col-sm">
@@ -33,8 +41,10 @@
             @if (Model.uncompletePEs[Model.backup.EggIncId].Count() > 0 || true) {
                 <div class="card" style="margin-top:15px;">
                     <h4 class="card-header" style="text-align: center">
-                        <button class="btn-sm btn btn-outline-primary" id="collapsePE" onclick="$('.collapsible-row').toggleClass('toggleHide')">Toggle Hidden</button>
-                        <br />
+                        @if (Model.uncompletePEs[Model.backup.EggIncId].Count() != 0) {
+                            <button class="btn-sm btn btn-outline-primary" id="collapsePE" onclick="$('.collapsible-row').toggleClass('toggleHide')">Toggle Hidden</button>
+                            <br />
+                        }
                         Missing Contract Eggs of Prophecy
                     </h4>
                     <table class="table table-sm align-middle collapsible-table table-striped">
@@ -47,13 +57,19 @@
                             </tr>
                         </thead>
                         <tbody id="content-collapse">
-                            @foreach (var contract in Model.uncompletePEs[Model.backup.EggIncId].OrderBy(c => c.Created).ToList()) {
+                            @if(Model.uncompletePEs[Model.backup.EggIncId].Count() == 0){
                                 <tr class="collapsible-row toggleHide">
-                                    <td>@contract.Name</td>
-                                    <td>@contract.ID</td>
-                                    <td>@contract.Created.ToString("yyyy-MM-dd")</td>
-                                    <td>@contract.Details.GetPossiblePE()</td>
+                                    <td colspan="4" style="text-align: center;">You've gathered all Prophecy Eggs from Contracts.<br /><a class="nav-link text-primary" href="https://rroll.to/iHgSMg" target="_blank" rel="nofollow">Ready to take the next challenge?</a></td>
                                 </tr>
+                            } else {
+                                @foreach (var contract in Model.uncompletePEs[Model.backup.EggIncId].OrderBy(c => c.Created).ToList()) {
+                                    <tr class="collapsible-row toggleHide">
+                                        <td>@contract.Name</td>
+                                        <td>@contract.ID</td>
+                                        <td>@contract.Created.ToString("yyyy-MM-dd")</td>
+                                        <td>@contract.Details.GetPossiblePE()</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                         <tbody id="altNotShownBody">
@@ -76,30 +92,31 @@
 
                         <thead>
                             <tr>
-                                @*/@if(Model.isAdmin){<th>EggIncID</th>}/*@
                                 <th>Date</th>
                                 <th>PE</th>
                                 <th style="text-align: right !important;">Soul Eggs</th>
                                 <th style="text-align: right !important;">EB</th>
+                                <th style="text-align: right !important;">MER</th>
                                 <th>Prestiges</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                @*/@if(Model.isAdmin){<td>@Model.backup.EggIncId</td>}/*@
                                 <td>Latest</td>
                                 <td>@Model.backup.EggsOfProphecy</td>
                                 <td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
                                 <td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td align="right">@calculateMER(Model.backup.SoulEggs, Model.backup.EggsOfProphecy).ToString()</td>
                                 <td>@Model.backup.NumPrestiges</td>
                             </tr>
-                            @foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
+                            @foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)
+                            .DistinctBy(snapshot => new { snapshot.EggsOfProphecy, snapshot.SoulEggs, snapshot.EarningsBonus, snapshot.Prestiges })) {
                                 <tr>
-                                    @*/@if(Model.isAdmin){<td>@snapshot.EggIncID</td>}/*@
                                     <td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
                                     <td>@snapshot.EggsOfProphecy</td>
                                     <td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
                                     <td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td align="right">@calculateMER(snapshot.SoulEggs, snapshot.EggsOfProphecy).ToString()</td>
                                     <td>@snapshot.Prestiges</td>
                                 </tr>
                             }
