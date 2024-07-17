@@ -18,6 +18,12 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Web;
 using System;
+using Microsoft.Extensions.Logging;
+using EGG9000.Common.Factories;
+using EGG9000.Common.Mocks;
+using MassTransit;
+using EGG9000.Bot.Consumers;
+using EGG9000.Common.Helpers;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -130,6 +136,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<JobService>();
             services.AddHostedService(provider => provider.GetService<JobService>());
 
+            FAQHelper.Populate(); //Necessary precursor to CommandService
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();
         }
