@@ -1,28 +1,16 @@
-﻿
-using Bugsnag.Payload;
-
-using EGG9000.Common.Database;
+﻿using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
 
 using Ei;
 
-using Google.Protobuf.WellKnownTypes;
-
 using MessagePack;
 
-using Microsoft.AspNetCore.Identity;
-
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
@@ -41,7 +29,7 @@ namespace EGG9000.Common.Database.Entities {
         public ulong? LastGuild { get; set; }
 
         public bool AcceptedRules { get; set; }
-
+        public bool DMSBlocked { get; set; } = false;
         public bool TempDisabled { get; set; }
         public bool showEB { get; set; }
 
@@ -106,7 +94,9 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
         public bool Banned { get; set; } = false;
-
+        public string ServersBannedFrom { get; set; } = ""; //Comma delimited list of Server IDs
+        public string Usernames { get; set; } = ""; //Comma delimited list of Username(s) associated with EggIncAccounts
+        public string EIDs { get; set; } = ""; //Comma delimited list of EID(s) associated with EggIncAccounts
 
         [NotMapped]
         private List<CustomBackup> _backups { get; set; }
@@ -241,32 +231,34 @@ namespace EGG9000.Common.Database.Entities {
         public void UpdateAccounts() {
             if(_eggIncIds is not null)
                 _eggIncIds = null;
-            if(_accounts is not null)
+            if(_accounts is not null) {
                 _contractRegistrationByte = MessagePackSerializer.Serialize(_accounts, lz4Options);
+                Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
+                EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
+            } 
         }
 
         public DateTimeOffset CreateOn { get; set; }
         public DateTimeOffset? Registered { get; set; }
 
+        public bool IsFreshEgg() { 
+            return Registered is not null && Registered.Value > DateTimeOffset.UtcNow.AddDays(-7);
+        }
+
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
         public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            return EggIncAccounts.Any(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
+            return EggIncAccounts.Any(x => x.Id == proto.UserId);
         }
 
 
         public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
             var eggIncIds = EggIncAccounts;
-            var nameId = eggIncIds.First(x => x.Id == proto.UserId || x.Name.ToLower() == proto.UserName.ToLower());
+            var nameId = eggIncIds.First(x => x.Id == proto.UserId);
 
             var update = false;
             if(string.IsNullOrEmpty(nameId.Id)) {
                 nameId.Id = proto.UserId;
-                update = true;
-            }
-            if(nameId.Name != proto.UserName) {
-                nameId
-                    .Name = proto.UserName;
                 update = true;
             }
             if(update) {
@@ -274,11 +266,21 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
-
+        public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
+            switch(dmResult) {
+                case DiscordHelpersExt.DMResult.Success:
+                    if(DMSBlocked) DMSBlocked = false; return true;
+                case DiscordHelpersExt.DMResult.CannotSendToUser: 
+                    if(!DMSBlocked) DMSBlocked = true; return true;
+                default:
+                    break;
+            }
+            return false;
+        }
 
         public void AddName(string Name, CustomBackup backup, string Id = null) {
             var eggIncIds = EggIncAccounts;
-            eggIncIds.Add(new EggIncAccount { Name = Name, Id = Id, Backup = backup });
+            eggIncIds.Add(new EggIncAccount { Id = Id, Backup = backup });
             UpdateAccounts();//Force JSON Update
         }
 
@@ -302,15 +304,12 @@ namespace EGG9000.Common.Database.Entities {
             public long ShipReturnTime { get; set; }
         }
 
-        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, Ei.RewardType selectReward) {
-            switch(selectReward) {
-                case Ei.RewardType.Artifact:
-                    return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.Artifact || g.RewardType == Ei.RewardType.ArtifactCase);
-                case Ei.RewardType.PiggyMultiplier:
-                    return gradeSpec.Goals.Any(g => g.RewardType == Ei.RewardType.PiggyMultiplier || g.RewardType == Ei.RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill);
-                default:
-                    return gradeSpec.Goals.Any(g => g.RewardType == selectReward);
-            }
+        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
+            return selectReward switch {
+                RewardType.Artifact => gradeSpec.Goals.Any(g => g.RewardType == RewardType.Artifact || g.RewardType == RewardType.ArtifactCase),
+                RewardType.PiggyMultiplier => gradeSpec.Goals.Any(g => g.RewardType == RewardType.PiggyMultiplier || g.RewardType == RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill),
+                _ => gradeSpec.Goals.Any(g => g.RewardType == selectReward),
+            };
         }
 
         public void UpdateUserBreak() {
@@ -371,8 +370,37 @@ namespace EGG9000.Common.Database.Entities {
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; }
         [Key(23)]
         public byte UltraGroup { get; set; }
+        [Key(24)]
+        public bool AFSWarningSent { get; set; } = false;
         [Key(25)]
+        public bool AFSMarkedClean { get; set; } = false;
+        [Key(26)]
         public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
+        [Key(27)]
+        public bool PingForNCUltra { get; set; } = false;
+        [Key(28)]
+        public float LatestRunningScore { get; set; } = 0;
+        [Key(29)]
+        public DateTimeOffset BreakSetTime { get; set; } = DateTimeOffset.MaxValue;
+        [Key(30)]
+        public bool BreakCoopWarningSent { get; set; } = false;
+        /*
+         * [Key(31)] and [Key(31)] currently in progress of development.
+         */
+        [Key(33)]
+        public bool CraftingWarningSent { get; set; } = false;
+        [Key(34)]
+        public bool CraftingMarkedClean { get; set; } = false;
+        [Key(35)]
+        public bool MERWarningSent { get; set; } = false;
+        [Key(36)]
+        public bool MERMarkedClean { get; set; } = false;
+        [Key(37)]
+        public bool TimeCheatsMarkedClean { get; set; } = false;
+        [Key(38)]
+        public bool DoTwoToThreeContracts { get; set; } = false;
+        [Key(39)]
+        public bool DoUnfinishedCollegtibles { get; set; } = false;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
@@ -383,7 +411,8 @@ namespace EGG9000.Common.Database.Entities {
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
             SentBreakWarning = false;
-
+            BreakSetTime = until == default ? DateTimeOffset.MaxValue : DateTimeOffset.Now;
+            BreakCoopWarningSent = false;
             dbuser.UpdateUserBreak();
         }
 
@@ -415,5 +444,13 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
+
+        public bool HasActiveSubscription() {
+            if(SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
+                return true;
+            }
+
+            return false;
+        }
     }
 }

@@ -1,11 +1,12 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
+@using static EGG9000.Common.Helpers.CreateCoopsV2;
 @{
 	ViewData["Title"] = "Admin";
 	var days = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] });
 	var days2 = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
 }
 
-@if (User.IsInRole("Admin")) {
+@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")){
 	<a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
 }
 <a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
@@ -16,10 +17,16 @@
 }
 <a href="/admin/duplicatechannels" class="btn btn-primary">Duplicate Channels</a>
 <a href="/admin/easteregghunt" class="btn btn-primary">Easter Egg Hunt</a>
+<a href="/admin/halloweenhunt" class="btn btn-primary">Halloween Egg Hunt</a>
 <a href="/admin/configureserver" class="btn btn-primary">Customize Server</a>
 <a href="/admin/standardpermit" class="btn btn-primary">Standard Permits</a>
 <a href="/admin/inactiveplayers" class="btn btn-primary">Inactive Players</a>
 <a href="/admin/automatedtasks" class="btn btn-primary">Automated Tasks</a>
+<a href="/admin/latestdemerits" class="btn btn-primary">Latest Demerits</a>
+@if (Model.Guild.AllowGuilds)
+{
+	<a href="/admin/guilds" class="btn btn-primary">Guilds</a>
+}
 
 <div class="clearfix">
 	<div class="float-left card">
@@ -31,7 +38,7 @@
 				<thead>
 					<tr>
 						<th>Server</th>
-						<th>Channels</th>
+						<th>Threads</th>
 						<th>Active Coops</th>
 						<th>🏁 Coops</th>
 						<th>Available for Coops</th>
@@ -44,16 +51,16 @@
 						int available;
 						if (first) {
 							first = false;
-							available = Math.Max(450 - guild.ChannelCount, 0);
+							available = Math.Max(PrimaryMaxThreads - guild.ThreadCount, 0);
 
 						} else {
-							available = Math.Max(500 - guild.ChannelCount, 0);
+							available = Math.Max(OverflowMaxThreads - guild.ThreadCount, 0);
 
 						}
 						availableSum += available;
 						<tr>
 							<td>@guild.Name</td>
-							<td>@guild.ChannelCount</td>
+							<td>@guild.ThreadCount</td>
 							<td>@guild.ActiveCoops</td>
 							<td>@guild.FinishedCoops</td>
 							<td>@(available)</td>
@@ -61,11 +68,18 @@
 					}
 				}
 				<tr>
-					<th colspan="4" align="right">Total Channels Available for Co-ops</th>
+					<th colspan="4" align="right">Total Threads Available for Co-ops</th>
 					<td>
 						@availableSum
 					</td>
 				</tr>
+				<tr>
+					<th colspan="4" align="right">Co-ops waiting on thread creation</th>
+					<td>
+						@Model.CoopsWithoutThreads
+					</td>
+				</tr>
+
 			</table>
 		</div>
 	</div>
@@ -108,49 +122,60 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+@section Scripts {
 <script>
-	var options = {
-		chart: {
-			type: 'area',
-			stacked: false,
-			zoom: {
-				autoScaleYaxis: true
-			}
-		},
-		dataLabels: {
-			enabled: false
-		},
-		series: [{
-			name: "Number of Co-ops",
-			data: @Html.Raw(JsonConvert.SerializeObject(days))
+	$.ajax({
+        url: "/admin/getgraphs",
+        success: function (data) {
+            CreateChart(data.days, data.days2);
+        }
+    });
+
+	function CreateChart(days, days2) {
+		var options = {
+			chart: {
+				type: 'area',
+				stacked: false,
+				zoom: {
+					autoScaleYaxis: true
+				}
+			},
+			dataLabels: {
+				enabled: false
+			},
+			series: [{
+				name: "Number of Co-ops",
+				data: days// @Html.Raw(JsonConvert.SerializeObject(days))
+				}, {
+				name: "Number of Active Users",
+				data: days2//@Html.Raw(JsonConvert.SerializeObject(days2))
+				}],
+			yaxis: [{
+				opposite: true,
+				title: { text: "Number of Co-ops" }
 			}, {
-			name: "Number of Active Users",
-			data: @Html.Raw(JsonConvert.SerializeObject(days2))
+				title: { text: "Number of Active Users" }
 			}],
-		yaxis: [{
-			opposite: true,
-			title: { text: "Number of Co-ops" }
-		}, {
-			title: { text: "Number of Active Users" }
-		}],
-		xaxis: {
-			type: 'datetime'
-		},
-		tooltip: {
-			x: {
-				format: 'dd MMM yyyy'
+			xaxis: {
+				type: 'datetime'
+			},
+			tooltip: {
+				x: {
+					format: 'dd MMM yyyy'
+				}
+			},
+			dataLabels: {
+				enabled: false
+			},
+			stroke: {
+				width: 2
 			}
-		},
-		dataLabels: {
-			enabled: false
-		},
-		stroke: {
-			width: 2
 		}
+
+		var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+		chart.render();
 	}
-
-	var chart = new ApexCharts(document.querySelector("#chart"), options);
-
-	chart.render();
 </script>
 
+}

@@ -2,8 +2,7 @@
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     public partial class TrackOutsideCoops : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

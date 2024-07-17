@@ -1,7 +1,70 @@
 ﻿@model List<EventCustomization>
+@using System.Security.Claims;
 @{
     ViewData["Title"] = "Event Customization";
+
 }
+
+<style>
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+
+        .tooltip-custom:hover .tooltiptext-custom {
+            display: inline-block;
+            z-index: 3;
+            position: absolute;
+            bottom: 25px; /* Adjust this value as needed */
+            left: 50%;
+            transform: translateX(-50%); /* Center the tooltip */
+        }
+
+    .tooltiptext-custom {
+        display: none;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: nowrap;
+        text-align: center; /* Center the text within the tooltip */
+        position: absolute;
+    }
+
+        .tooltiptext-custom .bootstrap-dark {
+            background-color: rgba(33, 37, 41, 0.95);
+        }
+
+        .tooltiptext-custom .bootstrap {
+            background-color: rgba(130, 135, 140, 0.95);
+        }
+
+    .bootstrap-dark .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+
+    .bootstrap .speech-bubble {
+        background-color: rgba(130, 135, 140, 0.95);
+    }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px; /* Adjust the padding to your preference */
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+        /* Create the triangle */
+        .speech-bubble :after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -15px; /* Half of the triangle's width */
+            border-width: 15px; /* Adjust the size of the triangle */
+            border-style: solid;
+            border-color: #ccc transparent transparent transparent;
+        }
+</style>
 
 <div ng-controller="AdminPage">
     <h2>Event Customization</h2>
@@ -30,8 +93,30 @@
     </table>
 
     <script type="text/ng-template" id="Edit.html">
-        <div class="modal-header">Edit Item</div>
-        <div class="modal-body">
+        <style>
+            .modal-body {
+                max-height: calc(100vh - 180px); /* Adjust the value as needed */
+                overflow-y: auto;
+            }
+
+            .tip-container {
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                padding: 10px;
+            }
+
+            .tip-item {
+                margin-bottom: 10px;
+            }
+        </style>
+        <div class="modal-header d-flex justify-content-between align-items-center">
+            <span>Edit Item</span>
+            <button type="button" class="close" ng-click="Cancel()" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body overflow-auto">
             <div class="form-group">
                 <label>Type</label>
                 <input class="form-control" disabled ng-model="item.type" />
@@ -42,23 +127,8 @@
             </div>
             <div class="form-group">
                 <label for="Description">Description</label>
-                <input class="form-control" id="Description" ng-model="item.description" />
+                <textarea spellcheck="false" class="form-control" id="Description" ng-model="item.description"></textarea>
             </div>
-                <h3>Tips</h3>
-            <div ng-repeat="tip in item.Tips track by $index">
-                <div class="form-group">
-                    <label>Title</label>
-                    <input class="form-control" ng-model="tip.Name" />
-                </div>
-                <div class="form-group">
-                    <label>Text</label>
-
-
-                    <input class="form-control" ng-model="tip.Value" />
-                    <button class="btn btn-danger" ng-click="RemoveTip($index)">X</button>
-                </div>
-            </div>
-            <button class="btn btn-success" ng-click="AddTip()">+ Add Tip</button>
             <div class="form-group">
                 <label>ThumbnailUrl</label>
                 <input class="form-control" ng-model="item.thumbnailURL" />
@@ -68,34 +138,53 @@
                 <input class="form-control" ng-model="item.emoji" />
             </div>
 
+            <hr class="mt-1 mb-1">
+            
+            <h3>Tips</h3>
+            <div ng-repeat="tip in item.Tips track by $index" class="tip-container">
+                <div class="form-group tip-item">
+                    <label>Title</label>
+                    <input class="form-control" ng-model="tip.Name" />
+                </div>
+                <div class="form-group tip-item">
+                    <label>Text</label>
+                    <textarea spellcheck="false" class="form-control" ng-model="tip.Value"></textarea>
+                </div>
+                <div class="form-group tip-item">
+                    <label>Remove Tip</label> <br>
+                    <button class="btn btn-danger" ng-click="RemoveTip($index)">X</button>
+                </div>
+            </div>
+
+            <button class="mt-2 btn btn-success" ng-click="AddTip()">+ Add Tip</button>
+
+            <hr class="mt-1 mb-1">
+
             <h3>Notifications</h3>
-            <div ng-repeat="notification in item.settings.notifications track by $index">
-                <div class="row">
+            <div class="pb-2" ng-repeat="notification in item.settings.notifications track by $index">
+                <div class="row align-items-center">
                     <div class="col">
-                        GuildId
+                        <label for="roleId{{$index}}">Role ID</label>
+                        <input id="roleId{{$index}}" class="form-control" ng-model="notification.roleIdString" />
                     </div>
                     <div class="col">
-                        <input class="form-control" ng-model="notification.guildID" />
+                        <label for="minValue{{$index}}" class="tooltip-custom">
+                            Min Value (-1 for Ultra pings in event channel)
+                            <span class="tooltiptext-custom speech-bubble">
+                                The minimum value the event must be to ping this role. <br>
+                                For example, to ping a role specifically <br>for 3x prestige you would enter 3
+                            </span>
+                        </label>
+                        <input id="minValue{{$index}}" class="form-control" ng-model="notification.minValue" />
                     </div>
                     <div class="col">
-                        RoleID
-                    </div>
-                    <div class="col">
-                        <input class="form-control" ng-model="notification.roleID" />
-                    </div>
-                    <div class="col">
-                        MinValue
-                    </div>
-                    <div class="col">
-                        <input class="form-control" ng-model="notification.minValue" />
-                    </div>
-                    <div class="col">
-                        <button class="btn btn-danger" ng-click="$parent.settings.notifications.splice($index)">X</button>
+                        <label for="removeNotif{{$index}}">Remove</label> <br>
+                        <button id="removeNotif{{$index}}" class="btn btn-danger" ng-click="$parent.item.settings.notifications.splice($index, 1)">X</button>
                     </div>
                 </div>
             </div>
-            <button class="btn btn-success" ng-click="item.settings.notifications.push({})">+ Add Notification</button>
-        </div>
+            <button class="mt-2 btn btn-success" ng-click="item.settings.notifications.push({})">+ Add Notification</button>
+        </div>        
         <div class="modal-footer">
             <button class="btn btn-success" ng-click="Save()">Save</button>
             <button class="btn btn-default" ng-click="Cancel()">Cancel</button>
@@ -164,8 +253,8 @@
 
                             $scope.Save = function Save() {
                                 $scope.item.Fields = JSON.stringify($scope.item.Tips);
-                                console.log($scope.item);
                                 $scope.item._settings = JSON.stringify($scope.item.settings);
+                                console.log($scope.item);
                                 $http({ method: 'POST', data: item, url: '/admin/saveeventcustomization/' })
                                     .then(function successCallback(response) {
                                         if (response.data.Error) {

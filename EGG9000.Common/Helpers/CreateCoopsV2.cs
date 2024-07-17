@@ -1,28 +1,37 @@
-﻿using System;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Polly;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using Discord;
-using Discord.WebSocket;
-
-using EGG9000.Bot;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
-
-using Polly;
-using EGG9000.Common.Contracts;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace EGG9000.Common.Helpers {
     public class CreateCoopsV2 {
-        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group) {
+
+        //Overflow moved from 500 -> 495 to account for any ghosting like we saw with Overflow 1
+        public const int PrimaryMaxChannels = 450;
+        public const int OverflowMaxChannels = 495;
+
+        //Leave above 970 so Discord does it's auto-pruning
+        //Overflow moved from 1000 -> 995 to account for any ghosting like we saw with Overflow 1
+        public const int PrimaryMaxThreads = 975;
+        public const int OverflowMaxThreads = 995;
+
+        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group, bool allowAllGrades) {
             var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             string EIID = null;
 
-            foreach(var account in accounts) {
+            foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
                 var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
                 if(r?.Grade == grade) {
                     EIID = account.Account.Id;
@@ -48,7 +57,7 @@ namespace EGG9000.Common.Helpers {
                 MaxUsers = contract.MaxUsers,
                 Status = CoopStatusEnum.WaitingOnAssigned,
                 League = (uint)grade,
-                AnyLeague = contract.cc_only,
+                AnyLeague = allowAllGrades,
                 CoopEnds = coopEnds,
                 CreatorID = EIID,
                 Group = Group
@@ -76,7 +85,7 @@ namespace EGG9000.Common.Helpers {
             //    coopLength -= Math.Abs((DateTimeOffset.Now - guildContract.Contract.GoodUntil).TotalSeconds);
             //}
 
-            await CreateCoopViaApi(contract.ID, grade, coop, secondsRemaining, EIID, contract.cc_only);
+            await CreateCoopViaApi(contract.ID, grade, coop, secondsRemaining, EIID, allowAllGrades);
 
             await db.SaveChangesAsync();
             return coop;
@@ -84,19 +93,19 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool subOnly = false) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades) {
             userid ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
-              .WaitAndRetry(new[]
-              {
+              .WaitAndRetry(
+              [
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(3),
                 TimeSpan.FromSeconds(7)
-              });
+              ]);
 
             try {
-                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coop, secondsRemaining, userid, subOnly));
+                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coop, secondsRemaining, userid, allowAllGrades));
             } catch(Exception) {
                 return false;
             }
@@ -132,43 +141,27 @@ namespace EGG9000.Common.Helpers {
 
             return true;
         }
-        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool subOnly = false) {
-            //var request = new Ei.CreateCoopRequest {
-            //    ContractIdentifier = ContractID,
-            //    CoopIdentifier = coop.Name.ToLower(),
-            //    UserId = userid,
-            //    Grade = grade,
-            //    SecondsRemaining = secondsRemaining
-            //};
+        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades) {
             var request = new Ei.CreateCoopRequest {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 SecondsRemaining = secondsRemaining,
                 UserId = userid,
                 UserName = userid,
-                Platform = Aux.Platform.Droid,
+                Platform = Ei.Platform.Droid,
                 ClientVersion = 54,
                 SoulPower = 4624103542699216300,
                 Eop = 4632655904192331776,
                 Grade = grade,
-                //Public = false,
-                //CcOnly = false,
-                //PointsReplay = true,
-                AllowAllGrades = true,
+                AllowAllGrades = allowAllGrades,
             };
-            //if(subOnly) {
-            //    request.AllowAllGrades = true;
-            //    request.CcOnly = true;
-            //}
+
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
-            if(response == null) {
-                throw new Exception();
-            }
-            return response;
+            return response ?? throw new Exception();
         }
 
 
-        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, String EggIncId, String eggIncName, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel) {
+        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, string EggIncId, string eggIncName, ApplicationDbContext db, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,
@@ -181,24 +174,26 @@ namespace EGG9000.Common.Helpers {
                 WasAssigned = true
             };
 
-            var eggEmoji = EggIncEggs.GetEggById((int)targetCoop.Contract.Details.Egg).Emoji;
+            var eggEmoji = EggIncStatics.GetEggById(targetCoop.Contract.Details.Egg, targetCoop.Contract, await db.GetCustomEggsAsync()).emoji;
             var mention = user.Mention;
             if(dbuser.EggIncAccounts.Count > 1) {
                 mention += $"({eggIncName})";
             }
             try {
-                await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                if(targetChannel.GetChannelType() != ChannelType.PrivateThread) {
+                    await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                }
             } catch(Exception) {
                 try {
                     await commandChannel.SendMessageAsync(commandChannel.Guild.Id != targetChannel.Guild.Id ? $"{mention} looks like you are not in the overflow servers. **Make sure and join the overflow servers in <#775558629671698442> to see your co-op, it's in {targetChannel.Guild.Name}**." : "Looks like an error happened, please use /callstaff");
                 } catch(Exception) {
-                    await targetChannel.SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
+                    if(!silent) await targetChannel.SendMessageAsync($"Added {mention}, please join {targetCoop.Name} for the contract {targetCoop.Contract.Name}");
                     return newxref;
                 }
             }
 
-
-            await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
+            //Always ping when it's a Thread - this is how users are added to the channel
+            if(!silent || targetChannel.GetChannelType() == ChannelType.PrivateThread) await targetChannel.SendMessageAsync($"Please join {targetCoop.Name} {mention} for the contract {eggEmoji} {targetCoop.Contract.Name}");
             return newxref;
         }
     }

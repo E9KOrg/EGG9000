@@ -1,0 +1,152 @@
+﻿@model List<LeaderboardUser>
+@using EGG9000.Bot;
+@using EGG9000.Common;
+
+@inject Discord.WebSocket.DiscordSocketClient discord
+@{
+    ViewData["Title"] = "Crafing XP/Level Comparison";
+    List<Tuple<int, double>> myCrafting = ViewBag.MyCraftingData;
+    List<string> myNames = ViewBag.MyNames;
+    List<Tuple<int, double>> allCraftingData = ViewBag.AllCraftingData;
+    List<int> allCraftingLevels = ViewBag.AllCraftingLevels;
+}
+
+<h1>Crafting XP/Level Comparison</h1>
+<hr />
+
+<div class="row">
+    <div class="col-md-4 mt-3">
+        <div class="card">
+            <div class="card-header"><b>@(myCrafting.Count > 1 ? "Your Levels/Total Crafting XPs" : "Your Level/Total Crafting XP")</b></div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tbody>
+                        @foreach (var grade in myCrafting)
+                        {
+                            <tr>
+                                <td>@myNames[myCrafting.IndexOf(grade)] @($" - Level {grade.Item1}")</td>
+                                <td>@($"{grade.Item2:n0}")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 mt-3">
+        <div class="card">
+            <div class="card-header"><b>Server Crafting XP Stats</b></div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td>Highest Total Crafting XP:</td>
+                            <td>@($"{allCraftingData.Select(o => o.Item2).Max():n0}")</td>
+                        </tr>
+                        <tr>
+                            <td>Average Total Crafting XP:</td>
+                            <td>@($"{allCraftingData.Select(o => o.Item2).Average():n0}")</td>
+                        </tr>
+                        <tr>
+                            <td>Median Total Crafting XP:</td>
+                            <td>@($"{allCraftingData.Select(o => o.Item2).OrderByDescending(o => o).ToList()[allCraftingData.Select(o => o.Item2).ToList().Count() / 2]:n0}")</td>
+                        </tr>
+                        <tr>
+                            <td>Combined Server Total Crafting XP:</td>
+                            <td>@($"{allCraftingData.Select(o => o.Item2).Sum():n0}")</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+</div>
+<div class="mt-3 card">
+    <h4 class="card-header">Server Crafting Level Distribution</h4>
+    <div class="card-body">
+        <div id="chartGrade"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    var ebOptions = {
+        series: [{
+            data: [
+                    @foreach (var g in allCraftingLevels) {
+                        if (allCraftingData.Count(o => o.Item1 == g) != 0) {
+                            @Html.Raw($"{allCraftingData.Count(o => o.Item1 == g)},")
+                        }
+                    }
+                ]
+        }],
+        theme: {
+            mode: getCookie('Egg9000Theme') == 'bootstrap-dark' ? 'dark' : 'light'
+        },
+        annotations: {
+            points: [
+                @foreach (var crafting in myCrafting) {
+                    @:{
+                    @:x: '@crafting.Item1',
+                    @:seriesIndex: 0,
+                    @:label: {
+                    @:borderColor: '#775DD0',
+                    @:offsetY: 0,
+                    @:style: {
+                    @:color: '#fff',
+                    @:background: '#775DD0',
+                    @:      },
+                    @:text: '@((myCrafting.Count > 1 ? String.Join(",", (myNames.Where(m => myCrafting[myNames.IndexOf(m)].Item1 == crafting.Item1))) + (myCrafting.Count(g => g.Item1 == crafting.Item1) > 1 ? " are" : " is") : "You are")) Level @crafting.Item1',
+                    @:  }
+                    @:},
+                }
+                ]
+            },
+    chart: {
+        height: 350,
+            type: 'bar',
+            },
+    plotOptions: {
+        bar: {
+            distributed: true,
+                }
+    },
+    dataLabels: {
+        enabled: false
+    },
+    legend: {
+        show: false
+    },
+    xaxis: {
+        categories: [
+            @foreach (var g in allCraftingLevels)
+            {
+                if (allCraftingData.Count(o => o.Item1 == g) != 0)
+                {
+                    @Html.Raw($"'{g}',")
+                }
+            }
+        ],
+        labels: {
+            style: {
+                fontSize: '12px'
+            }
+        }
+    },
+    tooltip: {
+        y: {
+            formatter: function(val) {
+                return val
+            },
+            title: {
+                formatter: function (seriesName) {
+                    return ''
+                }
+            }
+        }
+    }
+        };
+    var gradeChart = new ApexCharts(document.querySelector("#chartGrade"), ebOptions);
+    gradeChart.render();
+</script>

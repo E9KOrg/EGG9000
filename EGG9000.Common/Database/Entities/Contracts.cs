@@ -1,9 +1,8 @@
-﻿using Newtonsoft.Json;
+﻿using Ei;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     public class Contract {
@@ -24,6 +23,18 @@ namespace EGG9000.Common.Database.Entities {
 
         public string _response { get; set; }
 
+        public bool HadTwoRewards { get; set; }
+        public string custom_eggs { get; set; }
+
+        [NotMapped]
+        public List<CustomEgg> CustomEggs {
+            get {
+                return JsonConvert.DeserializeObject<List<CustomEgg>>(custom_eggs);
+            }
+        }
+
+        public double egg_value { get; set; }
+
         [NotMapped]
         private Ei.Contract _details { get; set; }
         [NotMapped]
@@ -37,6 +48,10 @@ namespace EGG9000.Common.Database.Entities {
                 }
                 return _details;
             }
+        }
+        public void OverwriteDetails(Ei.Contract details) {
+            _details = details;
+            _response = JsonConvert.SerializeObject(details);
         }
 
 

@@ -1,13 +1,9 @@
-﻿
-using Newtonsoft.Json;
-
-using System;
+﻿using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     public class Guild {
@@ -47,16 +43,47 @@ namespace EGG9000.Common.Database.Entities {
         //public ulong? FailedCategory { get; set; }
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
-        
+
+        public bool AddOutsideCoops { get; set; } = true;
+
+        public string _coopSettingsJson { get; set; }
+        [NotMapped]
+        private List<ServerCoopSetting> _coopSettings { get; set; }
+        [NotMapped]
+        public List<ServerCoopSetting> CoopSettings {
+            get {
+                _coopSettings ??= JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
+                return _coopSettings;
+            }
+            set {
+                value.RemoveAll(x => !x.Enabled && !x.Locked);
+                _coopSettings = value;
+                _coopSettingsJson = JsonConvert.SerializeObject(value);
+            }
+        }
+
+        public string _eventCustomizationsJson { get; set; }
+        [NotMapped]
+        private List<EventCustomization> _eventCustomizations { get; set; }
+        [NotMapped]
+        public List<EventCustomization> EventCustomzations {
+            get {
+                _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
+                return _eventCustomizations;
+            }
+            set {
+                _eventCustomizations = value;
+                _eventCustomizationsJson = JsonConvert.SerializeObject(value);
+            }
+        }
+
         public string _channelDetailsJson { get; set; }
         [NotMapped]
         private List<ChannelDetail> _channelDetails { get; set; }
         [NotMapped]
         public List<ChannelDetail> ChannelDetails {
             get {
-                if(_channelDetails == null) {
-                    _channelDetails = JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
-                }
+                _channelDetails ??= JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
                 return _channelDetails;
             }
             set {
@@ -68,25 +95,72 @@ namespace EGG9000.Common.Database.Entities {
         public bool HasChannel(GuildChannelType channelType) {
             return ChannelDetails.Any(x => x.ChannelType == channelType && x.Id > 0);
         }
+        public ServerCoopSetting GetCoopSetting(GuildCoopSetting coopSetting) {
+            return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) ?? new ServerCoopSetting { CoopSetting = coopSetting };
+        }
+        public bool IsLockedAndEnabled(GuildCoopSetting coopSetting) {
+            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
+            return setting != null && setting.Enabled && setting.Locked;
+        }
+        public bool IsLockedAndDisabled(GuildCoopSetting coopSetting) {
+            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
+            return setting != null && !setting.Enabled && setting.Locked;
+        }
         public string RolesToSync { get; set; }
         public bool DisableBG { get; set; }
         public bool AllowGuilds { get; set; }
         public string GroupRoles { get; set; }
         public bool PublicScoreGrid { get; set; }
+        public bool RemoveFindCoopSpot { get; set; }
+    }
+
+    [NotMapped]
+    public class ServerCoopSetting {
+        public GuildCoopSetting CoopSetting { get; set; }
+        public bool Enabled { get; set; } = false;
+        public bool Locked { get; set; } = false;
+    }
+
+    public enum GuildCoopSetting {
+        [Description("All assigned members have joined the co-op")]
+        PingOnFull = 0,
+        [Description("Highest assigned EB has joined")]
+        PingOnHighestEB = 1,
+        [Description("Co-op has finished")]
+        PingOnFinished = 2,
+        [Description("Co-op is cleared for exit")]
+        PingOnEveryoneCheckedIn = 3,
+        [Description("Any non-bot message is sent in channel")]
+        PingOnMessage = 4,
+        [Description("Additional DM alongside the standard @mention in the co-op channel")]
+        PingOnCoopCreated = 5,
+        [Description("Get notified when someone adds/removes a Tachyon Deflector")]
+        PingOnTachyonChange = 6,
+        [Description("Get notified when your co-op will complete as soon as everyone checks in")]
+        PingOnCompleteOnCheckIn = 7
     }
 
     [NotMapped]
     public class ChannelDetail {
         public GuildChannelType ChannelType { get; set; }
-        public UInt64 Id { get; set; }
+        public ulong Id { get; set; }
     }
 
+    /*
+     * Start a property with the following to indicate..:
+     * 
+     * "/TC/" The ID can either use a channel or a thread - assumed to be channel-only otherwise
+     * "/R/" The ID represents a role that is fillable
+     * 
+     * "Required: " The option is required for the bot to function normally
+     * "Optional: " The option is not required, but a QOL
+     */
     public enum GuildChannelType {
         [Description("Required: Greets new users and handles registering")]
         Welcome = 0,
-        [Description("Required: Announces new users who registered and other various messages like new rank roles")]
+        [Description("/TC/Required: Announces new users who registered and other various messages like new rank roles")]
         General = 1,
-        [Description("Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
+        [Description("/TC/Optional: Separate channel for rank-up messages. If not filled, will use 'General'")]
         AltRankup = 23,
         [Description("Required: Rules channel you want people to read before registering")]
         Rules = 2,
@@ -94,65 +168,81 @@ namespace EGG9000.Common.Database.Entities {
         Leaderboard = 3,
         [Description("Optional: Shows in-game daily events")]
         GameEvents = 4,
-        [Description("Optional: FAQ Channel linked to when announcing new registered users")]
+        [Description("/TC/Optional: FAQ Channel linked to when announcing new registered users")]
         FaqChannel = 5,
         [Description("Required: Category for contract channels")]
         ContractCategory = 6,
-        [Description("Optional: Category for failed co-ops")]
+        [Description("Required: Category for failed co-ops")]
         FailedCategory = 8,
-        [Description("Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
+        [Description("/TC/Optional: Channel for warning messages like having bot DMs blocked (can be the same as another channel)")]
         WarningMessagesForUser = 9,
         [Description("Optional: Shows limited time shells")]
         LimitedTimeShells = 10,
-        [Description("Optional: Limited time shells notification role")]
+        [Description("/R/Limited time shells notification role")]
         LimitedTimeShellsRole = 11,
-        [Description("Optional: Outside Co-op Log")]
+        [Description("/TC/Optional: Outside Co-op Log")]
         OutsideCoopLog = 12,
-        [Description("Optional: Missing Boarding Group Role")]
+        [Description("/R/Missing Boarding Group Role")]
         MissingBoardingGroupRole = 14,
-        [Description("Optional: Active Role (participated in a co-op in the last 3 weeks)")]
+        [Description("/R/Active Role (participated in a co-op in the last 3 weeks)")]
         ActiveRole = 15,
-        [Description("Optional: Grade AAA Role")]
+        [Description("/R/Grade AAA Role")]
         GradeAAA = 16,
-        [Description("Optional: Grade AA Role")]
+        [Description("/R/Grade AA Role")]
         GradeAA = 17,
-        [Description("Optional: Grade A Role")]
+        [Description("/R/Grade A Role")]
         GradeA = 18,
-        [Description("Optional: Grade B Role")]
+        [Description("/R/Grade B Role")]
         GradeB = 19,
-        [Description("Optional: Grade C Role")]
+        [Description("/R/Grade C Role")]
         GradeC = 20,
-        [Description("Optional: Game Version Outdated Role")]
+        [Description("/R/Game Version Outdated Role")]
         GameVersionOutdated = 21,
-        [Description("Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
+        [Description("/TC/Optional: Demerit Log, adding this channel will automate demerits in co-ops")]
         DemeritLogChannel = 22,
-        [Description("Optional: 'Android' Role")]
+        [Description("/R/'Android' Role")]
         AndroidRole = 24,
-        [Description("Optional: 'iOS/Apple' Role")]
+        [Description("/R/'iOS/Apple' Role")]
         IosRole = 25,
-        [Description("Optional: 'Enlightenment Diamond' Role")]
+        [Description("/R/'Enlightenment Diamond' Role")]
         EnDRole = 26,
-        [Description("Optional: 'Nobel prize in Animal Husbandry' Role")]
+        [Description("/R/'Nobel prize in Animal Husbandry' Role")]
         NAHRole = 27,
-        [Description("Optional: 'All-Star Club' Role")]
+        [Description("/R/'All-Star Club' Role")]
         ASCRole = 28,
-        [Description("Optional: Channel for /callstaff messages")]
+        [Description("/TC/Optional: Where /callstaff messages will appear")]
         CallStaffChannel = 29,
-        [Description("Optional: Role for staff to ping in /callstaff instances")]
+        [Description("Optional: Where private /callstaff threads will be created, needs to be a channel accessible to everyone")]
+        PrivateCallStaff = 45,
+        [Description("/R/Role for staff to ping in /callstaff instances")]
         CallStaffTagRole = 30,
-        [Description("Optional: Role for standard subscriptions")]
+        [Description("/R/Role for standard subscriptions")]
         StandardSubscription = 31,
-        [Description("Optional: Role for pro subscriptions")]
+        [Description("/R/Role for pro subscriptions")]
         ProSubscription = 32,
         [Description("Optional: Subscription-Only Contract Category, adding this will prevent sub-only contracts from appearing elsewhere.")]
         SubscriptionContractCategory = 33,
         [Description("Optional: Subscription-Only Event Channel, adding this will prevent sub-only events from appearing elsewhere.")]
         SubscriptionGameEvents = 34,
-        [Description("Optional: Merit Log, all merits added to users will appear in this channel")]
+        [Description("/TC/Optional: Merit Log, all merits added to users will appear in this channel")]
         MeritLogChannel = 35,
         [Description("Optional: Thread ID where messages will show up if previously banned EI numbers are used in /register")]
         BannedUserThread = 36,
-        [Description("Optional: Thread ID where artifact cheaters will be outed.")]
-        ArtifactCheaterThread = 37
+        [Description("/TC/Optional: Where potential cheaters will be outed.")]
+        CheaterThread = 37,
+        /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
+        UnobtainedUltraChannel = 38*/
+        [Description("/TC/Optional: Where changes in players' ULTRA status will be logged")]
+        UltraLog = 39,
+        [Description("/TC/Optional: Where players who join coops while on break will be logged")]
+        BreakCoopLog = 40,
+        [Description("/TC/Optional: Where players can talk to staff of the server")]
+        TalkToStaff = 41,
+        [Description("/R/Role for users that have the Standard Permit (must be paired with Pro Permit role)")]
+        StandardPermitRole = 42,
+        [Description("/R/Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
+        ProPermitRole = 43,
+        /*[Description("/R/Users with this role will be added to all coop threads")]
+        AllCoopsRole = 44*/
     }
 }

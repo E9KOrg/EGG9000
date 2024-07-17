@@ -1,10 +1,12 @@
 ﻿using MessagePack;
 
+using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using System.Reflection;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     public class UserCoopXref {
@@ -27,6 +29,34 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? LastStatusTime { get; set; }
         public DateTimeOffset? SleepingWarningTime { get; set; }
         public string Status { get; set; }
+        public bool TimeCheatReported { get; set; }
+
+        public byte[] _lastStatusByte { get; set; }
+        [NotMapped]
+        private ContributionInfoCompact _lastStatus { get; set; }
+        [NotMapped]
+        public ContributionInfoCompact LastStatus {
+            get {
+                if(Status != null && Status != "null") {
+                    var status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status);
+                    _lastStatus = new ContributionInfoCompact (status);
+                    Status = null;
+                }
+                if(_lastStatus != null)
+                    return _lastStatus;
+                if(_lastStatusByte == null)
+                    return null;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+
+                _lastStatus = MessagePackSerializer.Deserialize<ContributionInfoCompact>(_lastStatusByte, lz4Options);
+                return _lastStatus;
+            }
+            set {
+                _lastStatus = value;
+                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                _lastStatusByte = MessagePackSerializer.Serialize(value, lz4Options);
+            }
+        }
 
         public ulong SleepingDiscordMessageID { get; set; }
         public int HoursSleeping { get; set; }
@@ -51,6 +81,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool PingOnFinished { get; set; }
         public bool CoopFullWarning { get; set; }
         public ulong Group { get; set; }
+        public bool GussetCheatDetected { get; set; } = false;
 
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]
@@ -100,6 +131,27 @@ namespace EGG9000.Common.Database.Entities {
             CoopSetting = CoopSetting;
         }
     }
+    [MessagePackObject]
+    public class ContributionInfoCompact {
+        [Key(0)]
+        public double SoulPower { get; set; }
+        [Key(1)]
+        public double ContributionAmount { get; set; }
+        [Key(2)]
+        public uint BoostTokensSpent { get; set; }
+        [Key(3)]
+        public string UserName { get; set; }
+
+        public ContributionInfoCompact() {
+
+        }
+        public ContributionInfoCompact(Ei.ContractCoopStatusResponse.Types.ContributionInfo info) {
+            SoulPower = info.SoulPower;
+            ContributionAmount = info.ContributionAmount;
+            BoostTokensSpent = info.BoostTokensSpent;
+        }
+    }
+
     [MessagePackObject]
     public class SleepTracking {
         [Key(0)]
@@ -163,18 +215,31 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
-        public CoopSetting(UserCoopXref xref, DBUser user) {
+        public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) {
             if(user.CoopSetting is null)
                 user.CoopSetting = new CoopSetting();
 
-            PingOnFull = user.CoopSetting.PingOnFull || xref.PingOnFull;
-            PingOnHighestEB = user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
-            PingOnFinished = user.CoopSetting.PingOnFinished;
-            PingOnEveryoneCheckedIn = user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
-            PingOnMessage = user.CoopSetting.PingOnMessage;
-            PingOnCoopCreated = user.CoopSetting.PingOnCoopCreated;
-            PingOnTachyonChange = user.CoopSetting.PingOnTachyonChange;
-            PingOnCompleteOnCheckIn = user.CoopSetting.PingOnCompleteOnCheckIn;
+            PingOnFull = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFull) || user.CoopSetting.PingOnFull || xref.PingOnFull;
+            PingOnHighestEB = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnHighestEB) || user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
+            PingOnFinished = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFinished) || user.CoopSetting.PingOnFinished;
+            PingOnEveryoneCheckedIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnEveryoneCheckedIn) ||  user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
+            PingOnMessage = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnMessage) ||  user.CoopSetting.PingOnMessage;
+            PingOnCoopCreated = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCoopCreated) || user.CoopSetting.PingOnCoopCreated;
+            PingOnTachyonChange = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnTachyonChange) || user.CoopSetting.PingOnTachyonChange;
+            PingOnCompleteOnCheckIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCompleteOnCheckIn) || user.CoopSetting.PingOnCompleteOnCheckIn;
+
+            var disableOverrides = Enum.GetValues(typeof(GuildCoopSetting))
+                .Cast<GuildCoopSetting>()
+                .ToDictionary(setting => setting, userGuild.IsLockedAndDisabled);
+
+            if(disableOverrides[GuildCoopSetting.PingOnFull]) PingOnFull = false;
+            if(disableOverrides[GuildCoopSetting.PingOnHighestEB]) PingOnHighestEB = false;
+            if(disableOverrides[GuildCoopSetting.PingOnFinished]) PingOnFinished = false;
+            if(disableOverrides[GuildCoopSetting.PingOnEveryoneCheckedIn]) PingOnEveryoneCheckedIn = false;
+            if(disableOverrides[GuildCoopSetting.PingOnMessage]) PingOnMessage = false;
+            if(disableOverrides[GuildCoopSetting.PingOnCoopCreated]) PingOnCoopCreated = false;
+            if(disableOverrides[GuildCoopSetting.PingOnTachyonChange]) PingOnTachyonChange = false;
+            if(disableOverrides[GuildCoopSetting.PingOnCompleteOnCheckIn]) PingOnCompleteOnCheckIn = false;
         }
     }
 }

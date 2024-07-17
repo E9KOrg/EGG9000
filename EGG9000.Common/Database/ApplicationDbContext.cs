@@ -1,16 +1,11 @@
 ﻿using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EGG9000.Common.Database {
     //public class ApplicationDbContext : IDesignTimeDbContextFactory<ApplicationDbContext> {
@@ -47,6 +42,7 @@ namespace EGG9000.Common.Database {
         public DbSet<Event> Events { get; set; }
         public DbSet<EventCustomization> EventCustomizations { get; set; }
         public DbSet<Donation> Donations { get; set; }
+        public DbSet<DBCustomEgg> CustomEggs { get; set; }
 
         public DbSet<GlobalLeaderboardCoop> GlobalLeaderboardCoops { get; set; }
         public DbSet<GlobalLeaderboardUser> GlobalLeaderboardUsers { get; set; }
@@ -66,10 +62,10 @@ namespace EGG9000.Common.Database {
         //    //    {
         //    //    }
 
-        public ApplicationDbContext(IConfiguration configuration) : base(GetOptions(configuration)) {
-        }
-
-        public ApplicationDbContext(string connstring) : base(GetOptions(connstring)) {
+        public readonly IMemoryCache _cache;
+        [ActivatorUtilitiesConstructor]
+        public ApplicationDbContext(IConfiguration configuration, IMemoryCache cache) : base(GetOptions(configuration)) {
+            _cache = cache;
         }
 
         private static DbContextOptions GetOptions(IConfiguration configuration) {
@@ -81,14 +77,6 @@ namespace EGG9000.Common.Database {
             return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), configuration["ConnectionStrings:DefaultConnection"], options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
         }
 
-        private static DbContextOptions GetOptions(string connString) {
-            //if(connString == null)
-            //return GetOptions();
-            return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), connString, options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
-        }
-
-
-
 
         protected override void OnModelCreating(ModelBuilder builder) {
             base.OnModelCreating(builder);
@@ -97,6 +85,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League});
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
+            builder.Entity<DBCustomEgg>().HasKey(x => new { x.Identifier });
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);
             builder.Entity<Demerit>().HasOne(x => x.AdminUser).WithMany(x => x.DemeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);

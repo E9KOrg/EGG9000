@@ -1,5 +1,7 @@
 ﻿using EGG9000.Common.Helpers;
+
 using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -25,22 +27,30 @@ namespace EGG9000.Common.Database.Entities {
 
         public bool ProjectedToFinish { get; set; }
         public bool Finished { get; set; }
-        public UInt32 League { get; set; }
-        public bool AnyLeague { get; set; } 
+        public uint League { get; set; }
+        public bool AnyLeague { get; set; }
 
-        public ulong DiscordChannelId { get; set; }
+        public ulong DiscordChannelId { get; set; } // V2 - Comment out
         public ulong GuildId { get; set; }
         public ulong OverflowGuildId { get; set; }
         public string UpdateMessagesId { get; set; }
 
         public string CreatorID { get; set; }
         public DateTimeOffset? LastUpdateToChannel { get; set; }
-        public DateTimeOffset? WarningForDeleteChannel {get; set;}
-        public bool DeletedChannel { get; set; }
+        public DateTimeOffset? WarningForDeleteChannel { get; set; }
+        public bool DeletedChannel { get; set; } // V2 - Comment out
+        public uint FindChannelErrors { get; set; } = 0; // V2 - Comment out
         public ulong Group { get; set; }
+        public bool AddedFromBackup { get; set; } = false;
+
+        public ulong ThreadID { get; set; }
+        public ulong ThreadParentChannel { get; set; }
+        public bool ThreadArchived { get; set; } = false;
+        public bool RolesAddedToThread { get; set; } = false;
 
         public CoopStatusEnum Status { get; set; }
         //public int UnableToFind { get; set; }
+        public bool PseudoExpired { get; set; } = false;
 
         public Contract Contract { get; set; }
         //public List<CoopStatus> CoopStatuses { get; set; }
@@ -54,13 +64,13 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public Ei.ContractCoopStatusResponse LastStatusUpdate {
             get {
-                if (_status != null)
+                if(_status != null)
                     return _status;
-                if (_StatusCompressed == null)
+                if(_StatusCompressed == null)
                     return null;
-                using (var msi = new MemoryStream(_StatusCompressed))
-                using (var mso = new MemoryStream()) {
-                    using (var gs = new GZipStream(msi, CompressionMode.Decompress)) {
+                using(var msi = new MemoryStream(_StatusCompressed))
+                using(var mso = new MemoryStream()) {
+                    using(var gs = new GZipStream(msi, CompressionMode.Decompress)) {
                         //gs.CopyTo(mso);
                         CopyTo(gs, mso);
                     }
@@ -73,9 +83,9 @@ namespace EGG9000.Common.Database.Entities {
                 _status = value;
                 var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value, new JsonSerializerSettings { ContractResolver = new CustomContractResolver() }));
 
-                using (var msi = new MemoryStream(bytes))
-                using (var mso = new MemoryStream()) {
-                    using (var gs = new GZipStream(mso, CompressionMode.Compress)) {
+                using(var msi = new MemoryStream(bytes))
+                using(var mso = new MemoryStream()) {
+                    using(var gs = new GZipStream(mso, CompressionMode.Compress)) {
                         //msi.CopyTo(gs);
                         CopyTo(msi, gs);
                     }
@@ -90,23 +100,21 @@ namespace EGG9000.Common.Database.Entities {
 
             int cnt;
 
-            while ((cnt = src.Read(bytes, 0, bytes.Length)) != 0) {
+            while((cnt = src.Read(bytes, 0, bytes.Length)) != 0) {
                 dest.Write(bytes, 0, cnt);
             }
         }
 
-        [NotMapped]
-        public bool FinishedOrFailed {
-            get {
-                return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed;
-            }
+        public bool FinishedOrFailed() {
+            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || Status == CoopStatusEnum.CompletedAllCheckIn;
         }
 
-        [NotMapped]
-        public bool FinishedOrFailedOrExpired {
-            get {
-                return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now;
-            }
+        public bool FinalizedFinishedOrFailed() {
+            return Status == CoopStatusEnum.CompletedAllCheckIn || Status == CoopStatusEnum.Failed;
+        }
+
+        public bool FinishedOrFailedOrExpired() {
+            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now || Status == CoopStatusEnum.CompletedAllCheckIn;
         }
     }
 
@@ -118,6 +126,7 @@ namespace EGG9000.Common.Database.Entities {
         AllAssignedJoined = 12,
         Full = 13,
         Completed = 14,
+        CompletedAllCheckIn = 15,
         Failed = -1
     }
 }

@@ -1,0 +1,29 @@
+﻿@model List<DBUser>
+@{
+    var userWithAccount = Model.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y }));
+    var guilds = userWithAccount.GroupBy(x => x.Account.Guild?.ToLower()).Where(x => !String.IsNullOrEmpty(x.Key)).OrderByDescending(x => x.Count());
+
+
+    foreach(var guild in guilds) {
+        <h3>@guild.Key (@("members".ToQuantity(guild.Count())))</h3>
+        <table>
+        @foreach(var userAccount in guild) {
+            <tr>
+                <td>
+                    @userAccount.User.DiscordUsername
+                </td>
+                <td>
+                    @userAccount.Account.Name
+                </td>
+                <td>
+                        @if(userAccount.User.TempDisabled) {
+                            @:DISABLED
+                        }
+                    </td>
+            </tr>
+        }
+        </table>
+    }
+}
+
+

@@ -1,11 +1,11 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Bot.EggIncAPI {
     public class Research {
@@ -117,9 +117,8 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseValue;
         }
 
-        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic) {
-            double baseValue = EggIncEggs.GetEggById(farm.EggType).Value;
-
+        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract, List<DBCustomEgg> customEggs) {
+            double baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;

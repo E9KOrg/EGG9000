@@ -1,56 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
-
+﻿using Discord.WebSocket;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EIEpicResearch;
 using EGG9000.Common.Services;
-
-
-using MessagePack;
-
+using Ei;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using EGG9000.Common.Helpers;
-using Discord.WebSocket;
-using Newtonsoft.Json;
-using Ei;
-using Stripe;
-using System.Security.Principal;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Event = EGG9000.Common.Database.Entities.Event;
-using System.Diagnostics.Contracts;
-using static EGG9000.Site.Controllers.HomeController;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class MyFarmsController : Controller {
-        private readonly ILogger<MyFarmsController> _logger;
-        private readonly ApplicationDbContext _db;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly APILink _apiLink;
-        private readonly DiscordSocketClient _discord;
+    public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db) : Controller {
 
-        public MyFarmsController(
-            ILogger<MyFarmsController> logger,
-            UserManager<IdentityUser> userManager,
-            DiscordSocketClient discord,
-            RoleManager<IdentityRole> roleManager,
-            APILink apiLink,
-            ApplicationDbContext db) {
-            _roleManager = roleManager;
-            _userManager = userManager;
-            _logger = logger;
-            _apiLink = apiLink;
-            _db = db;
-            _discord = discord;
-        }
+        private readonly ILogger<MyFarmsController> _logger = logger;
+        private readonly ApplicationDbContext _db = db;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
+        private readonly APILink _apiLink = apiLink;
+        private readonly DiscordSocketClient _discord = discord;
 
         public async Task<IActionResult> Index() {
             var loginuser = (await _userManager.GetUserAsync(User));
@@ -61,14 +40,18 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+            var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
-            bool update = false;
+            var update = false;
             var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
             foreach(var account in user.EggIncAccounts) {
                 var rawBackup = await ContractsAPI.FirstContact(account.Id);
                 rawBackups.Add(rawBackup.Backup);
-                var customBackup = new CustomBackup(rawBackup.Backup);
+                var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                 //var json = JsonSerializer.Serialize(customBackup);
                 //var json = Newtonsoft.Json.JsonConvert.SerializeObject(customBackup);
                 //var customBackupAfterJson = Newtonsoft.Json.JsonConvert.DeserializeObject<CustomBackup>(json);
@@ -93,40 +76,17 @@ namespace EGG9000.Site.Controllers {
             var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
             var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            var RawBackups = rawBackups;
+            /*var RawBackups = rawBackups;*/
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
-            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
-            var EpicResearchConfig = EpicResearchCalc.GetEpicResearchConfig();
+            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
+            var EpicResearchConfig = Root.Get().epicResearchItems;
             var Scoring = scoring;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
+            var dbCustomEggs = await _db.GetCustomEggsAsync();
 
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, RawBackups, Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes));
-        }
-
-        [AllowAnonymous]
-        public async Task<IActionResult> ViewUserId(string eggIncId) {
-            if(!eggIncId.StartsWith("EI")) {
-                return Content("EggIncID doesn't start with EI");
-            }
-            //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
-            var rawBackup = await ContractsAPI.FirstContact(eggIncId);
-            var backup = new CustomBackup(rawBackup.Backup);
-            var RawBackups = new List<Ei.Backup>() { rawBackup.Backup };
-            var contractIDs = backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId).ToList();
-            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
-            var serialized = MessagePackSerializer.Serialize(backup, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
-            backup = MessagePackSerializer.Deserialize<CustomBackup>(serialized, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray));
-            var newDbUser = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } },
-                UserCoopXrefs = new List<UserCoopXref>()
-            };
-            var uncompletedPes = GetUncompletedPEContracts(newDbUser, Contracts);
-            return View("Index", new MyFarmsModel(
-                newDbUser, Contracts, new List<Demerit>(), new List<Merit>(), RawBackups, new List<UserSnapShot>(), new List<UserCoopXref>(), new List<Coop>(), new List<EpicResearchCalc.EpicResearchDetail>(), new List<(string EggIncId, MyContracts MyContracts)>(), null,
-                uncompletedPes
-            ));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
 
         public record MyFarmsModel(
@@ -134,14 +94,16 @@ namespace EGG9000.Site.Controllers {
             List<Common.Database.Entities.Contract> Contracts,
             List<Demerit> Demerits,
             List<Merit> Merits,
-            List<Backup> RawBackups,
+            /*List<Backup> RawBackups*/
             List<UserSnapShot> SnapShots,
             List<UserCoopXref> UnjoinedCoops,
             List<Coop> JoinedCoops,
-            List<EpicResearchCalc.EpicResearchDetail> EpicResearchConfig,
+            List<EpicResearchItem> EpicResearchConfig,
             List<(string EggIncId, MyContracts MyContracts)> Scoring,
             Guild DBGuild,
-            Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts
+            Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,
+            List<DBCustomEgg> CustomEggs,
+            bool IsSelf
         );
 
         public async Task<IActionResult> EarningsBoostCalculator() {
@@ -166,20 +128,15 @@ namespace EGG9000.Site.Controllers {
 
             return View(new EarningsBoostCalculatorModel {
                 Backup = user.EggIncAccounts.First().Backup,
-                Event = boostEvent
+                Event = boostEvent,
+                CustomEggs = await _db.GetCustomEggsAsync()
             });
-        }
-
-        public async Task<IActionResult> GetCustomBackup([FromQuery] string id) {
-            //EI5862923193024512
-            var rawBackup = await ContractsAPI.FirstContact(id);
-            var customBackup = new CustomBackup(rawBackup.Backup);
-            return Json(customBackup);
         }
 
         public class EarningsBoostCalculatorModel {
             public CustomBackup Backup { get; set; }
             public Event Event { get; set; }
+            public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
         public async Task<IActionResult> Roles() {
@@ -221,8 +178,7 @@ namespace EGG9000.Site.Controllers {
             switch(target) {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);
-                    var dmChannel = await discordUser.CreateDMChannelAsync();
-                    await dmChannel.SendMessageAsync("Testing DM Ping");
+                    await DiscordHelpersExt.BoolSendDm(discordUser, "Testing DM Ping", _db);
                     return Ok();
                 case "talktoegg9000":
                     var channel = (SocketTextChannel)_discord.GetChannel(1012791664831639613);
@@ -234,7 +190,8 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
             var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == CoopId);
-            return View(coop);
+            var customEggs = await _db.GetCustomEggsAsync();
+            return View((coop, customEggs));
         }
     }
 }
