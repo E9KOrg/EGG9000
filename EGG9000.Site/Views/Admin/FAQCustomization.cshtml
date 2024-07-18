@@ -1,0 +1,356 @@
+﻿@model EGG9000.Site.Controllers.AdminController.FAQCustomizationModel
+@using System.Security.Claims;
+@{
+    ViewData["Title"] = "Event Customization";
+}
+
+<div ng-controller="AdminPage">
+    <h2 ng-if="@Model.GuildId != @Model.PalaceGuildId">Palace FAQs</h2>
+    <table ng-if="@Model.GuildId != @Model.PalaceGuildId" class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Keywords</th>
+                <th>Weight</th>
+                <th colspan="2">Explanation</th>
+                <th>Staff Only</th>
+                <th>Subscribed</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- TODO: Change EditItem to "SubscribeModal" that will not allow editing, but will allow subscribing/unsubscribing from Palace FAQs -->
+            <tr ng-if="palaceItems.length == 0">
+                <td colspan="7" style="text-align: center; font-weight: bold;">No items to show.</td>
+            </tr>
+            <tr ng-else ng-repeat="faqItem in palaceItems" ng-click="EditItem(faqItem)">
+                <td>{{faqItem.name}}</td>
+                <td>{{faqItem._keywords}}</td>
+                <td>{{faqItem.weight}}</td>
+                <td colspan="2">{{minifyIfOver(faqItem.explanation)}}</td>
+                <td>{{faqItem.staffOnly}}</td>
+                <td>{{faqItem.subscribed}}</td>
+            </tr>
+        </tbody>
+    </table>
+    <hr ng-if="@Model.GuildId != @Model.PalaceGuildId" />
+
+    <h2>@Model.GuildName FAQs</h2>
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Keywords</th>
+                <th>Weight</th>
+                <th colspan="2">Explanation</th>
+                <th>Staff Only</th>
+                <th>Created By</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-if="items.length == 0">
+                <td colspan="8" style="text-align: center; font-weight: bold;">No items to show.</td>
+            </tr>
+            <tr ng-else ng-repeat="faqItem in items" ng-click="EditItem(faqItem)">
+                <td>{{faqItem.name}}</td>
+                <td>{{faqItem._keywords}}</td>
+                <td>{{faqItem.weight}}</td>
+                <td colspan="2">{{minifyIfOver(faqItem.explanation)}}</td>
+                <td>{{faqItem.staffOnly ? 'Yes' : 'No'}}</td>
+                <td>{{faqItem.createdBy}}</td>
+            </tr>
+            <tr>
+                <td colspan="7" style="text-align: center;">
+                    <button ng-click="EditItem(null)" class="btn btn-primary" style="display: inline-block;">
+                        Add FAQ Topic
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script type="text/ng-template" id="Edit.html">
+        <style>
+            .modal-body {
+                max-height: calc(100vh - 180px);
+                overflow-y: auto;
+            }
+        </style>
+
+        <div class="modal-header d-flex justify-content-between align-items-center">
+            <span ng-if="!newItem">FAQ Topic - {{ item.name }}</span>
+            <span ng-if="newItem">New FAQ Topic</span>
+            <button type="button" class="close" ng-click="Cancel()" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+
+        <div class="modal-body overflow-auto">
+            <div class="form-group">
+                <label>
+                    Name <span style="color:red">*</span><br />
+                    <span style="font-size: 0.9rem; color: gray;">
+                        Will be displayed on the Discord embed.
+                    </span>
+                </label>
+                <input autocomplete="off" aria-autocomplete="none" class="form-control" ng-model="item.name" />
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Keywords <span style="color:red">*</span><br />
+                    <span style="font-size: 0.9rem; color: gray;">
+                        These are how users will search for the topic.
+                        Keywords should be lowercase - <i>Unallowed characters will be stripped from keywords.</i>
+                    </span>
+                </label><br>
+                <div ng-repeat="keyword in item.Keywords track by $index" style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <input autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.Keywords[$index]" ng-blur="formatKeyword($index)" style="margin-right: 10px;" />
+                    <button type="button" class="btn btn-danger" ng-click="removeKeyword($index)">Remove</button>
+                </div>
+                <button type="button" class="btn btn-primary" ng-click="addKeyword()">Add Keyword</button>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Weight<br>
+                    <span style="font-size: 0.9rem; color: gray;">
+                        Importance while topics are being looked for. Higher weight will make an item appear first.
+                    </span>
+                </label>
+                <input class="form-control" type="number" ng-model="item.weight" />
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Explanation <span style="color:red">*</span><br />
+                    <span style="font-size: 0.9rem; color: gray;">
+                        The "answer" text a user should be displayed while searching for the topic on Discord.
+                    </span>
+                </label>
+                 <textarea autocomplete="off" aria-autocomplete="none" spellcheck="false" class="form-control" ng-model="item.explanation"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Staff Only <input type="checkbox" ng-model="item.staffOnly" style="margin-left: 2%;"><br>
+                    <span style="font-size: 0.9rem; color: gray;">
+                        If true, will only be findable by users with the "Moderate Members" Discord permission.
+                    </span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Discord Embed Color<br>
+                    <span style="font-size: 0.9rem; color: gray;">
+                        Should be in hex format (e.g., <code>#AABBCC</code>). Will default to <code>DarkGrey</code> (<code>#607D8B</code>) if not otherwise set.
+                    </span>
+                </label>
+                <div style="display: flex; align-items: center;">
+                    <input autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.embedColorHex" ng-change="updateColor()" style="margin-right: 10px;" />
+                    <input autocomplete="off" aria-autocomplete="none" type="color" ng-model="item.embedColorHex" ng-change="formatColor()" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Created by<br>
+                    <span style="font-size: 0.9rem; color: gray;">
+                        Only stored for record keeping purposes.
+                    </span>
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <div>
+                        <label>Discord Name</label>
+                        <input disabled class="form-control" ng-model="item.createdBy" />
+                    </div>
+                    <div>
+                        <label>Discord ID</label>
+                        <input disabled class="form-control" ng-model="item.createdById" />
+                    </div>
+                    <div>
+                        <label>Server</label>
+                        <input disabled class="form-control" ng-model="item.guildName" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer ng-scope" style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: red;">* Required field</span>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-success" ng-disabled="IsInsertDisabled()" ng-click="Save()">Save</button>
+                <button class="btn btn-warning" ng-click="Cancel()">Cancel</button>
+                <button class="btn btn-danger" ng-if="@User.IsInRole("Admin") || item.createdBy == @Model.UserDiscordUsername" ng-click="DeleteItem()"></button>
+            </div>
+        </div>
+    </script>
+</div>
+@section Scripts {
+    <style>
+        .md-errors-spacer {
+            display: none;
+        }
+
+        trix-editor.form-control {
+            height: auto;
+        }
+    </style>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap-tpls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/1.2.0/angular-moment.min.js"></script>
+
+
+
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-animate.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-aria.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-messages.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.js"></script>
+
+
+    <script>
+        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
+            .controller('AdminPage', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+                $scope.items = @Html.Raw(Json.Serialize(Model.GuildFAQTopics));
+                $scope.palaceItems = @Html.Raw(Json.Serialize(Model.PalaceFAQTopics));
+
+                $scope.minifyIfOver = function (str) {
+                    if (!str) return '';
+                    if (str.length > 200) {
+                        return str.substr(0, 200) + ' [...]';
+                    } else return str;
+                }
+
+                angular.forEach($scope.palaceItems, function (palaceItem) {
+                    if (palaceItem.subscribedGuildIds != null && palaceItem.subscribedGuildIds != []) {
+                        palaceItem.subscribed = palaceItem.subscribedGuildIds.includes(@Model.GuildId.ToString())
+                    }
+                });
+
+                angular.forEach($scope.items, function (item) {
+                    item.Keywords = JSON.parse(item._keywords || '[]');
+                });
+
+                angular.forEach($scope.palaceItems, function (item) {
+                    item.Keywords = JSON.parse(item._keywords || '[]');
+                });
+
+                $scope.EditItem = function EditItem(item) {
+                    $uibModal.open({
+                        templateUrl: 'Edit.html',
+                        size: 'lg',
+                        backdrop: 'static',
+                        animation: false,
+                        controller: function ($scope, $uibModalInstance) {
+                            $scope.isNewItem = !item;
+                            $scope.originalKeywordsCount = item ? item.Keywords.length : 0;
+
+                            if (item != null) {
+                                $scope.item = item;
+                                $scope.newItem = false;
+                            } else {
+                                console.log("Creating new item");
+                                $scope.newItem = true;
+                                $scope.item = {
+                                    internalid: '',
+                                    name: '',
+                                    _keywords: '',
+                                    weight: 0,
+                                    explanation: '',
+                                    staffOnly: false,
+                                    embedColorHex: '',
+                                    createdBy: '@Model.UserDiscordUsername',
+                                    createdById: @Model.UserDiscordId,
+                                    guildName: '@Model.GuildName',
+                                    guildId: '@Model.GuildId',
+                                    Keywords: ['']
+                                };
+                            }
+
+                            $scope.formatColor = function () {
+                                if ($scope.item.embedColorHex && $scope.item.embedColorHex[0] !== '#') {
+                                    $scope.item.embedColorHex = '#' + $scope.item.embedColorHex;
+                                }
+                            };
+
+                            $scope.updateColor = function () {
+                                $scope.formatColor();
+                            };
+
+                            if (!$scope.item.embedColorHex) {
+                                $scope.item.embedColorHex = '#607D8B';
+                            } else {
+                                $scope.formatColor();
+                            }
+
+                            $scope.formatKeyword = function (index) {
+                                $scope.item.Keywords[index] = $scope.item.Keywords[index].toLowerCase().replace(/[^a-z0-9 ]/g, '');
+                            };
+
+                            $scope.addKeyword = function () {
+                                $scope.item.Keywords.push('');
+                            };
+
+                            $scope.removeKeyword = function (index) {
+                                $scope.item.Keywords.splice(index, 1);
+                            };
+
+                            $scope.IsInsertDisabled = function IsInsertDisabled() {
+                                const hexColorRegex = /^#[0-9A-F]{6}$/i;
+                                const isColorValid = !$scope.item.embedColorHex || hexColorRegex.test($scope.item.embedColorHex);
+                                const hasValidKeywords = $scope.item.Keywords.length > 0 && !$scope.item.Keywords.includes('');
+
+                                return (
+                                    $scope.item.name === '' ||
+                                    !hasValidKeywords ||
+                                    $scope.item.explanation === '' ||
+                                    isNaN($scope.item.weight) ||
+                                    !isColorValid
+                                );
+                            };
+
+                            $scope.Save = function Save() {
+                                // Remove empty keywords before saving
+                                $scope.item.Keywords = $scope.item.Keywords.filter(keyword => keyword.trim() !== '');
+                                $scope.item._keywords = JSON.stringify($scope.item.Keywords);
+
+                                console.log($scope.item);
+                                $http({ method: 'POST', url: '/admin/savefaqtopic/', data: $scope.item, headers: { 'Content-Type': 'application/json' } })
+                                    .then(function successCallback(response) {
+                                        if (response.data.Error) {
+                                            alert(response.data.Error);
+                                            return;
+                                        }
+                                        $uibModalInstance.close();
+                                    }, function errorCallback(response) {
+                                        alert('Error Saving');
+                                    });
+                            };
+
+                            $scope.Cancel = function Cancel() {
+                                $uibModalInstance.close();
+                            };
+
+                            $scope.DeleteItem = function DeleteItem() {
+                                $http({ method: 'POST', url: '/admin/deletefaqtopic/', data: $scope.item, headers: { 'Content-Type': 'application/json' } })
+                                    .then(function successCallback(response) {
+                                        if (response.data.Error) {
+                                            alert(response.data.Error);
+                                            return;
+                                        }
+                                        $uibModalInstance.close();
+                                    }, function errorCallback(response) {
+                                        alert('Error Deleting');
+                                    });
+                            };
+                        }
+                    });
+                };
+            }]);
+    </script>
+}

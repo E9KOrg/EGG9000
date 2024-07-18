@@ -1,14 +1,15 @@
 ﻿using Discord;
-using Discord.WebSocket;
-using EGG9000.Common.Commands;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
-    public class FAQHelper {
-
-        public static readonly List<FAQItem> _FaqTopics = [];
+    public static class FAQHelper {
 
         public class FAQBuilder {
             public ComponentBuilder ComponentBuilder { get; set; }
@@ -16,72 +17,36 @@ namespace EGG9000.Common.Helpers {
             public FAQBuilder() { }
         }
 
-        public class FAQItem {
-            public string Name { get; set; }
-            public List<string> Keywords { get; set; } = [];
-            public string Explanation { get; set; } = string.Empty;
-            public StaffOnlyLevel StaffOnlyLevel { get; set; } = StaffOnlyLevel.None;
-            public Func<Guild, SocketGuild, bool> ApplicableToGuild { get; set; } = new Func<Guild, SocketGuild, bool>((guild, socketGuild) => true);
-            public Color EmbedColor { get; set; } = Color.DarkGrey;
-            public Guild OwnerGuild { get; set; } = null;
+        public static async Task<List<FAQTopic>> GetFAQTopicsAsync(this ApplicationDbContext db, Guild guild) {
+            if(!db._cache.TryGetValue(guild.GetFAQCacheKey(), out List<FAQTopic> faqTopics)) {
+                faqTopics = (await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id)).FAQTopics;
+                db._cache.Set(guild.GetFAQCacheKey(), faqTopics, TimeSpan.FromDays(1));
+            }
+            return faqTopics;
         }
 
-        public static void Populate() {
-            //Contract eggspert
-            _FaqTopics.Add(new FAQItem {
-                Name = "Contract Eggspert Role",
-                Keywords = ["contract eggspert", "eggspert", "carry contract"],
-                Explanation = "The `💪 Contract Eggspert 💪` role is added to users who get an eggceptional score on a certain contract. The role lasts for 7 days after scoring takes place.\n\n" +
-                "The number next to players' names in the announcement reflects how many times (`x`) more eggs they delivered than the 100 closest players to their EB.",
-                ApplicableToGuild = new Func<Guild, SocketGuild, bool>((guild, socketGuild) => {
-                    try {
-                        return socketGuild.GetRole(938563459812049008) != null;
-                    } catch(Exception ex) {
-                        Console.WriteLine($"Exception in FAQ (Contract Eggspert Role): " + ex.Message);
-                        return false;
-                    }
-                })
-            });
+        public static async Task<List<FAQTopic>> QueryFAQTopicsAsync(this ApplicationDbContext db, Guild guild, string keyword) {
+#if DEV9002
+            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
+#else
+            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
+#endif
+            var palaceApplicableFaqs = (await db.GetFAQTopicsAsync(palaceGuild)).Where(f => f.PalaceFAQAppliesToGuild(guild)).ToList();
+            List<FAQTopic> guildFaqs = [];
+            if(guild.Id != palaceGuild.Id) {
+                guildFaqs = await db.GetFAQTopicsAsync(guild);
+            }
+            List<FAQTopic> unfilteredList = [.. palaceApplicableFaqs, .. guildFaqs];
+            return unfilteredList.Where(f => f.Keywords?.Contains(keyword.ToLower()) ?? false).ToList();
+        }
 
-            //General scoring + Running score
-            _FaqTopics.Add(new FAQItem {
-                Name = "Scoring & Running Score",
-                Keywords = ["score", "running score", "rsc", "scoring", "contract score"],
-                Explanation = "Contracts are scored when the contract itself has expired (no new coops can be started), and all server co-ops have finished, failed, or expired.\n\n" +
-                "During contract scoring, your 'Eggs Delivered' count is compared to the 100 players closest to you in Earnings Bonus (EB) - this being the 50 players below you, and the 50 players above you.\nExample scores:\n" +
-                "- A score of `1.0` means you delivered exactly the average\n- A score of `0.1` means you delivered 1/10th of the average\n- A score of `0.01` means you delivered 1/100th of the average\n\n" +
-                "After you have been scored for 4 contracts, a Running Score will start to be calculated. This score is the average of your last 4 scored contracts, and updates every time a new contract is scored.\n" +
-                "Running score is also the metric that Staff use to track players who are not pulling their weight.\n\nYou can check individual scores, as well as running score at https://egg9000.com/MyFarms"
-            });
 
-            _FaqTopics.Add(new FAQItem {
-                Name = "Test one",
-                Keywords = ["test"],
-                Explanation = "Test one\n\nThis should be displaying with a blue embed",
-                EmbedColor = Color.Blue
-            });
+        public static void InvalidateFAQTopics(this IMemoryCache _cache, Guild guild) {
+            _cache.Set(guild.GetFAQCacheKey(), new List<FAQTopic>(), TimeSpan.FromMilliseconds(1));
+        }
 
-            _FaqTopics.Add(new FAQItem {
-                Name = "Test two",
-                Keywords = ["test two", "test"],
-                Explanation = "Test two\n\nThis should be displaying with an orange embed",
-                EmbedColor = Color.Orange
-            });
-
-            _FaqTopics.Add(new FAQItem {
-                Name = "Test three",
-                Keywords = ["test", "three", "test three", "test", "test", "test"],
-                Explanation = "Test three\n\nThis should be displaying with a red embed",
-                EmbedColor = Color.Red
-            });
-
-            _FaqTopics.Add(new() {
-                Name = "Test Staff Template",
-                Keywords = ["staff"],
-                Explanation = "Staff template 123 xyz",
-                EmbedColor = Color.Purple,
-                StaffOnlyLevel = StaffOnlyLevel.ChickenTender
-            });
+        private static string GetFAQCacheKey(this Guild g) {
+            return "FAQTopicsCache:" + g.Id.ToString();
         }
     }
 }

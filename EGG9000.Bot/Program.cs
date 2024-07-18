@@ -130,7 +130,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<JobService>();
             services.AddHostedService(provider => provider.GetService<JobService>());
 
-            FAQHelper.Populate(); //Necessary precursor to CommandService
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();
         }
