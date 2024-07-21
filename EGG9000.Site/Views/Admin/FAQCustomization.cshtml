@@ -2,12 +2,11 @@
 @using System.Security.Claims;
 @{
     ViewData["Title"] = "Event Customization";
-    Console.WriteLine("Model user discord username: " + Model.UserDiscordUsername);
 }
 
 <div ng-controller="AdminPage">
     <h2 ng-if="@Model.GuildId != @Model.PalaceGuildId">Palace FAQs</h2>
-    <table ng-if="true || (@Model.GuildId != @Model.PalaceGuildId)" class="table table-striped table-hover">
+    <table ng-if="@Model.GuildId != @Model.PalaceGuildId" class="table table-striped table-hover">
         <thead>
             <tr>
                 <th>Name</th>
@@ -19,13 +18,12 @@
             </tr>
         </thead>
         <tbody>
-            <!-- TODO: Change EditItem to "SubscribeModal" that will not allow editing, but will allow subscribing/unsubscribing from Palace FAQs -->
             <tr ng-if="palaceItems.length == 0">
                 <td colspan="7" style="text-align: center; font-weight: bold;">No items to show.</td>
             </tr>
             <tr ng-else ng-repeat="faqItem in palaceItems" ng-click="EditItem(faqItem, true)">
                 <td>{{faqItem.name}}</td>
-                <td>{{faqItem._keywords}}</td>
+                <td>{{faqItem.Keywords.join(", ")}}</td>
                 <td>{{faqItem.weight}}</td>
                 <td colspan="2">{{minifyIfOver(faqItem.explanation)}}</td>
                 <td>{{faqItem.staffOnly ? 'Yes' : 'No'}}</td>
@@ -53,7 +51,7 @@
             </tr>
             <tr ng-else ng-repeat="faqItem in items" ng-click="EditItem(faqItem, false)">
                 <td>{{faqItem.name}}</td>
-                <td>{{faqItem._keywords}}</td>
+                <td>{{faqItem.Keywords.join(", ")}}</td>
                 <td>{{faqItem.weight}}</td>
                 <td colspan="2">{{minifyIfOver(faqItem.explanation)}}</td>
                 <td>{{faqItem.staffOnly ? 'Yes' : 'No'}}</td>
@@ -218,15 +216,9 @@
     <script>
         angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
             .controller('AdminPage', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+                // Setup items from Model
                 $scope.items = @Html.Raw(Json.Serialize(Model.GuildFAQTopics));
                 $scope.palaceItems = @Html.Raw(Json.Serialize(Model.PalaceFAQTopics));
-
-                $scope.minifyIfOver = function (str) {
-                    if (!str) return '';
-                    if (str.length > 200) {
-                        return str.substr(0, 200) + ' [...]';
-                    } else return str;
-                }
 
                 angular.forEach($scope.palaceItems, function (palaceItem) {
                     if (palaceItem.subscribedGuildIds != null && palaceItem.subscribedGuildIds != []) {
@@ -244,6 +236,15 @@
                     item.byUser = (item.createdBy == @Model.UserDiscordId);
                 });
 
+                
+                $scope.minifyIfOver = function (str) {
+                    if (!str) return '';
+                    if (str.length > 200) {
+                        return str.substr(0, 200) + ' [...]';
+                    } else return str;
+                }
+
+                // Modal setup
                 $scope.EditItem = function EditItem(item, subscribeModal) {
                     $uibModal.open({
                         templateUrl: 'Edit.html',
@@ -255,28 +256,7 @@
                             $scope.isNewItem = !item;
                             $scope.originalKeywordsCount = item ? item.Keywords.length : 0;
 
-                            if (item != null) {
-                                $scope.item = item;
-                                $scope.newItem = false;
-                            } else {
-                                console.log("Creating new item");
-                                $scope.newItem = true;
-                                $scope.item = {
-                                    internalid: '',
-                                    name: '',
-                                    _keywords: '',
-                                    weight: 0,
-                                    explanation: '',
-                                    staffOnly: false,
-                                    embedColorHex: '',
-                                    createdBy: '@Model.UserDiscordUsername',
-                                    createdById: @Model.UserDiscordId,
-                                    guildName: '@Model.GuildName',
-                                    guildId: '@Model.GuildId',
-                                    Keywords: ['']
-                                };
-                            }
-
+                            // Utility functions
                             $scope.formatColor = function () {
                                 if ($scope.item.embedColorHex && $scope.item.embedColorHex[0] !== '#') {
                                     $scope.item.embedColorHex = '#' + $scope.item.embedColorHex;
@@ -286,12 +266,6 @@
                             $scope.updateColor = function () {
                                 $scope.formatColor();
                             };
-
-                            if (!$scope.item.embedColorHex) {
-                                $scope.item.embedColorHex = '#607D8B';
-                            } else {
-                                $scope.formatColor();
-                            }
 
                             $scope.formatKeyword = function (index) {
                                 $scope.item.Keywords[index] = $scope.item.Keywords[index].toLowerCase().replace(/[^a-z0-9 ]/g, '');
@@ -319,6 +293,31 @@
                                 );
                             };
 
+                            // Item declarations and setup
+                            if (item != null) {
+                                $scope.item = item;
+                                $scope.newItem = false;
+                                $scope.formatColor();
+                            } else {
+                                console.log("Creating new item");
+                                $scope.newItem = true;
+                                $scope.item = {
+                                    internalId: '',
+                                    name: '',
+                                    _keywords: '',
+                                    weight: 0,
+                                    explanation: '',
+                                    staffOnly: false,
+                                    embedColorHex: '#607D8B',
+                                    createdBy: '@Model.UserDiscordUsername',
+                                    createdById: @Model.UserDiscordId,
+                                    guildName: '@Model.GuildName',
+                                    guildId: '@Model.GuildId',
+                                    Keywords: ['']
+                                };
+                            }
+
+                            // Action functions
                             $scope.Save = function Save() {
                                 // Remove empty keywords before saving
                                 $scope.item.Keywords = $scope.item.Keywords.filter(keyword => keyword.trim() !== '');
@@ -332,6 +331,7 @@
                                             return;
                                         }
                                         $uibModalInstance.close();
+                                        location.reload();
                                     }, function errorCallback(response) {
                                         alert('Error Saving');
                                     });
@@ -384,16 +384,21 @@
                             };
 
                             $scope.DeleteItem = function DeleteItem() {
-                                $http({ method: 'POST', url: '/admin/deletefaqtopic/', data: $scope.item, headers: { 'Content-Type': 'application/json' } })
-                                    .then(function successCallback(response) {
-                                        if (response.data.Error) {
-                                            alert(response.data.Error);
-                                            return;
-                                        }
-                                        $uibModalInstance.close();
-                                    }, function errorCallback(response) {
-                                        alert('Error Deleting');
-                                    });
+                                if (confirm("Are you sure you want to delete this item?")) {
+                                    $http({ method: 'POST', url: '/admin/deletefaqtopic/', data: $scope.item, headers: { 'Content-Type': 'application/json' } })
+                                        .then(function successCallback(response) {
+                                            if (response.data.Error) {
+                                                console.error("Error from server:", response.data.Error);
+                                                alert(response.data.Error);
+                                                return;
+                                            }
+                                            $uibModalInstance.close();
+                                            location.reload();
+                                        }, function errorCallback(response) {
+                                            console.error("Error during HTTP request:", response);
+                                            alert('Error Deleting');
+                                        });
+                                }
                             };
                         }
                     });
