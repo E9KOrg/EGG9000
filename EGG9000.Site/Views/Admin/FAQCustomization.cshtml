@@ -2,11 +2,12 @@
 @using System.Security.Claims;
 @{
     ViewData["Title"] = "Event Customization";
+    Console.WriteLine("Model user discord username: " + Model.UserDiscordUsername);
 }
 
 <div ng-controller="AdminPage">
     <h2 ng-if="@Model.GuildId != @Model.PalaceGuildId">Palace FAQs</h2>
-    <table ng-if="@Model.GuildId != @Model.PalaceGuildId" class="table table-striped table-hover">
+    <table ng-if="true || (@Model.GuildId != @Model.PalaceGuildId)" class="table table-striped table-hover">
         <thead>
             <tr>
                 <th>Name</th>
@@ -22,13 +23,13 @@
             <tr ng-if="palaceItems.length == 0">
                 <td colspan="7" style="text-align: center; font-weight: bold;">No items to show.</td>
             </tr>
-            <tr ng-else ng-repeat="faqItem in palaceItems" ng-click="EditItem(faqItem)">
+            <tr ng-else ng-repeat="faqItem in palaceItems" ng-click="EditItem(faqItem, true)">
                 <td>{{faqItem.name}}</td>
                 <td>{{faqItem._keywords}}</td>
                 <td>{{faqItem.weight}}</td>
                 <td colspan="2">{{minifyIfOver(faqItem.explanation)}}</td>
-                <td>{{faqItem.staffOnly}}</td>
-                <td>{{faqItem.subscribed}}</td>
+                <td>{{faqItem.staffOnly ? 'Yes' : 'No'}}</td>
+                <td>{{faqItem.subscribed ? 'Yes' : 'No'}}</td>
             </tr>
         </tbody>
     </table>
@@ -50,7 +51,7 @@
             <tr ng-if="items.length == 0">
                 <td colspan="8" style="text-align: center; font-weight: bold;">No items to show.</td>
             </tr>
-            <tr ng-else ng-repeat="faqItem in items" ng-click="EditItem(faqItem)">
+            <tr ng-else ng-repeat="faqItem in items" ng-click="EditItem(faqItem, false)">
                 <td>{{faqItem.name}}</td>
                 <td>{{faqItem._keywords}}</td>
                 <td>{{faqItem.weight}}</td>
@@ -92,22 +93,21 @@
                         Will be displayed on the Discord embed.
                     </span>
                 </label>
-                <input autocomplete="off" aria-autocomplete="none" class="form-control" ng-model="item.name" />
+                <input ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" class="form-control" ng-model="item.name" />
             </div>
 
             <div class="form-group">
                 <label>
                     Keywords <span style="color:red">*</span><br />
                     <span style="font-size: 0.9rem; color: gray;">
-                        These are how users will search for the topic.
-                        Keywords should be lowercase - <i>Unallowed characters will be stripped from keywords.</i>
+                        These are how users will search for the topic. Formatting will be coerced.
                     </span>
                 </label><br>
                 <div ng-repeat="keyword in item.Keywords track by $index" style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <input autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.Keywords[$index]" ng-blur="formatKeyword($index)" style="margin-right: 10px;" />
-                    <button type="button" class="btn btn-danger" ng-click="removeKeyword($index)">Remove</button>
+                    <input ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.Keywords[$index]" ng-blur="formatKeyword($index)" style="margin-right: 10px;" />
+                    <button ng-if="!isSubscribe" type="button" class="btn btn-danger" ng-click="removeKeyword($index)">Remove</button>
                 </div>
-                <button type="button" class="btn btn-primary" ng-click="addKeyword()">Add Keyword</button>
+                <button ng-if="!isSubscribe" type="button" class="btn btn-primary" ng-click="addKeyword()">Add Keyword</button>
             </div>
 
             <div class="form-group">
@@ -117,7 +117,7 @@
                         Importance while topics are being looked for. Higher weight will make an item appear first.
                     </span>
                 </label>
-                <input class="form-control" type="number" ng-model="item.weight" />
+                <input ng-disabled="isSubscribe" class="form-control" type="number" ng-model="item.weight" />
             </div>
 
             <div class="form-group">
@@ -127,12 +127,12 @@
                         The "answer" text a user should be displayed while searching for the topic on Discord.
                     </span>
                 </label>
-                 <textarea autocomplete="off" aria-autocomplete="none" spellcheck="false" class="form-control" ng-model="item.explanation"></textarea>
+                <textarea ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" spellcheck="false" class="form-control" ng-model="item.explanation"></textarea>
             </div>
 
             <div class="form-group">
                 <label>
-                    Staff Only <input type="checkbox" ng-model="item.staffOnly" style="margin-left: 2%;"><br>
+                    Staff Only <input ng-disabled="isSubscribe" type="checkbox" ng-model="item.staffOnly" style="margin-left: 2%;"><br>
                     <span style="font-size: 0.9rem; color: gray;">
                         If true, will only be findable by users with the "Moderate Members" Discord permission.
                     </span>
@@ -147,8 +147,8 @@
                     </span>
                 </label>
                 <div style="display: flex; align-items: center;">
-                    <input autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.embedColorHex" ng-change="updateColor()" style="margin-right: 10px;" />
-                    <input autocomplete="off" aria-autocomplete="none" type="color" ng-model="item.embedColorHex" ng-change="formatColor()" />
+                    <input ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.embedColorHex" ng-change="updateColor()" style="margin-right: 10px;" />
+                    <input ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" type="color" ng-model="item.embedColorHex" ng-change="formatColor()" />
                 </div>
             </div>
 
@@ -179,9 +179,11 @@
         <div class="modal-footer ng-scope" style="display: flex; justify-content: space-between; align-items: center;">
             <span style="color: red;">* Required field</span>
             <div style="display: flex; gap: 10px;">
-                <button class="btn btn-success" ng-disabled="IsInsertDisabled()" ng-click="Save()">Save</button>
+                <button ng-if="isSubscribe && !item.subscribed" class="btn btn-success" ng-disabled="IsInsertDisabled()" ng-click="Subscribe()">Subscribe</button>
+                <button ng-if="isSubscribe && item.subscribed" class="btn btn-danger" ng-disabled="IsInsertDisabled()" ng-click="Unsubscribe()">Unsubscribe</button>
+                <button ng-if="!isSubscribe" class="btn btn-success" ng-disabled="IsInsertDisabled()" ng-click="Save()">Save</button>
                 <button class="btn btn-warning" ng-click="Cancel()">Cancel</button>
-                <button class="btn btn-danger" ng-if="@User.IsInRole("Admin") || item.createdBy == @Model.UserDiscordUsername" ng-click="DeleteItem()"></button>
+                <button class="btn btn-danger" ng-if="!isSubscribe && (@User.IsInRole("Admin") || item.byUser)" ng-click="DeleteItem()">Delete</button>
             </div>
         </div>
     </script>
@@ -234,19 +236,22 @@
 
                 angular.forEach($scope.items, function (item) {
                     item.Keywords = JSON.parse(item._keywords || '[]');
+                    item.byUser = (item.createdById == @Model.UserDiscordId);
                 });
 
                 angular.forEach($scope.palaceItems, function (item) {
                     item.Keywords = JSON.parse(item._keywords || '[]');
+                    item.byUser = (item.createdBy == @Model.UserDiscordId);
                 });
 
-                $scope.EditItem = function EditItem(item) {
+                $scope.EditItem = function EditItem(item, subscribeModal) {
                     $uibModal.open({
                         templateUrl: 'Edit.html',
                         size: 'lg',
                         backdrop: 'static',
                         animation: false,
                         controller: function ($scope, $uibModalInstance) {
+                            $scope.isSubscribe = subscribeModal;
                             $scope.isNewItem = !item;
                             $scope.originalKeywordsCount = item ? item.Keywords.length : 0;
 
@@ -331,6 +336,48 @@
                                         alert('Error Saving');
                                     });
                             };
+
+                            $scope.Subscribe = function Subscribe() {
+                                // Get the current subscribedGuildIds of the item
+                                let subscribedGuildIds = $scope.item.subscribedGuildIds || [];
+                                // Add Model.GuildId to the list if not already present
+                                if (!subscribedGuildIds.includes(@Model.GuildId)) {
+                                    subscribedGuildIds.push(@Model.GuildId);
+                                }
+                                // Set the new subscribedGuildIds list
+                                $scope.item.subscribedGuildIds = subscribedGuildIds;
+                                $scope.item.subscribed = true;
+
+                                $http({ method: 'POST', url: '/admin/savefaqtopic/', data: $scope.item, headers: { 'Content-Type': 'application/json' } })
+                                    .then(function successCallback(response) {
+                                        if (response.data.Error) {
+                                            alert(response.data.Error);
+                                            return;
+                                        }
+                                    }, function errorCallback(response) {
+                                        alert('Error Saving');
+                                    });
+                            }
+
+                            $scope.Unsubscribe = function Unsubscribe() {
+                                // Get the current subscribedGuildIds of the item
+                                let subscribedGuildIds = $scope.item.subscribedGuildIds || [];
+                                // Remove Model.GuildId from the list
+                                subscribedGuildIds = subscribedGuildIds.filter(guildId => guildId !== @Model.GuildId);
+                                // Set the new subscribedGuildIds list
+                                $scope.item.subscribedGuildIds = subscribedGuildIds;
+                                $scope.item.subscribed = false;
+
+                                $http({ method: 'POST', url: '/admin/savefaqtopic/', data: $scope.item, headers: { 'Content-Type': 'application/json' } })
+                                    .then(function successCallback(response) {
+                                        if (response.data.Error) {
+                                            alert(response.data.Error);
+                                            return;
+                                        }
+                                    }, function errorCallback(response) {
+                                        alert('Error Saving');
+                                    });
+                            }
 
                             $scope.Cancel = function Cancel() {
                                 $uibModalInstance.close();
