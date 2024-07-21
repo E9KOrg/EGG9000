@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 namespace EGG9000.Common.Helpers {
     public static class FAQHelper {
 
+        public const int MAX_KEYWORD_LENGTH = 20;
+
         public class FAQBuilder {
             public ComponentBuilder ComponentBuilder { get; set; }
             public EmbedBuilder EmbedBuilder { get; set; }
@@ -25,19 +27,26 @@ namespace EGG9000.Common.Helpers {
             return faqTopics;
         }
 
-        public static async Task<List<FAQTopic>> QueryFAQTopicsAsync(this ApplicationDbContext db, Guild guild, string keyword) {
+        public static async Task<List<FAQTopic>> QueryFAQTopicsAsync(this ApplicationDbContext db, Guild guild, bool withStaffPerms, string keyword) {
 #if DEV9002
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
 #else
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
 #endif
-            var palaceApplicableFaqs = (await db.GetFAQTopicsAsync(palaceGuild)).Where(f => f.PalaceFAQAppliesToGuild(guild)).ToList();
-            List<FAQTopic> guildFaqs = [];
+            var faqTopics = (await db.GetFAQTopicsAsync(palaceGuild)).Where(
+                f => f.PalaceFAQAppliesToGuild(guild) &&
+                (!f.StaffOnly || withStaffPerms)
+            ).ToList();
             if(guild.Id != palaceGuild.Id) {
-                guildFaqs = await db.GetFAQTopicsAsync(guild);
+                faqTopics.AddRange(await db.GetFAQTopicsAsync(guild));
             }
-            List<FAQTopic> unfilteredList = [.. palaceApplicableFaqs, .. guildFaqs];
-            return unfilteredList.Where(f => f.Keywords?.Contains(keyword.ToLower()) ?? false).ToList();
+            var filteredTopics = faqTopics.Where(f =>
+                keyword == "" ||
+                (f.Keywords?.Contains(keyword) ?? false) ||
+                (f.Keywords?.Any(k => k.ToLowerInvariant().Contains(keyword)) ?? false)
+            ).ToList();
+
+            return [.. filteredTopics.OrderByDescending(t => t.Weight)];
         }
 
 

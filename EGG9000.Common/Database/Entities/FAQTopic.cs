@@ -29,11 +29,35 @@ namespace EGG9000.Common.Database.Entities {
         public bool StaffOnly { get; set; } = false;
         public bool PalaceOnly { get; set; } = false;
 
-        public ulong CreatedById { get; set; } = ulong.MaxValue;
+        public string CreatedByIdString { get; set; } = "";
+        public ulong CreatedById {
+            get {
+                if(!ulong.TryParse(CreatedByIdString, out var id)) {
+                    id = ulong.MaxValue;
+                }
+                return id;
+            }
+            set {
+                CreatedByIdString = value.ToString();
+            }
+        }
+
+        
         public string CreatedBy { get; set; } = "";
 
         public string GuildName { get; set; } = "";
-        public ulong GuildId { get; set; } = ulong.MaxValue;
+        public string GuildIdString { get; set; } = "";
+        public ulong GuildId { 
+            get {
+                if (!ulong.TryParse(GuildIdString, out var id)) {
+                    id = ulong.MaxValue;
+                }
+                return id;
+            }
+            set {
+                GuildIdString = value.ToString();
+            }
+        }
         public string _subscribedGuildIds { get; set; } = "";
         [NotMapped]
         public List<ulong> SubscribedGuildIds {
@@ -58,7 +82,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool PalaceFAQAppliesToGuild(Guild guild) {
-            if(GuildId == guild.Id) return true;
+            if(GuildId == guild.DiscordSeverId || GuildId == guild.Id) return true;
             if(PalaceOnly) return false;
             return SubscribedGuildIds.Contains(guild.Id);
         }

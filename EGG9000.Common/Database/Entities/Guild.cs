@@ -91,6 +91,8 @@ namespace EGG9000.Common.Database.Entities {
                 _faqTopicsJson = JsonConvert.SerializeObject(value);
             }
         }
+        public bool FAQTopicsEnabled { get; set; }
+        public int FAQTopicCooldownMinutes { get; set; }
 
         public string _channelDetailsJson { get; set; }
         [NotMapped]
