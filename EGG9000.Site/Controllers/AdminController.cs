@@ -450,7 +450,7 @@ namespace EGG9000.Site.Controllers {
             } else return Content("Failure");
 
             if(!wasFound) return Content("Failure");
-            else guild.FAQTopics.Remove(topicToDelete);
+            else guild.FAQTopics = guild.FAQTopics.Where(faqItem => faqItem.InternalId != topicToDelete.InternalId).ToList();
 
             _db._cache.InvalidateFAQTopics(guild);
             await _db.SaveChangesAsync();
