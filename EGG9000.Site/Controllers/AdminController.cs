@@ -369,6 +369,7 @@ namespace EGG9000.Site.Controllers {
             public string GuildName { get; set; }
             public string UserDiscordUsername { get; set; }
             public ulong UserDiscordId { get; set; }
+            public int KeywordMaxLength { get; set; }
         }
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
@@ -397,7 +398,8 @@ namespace EGG9000.Site.Controllers {
                 GuildId = guildId,
                 GuildName = guild.Name,
                 UserDiscordUsername = user.DiscordUsername,
-                UserDiscordId = user.DiscordId
+                UserDiscordId = user.DiscordId,
+                KeywordMaxLength = FAQHelper.MAX_KEYWORD_LENGTH
             };
 
             return View(model);
@@ -406,6 +408,8 @@ namespace EGG9000.Site.Controllers {
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> SaveFAQTopic([FromBody] FAQTopic faqTopic) {
 
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
@@ -420,11 +424,15 @@ namespace EGG9000.Site.Controllers {
             }
 
             if(!wasFound) {
+                topicToSave.GuildId = guildId;
+                topicToSave.CreatedById = ulong.Parse(logins.First().ProviderKey);
                 guild.FAQTopics = [
                     .. guild.FAQTopics,
                     topicToSave
                 ];
             } else {
+                faqTopic.GuildId = topicToSave.GuildId;
+                faqTopic.CreatedById = topicToSave.CreatedById;
                 var cloneList = new List<FAQTopic>(guild.FAQTopics) {
                     [guild.FAQTopics.IndexOf(topicToSave)] = faqTopic
                 };
@@ -1283,6 +1291,10 @@ music
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
+            Console.WriteLine("Setting FAQTopicsEnabled to " + model.FAQTopicsEnabled);
+            Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
+            dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
+            dbGuild.FAQTopicCooldownMinutes = model.FAQTopicCooldownMinutes;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1320,6 +1332,8 @@ music
             public string CoopNamePrefix { get; set; }
             public bool RemoveFindCoopSpot { get; set; }
             public bool AddOutsideCoops { get; set; }
+            public bool FAQTopicsEnabled { get; set; }
+            public int FAQTopicCooldownMinutes { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
