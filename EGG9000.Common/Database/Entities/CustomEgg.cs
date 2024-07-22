@@ -69,6 +69,13 @@ namespace EGG9000.Common.Database.Entities {
                 return $"<:{EmojiName}:{EmojiId}>";
             }
         }
+        [NotMapped]
+        public GuildEmote GuildEmote {
+            get {
+                if(EmojiId == default || EmojiName == default) return null;
+                return (GuildEmote)new Emote(EmojiId, EmojiName, false);
+            }
+        }
     }
 
     [MessagePackObject]
