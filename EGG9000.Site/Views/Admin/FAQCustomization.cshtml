@@ -110,10 +110,10 @@
                 <label>
                     Name <span style="color:red">*</span><br />
                     <span style="font-size: 0.9rem; color: gray;">
-                        Will be displayed on the Discord embed.
+                                Will be displayed on the Discord embed. Max length of @Model.KeywordMaxLength.
                     </span>
                 </label>
-                <input ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" class="form-control" ng-model="item.name" />
+                <input ng-disabled="isSubscribe" maxlength="@Model.KeywordMaxLength" autocomplete="off" aria-autocomplete="none" class="form-control" ng-model="item.name" />
             </div>
 
             <div class="form-group">
