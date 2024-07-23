@@ -1,37 +1,26 @@
-﻿using Discord;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiAfxConfig;
 
-using Ei;
-using Humanizer;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
+using static EGG9000.Common.Services.DiscordExtensions;
 using Contract = EGG9000.Common.Database.Entities.Contract;
-using Microsoft.Extensions.Caching.Memory;
-using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
@@ -62,84 +51,45 @@ namespace EGG9000.Bot.Automated {
                 var customEggs = contractsResponse.Contracts.CustomEggs?.ToList() ?? [];
                 var dbCustomEggs = await _db.GetCustomEggsAsync();
                 var newCustomEggs = customEggs.Where(ce => !dbCustomEggs.Any(e => e.Identifier == ce.Identifier));
-                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier == ce.Identifier && 
-                    (e.Modifiers.First().GetGameDimension() != ce.Buffs.First().Dimension) ||
-                    e.Icon.URL != ce.Icon.Url)
-                );
                 var dbNeedsUpdate = false;
 
+                // Todo: In V4/when Discord.NET gets the potential: Update these to not be created in the overflow server,
+                // and instead create them in the App itself
+                // DEV9K Overflow Server - Cluckingham Overflow 4
+                var emojiServer = _client.GetGuild((ulong)(_debug ? 1130233910966620290 : 1147264073659064420));
+
                 if(newCustomEggs.Any()) {
-#if DEV9002 || DEBUG
-                    // DEV9K Overflow Server
-                    var emojiServer = _client.GetGuild(1130233910966620290);
-#else
-                    // Cluckingham Overflow 4
-                    var emojiServer = _client.GetGuild(1147264073659064420);
-#endif
                     if(emojiServer != null) { 
                         foreach(var newEgg in newCustomEggs) {
-                            var emojiName = newEgg.Name.ToLowerInvariant().Transform(To.TitleCase).Replace(" ", "_") + "_Egg";
+                            var emojiName = newEgg.GetEmojiName();
                             var existingEmotes = await emojiServer.GetEmotesAsync();
                             var emote = existingEmotes.FirstOrDefault(e => e.Name == emojiName);
-                            if(emote is null) {
-                                // Download the image from aux
-                                var imageUrl = newEgg.Icon.Url.ToString();
-                                byte[] imageBytes;
-                                var _httpClient = new HttpClient();
-                                using var response = await _httpClient.GetAsync(imageUrl, CancellationToken.None);
-                                response.EnsureSuccessStatusCode();
-                                imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
+                            emote ??= await emojiServer.CreateCustomEggEmoji(newEgg, null);
 
-                                // Check if the image is larger than 256KB, if so scale it down
-                                // Because of file headers, etc. we aim to mutate down to 200KB
-                                // If that is STILL too big, repeatedly scale by 0.9x until the file is small enough
-                                const int maxSizeInBytes = 200 * 1024;
-                                const double scaleFactorStep = 0.9;
-
-                                while(imageBytes.Length > maxSizeInBytes) {
-                                    using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
-
-                                    // Calculate the new size to maintain aspect ratio
-                                    var scaleFactor = Math.Sqrt((double)maxSizeInBytes / imageBytes.Length) * scaleFactorStep;
-                                    var newWidth = (int)(image.Width * scaleFactor);
-                                    var newHeight = (int)(image.Height * scaleFactor);
-
-                                    // Resize the image
-                                    image.Mutate(x => x.Resize(newWidth, newHeight));
-
-                                    // Save the resized image to a byte array
-                                    using var ms = new MemoryStream();
-                                    image.Save(ms, new PngEncoder());
-                                    imageBytes = ms.ToArray();
-                                }
-
-                                // Convert the image to a stream, then to a Discord Image
-                                using var imageStream = new MemoryStream(imageBytes);
-                                var discordImage = new Discord.Image(imageStream);
-
-                                // Upload the image as a GuildEmote
-                                emote = await emojiServer.CreateEmoteAsync(emojiName, discordImage);
-                            }
-
-                            if(emote != null && emote.Id != 0) {
+                            if(emote != null) {
                                 _logger.LogInformation("New Custom Egg \"{newEgg}\" added to DB, with Emoji Name/ID: <{emoteName}:{emoteId}>", newEgg.Name, emote.Name, emote);
                                 var dbEgg = new DBCustomEgg(newEgg, emote);
                                 await _db.CustomEggs.AddAsync(dbEgg, CancellationToken.None);
                                 dbNeedsUpdate = true;
                             }
                         }
-
                     }
                 }
+
                 // If any eggs had their modifiers or icons changed
+                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !ce.Equals(e)));
                 if(updatedCustomEggs.Any()) {
                     foreach(var updatedEgg in updatedCustomEggs) {
                         var existingEgg = _db.CustomEggs.FirstOrDefault(dbe => dbe.Identifier == updatedEgg.Identifier);
-                        if(existingEgg != null) {
-                            existingEgg.Modifiers = updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
-                            existingEgg.Icon = new(updatedEgg.Icon);
-                            dbNeedsUpdate = true;
+                        if(existingEgg is null) continue;
+                        var emote = existingEgg.GuildEmote;
+                        if(existingEgg.Icon.URL != updatedEgg.Icon.Url) {
+                            emote = await emojiServer.CreateCustomEggEmoji(updatedEgg, emote);
+                            if(emote != null) existingEgg.GuildEmote = emote;
                         }
+                        existingEgg.Modifiers = updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
+                        existingEgg.Icon = new(updatedEgg.Icon);
+                        dbNeedsUpdate = true;
                     }
                 }
                 if(dbNeedsUpdate) {
