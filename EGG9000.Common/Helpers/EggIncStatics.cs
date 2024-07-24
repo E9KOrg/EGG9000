@@ -43,7 +43,7 @@ namespace EGG9000.Common.Helpers {
                     return new EggIncEgg {
                         value = customEgg?.Value ?? failBackEgg?.Value ?? 0,
                         imageUrlEnder = customEgg?.Icon.URL ?? failBackEgg?.Icon.Url ?? "",
-                        emoji = customEgg is not null ? $"<{customEgg.EmojiName}:{customEgg.EmojiId}>" : "<:Edible_Egg:712424206276755516>"
+                        emoji = customEgg is not null ? customEgg.Emoji : "<:Edible_Egg:712424206276755516>"
                     };
                 } else {
                     return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
