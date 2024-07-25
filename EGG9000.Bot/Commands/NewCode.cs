@@ -36,11 +36,11 @@ namespace EGG9000.Bot.Commands {
             }
             db.Remove(coop);
             await db.SaveChangesAsync();
+            await command.RespondAsync(content: "", embed: EmbedSuccess("Coop deleted from DB."));
             await ((SocketThreadChannel)command.Channel).ModifyAsync(c => {
                 c.Archived = true;
                 c.Locked = true;
             });
-            await command.RespondAsync(content: "", embed: EmbedSuccess("Coop deleted from DB."));
         }
     }
 }
