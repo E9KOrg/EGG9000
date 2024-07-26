@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -84,6 +85,18 @@ namespace EGG9000.Bot.Commands {
                 x.Embed = builder.Build();
                 x.Content = "";
             });
+        }
+
+        [SlashCommand(Description = "Nuke all Custom Eggs from DB", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task NukeCustomEggs(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync();
+            foreach(var egg in db.CustomEggs) {
+                db.CustomEggs.Remove(egg);
+            }
+            await db.SaveChangesAsyncRetry(2);
+            db._cache.InvalidateCustomEggs();
+
+            await command.ModifyOriginalResponseAsync(r => { r.Content = ""; r.Embed = EmbedSuccess("Cleared custom eggs."); });
         }
 
         [SlashCommand(Description = "How many SE/PE needed for next rank up", AllowInDMs = true)]

@@ -14,7 +14,7 @@ namespace EGG9000.Common.Database.Entities {
     public class DBCustomEgg {
         public DBCustomEgg() { }
 #pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-        public DBCustomEgg(CustomEgg customEgg, GuildEmote? emoji) {
+        public DBCustomEgg(CustomEgg customEgg, Emote? emoji) {
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             Identifier = customEgg.Identifier;
             Name = customEgg.Name;

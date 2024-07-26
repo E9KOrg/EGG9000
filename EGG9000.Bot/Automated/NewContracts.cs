@@ -53,25 +53,18 @@ namespace EGG9000.Bot.Automated {
                 var newCustomEggs = customEggs.Where(ce => !dbCustomEggs.Any(e => e.Identifier == ce.Identifier));
                 var dbNeedsUpdate = false;
 
-                // Todo: In V4/when Discord.NET gets the potential: Update these to not be created in the overflow server,
-                // and instead create them in the App itself
-                // DEV9K Overflow Server - Cluckingham Overflow 4
-                var emojiServer = _client.GetGuild((ulong)(_debug ? 1130233910966620290 : 1147264073659064420));
-
                 if(newCustomEggs.Any()) {
-                    if(emojiServer != null) { 
-                        foreach(var newEgg in newCustomEggs) {
-                            var emojiName = newEgg.GetEmojiName();
-                            var existingEmotes = await emojiServer.GetEmotesAsync();
-                            var emote = existingEmotes.FirstOrDefault(e => e.Name == emojiName);
-                            emote ??= await emojiServer.CreateCustomEggEmoji(newEgg, null);
+                    foreach(var newEgg in newCustomEggs) {
+                        var emojiName = newEgg.GetEmojiName();
+                        var existingEmotes = await _client.GetApplicationEmotesAsync();
+                        var emote = existingEmotes.FirstOrDefault(e => e.Name == emojiName);
+                        emote ??= await _client.CreateCustomEggEmoji(newEgg, null);
 
-                            if(emote != null) {
-                                _logger.LogInformation("New Custom Egg \"{newEgg}\" added to DB, with Emoji Name/ID: <{emoteName}:{emoteId}>", newEgg.Name, emote.Name, emote);
-                                var dbEgg = new DBCustomEgg(newEgg, emote);
-                                await _db.CustomEggs.AddAsync(dbEgg, CancellationToken.None);
-                                dbNeedsUpdate = true;
-                            }
+                        if(emote != null) {
+                            _logger.LogInformation("New Custom Egg \"{newEgg}\" added to DB, with Emoji Name/ID: <{emoteName}:{emoteId}>", newEgg.Name, emote.Name, emote);
+                            var dbEgg = new DBCustomEgg(newEgg, emote);
+                            await _db.CustomEggs.AddAsync(dbEgg, CancellationToken.None);
+                            dbNeedsUpdate = true;
                         }
                     }
                 }
@@ -84,7 +77,7 @@ namespace EGG9000.Bot.Automated {
                         if(existingEgg is null) continue;
                         var emote = existingEgg.GuildEmote;
                         if(existingEgg.Icon.URL != updatedEgg.Icon.Url) {
-                            emote = await emojiServer.CreateCustomEggEmoji(updatedEgg, emote);
+                            emote = await _client.CreateCustomEggEmoji(updatedEgg, emote);
                             if(emote != null) existingEgg.GuildEmote = emote;
                         }
                         existingEgg.Modifiers = updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();

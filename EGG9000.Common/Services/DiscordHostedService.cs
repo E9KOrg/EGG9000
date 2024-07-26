@@ -358,10 +358,10 @@ namespace EGG9000.Common.Services {
         }
 
 #pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-        public static async Task<GuildEmote> CreateCustomEggEmoji(this SocketGuild guild, Ei.CustomEgg newEgg, Emote? emoteToReplace) {
+        public static async Task<Emote> CreateCustomEggEmoji(this DiscordHostedService _client, Ei.CustomEgg newEgg, Emote? emoteToReplace) {
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             var emojiName = newEgg.GetEmojiName();
-            var existingEmotes = await guild.GetEmotesAsync();
+            var existingEmotes = await _client.GetApplicationEmotesAsync();
             // Download the image from aux
             var imageUrl = newEgg.Icon.Url.ToString();
             byte[] imageBytes;
@@ -398,18 +398,18 @@ namespace EGG9000.Common.Services {
             var discordImage = new Image(imageStream);
 
             // Upload the image as a GuildEmote
-            var emote = await guild.CreateEmoteAsync(emojiName, discordImage);
+            var newAppEmote = await _client.CreateApplicationEmoteAsync(emojiName, discordImage);
 
-            if(emoteToReplace != null && emote != null) {
-                var guildEmote = await guild.GetEmoteAsync(emoteToReplace.Id);
-                if(guildEmote is not null) {
-                    await guild.DeleteEmoteAsync(guildEmote, options: new RequestOptions() {
+            if(emoteToReplace != null && newAppEmote != null) {
+                var appEmote = await _client.GetApplicationEmoteAsync(emoteToReplace.Id);
+                if(appEmote is not null) {
+                    await _client.DeleteApplicationEmoteAsync(emoteToReplace.Id, options: new RequestOptions() {
                         RetryMode = RetryMode.RetryRatelimit | RetryMode.RetryTimeouts
                     });
                 }
             }
 
-            return emote;
+            return newAppEmote ?? emoteToReplace ?? null;
         }
     }
 }
