@@ -31,6 +31,7 @@ using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 using Contract = EGG9000.Common.Database.Entities.Contract;
 using Microsoft.Extensions.Caching.Memory;
+using EGG9000.Common.Migrations;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
@@ -61,6 +62,11 @@ namespace EGG9000.Bot.Automated {
                 var customEggs = contractsResponse.Contracts.CustomEggs?.ToList() ?? [];
                 var dbCustomEggs = await _db.GetCustomEggsAsync();
                 var newCustomEggs = customEggs.Where(ce => !dbCustomEggs.Any(e => e.Identifier == ce.Identifier));
+                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier == ce.Identifier && 
+                    (e.Modifiers.First().GetGameDimension() != ce.Buffs.First().Dimension) ||
+                    e.Icon.URL != ce.Icon.Url)
+                );
+                var dbNeedsUpdate = false;
 
                 if(newCustomEggs.Any()) {
 #if DEV9002 || DEBUG
@@ -70,7 +76,6 @@ namespace EGG9000.Bot.Automated {
                     // Cluckingham Overflow 4
                     var emojiServer = _client.GetGuild(1147264073659064420);
 #endif
-                    var dbNeedsUpdate = false;
                     if(emojiServer != null) { 
                         foreach(var newEgg in newCustomEggs) {
                             var emojiName = newEgg.Name.ToLowerInvariant().Transform(To.TitleCase).Replace(" ", "_") + "_Egg";
@@ -123,11 +128,23 @@ namespace EGG9000.Bot.Automated {
                                 dbNeedsUpdate = true;
                             }
                         }
-                        if(dbNeedsUpdate) {
-                            await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
-                            _db._cache.InvalidateCustomEggs();
+
+                    }
+                }
+                // If any eggs had their modifiers or icons changed
+                if(updatedCustomEggs.Any()) {
+                    foreach(var updatedEgg in updatedCustomEggs) {
+                        var existingEgg = _db.CustomEggs.FirstOrDefault(dbe => dbe.Identifier == updatedEgg.Identifier);
+                        if(existingEgg != null) {
+                            existingEgg.Modifiers = updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
+                            existingEgg.Icon = new(updatedEgg.Icon);
+                            dbNeedsUpdate = true;
                         }
                     }
+                }
+                if(dbNeedsUpdate) {
+                    await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
+                    _db._cache.InvalidateCustomEggs();
                 }
 
                 CheckUpdateInterval(existingContracts);
