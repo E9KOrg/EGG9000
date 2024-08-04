@@ -19,6 +19,10 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, Event customEvent) {
+            return await db.GetCustomizationAsync(dbguild, customEvent.Type);
+        }
+
+        public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, string eventType) {
 #if DEV9002
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
 #else
@@ -27,8 +31,8 @@ namespace EGG9000.Common.Helpers {
             var gCustomizations = await db.GetCustomizationsAsync(dbguild);
             var pCustomizations = await db.GetCustomizationsAsync(palaceGuild);
 
-            return gCustomizations.FirstOrDefault(ec => string.Equals(ec.Type, customEvent.Type, StringComparison.InvariantCultureIgnoreCase))
-                ?? pCustomizations.FirstOrDefault(ec => string.Equals(ec.Type, customEvent.Type, StringComparison.InvariantCultureIgnoreCase));
+            return gCustomizations.FirstOrDefault(ec => string.Equals(ec.Type, eventType, StringComparison.InvariantCultureIgnoreCase))
+                ?? pCustomizations.FirstOrDefault(ec => string.Equals(ec.Type, eventType, StringComparison.InvariantCultureIgnoreCase));
         }
 
         public static void InvalidateEventCustomizations(this ApplicationDbContext db, Guild guild) {
