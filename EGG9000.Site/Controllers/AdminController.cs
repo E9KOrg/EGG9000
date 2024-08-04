@@ -9,8 +9,6 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 
-using MassTransit.Caching.Internals;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -287,48 +285,25 @@ namespace EGG9000.Site.Controllers {
             public int FinishedCoops { get; set; }
         }
 
-        //private static List<string> EventTypes = [
-        //    "prestige-boost", "piggy-boost", "earnings-boost", "gift-boost", "vehicle-sale", "drone-boost", "research-sale", "hab-sale", 
-        //    "epic-research-sale", "boost-sale", "crafting-sale", "boost-duration", "mission-fuel", "mission-capacity", "shell-sale", "piggy-cap-boost", "mission-duration"
-        //];
-
-        public record EventCustomizationModel(
-            List<EventCustomization> Customizations,
-            ulong GuildDiscordID
-        );
-
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> EventCustomization() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
-            //Used for 'default values'
-            var palaceGuild = await _db.Guilds.AsQueryable().FirstOrDefaultAsync(g => g.DiscordSeverId == 656455567858073601);
-            
-            var eventCustomizations = new List<EventCustomization>();
 
+            var dbCustomizations = await _db.EventCustomizations.ToListAsync();
+            var eventTypes = dbCustomizations.Select(x => x.Type).ToList();
 
-            var currentCustomizations = await _db.EventCustomizations.ToListAsync();
-
-            
-            var eventTypes = currentCustomizations.Select(x => x.Type).ToList();
             var periodicalsResponse = await ContractsAPI.GetPeriodicalsAsync();
-            var missingTypes = periodicalsResponse.Events.Events.Where(x => !eventTypes.Contains(x.Type)).Select(x => x.Type).ToList();
-            eventTypes.AddRange(missingTypes);
+            var periodicalsTypes = periodicalsResponse.Events.Events.Where(x => !eventTypes.Contains(x.Type)).Select(x => x.Type).ToList();
+            eventTypes.AddRange(periodicalsTypes);
 
+            var guildTypes = (await _db.GetCustomizationsAsync(guild)).Where(x => !eventTypes.Contains(x.Type)).Select(x => x.Type).ToList();
+            eventTypes.AddRange(guildTypes);
+
+            var eventCustomizations = new List<EventCustomization>();
             foreach(var type in eventTypes) {
-                var guildEventCustomization = guild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
-                if(guildEventCustomization == null) { 
-                    if(palaceGuild != null) { //Default to palace customizations
-                        guildEventCustomization = palaceGuild.EventCustomzations.FirstOrDefault(ec => ec.Type == type);
-                    }
-                    if(guildEventCustomization == null || palaceGuild == null) {
-                        guildEventCustomization = currentCustomizations.FirstOrDefault(ec => ec.Type == type);
-                    }
-                }
-                guildEventCustomization ??= new() {
-                    Type = type,
-                };
-                eventCustomizations.Add(guildEventCustomization);
+                var guildEventCustomization = await _db.GetCustomizationAsync(guild, type);
+                eventCustomizations.Add(guildEventCustomization ?? new() { Type = type });
             }
 
             return View(eventCustomizations.OrderByDescending(x => x.Priority).ToList());
