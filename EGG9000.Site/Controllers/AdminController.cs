@@ -357,7 +357,8 @@ namespace EGG9000.Site.Controllers {
                 guild.EventCustomzations = cloneList;
             }
 
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsyncRetry(2);
+            _db.InvalidateEventCustomizations(guild);
             return Content("Success");
         }
 
