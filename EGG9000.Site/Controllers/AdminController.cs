@@ -314,22 +314,22 @@ namespace EGG9000.Site.Controllers {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
-            var eventCustomizationToSave = guild.EventCustomzations.FirstOrDefault(ec => ec.Type == eventCustomization.Type);
+            var eventCustomizationToSave = guild.EventCustomizations.FirstOrDefault(ec => ec.Type == eventCustomization.Type);
             
             var tempNotifs = JsonConvert.DeserializeObject<EventCustomizationSettings>(eventCustomization._settings);
             tempNotifs.Notifications.ForEach(n => n.GuildID = guild.DiscordSeverId);
             eventCustomization._settings = JsonConvert.SerializeObject(tempNotifs);
 
             if(eventCustomizationToSave is null) {
-                guild.EventCustomzations = [
-                    .. guild.EventCustomzations,
+                guild.EventCustomizations = [
+                    .. guild.EventCustomizations,
                     eventCustomization
                 ];
             } else {
-                var cloneList = new List<EventCustomization>(guild.EventCustomzations) {
-                    [guild.EventCustomzations.IndexOf(eventCustomizationToSave)] = eventCustomization
+                var cloneList = new List<EventCustomization>(guild.EventCustomizations) {
+                    [guild.EventCustomizations.IndexOf(eventCustomizationToSave)] = eventCustomization
                 };
-                guild.EventCustomzations = cloneList;
+                guild.EventCustomizations = cloneList;
             }
 
             await _db.SaveChangesAsyncRetry(2);

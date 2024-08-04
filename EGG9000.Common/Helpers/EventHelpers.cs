@@ -12,7 +12,7 @@ namespace EGG9000.Common.Helpers {
 
         public static async Task<List<EventCustomization>> GetCustomizationsAsync(this ApplicationDbContext db, Guild dbGuild) {
             if(!db._cache.TryGetValue(dbGuild.GetECCacheKey(), out List<EventCustomization> customizations)) {
-                customizations = (await db.Guilds.AsQueryable().FirstOrDefaultAsync(g => g.Id == dbGuild.Id)).EventCustomzations;
+                customizations = (await db.Guilds.AsQueryable().FirstOrDefaultAsync(g => g.Id == dbGuild.Id)).EventCustomizations;
                 db._cache.Set(dbGuild.GetECCacheKey(), customizations, TimeSpan.FromDays(1));
             }
             return customizations;
