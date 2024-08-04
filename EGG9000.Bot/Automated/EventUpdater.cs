@@ -5,14 +5,16 @@ using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using Ei;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
-
+using RazorEngine.Compilation.ImpromptuInterface.Dynamic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,18 +26,6 @@ namespace EGG9000.Bot.Automated {
         private class EventWithCustom {
             public Event Event { get; set; }
             public EventCustomization Customization { get; set; }
-        }
-
-        public static async Task<EventCustomization> GetCustomizationAsync(ApplicationDbContext _db, Guild dbguild, Event customEvent) {
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-            var palaceGuild = dbguilds.FirstOrDefault(g => g.Id == 656455567858073601);
-            var customization = dbguild.EventCustomzations?.FirstOrDefault(ec => ec.Type == customEvent.Type);
-            if(customization is null) {
-                //The only time this should happen is when we first push this live
-                if(palaceGuild?.EventCustomzations is null || !palaceGuild.EventCustomzations.Any(e => e.Type == customEvent.Type)) return null;
-                customization = palaceGuild.EventCustomzations?.FirstOrDefault(ec => ec.Type == customEvent.Type);
-            }
-            return customization;
         }
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
@@ -118,7 +108,7 @@ namespace EGG9000.Bot.Automated {
                 if(channel != default) {
                     var eventsWithCustom = recentEvents.Where(x => !x.Ended && !x.CcOnly).Select(async x => new EventWithCustom {
                         Event = x,
-                        Customization = await GetCustomizationAsync(_db, dbguild, x)
+                        Customization = await _db.GetCustomizationAsync(dbguild, x)
                     }).Select(t => t.Result).ToList();
 
                     foreach(var e in eventsWithCustom) {
@@ -149,7 +139,7 @@ namespace EGG9000.Bot.Automated {
                 if(ccChannel != null) {
                     var ccEventsWithCustom = recentEvents.Where(x => !x.Ended && x.CcOnly).Select(async x => new EventWithCustom {
                         Event = x,
-                        Customization = await GetCustomizationAsync(_db, dbguild, x)
+                        Customization = await _db.GetCustomizationAsync(dbguild, x)
                     }).Select(t => t.Result).ToList();
 
                     foreach(var se in ccEventsWithCustom) {
@@ -175,18 +165,15 @@ namespace EGG9000.Bot.Automated {
             var messageIds = new List<ulong>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
-                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-
-                var customization = await GetCustomizationAsync(_db, dbguild, newEvent);
-
+                var customization = await _db.GetCustomizationAsync(dbguild, newEvent);
                 var embed = GetEmbed(newEvent, customization, false, false);
 
+                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
 
                 RestUserMessage message = null;
                 var notification = customization?.Settings?.Notifications?
-                    .Where(x => x.MinValue > 0)
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId) ?? null;
 
@@ -223,14 +210,11 @@ namespace EGG9000.Bot.Automated {
         private async Task UpdateMessages(Event currentEvent, ApplicationDbContext _db, bool Ended = false, bool Crossout = false) {
             var messageIds = JsonConvert.DeserializeObject<List<ulong>>(currentEvent.MessageIds);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-            var palaceGuild = dbguilds.FirstOrDefault(g => g.Id == 656455567858073601);
             foreach(var dbguild in dbguilds) {
-                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-
-                var customization = await GetCustomizationAsync(_db, dbguild, currentEvent);
-
+                var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
                 var embed = GetEmbed(currentEvent, customization, Ended, Crossout);
 
+                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(eventChannel != null) {
                     foreach(var mid in messageIds) {
