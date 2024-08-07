@@ -313,7 +313,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(overflowGuildUser is not null && !overflowGuildUser.Roles.Any(x => x.Id == gradeRole.Id || x.Name.Contains("ULTRA")) && participant.CoopStatus?.UserName != "[departed]") {
                     var headChannel = guild.GetTextChannel(coopThread.CategoryId.Value);
                     if(!headChannel.PermissionOverwrites.Any(x => x.TargetId == overflowGuildUser.Id)) {
-                        await headChannel.AddPermissionOverwriteAsync(overflowGuildUser, OverwritePermissions.DenyAll(headChannel).Modify(viewChannel: PermValue.Allow, sendMessagesInThreads: PermValue.Allow));
+                        await headChannel.AddPermissionOverwriteAsync(overflowGuildUser, new OverwritePermissions(viewChannel: PermValue.Allow));
 
                         if(!coop.FinishedOrFailedOrExpired()) {
                             await coopThread.SendMessageAsync($"Fixing permission for {overflowGuildUser.Mention}");
