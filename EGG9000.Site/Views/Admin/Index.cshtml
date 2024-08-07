@@ -6,27 +6,45 @@
 	var days2 = Model.Days?.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] });
 }
 
-@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")){
-	<a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
-}
-<a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
-<a href="/admin/ghosts" class="btn btn-primary">Ghosts</a>
-<a href="/admin/slackers" class="btn btn-primary">Slackers</a>
 @if (User.IsInRole("Admin")) {
-	<a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
+	<div style="padding-bottom: 0.75%">
+		Super-Admin<br />
+		<a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
+	</div>
 }
-<a href="/admin/duplicatechannels" class="btn btn-primary">Duplicate Channels</a>
-<a href="/admin/easteregghunt" class="btn btn-primary">Easter Egg Hunt</a>
-<a href="/admin/halloweenhunt" class="btn btn-primary">Halloween Egg Hunt</a>
-<a href="/admin/configureserver" class="btn btn-primary">Customize Server</a>
-<a href="/admin/standardpermit" class="btn btn-primary">Standard Permits</a>
-<a href="/admin/inactiveplayers" class="btn btn-primary">Inactive Players</a>
-<a href="/admin/automatedtasks" class="btn btn-primary">Automated Tasks</a>
-<a href="/admin/latestdemerits" class="btn btn-primary">Latest Demerits</a>
-@if (Model.Guild.AllowGuilds)
-{
-	<a href="/admin/guilds" class="btn btn-primary">Guilds</a>
+@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")) {
+	<div style="padding-bottom: 0.75%">
+		Customizations<br />
+		<a href="/admin/configureserver" class="btn btn-primary">Customize Server</a>
+		<a href="/admin/eventcustomization" class="btn btn-primary">Customize Events</a>
+		@if (Model.Guild.FAQTopicsEnabled) {
+			<a href="/admin/faqcustomization" class="btn btn-primary">Customize FAQ Topics</a>
+		}
+	</div>
 }
+<div style="padding-bottom: 0.75%">
+	Player Reports<br />
+	<a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>
+	<a href="/admin/ghosts" class="btn btn-primary">Ghosts</a>
+	<a href="/admin/slackers" class="btn btn-primary">Slackers</a>
+	<a href="/admin/standardpermit" class="btn btn-primary">Standard Permits</a>
+	<a href="/admin/inactiveplayers" class="btn btn-primary">Inactive Players</a>
+</div>
+<div style="padding-bottom: 0.75%">
+	Server & Bot Management<br />
+	<a href="/admin/duplicatechannels" class="btn btn-primary">Duplicate Channels</a>
+	<!-- Palace-only -->
+	@if (Model.Guild.Id == 656455567858073601) {
+		<a href="/admin/easteregghunt" class="btn btn-primary">Easter Egg Hunt</a>
+		<a href="/admin/halloweenhunt" class="btn btn-primary">Halloween Egg Hunt</a>
+	}
+	<a href="/admin/automatedtasks" class="btn btn-primary">Automated Tasks</a>
+	<a href="/admin/latestdemerits" class="btn btn-primary">Latest Demerits</a>
+	@if (Model.Guild.AllowGuilds) {
+		<a href="/admin/guilds" class="btn btn-primary">Guilds</a>
+	}
+</div>
+
 
 <div class="clearfix">
 	<div class="float-left card">
