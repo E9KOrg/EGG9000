@@ -98,6 +98,8 @@ namespace EGG9000.Common.Database.Entities {
         public string Usernames { get; set; } = ""; //Comma delimited list of Username(s) associated with EggIncAccounts
         public string EIDs { get; set; } = ""; //Comma delimited list of EID(s) associated with EggIncAccounts
 
+        public DateTimeOffset? LastFAQPosted { get; set; }
+
         [NotMapped]
         private List<CustomBackup> _backups { get; set; }
 
