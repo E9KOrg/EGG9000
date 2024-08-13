@@ -123,7 +123,6 @@ namespace EGG9000.Site {
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
             });
             services.AddMassTransit(x => {
-                x.AddConsumer<ShutdownConsumer>();
                 x.AddConsumer<ExpireCacheConsumer>();
                 x.UsingRabbitMq((context, cfg) => {
                     cfg.ConfigureEndpoints(context);
