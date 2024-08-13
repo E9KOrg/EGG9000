@@ -40,6 +40,7 @@ namespace EGG9000.Common.Commands {
         public bool Required = true;
         public Type AutocompleteHandler;
         public bool PositiveOnly = false;
+        public int StringMaxLength = 6000;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]

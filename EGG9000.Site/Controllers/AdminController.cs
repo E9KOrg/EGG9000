@@ -337,6 +337,110 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
+        public class FAQCustomizationModel() {
+            public List<FAQTopic> PalaceFAQTopics { get; set; }
+            public List<FAQTopic> GuildFAQTopics { get; set; }
+            public ulong PalaceGuildId { get; set; }
+            public ulong GuildId { get; set; }
+            public string GuildName { get; set; }
+            public string UserDiscordUsername { get; set; }
+            public ulong UserDiscordId { get; set; }
+            public int KeywordMaxLength { get; set; }
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        public async Task<IActionResult> FAQCustomization() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
+#if DEV9002
+            var palaceGuildId = (ulong)1108127105088241746;
+#else
+            var palaceGuildId = (ulong)656455567858073601;
+#endif
+            var palaceGuild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == palaceGuildId);
+
+            var palaceFaqs = await _db.GetFAQTopicsAsync(palaceGuild);
+            var guildFaqs = await _db.GetFAQTopicsAsync(guild);
+
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            var model = new FAQCustomizationModel() {
+                PalaceFAQTopics = palaceFaqs,
+                GuildFAQTopics = guildFaqs,
+                PalaceGuildId = palaceGuildId,
+                GuildId = guildId,
+                GuildName = guild.Name,
+                UserDiscordUsername = user.DiscordUsername,
+                UserDiscordId = user.DiscordId,
+                KeywordMaxLength = FAQHelper.MAX_KEYWORD_LENGTH
+            };
+
+            return View(model);
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        public async Task<IActionResult> SaveFAQTopic([FromBody] FAQTopic faqTopic) {
+
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
+            var wasFound = false;
+            FAQTopic topicToSave = null;
+            if(faqTopic.InternalId != "") {
+                topicToSave = guild.FAQTopics.FirstOrDefault(f => f.InternalId == faqTopic.InternalId);
+                wasFound = topicToSave != null;
+            } else {
+                topicToSave = faqTopic;
+                topicToSave.InternalId = $"{DateTime.Now}_{faqTopic.CreatedById}_{faqTopic.Name}".Replace(" ", "_");
+            }
+
+            if(!wasFound) {
+                topicToSave.GuildId = guildId;
+                topicToSave.CreatedById = ulong.Parse(logins.First().ProviderKey);
+                guild.FAQTopics = [
+                    .. guild.FAQTopics,
+                    topicToSave
+                ];
+            } else {
+                faqTopic.GuildId = topicToSave.GuildId;
+                faqTopic.CreatedById = topicToSave.CreatedById;
+                var cloneList = new List<FAQTopic>(guild.FAQTopics) {
+                    [guild.FAQTopics.IndexOf(topicToSave)] = faqTopic
+                };
+                guild.FAQTopics = cloneList;
+            }
+
+            _db._cache.InvalidateFAQTopics(guild);
+            await _db.SaveChangesAsync();
+            return Content("Success");
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        public async Task<IActionResult> DeleteFAQTopic([FromBody] FAQTopic faqTopic) {
+
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
+            var wasFound = false;
+            FAQTopic topicToDelete = null;
+            if(faqTopic.InternalId != "") {
+                topicToDelete = guild.FAQTopics.FirstOrDefault(f => f.InternalId == faqTopic.InternalId);
+                wasFound = topicToDelete != null;
+            } else return Content("Failure");
+
+            if(!wasFound) return Content("Failure");
+            else guild.FAQTopics = guild.FAQTopics.Where(faqItem => faqItem.InternalId != topicToDelete.InternalId).ToList();
+
+            _db._cache.InvalidateFAQTopics(guild);
+            await _db.SaveChangesAsync();
+            return Content("Success");
+        }
+
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UserPermissions() {
             var loginuser = (await _userManager.GetUserAsync(User));
@@ -1163,6 +1267,10 @@ music
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
+            Console.WriteLine("Setting FAQTopicsEnabled to " + model.FAQTopicsEnabled);
+            Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
+            dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
+            dbGuild.FAQTopicCooldownMinutes = model.FAQTopicCooldownMinutes;
             await _db.SaveChangesAsync();
 
             return Ok();
@@ -1200,6 +1308,8 @@ music
             public string CoopNamePrefix { get; set; }
             public bool RemoveFindCoopSpot { get; set; }
             public bool AddOutsideCoops { get; set; }
+            public bool FAQTopicsEnabled { get; set; }
+            public int FAQTopicCooldownMinutes { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
