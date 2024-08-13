@@ -7,7 +7,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Consumers {
+namespace EGG9000.Common.Consumers {
     public class ShutdownConsumer(IHostApplicationLifetime applicationLifetime, ILogger<ShutdownConsumer> logger) : IConsumer<ShutdownMessage> {
         private readonly IHostApplicationLifetime _applicationLifetime = applicationLifetime;
         private readonly ILogger<ShutdownConsumer> _logger = logger;

@@ -5,6 +5,7 @@ using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Consumers;
 using EGG9000.Bot.Services;
+using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
@@ -79,6 +80,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         });
         services.AddMassTransit(x => {
             x.AddConsumer<ShutdownConsumer>();
+            x.AddConsumer<ExpireCacheConsumer>();
             x.UsingRabbitMq((context, cfg) => {
                 cfg.ConfigureEndpoints(context);
             });

@@ -1,10 +1,16 @@
 using Bugsnag.AspNet.Core;
+
 using Discord;
 using Discord.WebSocket;
+
+using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Services;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
+
+using MassTransit;
+
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,6 +23,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
 using System;
 using System.IO.Compression;
 using System.Linq;
@@ -107,14 +114,21 @@ namespace EGG9000.Site {
 
 
 #if RELEASE
-        services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
-        services.AddResponseCompression(options => {
-            options.Providers.Add<GzipCompressionProvider>();
-            options.EnableForHttps = true;
-        });
-        services.AddBugsnag(configuration => {
+            services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
+            services.AddResponseCompression(options => {
+                options.Providers.Add<GzipCompressionProvider>();
+                options.EnableForHttps = true;
+            });
+            services.AddBugsnag(configuration => {
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
-        });
+            });
+            services.AddMassTransit(x => {
+                x.AddConsumer<ShutdownConsumer>();
+                x.AddConsumer<ExpireCacheConsumer>();
+                x.UsingRabbitMq((context, cfg) => {
+                    cfg.ConfigureEndpoints(context);
+                });
+            });
 #else
             services.AddBugsnag();
 #endif
@@ -135,7 +149,7 @@ namespace EGG9000.Site {
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
             app.UseForwardedHeaders();
 
-            if (env.IsDevelopment()) {
+            if(env.IsDevelopment()) {
                 app.UseDeveloperExceptionPage();
                 app.UseMigrationsEndPoint();
             } else {
@@ -160,12 +174,12 @@ namespace EGG9000.Site {
 
             app.UseEndpoints(endpoints => {
                 endpoints.MapControllerRoute(
-                    name: "invite", 
-                    pattern: "invite", 
+                    name: "invite",
+                    pattern: "invite",
                     defaults: new { controller = "Home", action = "Invite" });
                 endpoints.MapControllerRoute(
-                    name: "coop", 
-                    pattern: "coop/{ContractId}/{CoopId}", 
+                    name: "coop",
+                    pattern: "coop/{ContractId}/{CoopId}",
                     defaults: new { controller = "Home", action = "Coop" });
                 endpoints.MapControllerRoute(
                     name: "default",
