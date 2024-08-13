@@ -547,7 +547,7 @@ namespace EGG9000.Bot.Services {
 
             if(types.Any(x => x.Key == parameterInfo.ParameterType)) {
                 var maxVal = parameterInfo.ParameterType == typeof(int) ? int.MaxValue : double.MinValue;
-                AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: maxVal, guildCommand, subCommand);
+                AddOption(name, types.First(x => x.Key == parameterInfo.ParameterType).Value, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: maxVal, 0, slashParamDetails.StringMaxLength, guildCommand, subCommand);
                 return;
             }
             if(parameterInfo.ParameterType.IsEnum) {
@@ -558,29 +558,63 @@ namespace EGG9000.Bot.Services {
                         Value = Convert.ToInt32(value)
                     });
                 }
-                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand, [..choices]);
+                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, 0, int.MaxValue, guildCommand, subCommand, [..choices]);
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketUser[])) {
                 for(var i = 1; i <= 10; i++) {
-                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i <= 1 && slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand);
+                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i <= 1 && slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, 0, int.MaxValue, guildCommand, subCommand);
                 }
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketGuildUser[])) {
                 for(var i = 1; i <= 10; i++) {
-                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i <= 1 && slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, guildCommand, subCommand);
+                    AddOption($"{name}{i}", ApplicationCommandOptionType.User, description: $"{slashParamDetails.Description} {i}", isRequired: i <= 1 && slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, 0, int.MaxValue, guildCommand, subCommand);
                 }
                 return;
             }
             throw new NotImplementedException($"Parameter not implemented for {parameterInfo.Name} of type {parameterInfo.ParameterType}");
         }
 
-        private static void AddOption(string name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, bool positiveOnly, double maxValue, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices) {
+        private static void AddOption(
+            string name, ApplicationCommandOptionType type, string description, bool isRequired, bool isAutocomplete, bool positiveOnly, double maxValue, int minLength, int maxLength, SlashCommandBuilder guildCommand = null, SlashCommandOptionBuilder subCommand = null, params ApplicationCommandOptionChoiceProperties[] choices
+        ) {
             if(guildCommand != null) {
-                guildCommand.AddOption(name, type, description, isRequired, null, isAutocomplete: isAutocomplete, minValue: positiveOnly ? 0 : null, maxValue: maxValue == double.MinValue ? null : maxValue, null, null, null, null, null, null, choices);
+                guildCommand.AddOption(
+                    name: name,
+                    type: type,
+                    description: description,
+                    isRequired: isRequired,
+                    isDefault: null,
+                    isAutocomplete: isAutocomplete,
+                    minValue: positiveOnly ? 0 : null,
+                    maxValue: maxValue == double.MinValue ? null : maxValue,
+                    options: null,
+                    channelTypes: null,
+                    nameLocalizations: null,
+                    descriptionLocalizations: null,
+                    minLength: minLength,
+                    maxLength: maxLength,
+                    choices: choices
+                );
             } else {
-                subCommand.AddOption(name, type, description, isRequired, false, isAutocomplete: isAutocomplete, minValue: positiveOnly ? 0 : null, maxValue: maxValue == double.MinValue ? null : maxValue, null, null, null, null, null, null, choices);
+                subCommand.AddOption(
+                    name: name,
+                    type: type,
+                    description: description,
+                    isRequired: isRequired,
+                    isDefault: false,
+                    isAutocomplete: isAutocomplete,
+                    minValue: positiveOnly ? 0 : null,
+                    maxValue: maxValue == double.MinValue ? null : maxValue,
+                    options: null,
+                    channelTypes: null,
+                    nameLocalizations: null,
+                    descriptionLocalizations: null,
+                    minLength: minLength,
+                    maxLength: maxLength,
+                    choices: choices
+                );
             }
 
         }

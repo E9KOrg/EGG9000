@@ -311,6 +311,17 @@
 </div>
 
 <div class="card">
+	<div class="card-header">FAQ Topics</div>
+	<div class="card-body">
+		<label>
+			<input class="custom-input" type="checkbox" value="true" id="FaqTopicsEnabled" checked="@Model.FAQTopicsEnabled" /> Enable FAQ Topics
+		</label>
+		<br/>
+		<label>FAQ Post Cooldown (Minutes) <input style="margin-left: 3px;" class="custom-input" type="number" min="0" value="@Model.FAQTopicCooldownMinutes" id="FaqTopicCooldownMinutes" /></label>
+	</div>
+</div>
+
+<div class="card">
 	<div class="card-header">Other Settings</div>
 	<div class="card-body">
 		<div>
@@ -400,6 +411,8 @@
 						RemoveFindCoopSpot: $("#RemoveFindCoopSpot").is(":checked"),
 						CoopNamePrefix: $("#CoopNamePrefix").val(),
 						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),
+						FaqTopicsEnabled: $("#FaqTopicsEnabled").is(":checked"),
+						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val()
 					})
 			}, function () {
 				document.location = document.location;
