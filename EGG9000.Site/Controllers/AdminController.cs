@@ -2,13 +2,14 @@
 using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.Consumers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
-
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +31,7 @@ using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
     public class AdminController(UserManager<IdentityUser> userManager, DiscordSocketClient discord,
-        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration) : Controller {
+        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
         public static readonly double scoreThreshold = 1e-2;
         private readonly ApplicationDbContext _db = db;
@@ -39,6 +40,7 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<AdminController> _logger = logger;
         private readonly IConfiguration _configuration = configuration;
+        private readonly IPublishEndpoint _publishEndpoint = publishEndpoint;
 
         public class PrestigeGain {
             public UserSnapShot SnapShot { get; set; }
@@ -333,7 +335,8 @@ namespace EGG9000.Site.Controllers {
             }
 
             await _db.SaveChangesAsyncRetry(2);
-            _db.InvalidateEventCustomizations(guild);
+            var guildKey = _db.InvalidateEventCustomizations(guild);
+            await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
             return Content("Success");
         }
 
@@ -415,7 +418,8 @@ namespace EGG9000.Site.Controllers {
                 guild.FAQTopics = cloneList;
             }
 
-            _db._cache.InvalidateFAQTopics(guild);
+            var guildKey = _db.InvalidateFAQTopics(guild);
+            await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
             await _db.SaveChangesAsync();
             return Content("Success");
         }
@@ -436,7 +440,8 @@ namespace EGG9000.Site.Controllers {
             if(!wasFound) return Content("Failure");
             else guild.FAQTopics = guild.FAQTopics.Where(faqItem => faqItem.InternalId != topicToDelete.InternalId).ToList();
 
-            _db._cache.InvalidateFAQTopics(guild);
+            var guildKey = _db.InvalidateFAQTopics(guild);
+            await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
             await _db.SaveChangesAsync();
             return Content("Success");
         }

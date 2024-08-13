@@ -35,8 +35,9 @@ namespace EGG9000.Common.Helpers {
                 ?? pCustomizations.FirstOrDefault(ec => string.Equals(ec.Type, eventType, StringComparison.InvariantCultureIgnoreCase));
         }
 
-        public static void InvalidateEventCustomizations(this ApplicationDbContext db, Guild guild) {
+        public static string InvalidateEventCustomizations(this ApplicationDbContext db, Guild guild) {
             db._cache.Set(guild.GetECCacheKey(), new List<EventCustomization>(), TimeSpan.FromMilliseconds(1));
+            return guild.GetECCacheKey();
         }
 
         private static string GetECCacheKey(this Guild g) {
