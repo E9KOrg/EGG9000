@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Commands;
-using EGG9000.Bot.Consumers;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Consumers;
@@ -254,6 +253,7 @@ namespace EGG9000.Bot.Services {
                 _discord.ModalSubmitted += _discord_ModalSubmitted;
 
                 await _publishEndpoint.Publish(new ShutdownMessage());
+
 
                 _logger.LogInformation("Creating slash commands");
                 List<ApplicationCommandProperties> guildCommandProperties = [];
