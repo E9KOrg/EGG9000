@@ -10,6 +10,7 @@
 	<div style="padding-bottom: 0.75%">
 		Super-Admin<br />
 		<a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
+		<a href="/admin/restartbot" class="btn btn-danger" onclick="return confirm('Are you sure you want to restart the bot?');">Restart Bot</a>
 	</div>
 }
 @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")) {

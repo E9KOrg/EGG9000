@@ -168,6 +168,12 @@ namespace EGG9000.Site.Controllers {
             return Redirect(Request.Headers["Referer"].ToString());
         }
 
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RestartBot() {
+            await _publishEndpoint.Publish(new RestartMessage());
+            return Content("Bot proccess ended.");
+        }
+
         public async Task<IActionResult> LookForLargeJump() {
             var snapshots = await _db.UserSnapShots.ToListAsync();
 
