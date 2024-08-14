@@ -99,16 +99,12 @@ namespace EGG9000.Bot.Automated {
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
-                    var json = JsonConvert.SerializeObject(contractResponse);
-
                     // Kevin being bad causing problems - Fallback leggacy detection
-                    if (!contractResponse.Leggacy && string.IsNullOrEmpty(contractResponse.SeasonId)) {
-                        // Check if there are any past contracts with this ID, if so it's a leggacy
-                        contractResponse.Leggacy = _db.Contracts.Any(c => c.ID == contractResponse.Identifier && c._response != json);
-                        if (!contractResponse.Leggacy) {
-                            _logger.LogError("Contract Response for contract {id} is not Leggacy, and a Season ID could not be found.", contractResponse.Identifier);
-                        }
+                    if(!contractResponse.Leggacy) {
+                        contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
                     }
+
+                    var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
                         contract = new Contract {
