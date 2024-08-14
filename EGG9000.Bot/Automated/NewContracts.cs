@@ -101,8 +101,14 @@ namespace EGG9000.Bot.Automated {
 
                     var json = JsonConvert.SerializeObject(contractResponse);
 
-                    var matchingCustomEggs = JsonConvert.SerializeObject(customEggs.Where(ce => ce.Identifier == contractResponse.CustomEggId).ToList());
-                    
+                    // Kevin being bad causing problems - Fallback leggacy detection
+                    if (!contractResponse.Leggacy && string.IsNullOrEmpty(contractResponse.SeasonId)) {
+                        // Check if there are any past contracts with this ID, if so it's a leggacy
+                        contractResponse.Leggacy = _db.Contracts.Any(c => c.ID == contractResponse.Identifier && c._response != json);
+                        if (!contractResponse.Leggacy) {
+                            _logger.LogError("Contract Response for contract {id} is not Leggacy, and a Season ID could not be found.", contractResponse.Identifier);
+                        }
+                    }
 
                     if(contract == null) {
                         contract = new Contract {
@@ -151,9 +157,6 @@ namespace EGG9000.Bot.Automated {
                         contract.cc_only = contractResponse.CcOnly;
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
-
-                    if(contract.custom_eggs != matchingCustomEggs)
-                        contract.custom_eggs = matchingCustomEggs;
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync(CancellationToken.None);
