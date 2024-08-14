@@ -39,7 +39,6 @@ namespace EGG9000.Common.Helpers {
            try {
                 if(id == 200) {
                     var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == (contract.Details?.CustomEggId ?? "INVALID"));
-                    var failBackEgg = contract.CustomEggs.First();
                     return new EggIncEgg {
                         value = customEgg?.Value ?? 0,
                         imageUrlEnder = customEgg?.Icon.URL ?? "",
