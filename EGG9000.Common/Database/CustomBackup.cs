@@ -642,17 +642,17 @@ namespace EGG9000.Common.Database {
         [Key(3)]
         public bool Completed { get; set; }
         [Key(4)]
-        public uint? League { get; set; }
+        public byte? League { get; set; }
         [Key(5)]
-        public uint PEPossible { get; set; }
+        public byte PEPossible { get; set; }
         [Key(6)]
-        public uint PEGained { get; set; }
+        public byte PEGained { get; set; }
         [Key(7)]
-        public double ContributionAmount { get; set; }
+        public float ContributionAmount { get; set; }
         [Key(8)]
         public PlayerGrade Grade { get; set; }
         [Key(9)]
-        public double EvaluationCxp { get; set; }
+        public float EvaluationCxp { get; set; }
         [Key(10)]
         public byte NumGoalsAchieved { get; set; }
         [Key(11)]
@@ -667,20 +667,20 @@ namespace EGG9000.Common.Database {
             ContractId = localContract.Contract.Identifier;
             TimeAccepted = (float)localContract.TimeAccepted;
             Completed = localContract.Completed;
-            League = localContract.League;
-            ContributionAmount = localContract.CoopLastUploadedContribution;
+            League = (byte)localContract.League;
+            ContributionAmount = (float)localContract.CoopLastUploadedContribution;
             Grade = localContract.Grade;
             
             if(localContract.Evaluation != null) {
-                EvaluationCxp = localContract?.Evaluation?.Cxp ?? 0.0;
+                EvaluationCxp = ((float?)localContract?.Evaluation?.Cxp) ?? 0.0f;
             }
             var goals = localContract.Contract.Goals;
             if(localContract.Contract.GoalSets is not null && localContract.Contract.GoalSets.Count > localContract.League)
                 goals = localContract.Contract.GoalSets[(int)localContract.League].Goals;
             if(localContract.Contract.GradeSpecs is not null && localContract.Contract.GradeSpecs.Count > 0 && localContract.Grade > 0)
                 goals = localContract.Contract.GradeSpecs[(int)localContract.Grade - 1].Goals;
-            PEPossible += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
-            PEGained += (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
+            PEPossible += (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
+            PEGained += (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
             NumGoalsAchieved = (byte)localContract.NumGoalsAchieved;
             ReportedUUIDs = localContract.ReportedUuids.ToList();
         }
