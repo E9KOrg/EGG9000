@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Helpers {
             }
             public string Rank {
                 get {
-                    return string.IsNullOrEmpty(Rank) ? "Farmer" : Name.FirstCharToUpper() + "farmer";
+                    return string.IsNullOrEmpty(Name) ? "Farmer" : Name.FirstCharToUpper() + "farmer";
                 }
             }
         }
