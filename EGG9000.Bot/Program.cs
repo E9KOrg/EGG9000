@@ -3,8 +3,8 @@ using Discord.WebSocket;
 using EGG9000.Bot;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.Consumers;
 using EGG9000.Bot.Services;
+using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Mocks;
@@ -60,35 +60,36 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 
-#if DEBUG
-            var debug = true;
+#if RELEASE
+        var release = true;
 #else
-        var debug = false;
+        var release = false;
 #endif
         //This will allow you to configure which parts of the bot you want to run if you don't want everything to run
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
-        if(serviceCustomize is not null && debug) {
+        if(serviceCustomize is not null && !release) {
             var method = serviceCustomize.GetMethod("ConfigureServices");
             method.Invoke(null, [hostContext, services]);
         } else {
 
-#if RELEASE
-        logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
-        services.AddBugsnag(configuration => {
-            configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
-        });
-        services.AddMassTransit(x => {
-            x.AddConsumer<ShutdownConsumer>();
-            x.UsingRabbitMq((context, cfg) => {
-                cfg.ConfigureEndpoints(context);
-            });
-        });
-
-#else
-            logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
-            services.AddBugsnag();
-            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
-#endif
+            if(release) {
+                logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
+                services.AddBugsnag(configuration => {
+                    configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
+                });
+                services.AddMassTransit(x => {
+                    x.AddConsumer<ShutdownConsumer>();
+                    x.AddConsumer<ExpireCacheConsumer>();
+                    x.AddConsumer<RestartConsumer>();
+                    x.UsingRabbitMq((context, cfg) => {
+                        cfg.ConfigureEndpoints(context);
+                    });
+                });
+            } else {
+                logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
+                services.AddBugsnag();
+                services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
+            }
 
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
