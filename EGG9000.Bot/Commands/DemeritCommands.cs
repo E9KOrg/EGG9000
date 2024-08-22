@@ -3,6 +3,7 @@ using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
@@ -151,7 +152,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             xref.ForEach(x => x.NoDemerit = true);
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsyncRetry(2);
             await command.RespondAsync($"{user.Mention} will not receive automated demerits in this co-op.");
         }
     }

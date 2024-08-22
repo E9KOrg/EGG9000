@@ -1,4 +1,5 @@
 ﻿using EGG9000.Bot;
+using Humanizer;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -198,6 +199,12 @@ namespace Ei {
                 }
 
             }
+        }
+    }
+
+    public partial class CustomEgg {
+        public string GetEmojiName() {
+            return Name.ToLowerInvariant().Transform(To.TitleCase).Replace(" ", "_") + "_Egg";
         }
     }
 

@@ -236,7 +236,7 @@ namespace EGG9000.Bot.Automated {
 
                 var existingMessages = (await channel.GetMessagesAsync(limit: 1000).FlattenAsync()).ToList();
 
-                var nonBotMessages = existingMessages.Where(x => !x.Author.IsBot || x.Interaction?.Type == InteractionType.ApplicationCommand).ToList();
+                var nonBotMessages = existingMessages.Where(x => !x.Author.IsBot || ((IUserMessage)x)?.InteractionMetadata?.Type == InteractionType.ApplicationCommand).ToList();
                 if(nonBotMessages.Count > 0) {
                     await channel.DeleteMessagesBatchAsync(nonBotMessages);
                 }

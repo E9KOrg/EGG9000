@@ -14,15 +14,16 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using Newtonsoft.Json;
-
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Common.Services {
     public class DiscordHostedService : DiscordSocketClient {
@@ -354,6 +355,61 @@ namespace EGG9000.Common.Services {
             } catch(Exception) {
                 return null;
             }
+        }
+
+#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+        public static async Task<Emote> CreateCustomEggEmoji(this DiscordHostedService _client, Ei.CustomEgg newEgg, Emote? emoteToReplace) {
+#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+            var emojiName = newEgg.GetEmojiName();
+            var existingEmotes = await _client.GetApplicationEmotesAsync();
+            // Download the image from aux
+            var imageUrl = newEgg.Icon.Url.ToString();
+            byte[] imageBytes;
+            var _httpClient = new HttpClient();
+            using var response = await _httpClient.GetAsync(imageUrl, CancellationToken.None);
+            response.EnsureSuccessStatusCode();
+            imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
+
+            // Check if the image is larger than 256KB, if so scale it down
+            // Because of file headers, etc. we aim to mutate down to 200KB
+            // If that is STILL too big, repeatedly scale by 0.9x until the file is small enough
+            const int maxSizeInBytes = 200 * 1024;
+            const double scaleFactorStep = 0.9;
+
+            while(imageBytes.Length > maxSizeInBytes) {
+                using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
+
+                // Calculate the new size to maintain aspect ratio
+                var scaleFactor = Math.Sqrt((double)maxSizeInBytes / imageBytes.Length) * scaleFactorStep;
+                var newWidth = (int)(image.Width * scaleFactor);
+                var newHeight = (int)(image.Height * scaleFactor);
+
+                // Resize the image
+                image.Mutate(x => x.Resize(newWidth, newHeight));
+
+                // Save the resized image to a byte array
+                using var ms = new MemoryStream();
+                image.Save(ms, new PngEncoder());
+                imageBytes = ms.ToArray();
+            }
+
+            // Convert the image to a stream, then to a Discord Image
+            using var imageStream = new MemoryStream(imageBytes);
+            var discordImage = new Image(imageStream);
+
+            // Upload the image as a GuildEmote
+            var newAppEmote = await _client.CreateApplicationEmoteAsync(emojiName, discordImage);
+
+            if(emoteToReplace != null && newAppEmote != null) {
+                var appEmote = await _client.GetApplicationEmoteAsync(emoteToReplace.Id);
+                if(appEmote is not null) {
+                    await _client.DeleteApplicationEmoteAsync(emoteToReplace.Id, options: new RequestOptions() {
+                        RetryMode = RetryMode.RetryRatelimit | RetryMode.RetryTimeouts
+                    });
+                }
+            }
+
+            return newAppEmote ?? emoteToReplace ?? null;
         }
     }
 }
