@@ -47,7 +47,7 @@ namespace EGG9000.Bot.Services {
         private readonly Bugsnag.IClient _bugsnag;
         private readonly SemaphoreSlim _semaphoreSlim = new(50);
         private readonly ContractUpdater _contractUpdater;
-        private readonly CoopStatusUpdater _coopStatusUpdater;
+        //private readonly CoopStatusUpdater _coopStatusUpdater;
         private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads;
         private readonly JobService _jobService;
         private readonly Guild _cpGuild;
@@ -64,7 +64,7 @@ namespace EGG9000.Bot.Services {
                 Words words,
                 Bugsnag.IClient bugsnag,
                 ContractUpdater contractUpdater,
-                CoopStatusUpdater coopStatusUpdater,
+                //CoopStatusUpdater coopStatusUpdater,
                 ThreadsCoopStatusUpdater coopStatusUpdaterThreads,
                 JobService jobService,
                 ApplicationDbContext context,
@@ -80,7 +80,7 @@ namespace EGG9000.Bot.Services {
 
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
-            _coopStatusUpdater = coopStatusUpdater;
+            //_coopStatusUpdater = coopStatusUpdater;
             _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
             _jobService = jobService;
             _ = ulong.TryParse(Configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -170,8 +170,8 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_words);
                         } else if(parameterInfo.ParameterType == typeof(SocketUser)) {
                             parameters.Add(arg.User);
-                        } else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
-                            parameters.Add(_coopStatusUpdater);
+                        //} else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
+                            //parameters.Add(_coopStatusUpdater);
                         } else if(parameterInfo.ParameterType == typeof(ThreadsCoopStatusUpdater)) {
                             parameters.Add(_coopStatusUpdaterThreads);
                         } else if(parameterInfo.ParameterType == typeof(ContractUpdater)) {

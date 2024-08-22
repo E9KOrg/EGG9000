@@ -1,4 +1,5 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
@@ -629,7 +630,8 @@ namespace EGG9000.Common.Helpers {
 
     [MessagePackObject]
     public class EggIncArtifactInstance : IEquatable<EggIncArtifactInstance> {
-        [Key(0)] public string Artifact { get; set; }
+        [IgnoreMember]
+        public string Artifact { get { return Enums.GetAttribute<DescriptionAttribute>((ArtifactNames)Id).Description; } }
         [Key(1)] public EggIncBoostTypeEnum Boost { get; set; }
         [Key(2)] public float Value { get; set; }
 

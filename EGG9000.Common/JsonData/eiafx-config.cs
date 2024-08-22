@@ -106,7 +106,6 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
                         afInstanceName = afInstanceName.Replace("Mercurys ", "Mercury's ");
 
                         var afInstance = new EggIncArtifactInstance() {
-                            Artifact = afInstanceName,
                             Tier = (byte)((int)Enum.Parse<ArtifactSpec.Types.Level>(firstGroup.spec.level, ignoreCase: true) + 1),
                         };
 

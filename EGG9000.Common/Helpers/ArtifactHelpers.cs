@@ -226,7 +226,6 @@ namespace EGG9000.Common.Helpers {
                     : (bInfo.IndexOf(" Stone") > -1 || bInfo.IndexOf("Tau Ceti Geode") > -1 || bInfo.IndexOf("Gold Meteorite") > -1 || bInfo.IndexOf("Solar Titanium") > -1 ? (byte)3
                     : (byte)4);
             var tempEmoji = GetAfEmoji(new EggIncArtifactInstance() {
-                Artifact = bInfo.Replace(" Fragment", ""),
                 Tier = tier
             });
             return new ShipTargetInfo() {
