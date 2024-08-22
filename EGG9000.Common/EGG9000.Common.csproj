@@ -52,6 +52,7 @@
   </ItemGroup>
 
   <ItemGroup>
+	<None Remove="JsonData\ArtifactEmoji.json" />
 	<None Remove="JsonData\ei-epic-research.json" />
     <None Remove="JsonData\eiafx-config.json" />
     <None Remove="JsonData\eiafx-data.json" />
@@ -109,6 +110,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="JsonData\ArtifactEmoji.json" />
     <EmbeddedResource Include="JsonData\eiafx-config.json" />
     <EmbeddedResource Include="JsonData\eiafx-data.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

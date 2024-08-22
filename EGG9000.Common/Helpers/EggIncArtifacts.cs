@@ -214,6 +214,7 @@ namespace EGG9000.Common.Helpers {
                 Boost = artifact.Boost,
                 Tier = (byte)(artifactSpec.Level + 1),
                 Rarity = (byte)(artifactSpec.Rarity + 1),
+                Id = (byte)artifact.Name
                 //Spec = artifactSpec
             };
             switch((int)artifactSpec.Level) {
@@ -638,6 +639,7 @@ namespace EGG9000.Common.Helpers {
         [Key(4)] public List<EggIncArtifactInstance> Stones { get; set; }
         [Key(5)] public byte Tier { get; set; }
         [Key(6)] public byte Rarity { get; set; }
+        [Key(7)] public byte Id { get; set; }
 
         public override bool Equals(Object other) {
             if(other is EggIncArtifactInstance)

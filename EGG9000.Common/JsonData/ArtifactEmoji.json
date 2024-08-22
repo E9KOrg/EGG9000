@@ -1,0 +1,667 @@
+[
+  {
+    "Id": 23,
+    "Tier": 1,
+    "Emoji": "<:Afx_Puzzle_Cube_1:801954137486655589>"
+  },
+  {
+    "Id": 23,
+    "Tier": 2,
+    "Emoji": "<:Afx_Puzzle_Cube_2:801954163926761522>"
+  },
+  {
+    "Id": 23,
+    "Tier": 3,
+    "Emoji": "<:Afx_Puzzle_Cube_3:801954186517413918>"
+  },
+  {
+    "Id": 23,
+    "Tier": 4,
+    "Emoji": "<:Afx_Puzzle_Cube_4:801401010718638080>"
+  },
+  {
+    "Id": 0,
+    "Tier": 1,
+    "Emoji": "<:Afx_Lunar_Totem_1:801923971880321085>"
+  },
+  {
+    "Id": 0,
+    "Tier": 2,
+    "Emoji": "<:Afx_Lunar_Totem_2:801923990872522752>"
+  },
+  {
+    "Id": 0,
+    "Tier": 3,
+    "Emoji": "<:Afx_Lunar_Totem_3:801924010203938817>"
+  },
+  {
+    "Id": 0,
+    "Tier": 4,
+    "Emoji": "<:Afx_Lunar_Totem_4:801400854037004289>"
+  },
+  {
+    "Id": 6,
+    "Tier": 1,
+    "Emoji": "<:Afx_Demeters_Necklace_1:801791558407159829>"
+  },
+  {
+    "Id": 6,
+    "Tier": 2,
+    "Emoji": "<:Afx_Demeters_Necklace_2:801791575348609034>"
+  },
+  {
+    "Id": 6,
+    "Tier": 3,
+    "Emoji": "<:Afx_Demeters_Necklace_3:801791588988092446>"
+  },
+  {
+    "Id": 6,
+    "Tier": 4,
+    "Emoji": "<:Afx_Demeters_Necklace_4:801400518710788096>"
+  },
+  {
+    "Id": 7,
+    "Tier": 1,
+    "Emoji": "<:Afx_Vial_Martian_Dust_1:801923830023979008>"
+  },
+  {
+    "Id": 7,
+    "Tier": 2,
+    "Emoji": "<:Afx_Vial_Martian_Dust_2:801923862836412427>"
+  },
+  {
+    "Id": 7,
+    "Tier": 3,
+    "Emoji": "<:Afx_Vial_Martian_Dust_3:801923891534364672>"
+  },
+  {
+    "Id": 7,
+    "Tier": 4,
+    "Emoji": "<:Afx_Vial_Martian_Dust_4:801401410578939914>"
+  },
+  {
+    "Id": 21,
+    "Tier": 1,
+    "Emoji": "<:Afx_Aurelian_Brooch_1:801924296213659720>"
+  },
+  {
+    "Id": 21,
+    "Tier": 2,
+    "Emoji": "<:Afx_Aurelian_Brooch_2:801924317109288981>"
+  },
+  {
+    "Id": 21,
+    "Tier": 3,
+    "Emoji": "<:Afx_Aurelian_Brooch_3:801924329759571992>"
+  },
+  {
+    "Id": 21,
+    "Tier": 4,
+    "Emoji": "<:Afx_Aurelian_Brooch_4:801400352338739210>"
+  },
+  {
+    "Id": 12,
+    "Tier": 1,
+    "Emoji": "<:Afx_Tungsten_Ankh_1:801924204605866035>"
+  },
+  {
+    "Id": 12,
+    "Tier": 2,
+    "Emoji": "<:Afx_Tungsten_Ankh_2:801924230731399178>"
+  },
+  {
+    "Id": 12,
+    "Tier": 3,
+    "Emoji": "<:Afx_Tungsten_Ankh_3:801924249522012220>"
+  },
+  {
+    "Id": 12,
+    "Tier": 4,
+    "Emoji": "<:Afx_Tungsten_Ankh_4:801401388256591932>"
+  },
+  {
+    "Id": 8,
+    "Tier": 1,
+    "Emoji": "<:Afx_Ornate_Gusset_1:801790964679180339>"
+  },
+  {
+    "Id": 8,
+    "Tier": 2,
+    "Emoji": "<:Afx_Ornate_Gusset_2:801790982563561502>"
+  },
+  {
+    "Id": 8,
+    "Tier": 3,
+    "Emoji": "<:Afx_Ornate_Gusset_3:801790999697293342>"
+  },
+  {
+    "Id": 8,
+    "Tier": 4,
+    "Emoji": "<:Afx_Ornate_Gusset_4:801400934236160011>"
+  },
+  {
+    "Id": 3,
+    "Tier": 1,
+    "Emoji": "<:Afx_Neo_Medallion_1:801923701162901504>"
+  },
+  {
+    "Id": 3,
+    "Tier": 2,
+    "Emoji": "<:Afx_Neo_Medallion_2:801923722973413467>"
+  },
+  {
+    "Id": 3,
+    "Tier": 3,
+    "Emoji": "<:Afx_Neo_Medallion_3:801923743894863872>"
+  },
+  {
+    "Id": 3,
+    "Tier": 4,
+    "Emoji": "<:Afx_Neo_Medallion_4:801400910060060673>"
+  },
+  {
+    "Id": 30,
+    "Tier": 1,
+    "Emoji": "<:Afx_Mercurys_Lens_1:801950726909722665>"
+  },
+  {
+    "Id": 30,
+    "Tier": 2,
+    "Emoji": "<:Afx_Mercurys_Lens_2:801950753585365034>"
+  },
+  {
+    "Id": 30,
+    "Tier": 3,
+    "Emoji": "<:Afx_Mercurys_Lens_3:801403003185266708>"
+  },
+  {
+    "Id": 30,
+    "Tier": 4,
+    "Emoji": "<:Afx_Mercurys_Lens_4:801400885149564928>"
+  },
+  {
+    "Id": 4,
+    "Tier": 1,
+    "Emoji": "<:Afx_Beak_Of_Midas_1:801923763141738527>"
+  },
+  {
+    "Id": 4,
+    "Tier": 2,
+    "Emoji": "<:Afx_Beak_Of_Midas_2:801923773669441546>"
+  },
+  {
+    "Id": 4,
+    "Tier": 3,
+    "Emoji": "<:Afx_Beak_Of_Midas_3:801923785963601941>"
+  },
+  {
+    "Id": 4,
+    "Tier": 4,
+    "Emoji": "<:Afx_Beak_Of_Midas_4:801400369145970688>"
+  },
+  {
+    "Id": 22,
+    "Tier": 1,
+    "Emoji": "<:Afx_Carved_Rainstick_1:801940593416077353>"
+  },
+  {
+    "Id": 22,
+    "Tier": 2,
+    "Emoji": "<:Afx_Carved_Rainstick_2:801940608453050438>"
+  },
+  {
+    "Id": 22,
+    "Tier": 3,
+    "Emoji": "<:Afx_Carved_Rainstick_3:801940622927462480>"
+  },
+  {
+    "Id": 22,
+    "Tier": 4,
+    "Emoji": "<:Afx_Carved_Rainstick_4:801400417979990066>"
+  },
+  {
+    "Id": 27,
+    "Tier": 1,
+    "Emoji": "<:Afx_Interstellar_Compass_1:801946444600311818>"
+  },
+  {
+    "Id": 27,
+    "Tier": 2,
+    "Emoji": "<:Afx_Interstellar_Compass_2:801946468734861322>"
+  },
+  {
+    "Id": 27,
+    "Tier": 3,
+    "Emoji": "<:Afx_Interstellar_Compass_3:801946486627106817>"
+  },
+  {
+    "Id": 27,
+    "Tier": 4,
+    "Emoji": "<:Afx_Interstellar_Compass_4:801402991776104478>"
+  },
+  {
+    "Id": 9,
+    "Tier": 1,
+    "Emoji": "<:Afx_The_Chalice_1:801923476294205480>"
+  },
+  {
+    "Id": 9,
+    "Tier": 2,
+    "Emoji": "<:Afx_The_Chalice_2:801923503058059287>"
+  },
+  {
+    "Id": 9,
+    "Tier": 3,
+    "Emoji": "<:Afx_The_Chalice_3:801923523319693342>"
+  },
+  {
+    "Id": 9,
+    "Tier": 4,
+    "Emoji": "<:Afx_The_Chalice_4:801401326708850698>"
+  },
+  {
+    "Id": 11,
+    "Tier": 1,
+    "Emoji": "<:Afx_Phoenix_Feather_1:801924123302428702>"
+  },
+  {
+    "Id": 11,
+    "Tier": 2,
+    "Emoji": "<:Afx_Phoenix_Feather_2:801924144534519818>"
+  },
+  {
+    "Id": 11,
+    "Tier": 3,
+    "Emoji": "<:Afx_Phoenix_Feather_3:801924163022749736>"
+  },
+  {
+    "Id": 11,
+    "Tier": 4,
+    "Emoji": "<:Afx_Phoenix_Feather_4:801403016195473418>"
+  },
+  {
+    "Id": 24,
+    "Tier": 1,
+    "Emoji": "<:Afx_Quantum_Metronome_1:801923609483804694>"
+  },
+  {
+    "Id": 24,
+    "Tier": 2,
+    "Emoji": "<:Afx_Quantum_Metronome_2:801923633424760863>"
+  },
+  {
+    "Id": 24,
+    "Tier": 3,
+    "Emoji": "<:Afx_Quantum_Metronome_3:801923659220123698>"
+  },
+  {
+    "Id": 24,
+    "Tier": 4,
+    "Emoji": "<:Afx_Quantum_Metronome_4:801401052720922634>"
+  },
+  {
+    "Id": 28,
+    "Tier": 1,
+    "Emoji": "<:Afx_Dilithium_Monocle_1:801786173390979122>"
+  },
+  {
+    "Id": 28,
+    "Tier": 2,
+    "Emoji": "<:Afx_Dilithium_Monocle_2:801786191748923403>"
+  },
+  {
+    "Id": 28,
+    "Tier": 3,
+    "Emoji": "<:Afx_Dilithium_Monocle_3:801786210266775562>"
+  },
+  {
+    "Id": 28,
+    "Tier": 4,
+    "Emoji": "<:Afx_Dilithium_Monocle_4:801402979470278656>"
+  },
+  {
+    "Id": 29,
+    "Tier": 1,
+    "Emoji": "<:Afx_Titanium_Actuator_1:801957617253351435>"
+  },
+  {
+    "Id": 29,
+    "Tier": 2,
+    "Emoji": "<:Afx_Titanium_Actuator_2:801957652052967474>"
+  },
+  {
+    "Id": 29,
+    "Tier": 3,
+    "Emoji": "<:Afx_Titanium_Actuator_3:801957676808536094>"
+  },
+  {
+    "Id": 29,
+    "Tier": 4,
+    "Emoji": "<:Afx_Titanium_Actuator_4:801401362763874304>"
+  },
+  {
+    "Id": 25,
+    "Tier": 1,
+    "Emoji": "<:Afx_Ship_In_A_Bottle_1:801955542238363688>"
+  },
+  {
+    "Id": 25,
+    "Tier": 2,
+    "Emoji": "<:Afx_Ship_In_A_Bottle_2:801955569858641981>"
+  },
+  {
+    "Id": 25,
+    "Tier": 3,
+    "Emoji": "<:Afx_Ship_In_A_Bottle_3:801955999123636244>"
+  },
+  {
+    "Id": 25,
+    "Tier": 4,
+    "Emoji": "<:Afx_Ship_In_A_Bottle_4:801746240785481740>"
+  },
+  {
+    "Id": 26,
+    "Tier": 1,
+    "Emoji": "<:Afx_Tachyon_Deflector_1:801956755655229510>"
+  },
+  {
+    "Id": 26,
+    "Tier": 2,
+    "Emoji": "<:Afx_Tachyon_Deflector_2:801956779272437800>"
+  },
+  {
+    "Id": 26,
+    "Tier": 3,
+    "Emoji": "<:Afx_Tachyon_Deflector_3:801956823296770071>"
+  },
+  {
+    "Id": 26,
+    "Tier": 4,
+    "Emoji": "<:Afx_Tachyon_Deflector_4:801401224292728842>"
+  },
+  {
+    "Id": 10,
+    "Tier": 1,
+    "Emoji": "<:Afx_Book_Of_Basan_1:801924039102562375>"
+  },
+  {
+    "Id": 10,
+    "Tier": 2,
+    "Emoji": "<:Afx_Book_Of_Basan_2:801924052922925096>"
+  },
+  {
+    "Id": 10,
+    "Tier": 3,
+    "Emoji": "<:Afx_Book_Of_Basan_3:801924064180174931>"
+  },
+  {
+    "Id": 10,
+    "Tier": 4,
+    "Emoji": "<:Afx_Book_Of_Basan_4:801400385230733333>"
+  },
+  {
+    "Id": 5,
+    "Tier": 1,
+    "Emoji": "<:Afx_Light_Eggendil_1:801948939296702476>"
+  },
+  {
+    "Id": 5,
+    "Tier": 2,
+    "Emoji": "<:Afx_Light_Eggendil_2:801790900110884874>"
+  },
+  {
+    "Id": 5,
+    "Tier": 3,
+    "Emoji": "<:Afx_Light_Eggendil_3:801790909250404382>"
+  },
+  {
+    "Id": 5,
+    "Tier": 4,
+    "Emoji": "<:Afx_Light_Eggendil_4:801400809551560734>"
+  },
+  {
+    "Id": 33,
+    "Tier": 1,
+    "Emoji": "<:Afx_Lunar_Stone_1:807799032306860062>"
+  },
+  {
+    "Id": 33,
+    "Tier": 2,
+    "Emoji": "<:Afx_Lunar_Stone_2:807799013062606850>"
+  },
+  {
+    "Id": 33,
+    "Tier": 3,
+    "Emoji": "<:Afx_Lunar_Stone_3:807798994167922690>"
+  },
+  {
+    "Id": 33,
+    "Tier": 4,
+    "Emoji": "<:Afx_Lunar_Stone_4:801400832640679946>"
+  },
+  {
+    "Id": 32,
+    "Tier": 1,
+    "Emoji": "<:Afx_Shell_Stone_1:807799916881117214>"
+  },
+  {
+    "Id": 32,
+    "Tier": 2,
+    "Emoji": "<:Afx_Shell_Stone_2:807799894089007145>"
+  },
+  {
+    "Id": 32,
+    "Tier": 3,
+    "Emoji": "<:Afx_Shell_Stone_3:807799866142490644>"
+  },
+  {
+    "Id": 32,
+    "Tier": 4,
+    "Emoji": "<:Afx_Shell_Stone_4:801401100573343776>"
+  },
+  {
+    "Id": 1,
+    "Tier": 1,
+    "Emoji": "<:Afx_Tachyon_Stone_1:807800396264767528>"
+  },
+  {
+    "Id": 1,
+    "Tier": 2,
+    "Emoji": "<:Afx_Tachyon_Stone_2:807800375100964864>"
+  },
+  {
+    "Id": 1,
+    "Tier": 3,
+    "Emoji": "<:Afx_Tachyon_Stone_3:807800354380840980>"
+  },
+  {
+    "Id": 1,
+    "Tier": 4,
+    "Emoji": "<:Afx_Tachyon_Stone_4:801401251278880788>"
+  },
+  {
+    "Id": 37,
+    "Tier": 1,
+    "Emoji": "<:Afx_Terra_Stone_1:807800715929583626>"
+  },
+  {
+    "Id": 37,
+    "Tier": 2,
+    "Emoji": "<:Afx_Terra_Stone_2:807800439831658506>"
+  },
+  {
+    "Id": 37,
+    "Tier": 3,
+    "Emoji": "<:Afx_Terra_Stone_3:807800418549366826>"
+  },
+  {
+    "Id": 37,
+    "Tier": 4,
+    "Emoji": "<:Afx_Terra_Stone_4:801401301107343390>"
+  },
+  {
+    "Id": 34,
+    "Tier": 1,
+    "Emoji": "<:Afx_Soul_Stone_1:807800048662085663>"
+  },
+  {
+    "Id": 34,
+    "Tier": 2,
+    "Emoji": "<:Afx_Soul_Stone_2:807800028634415144>"
+  },
+  {
+    "Id": 34,
+    "Tier": 3,
+    "Emoji": "<:Afx_Soul_Stone_3:807799997764075521>"
+  },
+  {
+    "Id": 34,
+    "Tier": 4,
+    "Emoji": "<:Afx_Soul_Stone_4:801401175487807519>"
+  },
+  {
+    "Id": 31,
+    "Tier": 1,
+    "Emoji": "<:Afx_Dilithium_Stone_1:807798908897591296>"
+  },
+  {
+    "Id": 31,
+    "Tier": 2,
+    "Emoji": "<:Afx_Dilithium_Stone_2:807798889901588490>"
+  },
+  {
+    "Id": 31,
+    "Tier": 3,
+    "Emoji": "<:Afx_Dilithium_Stone_3:807798875153891368>"
+  },
+  {
+    "Id": 31,
+    "Tier": 4,
+    "Emoji": "<:Afx_Dilithium_Stone_4:801400591363342380>"
+  },
+  {
+    "Id": 36,
+    "Tier": 1,
+    "Emoji": "<:Afx_Quantum_Stone_1:807799549954883624>"
+  },
+  {
+    "Id": 36,
+    "Tier": 2,
+    "Emoji": "<:Afx_Quantum_Stone_2:807799527498711040>"
+  },
+  {
+    "Id": 36,
+    "Tier": 3,
+    "Emoji": "<:Afx_Quantum_Stone_3:807799509630582854>"
+  },
+  {
+    "Id": 36,
+    "Tier": 4,
+    "Emoji": "<:Afx_Quantum_Stone_4:801401076712079381>"
+  },
+  {
+    "Id": 38,
+    "Tier": 1,
+    "Emoji": "<:Afx_Life_Stone_1:807798970792935426>"
+  },
+  {
+    "Id": 38,
+    "Tier": 2,
+    "Emoji": "<:Afx_Life_Stone_2:807798955810488321>"
+  },
+  {
+    "Id": 38,
+    "Tier": 3,
+    "Emoji": "<:Afx_Life_Stone_3:807798940539944990>"
+  },
+  {
+    "Id": 38,
+    "Tier": 4,
+    "Emoji": "<:Afx_Life_Stone_4:801400782557151252>"
+  },
+  {
+    "Id": 40,
+    "Tier": 1,
+    "Emoji": "<:Afx_Clarity_Stone_1:807798847073550366>"
+  },
+  {
+    "Id": 40,
+    "Tier": 2,
+    "Emoji": "<:Afx_Clarity_Stone_2:807798825163030528>"
+  },
+  {
+    "Id": 40,
+    "Tier": 3,
+    "Emoji": "<:Afx_Clarity_Stone_3:807798807852613692>"
+  },
+  {
+    "Id": 40,
+    "Tier": 4,
+    "Emoji": "<:Afx_Clarity_Stone_4:801400496946282526>"
+  },
+  {
+    "Id": 39,
+    "Tier": 1,
+    "Emoji": "<:Afx_Prophecy_Stone_1:807799478722887680>"
+  },
+  {
+    "Id": 39,
+    "Tier": 2,
+    "Emoji": "<:Afx_Prophecy_Stone_2:807799450608205905>"
+  },
+  {
+    "Id": 39,
+    "Tier": 3,
+    "Emoji": "<:Afx_Prophecy_Stone_3:807799057384341521>"
+  },
+  {
+    "Id": 39,
+    "Tier": 4,
+    "Emoji": "<:Afx_Prophecy_Stone_4:801400987809873971>"
+  },
+  {
+    "Id": 17,
+    "Tier": 1,
+    "Emoji": "<:Afx_Gold_Meteorite_1:807766396712910898>"
+  },
+  {
+    "Id": 17,
+    "Tier": 2,
+    "Emoji": "<:Afx_Gold_Meteorite_2:807766382317404171>"
+  },
+  {
+    "Id": 17,
+    "Tier": 3,
+    "Emoji": "<:Afx_Gold_Meteorite_3:801400672737034240>"
+  },
+  {
+    "Id": 18,
+    "Tier": 1,
+    "Emoji": "<:Afx_Tau_Ceti_Geode_1:807766532813619240>"
+  },
+  {
+    "Id": 18,
+    "Tier": 2,
+    "Emoji": "<:Afx_Tau_Ceti_Geode_2:807766597225283617>"
+  },
+  {
+    "Id": 18,
+    "Tier": 3,
+    "Emoji": "<:Afx_Tau_Ceti_Geode_3:801401276830056488>"
+  },
+  {
+    "Id": 43,
+    "Tier": 1,
+    "Emoji": "<:Afx_Solar_Titanium_1:807261434039894086>"
+  },
+  {
+    "Id": 43,
+    "Tier": 2,
+    "Emoji": "<:Afx_Solar_Titanium_2:807261357182550067>"
+  },
+  {
+    "Id": 43,
+    "Tier": 3,
+    "Emoji": "<:Afx_Solar_Titanium_3:801401141605695529>"
+  }
+]
