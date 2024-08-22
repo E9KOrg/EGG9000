@@ -495,8 +495,13 @@ namespace EGG9000.Bot.Commands {
                 var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
                 if(welcomeChannel != null) {
                     var messages = await welcomeChannel.GetMessagesAsync().FlattenAsync();
-                    var userMessage = messages.Where(x => (x.MentionedUserIds.Contains(socketUser.Id) || x.Author.Id == socketUser.Id || ((IUserMessage)x)?.InteractionMetadata?.UserId == socketUser.Id) && (excludeId == ulong.MaxValue || x.Id != excludeId));
-                    await welcomeChannel.DeleteMessagesBatchAsync(userMessage);
+                    var userMessages = messages.Where( x =>
+                        (x.MentionedUserIds.Contains(socketUser.Id)
+                        || x.Author.Id == socketUser.Id
+                        || (x is IUserMessage userMsg && userMsg.InteractionMetadata?.UserId == socketUser.Id))
+                        && (excludeId == ulong.MaxValue || x.Id != excludeId)
+                    );
+                    await welcomeChannel.DeleteMessagesBatchAsync(userMessages);
                 }
             } catch(Exception) {
                 if(chain < 3) {
