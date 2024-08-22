@@ -459,7 +459,7 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            var maxYearInt = (DateTimeOffset.Now.Month >= 7 && DateTimeOffset.Now.Day > 15) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
+            var maxYearInt = (DateTimeOffset.Now.Month >= 7 && (DateTimeOffset.Now.Month >= 8 || DateTimeOffset.Now.Day > 15)) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
             if (!int.TryParse(year, out var yearInt)) {
                 yearInt = maxYearInt;
             }

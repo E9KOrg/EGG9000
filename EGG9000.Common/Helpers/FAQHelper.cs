@@ -50,8 +50,9 @@ namespace EGG9000.Common.Helpers {
         }
 
 
-        public static void InvalidateFAQTopics(this IMemoryCache _cache, Guild guild) {
-            _cache.Set(guild.GetFAQCacheKey(), new List<FAQTopic>(), TimeSpan.FromMilliseconds(1));
+        public static string InvalidateFAQTopics(this ApplicationDbContext db, Guild guild) {
+            db._cache.Set(guild.GetFAQCacheKey(), new List<FAQTopic>(), TimeSpan.FromMilliseconds(1));
+            return guild.GetFAQCacheKey(); 
         }
 
         private static string GetFAQCacheKey(this Guild g) {

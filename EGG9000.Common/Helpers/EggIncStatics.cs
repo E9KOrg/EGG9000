@@ -39,11 +39,10 @@ namespace EGG9000.Common.Helpers {
            try {
                 if(id == 200) {
                     var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == (contract.Details?.CustomEggId ?? "INVALID"));
-                    var failBackEgg = contract.CustomEggs.First();
                     return new EggIncEgg {
-                        value = customEgg?.Value ?? failBackEgg?.Value ?? 0,
-                        imageUrlEnder = customEgg?.Icon.URL ?? failBackEgg?.Icon.Url ?? "",
-                        emoji = customEgg is not null ? $"<{customEgg.EmojiName}:{customEgg.EmojiId}>" : "<:Edible_Egg:712424206276755516>"
+                        value = customEgg?.Value ?? 0,
+                        imageUrlEnder = customEgg?.Icon.URL ?? "",
+                        emoji = customEgg is not null ? customEgg.Emoji : "<:Edible_Egg:712424206276755516>"
                     };
                 } else {
                     return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);

@@ -66,7 +66,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         private List<EventCustomization> _eventCustomizations { get; set; }
         [NotMapped]
-        public List<EventCustomization> EventCustomzations {
+        public List<EventCustomization> EventCustomizations {
             get {
                 _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
                 return _eventCustomizations;
