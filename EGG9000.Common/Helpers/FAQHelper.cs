@@ -24,7 +24,7 @@ namespace EGG9000.Common.Helpers {
                 faqTopics = (await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id)).FAQTopics;
                 db._cache.Set(guild.GetFAQCacheKey(), faqTopics, TimeSpan.FromDays(1));
             }
-            return faqTopics;
+            return faqTopics ?? [];
         }
 
         public static async Task<List<FAQTopic>> QueryFAQTopicsAsync(this ApplicationDbContext db, Guild guild, bool withStaffPerms, string keyword) {
@@ -33,10 +33,10 @@ namespace EGG9000.Common.Helpers {
 #else
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
 #endif
-            var faqTopics = (await db.GetFAQTopicsAsync(palaceGuild)).Where(
+            var faqTopics = (await db.GetFAQTopicsAsync(palaceGuild))?.Where(
                 f => f.PalaceFAQAppliesToGuild(guild) &&
                 (!f.StaffOnly || withStaffPerms)
-            ).ToList();
+            ).ToList() ?? [];
             if(guild.Id != palaceGuild.Id) {
                 faqTopics.AddRange(await db.GetFAQTopicsAsync(guild));
             }
@@ -45,6 +45,7 @@ namespace EGG9000.Common.Helpers {
                 (f.Keywords?.Contains(keyword) ?? false) ||
                 (f.Keywords?.Any(k => k.ToLowerInvariant().Contains(keyword)) ?? false)
             ).ToList();
+            filteredTopics ??= [];
 
             return [.. filteredTopics.OrderByDescending(t => t.Weight)];
         }
