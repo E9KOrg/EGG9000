@@ -620,7 +620,7 @@ namespace EGG9000.Common.Database {
                 _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch, contract, customEggs) * EggIncArtifacts.GetEggValueMutiple(this);
                 _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier;
                 _stats.MaxRunningBonus = Research.MaxRunningBonus(this, backup.EpicResearch) + EggIncArtifacts.GetMaxRunningBonusAdditive(this);
-                _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * EggIncArtifacts.GetHabSpaceMultiple(this);
+                _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * Math.Round(EggIncArtifacts.GetHabSpaceMultiple(this), 5);
                 _stats.InternalHatchery = (int)(Research.InternalHatchery(this, backup.EpicResearch) * EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.InternalHatchery, this));
             }
             return _stats;
