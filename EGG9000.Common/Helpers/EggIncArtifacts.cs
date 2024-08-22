@@ -1,6 +1,8 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
+
+//using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using Newtonsoft.Json;
@@ -669,7 +671,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var match = Artifact == other.Artifact && Rarity == other.Rarity && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+            var match = Artifact == other.Artifact && Rarity == other.Rarity && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual && Id == other.Id;
             return match;
         }
 
@@ -680,6 +682,7 @@ namespace EGG9000.Common.Helpers {
                 hash = hash * 23 + Boost.GetHashCode();
                 hash = hash * 23 + Value.GetHashCode();
                 hash = hash * 23 + Additive.GetHashCode();
+                hash = hash * 23 + Id.GetHashCode();
                 foreach(var stone in Stones ?? new List<EggIncArtifactInstance>()) {
                     hash = hash * 23 + stone.GetHashCode();
                 }
