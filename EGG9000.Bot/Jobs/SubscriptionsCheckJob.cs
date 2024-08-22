@@ -64,8 +64,11 @@ namespace EGG9000.Bot.Jobs {
                 });
             }
 
-            await db.SaveChangesAsyncRetry(retryCount: 2, cancellationToken: CancellationToken.None);
-            _logger.LogInformation("Finished checking subscriptions");
+            (Boolean Success, int Retries) result = await db.SaveChangesAsyncRetry(retryCount: 2, cancellationToken: CancellationToken.None, _logger);
+            if(result.Success)
+                _logger.LogInformation("Finished checking subscriptions");
+            else
+                _logger.LogWarning("Error saving subscription changes");
         }
 
         private async Task CheckSubscription(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {

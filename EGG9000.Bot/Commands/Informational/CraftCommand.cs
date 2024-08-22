@@ -1,15 +1,19 @@
 ﻿using Discord;
 using Discord.WebSocket;
+
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData;
 using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Services;
+
 using Microsoft.EntityFrameworkCore;
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -17,6 +21,7 @@ using System.Linq;
 using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading.Tasks;
+
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
@@ -24,6 +29,93 @@ using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands {
     public static class CraftCommand {
+        [SlashCommand(Description = "Show you how many times you have crafted the requested artifact.", AllowInDMs = true)]
+        public static async Task CraftedCount(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db) {
+            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
+
+            if(requestedArtifact is null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
+                return;
+            }
+
+            await command.DeferAsync();
+
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                return;
+            }
+
+            if(dbUser.EggIncAccounts.Count == 1) {
+                await command.RespondAsync(
+                    embed: await CraftedCountEmbedBuilder(dbUser.EggIncAccounts.First(), requestedArtifact),
+                    content: null
+                );
+            } else {
+                var builder = new ComponentBuilder();
+                foreach(var account in dbUser.EggIncAccounts) {
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftedCountAccountButton:{account.Id}|{artifact}|{command.User.Id}");
+                }
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account to check craft counts for."; x.Embed = null; x.Components = builder.Build(); });
+            }
+
+            dbUser.UpdateAccounts();
+            await db.SaveChangesAsync();
+        }
+
+        [ComponentCommand]
+        public static async Task CraftedCountAccountButton(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+
+            var dataObjs = data.Split("|");
+            var originalUserId = ulong.Parse(dataObjs[2]);
+
+            if(component.User.Id != originalUserId) {
+                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                return;
+            }
+
+            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            if(user is null) return;
+            var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
+            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[1]);
+
+            var embed = await CraftedCountEmbedBuilder(account, requestedArtifact);
+            await component.UpdateAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
+        }
+
+        private static async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact) {
+            var stringBuilder = new StringBuilder();
+            var backup = account.Backup;
+            if(backup == null) {
+                return null;
+            }
+
+            backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, backup);
+
+            var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
+
+            var counts = artifacts.GroupBy(x => x.Artifact.Tier).Select(x => new { Tier = x.Key, Count = x.Sum(y => y.NumberCrafted) }).ToList();
+            var emojis = ArtifactEmoji.Get();
+
+            foreach(var childIds in counts.OrderBy(x => x.Tier)) {
+                var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.afx_id && x.Tier == childIds.Tier);
+                stringBuilder.AppendLine($"{emoji?.Emoji} {childIds.Count}");
+                //var artifact = backup.ArtifactHall.FirstOrDefault(x => x.Artifact)
+            }
+
+            var embed = new EmbedBuilder()
+               .WithColor(Color.Blue)
+               .WithDescription(stringBuilder.ToString())
+               .WithAuthor(new EmbedAuthorBuilder()
+                   .WithName($"{requestedArtifact.name} Craft Counts")
+                   .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")
+                )
+               .WithTitle($"**{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}**")
+               .Build();
+
+            return embed;
+        }
+
         [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
         public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam] TierInput quality, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
