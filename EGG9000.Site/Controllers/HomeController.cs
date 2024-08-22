@@ -403,6 +403,9 @@ namespace EGG9000.Site.Controllers {
                     case "permit":
                         leaderboard = leaderboard.OrderByDescending(x => x.Backup.PermitLevel).ToList();
                         break;
+                    case "mer":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.MER).ToList();
+                        break;
                 }
                 return View(leaderboard);
             }
