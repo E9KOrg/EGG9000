@@ -39,19 +39,9 @@ namespace EGG9000.Bot.Helpers {
             return GetPrefix(number / 100);
         }
         public static PrefixDetails GetPrefix(double number) {
-            //var lastPrefix = new PrefixDetails { Base = 0, Name = "" };
-            //foreach(var prefix in Prefixes) {
-            //    if (number < Math.Pow(10, prefix.Base)) {
-            //        return lastPrefix;
-            //    }
-
-            //    lastPrefix = prefix;
-            //}
-            //return lastPrefix;
-            int exponent = number == 0 ? 0 : (int)Math.Floor((Math.Log10(Math.Abs(number))));
+            var exponent = number == 0 ? 0 : (int)Math.Floor(Math.Log10(Math.Abs(number)));
             var prefix = Prefixes.FirstOrDefault(x => exponent < x.Base + 3);
-            if(prefix == null)
-                prefix = Prefixes.Last();
+            prefix ??= Prefixes.Last();
             prefix.SubRank = exponent - prefix.Base + 1;
             return prefix;
         }
@@ -62,31 +52,32 @@ namespace EGG9000.Bot.Helpers {
             public int SubRank { get; set; }
             public string RankWithSubRank {
                 get {
-                    return Name.FirstCharToUpper() + "farmer " + (SubRank == 1 ? "I" : SubRank == 2 ? "II" : "III");
+                    return $"{Rank} {(SubRank == 1 ? "I" : SubRank == 2 ? "II" : "III")}";
                 }
             }
             public string Rank {
                 get {
-                    return Name.FirstCharToUpper() + "farmer";
+                    return string.IsNullOrEmpty(Rank) ? "Farmer" : Name.FirstCharToUpper() + "farmer";
                 }
             }
         }
 
         public static List<PrefixDetails> Prefixes {
             get {
-                return new List<PrefixDetails> {
-                    new PrefixDetails{ Name="kilo", Base = 3},
-                    new PrefixDetails{ Name="mega", Base = 6},
-                    new PrefixDetails{ Name="giga", Base = 9},
-                    new PrefixDetails{ Name="tera", Base = 12},
-                    new PrefixDetails{ Name="peta", Base = 15},
-                    new PrefixDetails{ Name="exa", Base = 18},
-                    new PrefixDetails{ Name="zetta", Base = 21},
-                    new PrefixDetails{ Name="yotta", Base = 24},
-                    new PrefixDetails{ Name="xenna", Base = 27},
-                    new PrefixDetails{ Name="wecca", Base = 30},
-                    new PrefixDetails{ Name="venda", Base = 33},
-                };
+                return [
+                    new() { Name = "", Base = 0},
+                    new() { Name="kilo", Base = 3},
+                    new() { Name="mega", Base = 6},
+                    new() { Name="giga", Base = 9},
+                    new() { Name="tera", Base = 12},
+                    new() { Name="peta", Base = 15},
+                    new() { Name="exa", Base = 18},
+                    new() { Name="zetta", Base = 21},
+                    new() { Name="yotta", Base = 24},
+                    new() { Name="xenna", Base = 27},
+                    new() { Name="wecca", Base = 30},
+                    new() { Name="venda", Base = 33},
+                ];
             }
         }
 

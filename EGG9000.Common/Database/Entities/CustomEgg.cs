@@ -13,16 +13,16 @@ namespace EGG9000.Common.Database.Entities {
     [Table("CustomEggs")]
     public class DBCustomEgg {
         public DBCustomEgg() { }
-        public DBCustomEgg(CustomEgg customEgg, GuildEmote emoji) {
+#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+        public DBCustomEgg(CustomEgg customEgg, Emote? emoji) {
+#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             Identifier = customEgg.Identifier;
             Name = customEgg.Name;
             Description = customEgg.Description;
             Value = customEgg.Value;
             Icon = new(customEgg.Icon);
             Modifiers = customEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
-
-            EmojiName = emoji.Name;
-            EmojiId = emoji.Id;
+            GuildEmote = emoji;
         }
 
         public string Identifier { get; set; }
@@ -70,11 +70,30 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
         [NotMapped]
-        public GuildEmote GuildEmote {
+        public Emote GuildEmote {
             get {
                 if(EmojiId == default || EmojiName == default) return null;
-                return (GuildEmote)new Emote(EmojiId, EmojiName, false);
+                return new Emote(EmojiId, EmojiName, false);
             }
+            set {
+                EmojiName = value?.Name ?? "";
+                EmojiId = value?.Id ?? ulong.MaxValue;
+            }
+        }
+
+        public override bool Equals(object another) {
+            if(ReferenceEquals(this, another)) return true;
+            if(another is DBCustomEgg dBCustomEgg) {
+                if(!dBCustomEgg.Icon.Equals(Icon) || !dBCustomEgg.Value.Equals(Value) || !dBCustomEgg.Identifier.Equals(Identifier)) return false;
+                if(Modifiers.Count != dBCustomEgg.Modifiers.Count) return false;
+                for(var i = 0; i < Modifiers.Count; i++) if(!dBCustomEgg.Modifiers[i].Equals(Modifiers[i])) return false;
+                return true;
+            } else if(another is CustomEgg customEgg) return new DBCustomEgg(customEgg, null).Equals(this);
+            else return false;
+        }
+
+        public override int GetHashCode() {
+            return EmojiId.GetHashCode();
         }
     }
 
@@ -103,6 +122,17 @@ namespace EGG9000.Common.Database.Entities {
         public string URL { get; set; }
         [Key(5)]
         public string Checksum { get; set; }
+
+        public override bool Equals(object another) {
+            if(ReferenceEquals(this, another)) return true;
+            if(another is DBCustomEggIcon icon) return icon.Checksum == Checksum;
+            else if(another is DLCItem dlcItem) return new DBCustomEggIcon(dlcItem).Equals(this);
+            else return false;
+        }
+
+        public override int GetHashCode() {
+            return Checksum.GetHashCode();
+        }
     }
 
     [MessagePackObject]
@@ -130,6 +160,17 @@ namespace EGG9000.Common.Database.Entities {
             var type = ((GameDimension)Dimension).GetType();
             var name = Enum.GetName(type, Dimension);
             return type.GetField(name).GetCustomAttributes(false).OfType<OriginalNameAttribute>().SingleOrDefault()?.Name ?? Dimension.ToString();
+        }
+
+        public override bool Equals(object another) {
+            if(ReferenceEquals(this, another)) return true;
+            if(another is DBCustomEggModifier modifier) return modifier.GetHashCode() == GetHashCode();
+            else if(another is GameModifier gameModifier) return new DBCustomEggModifier(gameModifier).Equals(this);
+            else return false;
+        }
+
+        public override int GetHashCode() {
+            return base.GetHashCode();
         }
     }
 }
