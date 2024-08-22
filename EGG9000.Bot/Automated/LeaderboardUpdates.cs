@@ -159,13 +159,13 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);
                         var merCheaters = users.Where(ua => 
                         ua.Account != null && !ua.Account.MERWarningSent && !ua.Account.MERMarkedClean &&
-                        ua.Backup != null && (91 * Math.Log10(ua.Backup.SoulEggs / 1e18) + 200 - ua.Backup.EggsOfProphecy) / 10 / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
+                        ua.Backup != null && ua.Backup.MER / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
                         );
                         foreach(var merCheater in merCheaters) {
                             if(cancellationToken.IsCancellationRequested)
                                 break;
 
-                            var mer = (91 * Math.Log10(merCheater.Backup.SoulEggs / 1e18) + 200 - merCheater.Backup.EggsOfProphecy) / 10;
+                            var mer = merCheater.Backup.MER;;
                             var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{merCheater.User.DiscordId}>{(merCheater.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")} may be cheating. MER is higher than expected, at `{mer:n2}`, after `{(int)merCheater.Backup.NumPrestiges}` prestiges.";
 
