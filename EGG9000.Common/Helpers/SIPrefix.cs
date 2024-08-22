@@ -52,12 +52,12 @@ namespace EGG9000.Bot.Helpers {
             public int SubRank { get; set; }
             public string RankWithSubRank {
                 get {
-                    return Name.FirstCharToUpper() + "farmer " + (SubRank == 1 ? "I" : SubRank == 2 ? "II" : "III");
+                    return $"{Rank} {(SubRank == 1 ? "I" : SubRank == 2 ? "II" : "III")}";
                 }
             }
             public string Rank {
                 get {
-                    return Name.FirstCharToUpper() + "farmer";
+                    return string.IsNullOrEmpty(Rank) ? "Farmer" : Name.FirstCharToUpper() + "farmer";
                 }
             }
         }
