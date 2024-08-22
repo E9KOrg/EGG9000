@@ -1,5 +1,9 @@
 ﻿using Newtonsoft.Json;
+
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 
 namespace EGG9000.Common.JsonData.EiAfxData {
 
@@ -78,10 +82,33 @@ namespace EGG9000.Common.JsonData.EiAfxData {
  CraftingPrice crafting_price
     );
 
-    public record EiAfxDataRoot(
-        [property: JsonProperty("$schema")] string schema,
- IReadOnlyList<ArtifactFamily> artifact_families
-    );
+    public class EiAfxDataRoot {
+        public IReadOnlyList<ArtifactFamily> artifact_families;
+
+        private static EiAfxDataRoot _instance = null;
+        public static EiAfxDataRoot Instance {
+            get {
+                if(_instance != null)
+                    return _instance;
+
+
+                var assembly = Assembly.GetExecutingAssembly();
+
+                string resourceName = assembly.GetManifestResourceNames()
+                    .Single(str => str.EndsWith("eiafx-data.json"));
+
+                using(Stream stream = assembly.GetManifestResourceStream(resourceName))
+                using(StreamReader reader = new StreamReader(stream)) {
+                    string json = reader.ReadToEnd();
+                    _instance = JsonConvert.DeserializeObject<EiAfxDataRoot>(json);
+                }
+                return _instance;
+            }
+        }
+
+
+
+    }
 
     public record Tier(
  Family family,

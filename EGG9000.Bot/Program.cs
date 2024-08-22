@@ -77,6 +77,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         if(serviceCustomize is not null && !release) {
             var method = serviceCustomize.GetMethod("ConfigureServices");
             method.Invoke(null, [hostContext, services]);
+        }
 #else
 
         if(release) {

@@ -58,9 +58,9 @@ namespace EGG9000.Bot.Automated {
                 var userQuery = _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled);
 
 #if DEBUG
-                userQuery = userQuery.Where(x => x.DiscordId == 760856957011230760);
+                //userQuery = userQuery.Where(x => x.DiscordId == 760856957011230760);
                 //dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
-                dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
+                //dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
 #endif
 
 
