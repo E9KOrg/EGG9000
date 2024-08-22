@@ -57,9 +57,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static Embed MERCalculate(EggIncAccount account, int MERValue) {
-            var seQ = account.Backup.SoulEggs / 1e18; // Convert to quintillions
-            long pe = account.Backup.EggsOfProphecy;
-            var MER = Math.Round((91 * Math.Log10(seQ) + 200 - pe) / 10, 2);
+            var pe = account.Backup.SoulEggs;
+            double seQ = account.Backup.SoulEggs / 1e18;
+            var MER = account.Backup.MER;
 
             var MERgoal = MERValue != 0 ? MERValue : Math.Max(30, Math.Min(50, (long)Math.Round(MER / 10) * 10));
             var description = $"<:Egg_of_Prophecy_PE:669981330477547580>`{pe}` & <:Soul_Egg_SE:724341890794913964>`{account.Backup.SoulEggs.ToEggString()}`";

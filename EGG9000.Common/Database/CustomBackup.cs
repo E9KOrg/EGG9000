@@ -316,7 +316,7 @@ namespace EGG9000.Common.Database {
             var temp = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => x.Ship);
             if(backup.ArtifactsDb is not null) {
                 ShipsSent = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count())).ToList();
-                foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5) ) {
+                foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5)) {
                     var shipInfo = ShipsSent.FirstOrDefault(x => x.ship == ship.Ship && x.type == ship.DurationType);
                     if(shipInfo != default) {
                         shipInfo.count++;
@@ -328,7 +328,7 @@ namespace EGG9000.Common.Database {
                 }
             }
 
-            
+
 
             NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
 
@@ -344,7 +344,7 @@ namespace EGG9000.Common.Database {
                     a.Spec.Level == x.Artifact.Spec.Level &&
                     a.Spec.Rarity == x.Artifact.Spec.Rarity
                 );
-                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0};
+                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
             }).ToList();
 
             /* Setup for artifact sets */
@@ -375,7 +375,7 @@ namespace EGG9000.Common.Database {
                     a.Spec.Level == x.Artifact.Spec.Level &&
                     a.Spec.Rarity == x.Artifact.Spec.Rarity
                 )
-            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count}));
+            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count }));
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
@@ -477,6 +477,13 @@ namespace EGG9000.Common.Database {
         public double ProphecyEggBonus { get { return EpicResearch is null ? 0 : ((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
         [IgnoreMember]
         public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy); } }
+
+        [IgnoreMember]
+        public double MER { get {
+                double seQ = SoulEggs / 1e18; // Convert to quintillions
+                return Math.Round((91 * Math.Log10(seQ) + 200 - EggsOfProphecy) / 10, 2);
+            }
+        }
     }
 
     [MessagePackObject]
