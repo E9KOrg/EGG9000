@@ -57,8 +57,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static Embed MERCalculate(EggIncAccount account, int MERValue) {
-            var pe = account.Backup.SoulEggs;
-            double seQ = account.Backup.SoulEggs / 1e18;
+            var pe = account.Backup.EggsOfProphecy;
+            var seQ = account.Backup.SoulEggs / 1e18;
             var MER = account.Backup.MER;
 
             var MERgoal = MERValue != 0 ? MERValue : Math.Max(30, Math.Min(50, (long)Math.Round(MER / 10) * 10));
