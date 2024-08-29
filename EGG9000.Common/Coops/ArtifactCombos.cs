@@ -4,6 +4,9 @@ using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using EGG9000.Common.Migrations;
+
+using Microsoft.Extensions.Logging;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -137,7 +140,7 @@ namespace EGG9000.Common.Coops {
 
             for(var i = 0; i < artifacts.Count; i++) {
                 for(var j = i + 1; j < artifacts.Count; j++) {
-                    if(artifacts[i].Artifact.Artifact == artifacts[j].Artifact.Artifact)
+                    if(artifacts[i].Artifact.Id == artifacts[j].Artifact.Id)
                         continue;
                     if(keepArtifacts.Count == 2) {
                         var set = new ArtifactSet(new List<ArtifactInstanceStats> { new ArtifactInstanceStats(keepArtifacts[0]), new ArtifactInstanceStats(keepArtifacts[1]), artifacts[i], artifacts[j] }, statsWithoutArtifacts);
@@ -146,8 +149,8 @@ namespace EGG9000.Common.Coops {
                         continue;
                     }
                     for(var k = j + 1; k < artifacts.Count; k++) {
-                        if(artifacts[i].Artifact.Artifact == artifacts[k].Artifact.Artifact ||
-                            artifacts[j].Artifact.Artifact == artifacts[k].Artifact.Artifact)
+                        if(artifacts[i].Artifact.Id == artifacts[k].Artifact.Id ||
+                            artifacts[j].Artifact.Id == artifacts[k].Artifact.Id)
                             continue;
                         if(keepArtifacts.Count == 1) {
                             var set = new ArtifactSet(new List<ArtifactInstanceStats> { new ArtifactInstanceStats(keepArtifacts[0]), artifacts[i], artifacts[j], artifacts[k] }, statsWithoutArtifacts);
@@ -156,9 +159,9 @@ namespace EGG9000.Common.Coops {
                             continue;
                         }
                         for(var l = k + 1; l < artifacts.Count; l++) {
-                            if(artifacts[i].Artifact.Artifact == artifacts[l].Artifact.Artifact ||
-                                artifacts[j].Artifact.Artifact == artifacts[l].Artifact.Artifact ||
-                                artifacts[k].Artifact.Artifact == artifacts[l].Artifact.Artifact
+                            if(artifacts[i].Artifact.Id == artifacts[l].Artifact.Id ||
+                                artifacts[j].Artifact.Id == artifacts[l].Artifact.Id ||
+                                artifacts[k].Artifact.Id == artifacts[l].Artifact.Id
                                 )
                                 continue;
                             var set = new ArtifactSet(new List<ArtifactInstanceStats> { artifacts[i], artifacts[j], artifacts[k], artifacts[l] }, statsWithoutArtifacts);
@@ -168,7 +171,6 @@ namespace EGG9000.Common.Coops {
                     }
                 }
             }
-
 
             var order = sets.OrderByDescending(x => x.CurrentShippingRate).ThenByDescending(x => x.Shipping).ThenByDescending(x => x.EggLaying).ToList();
             var max = sets.Any() ? sets.Max(x => x.CurrentShippingRate) : 0;
