@@ -379,7 +379,6 @@ namespace EGG9000.Common.Database {
             var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
     ?? backup.Contracts.Archive.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
 
-
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
                 ContractId = farm.ContractId,

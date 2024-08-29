@@ -389,7 +389,7 @@
                     }
                 </div>
 
-                <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
+                 <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
                     @{
                         await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup, account));
                     }
@@ -399,7 +399,7 @@
                         await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User, Model.CustomEggs));
                     }
                 </div>
-
+                
                 @if (inDB) {
                     <div class="tab-pane" id="merits@(index)" role="tabpanel">
                         <div class="container">
@@ -506,7 +506,7 @@
                         newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
-                </div>
+                </div> 
                 <!--<div class="tab-pane; justify-content-center" id="inventoryview@(index)" role="tabpanel">
                     /*@{
                         //await Html.RenderPartialAsync("-InventoryView", (account, index));

@@ -170,6 +170,7 @@ namespace EGG9000.Site.Controllers {
             return Content(gradeGroup == null ? "[]" : JsonConvert.SerializeObject(gradeGroup.Coops), "application/json");
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> StartCoops([FromBody] List<CoopStart> coops, [FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] int bg, [FromQuery] Ei.Contract.Types.PlayerGrade Grade) {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
             var userIds = coops.SelectMany(x => x.Users.Select(y => y.DatabaseId)).ToList();
