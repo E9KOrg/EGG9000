@@ -135,7 +135,6 @@ namespace EGG9000.Bot.Automated.Coops {
                                 _logger.LogInformation("Thread created for {coopName} in {guild}", coop.Name, headerChannel.Guild.Name);
                                 await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                                 guildWithOverflow.LastAccessed = DateTimeOffset.Now;
-                                var slashCommands = (await guildWithOverflow.Guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
                                 var users = (await _db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
                                 var dbguild = dbguilds.FirstOrDefault(x => x.Id == guildWithOverflow.Guild.Id);
                                 var overflowGuild = coop.OverflowGuildId > 0 ? _client.GetGuild(coop.OverflowGuildId) : guildWithOverflow.Guild;
@@ -147,7 +146,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                 tasks.Add(Task.Run(async () => {
                                     try {
-                                        await _threadsCoopStatusUpdater.ProcessCoop(coop.Id, overflowGuild, users, dbguild, slashCommands, cancellationToken);
+                                        await _threadsCoopStatusUpdater.ProcessCoop(coop.Id, overflowGuild, users, dbguild, cancellationToken);
                                     } finally {
                                         throttler.Release();
                                     }

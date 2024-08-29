@@ -343,6 +343,27 @@ namespace EGG9000.Common.Services {
             }
         }
 
+        private readonly static MemoryCache commandCache = new(new MemoryCacheOptions());
+
+        private static string GetCommandCacheKey(this SocketGuild guild) { return $"CommandCache{guild.Id}"; }
+
+        public static async Task<IReadOnlyCollection<SocketApplicationCommand>> GetCachedApplicationCommands(this SocketGuild guild) {
+            if(!commandCache.TryGetValue(guild.GetCommandCacheKey(), out IReadOnlyCollection<SocketApplicationCommand> commands)) {
+                commands = await guild.GetApplicationCommandsAsync();
+                commandCache.Set(guild.GetCommandCacheKey(), commands, TimeSpan.FromMinutes(10));
+            }
+            return commands;
+        }
+
+        public static async Task<string> GetSlashCommandStringAsync(this SocketGuild guild, string slashCommandName) {
+            var fixedSlashCommandName = slashCommandName.ToLower().Trim();
+            var command = (await guild.GetCachedApplicationCommands())
+                .ToList().Where(c => c.Type == ApplicationCommandType.Slash)
+                .FirstOrDefault(c => c.Name.ToLower() == fixedSlashCommandName);
+
+            if(command == null) return $"`/{fixedSlashCommandName}`";
+            else return $"</{fixedSlashCommandName}:{command.Id}";
+        }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
             if(contract is null || string.IsNullOrEmpty(contract.Name) ) return "unknown-contract";
