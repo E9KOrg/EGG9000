@@ -29,6 +29,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,7 +85,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     continue;
                 await guild.DownloadUsersAsync();
                 _logger.LogInformation("Coops for guild: {guildName}, Count {count}", guild.Name, guildCoops.Count());
-                var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
 
                 var tasks = new List<Task>();
 
@@ -99,7 +99,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         try {
                             var sw = new Stopwatch();
                             sw.Start();
-                            await ProcessCoop(coop.Id, guild, users, dbguild, slashCommands, cancellationToken);
+                            await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
                             //_logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
@@ -126,13 +126,14 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, List<SocketApplicationCommand> slashCommands, CancellationToken cancellationToken) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
             try {
                 timings.Set("Pre-Setup");
                 using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var slashCommands = await guild.GetCachedApplicationCommands();
 
                 //** Get Coop
                 var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopid, cancellationToken);
