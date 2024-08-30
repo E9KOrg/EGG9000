@@ -167,6 +167,10 @@ namespace EGG9000.Common.Contracts {
                 CheckOnPreviousComplete(ua, contract, [])
             )) return true;
 
+            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
+                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
+            }
+
             if(contract.HadTwoRewards) {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
                 if(completedTwoRewards && !x.Account.DoTwoToThreeContracts) {
@@ -174,10 +178,6 @@ namespace EGG9000.Common.Contracts {
                 } else if(completedTwoRewards && x.Account.DoTwoToThreeContracts) {
                     return true;
                 }
-            }
-
-            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
-                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
             }
 
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.No 

@@ -34,7 +34,6 @@ using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -45,26 +44,29 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync();
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+
+            if(dbUser.TempDisabled) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Staff have previously disabled your account. Please wait for someone to reach out to discuss this."); });
+                return;
+            }
+
             if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
             } else if(dbUser.GuildId == guild.Id) {
-                if(dbUser.TempDisabled) {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"It looks like you have been disabled, ask staff for help."); });
-                } else {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Already configured for the current server, you should get your roles during the next Leaderboard update."); });
-                }
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Already configured for the current server, you should get your roles during the next Leaderboard update."); });
             } else {
                 await command.RespondAsync($"Please wait...");
                 if(dbUser.GuildId == 428181243474214942) {
                     await ((SocketGuildUser)command.User).AddRoleAsync(guild.Roles.FirstOrDefault(x => x.Name == "Prophet"));
                 }
-                dbUser.GuildId = guild.Id;
-                await db.SaveChangesAsync();
 
                 if(dbUser.EggIncAccounts is null || dbUser.EggIncAccounts.Count == 0) {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning("There are no Egg, Inc. accounts registered to your Discord account. Please `/register` your EID."); });
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning("There are no Egg, Inc. accounts registered to your Discord account. Please `/register` your EID, then run this command again."); });
                     return;
                 }
+
+                dbUser.GuildId = guild.Id;
+                await db.SaveChangesAsync();
 
                 var Response = await apiLink.GetBackup(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
@@ -154,8 +156,7 @@ namespace EGG9000.Bot.Commands {
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == coop.GuildId);
-                var slashCommands = (await guild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
-                await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, slashCommands, default);
+                await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
 
                 await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
@@ -181,42 +182,34 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             if(dbUser is not null) {
+                if(dbUser.TempDisabled) {
+                    await command.RespondAsync($"Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this.");
+                    return;
+                }
+
                 if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count > 0) {
-                    if(dbUser.TempDisabled) {
-                        await command.RespondAsync($"Looks like you are currently disabled, please ask for someone from staff to find out about getting re-enabled.");
-                        return;
-                    } else {
-                        await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, []);
-                        await command.DeleteOriginalResponseAsync();
-                        var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
-                        var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
-                        if(activeRole != null) {
-                            await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
-                        }
-                        await CleanWelcomeChannel(guild, _client, targetUser);
-                        return;
+                    await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, []);
+                    await command.DeleteOriginalResponseAsync();
+                    var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
+                    var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                    if(activeRole != null) {
+                        await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
                     }
+                    await CleanWelcomeChannel(guild, _client, targetUser);
+                    return;
                 } else if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count == 0) {
                     await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
                     return;
-                } else if(dbUser.EggIncAccounts.Count > 0 && dbUser.GuildId > 0 & !dbUser.TempDisabled) {
-                    await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the </moveserver:1095116354329268366> command");
-                    return;
-                } else if(dbUser.TempDisabled) {
-                    await command.RespondAsync($"Looks like you are currently disabled, please wait for someone from staff to get you re-enabled.");
-                    return;
-                } else if(dbUser.GuildId != guild.Id) {
-                    var moveservercommand = (await guild.GetApplicationCommandsAsync()).FirstOrDefault(c => c.Type == ApplicationCommandType.Slash && c.Name == "moveserver");
-                    await command.RespondAsync($"{targetUser.Mention}, now run the </moveserver:{moveservercommand?.Id ?? 0}> command");
+                } else if(dbUser.GuildId > 0) {
+                    var moveServerCommand = await guild.GetSlashCommandStringAsync("MoveServer");
+                    await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the ${moveServerCommand} command.");
                     return;
                 } else {
 
                     var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
 
                     var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
-                    if(activeRole != null) {
-                        await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
-                    }
+                    if(activeRole != null) await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
 
                     await CleanWelcomeChannel(guild, _client, targetUser);
                     return;
