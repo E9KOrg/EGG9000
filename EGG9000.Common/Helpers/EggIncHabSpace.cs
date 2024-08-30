@@ -38,20 +38,20 @@ namespace EGG9000.Common.Helpers {
             return baseSpace;
         }
 
-        public static double GetScaledHabSpace(CustomFarm farm, double allScalar, double portalScalar) {
-            double baseSpace = 0;
-            if(farm?.Habs == null)
-                return baseSpace;
-            foreach(var habId in farm.Habs) {
-                var hab = Habs.FirstOrDefault(x => x.id == habId);
-                if(hab != null) {
-                    if(hab.id >= 17) baseSpace += hab.baseHabSpace * portalScalar * allScalar;
-                    else baseSpace += hab.baseHabSpace * allScalar;
-                }
-            }
+        //public static double GetScaledHabSpace(CustomFarm farm, double allScalar, double portalScalar) {
+        //    double baseSpace = 0;
+        //    if(farm?.Habs == null)
+        //        return baseSpace;
+        //    foreach(var habId in farm.Habs) {
+        //        var hab = Habs.FirstOrDefault(x => x.id == habId);
+        //        if(hab != null) {
+        //            if(hab.id >= 17) baseSpace += hab.baseHabSpace * portalScalar * allScalar;
+        //            else baseSpace += hab.baseHabSpace * allScalar;
+        //        }
+        //    }
 
-            return baseSpace;
-        }
+        //    return baseSpace;
+        //}
 
         public static List<Hab> Habs = new List<Hab> {
           new Hab{

@@ -40,12 +40,28 @@ namespace EGG9000.Common.Services {
             _discord.UserJoined += Client_UserJoined;
             _discord.UserLeft += Client_UserLeft;
             _discord.ChannelDestroyed += _discord_ChannelDestroyed;
+            _discord.ThreadDeleted += _discord_ThreadDeleted;
+            return Task.CompletedTask;
+        }
+
+        private Task _discord_ThreadDeleted(Cacheable<SocketThreadChannel, ulong> arg) {
+            _ = HandleThreadDeleted(arg.Value);
             return Task.CompletedTask;
         }
 
         private Task _discord_ChannelDestroyed(SocketChannel arg) {
             _ = HandleChannelDeleted(arg);
             return Task.CompletedTask;
+        }
+
+        private async Task HandleThreadDeleted(SocketThreadChannel arg) {
+            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+            if(coop is not null && coop.ThreadID != 0) {
+                _logger.LogInformation($"Marking thread archived due to thread deletion for {coop.Name}");
+                coop.ThreadArchived = true;
+                await db.SaveChangesAsync();
+            }
         }
 
         private async Task HandleChannelDeleted(SocketChannel arg) {
@@ -61,10 +77,7 @@ namespace EGG9000.Common.Services {
             }
             var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
             if(coop is not null && coop.ThreadID != 0) {
-                await ((SocketThreadChannel)_discord.GetChannel(arg.Id)).ModifyAsync(c => {
-                    c.Archived = true;
-                    c.Locked = true;
-                });
+                _logger.LogInformation($"Marking thread archived due to channel deletion for {coop.Name}");
                 coop.ThreadArchived = true;
                 await db.SaveChangesAsync();
             } else if(coop is not null && coop.DiscordChannelId != 0) {
@@ -104,7 +117,6 @@ namespace EGG9000.Common.Services {
             if(user.IsBot)
                 return;
 
-
             var guilds = await db.Guilds.ToListAsync();
             var dbguild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
             if(dbguild == null) {
@@ -143,6 +155,12 @@ namespace EGG9000.Common.Services {
 
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser is not null) {
+                if(dbuser.GuildId != user.Guild.Id) {
+                    var moveServerCommand = await user.Guild.GetSlashCommandStringAsync("MoveServer");
+                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() {
+                        Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the ${moveServerCommand} command."
+                    }, _logger);
+                }
                 if(dbuser.TempDisabled) {
                     await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() { 
                         Text = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this."

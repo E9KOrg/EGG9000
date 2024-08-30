@@ -1,16 +1,21 @@
 ﻿using Discord.WebSocket;
+
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
+
 using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using static Ei.ContractCoopStatusResponse.Types;
 
 namespace EGG9000.Common.Helpers {
@@ -119,7 +124,7 @@ namespace EGG9000.Common.Helpers {
             if(remainingSeconds <= TimeSpan.MinValue.TotalSeconds) {
                 return TimeSpan.MinValue;
             }
-            return double.IsNaN(remainingSeconds) ? TimeSpan.MaxValue :  TimeSpan.FromSeconds(remainingSeconds);
+            return double.IsNaN(remainingSeconds) ? TimeSpan.MaxValue : TimeSpan.FromSeconds(remainingSeconds);
         }
 
         public static TimeSpan GetTimeRemainingValue(double targetAmount, List<UserPreFarm> userPreFarms) {
@@ -185,7 +190,7 @@ namespace EGG9000.Common.Helpers {
                     share = Math.Floor(share);
                 return Math.Max(0, share);
             }
-        }   
+        }
 
         public static async Task<CoopsBreakdown> GetBreakdown(ApplicationDbContext db, GuildContract guildContract, DiscordSocketClient discord, uint league) {
             var dbusers = await db.DBUsers.AsQueryable().Where(x => x.GuildId == guildContract.GuildID).ToListAsync();
@@ -224,7 +229,7 @@ namespace EGG9000.Common.Helpers {
 
             notAssignedCoop = notAssignedCoop.Where(x => x.Backup != null && !x.DBUser.TempDisabled && x.DBUser.GuildId == guildContract.GuildID &&
                     (
-                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || guildContract.League == y.League )) ||
+                        x.Backup.Farms.Any(y => y.ContractId == guildContract.ContractID && (y.Completed || guildContract.League == y.League)) ||
                         (x.Backup.ArchivedFarms?.Any(f => f.ContractId == guildContract.ContractID && (f.Completed || guildContract.League == f.League)) ?? false)
                     )
                 )
@@ -482,6 +487,39 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
+
+            foreach(var missingUser in coopParticipants.Where(x => x.Xref is null && x.CoopStatus is not null && x.Backup is null)) {
+                if(missingUser.CoopStatus.UserName == "[departed]") continue;
+                var user = backups.Where(x => x.Backup is not null).FirstOrDefault(x => missingUser.CoopStatus.UserName.Length > 0 && x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
+                if(user is not null) {
+                    missingUser.DBUser = user.User;
+                    missingUser.Backup = user.Backup;
+                    if(missingUser.DBUser.EggIncAccounts.Count == 1 && coop.UserCoopsXrefs.Any(x => x.UserId == missingUser.DBUser.Id)) {
+                        missingUser.AddXref(coop.UserCoopsXrefs.First(x => x.UserId == missingUser.DBUser.Id));
+                    }
+                } else {
+                    var matchingBackups = backups.Where(x => x.Backup is not null).Where(x => missingUser.CoopStatus.UserName.Length > 0 && x.User is not null && !string.IsNullOrEmpty(x.User?.Usernames) && (x.User.Usernames.Contains(missingUser.CoopStatus.UserName))).ToList();
+                    if(matchingBackups is not null && matchingBackups.Count > 0) {
+                        if(matchingBackups.Count > 1) {
+                            var index = matchingBackups.First().User.Usernames.Split(",").ToList().IndexOf(missingUser.CoopStatus.UserName);
+                            if(index > -1 && matchingBackups.Count >= index + 1) {
+                                missingUser.DBUser = matchingBackups.First().User;
+                                missingUser.Backup = matchingBackups[index].Backup;
+                                if(missingUser.DBUser.EggIncAccounts.Count == 1 && coop.UserCoopsXrefs.Any(x => x.UserId == missingUser.DBUser.Id)) {
+                                    missingUser.AddXref(coop.UserCoopsXrefs.First(x => x.UserId == missingUser.DBUser.Id));
+                                }
+                            }
+                        } else {
+                            missingUser.DBUser = matchingBackups.First().User;
+                            missingUser.Backup = matchingBackups.First().Backup;
+                            if(missingUser.DBUser.EggIncAccounts.Count == 1 && coop.UserCoopsXrefs.Any(x => x.UserId == missingUser.DBUser.Id)) {
+                                missingUser.AddXref(coop.UserCoopsXrefs.First(x => x.UserId == missingUser.DBUser.Id));
+                            }
+                        }
+                    }
+                }
+            }
+
             if(coop is not null) {
                 //Add missing participants
                 var missingXrefs = coop.UserCoopsXrefs.Where(x => !coopParticipants.Any(y => y is not null && y.Xref == x));
@@ -498,28 +536,6 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            foreach(var missingUser in coopParticipants.Where(x => x.Xref is null && x.CoopStatus is not null && x.Backup is null)) {
-                if(missingUser.CoopStatus.UserName == "[departed]") continue;
-                var user = backups.Where(x => x.Backup is not null).FirstOrDefault(x => missingUser.CoopStatus.UserName.Length > 0 && x.Backup.UserName == missingUser.CoopStatus.UserName && x.Backup.Farms.Any(y => y.ContractId == contract.ID));
-                if(user is not null) {
-                    missingUser.DBUser = user.User;
-                    missingUser.Backup = user.Backup;
-                } else {
-                    var matchingBackups = backups.Where(x => x.Backup is not null).Where(x => missingUser.CoopStatus.UserName.Length > 0 && x.User is not null && !string.IsNullOrEmpty(x.User?.Usernames) && (x.User.Usernames.Contains(missingUser.CoopStatus.UserName))).ToList();
-                    if(matchingBackups is not null && matchingBackups.Count > 0) {
-                        if(matchingBackups.Count > 1) {
-                            var index = matchingBackups.First().User.Usernames.Split(",").ToList().IndexOf(missingUser.CoopStatus.UserName);
-                            if(index > -1 && matchingBackups.Count >= index + 1) {
-                                missingUser.DBUser = matchingBackups.First().User;
-                                missingUser.Backup = matchingBackups[index].Backup;
-                            }
-                        } else {
-                            missingUser.DBUser = matchingBackups.First().User;
-                            missingUser.Backup = matchingBackups.First().Backup;
-                        }
-                    }
-                }
-            }
 
             if(coopParticipants.Any(x => x.Name.ToLower() == "kendrome" && !coop.FinishedOrFailedOrExpired())) {
 

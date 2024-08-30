@@ -5,6 +5,7 @@ using Discord.WebSocket;
 
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
+using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
@@ -129,6 +130,7 @@ namespace EGG9000.Site {
                 });
             });
 #else
+            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
             services.AddBugsnag();
 #endif
 

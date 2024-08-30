@@ -52,7 +52,7 @@ namespace EGG9000.Common.Coops {
                     var artifact = artifactCount.Artifact;
                     var combos = FillStones(slots, possibleStones);
                     foreach(var combo in combos) {
-                        allStoneCombos.Add(new ArtifactInstanceStats(new EggIncArtifactInstance { Additive = artifact.Additive, Artifact = artifact.Artifact, Boost = artifact.Boost, Rarity = artifact.Rarity, Stones = combo, Tier = artifact.Tier, Value = artifact.Value }));
+                        allStoneCombos.Add(new ArtifactInstanceStats(new EggIncArtifactInstance { Additive = artifact.Additive, Boost = artifact.Boost, Rarity = artifact.Rarity, Stones = combo, Tier = artifact.Tier, Value = artifact.Value, Id = artifact.Id }));
                     }
 
                 }

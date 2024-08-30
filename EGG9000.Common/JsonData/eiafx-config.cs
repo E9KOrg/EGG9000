@@ -1,4 +1,6 @@
 ﻿using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData.EiAfxData;
+
 using Ei;
 using Humanizer;
 using Newtonsoft.Json;
@@ -99,15 +101,11 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
                     artifactLevelGrouping => {
                         // Create an EggIncArtifactInstance
                         var firstGroup = artifactLevelGrouping.First();
-                        var afInstanceName = firstGroup.spec.name.Replace("_", " ").Titleize();
-                        afInstanceName = afInstanceName.Replace("Vial ", "Vial Of ");
-                        afInstanceName = afInstanceName.Replace("Of", "of").Replace(" In ", " in ").Replace(" A ", " a ");
-                        afInstanceName = afInstanceName.Replace("Ornate ", "");
-                        afInstanceName = afInstanceName.Replace("Mercurys ", "Mercury's ");
-
+                        var afInstanceName = firstGroup.spec.name.Replace("_", "-").ToLower();
+                        afInstanceName = afInstanceName.Replace("vial-", "vial-of-");
+                        afInstanceName = afInstanceName.Replace("ornate-", "");
                         var afInstance = new EggIncArtifactInstance() {
-                            Artifact = afInstanceName,
-                            Tier = (byte)((int)Enum.Parse<ArtifactSpec.Types.Level>(firstGroup.spec.level, ignoreCase: true) + 1),
+                            Tier = (byte)((int)Enum.Parse<ArtifactSpec.Types.Level>(firstGroup.spec.level, ignoreCase: true) + 1), Id = (byte)EiAfxDataRoot.Instance.artifact_families.First(x => x.id == afInstanceName).afx_id
                         };
 
                         return afInstance;
