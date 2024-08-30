@@ -220,13 +220,13 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static ShipTargetInfo GetTargetInfo(ArtifactSpec.Types.Name aspec) {
-            var bInfo = string.Join(" ", Regex.Split(System.Enum.GetName(typeof(ArtifactSpec.Types.Name), aspec), @"(?=\p{Lu})"))
+            var bInfo = string.Join(" ", Regex.Split(Enum.GetName(typeof(ArtifactSpec.Types.Name), aspec), @"(?=\p{Lu})"))
                 .Replace(" Of ", " of ").Replace(" In ", " in ").Replace(" A ", " a ").Trim();
             var tier = bInfo.IndexOf("Fragment") > -1 ? (byte)0
                     : (bInfo.IndexOf(" Stone") > -1 || bInfo.IndexOf("Tau Ceti Geode") > -1 || bInfo.IndexOf("Gold Meteorite") > -1 || bInfo.IndexOf("Solar Titanium") > -1 ? (byte)3
                     : (byte)4);
             var tempEmoji = GetAfEmoji(new EggIncArtifactInstance() {
-                Artifact = bInfo.Replace(" Fragment", ""),
+                Id = (byte)(int)aspec,
                 Tier = tier
             });
             return new ShipTargetInfo() {

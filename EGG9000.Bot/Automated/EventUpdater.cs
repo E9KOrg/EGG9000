@@ -181,7 +181,7 @@ namespace EGG9000.Bot.Automated {
                     //Send to non-CCs without ping
                     if(eventChannel != null) {
                         var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
-                        message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
+                        message = await eventChannel.SendMessageAsync(ultraNotification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
                     }
 
                     //If the CC event channel was found, that's where we'll ping for CC events

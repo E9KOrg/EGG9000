@@ -99,10 +99,12 @@ namespace EGG9000.Bot.Automated {
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
-                    var json = JsonConvert.SerializeObject(contractResponse);
+                    // Kevin being bad causing problems - Fallback leggacy detection
+                    if(!contractResponse.Leggacy) {
+                        contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
+                    }
 
-                    var matchingCustomEggs = JsonConvert.SerializeObject(customEggs.Where(ce => ce.Identifier == contractResponse.CustomEggId).ToList());
-                    
+                    var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
                         contract = new Contract {
@@ -151,9 +153,6 @@ namespace EGG9000.Bot.Automated {
                         contract.cc_only = contractResponse.CcOnly;
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
-
-                    if(contract.custom_eggs != matchingCustomEggs)
-                        contract.custom_eggs = matchingCustomEggs;
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync(CancellationToken.None);

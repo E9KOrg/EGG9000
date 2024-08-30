@@ -22,7 +22,7 @@ using Event = EGG9000.Common.Database.Entities.Event;
 namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
-        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db) : Controller {
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db, Bugsnag.IClient bugsnag) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -30,11 +30,16 @@ namespace EGG9000.Site.Controllers {
         private readonly RoleManager<IdentityRole> _roleManager = roleManager;
         private readonly APILink _apiLink = apiLink;
         private readonly DiscordSocketClient _discord = discord;
+        private readonly Bugsnag.IClient _bugsnag = bugsnag;
 
         public async Task<IActionResult> Index() {
             var loginuser = (await _userManager.GetUserAsync(User));
+            
+            
 
             var logins = await _userManager.GetLoginsAsync(loginuser);
+
+            _bugsnag.Breadcrumbs.Leave($"DiscordId: {logins.First().ProviderKey}, {logins.First().ProviderDisplayName}");
             return await ViewUser(ulong.Parse(logins.First().ProviderKey));
         }
 
@@ -45,6 +50,7 @@ namespace EGG9000.Site.Controllers {
             var loginUserId = ulong.Parse(logins.First().ProviderKey);
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}, {user.DiscordUsername}");
             var update = false;
             var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();

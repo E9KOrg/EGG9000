@@ -1,10 +1,14 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
+
+//using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -40,7 +44,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         private static double GetEnlightenmentRate(EggIncArtifactInstance artifact, double enlightenmentMultiple) {
-            var rate = artifact.Value - 1;
+            double rate = artifact.Value - 1;
             rate *= enlightenmentMultiple;
             return rate + 1;
         }
@@ -204,16 +208,16 @@ namespace EGG9000.Common.Helpers {
             if(artifactSpec == null) {
                 return null;
             }
-
-            var artifact = GetArtifactsDB.FirstOrDefault(x => x.Name == (int)artifactSpec.Name);
+            
+            var artifact = GetArtifactsDB.FirstOrDefault(x => (int)x.Name == (int)artifactSpec.Name);
             if(artifact == null)
                 return null;
             var response = new EggIncArtifactInstance {
                 Additive = artifact.Additive,
-                Artifact = artifact.Artifact,
                 Boost = artifact.Boost,
                 Tier = (byte)(artifactSpec.Level + 1),
                 Rarity = (byte)(artifactSpec.Rarity + 1),
+                Id = (byte)artifact.Name
                 //Spec = artifactSpec
             };
             switch((int)artifactSpec.Level) {
@@ -276,116 +280,116 @@ namespace EGG9000.Common.Helpers {
 
         public static List<EggIncArtifact> GetArtifactsDB = new List<EggIncArtifact> {
             new EggIncArtifact {
-                Name = 21, Artifact = "Aurelian Brooch", Boost = EggIncBoostTypeEnum.DroneRewards, //done
-                L0R0 = 1.1,
-                L1R0 = 1.25,
-                L2R0 = 1.5, L2R1 = 1.6, L2R2 = 1.7,
-                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3
+                Name = ArtifactNames.AurelianBrooch, Boost = EggIncBoostTypeEnum.DroneRewards, //done
+                L0R0 = 1.1f,
+                L1R0 = 1.25f,
+                L2R0 = 1.5f, L2R1 = 1.6f, L2R2 = 1.7f,
+                L3R0 = 2, L3R1 = 2.25f, L3R2 = 2.5f, L3R3 = 3
             },
             new EggIncArtifact {
-                Name = 4, Artifact = "Beak of Midas", Boost = EggIncBoostTypeEnum.DroneRewards, //done
-                L0R0 = 1.2,
-                L1R0 = 1.5,
+                Name = ArtifactNames.BeakOfMidas, Boost = EggIncBoostTypeEnum.DroneRewards, //done
+                L0R0 = 1.2f,
+                L1R0 = 1.5f,
                 L2R0 = 2, L2R1 = 3,
                 L3R0 = 6, L3R1 = 11, L3R3 = 9999
             },
             new EggIncArtifact {
-                Name = 10, Artifact = "Book of Basan", Boost = EggIncBoostTypeEnum.EggsOfProphecyEffect, //done
-                L0R0 = 1.0025,
-                L1R0 = 1.005,
-                L2R0 = 1.0075, L2R2 = 1.008,
-                L3R0 = 1.01, L3R2 = 1.1, L3R3 = 1.2
+                Name = ArtifactNames.BookOfBasan, Boost = EggIncBoostTypeEnum.EggsOfProphecyEffect, //done
+                L0R0 = 1.0025f,
+                L1R0 = 1.005f,
+                L2R0 = 1.0075f, L2R2 = 1.008f,
+                L3R0 = 1.01f, L3R2 = 1.1f, L3R3 = 1.2f
             },
             new EggIncArtifact {
-                Name = 22, Artifact = "Carved Rainstick", Boost = EggIncBoostTypeEnum.CashGiftChance, //done
-                L0R0 = 1.2,
-                L1R0 = 1.5,
+                Name = ArtifactNames.CarvedRainstick, Boost = EggIncBoostTypeEnum.CashGiftChance, //done
+                L0R0 = 1.2f,
+                L1R0 = 1.5f,
                 L2R2 = 2,
                 L3R0 = 5, L3R2 = 10, L3R3 = 9999
             },
             new EggIncArtifact {
-                Name = 40, Artifact = "Clarity Stone", Boost = EggIncBoostTypeEnum.HostArtifactsOnElightenment, //done
-                L0R0 = 0.25,
-                L1R0 = 0.50,
+                Name = ArtifactNames.ClarityStone, Boost = EggIncBoostTypeEnum.HostArtifactsOnElightenment, //done
+                L0R0 = 0.25f,
+                L1R0 = 0.50f,
                 L2R0 = 1
             },
             new EggIncArtifact {
-                Name = 6, Artifact = "Demeters Necklace", Boost = EggIncBoostTypeEnum.EggValue, //done
-                L0R0 = 1.1,
-                L1R0 = 1.25, L1R1 = 1.35,
-                L2R0 = 1.5, L2R1 = 1.6, L2R2 = 1.75,
-                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3
+                Name = ArtifactNames.DemetersNecklace, Boost = EggIncBoostTypeEnum.EggValue, //done
+                L0R0 = 1.1f,
+                L1R0 = 1.25f, L1R1 = 1.35f,
+                L2R0 = 1.5f, L2R1 = 1.6f, L2R2 = 1.75f,
+                L3R0 = 2, L3R1 = 2.25f, L3R2 = 2.5f, L3R3 = 3
             },
             new EggIncArtifact {
-                Name = 28, Artifact = "Dilithium Monocle", Boost = EggIncBoostTypeEnum.BoostEffectiveness, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1,
-                L2R0 = 1.14,
-                L3R0 = 1.2, L3R2 = 1.25, L3R3 = 1.3
+                Name = ArtifactNames.DilithiumMonocle, Boost = EggIncBoostTypeEnum.BoostEffectiveness, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f,
+                L2R0 = 1.14f,
+                L3R0 = 1.2f, L3R2 = 1.25f, L3R3 = 1.3f
             },
             new EggIncArtifact {
-                Name = 31, Artifact = "Dilithium Stone", Boost = EggIncBoostTypeEnum.BoostDuration, //done
-                L0R0 = 1.03,
-                L1R0 = 1.06,
-                L2R0 = 1.08
+                Name = ArtifactNames.DilithiumStone, Boost = EggIncBoostTypeEnum.BoostDuration, //done
+                L0R0 = 1.03f,
+                L1R0 = 1.06f,
+                L2R0 = 1.08f
             },
             new EggIncArtifact {
-                Name = 8, Artifact = "Gusset", Boost = EggIncBoostTypeEnum.HabCapacity, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1, L1R2 = 1.12,
-                L2R0 = 1.14, L2R1 = 1.15,
-                L3R0 = 1.2, L3R2 = 1.22, L3R3 = 1.25
+                Name = ArtifactNames.OrnateGusset, Boost = EggIncBoostTypeEnum.HabCapacity, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f, L1R2 = 1.12f,
+                L2R0 = 1.14f, L2R1 = 1.15f,
+                L3R0 = 1.2f, L3R2 = 1.22f, L3R3 = 1.25f
             },
             new EggIncArtifact {
-                Name = 27, Artifact = "Interstellar Compass", Boost = EggIncBoostTypeEnum.EggShippingRate, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1,
-                L2R0 = 1.2, L2R1 = 1.22,
-                L3R0 = 1.3, L3R1 = 1.35, L3R2 = 1.4, L3R3 = 1.5
+                Name = ArtifactNames.InterstellarCompass, Boost = EggIncBoostTypeEnum.EggShippingRate, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f,
+                L2R0 = 1.2f, L2R1 = 1.22f,
+                L3R0 = 1.3f, L3R1 = 1.35f, L3R2 = 1.4f, L3R3 = 1.5f
             },
             new EggIncArtifact {
-                Name = 38, Artifact = "Life Stone", Boost = EggIncBoostTypeEnum.InternalHatchery, //done
-                L0R0 = 1.02,
-                L1R0 = 1.03,
-                L2R0 = 1.04
+                Name = ArtifactNames.LifeStone, Boost = EggIncBoostTypeEnum.InternalHatchery, //done
+                L0R0 = 1.02f,
+                L1R0 = 1.03f,
+                L2R0 = 1.04f
             },
             new EggIncArtifact {
-                Name = 5, Artifact = "Light of Eggendil", Boost = EggIncBoostTypeEnum.EnlightenmentEggValue, //done
-                L0R0 = 1.5,
-                L1R0 = 2, L1R1 = 2.2,
+                Name = ArtifactNames.LightOfEggendil, Boost = EggIncBoostTypeEnum.EnlightenmentEggValue, //done
+                L0R0 = 1.5f,
+                L1R0 = 2, L1R1 = 2.2f,
                 L2R0 = 10, L2R1 = 15,
                 L3R0 = 101, L3R2 = 151, L3R3 = 251
             },
             new EggIncArtifact {
-                Name = 33, Artifact = "Lunar Stone", Boost = EggIncBoostTypeEnum.AwayEarnings, //done
-                L0R0 = 1.2,
-                L1R0 = 1.3,
-                L2R0 = 1.4
+                Name = ArtifactNames.LunarStone, Boost = EggIncBoostTypeEnum.AwayEarnings, //done
+                L0R0 = 1.2f,
+                L1R0 = 1.3f,
+                L2R0 = 1.4f
             },
             new EggIncArtifact {
-                Name = 0, Artifact = "Lunar Totem", Boost = EggIncBoostTypeEnum.AwayEarnings, //done
-                L0R0 = 1.5,
-                L1R0 = 2, L1R1 = 2.5,
+                Name = ArtifactNames.LunarTotem, Boost = EggIncBoostTypeEnum.AwayEarnings, //done
+                L0R0 = 1.5f,
+                L1R0 = 2, L1R1 = 2.5f,
                 L2R0 = 4, L2R1 = 5,
                 L3R0 = 6, L3R1 = 8, L3R2 = 10
             },
             new EggIncArtifact {
-                Name = 30, Artifact = "Mercury's Lens", Boost = EggIncBoostTypeEnum.FarmValue, //done
-                L0R0 = 1.1,
-                L1R0 = 1.2, L1R1 = 1.22,
-                L2R0 = 1.5, L2R1 = 1.55,
-                L3R0 = 2, L3R1 = 2.25, L3R2 = 2.5, L3R3 = 3
+                Name = ArtifactNames.MercurysLens, Boost = EggIncBoostTypeEnum.FarmValue, //done
+                L0R0 = 1.1f,
+                L1R0 = 1.2f, L1R1 = 1.22f,
+                L2R0 = 1.5f, L2R1 = 1.55f,
+                L3R0 = 2, L3R1 = 2.25f, L3R2 = 2.5f, L3R3 = 3
             },
             new EggIncArtifact {
-                Name = 3, Artifact = "Neodymium Medallion", Boost = EggIncBoostTypeEnum.DroneFrequency, //done
-                L0R0 = 1.1,
-                L1R0 = 1.25, L1R1 = 1.3,
-                L2R0 = 1.5, L2R2 = 1.6,
-                L3R0 = 2, L3R1 = 2.1, L3R2 = 2.2, L3R3 = 2.29
+                Name = ArtifactNames.NeodymiumMedallion, Boost = EggIncBoostTypeEnum.DroneFrequency, //done
+                L0R0 = 1.1f,
+                L1R0 = 1.25f, L1R1 = 1.3f,
+                L2R0 = 1.5f, L2R2 = 1.6f,
+                L3R0 = 2, L3R1 = 2.1f, L3R2 = 2.2f, L3R3 = 2.29f
             },
             new EggIncArtifact {
-                Name = 11, Artifact = "Phoenix Feather", Boost = EggIncBoostTypeEnum.SoulEggCollectionRate, //done
-                L0R0 = 1.25,
+                Name = ArtifactNames.PhoenixFeather, Boost = EggIncBoostTypeEnum.SoulEggCollectionRate, //done
+                L0R0 = 1.25f,
                 L1R0 = 2,
                 L2R0 = 5, L2R1 = 6,
                 L3R0 = 10,
@@ -393,120 +397,230 @@ namespace EGG9000.Common.Helpers {
                 L3R3 = 15
             },
             new EggIncArtifact {
-                Name = 39, Artifact = "Prophecy Stone", Boost = EggIncBoostTypeEnum.EggsOfProphecyEffect, //done
-                L0R0 = 1.0005,
-                L1R0 = 1.001,
-                L2R0 = 1.0015
+                Name = ArtifactNames.ProphecyStone, Boost = EggIncBoostTypeEnum.EggsOfProphecyEffect, //done
+                L0R0 = 1.0005f,
+                L1R0 = 1.001f,
+                L2R0 = 1.0015f
             },
             new EggIncArtifact {
-                Name = 23, Artifact = "Puzzle Cube", Boost = EggIncBoostTypeEnum.ResearchCost, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1, L1R2 = 1.15,
-                L2R0 = 1.2, L2R1 = 1.22,
-                L3R0 = 1.5, L3R1 = 1.53, L3R2 = 1.55, L3R3 = 1.6
+                Name = ArtifactNames.PuzzleCube, Boost = EggIncBoostTypeEnum.ResearchCost, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f, L1R2 = 1.15f,
+                L2R0 = 1.2f, L2R1 = 1.22f,
+                L3R0 = 1.5f, L3R1 = 1.53f, L3R2 = 1.55f, L3R3 = 1.6f
             },
             new EggIncArtifact {
-                Name = 24, Artifact = "Quantum Metronome", Boost = EggIncBoostTypeEnum.EggLayingRate, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1, L1R1 = 1.12,
-                L2R0 = 1.14999, L2R1 = 1.17, L2R2 = 1.2,
-                L3R0 = 1.25, L3R1 = 1.27, L3R2 = 1.3, L3R3 = 1.35
+                Name = ArtifactNames.QuantumMetronome, Boost = EggIncBoostTypeEnum.EggLayingRate, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f, L1R1 = 1.12f,
+                L2R0 = 1.14999f, L2R1 = 1.17f, L2R2 = 1.2f,
+                L3R0 = 1.25f, L3R1 = 1.27f, L3R2 = 1.3f, L3R3 = 1.35f
             },
             new EggIncArtifact {
-                Name = 36, Artifact = "Quantum Stone", Boost = EggIncBoostTypeEnum.EggShippingRate, //done
-                L0R0 = 1.02,
-                L1R0 = 1.04,
-                L2R0 = 1.05
+                Name = ArtifactNames.QuantumStone, Boost = EggIncBoostTypeEnum.EggShippingRate, //done
+                L0R0 = 1.02f,
+                L1R0 = 1.04f,
+                L2R0 = 1.05f
             },
             new EggIncArtifact {
-                Name = 32, Artifact = "Shell Stone", Boost = EggIncBoostTypeEnum.EggValue, //done
-                L0R0 = 1.05,
-                L1R0 = 1.08,
-                L2R0 = 1.10
+                Name = ArtifactNames.ShellStone, Boost = EggIncBoostTypeEnum.EggValue, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.08f,
+                L2R0 = 1.10f
             },
             new EggIncArtifact {
-                Name = 25, Artifact = "Ship in a Bottle", Boost = EggIncBoostTypeEnum.CoopMembersEarnings, //done
-                L0R0 = 1.2,
-                L1R0 = 1.3,
-                L2R0 = 1.5, L2R1 = 1.6,
-                L3R0 = 1.7, L3R1 = 1.8, L3R2 = 1.9, L3R3 = 2
+                Name = ArtifactNames.ShipInABottle, Boost = EggIncBoostTypeEnum.CoopMembersEarnings, //done
+                L0R0 = 1.2f,
+                L1R0 = 1.3f,
+                L2R0 = 1.5f, L2R1 = 1.6f,
+                L3R0 = 1.7f, L3R1 = 1.8f, L3R2 = 1.9f, L3R3 = 2
             },
             new EggIncArtifact {
-                Name = 34, Artifact = "Soul Stone", Boost = EggIncBoostTypeEnum.SoulEggBonus, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1,
-                L2R0 = 1.25
+                Name = ArtifactNames.SoulStone, Boost = EggIncBoostTypeEnum.SoulEggBonus, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f,
+                L2R0 = 1.25f
             },
             new EggIncArtifact {
-                Name = 26, Artifact = "Tachyon Deflector", Boost = EggIncBoostTypeEnum.CoopMembersEggLayingRates, //done
-                L0R0 = 1.05,
-                L1R0 = 1.08,
-                L2R0 = 1.12, L2R1 = 1.12,
-                L3R0 = 1.14, L3R1 = 1.17, L3R2 = 1.19, L3R3 = 1.2
+                Name = ArtifactNames.TachyonDeflector, Boost = EggIncBoostTypeEnum.CoopMembersEggLayingRates, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.08f,
+                L2R0 = 1.12f, L2R1 = 1.12f,
+                L3R0 = 1.14f, L3R1 = 1.17f, L3R2 = 1.19f, L3R3 = 1.2f
             },
             new EggIncArtifact {
-                Name = 1, Artifact = "Tachyon Stone", Boost = EggIncBoostTypeEnum.EggLayingRate, //done
-                L0R0 = 1.02,
-                L1R0 = 1.04,
-                L2R0 = 1.05
+                Name = ArtifactNames.TachyonStone, Boost = EggIncBoostTypeEnum.EggLayingRate, //done
+                L0R0 = 1.02f,
+                L1R0 = 1.04f,
+                L2R0 = 1.05f
             },
             new EggIncArtifact {
-                Name = 37, Artifact = "Terra Stone", Boost = EggIncBoostTypeEnum.RunningChickenBonus, Additive = true, //done
+                Name = ArtifactNames.TerraStone, Boost = EggIncBoostTypeEnum.RunningChickenBonus, Additive = true, //done
                 L0R0 = 10,
                 L1R0 = 50,
                 L2R0 = 100
             },
             new EggIncArtifact {
-                Name = 9, Artifact = "The Chalice", Boost = EggIncBoostTypeEnum.InternalHatchery, //done
-                L0R0 = 1.05,
-                L1R0 = 1.1, L1R2 = 1.14,
-                L2R0 = 1.2, L2R1 = 1.23, L2R2 = 1.25,
-                L3R0 = 1.3, L3R2 = 1.35, L3R3 = 1.4
+                Name = ArtifactNames.TheChalice, Boost = EggIncBoostTypeEnum.InternalHatchery, //done
+                L0R0 = 1.05f,
+                L1R0 = 1.1f, L1R2 = 1.14f,
+                L2R0 = 1.2f, L2R1 = 1.23f, L2R2 = 1.25f,
+                L3R0 = 1.3f, L3R2 = 1.35f, L3R3 = 1.4f
             },
             new EggIncArtifact {
-                Name = 29, Artifact = "Titanium Actuator", Boost = EggIncBoostTypeEnum.HoldToHatch, Additive = true, //done
+                Name = ArtifactNames.TitaniumActuator, Boost = EggIncBoostTypeEnum.HoldToHatch, Additive = true, //done
                 L0R0 = 1,
                 L1R0 = 4,
                 L2R0 = 6, L2R1 = 7,
                 L3R0 = 10, L3R2 = 12, L3R3 = 15
             },
             new EggIncArtifact {
-                Name = 12, Artifact = "Tungsten Ankh", Boost = EggIncBoostTypeEnum.EggValue, //done
-                L0R0 = 1.1,
-                L1R0 = 1.25, L1R1 = 1.28,
-                L2R0 = 1.5, L2R1 = 1.75, L2R3 = 2,
-                L3R0 = 2, L3R1 = 2.25, L3R3 = 2.5
+                Name = ArtifactNames.TungstenAnkh, Boost = EggIncBoostTypeEnum.EggValue, //done
+                L0R0 = 1.1f,
+                L1R0 = 1.25f, L1R1 = 1.28f,
+                L2R0 = 1.5f, L2R1 = 1.75f, L2R3 = 2,
+                L3R0 = 2, L3R1 = 2.25f, L3R3 = 2.5f
             },
             new EggIncArtifact {
-                Name = 7, Artifact = "Vial of Martian Dust", Boost = EggIncBoostTypeEnum.MaxRunningChickenBonus, Additive = true, //done
+                Name = ArtifactNames.VialMartianDust, Boost = EggIncBoostTypeEnum.MaxRunningChickenBonus, Additive = true, //done
                 L0R0 = 10,
                 L1R0 = 50, L1R1 = 60,
                 L2R0 = 100, L2R2 = 150,
                 L3R0 = 200, L3R1 = 300, L3R3 = 500
             },
-            new EggIncArtifact { Name = 13, Artifact = "Extraterrestrial Aluminum" },
-            new EggIncArtifact { Name = 14, Artifact = "Ancient Tungsten" },
-            new EggIncArtifact { Name = 15, Artifact = "Space Rocks" },
-            new EggIncArtifact { Name = 16, Artifact = "Alien Wood" },
-            new EggIncArtifact { Name = 17, Artifact = "Gold Meteorite" },
-            new EggIncArtifact { Name = 18, Artifact = "Tau Ceti Geode" },
-            new EggIncArtifact { Name = 19, Artifact = "Centaurian Steel" },
-            new EggIncArtifact { Name = 20, Artifact = "Eridant Feather" },
-            new EggIncArtifact { Name = 35, Artifact = "Drone Parts" },
-            new EggIncArtifact { Name = 41, Artifact = "Celestial Bronze" },
-            new EggIncArtifact { Name = 42, Artifact = "Lalande Hide" },
-            new EggIncArtifact { Name = 43, Artifact = "Solar Titanium" },
-            new EggIncArtifact { Name = 2, Artifact = "Tachyon Stone Fragment" },
-            new EggIncArtifact { Name = 44, Artifact = "Dilithium Stone Fragment" },
-            new EggIncArtifact { Name = 45, Artifact = "Shell Stone Fragment" },
-            new EggIncArtifact { Name = 46, Artifact = "Lunar Stone Fragment" },
-            new EggIncArtifact { Name = 47, Artifact = "Soul Stone Fragment" },
-            new EggIncArtifact { Name = 48, Artifact = "Prophecy Stone Fragment" },
-            new EggIncArtifact { Name = 49, Artifact = "Quantum Stone Fragment" },
-            new EggIncArtifact { Name = 50, Artifact = "Terra Stone Fragment" },
-            new EggIncArtifact { Name = 51, Artifact = "Life Stone Fragment" },
-            new EggIncArtifact { Name = 52, Artifact = "Clarity Stone Fragment" },
+            new EggIncArtifact { Name = ArtifactNames.ExtraterrestrialAluminum },
+            new EggIncArtifact { Name = ArtifactNames.AncientTungsten},
+            new EggIncArtifact { Name = ArtifactNames.SpaceRocks},
+            new EggIncArtifact { Name = ArtifactNames.AlienWood },
+            new EggIncArtifact { Name = ArtifactNames.GoldMeteorite},
+            new EggIncArtifact { Name = ArtifactNames.TauCetiGeode },
+            new EggIncArtifact { Name = ArtifactNames.CentaurianSteel},
+            new EggIncArtifact { Name = ArtifactNames.EridaniFeather },
+            new EggIncArtifact { Name = ArtifactNames.DroneParts },
+            new EggIncArtifact { Name = ArtifactNames.CelestialBronze},
+            new EggIncArtifact { Name = ArtifactNames.LalandeHide},
+            new EggIncArtifact { Name = ArtifactNames.SolarTitanium},
+            new EggIncArtifact { Name = ArtifactNames.TachyonStoneFragment },
+            new EggIncArtifact { Name = ArtifactNames.DilithiumStoneFragment },
+            new EggIncArtifact { Name = ArtifactNames.ShellStoneFragment },
+            new EggIncArtifact { Name = ArtifactNames.LunarStoneFragment },
+            new EggIncArtifact { Name = ArtifactNames.SoulStoneFragment},
+            new EggIncArtifact { Name = ArtifactNames.ProphecyStoneFragment},
+            new EggIncArtifact { Name = ArtifactNames.QuantumStoneFragment},
+            new EggIncArtifact { Name = ArtifactNames.TerraStoneFragment },
+            new EggIncArtifact { Name = ArtifactNames.LifeStoneFragment },
+            new EggIncArtifact { Name = ArtifactNames.ClarityStoneFragment },
         };
+    }
+
+    public enum ArtifactNames {
+        [Description("Lunar Totem")]
+        LunarTotem = 0,
+        [Description("Tachyon Stone")]
+        TachyonStone = 1,
+        [Description("Tachyon Stone Fragment")]
+        TachyonStoneFragment = 2,
+        [Description("Neodymium Medallion")]
+        NeodymiumMedallion = 3,
+        [Description("Beak of Midas")]
+        BeakOfMidas = 4,
+        [Description("Light of Eggendil")]
+        LightOfEggendil = 5,
+        [Description("Demeters Necklace")]
+        DemetersNecklace = 6,
+        [Description("Vial of Martian Dust")]
+        VialMartianDust = 7,
+        [Description("Gusset")]
+        OrnateGusset = 8,
+        [Description("The Chalice")]
+        TheChalice = 9,
+        [Description("Book of Basan")]
+        BookOfBasan = 10,
+        [Description("Phoenix Feather")]
+        PhoenixFeather = 11,
+        [Description("Tungsten Ankh")]
+        TungstenAnkh = 12,
+        [Description("Extraterrestrial Aluminum")]
+        ExtraterrestrialAluminum = 13,
+        [Description("Ancient Tungsten")]
+        AncientTungsten = 14,
+        [Description("Space Rocks")]
+        SpaceRocks = 15,
+        [Description("Alien Wood")]
+        AlienWood = 16,
+        [Description("Gold Meteorite")]
+        GoldMeteorite = 17,
+        [Description("Tau Ceti Geode")]
+        TauCetiGeode = 18,
+        [Description("Centaurian Steel")]
+        CentaurianSteel = 19,
+        [Description("Eridant Feather")]
+        EridaniFeather = 20,
+        [Description("Aurelian Brooch")]
+        AurelianBrooch = 21,
+        [Description("Carved Rainstick")]
+        CarvedRainstick = 22,
+        [Description("Puzzle Cube")]
+        PuzzleCube = 23,
+        [Description("Quantum Metronome")]
+        QuantumMetronome = 24,
+        [Description("Ship in a Bottle")]
+        ShipInABottle = 25,
+        [Description("Tachyon Deflector")]
+        TachyonDeflector = 26,
+        [Description("Interstellar Compass")]
+        InterstellarCompass = 27,
+        [Description("Dilithium Monocle")]
+        DilithiumMonocle = 28,
+        [Description("Titanium Actuator")]
+        TitaniumActuator = 29,
+        [Description("Mercury's Lens")]
+        MercurysLens = 30,
+        [Description("Dilithium Stone")]
+        DilithiumStone = 31,
+        [Description("Shell Stone")]
+        ShellStone = 32,
+        [Description("Lunar Stone")]
+        LunarStone = 33,
+        [Description("Soul Stone")]
+        SoulStone = 34,
+        [Description("Drone Parts")]
+        DroneParts = 35,
+        [Description("Quantum Stone")]
+        QuantumStone = 36,
+        [Description("Terra Stone")]
+        TerraStone = 37,
+        [Description("Life Stone")]
+        LifeStone = 38,
+        [Description("Prophecy Stone")]
+        ProphecyStone = 39,
+        [Description("Clarity Stone")]
+        ClarityStone = 40,
+        [Description("Celestial Bronze")]
+        CelestialBronze = 41,
+        [Description("Lalande Hide")]
+        LalandeHide = 42,
+        [Description("Solar Titanium")]
+        SolarTitanium = 43,
+        [Description("Dilithium Stone Fragment")]
+        DilithiumStoneFragment = 44,
+        [Description("Shell Stone Fragment")]
+        ShellStoneFragment = 45,
+        [Description("Lunar Stone Fragment")]
+        LunarStoneFragment = 46,
+        [Description("Soul Stone Fragment")]
+        SoulStoneFragment = 47,
+        [Description("Prophecy Stone Fragment")]
+        ProphecyStoneFragment = 48,
+        [Description("Quantum Stone Fragment")]
+        QuantumStoneFragment = 49,
+        [Description("Terra Stone Fragment")]
+        TerraStoneFragment = 50,
+        [Description("Life Stone Fragment")]
+        LifeStoneFragment = 51,
+        [Description("Clarity Stone Fragment")]
+        ClarityStoneFragment = 52,
+
     }
 
     [MessagePackObject]
@@ -518,9 +632,10 @@ namespace EGG9000.Common.Helpers {
 
     [MessagePackObject]
     public class EggIncArtifactInstance : IEquatable<EggIncArtifactInstance> {
-        [Key(0)] public string Artifact { get; set; }
+        [IgnoreMember]
+        public string Artifact { get { return Enums.GetAttribute<DescriptionAttribute>((ArtifactNames)Id).Description; } }
         [Key(1)] public EggIncBoostTypeEnum Boost { get; set; }
-        [Key(2)] public double Value { get; set; }
+        [Key(2)] public float Value { get; set; }
 
         [Key(3)] public bool Additive { get; set; }
 
@@ -528,6 +643,7 @@ namespace EGG9000.Common.Helpers {
         [Key(4)] public List<EggIncArtifactInstance> Stones { get; set; }
         [Key(5)] public byte Tier { get; set; }
         [Key(6)] public byte Rarity { get; set; }
+        [Key(7)] public byte Id { get; set; }
 
         public override bool Equals(Object other) {
             if(other is EggIncArtifactInstance)
@@ -555,7 +671,7 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var match = Artifact == other.Artifact && Rarity == other.Rarity && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual;
+            var match = Rarity == other.Rarity && Tier == other.Tier && Boost == other.Boost && Value == other.Value && Additive == other.Additive && stonesAreEqual && Id == other.Id;
             return match;
         }
 
@@ -566,6 +682,7 @@ namespace EGG9000.Common.Helpers {
                 hash = hash * 23 + Boost.GetHashCode();
                 hash = hash * 23 + Value.GetHashCode();
                 hash = hash * 23 + Additive.GetHashCode();
+                hash = hash * 23 + Id.GetHashCode();
                 foreach(var stone in Stones ?? new List<EggIncArtifactInstance>()) {
                     hash = hash * 23 + stone.GetHashCode();
                 }
@@ -576,21 +693,21 @@ namespace EGG9000.Common.Helpers {
     }
 
     public class EggIncArtifact {
-        public string Artifact { get; set; }
-        public int Name { get; set; }
+        //public string Artifact { get; set; }
+        public ArtifactNames Name { get; set; }
         public EggIncBoostTypeEnum Boost { get; set; }
-        public double L0R0 { get; set; }
-        public double L1R0 { get; set; }
-        public double L1R1 { get; set; }
-        public double L1R2 { get; set; }
-        public double L2R0 { get; set; }
-        public double L2R1 { get; set; }
-        public double L2R2 { get; set; }
-        public double L2R3 { get; set; }
-        public double L3R0 { get; set; }
-        public double L3R1 { get; set; }
-        public double L3R2 { get; set; }
-        public double L3R3 { get; set; }
+        public float L0R0 { get; set; }
+        public float L1R0 { get; set; }
+        public float L1R1 { get; set; }
+        public float L1R2 { get; set; }
+        public float L2R0 { get; set; }
+        public float L2R1 { get; set; }
+        public float L2R2 { get; set; }
+        public float L2R3 { get; set; }
+        public float L3R0 { get; set; }
+        public float L3R1 { get; set; }
+        public float L3R2 { get; set; }
+        public float L3R3 { get; set; }
         public bool Additive { get; set; }
     }
 }

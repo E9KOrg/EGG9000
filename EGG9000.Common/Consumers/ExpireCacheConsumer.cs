@@ -17,7 +17,7 @@ namespace EGG9000.Common.Consumers {
         public Task Consume(ConsumeContext<ExpireCacheMessage> context) {
             var assemblyConfigurationAttribute = typeof(ExpireCacheMessage).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>();
             var buildConfigurationName = assemblyConfigurationAttribute?.Configuration;
-
+            _logger.LogInformation($"Removing cache item for key: {context.Message.Key}");
             _cache.Remove(context.Message.Key);
             return Task.CompletedTask;
         }
