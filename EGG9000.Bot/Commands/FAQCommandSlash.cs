@@ -103,8 +103,7 @@ namespace EGG9000.Bot.Commands {
                 var builder = FAQEmbedBuilder(guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, targetItem);
                 await component.UpdateAsync(x => { x.Components = builder.ComponentBuilder?.Build(); x.Embed = builder.EmbedBuilder.Build(); });
             } else {
-                var slashCommands = (await socketGuild.GetApplicationCommandsAsync()).ToList().Where(c => c.Type == ApplicationCommandType.Slash).ToList();
-                var faqCommand = $"</faq:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "faq")?.Id ?? 0}>";
+                var faqCommand = await socketGuild.GetSlashCommandStringAsync("FAQ");
                 await component.RespondAsync(embed: EmbedError($"Could not find an FAQ topic at this index. Try running {faqCommand} again."), ephemeral: true);
             }
         }
