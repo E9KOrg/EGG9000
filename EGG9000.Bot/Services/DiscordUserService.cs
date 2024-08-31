@@ -158,7 +158,7 @@ namespace EGG9000.Common.Services {
                 if(dbuser.GuildId != user.Guild.Id) {
                     var moveServerCommand = await user.Guild.GetSlashCommandStringAsync("MoveServer");
                     await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() {
-                        Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the ${moveServerCommand} command."
+                        Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the {moveServerCommand} command."
                     }, _logger);
                 }
                 if(dbuser.TempDisabled) {
