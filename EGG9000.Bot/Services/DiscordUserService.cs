@@ -155,17 +155,18 @@ namespace EGG9000.Common.Services {
 
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser is not null) {
-                if(dbuser.GuildId != user.Guild.Id) {
-                    var moveServerCommand = await user.Guild.GetSlashCommandStringAsync("MoveServer");
-                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() {
-                        Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the ${moveServerCommand} command."
-                    }, _logger);
-                }
                 if(dbuser.TempDisabled) {
-                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() { 
+                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() {
                         Text = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this."
                     }, _logger);
                     await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+                    return;
+                }
+                if(dbuser.GuildId != user.Guild.Id) {
+                    var moveServerCommand = await user.Guild.GetSlashCommandStringAsync("MoveServer");
+                    await ChannelHelper.DetermineAndSend(db, _discord, dbguild, _discord.GetGuild(user.Guild.Id), GuildChannelType.Welcome, new() {
+                        Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the {moveServerCommand} command."
+                    }, _logger);
                     return;
                 }
                 dbuser.EggIncAccounts.ForEach(async account => {
