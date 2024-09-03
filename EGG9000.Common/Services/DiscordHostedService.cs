@@ -362,7 +362,7 @@ namespace EGG9000.Common.Services {
                 .FirstOrDefault(c => c.Name.ToLower() == fixedSlashCommandName);
 
             if(command == null) return $"`/{fixedSlashCommandName}`";
-            else return $"</{fixedSlashCommandName}:{command.Id}";
+            else return $"</{fixedSlashCommandName}:{command.Id}>";
         }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
