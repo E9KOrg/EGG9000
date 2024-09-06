@@ -1,7 +1,7 @@
 ﻿@model EGG9000.Site.Controllers.AdminController.FAQCustomizationModel
 @using System.Security.Claims;
 @{
-    ViewData["Title"] = "Event Customization";
+    ViewData["Title"] = "FAQ Customization";
 }
 
 <div ng-controller="AdminPage">
@@ -148,6 +148,21 @@
                     </span>
                 </label>
                 <textarea rows="8" ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" spellcheck="false" class="form-control" ng-model="item.explanation"></textarea>
+                <div style="font-size: 0.9rem; margin-top: 5px;"
+                     ng-style="{
+                         'color': item.explanation.length > 1024 ? 'red' :
+                                  item.explanation.length >= 950 ? 'orange' : 'green'
+                     }">
+                    <!-- Color text green if below 900, yellow if 900+, red if 1024+ -->
+                    Character Count: {{ item.explanation.length }} / 1024
+                    <br ng-if="item.explanation.length > 950">
+                    <span ng-show="item.explanation.length > 950 && item.explanation.length <= 1024" style="color: orange;">
+                        You are approaching the 1024 character limit.<br>If you have any formatting, this may surpass the character limit in Discord embeds.
+                    </span>
+                    <span ng-show="item.explanation.length > 1024" style="color: red;">
+                        You have exceeded the character limit!<br>Users may not be able to see this topic's information from Discord!
+                    </span>
+                </div>
             </div>
 
             <div class="form-group">
