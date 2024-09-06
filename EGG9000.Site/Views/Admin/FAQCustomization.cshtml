@@ -182,7 +182,15 @@
                         Should match the formatting <code>https://awebsite.com/image.jpg</code> for most consistent results.
                     </span>
                 </label>
-                <input ng-disabled="isSubscribe" class="form-control" ng-model="item.imageUrl" />
+                <input ng-disabled="isSubscribe" class="form-control" ng-model="item.imageUrl" ng-change="validateImageUrl()" />
+
+                <!-- Image preview pane -->
+                <div ng-if="isValidImageUrl(item.imageUrl)" style="margin-top: 10px;">
+                    <label style="font-size: 0.9rem; color: gray;">Image Preview</label>
+                    <div style="max-width: 65%; max-height: 50%; border: 1px solid #ccc; overflow: hidden; text-align: left;">
+                        <img ng-src="{{ item.imageUrl }}" alt="Image preview" style="width: 100%; height: auto;" />
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -329,6 +337,13 @@
                             $scope.originalKeywordsCount = item ? item.Keywords.length : 0;
 
                             // Utility functions
+                            $scope.isValidImageUrl = function (url) {
+                                if (!url) return false;
+                                const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+                                const urlExtension = url.split('.').pop().toLowerCase();
+                                return imageExtensions.includes(urlExtension);
+                            };
+
                             $scope.formatColor = function () {
                                 if ($scope.item.embedColorHex && $scope.item.embedColorHex[0] !== '#') {
                                     $scope.item.embedColorHex = '#' + $scope.item.embedColorHex;
