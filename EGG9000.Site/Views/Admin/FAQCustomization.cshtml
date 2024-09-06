@@ -176,6 +176,17 @@
 
             <div class="form-group">
                 <label>
+                    Embedded Image URL<br>
+                    <span style="font-size: 0.9rem; color: gray;">
+                        Will be displayed at the bottom of the Discord embed.<br>
+                        Should match the formatting <code>https://awebsite.com/image.jpg</code> for most consistent results.
+                    </span>
+                </label>
+                <input ng-disabled="isSubscribe" class="form-control" ng-model="item.imageUrl" />
+            </div>
+
+            <div class="form-group">
+                <label>
                     Discord Embed Color<br>
                     <span style="font-size: 0.9rem; color: gray;">
                         Should be in hex format (e.g., <code>#AABBCC</code>). Will default to <code>DarkGrey</code> (<code>#607D8B</code>) if not otherwise set.
@@ -369,12 +380,13 @@
                                     weight: 0,
                                     explanation: '',
                                     staffOnly: false,
+                                    imageUrl: '',
                                     embedColorHex: '#607D8B',
                                     createdBy: '@Model.UserDiscordUsername',
                                     createdByIdString: '@Model.UserDiscordId.ToString()',
                                     guildName: '@Model.GuildName',
                                     guildIdString: '@Model.GuildId.ToString()',
-                                    Keywords: ['']
+                                    Keywords: [''],
                                 };
                             }
 
