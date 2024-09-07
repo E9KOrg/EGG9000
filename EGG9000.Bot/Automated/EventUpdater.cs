@@ -262,7 +262,6 @@ namespace EGG9000.Bot.Automated {
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = (1 - e.Multiplier) * 100;
             var description = $"**{e.Subtitle}**\n";
-            description = description.Replace("{{percent}}", percent.ToString()).Replace("{{multiplier}}", multiplier.ToString());
             var title = "";
 
             if(eventC is not null) {
@@ -276,11 +275,11 @@ namespace EGG9000.Bot.Automated {
                         break;
                 }
             }
-            if(Ended) {
-                title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
-            } else {
-                title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R>, ( <t:{e.Ends.ToUnixTimeSeconds()}> )";
-            }
+
+            description = description.Replace("{{percent}}", percent.ToString()).Replace("{{multiplier}}", multiplier.ToString());
+            if(Ended) title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
+            else title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R>, ( <t:{e.Ends.ToUnixTimeSeconds()}> )";
+
             var color = Color.Blue;
             if(CrossOut) color = Color.Red;
             else if(Ended) color = Color.DarkGrey;
