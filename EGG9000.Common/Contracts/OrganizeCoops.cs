@@ -33,39 +33,32 @@ namespace EGG9000.Common.Contracts {
 
             FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
 
-            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
-          
             FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
 
-            FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
+            //If the contract is Subscription only, filter further
+            FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.HasActiveSubscription(), "Doesn't have subscription");
 
             //Need 1k soul eggs for contracts
             FilterAccounts(accounts, excluded, x => x.Account.Backup.SoulEggs >= 1000, "< 1k soul eggs");
+
             //Need to have the egg unlocked
             FilterAccounts(accounts, excluded, x =>
                 x.Account.Backup.MaxEggReached == 0 || (int)x.Account.Backup.MaxEggReached >= (int)contract.Details.Egg || (int)contract.Details.Egg >= 100, "Egg not unlocked");
 
-            //If the contract is Subscription only, filter further
-            FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.HasActiveSubscription(), "Doesn't have subscription");
-          
+            FilterAccounts(accounts, excluded, x => !x.Account.Backup.Farms.Any(y => y.ContractId == contract.ID && y.FarmType == Ei.FarmType.Contract), "Already In Co-op");
+
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
-          
+
             FilterAccounts(accounts, excluded, x => {
                 //With no BGs on guilds, filters are disabled - always true
-                if(dbguild is not null && dbguild.DisableBG) {
-                    return true;
-                }
+                if(dbguild is not null && dbguild.DisableBG) return true;
 
                 //If a player does not have a set grade, we can't check the rewards for that grade
-                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) {
-                    return false;
-                }
+                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) return false;
 
                 //Try to find the right gradespec, if something goes wrong, default to false
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
-                if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) {
-                    return false;
-                }
+                if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return false;
 
                 //Figure out which list to use in case of a leggacy
                 var leggacyRegisterRewards = new List<Ei.RewardType>();
@@ -80,6 +73,9 @@ namespace EGG9000.Common.Contracts {
                 return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
             }, "Rewards not selected");
 
+            // Run CheckOnPreviousComplete last so that all other filters are applied to `accounts` first
+            // This fixes some issues with  RedoLeggacyOption.YesOtherAccountMatch
+            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
 
             
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
