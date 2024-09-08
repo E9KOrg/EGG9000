@@ -411,6 +411,25 @@ namespace EGG9000.Site.Controllers {
             }
         }
 
+        public class FAQViewModel() {
+            public string GuildName { get; set; }
+            public List<FAQTopic> FAQTopics { get; set; }
+        }
+
+        public async Task<IActionResult> FAQ() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+
+            var topics = await _db.QueryFAQTopicsAsync(guild, false, "");
+
+            var model = new FAQViewModel() {
+                GuildName = guild.Name,
+                FAQTopics = topics
+            };
+
+            return View(model);
+        }
+
         public async Task<IActionResult> CraftingLevelLeaderboard([FromQuery] ulong guildid = 0) {
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);

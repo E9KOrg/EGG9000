@@ -163,7 +163,16 @@ namespace EGG9000.Bot.Commands {
                     .WithName($"{currentItem.Name}")
                     .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.png"))
                 .WithColor(currentItem.EmbedColor);
-            embedBuilder.AddField("Information", currentItem.Explanation);
+
+            if(!string.IsNullOrEmpty(currentItem.ImageUrl)) {
+                embedBuilder.WithImageUrl(currentItem.ImageUrl);
+            }
+
+            var informationText = currentItem.Explanation;
+            if (informationText.Length >= 1024) {
+                informationText = string.Concat(informationText.AsSpan(0, 950), "...\n\n**_(Topic was cut-off due to Discord's `1024` character limit)_**");
+            }
+            embedBuilder.AddField("Information", informationText);
 
             if(poster != null) {
 
