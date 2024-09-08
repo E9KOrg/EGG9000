@@ -27,5 +27,10 @@ namespace EGG9000.Common.Database.Entities {
             Ends = DateTimeOffset.Now.AddSeconds(e.SecondsRemaining);
             CcOnly = e.CcOnly;
         }
+
+        public bool SignficantlyDifferent(Ei.EggIncEvent e) {
+            if(e is null || this is null) return true;
+            return Type != e.Type || Multiplier != e.Multiplier;
+        }
     }
 }
