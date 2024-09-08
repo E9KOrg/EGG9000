@@ -1,13 +1,10 @@
 ﻿using Discord;
-using EGG9000.Common.Commands;
 using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Database.Entities {
@@ -86,5 +83,7 @@ namespace EGG9000.Common.Database.Entities {
             if(PalaceOnly) return false;
             return SubscribedGuildIds.Contains(guild.Id);
         }
+
+        public string ImageUrl { get; set; } = "";
     }
 }
