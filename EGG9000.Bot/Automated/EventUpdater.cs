@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Automated {
             await CheckShells(_db);
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
-
+            var responseDateTime = DateTimeOffset.UtcNow;
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
@@ -55,40 +55,22 @@ namespace EGG9000.Bot.Automated {
                     var newEvent = new Event(evt);
                     _db.Add(newEvent);
                     recentEvents.Add(newEvent);
-
                     await PostMessages(newEvent, _db);
-
-                    await _db.SaveChangesAsync(CancellationToken.None);
                 } else {
+                    var significantChange = currentEvent.SignficantlyDifferent(evt);
+                    var timeChange = Math.Abs(currentEvent.Ends.Subtract(responseDateTime.AddSeconds(evt.SecondsRemaining)).TotalSeconds) > 240;
 
-                    var significantChange = false;
-                    var timeChange = false;
-
-                    if(currentEvent.Ended) {
-                        currentEvent.Ended = false;
-                    } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds) > 60) {
-                        timeChange = true;
-                        currentEvent.Ends = DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining);
-                    } 
-
-                    if(currentEvent.Type != evt.Type) {
-                        currentEvent.Type = evt.Type;
-                        significantChange = true;
-                    }
-
-                    if(currentEvent.Subtitle != evt.Subtitle) {
-                        currentEvent.Subtitle = evt.Subtitle;
-                    }
-                    if(currentEvent.Multiplier != evt.Multiplier) {
-                        currentEvent.Multiplier = evt.Multiplier;
-                        significantChange = true;
-                    }
+                    currentEvent.Type = evt.Type;
+                    currentEvent.Subtitle = evt.Subtitle;
+                    currentEvent.Multiplier = evt.Multiplier;
+                    currentEvent.Ended = false;
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
                         if(significantChange) {
                             await UpdateMessages(currentEvent, _db, Crossout: true);
                             await PostMessages(currentEvent, _db);
                         } else if (timeChange) {
+                            currentEvent.Ends = responseDateTime.AddSeconds(evt.SecondsRemaining);
                             await UpdateMessages(currentEvent, _db);
                         }
                     }
