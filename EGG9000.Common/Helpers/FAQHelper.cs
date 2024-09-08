@@ -38,7 +38,8 @@ namespace EGG9000.Common.Helpers {
                 (!f.StaffOnly || withStaffPerms)
             ).ToList() ?? [];
             if(guild.Id != palaceGuild.Id) {
-                faqTopics.AddRange(await db.GetFAQTopicsAsync(guild));
+                var guildSpecificTopics = (await db.GetFAQTopicsAsync(guild)).Where(t => !t.StaffOnly || withStaffPerms);
+                faqTopics.AddRange(guildSpecificTopics);
             }
             var filteredTopics = faqTopics.Where(f =>
                 keyword == "" ||
