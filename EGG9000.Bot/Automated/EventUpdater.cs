@@ -67,6 +67,7 @@ namespace EGG9000.Bot.Automated {
                     if(currentEvent.Ended) {
                         currentEvent.Ended = false;
                     } else if(Math.Abs(currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds) > 60) {
+                        _logger.LogInformation($"Time change for {currentEvent.Type}, of {currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds} seconds");
                         timeChange = true;
                         currentEvent.Ends = DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining);
                     } 
