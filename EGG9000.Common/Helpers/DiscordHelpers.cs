@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Net;
+using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
@@ -9,9 +10,13 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -89,6 +94,26 @@ namespace EGG9000.Bot.Helpers {
             }
 
             return Task.CompletedTask;
+        }
+
+        public static FileAttachment GetFileAttachment(this SixLabors.ImageSharp.Image image, string imageName = "Image.png", string imageDescription = "An image") {
+            var imageB64 = image.ToBase64String(PngFormat.Instance);
+            imageB64 = imageB64.Replace("data:image/png;base64,", "");
+            var discordImage = new FileAttachment(new MemoryStream(Convert.FromBase64String(imageB64)), imageName, imageDescription);
+            return discordImage;
+        }
+
+        public static async Task<RestUserMessage> SendFileIfExistsAsync(this SocketTextChannel channel, FileAttachment? attachment, string text = null, bool isTTS = false, Embed embed = null,
+            RequestOptions options = null, AllowedMentions allowedMentions = null,
+            MessageReference messageReference = null, MessageComponent components = null, ISticker[] stickers = null,
+            Embed[] embeds = null, MessageFlags flags = MessageFlags.None, PollProperties poll = null) {
+
+            if(attachment is not null && attachment.HasValue) {
+                return await channel.SendFileAsync(attachment.Value, text, isTTS, embed, options, allowedMentions, messageReference, components, stickers, embeds, flags, poll);
+            } else {
+                return await channel.SendMessageAsync(text, isTTS, embed, options, allowedMentions, messageReference, components, stickers, embeds, flags, poll);
+            }
+            
         }
     }
     public class DiscordHelpers {
