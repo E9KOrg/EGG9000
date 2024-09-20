@@ -167,7 +167,7 @@ namespace EGG9000.Common.Contracts {
                 if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
             }
 
-            if(contract.HadTwoRewards) {
+            if(contract.HadTwoRewards && contract.Rewards.Length == 3) {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
                 if(completedTwoRewards && !x.Account.DoTwoToThreeContracts) {
                     return false;
