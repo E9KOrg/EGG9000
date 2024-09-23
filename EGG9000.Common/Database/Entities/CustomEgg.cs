@@ -23,6 +23,7 @@ namespace EGG9000.Common.Database.Entities {
             Icon = new(customEgg.Icon);
             Modifiers = customEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
             GuildEmote = emoji;
+            Released = false;
         }
 
         public string Identifier { get; set; }
@@ -80,6 +81,8 @@ namespace EGG9000.Common.Database.Entities {
                 EmojiId = value?.Id ?? ulong.MaxValue;
             }
         }
+
+        public bool Released { get; set; } = false;
 
         public override bool Equals(object another) {
             if(ReferenceEquals(this, another)) return true;
