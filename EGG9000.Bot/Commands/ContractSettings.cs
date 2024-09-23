@@ -484,13 +484,19 @@ namespace EGG9000.Bot.Commands {
                     sb.AppendLine($"{customEgg.Emoji} - **Level {colleggtibleLevel}: {GetModifierString(customEgg.Modifiers[(int)colleggtibleLevel - 1])}**");
                 }
             }
+            var unreleasedEggs = customEggs.Where(c => !c.Released);
+            if(unreleasedEggs.Any()) {
+                var multiple = unreleasedEggs.Count() > 1;
+                var eggEmojiString = string.Join(" ", unreleasedEggs.Select(ce => ce.Emoji));
+                sb.AppendLine($"\n-# \\* {eggEmojiString} Egg{(multiple ? "s have" : " has")} not been seen in a Contract yet.\n-# As such, {(multiple ? "their effects are" : "its effect is")} still subject to possible change before {(multiple ? "their" : "its")} release.");
+            }
             return sb.ToString();
         }
 
         private static string GetTheoreticalModifierString(DBCustomEgg egg) {
             var firstMod = egg.Modifiers.First();
             var dimensionString = firstMod.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
-            return $"({((firstMod.Value < 1) ? "-" : "+")} {dimensionString})";
+            return $"({((firstMod.Value < 1) ? "-" : "+")} {dimensionString}{(egg.Released ? "" : " \\*")})";
         }
 
         private static string GetModifierString(DBCustomEggModifier modifier) {
