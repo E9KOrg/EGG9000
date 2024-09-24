@@ -143,6 +143,11 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
+            if(string.IsNullOrEmpty(coop.CreatorID)) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find creator for {command.Channel.Name}"));
+                return;
+            }
+
             var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
                 ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
@@ -401,6 +406,11 @@ namespace EGG9000.Bot.Commands {
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to find coop for this channel {command.Channel.Name}"));
+                return;
+            }
+
+            if(string.IsNullOrEmpty(coop.CreatorID)) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find creator for {command.Channel.Name}"));
                 return;
             }
 
