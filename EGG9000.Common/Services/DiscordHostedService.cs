@@ -288,6 +288,7 @@ namespace EGG9000.Common.Services {
                 props => {
                     props.CategoryId = category.Id;
                     props.AutoArchiveDuration = ThreadArchiveDuration.OneDay;
+                    props.Topic = contract.ID;
                 }
             );
             if(channel is null) {
