@@ -414,6 +414,12 @@ namespace EGG9000.Common.Database {
                 NumGoalsAchieved = (byte?)contract?.NumGoalsAchieved ?? (byte)0,
             };
 
+
+            var currentCoopStatus = backup.Contracts.CurrentCoopStatuses.Where(x => x.ContractIdentifier == farm.ContractId).FirstOrDefault();
+            if(currentCoopStatus != null)
+                customFarm.Creator = currentCoopStatus.CreatorId == backup.GetID();
+
+
             var coops = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier);
 
             var uuids = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.EiUserId).Select(y => y.Uuid)).ToList();
@@ -576,6 +582,8 @@ namespace EGG9000.Common.Database {
         public double CoopSimulationEndTime { get; set; }
         [Key(39)]
         public byte NumGoalsAchieved { get; set; }
+        [Key(40)]
+        public bool Creator { get; set; }
 
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }

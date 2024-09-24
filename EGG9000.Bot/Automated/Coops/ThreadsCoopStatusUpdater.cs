@@ -294,6 +294,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, await _db.GetCustomEggsAsync(), _client, statusReponse.Status);
 
 
+                if(CheckForCreator(coop, coopDetails)) {
+                    await _db.SaveChangesAsync();
+                }
+
 
                 //** Verify if people have access to the parent channel
                 var gradeRoleEnum = coop.League switch {
@@ -1558,6 +1562,17 @@ namespace EGG9000.Bot.Automated.Coops {
             }
 
             return null;
+        }
+
+        public bool CheckForCreator(Coop coop, CoopDetails coopDetails) {
+            if(String.IsNullOrEmpty(coop.CreatorID)) {
+                var creator = coopDetails.CoopParticipants.FirstOrDefault(x => x.Backup is not null && x.Backup.Farms.Any(y => y.Creator && y.CoopId == coop.Name.ToLower() && y.ContractId == coop.ContractID));
+                if(creator != null) {
+                    coop.CreatorID = creator.EggIncId;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
