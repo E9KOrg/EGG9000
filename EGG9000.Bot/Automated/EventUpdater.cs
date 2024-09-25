@@ -149,7 +149,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, newEvent);
-                var (embed, embedImage) = GetEventEmbed(_db, newEvent, customization, false, false);
+                var (embed, embedImage) = await GetEventEmbed(_db, newEvent, customization, false, false);
 
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
@@ -194,7 +194,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
-                var (embed, embedImage) = GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
+                var (embed, embedImage) = await GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
 
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
@@ -242,7 +242,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public static (Embed, FileAttachment?) GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
+        public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = (1 - e.Multiplier) * 100;
@@ -275,14 +275,14 @@ namespace EGG9000.Bot.Automated {
                 .WithColor(color)
                 .WithDescription(CrossOut ? $"~~{description}~~" : description);
 
-            var eventImagePath = EventHelpers.GetEventImagePath(e);
             string discordImagePath;
-            if(eventImagePath is null) { // No event image found, use default EI images
-                discordImagePath = e.CcOnly ? "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless" 
+            var generatedImage = await _db.GetEventImageAsync(e);
+            if (generatedImage is null) { // Either the site had an issue, or the image didn't exist
+                discordImagePath = e.CcOnly ? "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless"
                     : "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751";
-            } else { // Event image found, use it
+            } else {
                 discordImagePath = $"attachment://{e.Type}.png";
-                eventImage = _db.GetEventImage(e).GetFileAttachment($"{e.Type}.png", "Event Image");
+                eventImage = generatedImage.GetFileAttachment($"{e.Type}.png", "Event Image");
             }
 
             embed.WithAuthor($"Egg, Inc {(e.CcOnly ? "ULTRA-Only Event" : "Special Event")}", discordImagePath);
