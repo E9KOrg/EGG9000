@@ -307,6 +307,8 @@ namespace EGG9000.Bot.Commands {
             foreach(var log in lastComplete.OrderBy(x => x.Type)) {
                 var incompletes = await db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
                 var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
+                if(service == null || service is not IUpdaterService castedService) continue;
+
                 table.Add([
                     new(log.Type),
                     new(
@@ -316,7 +318,7 @@ namespace EGG9000.Bot.Commands {
                     new((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
                     new(incompletes.Count.ToString()),
                     new(
-                        (service as IUpdaterService).Running() ?
+                        castedService.Running() ?
                             (incompletes.Any(x => !x.Skipped) ?
                             $"Current run {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
                             : "Started"
