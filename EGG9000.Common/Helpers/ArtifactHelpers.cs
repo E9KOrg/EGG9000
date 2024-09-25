@@ -6,11 +6,9 @@ using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System;
@@ -19,11 +17,13 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Numerics;
-using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using static Ei.MissionInfo.Types;
+using System.Text.Json;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace EGG9000.Common.Helpers {
 
@@ -296,7 +296,7 @@ namespace EGG9000.Common.Helpers {
 
         #region InventoryImages
 
-        private static IImageProcessingContext ApplyRoundedCorners(this IImageProcessingContext context, float cornerRadius) {
+        public static IImageProcessingContext ApplyRoundedCorners(this IImageProcessingContext context, float cornerRadius) {
             var size = context.GetCurrentSize();
             context.SetGraphicsOptions(new GraphicsOptions() {
                 Antialias = true,
@@ -306,7 +306,7 @@ namespace EGG9000.Common.Helpers {
             return context;
         }
 
-        private static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius) {
+        public static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius) {
             var rect = new RectangularPolygon(-0.5f, -0.5f, cornerRadius, cornerRadius);
             var cornerTopLeft = rect.Clip(new EllipsePolygon(cornerRadius - 0.5f, cornerRadius - 0.5f, cornerRadius));
             var rightPos = imageWidth - cornerTopLeft.Bounds.Width + 1;
@@ -317,7 +317,7 @@ namespace EGG9000.Common.Helpers {
             return new PathCollection(cornerTopLeft, cornerBottomLeft, cornerTopRight, cornerBottomRight);
         }
 
-        private static Image BackgroundImage(Color backgroundColor, int size, int radius) {
+        public static Image BackgroundImage(Color backgroundColor, int size, int radius) {
             var image = new Image<Rgba32>(size, size);
             var graphicsOptions = new GraphicsOptions {
                 Antialias = true,
@@ -327,7 +327,7 @@ namespace EGG9000.Common.Helpers {
             return image;
         }
 
-        private static (int x, int y) GetPositionInGrid(int index, int rows, int columns, int itemSize, int padding) {
+        public static (int x, int y) GetPositionInGrid(int index, int rows, int columns, int itemSize, int padding) {
             if(index < 0 || index >= rows * columns) {
                 throw new ArgumentException("Index is out of range for the given grid size.");
             }
@@ -338,7 +338,7 @@ namespace EGG9000.Common.Helpers {
             return (x, y);
         }
 
-        private static (int rows, int columns) FindClosestGridSize(int itemCount) {
+        public static (int rows, int columns) FindClosestGridSize(int itemCount) {
             if(itemCount <= 0) {
                 throw new ArgumentException("itemCount must be a positive integer.");
             }
@@ -407,7 +407,12 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public static (string B64, InventoryCreatorConfig Config) InventoryB64(EggIncAccount account, bool removeB64Header = true) {
+        public class InventoryAPIObject {
+            public string EID { get; set; }
+            public InventoryCreatorConfig Config { get; set; }
+        }
+
+        public static async Task<(string B64, InventoryCreatorConfig Config)> InventoryB64(EggIncAccount account, bool removeB64Header = true) {
             /*
             * Constants that will determine how the image comes out
             */
@@ -415,88 +420,49 @@ namespace EGG9000.Common.Helpers {
             var orderedList = GetOrderedInventory(account);
             if(orderedList is null) return ("", null);
 
-#if RELEASE
-            var baseDir = "c:/Websites/EGG9000";
-#else
-            var baseDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName.Replace("\\", "/") + "/../EGG9000.Site";
-#endif
             var (rows, columns) = FindClosestGridSize(orderedList.Count);
             var config = new InventoryCreatorConfig(100, 30, rows, columns);
 
-            var baseImage = new Image<Rgba32>(config.TotalWidth, config.TotalHeight);
-            baseImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
+            var postedObject = new InventoryAPIObject() {
+                EID = account.Id,
+                Config = config,
+            };
 
-            var index = 0;
-            foreach(var groupedAf in orderedList) {
-                var isFrag = groupedAf.Artifact.Artifact.ToString().ToUpper().Contains("FRAGMENT");
-                var afName = groupedAf.Artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
-                var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? groupedAf.Artifact.Tier + 1 : groupedAf.Artifact.Tier);
-                var afCount = groupedAf.Count;
-                var afStones = groupedAf.Artifact.Stones;
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("authenticationKey", Services.APILink.AUTHENTICATION_KEY);
 
-                var (x, y) = GetPositionInGrid(index, rows, columns, config.AFSize, config.Padding);
+#if RELEASE
+            var baseUrl = "https://egg9000.com";
+#else
+            var baseUrl = "https://localhost:44314";
+#endif
 
-                var backgroundColor = groupedAf.Artifact.Rarity switch {
-                    1 => Color.ParseHex("#383834"),
-                    2 => Color.ParseHex("#6cb6d9"),
-                    3 => Color.ParseHex("#b72de0"),
-                    4 => Color.ParseHex("#f2d61b"),
-                    _ => Color.ParseHex("#383834")
-                };
+            var apiUrl = $"{baseUrl}/api/generateinventoryb64";
+            var jsonContent = System.Text.Json.JsonSerializer.Serialize(postedObject);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                var afImage = Image.Load($"{baseDir}/wwwroot/images/artifacts/{afName}/{afName}_{afTier}.png");
+            try {
+                var response = await client.PostAsync(apiUrl, content);
+                if(!response.IsSuccessStatusCode) return ("", null);
 
-                afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
+                var contentType = response.Content.Headers.ContentType?.MediaType;
+                // Check if the response contains an image
+                if(contentType?.StartsWith("image/") != true) return ("", null);
 
-                var stoneImages = new List<Image>();
-                foreach(var stone in afStones) {
-                    var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                    var stoneTier = stone.Tier + 1;
-
-                    var stoneImage = Image.Load($"{baseDir}/wwwroot/images/artifacts/{stoneName}/{stoneName}_{stoneTier}.png");
-                    stoneImage.Mutate(i => { i.Resize(new Size(config.StoneSize, config.StoneSize), true); });
-                    stoneImages.Add(stoneImage);
+                var imageBytes = await response.Content.ReadAsByteArrayAsync();
+                using var ms = new MemoryStream(imageBytes);
+                var image = Image.Load(ms);
+                var imageB64 = image.ToBase64String(JpegFormat.Instance);
+                if (removeB64Header) {
+                    // Remove everything up until, and including 'base64,'
+                    var splits = imageB64.Split("base64,");
+                    if(splits.Length > 1) imageB64 = splits[1];
                 }
-
-                Image textImage = null;
-                if(afCount != 1) {
-                    var textWidth = Math.Max(config.TextHeight, (afCount.ToString().Length * config.TextBaseWidth) + config.TextBaseWidth);
-                    textImage = new Image<Rgba32>(textWidth, config.TextHeight);
-                    textImage.Mutate(x => x
-                        .Fill(Color.ParseHex("#4f4f4f")) // Fill the image with a background color
-                        .Fill(Color.Transparent, new RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius))); // Create a transparent rectangle with rounded corners
-                    textImage.Mutate(x => x.ApplyRoundedCorners(config.TextCornerRadius));
-
-                    var font = new FontCollection().Add($"{baseDir}/wwwroot/Always Together.otf").CreateFont(config.TextFontSize, FontStyle.Bold);
-                    var text = afCount.ToString();
-                    var center = new PointF(textImage.Width / 2, textImage.Height / 2);
-                    var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
-                    var textPosition = new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2);
-
-                    textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
-                }
-
-                var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
-                backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
-
-                baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
-                if(textImage != null) {
-                    var baseCenter = new Point(x + backgroundImage.Width, y + backgroundImage.Height);
-                    var textPosition = new Point(baseCenter.X - (int)(textImage.Width / 1.5), baseCenter.Y - (int)(textImage.Height / 1.5));
-                    baseImage.Mutate(b => { b.DrawImage(textImage, textPosition, 1f); });
-                } else if(stoneImages.Count > 0) {
-                    var stoneIndex = 1;
-                    foreach(var stoneImage in stoneImages) {
-                        baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), (int)(y + config.AFSize - (config.Padding * 1.5))), 1f); });
-                        stoneIndex++;
-                    }
-                }
-                index++;
+                return (imageB64, config);
+            } catch(Exception) {
+                return ("", null);
             }
-
-            var b64 = baseImage.ToBase64String(JpegFormat.Instance);
-            return (b64.Replace(removeB64Header ? "data:image/jpeg;base64," : "A value that is not ever going to be present in the B64", ""), config);
         }
-#endregion
+        #endregion
     }
 }

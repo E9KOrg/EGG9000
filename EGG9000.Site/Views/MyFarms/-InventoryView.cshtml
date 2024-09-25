@@ -1,7 +1,7 @@
 ﻿@model (EggIncAccount Account, int Index)
 
 @{
-    var (inventoryB64, inventoryConfig) = ArtifactHelpers.InventoryB64(Model.Account, removeB64Header: false); //Don't remove the b64 header, needed for <img> displaying
+    var (inventoryB64, inventoryConfig) = await ArtifactHelpers.InventoryB64(Model.Account); //Don't remove the b64 header, needed for <img> displaying
 
     //var columnGapRatio = inventoryConfig.TotalHeight / 
 
