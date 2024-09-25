@@ -335,6 +335,14 @@ namespace EGG9000.Bot.Automated.Coops {
             var contractEmbed = await ContractUpdater.GetContractEmbed(GuildContract, db, MainSocketGuild, (Ei.Contract.Types.PlayerGrade)League);
             var categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
             var category = categories.OrderBy(x => x.DiscordCategory.Position).First(x => x.CurrentCount < 50);
+
+#if DEV9002
+            if(category == null) {
+                var newCategory = await OverflowSocketGuild.CreateCategoryChannelAsync("Coops");
+                categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
+                category = categories.OrderBy(x => x.DiscordCategory.Position).First(x => x.CurrentCount < 50);
+            }
+#endif
             return await OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger);
         }
 
