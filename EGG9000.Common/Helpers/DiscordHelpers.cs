@@ -50,7 +50,7 @@ namespace EGG9000.Bot.Helpers {
         };
 
         public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
-            if(dmUser is null || dmUser?.Id is null) return DMResult.CannotSendToUser;
+            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
             DBUser dbUser = null;
             var result = DMResult.Success;
             try {
@@ -61,7 +61,7 @@ namespace EGG9000.Bot.Helpers {
             } catch(HttpException ex) {
                 result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
             } catch (Exception) {
-                return DMResult.CannotSendToUser;
+                return DMResult.DiscordError;
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
             return result;

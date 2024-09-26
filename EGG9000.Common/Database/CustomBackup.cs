@@ -588,6 +588,11 @@ namespace EGG9000.Common.Database {
         [IgnoreMember]
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
 
+        private class Colleggtible {
+            public GameDimension Dimension { get; set; }
+            public double Value { get; set; }
+        }
+
         private CustomFarmStats _stats = null;
         public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, Contract contract = null) {
             if(_stats == null) {
@@ -617,15 +622,37 @@ namespace EGG9000.Common.Database {
                 var eggLayingResearch = Research.GetEggLayingRatePerSec(this, backup.EpicResearch);
                 var eggLayingArtifact = EggIncArtifacts.GetEggLayingRateMultiple(this);
 
-                _stats = new CustomFarmStats();
-                _stats.MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this) * shipCapPerc;
-                _stats.EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff * eggLayRatePerc;
+                var dimensionColleggtibleEffect = new Dictionary<GameDimension, double>();
+                customEggs.Where(x => backup.GetColleggtibleLevel(x.Identifier) != 0)
+                    .Select(x => {
+                        var collegtibleLevel = backup.GetColleggtibleLevel(x.Identifier);
+                        return new Colleggtible() {
+                            Dimension = x.Modifiers[0].GetGameDimension(),
+                            Value = x.Modifiers[(int)collegtibleLevel - 1].Value,
+                        };
+                    }).ToList().ForEach(colleggtible => {
+                        if(!dimensionColleggtibleEffect.TryGetValue(colleggtible.Dimension, out double currentValue)) {
+                            dimensionColleggtibleEffect[colleggtible.Dimension] = 1.0;
+                        }
+                        dimensionColleggtibleEffect[colleggtible.Dimension] *= colleggtible.Value;
+                    });
+
+                // Fill in any missing game dimensions (i.e., dimensions without colleggtibles):
+                foreach(GameDimension dimension in Enum.GetValues(typeof(GameDimension))) {
+                    if(!dimensionColleggtibleEffect.ContainsKey(dimension)) dimensionColleggtibleEffect[dimension] = 1.0;
+                }
+
+
+                _stats = new CustomFarmStats {
+                    MaxShippingRate = Research.GetShippingCapacityPerSec(this, backup.EpicResearch) * EggIncArtifacts.GetShippingMultiple(this) * shipCapPerc * dimensionColleggtibleEffect[GameDimension.ShippingCapacity],
+                    EggLayingRate = eggLayingResearch * eggLayingArtifact * eggLayingBuff * eggLayRatePerc * dimensionColleggtibleEffect[GameDimension.EggLayingRate]
+                };
                 _stats.CurrentShippingRate = Math.Min(_stats.MaxShippingRate, _stats.EggLayingRate);
                 _stats.EggValue = Research.GetEggValue(this, backup.EpicResearch, contract, customEggs) * EggIncArtifacts.GetEggValueMutiple(this);
-                _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier;
+                _stats.Income = _stats.CurrentShippingRate * _stats.EggValue * (backup.EarningsBonus / 100) * backup.CurrentMultiplier * dimensionColleggtibleEffect[GameDimension.Earnings];
                 _stats.MaxRunningBonus = Research.MaxRunningBonus(this, backup.EpicResearch) + EggIncArtifacts.GetMaxRunningBonusAdditive(this);
-                _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * Math.Round(EggIncArtifacts.GetHabSpaceMultiple(this), 5);
-                _stats.InternalHatchery = (int)(Research.InternalHatchery(this, backup.EpicResearch) * EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.InternalHatchery, this));
+                _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * Math.Round(EggIncArtifacts.GetHabSpaceMultiple(this), 5) * dimensionColleggtibleEffect[GameDimension.HabCapacity];
+                _stats.InternalHatchery = (int)(Research.InternalHatchery(this, backup.EpicResearch) * EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.InternalHatchery, this) * dimensionColleggtibleEffect[GameDimension.InternalHatcheryRate]);
             }
             return _stats;
         }

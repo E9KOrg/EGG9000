@@ -84,17 +84,15 @@ namespace EGG9000.Common.Coops {
         }
 
         private static List<List<EggIncArtifactInstance>> FillStones(int slots, List<EggIncArtifactInstance> possibleStones) {
+            if(slots == 0) return [[]];
 
-            if(slots == 0) {
-                return new List<List<EggIncArtifactInstance>> { new List<EggIncArtifactInstance>() };
-            } 
             var stonesCombos = FillStones(slots - 1, possibleStones);
             var newCombos = new List<List<EggIncArtifactInstance>>();
             foreach(var stoneCombo in stonesCombos) {
                 foreach(var stone in possibleStones) {
-                    var newCombo = new List<EggIncArtifactInstance>(stoneCombo);
-                    newCombo.Add(stone);
-                    newCombos.Add(newCombo);
+                    newCombos.Add(new List<EggIncArtifactInstance>(stoneCombo) {
+                        stone
+                    });
                 }
             }
             return newCombos;
@@ -108,12 +106,12 @@ namespace EGG9000.Common.Coops {
             var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, customEggs, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1, coop.Contract);
 
             var currentSet = new ArtifactSet(
-                new List<ArtifactInstanceStats> {
-                    new ArtifactInstanceStats(farm.Artifacts.FirstOrDefault()),
-                    new ArtifactInstanceStats(farm.Artifacts.Skip(1).FirstOrDefault()),
-                    new ArtifactInstanceStats(farm.Artifacts.Skip(2).FirstOrDefault()),
-                    new ArtifactInstanceStats(farm.Artifacts.Skip(3).FirstOrDefault())
-                }, statsWithoutArtifacts
+                [
+                    new(farm.Artifacts.FirstOrDefault()),
+                    new(farm.Artifacts.Skip(1).FirstOrDefault()),
+                    new(farm.Artifacts.Skip(2).FirstOrDefault()),
+                    new(farm.Artifacts.Skip(3).FirstOrDefault())
+                ], statsWithoutArtifacts
             );
 
             var keepArtifacts = new List<EggIncArtifactInstance>();
