@@ -239,8 +239,8 @@
 										<span class="tooltip-custom">
 											<img src="/images/help_icon.png"/>
 											<span style="font-weight: normal;" class="tooltiptext-custom speech-bubble">
-												Score is from a previously completed coop for this contract:
-												<a href="/coop/@(pastXrefWithScore.Coop.ContractID.ToLower())/@(pastXrefWithScore.Coop.Name.ToLower())">
+												Score is from a previously completed coop for this contract:<br />
+												<a href="/coop/(@pastXrefWithScore.Coop.ContractID.ToLower())/(@pastXrefWithScore.Coop.Name.ToLower())">
 													@(LimitToThirty(pastXrefWithScore.Coop.Name))
 												</a>
 											</span>
@@ -291,10 +291,10 @@
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
 								<td>@(farm.Completed ? "✔️" : "")</td>
 
-								@if (xrefWithScore != null && false) {
+								@if (xrefWithScore != null) {
 									<td class="text-right">@xrefWithScore?.Score?.ToString("G2")</td>
 									<td class="text-right">@xrefWithScore?.RunningScore?.ToString("G2")</td>
-								} else if (pastXrefWithScore != null || true) {
+								} else if (pastXrefWithScore != null) {
 									<td class="text-right font-italic">
 										@pastXrefWithScore?.Score?.ToString("G2")
 										<span class="tooltip-custom">
