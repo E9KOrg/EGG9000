@@ -22,6 +22,15 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
+    public static class TimeUtils {
+        public static DateTimeOffset RoundToClosestFifteen(this DateTimeOffset dto) {
+            var totalMinutes = dto.TimeOfDay.TotalMinutes;
+            var roundedTotalMinutes = Math.Round(totalMinutes / 15.0) * 15.0;
+            var roundedDto = new DateTimeOffset(dto.Date.AddMinutes(roundedTotalMinutes), dto.Offset);
+            return roundedDto;
+        }
+    }
+
     public class EventUpdater(IServiceProvider provider) : _UpdaterBase<EventUpdater>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
         private class EventWithCustom {
             public Event Event { get; set; }
@@ -34,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             await CheckShells(_db);
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
-            var responseDateTime = DateTimeOffset.UtcNow;
+            var responseDateTime = DateTimeOffset.UtcNow.RoundToClosestFifteen();
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
@@ -264,7 +273,7 @@ namespace EGG9000.Bot.Automated {
 
             description = description.Replace("{{percent}}", percent.ToString()).Replace("{{multiplier}}", multiplier.ToString());
             if(Ended) title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
-            else title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R>, ( <t:{e.Ends.ToUnixTimeSeconds()}> )";
+            else title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R> (<t:{e.Ends.ToUnixTimeSeconds()}>)";
 
             var color = Color.Blue;
             if(CrossOut) color = Color.Red;
