@@ -16,6 +16,87 @@
 		return (input.Length > 30 ? $"{input.Substring(0, 30)}..." : input);
 	}
 }
+
+<style>
+	.bootstrap .tooltip-text {
+		color: black;
+	}
+
+	.bootstrap-dark .tooltip-text {
+		color: #ccc;
+	}
+
+	.tooltip-custom {
+		position: relative;
+		display: inline-block;
+	}
+
+		.tooltip-custom:hover.tooltiptext-custom {
+			display: inline-block;
+			z-index: 3;
+			position: absolute;
+			bottom: 25px; /* Adjust this value as needed */
+			left: 50%;
+			transform: translateX(-50%); /* Center the tooltip */
+		}
+
+		.tooltip-custom img {
+			height: 100%; /* Ensure the image's height is equal to the span */
+			max-height: 1em; /* Set a reasonable limit for the height based on the font size */
+			width: auto; /* Ensure the aspect ratio is maintained */
+			vertical-align: middle; /* Align the image vertically with the text */
+		}
+
+	.bootstrap-dark .tooltip-custom img {
+		filter: invert(1) !important;
+	}
+
+	.tooltiptext-custom {
+		display: none;
+		border: 1px solid #ccc;
+		padding: 10px;
+		border-radius: 4px;
+		white-space: nowrap;
+		text-align: center; /* Center the text within the tooltip */
+		position: absolute;
+	}
+
+	.bootstrap-dark .tooltiptext-custom {
+		background-color: rgba(33, 37, 41, 0.95);
+	}
+
+	.bootstrap .tooltiptext-custom {
+		background-color: rgba(235, 239, 242, 0.95);
+	}
+
+	.bootstrap-dark .speech-bubble {
+		background-color: rgba(33, 37, 41, 0.95);
+	}
+
+	.bootstrap .speech-bubble {
+		background-color: rgba(235, 239, 242, 0.95);
+	}
+
+	.speech-bubble {
+		position: relative;
+		padding: 10px; /* Adjust the padding to your preference */
+		margin: 10px auto; /* Center the bubble horizontally */
+		border-radius: 5px; /* Rounded corners for the bubble */
+	}
+
+		/* Create the triangle */
+		.speech-bubble :after {
+			content: "";
+			position: absolute;
+			top: 100%;
+			left: 50%;
+			margin-left: -15px; /* Half of the triangle's width */
+			border-width: 15px; /* Adjust the size of the triangle */
+			border-style: solid;
+			border-color: #ccc transparent transparent transparent;
+		}
+</style>
+
 <div class="card" style="margin-top:15px">
 	<h4 class="card-header">Active Farms</h4>
 	<div class="table-responsive">
@@ -129,8 +210,7 @@
 							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
 
 							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.EggIncId == backup.EggIncId);
-							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Score.HasValue && x.EggIncId == backup.EggIncId);
-
+							UserCoopXref pastXrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue && x.EggIncId == backup.EggIncId);
 
 							UserFarmDetails userFarmDetails = null;
 							if (coop is not null) {
@@ -153,8 +233,25 @@
 								</td>
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
 								<td>@(farm.Completed ? "✔️" : "")</td>
-								<td class="text-right">@xrefWithScore?.Score?.ToString("G2")</td>
-								<td class="text-right">@xrefWithScore?.RunningScore?.ToString("G2")</td>
+								@if (pastXrefWithScore != null) {
+									<td class="text-right font-italic">
+										@pastXrefWithScore?.Score?.ToString("G2")
+										<span class="tooltip-custom">
+											<img src="/images/help_icon.png"/>
+											<span style="font-weight: normal;" class="tooltiptext-custom speech-bubble">
+												Score is from a previously completed coop for this contract:<br />
+												<a href="/coop/(@pastXrefWithScore.Coop.ContractID.ToLower())/(@pastXrefWithScore.Coop.Name.ToLower())">
+													@(LimitToThirty(pastXrefWithScore.Coop.Name))
+												</a>
+											</span>
+										</span>
+									</td>
+									<td class="text-right font-italic">--</td>
+								} else {
+									<td class="text-right"></td>
+									<td class="text-right"></td>
+								}
+
 								@if (userFarmDetails != null && xref != null) {
 									var percent = userFarmDetails.EggsShipped / (xref.Coop.LastStatusUpdate?.TotalAmount ?? 0);
 									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
@@ -169,6 +266,10 @@
 							CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
 							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.EggIncId == backup.EggIncId);
 							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Score.HasValue && x.EggIncId == backup.EggIncId);
+							UserCoopXref pastXrefWithScore = null;
+							if (xrefWithScore == null) {
+								pastXrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue && x.EggIncId == backup.EggIncId);
+							}
 							UserFarmDetails userFarmDetails = null;
 							if (xref is not null) {
 								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
@@ -189,8 +290,31 @@
 								</td>
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
 								<td>@(farm.Completed ? "✔️" : "")</td>
-								<td class="text-right">@xrefWithScore?.Score?.ToString("G2")</td>
-								<td class="text-right">@xrefWithScore?.RunningScore?.ToString("G2")</td>
+
+								@if (xrefWithScore != null) {
+									<td class="text-right">@xrefWithScore?.Score?.ToString("G2")</td>
+									<td class="text-right">@xrefWithScore?.RunningScore?.ToString("G2")</td>
+								} else if (pastXrefWithScore != null) {
+									<td class="text-right font-italic">
+										@pastXrefWithScore?.Score?.ToString("G2")
+										<span class="tooltip-custom">
+											<img src="/images/help_icon.png" />
+											<span style="font-weight: normal;" class="tooltiptext-custom speech-bubble">
+												You had a previously scored coop for this contract:<br />
+												<a href="/coop/@(pastXrefWithScore.Coop.ContractID.ToLower())/@(pastXrefWithScore.Coop.Name.ToLower())">
+													@(LimitToThirty(pastXrefWithScore.Coop.Name))
+												</a>
+												<br />
+												As such, you did not receive another score for this coop.
+											</span>
+										</span>
+									</td>
+									<td class="text-right font-italic">--</td>
+								} else {
+									<td class="text-right"></td>
+									<td class="text-right"></td>
+								}
+
 								@if (userFarmDetails?.CoopStatus != null) {
 									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
 									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
