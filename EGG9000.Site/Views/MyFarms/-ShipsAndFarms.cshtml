@@ -126,7 +126,6 @@
 </script>
 
 <style>
-
     :root {
         --extended-color: @durationColor(DurationType.Epic);
         --standard-color: @durationColor(DurationType.Long);
@@ -145,11 +144,11 @@
         color: gray;
     }
 
-    .tooltip-text .bootstrap {
+    .bootstrap .tooltip-text {
         color: black;
     }
 
-    .tooltip-text .bootstrap-dark {
+    .bootstrap-dark .tooltip-text {
         color: #ccc;
     }
 
@@ -158,7 +157,7 @@
         display: inline-block;
     }
 
-        .tooltip-custom:hover .tooltiptext-custom {
+        .tooltip-custom:hover.tooltiptext-custom {
             display: inline-block;
             z-index: 3;
             position: absolute;
@@ -166,6 +165,17 @@
             left: 50%;
             transform: translateX(-50%); /* Center the tooltip */
         }
+
+        .tooltip-custom img {
+            height: 100%; /* Ensure the image's height is equal to the span */
+            max-height: 1em; /* Set a reasonable limit for the height based on the font size */
+            width: auto; /* Ensure the aspect ratio is maintained */
+            vertical-align: middle; /* Align the image vertically with the text */
+        }
+
+    .bootstrap-dark .tooltip-custom img {
+        filter: invert(1) !important;
+    }
 
     .tooltiptext-custom {
         display: none;
@@ -177,11 +187,12 @@
         position: absolute;
     }
 
-    .tooltiptext-custom .bootstrap-dark {
+    .bootstrap-dark .tooltiptext-custom {
         background-color: rgba(33, 37, 41, 0.95);
     }
-    .tooltiptext-custom .bootstrap {
-            background-color: rgba(235, 239, 242, 0.95);
+
+    .bootstrap .tooltiptext-custom {
+        background-color: rgba(235, 239, 242, 0.95);
     }
 
     .bootstrap-dark .speech-bubble {
@@ -701,8 +712,8 @@
                     <th style="text-align: center" colspan="4">
                         ASC Planner 
                         <span class="tooltip-custom" style="letter-spacing: 0.1em; font-weight: bolder">
-                            (?)
-                            <span class="tooltiptext-custom speech-bubble" style="letter-spacing: normal">
+                            <img src="/images/help_icon.png"/>
+                            <span class="tooltiptext-custom speech-bubble" style="letter-spacing: normal; font-weight: normal;">
                                 All-Star-Club, commonly shortened to "ASC", is<br />
                                 the name of the community-created achievement<br />
                                 for getting all <span class="GoldenStar">★</span>s, on all ships.
