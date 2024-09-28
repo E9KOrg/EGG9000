@@ -784,14 +784,14 @@ namespace EGG9000.Site.Controllers {
                 // Add all users data.
                 allCraftingData.Add(new(
                     (int)u?.Account?.Backup.GetCraftingLevel(),
-                    (int)(u?.Account?.Backup?.CraftingXP)
+                    (double)(u?.Account?.Backup?.CraftingXP)
                 ));
 
                 // Add logged in users data.
                 if(u.User.Id == user.Id) {
                     myCraftingData.Add(new(
                         (int)u?.Account?.Backup.GetCraftingLevel(),
-                        (int)(u?.Account?.Backup?.CraftingXP)
+                        (double)(u?.Account?.Backup?.CraftingXP)
                     ));
                     myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
                 }
