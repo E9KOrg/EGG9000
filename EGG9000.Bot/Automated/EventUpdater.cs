@@ -3,6 +3,7 @@ using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -21,6 +22,15 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
+    public static class TimeUtils {
+        public static DateTimeOffset RoundToClosestFifteen(this DateTimeOffset dto) {
+            var totalMinutes = dto.TimeOfDay.TotalMinutes;
+            var roundedTotalMinutes = Math.Round(totalMinutes / 15.0) * 15.0;
+            var roundedDto = new DateTimeOffset(dto.Date.AddMinutes(roundedTotalMinutes), dto.Offset);
+            return roundedDto;
+        }
+    }
+
     public class EventUpdater(IServiceProvider provider) : _UpdaterBase<EventUpdater>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
         private class EventWithCustom {
             public Event Event { get; set; }
@@ -33,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             await CheckShells(_db);
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
-            var responseDateTime = DateTimeOffset.UtcNow;
+            var responseDateTime = DateTimeOffset.UtcNow.RoundToClosestFifteen();
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
@@ -148,7 +158,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, newEvent);
-                var embed = GetEmbed(newEvent, customization, false, false);
+                var (embed, embedImage) = await GetEventEmbed(_db, newEvent, customization, false, false);
 
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
@@ -164,26 +174,25 @@ namespace EGG9000.Bot.Automated {
                     //Send to non-CCs without ping
                     if(eventChannel != null) {
                         var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
-                        message = await eventChannel.SendMessageAsync(ultraNotification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
+                        message = await eventChannel.SendFileIfExistsAsync(embedImage, text: ultraNotification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
                     }
 
                     //If the CC event channel was found, that's where we'll ping for CC events
                     if(ccEventChannel != null) {
-                        var ccMessage = await ccEventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        var ccMessage = await ccEventChannel.SendFileIfExistsAsync(embedImage, text: notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
                         //Add the CC event channel message to the IDs
                         messageIds.Add(ccMessage.Id);
                     }
                 } else {
                     //Only send to non-CC channel, with ping
                     if(eventChannel != null) {
-                        message = await eventChannel.SendMessageAsync(notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        message = await eventChannel.SendFileIfExistsAsync(embedImage, text: notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
                     }
                 }
 
                 
                 //Always add the message id
-                if(message != null)
-                    messageIds.Add(message.Id);
+                if(message != null) messageIds.Add(message.Id);
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
 
@@ -194,7 +203,7 @@ namespace EGG9000.Bot.Automated {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
-                var embed = GetEmbed(currentEvent, customization, Ended, Crossout);
+                var (embed, embedImage) = await GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
 
                 var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
@@ -210,6 +219,7 @@ namespace EGG9000.Bot.Automated {
                                 await message.ModifyAsync(msg => {
                                     msg.Embed = embed;
                                     msg.Content = (notification != null && !currentEvent.CcOnly) ? $"<@&{notification.RoleID}>" : null;
+                                    msg.Attachments = embedImage.HasValue ? new List<FileAttachment> { embedImage.Value } : [];
                                 });
                             }
                         } catch(Exception) {
@@ -230,6 +240,7 @@ namespace EGG9000.Bot.Automated {
                                 await message.ModifyAsync(msg => {
                                     msg.Embed = embed;
                                     msg.Content = notification != null ? $"<@&{notification.RoleID}>" : null;
+                                    msg.Attachments = embedImage.HasValue ? new List<FileAttachment> { embedImage.Value } : [];
                                 });
                             }
                         } catch(Exception) {
@@ -240,12 +251,13 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public static Embed GetEmbed(Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
+        public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = (1 - e.Multiplier) * 100;
             var description = $"**{e.Subtitle}**\n";
             var title = "";
+            FileAttachment? eventImage = null;
 
             if(eventC is not null) {
                 description += eventC.Description;
@@ -261,7 +273,7 @@ namespace EGG9000.Bot.Automated {
 
             description = description.Replace("{{percent}}", percent.ToString()).Replace("{{multiplier}}", multiplier.ToString());
             if(Ended) title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
-            else title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R>, ( <t:{e.Ends.ToUnixTimeSeconds()}> )";
+            else title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R> (<t:{e.Ends.ToUnixTimeSeconds()}>)";
 
             var color = Color.Blue;
             if(CrossOut) color = Color.Red;
@@ -272,11 +284,17 @@ namespace EGG9000.Bot.Automated {
                 .WithColor(color)
                 .WithDescription(CrossOut ? $"~~{description}~~" : description);
 
-            if(e.CcOnly) {
-                embed.WithAuthor("Egg, Inc ULTRA-Only Event", "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless");
+            string discordImagePath;
+            var generatedImage = await _db.GetEventImageAsync(e);
+            if (generatedImage is null) { // Either the site had an issue, or the image didn't exist
+                discordImagePath = e.CcOnly ? "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless"
+                    : "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751";
             } else {
-                embed.WithAuthor("Egg, Inc Special Event", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751");
+                discordImagePath = $"attachment://{e.Type}.png";
+                eventImage = generatedImage.GetFileAttachment($"{e.Type}.png", "Event Image");
             }
+
+            embed.WithAuthor($"Egg, Inc {(e.CcOnly ? "ULTRA-Only Event" : "Special Event")}", discordImagePath);
 
             if(!string.IsNullOrWhiteSpace(eventC?.ThumbnailURL)) {
                 embed.WithThumbnailUrl(eventC.ThumbnailURL);
@@ -296,7 +314,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
-            return embed.Build();
+            return (embed.Build(), eventImage);
         }
 
         public async Task CheckShells(ApplicationDbContext db) {

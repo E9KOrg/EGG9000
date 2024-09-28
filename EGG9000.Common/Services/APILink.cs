@@ -64,6 +64,10 @@ namespace EGG9000.Common.Services {
         private readonly ILogger<APILink> _logger;
         private readonly APILinkOptions _settings;
 
+        // Unique key that gets generated each time the site starts - this will be used for communication Bot -> Site, making it so
+        // the only possible way to use this API, is through the E9K codebase
+        public readonly static string AUTHENTICATION_KEY = Convert.ToBase64String(Encoding.UTF8.GetBytes(DateTimeOffset.UtcNow.ToString("o")));
+
         private string urlBase {
             get {
                 return _configuration.GetConnectionString("APILinkURL");
