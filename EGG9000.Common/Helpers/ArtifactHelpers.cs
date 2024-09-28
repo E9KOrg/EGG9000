@@ -418,7 +418,7 @@ namespace EGG9000.Common.Helpers {
             */
 
             var orderedList = GetOrderedInventory(account);
-            if(orderedList is null) return ("", null);
+            if(orderedList is null) return ("$ERROR$:orderedList is null", null);
 
             var (rows, columns) = FindClosestGridSize(orderedList.Count);
             var config = new InventoryCreatorConfig(100, 30, rows, columns);
@@ -443,11 +443,11 @@ namespace EGG9000.Common.Helpers {
 
             try {
                 var response = await client.PostAsync(apiUrl, content);
-                if(!response.IsSuccessStatusCode) return ("", null);
+                if(!response.IsSuccessStatusCode) return ("$ERROR$:response status code is not success", null);
 
                 var contentType = response.Content.Headers.ContentType?.MediaType;
                 // Check if the response contains an image
-                if(contentType?.StartsWith("image/") != true) return ("", null);
+                if(contentType?.StartsWith("image/") != true) return ("$ERROR$:response was not an image", null);
 
                 var imageBytes = await response.Content.ReadAsByteArrayAsync();
                 using var ms = new MemoryStream(imageBytes);
@@ -459,8 +459,8 @@ namespace EGG9000.Common.Helpers {
                     if(splits.Length > 1) imageB64 = splits[1];
                 }
                 return (imageB64, config);
-            } catch(Exception) {
-                return ("", null);
+            } catch(Exception e) {
+                return ($"$ERROR$:exception caught\n{e.Message}", null);
             }
         }
         #endregion

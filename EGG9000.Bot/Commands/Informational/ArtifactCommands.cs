@@ -77,7 +77,13 @@ namespace EGG9000.Bot.Commands {
             }
 
             var (B64, Config) = await InventoryB64(account);
-            if(string.IsNullOrEmpty(B64)) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User inventory could not be converted."); }); return; }
+            if(string.IsNullOrEmpty(B64) || B64.StartsWith("$ERROR$:")) { 
+                await command.ModifyOriginalResponseAsync(x => { 
+                    x.Content = ""; 
+                    x.Embed = EmbedError($"User inventory could not be converted.${(B64.StartsWith("$ERROR$:") ? $"\n```{B64.Replace("$ERROR$:", "")}```" : "")}"); 
+                }); 
+                return; 
+            }
 
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
             await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
