@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             await CheckShells(_db);
 
             var response = await ContractsAPI.GetPeriodicalsAsync();
-            var responseDateTime = DateTimeOffset.UtcNow.RoundToClosestFifteen();
+            var responseDateTime = DateTimeOffset.UtcNow;
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
@@ -81,7 +81,7 @@ namespace EGG9000.Bot.Automated {
                             await PostMessages(currentEvent, _db);
                         } else if (timeChange) {
                             _logger.LogInformation($"Time change for {currentEvent.Type}, of {currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds} seconds");
-                            currentEvent.Ends = responseDateTime.AddSeconds(evt.SecondsRemaining);
+                            currentEvent.Ends = responseDateTime.AddSeconds(evt.SecondsRemaining).RoundToClosestFifteen();
                             await UpdateMessages(currentEvent, _db);
                         }
                     }
