@@ -201,8 +201,8 @@ namespace EGG9000.Bot.Commands {
                     await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
                     return;
                 } else if(dbUser.GuildId > 0) {
-                    var moveServerCommand = await guild.GetSlashCommandStringAsync("MoveServer");
-                    await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the ${moveServerCommand} command.");
+                    var moveServerCommandString = await _client.GetSlashCommandStringAsync(guild, "MoveServer");
+                    await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the ${moveServerCommandString} command.");
                     return;
                 } else {
 

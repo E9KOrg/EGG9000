@@ -356,9 +356,20 @@ namespace EGG9000.Common.Services {
             return commands;
         }
 
-        public static async Task<string> GetSlashCommandStringAsync(this SocketGuild guild, string slashCommandName) {
+        public static async Task<IReadOnlyCollection<SocketApplicationCommand>> GetCachedApplicationCommands(this DiscordHostedService discord) {
+            if(!commandCache.TryGetValue("GLOBAL", out IReadOnlyCollection<SocketApplicationCommand> commands)) {
+                commands = await discord.GetGlobalApplicationCommandsAsync();
+                commandCache.Set("GLOBAL", commands, TimeSpan.FromMinutes(10));
+            }
+            return commands;
+        }
+
+        public static async Task<string> GetSlashCommandStringAsync(this DiscordHostedService discord, SocketGuild guild, string slashCommandName) {
             var fixedSlashCommandName = slashCommandName.ToLower().Trim();
             var command = (await guild.GetCachedApplicationCommands())
+                .ToList().Where(c => c.Type == ApplicationCommandType.Slash)
+                .FirstOrDefault(c => c.Name.ToLower() == fixedSlashCommandName);
+            command ??= (await discord.GetCachedApplicationCommands())
                 .ToList().Where(c => c.Type == ApplicationCommandType.Slash)
                 .FirstOrDefault(c => c.Name.ToLower() == fixedSlashCommandName);
 
