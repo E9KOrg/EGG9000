@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -275,7 +276,7 @@ namespace EGG9000.Bot.Automated {
             if(Ended) title += $"\nEnded <t:{e.Ends.ToUnixTimeSeconds()}:R>";
             else title += $"\nEnds <t:{e.Ends.ToUnixTimeSeconds()}:R> (<t:{e.Ends.ToUnixTimeSeconds()}>)";
 
-            var color = Color.Blue;
+            var color = e.CcOnly ? new Color(uint.Parse("a932c7", NumberStyles.HexNumber)) : Color.Blue;
             if(CrossOut) color = Color.Red;
             else if(Ended) color = Color.DarkGrey;
 
