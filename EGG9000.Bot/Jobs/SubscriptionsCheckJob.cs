@@ -74,6 +74,12 @@ namespace EGG9000.Bot.Jobs {
         private async Task CheckSubscription(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
             try {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
+                subscriptionStatus ??= await await Task.Delay(250).ContinueWith(async x => await ContractsAPI.GetUserSubscription(account.Id));
+                if (subscriptionStatus is null) {
+                    _logger.LogWarning("Null response from ContractsAPI.GetUserSubscription for account ID {accountId}", account.Id);
+                    return;
+                }
+
                 if(subscriptionStatus.HasStatus && (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod) && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
                     if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
                         await SendUltraLogMessage(db, _client, user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
