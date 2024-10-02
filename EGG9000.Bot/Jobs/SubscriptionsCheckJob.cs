@@ -47,20 +47,11 @@ namespace EGG9000.Bot.Jobs {
                 var proRoleId = dbguild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
                 await Parallel.ForEachAsync(guildGroup, new ParallelOptions { MaxDegreeOfParallelism = 5 }, async (user, cancellationToken) => {
-                    try {
-                        if(user?.EggIncAccounts?.Count > 0) {
-                            foreach(var account in user.EggIncAccounts) {
-                                await CheckSubscription(db, _discord, user, account, dbguild, guild);
-                            }
-                            var discorduser = guild.GetUser(user.DiscordId);
-                            if(discorduser is not null) {
-                                await CheckRole(standardRoleId, user, false, discorduser);
-                                await CheckRole(proRoleId, user, true, discorduser);
-                            }
-                        }
-                    } catch(Exception e) {
-                        _bugsnag.Notify(e);
-                    }
+                    var tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+                    var token = tokenSource.Token;
+
+                    Task task = Task.Factory.StartNew(() => ProcessUser(db, user, dbguild, guild, standardRoleId, proRoleId), token);
+                    task.Wait();
                 });
             }
 
@@ -69,6 +60,23 @@ namespace EGG9000.Bot.Jobs {
                 _logger.LogInformation("Finished checking subscriptions");
             else
                 _logger.LogWarning("Error saving subscription changes");
+        }
+
+        private async Task ProcessUser(ApplicationDbContext db,  DBUser user, Guild dbguild, SocketGuild guild, ulong standardRoleId, ulong proRoleId) {
+            try {
+                if(user?.EggIncAccounts?.Count > 0) {
+                    foreach(var account in user.EggIncAccounts) {
+                        await CheckSubscription(db, _discord, user, account, dbguild, guild);
+                    }
+                    var discorduser = guild.GetUser(user.DiscordId);
+                    if(discorduser is not null) {
+                        await CheckRole(standardRoleId, user, false, discorduser);
+                        await CheckRole(proRoleId, user, true, discorduser);
+                    }
+                }
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+            }
         }
 
         private async Task CheckSubscription(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
