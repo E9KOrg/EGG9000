@@ -146,6 +146,19 @@
                     <span style="font-size: 0.9rem; color: gray;">
                         The "answer" text a user should be displayed while searching for the topic on Discord.
                     </span>
+                    <span style="margin-bottom: 10px;">
+                        <br />
+                        <a href="javascript:void(0);" class="text-info" data-toggle="collapse" data-target="#preprocessorDescription" aria-expanded="false" aria-controls="preprocessorDescription">
+                            <span id="toggleText">Custom Preprocessor Information</span>
+                            <i class="fas fa-chevron-right" id="toggleIcon"></i>
+                        </a>
+                        <span class="collapse" id="preprocessorDescription">
+                            <span style="display: block; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9;" ng-non-bindable>
+                                <code>{{emoji:emoji_name}}</code> will insert any matching emoji from the server in question.<br/>
+                                <code>{{command:command_name}}</code> will insert a clickable command, if found - otherwise a discord in-line code block.<br/>
+                            </span>
+                        </span>
+                    </span>
                 </label>
                 <textarea rows="8" ng-disabled="isSubscribe" autocomplete="off" aria-autocomplete="none" spellcheck="false" class="form-control" ng-model="item.explanation"></textarea>
                 <div style="font-size: 0.9rem; margin-top: 5px;"

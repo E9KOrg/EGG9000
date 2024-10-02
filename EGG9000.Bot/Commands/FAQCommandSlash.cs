@@ -14,6 +14,8 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Helpers;
 using System;
 using EGG9000.Bot.Helpers;
+using System.Reactive.Joins;
+using System.Text.RegularExpressions;
 
 namespace EGG9000.Bot.Commands {
     public static class FAQCommandSlash {
@@ -74,7 +76,7 @@ namespace EGG9000.Bot.Commands {
 
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Any()) {
-                var builder = FAQEmbedBuilder(guildObj.Id, withStaffPerms, query, isEphemeral, respondToMessage, faqTopics, faqTopics.First());
+                var builder = await FAQEmbedBuilder(_client, guildObj.Id, withStaffPerms, query, isEphemeral, respondToMessage, faqTopics, faqTopics.First());
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; });
             } else {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedCustom(EmbedHelpers.EmbedType.Alert, "No Results", $"Could not find any FAQ topics for the term `{query}`"); });
@@ -100,10 +102,10 @@ namespace EGG9000.Bot.Commands {
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Count > 0 && faqTopics[targetIndex] != null) {
                 var targetItem = faqTopics[targetIndex];
-                var builder = FAQEmbedBuilder(guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, targetItem);
+                var builder = await FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, targetItem);
                 await component.UpdateAsync(x => { x.Components = builder.ComponentBuilder?.Build(); x.Embed = builder.EmbedBuilder.Build(); });
             } else {
-                var faqCommand = await socketGuild.GetSlashCommandStringAsync("FAQ");
+                var faqCommand = await _client.GetSlashCommandStringAsync(socketGuild, "FAQ");
                 await component.RespondAsync(embed: EmbedError($"Could not find an FAQ topic at this index. Try running {faqCommand} again."), ephemeral: true);
             }
         }
@@ -147,13 +149,13 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var embed = FAQEmbedBuilder(guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, faqTopics[targetIndex], runningUserDiscord).EmbedBuilder.Build();
+            var embed = (await FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, faqTopics[targetIndex], runningUserDiscord)).EmbedBuilder.Build();
             var messageRef = respondTo != ulong.MaxValue ? new MessageReference(respondTo, failIfNotExists: false) : null;
             await component.Channel.SendMessageAsync(embed: embed, messageReference: messageRef);
             await component.UpdateAsync(x => { x.Embed = EmbedSuccess("Posted."); x.Components = null; });
         }
 
-        public static FAQBuilder FAQEmbedBuilder(ulong guildId, bool withStaffPerms, string query, bool isEphemeral, ulong? respondTo, List<FAQTopic> faqTopics, FAQTopic currentItem, IGuildUser poster = null) {
+        public static async Task<FAQBuilder> FAQEmbedBuilder(DiscordHostedService _client, ulong guildId, bool withStaffPerms, string query, bool isEphemeral, ulong? respondTo, List<FAQTopic> faqTopics, FAQTopic currentItem, IGuildUser poster = null) {
             var builder = new FAQBuilder() {
                 ComponentBuilder = null
             };
@@ -169,6 +171,35 @@ namespace EGG9000.Bot.Commands {
             }
 
             var informationText = currentItem.Explanation;
+            var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id == guildId);
+            if(socketGuild != null) {
+                var commandMatchRegex = @"\{\{command:([^\}]+)\}\}";
+                var commandMatches = Regex.Matches(informationText, commandMatchRegex);
+                Console.WriteLine("commandMatches count: " + commandMatches.Count);
+                foreach(Match commandMatch in commandMatches) {
+                    Console.WriteLine("commandMatch.Groups count: " + commandMatch.Groups.Count);
+                    if(commandMatch.Groups.Count < 2) continue;
+                    var commandName = commandMatch.Groups[1].Value;
+                    var commandString = await _client.GetSlashCommandStringAsync(socketGuild, commandName);
+                    // Replace the {{command:...}} with the commandString
+                    informationText = informationText.Replace(commandMatch.Value, commandString);
+                }
+
+                var emojiMatchRegex = @"\{\{emoji:([^\}]+)\}\}";
+                var emojiMatches = Regex.Matches(informationText, emojiMatchRegex);
+                var appEmojis = await _client.GetApplicationEmotesAsync();
+                foreach(Match emojiMatch in emojiMatches) {
+                    if(emojiMatch.Groups.Count < 2) continue;
+                    var emojiName = emojiMatch.Groups[1].Value;
+                    var emoji = appEmojis.FirstOrDefault(e => e.Name.ToLower() ==  emojiName.ToLower());
+                    emoji ??= socketGuild.Emotes.FirstOrDefault(e => e.Name.ToLower() == emojiName.ToLower());
+                    if(emoji is null) continue;
+                    var emojiString = $"<:{emoji.Name}:{emoji.Id}>";
+                    // Replace the {{emoji:...}} with the emojiString
+                    informationText = informationText.Replace(emojiMatch.Value, emojiString);
+                }
+            }
+
             if (informationText.Length >= 1024) {
                 informationText = string.Concat(informationText.AsSpan(0, 950), "...\n\n**_(Topic was cut-off due to Discord's `1024` character limit)_**");
             }
