@@ -1,4 +1,7 @@
 ﻿using Discord;
+using System;
+using System.Diagnostics;
+using System.IO;
 
 namespace EGG9000.Common.Helpers.Discord {
     public class EmbedHelpers {
@@ -35,6 +38,16 @@ namespace EGG9000.Common.Helpers.Discord {
 
         public static Embed EmbedInternalError(string errorText) {
             return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName("Internal Error").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
+        }
+
+        public static Embed EmbedExceptionFrame(Exception e) {
+            var frame = new StackTrace(e, true).GetFrame(0);
+            return EmbedInternalError(
+                $"**Message**:\n{e.Message}\n\n" +
+                $"**Frame info**:\n\t" +
+                    $"File: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\t" +
+                    $"Line: {frame.GetFileLineNumber()}"
+            );
         }
 
         public static Embed EmbedCustom(EmbedType embedType, string embedTitle, string embedText) {

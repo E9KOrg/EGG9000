@@ -61,7 +61,7 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public class RestartDiscordException(string customMessage, Severity severity) : Exception {
+        public class RestartDiscordException(string customMessage, Severity severity) : Exception(customMessage) {
             public string CustomMessage { get; set; } = customMessage;
             public Severity Severity { get; set; } = severity;
         }

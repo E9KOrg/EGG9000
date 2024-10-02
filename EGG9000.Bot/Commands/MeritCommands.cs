@@ -80,8 +80,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit removed for {user.Mention}, they currently have {count} merits");
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
@@ -104,8 +103,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit info for {targetUser.Mention}\n{meritDesc}");
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
@@ -128,8 +126,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
