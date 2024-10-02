@@ -43,8 +43,7 @@ namespace EGG9000.Bot.Commands {
 
                 var response = await ChannelHelper.DetermineAndSend(db, _client, dbguild, socketGuild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
@@ -67,8 +66,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit removed for {user.Mention}, they currently have {count} demerits");
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
@@ -99,8 +97,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit info for {socketUser.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
         [SlashCommand(Description = "List demerits for user", AdminOnly = StaffOnlyLevel.Admin)]
@@ -112,8 +109,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}", ephemeral: true);
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
