@@ -64,7 +64,7 @@ namespace EGG9000.Common.Helpers {
             client.DefaultRequestHeaders.Add("authenticationKey", Services.APILink.AUTHENTICATION_KEY);
 
 #if RELEASE
-            var baseUrl = "https://egg9000.com"
+            var baseUrl = "https://egg9000.com";
 #else
             var baseUrl = "https://localhost:44314";
 #endif
