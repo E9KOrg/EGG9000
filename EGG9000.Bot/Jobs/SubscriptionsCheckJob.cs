@@ -46,24 +46,27 @@ namespace EGG9000.Bot.Jobs {
                 var standardRoleId = dbguild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
                 var proRoleId = dbguild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
-                await Parallel.ForEachAsync(guildGroup, new ParallelOptions { MaxDegreeOfParallelism = 5 }, async (user, cancellationToken) => {
-                    var tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-                    var token = tokenSource.Token;
+                var tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                var parallelOptions = new ParallelOptions {
+                    MaxDegreeOfParallelism = 5,
+                    CancellationToken = tokenSource.Token
+                };
 
-                    Task task = Task.Factory.StartNew(() => ProcessUser(db, user, dbguild, guild, standardRoleId, proRoleId), token);
-                    task.Wait();
+                await Parallel.ForEachAsync(guildGroup, parallelOptions, async (user, cancellationToken) => {
+                    await ProcessUser(db, user, dbguild, guild, standardRoleId, proRoleId, cancellationToken);
                 });
             }
 
-            (Boolean Success, int Retries) result = await db.SaveChangesAsyncRetry(retryCount: 2, cancellationToken: CancellationToken.None, _logger);
-            if(result.Success)
+            (var success, var retries) = await db.SaveChangesAsyncRetry(retryCount: 2, cancellationToken: CancellationToken.None, _logger);
+            if(success)
                 _logger.LogInformation("Finished checking subscriptions");
             else
-                _logger.LogWarning("Error saving subscription changes");
+                _logger.LogWarning("Error saving subscription changes after {retry_count}", retries);
         }
 
-        private async Task ProcessUser(ApplicationDbContext db,  DBUser user, Guild dbguild, SocketGuild guild, ulong standardRoleId, ulong proRoleId) {
+        private async Task ProcessUser(ApplicationDbContext db, DBUser user, Guild dbguild, SocketGuild guild, ulong standardRoleId, ulong proRoleId, CancellationToken cancellationToken) {
             try {
+                cancellationToken.ThrowIfCancellationRequested();
                 if(user?.EggIncAccounts?.Count > 0) {
                     foreach(var account in user.EggIncAccounts) {
                         await CheckSubscription(db, _discord, user, account, dbguild, guild);
@@ -83,7 +86,7 @@ namespace EGG9000.Bot.Jobs {
             try {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
                 subscriptionStatus ??= await await Task.Delay(250).ContinueWith(async x => await ContractsAPI.GetUserSubscription(account.Id));
-                if (subscriptionStatus is null) {
+                if(subscriptionStatus is null) {
                     _logger.LogWarning("Null response from ContractsAPI.GetUserSubscription for account ID {accountId}", account.Id);
                     return;
                 }
