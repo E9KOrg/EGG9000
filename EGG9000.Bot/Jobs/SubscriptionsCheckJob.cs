@@ -93,7 +93,7 @@ namespace EGG9000.Bot.Jobs {
 
                 if(subscriptionStatus.HasStatus && (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod) && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
                     if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
-                        await SendUltraLogMessage(db, _client, user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild, guild);
+                        await SendUltraLogMessage(_client, user, account,(int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel, dbGuild);
                         account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                         user.UpdateAccounts();
                     }
@@ -102,7 +102,7 @@ namespace EGG9000.Bot.Jobs {
                         user.UpdateAccounts();
                     }
                 } else if(account.SubscriptionLevel.HasValue) {
-                    await SendUltraLogMessage(db, _client, user, account, (int?)account.SubscriptionLevel ?? -1, -1, dbGuild, guild);
+                    await SendUltraLogMessage(_client, user, account, (int?)account.SubscriptionLevel ?? -1, -1, dbGuild);
                     account.SubscriptionLevel = null;
                     user.UpdateAccounts();
                 } 
@@ -120,9 +120,9 @@ namespace EGG9000.Bot.Jobs {
             };
         }
 
-        public static async Task SendUltraLogMessage(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild, SocketGuild guild) {
+        public static async Task SendUltraLogMessage(DiscordSocketClient _client, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel, Guild dbGuild) {
             var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`) " : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
-            _ = await ChannelHelper.DetermineAndSend(db, _client, dbGuild, guild, GuildChannelType.UltraLog, new() { Text = message});
+            _ = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.UltraLog, new() { Text = message});
         }
 
         public async Task CheckRole(ulong roleid, DBUser dbuser, bool pro, SocketGuildUser user) {

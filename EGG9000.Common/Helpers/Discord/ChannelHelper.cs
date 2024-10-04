@@ -43,12 +43,10 @@ namespace EGG9000.Bot.Common.Helpers {
             public bool SendFile { get; set; } = false;
         }
 
-        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(ApplicationDbContext db, DiscordSocketClient _client, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
+        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
 
-            var dbGuildProper = await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString())) ?? dbGuild;
-            var discordGuildProper = (dbGuildProper == dbGuild) ? discordGuild : _client.GetGuild(dbGuildProper.Id);
-
-            var channel = DetermineChannelType(dbGuildProper, discordGuildProper, channelType);
+            var discordGuild = _client.GetGuild(dbGuild.Id);
+            var channel = DetermineChannelType(dbGuild, discordGuild, channelType);
             if(channel is null) return null;
 
             if(channel.GetType() == typeof(SocketThreadChannel)) {
@@ -64,7 +62,7 @@ namespace EGG9000.Bot.Common.Helpers {
                     return await ((SocketTextChannel)channel).SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 }
             } else {
-                if(logger is not null) logger.LogWarning("DetermineAndSend called, expected type of SocketTextChannel or SocketThreadChannel. Instead found type of {type}", channel.GetType());
+                logger?.LogWarning("DetermineAndSend called, expected type of SocketTextChannel or SocketThreadChannel. Instead found type of {type}", channel.GetType());
                 return null;
             }
         }

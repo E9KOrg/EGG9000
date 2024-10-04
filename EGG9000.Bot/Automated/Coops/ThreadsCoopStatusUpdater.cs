@@ -644,8 +644,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     xref.OutsideCoop = true;
                                     var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
                                     var findGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id || g.OverflowServersJson.Contains(guild.Id.ToString()), CancellationToken.None);
-                                    var findSocketGuild = _client.Guilds.FirstOrDefault(g => g.Id == findGuild.Id);
-                                    var response = ChannelHelper.DetermineAndSend(_db, _client, findGuild, findSocketGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+                                    var response = ChannelHelper.DetermineAndSend(_client, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 }
                             }
@@ -736,7 +735,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                         var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
                         if(gusset is null) {
-                            await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.CheaterThread,
+                            await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.CheaterThread,
                                 new() {
                                     Text =
                                     $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.ThreadID}> (`{coop.Name}`):\n" +
@@ -748,7 +747,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && u.Xref is not null && !u.Xref.TimeCheatReported).ToList()) {
                         var account = u.User?.EggIncAccounts?.FirstOrDefault(a => a.Id.ToLower() == u.Backup?.EggIncId.ToLower());
                         if(account is null || account.TimeCheatsMarkedClean) continue;
-                        await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.CheaterThread,
+                        await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.CheaterThread,
                             new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.ThreadID}> (`{coop.Name}`)" }
                         );
                         u.Xref.TimeCheatReported = true; //Set the flag to prevent repetition
