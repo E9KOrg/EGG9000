@@ -143,7 +143,7 @@ namespace EGG9000.Bot.Automated {
                                 $"({(dbCoop is not null? $"<#{dbCoop.ThreadID}> - `{dbCoop.Name}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
                                 $"for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
-                            var result = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.BreakCoopLog, new() { Text = message });
+                            var result = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.BreakCoopLog, new() { Text = message });
 
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();
@@ -169,7 +169,7 @@ namespace EGG9000.Bot.Automated {
                             var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{merCheater.User.DiscordId}>{(merCheater.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")} may be cheating. MER is higher than expected, at `{mer:n2}`, after `{(int)merCheater.Backup.NumPrestiges}` prestiges.";
 
-                            var result = await ChannelHelper.DetermineAndSend(_db, _client, dbguild, guild, GuildChannelType.CheaterThread, new() { Text = message });
+                            var result = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.CheaterThread, new() { Text = message });
 
                             merCheater.Account.MERWarningSent = true;
                             merCheater.User.UpdateAccounts();
