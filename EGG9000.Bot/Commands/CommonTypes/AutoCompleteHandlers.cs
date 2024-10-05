@@ -233,10 +233,12 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     var services = _serviceProvider.GetServices<IHostedService>().Where(x => x is IUpdaterService).OrderBy(x => x.GetType().Name)
                         .Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToList();
 
-                    var jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
-                          .SelectMany(t => t.GetMethods())
-                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
-                          .Select(x => new AutocompleteResult($"Job.{x.GetType().Name}", x.GetType().Name)).ToArray();
+                    var jobs = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(x => x.GetTypes())
+                        .SelectMany(t => t.GetMethods())
+                        .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                        .Select(m => new AutocompleteResult($"Job.{m.DeclaringType?.Name}", m.Name))
+                        .ToArray();
 
                     var discordHostedService = _serviceProvider.GetServices<DiscordHostedService>().Select(c => new AutocompleteResult("DiscordHostedService", c.GetType().Name)).ToList();
 
