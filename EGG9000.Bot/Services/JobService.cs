@@ -79,9 +79,11 @@ namespace EGG9000.Bot.Services {
             job.NextRun = DateTimeOffset.Now;
         }
 
-        public void StopJob(string jobName) {
+        public bool StopJob(string jobName) {
             var job = _jobs.FirstOrDefault(x => x.Name == jobName);
+            if(job is null) return false;
             job.NextRun = DateTimeOffset.Now.AddYears(1);
+            return true;
         }
         public void StarJob(string jobName) {
             var job = _jobs.FirstOrDefault(x => x.Name == jobName);
