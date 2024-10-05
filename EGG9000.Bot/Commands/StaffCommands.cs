@@ -8,7 +8,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Humanizer;
-
+using MassTransit;
 using MassTransit.SagaStateMachine;
 
 using Microsoft.EntityFrameworkCore;
@@ -333,79 +333,86 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task RestartService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+            await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
             var discordHostedService = serviceProvider.GetService<DiscordHostedService>();
 
             if(discordHostedService is not null && serviceName == "DiscordHostedService") {
                 try {
                     await discordHostedService.RestartAsync();
-                    await command.RespondAsync(content: "", embed: EmbedSuccess("DiscordHostedService restarted."));
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("DiscordHostedService restarted."); });
                     return;
                 } catch(RestartDiscordException ex) {
-                    await command.RespondAsync(content: "", embed: EmbedError($"**Exception caught:**\n\n{ex.CustomMessage}"));
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(ex); });
+                    return;
                 }
             }
 
             if(service == null) {
                 var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
-                          .SelectMany(t => t.GetMethods())
-                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
-                          .FirstOrDefault(x => x.Name == serviceName);
+                    .SelectMany(t => t.GetMethods())
+                    .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                    .FirstOrDefault(x => x.Name == serviceName);
+
                 if(job is null) {
-                    await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate a service/job with the name {serviceName}"));
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate a service/job with the name {serviceName}"); });
                     return;
                 }
 
+                jobService.StopJob(serviceName);
                 jobService.RunJob(serviceName);
-
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted Job.{job.DeclaringType?.Name ?? job.Name}"); });
                 return;
             }
 
-            await command.RespondAsync(content: "", embed: EmbedInProgress($"Attempting to restart {serviceName}"));
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to restart {serviceName}"); });
             try {
                 await service.StopAsync(new System.Threading.CancellationToken());
                 await service.StartAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
         [SlashCommand(Description = "Stop an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task StopService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+            await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
                 var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
-                          .SelectMany(t => t.GetMethods())
-                          .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
-                          .FirstOrDefault(x => x.Name == serviceName);
+                    .SelectMany(t => t.GetMethods())
+                    .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
+                    .FirstOrDefault(x => x.Name == serviceName);
+
                 if(job is null) {
-                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate a service/job with the name {serviceName}"); });
                     return;
                 }
 
-                jobService.RunJob(serviceName);
-                
+                var jobString = $"Job.{job.DeclaringType?.Name ?? job.Name}";
+                if(jobService.StopJob(job.Name)) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {jobString}"); });
+                else await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to stop {jobString}"); });
                 return;
             }
+
             if(!(service as IUpdaterService).Running()) {
-                await command.RespondAsync($"The service {serviceName} is already stopped.");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"The service {serviceName} is already stopped."); });
                 return;
             }
-            await command.RespondAsync($"Attempting to stop {serviceName}");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to stop {serviceName}"); });
             try {
                 await service.StopAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(e); });
             }
-            await command.ModifyOriginalResponseAsync($"Stopped {serviceName}");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {serviceName}"); });
         }
 
         [SlashCommand(Description = "Run automated service now", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task RunService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+            await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -419,22 +426,26 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 jobService.RunJob(serviceName);
-            }
-            if(!(service as IUpdaterService).Running()) {
-                await command.RespondAsync($"The service {serviceName} is already running.");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Ran Job.{job.DeclaringType?.Name ?? job.Name}"); });
                 return;
             }
-            await command.RespondAsync($"Attempting to run {serviceName}");
+
+            if(!(service as IUpdaterService).Running()) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"The service {serviceName} is already running."); });
+                return;
+            }
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to run {serviceName}"); });
             try {
                 (service as IUpdaterService).ResetTimer();
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(e); });
             }
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Ran {serviceName}"); });
         }
 
-        [SlashCommand(Description = "Restart an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        [SlashCommand(Description = "Start an automated service", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task StartService(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ServiceNameAutoComplete))] string serviceName, IServiceProvider serviceProvider, JobService jobService) {
+            await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
@@ -443,24 +454,25 @@ namespace EGG9000.Bot.Commands {
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
                 if(job is null) {
-                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate a service/job with the name {serviceName}"); });
                     return;
                 }
 
                 jobService.RunJob(serviceName);
-            }
-            if((service as IUpdaterService).Running()) {
-                await command.RespondAsync($"The service {serviceName} is already running.");
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Running Job.{job.DeclaringType?.Name ?? job.Name}"); });
                 return;
             }
-            await command.RespondAsync($"Attempting to start {serviceName}");
+            if((service as IUpdaterService).Running()) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"The service {serviceName} is already running."); });
+                return;
+            }
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to start {serviceName}"); });
             try {
                 await service.StartAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                var frame = new StackTrace(e, true).GetFrame(0);
-                await command.RespondAsync(content: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(e); });
             }
-            await command.ModifyOriginalResponseAsync($"Started {serviceName}");
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Started {serviceName}"); });
         }
 
         [SlashCommand(Description = "Ping everyone in a co-op with a message", AdminOnly = StaffOnlyLevel.FarmHand)]

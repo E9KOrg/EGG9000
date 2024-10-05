@@ -104,10 +104,7 @@ namespace EGG9000.Bot.Services {
 
             } catch(Exception e) {
                 _bugsnag.Notify(e);
-                var frame = (new StackTrace(e, true)).GetFrame(0);
-
-                await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
-
+                await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
             }
         }
 
@@ -118,10 +115,7 @@ namespace EGG9000.Bot.Services {
                 _ = Task.Run(() => RunCommand(command, arg));
             } catch(Exception e) {
                 _bugsnag.Notify(e);
-                var frame = (new StackTrace(e, true)).GetFrame(0);
-
-                await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
-
+                await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
             }
         }
 
@@ -200,13 +194,10 @@ namespace EGG9000.Bot.Services {
                 } catch(Exception e) {
                     try {
                         _bugsnag.Notify(e);
-                        var frame = (new StackTrace(e, true)).GetFrame(0);
-
                         if(arg.HasResponded) {
-                            await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedInternalError($"**Message**\n{e.Message}\n\n**Frame info**\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"); });
-                           
+                            await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedExceptionFrame(e); });
                         } else {
-                            await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                            await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
                         }
                     } catch(Exception) {
 
@@ -373,7 +364,7 @@ namespace EGG9000.Bot.Services {
                 _bugsnag.Notify(e);
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
-                await arg.RespondAsync(text: "", embed: EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\tFile: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\tLine: {frame.GetFileLineNumber()}"));
+                await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
             }
         }
 

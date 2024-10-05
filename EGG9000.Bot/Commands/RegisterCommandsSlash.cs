@@ -86,7 +86,7 @@ namespace EGG9000.Bot.Commands {
                 if(welcomeChannel.Id == command.Channel.Id) {
                     await command.DeleteOriginalResponseAsync();
                     var text = $"Welcome {command.User.Mention}, you have been moved to this server. You have the rank of {role?.Name} with an EB of {earningsBonus.ToEggString()}";
-                    var response = await ChannelHelper.DetermineAndSend(db, _client, dbguild, guild, GuildChannelType.General, new() { Text = text });
+                    var response = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.General, new() { Text = text });
                     await CleanWelcomeChannel(guild, _client, command.User);
                 } else {
                     await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("Registration has been moved"); });
@@ -190,7 +190,7 @@ namespace EGG9000.Bot.Commands {
                 if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count > 0) {
                     await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, []);
                     await command.DeleteOriginalResponseAsync();
-                    var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
+                    var response = await ChannelHelper.DetermineAndSend(_client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
                     var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
                     if(activeRole != null) {
                         await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
@@ -206,7 +206,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 } else {
 
-                    var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
+                    var response = await ChannelHelper.DetermineAndSend(_client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
 
                     var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
                     if(activeRole != null) await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
@@ -444,7 +444,7 @@ namespace EGG9000.Bot.Commands {
             //}
 
             var compiledMessage = $"Welcome {user.Mention}! {roleText}.{faqText}";
-            var response = await ChannelHelper.DetermineAndSend(db, _client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.General, new() { Text = compiledMessage }, logger);
+            var response = await ChannelHelper.DetermineAndSend(_client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = compiledMessage }, logger);
             if(response == null) await command.Channel.SendMessageAsync(compiledMessage);
 
             //Only add the overflow role for the first registered account

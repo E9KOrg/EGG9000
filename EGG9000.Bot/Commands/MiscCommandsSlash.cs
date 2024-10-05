@@ -289,7 +289,7 @@ namespace EGG9000.Bot.Commands {
                     await messageToPing.DeleteAsync();
                     await thread.SendMessageAsync(text: "", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
 
-                    var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = message + " " + thread.Mention });
+                    var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = message + " " + thread.Mention });
 
                     await command.ModifyOriginalResponseAsync($"{infoText}, they should respond in {thread.Mention}");
 
@@ -298,7 +298,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             {
-                var response = await ChannelHelper.DetermineAndSend(db, _client, guildFind, socketGuild, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message });
+                var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message });
 
                 if(response is null) {
                     await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
