@@ -64,6 +64,7 @@ namespace EGG9000.Bot.Automated {
                 var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == evt.Identifier);
                 if(currentEvent == null) {
                     var newEvent = new Event(evt);
+                    newEvent.Ends = newEvent.Ends.RoundToClosestFifteen();
                     _db.Add(newEvent);
                     recentEvents.Add(newEvent);
                     await PostMessages(newEvent, _db);
