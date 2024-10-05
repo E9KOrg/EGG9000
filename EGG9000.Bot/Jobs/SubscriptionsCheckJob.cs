@@ -50,8 +50,8 @@ namespace EGG9000.Bot.Jobs {
                     var tokenSource = new CancellationTokenSource(TimeSpan.FromMinutes(3));
                     var token = tokenSource.Token;
 
-                    Task task = Task.Factory.StartNew(() => ProcessUser(db, user, dbguild, guild, standardRoleId, proRoleId), token);
-                    task.Wait();
+                    Task task = Task.Run(async () => await ProcessUser(db, user, dbguild, guild, standardRoleId, proRoleId), token);
+                    await task;
                 });
             }
 
