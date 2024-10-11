@@ -29,7 +29,7 @@ namespace EGG9000.Bot.Commands {
             }
             await command.DeleteResponseFix();
         }
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, FauxCommand command = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, FauxCommand command = null, Guild guild = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -44,8 +44,9 @@ namespace EGG9000.Bot.Commands {
             var count = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).CountAsync();
             count++;
 
-            if(command is not null) {
-                var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
+            if(command is not null || guild is not null) {
+                var guildFind = guild;
+                guildFind ??= db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
                 if(guildFind is not null) {
                     var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
                     if(socketGuild is not null) {
