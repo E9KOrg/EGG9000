@@ -26,7 +26,24 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
-    public static class MiscCommandsSlash {  
+    public static class MiscCommandsSlash {
+
+        [SlashCommand(Description = "Start EID screenshot recognition process.", AllowInDMs = true)]
+        public static async Task StartTestProcess(FauxCommand command, ApplicationDbContext db, ILogger logger) {
+            if(command.GuildId != null) {
+                await command.RespondAsync(
+                    "",
+                    embed: EmbedError("This command should **only** be used in DMs.")
+                );
+                return;
+            }
+
+            await command.RespondAsync(
+                "",
+                embed: EmbedSuccess("Please reply (a real Discord Reply - hit the Reply button) to this message with an **uncropped screenshot of your Privacy & Data tab**.")
+            );
+        }
+
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
             await command.DeferAsync();
