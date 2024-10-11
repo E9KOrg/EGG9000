@@ -1,5 +1,6 @@
 ﻿
 using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
@@ -20,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -432,8 +434,86 @@ namespace EGG9000.Bot.Services {
             return Task.CompletedTask;
         }
         
-        private async Task HandleScreenshotRegistration(SocketMessage message, SocketGuild guild) {
-            if(message.Author.IsBot || message.Attachments.Count == 0) return;
+        private async Task HandleTestOCR(SocketMessage message, ApplicationDbContext db) {
+            if(message.Attachments.Count == 0) return;
+            if(message.Reference == null || message.Reference.MessageId.Value == default || message.Channel.Id != message.Reference.ChannelId) return;
+
+            var dmChannel = await message.Author.CreateDMChannelAsync();
+            var refMessage = await dmChannel.GetMessageAsync(message.Reference.MessageId.Value) as IUserMessage;
+
+            // Make sure the users match
+            if(refMessage.InteractionMetadata.UserId != message.Author.Id) return;
+
+            // Make sure the user was prompted by the bot to send a screenshot
+            if(!refMessage.Embeds.Any(e => e.Description.Contains("uncropped screenshot of your Privacy & Data tab"))) return;
+
+            // Make sure the attachment is an image (check its ContentType)
+            var attachment = message.Attachments.First();
+            if(!attachment.ContentType.StartsWith("image/")) return;
+
+            using var httpClient = new HttpClient();
+            // Download the image from the attachment's URL
+            var imageStream = await httpClient.GetStreamAsync(attachment.Url);
+            using var image = SixLabors.ImageSharp.Image.Load(imageStream);
+            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+
+            // Crop the image
+            var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
+
+            // Run tesseract - will either return an EI matching regex, or an empty string.
+            var (eidMatch, extractedText) = TesseractHelper.RunTesseract(croppedImage);
+
+#if RELEASE
+            ulong destThreadId = 1294422983904985098;
+#else
+            ulong destThreadId = 1294422767713652801;
+#endif
+
+            var destinationThread = _discord.GetChannel(destThreadId) as SocketThreadChannel;
+
+            // Save the images back to streams
+            using var imageMs = new MemoryStream();
+            image.Save(imageMs, new PngEncoder());
+            var imageAttachment = new FileAttachment(imageMs, "Original_Image.png", "Original Image");
+
+            using var croppedMs = new MemoryStream();
+            croppedImage.Save(croppedMs, new PngEncoder());
+            var croppedImageAttachment = new FileAttachment(croppedMs, "Cropped_Image.png", "Cropped Image");
+
+            var embedText = $"""
+                User: {message.Author.Mention}
+                OCR Output: {(string.IsNullOrEmpty(eidMatch.Value) ? extractedText : eidMatch.Value)}
+             """;
+
+            var resultingEmbed = eidMatch.Success ? EmbedSuccess(embedText) : EmbedError(embedText);
+
+            await destinationThread.SendFilesAsync(
+                attachments: [
+                    imageAttachment,
+                    croppedImageAttachment,
+                ],
+                embed: resultingEmbed
+            );
+
+            await message.Channel.SendMessageAsync(
+                "Your attempt has been processed and sent to the devs for review.\n\nThank you for your assistance!",
+                messageReference: new MessageReference(message.Id)
+            );
+
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == message.Author.Id);
+            if(dbUser == null) return;
+
+            var meritText = "Assisting the E9K devs during EID detection testing 🤖❤️";
+
+            var hasMeritAlready = dbUser.Merits.Any(m => m.Reason == meritText);
+            if(hasMeritAlready) return;
+
+            await MeritCommands.CreateMerit(meritText, db, _discord, message.Author, Guid.Empty);
+        }
+
+        private async Task HandleScreenshotRegistration(SocketMessage message, SocketGuild guild, ApplicationDbContext db) {
+            if(message.Attachments.Count == 0) return;
+            // TODO: REMOVE WHEN WE'RE READY TO GO LIVE
             if(message.Channel.Id != 1293725293403574313) return; // 1293725293403574313 = Admin testing command channel on DEV server
             if(message.Reference == null || message.Reference.MessageId.Value == default || message.Channel.Id != message.Reference.ChannelId) return;
 
@@ -468,21 +548,21 @@ namespace EGG9000.Bot.Services {
             var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
 
             // Run tesseract - will either return an EI matching regex, or an empty string.
-            var eidText = TesseractHelper.RunTesseract(croppedImage);
+            var (eidMatch, extractedText) = TesseractHelper.RunTesseract(croppedImage);
 
-            if (eidText == "") {
+            if (!eidMatch.Success) {
                 await message.Channel.SendMessageAsync(
                     "",
-                    embed: EmbedError("Unable to detect your EI number from this screenshot.\n\nPlease wait for staff assistance.")
+                    embed: EmbedError("**Unable to detect your EI number from this screenshot**.\n\nPlease wait for staff assistance."),
+                    messageReference: new MessageReference(message.Id)
                 );
                 return;
             }
 
-            // TODO: Process registration instead of sending this
-            await message.Channel.SendMessageAsync(
-                $"Extracted EID:\n`{eidText}`",
-                messageReference: new MessageReference(message.Id)
-            );
+            // Construct a new FauxCommand so we can hook into Registering
+            var command = new FauxCommand(message, guild.Id);
+
+            await RegisterCommandsSlash._Register(command, db, _discord, _apilink, _bugsnag, eidMatch.Value, message.Author, _logger);
         }
 
         private async Task HandleMessageReceived(SocketMessage message) {
@@ -496,7 +576,9 @@ namespace EGG9000.Bot.Services {
 
             
             if (!message.Author.IsBot && guild != null) {
-                await HandleScreenshotRegistration(message, guild);
+                await HandleScreenshotRegistration(message, guild, db);
+            } else if (!message.Author.IsBot && message.Channel is SocketDMChannel) {
+                await HandleTestOCR(message, db);
             }
 
             if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {

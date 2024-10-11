@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -110,7 +111,7 @@ namespace EGG9000.Common.Helpers {
             "E1"
         ];
 
-        public static string RunTesseract(Image<Rgba32> image) {
+        public static (Match, string) RunTesseract(Image<Rgba32> image) {
             var extractedText = "";
 
             using(var imageStream = new MemoryStream()) {
@@ -151,8 +152,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             // Look for the EI pattern specifically in the extracted text
-            var eiNumber = System.Text.RegularExpressions.Regex.Match(extractedText, @"EI\d{16}");
-            return eiNumber.Success ? eiNumber.Value : "";
+            return (Regex.Match(extractedText, @"EI\d{16}"), extractedText);
         }
     }
 }
