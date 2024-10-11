@@ -503,12 +503,14 @@ namespace EGG9000.Bot.Services {
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == message.Author.Id);
             if(dbUser == null) return;
 
+            var guild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == dbUser.GuildId);
+
             var meritText = "Assisting the E9K devs during EID detection testing 🤖❤️";
 
             var hasMeritAlready = dbUser.Merits.Any(m => m.Reason == meritText);
             if(hasMeritAlready) return;
 
-            await MeritCommands.CreateMerit(meritText, db, _discord, message.Author, Guid.Empty);
+            await MeritCommands.CreateMerit(meritText, db, _discord, message.Author, Guid.Empty, guild);
         }
 
         private async Task HandleScreenshotRegistration(SocketMessage message, SocketGuild guild, ApplicationDbContext db) {
