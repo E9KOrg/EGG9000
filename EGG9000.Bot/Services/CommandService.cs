@@ -10,6 +10,7 @@ using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -18,12 +19,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -427,6 +431,60 @@ namespace EGG9000.Bot.Services {
             _ = HandleMessageReceived(message);
             return Task.CompletedTask;
         }
+        
+        private async Task HandleScreenshotRegistration(SocketMessage message, SocketGuild guild) {
+            if(message.Author.IsBot || message.Attachments.Count == 0) return;
+            if(message.Channel.Id != 1293725293403574313) return; // 1293725293403574313 = Admin testing command channel on DEV server
+            if(message.Reference == null || message.Reference.MessageId.Value == default || message.Channel.Id != message.Reference.ChannelId) return;
+
+#if RELEASE
+            var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, guild);
+#else
+            var welcomeChannel = _discord.GetChannel(message.Reference.ChannelId) as SocketTextChannel;
+#endif
+
+            if(welcomeChannel == null || welcomeChannel.Id != message.Channel.Id) return;
+
+            // Lookup the message that this was in reply to
+            if((await welcomeChannel.GetMessageAsync(message.Reference.MessageId.Value)) is not IUserMessage refMessage || refMessage.Embeds.Count == 0 || !refMessage.Author.IsBot) return;
+
+            // Make sure the users match
+            if(refMessage.InteractionMetadata.UserId != message.Author.Id) return;
+
+            // Make sure the user was prompted by the bot to send a screenshot
+            if(!refMessage.Embeds.Any(e => e.Description.Contains("uncropped screenshot of your Privacy & Data tab"))) return;
+
+            // Make sure the attachment is an image (check its ContentType)
+            var attachment = message.Attachments.First();
+            if(attachment.ContentType.StartsWith("image/")) {
+                using var httpClient = new HttpClient();
+                // Download the image from the attachment's URL
+                var imageStream = await httpClient.GetStreamAsync(attachment.Url);
+                using var image = SixLabors.ImageSharp.Image.Load(imageStream);
+                var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+
+                // Crop the image
+                var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
+
+                // Run tesseract
+                var eidText = TesseractHelper.RunTesseract(croppedImage);
+
+                var responseText = "";
+                responseText += $"Extracted EID:\n`{eidText}`\n\n";
+
+                await message.Channel.SendMessageAsync(
+                    responseText,
+                    messageReference: new MessageReference(message.Id)
+                );
+
+            } else {
+                await message.Channel.SendMessageAsync(
+                    embed: EmbedError("Attachment is not an image"),
+                    messageReference: new MessageReference(message.Id)
+                );
+            }
+        }
+
         private async Task HandleMessageReceived(SocketMessage message) {
             var db = await _dbContextFactory.CreateDbContextAsync();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
@@ -434,6 +492,11 @@ namespace EGG9000.Bot.Services {
                 var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
                 await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty);
                 await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
+            }
+
+            
+            if (!message.Author.IsBot && guild != null) {
+                HandleScreenshotRegistration(message, guild);
             }
 
             if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {

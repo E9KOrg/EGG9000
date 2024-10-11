@@ -313,6 +313,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
                 }
                 foreach(var participant in coopDetails.CoopParticipants.Where(x => x.DBUser is not null)) {
+                    if(gradeRole is null) continue;
                     var overflowGuildUser = guild.GetUser(participant.DBUser.DiscordId);
                     if(overflowGuildUser is not null && !overflowGuildUser.Roles.Any(x => x.Id == gradeRole.Id || x.Name.Contains("ULTRA")) && participant.CoopStatus?.UserName != "[departed]") {
                         var headChannel = guild.GetTextChannel(coopThread.CategoryId.Value);

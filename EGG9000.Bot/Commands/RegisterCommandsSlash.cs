@@ -358,7 +358,15 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(Response?.Farms == null || Response.Farms.Count == 0) {
-                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers. **You can also send a screenshot and someone will help you register.**"); });
+                await command.ModifyOriginalResponseAsync(m => 
+                    { 
+                        m.Content = "";
+                        m.Embed = EmbedError(
+                            $"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers.\n\n" +
+                            $"**You can also _reply_ to this message with an uncropped screenshot of your Privacy & Data tab, and the bot will attempt to auto-register you.**"
+                        ); 
+                    }
+                );
                 return;
             }
             var addedUser = false;
