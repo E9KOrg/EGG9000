@@ -152,7 +152,7 @@ namespace EGG9000.Common.Helpers {
 
             // Look for the EI pattern specifically in the extracted text
             var eiNumber = System.Text.RegularExpressions.Regex.Match(extractedText, @"EI\d{16}");
-            return eiNumber.Success ? eiNumber.Value : $"No regex match!\n{extractedText}";
+            return eiNumber.Success ? eiNumber.Value : "";
         }
     }
 }

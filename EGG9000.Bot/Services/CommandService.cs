@@ -456,33 +456,33 @@ namespace EGG9000.Bot.Services {
 
             // Make sure the attachment is an image (check its ContentType)
             var attachment = message.Attachments.First();
-            if(attachment.ContentType.StartsWith("image/")) {
-                using var httpClient = new HttpClient();
-                // Download the image from the attachment's URL
-                var imageStream = await httpClient.GetStreamAsync(attachment.Url);
-                using var image = SixLabors.ImageSharp.Image.Load(imageStream);
-                var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+            if(!attachment.ContentType.StartsWith("image/")) return;
 
-                // Crop the image
-                var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
+            using var httpClient = new HttpClient();
+            // Download the image from the attachment's URL
+            var imageStream = await httpClient.GetStreamAsync(attachment.Url);
+            using var image = SixLabors.ImageSharp.Image.Load(imageStream);
+            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
 
-                // Run tesseract
-                var eidText = TesseractHelper.RunTesseract(croppedImage);
+            // Crop the image
+            var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
 
-                var responseText = "";
-                responseText += $"Extracted EID:\n`{eidText}`\n\n";
+            // Run tesseract - will either return an EI matching regex, or an empty string.
+            var eidText = TesseractHelper.RunTesseract(croppedImage);
 
+            if (eidText == "") {
                 await message.Channel.SendMessageAsync(
-                    responseText,
-                    messageReference: new MessageReference(message.Id)
+                    "",
+                    embed: EmbedError("Unable to detect your EI number from this screenshot.\n\nPlease wait for staff assistance.")
                 );
-
-            } else {
-                await message.Channel.SendMessageAsync(
-                    embed: EmbedError("Attachment is not an image"),
-                    messageReference: new MessageReference(message.Id)
-                );
+                return;
             }
+
+            // TODO: Process registration instead of sending this
+            await message.Channel.SendMessageAsync(
+                $"Extracted EID:\n`{eidText}`",
+                messageReference: new MessageReference(message.Id)
+            );
         }
 
         private async Task HandleMessageReceived(SocketMessage message) {
@@ -496,7 +496,7 @@ namespace EGG9000.Bot.Services {
 
             
             if (!message.Author.IsBot && guild != null) {
-                HandleScreenshotRegistration(message, guild);
+                await HandleScreenshotRegistration(message, guild);
             }
 
             if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {
@@ -566,8 +566,12 @@ namespace EGG9000.Bot.Services {
 
                         var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel)?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
                         if(hasPerms && (parentHasChild || bypass) && canUseCommandsInChannel) {
-                            var warningEmbed = EmbedWarning($"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
-                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on </{(foundParentCommand != "" ? $"{foundParentCommand}" + (parentHasChild ? " " : "") : "")}{(parentHasChild ? commandTextMatches.Groups[2] : foundCommandText)}:{discordCommand?.Id}> to run it.");
+                            var warningEmbed = EmbedWarning(
+                                $"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
+                                $"if the pop-up doesn't show up then try force closing Discord and trying again. You can also click on " +
+                                $"</{(foundParentCommand != "" ? $"{foundParentCommand}" + (parentHasChild ? " " : "") : "")}" +
+                                $"{(parentHasChild ? commandTextMatches.Groups[2] : foundCommandText)}:{discordCommand?.Id}> to run it."
+                            );
 
                             await message.Channel.SendMessageAsync(
                                 embed: warningEmbed,
