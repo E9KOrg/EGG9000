@@ -317,6 +317,8 @@ namespace EGG9000.Bot.Commands {
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
 
+            var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
+
             try {
                 var bannedUsers = db.DBUsers.Where(x => x.Banned).ToList().SelectMany(u => u.EggIncAccounts).ToList();
                 if(bannedUsers is not null) {
@@ -358,7 +360,17 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(Response?.Farms == null || Response.Farms.Count == 0) {
-                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers. **You can also send a screenshot and someone will help you register.**"); });
+                // TODO: REMOVE && false WHEN WE'RE READY TO GO LIVE
+                var addendum = (command.ChannelId == welcomeChannel.Id && false) ?
+                    "\n\n**You can also _reply_ to this message with an uncropped screenshot of your Privacy & Data tab, and the bot will attempt to auto-register you.**" : "";
+                await command.ModifyOriginalResponseAsync(m => 
+                    { 
+                        m.Content = "";
+                        m.Embed = EmbedError(
+                            $"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers." + addendum
+                        ); 
+                    }
+                );
                 return;
             }
             var addedUser = false;
