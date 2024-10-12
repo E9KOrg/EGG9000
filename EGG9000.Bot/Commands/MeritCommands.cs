@@ -29,7 +29,7 @@ namespace EGG9000.Bot.Commands {
             }
             await command.DeleteResponseFix();
         }
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid adminid, FauxCommand command = null, Guild guild = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid? adminid, FauxCommand command = null, Guild guild = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -37,12 +37,14 @@ namespace EGG9000.Bot.Commands {
                 When = DateTimeOffset.Now,
                 AdminUserId = adminid,
                 UserId = user.Id,
-                Id = Guid.NewGuid(),
+                //Id = Guid.NewGuid(),
                 Reason = reason
             };
             db.Merit.Add(merit);
             var count = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).CountAsync();
             count++;
+
+            await db.SaveChangesAsync();
 
             if(command is not null || guild is not null) {
                 var guildFind = guild;
@@ -59,7 +61,6 @@ namespace EGG9000.Bot.Commands {
                 await command.Channel.SendMessageAsync($"Merit Added {target.Mention}: {merit.Reason} (Merits: {count})");
             }
 
-            await db.SaveChangesAsync();
         }
 
         [SlashCommand(Description = "Remove merit from user", AdminOnly = StaffOnlyLevel.FarmHand)]
