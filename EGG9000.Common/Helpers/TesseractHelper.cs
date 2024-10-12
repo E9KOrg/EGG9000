@@ -108,7 +108,10 @@ namespace EGG9000.Common.Helpers {
 
         private static readonly List<string> CommonMisDetectionList = [
             "£1",
-            "E1"
+            "E1",
+            "El",
+            "EL"
+
         ];
 
         public static (Match, string) RunTesseract(Image<Rgba32> image) {
@@ -117,14 +120,16 @@ namespace EGG9000.Common.Helpers {
             using(var imageStream = new MemoryStream()) {
                 // Preprocessing the image
                 image.Mutate(x => x.Grayscale()); // Convert to grayscale
-                image.Mutate(x => x.Contrast(1.2f)); // Increase contrast
-                image.Mutate(x => x.GaussianSharpen()); // Maybe?
+                //image.Mutate(x => x.Contrast(1.2f)); // Increase contrast
+                //image.Mutate(x => x.GaussianSharpen()); // Maybe?
 
                 image.SaveAsPng(imageStream);
                 imageStream.Seek(0, SeekOrigin.Begin);
 
                 // Dynamically set the path to the embedded tessdata directory
-                var tessDataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
+                //var tessDataPath = Path.Combine(AppContext.BaseDirectory, "tessdata");
+                var tessDataPath = Path.Combine(@"D:\Websites\EGG9000\EGG9000.Site", "tessdata");
+                //Console.WriteLine(tessDataPath);
                 Environment.SetEnvironmentVariable("TESSDATA_PREFIX", tessDataPath);
 
                 using var engine = new TesseractEngine(tessDataPath, "eng", EngineMode.Default);
@@ -146,8 +151,11 @@ namespace EGG9000.Common.Helpers {
 
             // Common mis-detections
             foreach(var misDetection in CommonMisDetectionList) {
+                //extractedText = extractedText.Replace(misDetection, "EI");
                 if(extractedText.StartsWith(misDetection)) {
+                    Console.WriteLine("-" + extractedText);
                     extractedText = string.Concat("EI", extractedText.AsSpan(misDetection.Length));
+
                 }
             }
 

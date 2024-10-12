@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
+
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
@@ -11,7 +12,9 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
 using EGG9000.Site.Models;
+
 using Google.Protobuf;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Identity;
@@ -19,8 +22,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+
 using Newtonsoft.Json;
+
 using Polly;
+
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -34,6 +43,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
@@ -65,6 +75,7 @@ namespace EGG9000.Site.Controllers {
             return Redirect("/");
         }
 #endif
+
 
         public async Task<IActionResult> Test() {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
@@ -215,7 +226,7 @@ namespace EGG9000.Site.Controllers {
                                 }
                             }
                         }
-                    } catch(Exception) {}
+                    } catch(Exception) { }
                 }
 
             }
@@ -482,7 +493,7 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
             var maxYearInt = (DateTimeOffset.Now.Month >= 7 && (DateTimeOffset.Now.Month >= 8 || DateTimeOffset.Now.Day > 15)) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
-            if (!int.TryParse(year, out var yearInt)) {
+            if(!int.TryParse(year, out var yearInt)) {
                 yearInt = maxYearInt;
             }
             if(yearInt >= DateTimeOffset.Now.Year) {
@@ -834,7 +845,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Coop([FromRoute] string ContractId, [FromRoute] string CoopId) {
             CoopId = CoopId.ToLower();
             var model = new CoopModel {
-                
+
                 DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.Like(x.Name, CoopId)),
                 Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
                 CustomEggs = await _db.GetCustomEggsAsync()

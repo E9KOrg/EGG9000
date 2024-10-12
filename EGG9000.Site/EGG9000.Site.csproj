@@ -31,10 +31,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="tessdata\eng.traineddata" />
+    <None Remove="tessdata\eng_ei.traineddata" />
     <None Remove="Views\Home\ViewUser.cshtml.old" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="tessdata\eng.traineddata">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tessdata\eng_ei.traineddata">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Views\Home\ViewUser.cshtml.old" />
   </ItemGroup>
 
@@ -81,6 +89,18 @@
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Folder Include="Fonts\" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Update="Fonts\always together.otf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
