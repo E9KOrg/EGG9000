@@ -455,13 +455,16 @@ namespace EGG9000.Bot.Services {
             // Download the image from the attachment's URL
             var imageStream = await httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
-            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+            //var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
 
-            // Crop the image
-            var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
+            //// Crop the image
+            //var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
 
-            // Run tesseract - will either return an EI matching regex, or an empty string.
-            var (eidMatch, extractedText) = TesseractHelper.RunTesseract(croppedImage);
+            //// Run tesseract - will either return an EI matching regex, or an empty string.
+            //var (eidMatch, extractedText) = TesseractHelper.RunTesseract(croppedImage);
+
+            var croppedImage = EIIDScreenShots.CropScreenShot(image);
+            var eiid = EIIDScreenShots.ReadText(croppedImage);
 
 #if RELEASE
             ulong destThreadId = 1294422983904985098;
@@ -482,10 +485,14 @@ namespace EGG9000.Bot.Services {
 
             var embedText = $"""
                 User: {message.Author.Mention}
-                OCR Output: {(string.IsNullOrEmpty(eidMatch.Value) ? extractedText : eidMatch.Value)}
+                OCR Output: {eiid}
              """;
 
-            var resultingEmbed = eidMatch.Success ? EmbedSuccess(embedText) : EmbedError(embedText);
+
+            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == message.Author.Id);
+
+            var matchesid = dbuser.EggIncAccounts.Any(x => x.Id == eiid);
+            var resultingEmbed = matchesid ? EmbedSuccess(embedText) : EmbedError(embedText);
 
             await destinationThread.SendFilesAsync(
                 attachments: [
@@ -495,8 +502,9 @@ namespace EGG9000.Bot.Services {
                 embed: resultingEmbed
             );
 
+            var resultMessage = matchesid ? $"The bot was able to match the id ({eiid}) accurately to your account." : $"The bot was unable to match the id, it detected {eiid}";
             await message.Channel.SendMessageAsync(
-                $"Your attempt has been processed and sent to the devs for review. The bot was able to detect an EI of {(string.IsNullOrEmpty(eidMatch.Value) ? extractedText : eidMatch.Value)}\n\nThank you for your assistance!",
+                $"Your attempt has been processed and sent to the devs for review. {resultMessage}\n\nThank you for your assistance!",
                 messageReference: new MessageReference(message.Id)
             );
 

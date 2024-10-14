@@ -132,9 +132,10 @@ namespace EGG9000.Common.Helpers {
                 //Console.WriteLine(tessDataPath);
                 Environment.SetEnvironmentVariable("TESSDATA_PREFIX", tessDataPath);
 
-                using var engine = new TesseractEngine(tessDataPath, "eng", EngineMode.Default);
+                using var engine = new TesseractEngine(tessDataPath, "eiid", EngineMode.Default);
+                engine.SetVariable("tessedit_char_whitelist", "EI0123456789");
                 using var pix = Pix.LoadFromMemory(imageStream.ToArray());
-                using var page = engine.Process(pix);
+                using var page = engine.Process(pix, PageSegMode.SingleLine);
                 extractedText = page.GetText();
             }
             // Split after any newlines, keeping the longest string
