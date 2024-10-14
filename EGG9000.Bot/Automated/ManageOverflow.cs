@@ -290,7 +290,7 @@ namespace EGG9000.Bot.Automated {
                     var mainRole = mainServer.Roles.First(r => r.Id == x.TargetId);
                     return new OverflowPermissionRoleMatch {
                         MainRole = mainRole,
-                        OverflowRole = overflowServer.Roles.First(x => x.Name == mainRole.Name),
+                        OverflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == mainRole.Name),
                         Overwrite = x
                     };
                 });

@@ -98,6 +98,9 @@
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="Fonts\always together.otf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="nlog.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
