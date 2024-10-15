@@ -640,12 +640,43 @@ namespace EGG9000.Bot.Automated.Coops {
                                     xref.OutsideCoop = true;
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 } else if(farm.CoopId.Length > 0 && farm.FarmType == Ei.FarmType.Contract) {
-                                    var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
-                                    await coopThread.SendMessageAsync(message);
+                                    // This should always happen so that no matter what, we're only sending one message
                                     xref.OutsideCoop = true;
-                                    var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
-                                    var findGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id || g.OverflowServersJson.Contains(guild.Id.ToString()), CancellationToken.None);
-                                    var response = ChannelHelper.DetermineAndSend(_client, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+
+                                    // Calculate a similarity scoreing to weed out typos
+                                    var similarityScoring = FuzzySharp.Fuzz.Ratio(farm.CoopId.ToLower(), coop.Name.ToLower());
+                                    if(similarityScoring >= 80) { // Almost certainly a typo
+                                        var typoMessage = $"It looks like you may have typo-ed when joining your co-op <#{coop.ThreadID}>.\n\n" +
+                                            $"The co-op code is `{coop.Name}`, but your backup shows an entered code of `{farm.CoopId}`.";
+                                        await SendDMWarning(_db, discordUser, coopThread, typoMessage, coop);
+                                    } else {
+                                        // Check if they used 'another' co-op code (from a different contract, etc.)
+                                        var otherContractXref = await _db.UserCoopXrefs
+                                            .Include(c => c.Coop)
+                                                .ThenInclude(c => c.Contract)
+                                            .FirstOrDefaultAsync(
+                                                x => x.User.DiscordId == discordUser.Id &&
+                                                x.Coop.Name.Equals(farm.CoopId, StringComparison.InvariantCultureIgnoreCase),
+                                                cancellationToken: CancellationToken.None
+                                            );
+                                        if(otherContractXref != null) {
+                                            var otherCoopMessage = $"It looks like you may have used the wrong co-op code for {coop.Contract.Name}.\n\n" +
+                                                $"Your co-op code is `{coop.Name}, but your backup shows an entered code of `{farm.CoopId}`, which is the code for {otherContractXref.Coop.Contract.Name}";
+                                            await SendDMWarning(_db, discordUser, coopThread, otherCoopMessage, coop);
+                                        } else {
+                                            var findGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id || g.OverflowServersJson.Contains(guild.Id.ToString()), CancellationToken.None);
+
+                                            // In the case this is 'coming from' an overflow server, and the user is not in the server, we want the mention to stick regardless
+                                            discordUser ??= _client.Guilds.First(g => g.Id == findGuild.Id).GetUser(xref.User.DiscordId);
+                                            
+                                            var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
+                                            await coopThread.SendMessageAsync(message);
+                                            var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
+                                            var response = ChannelHelper.DetermineAndSend(_client, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+                                        }
+                                    }
+                                    
+                                    // And we always want to save the DB
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 }
                             }
