@@ -204,8 +204,8 @@ namespace EGG9000.Bot.Commands {
             }
 
             var maxRolePosition = ((SocketGuildUser) command.User).Roles.Max(role => role.Position);
-            if(role.Position > maxRolePosition) {
-                await command.RespondAsync("You cannot assign roles higher than your own");
+            if(role.Position >= maxRolePosition) {
+                await command.RespondAsync("You cannot assign roles higher or equal than your own");
                 return;
             }
 
