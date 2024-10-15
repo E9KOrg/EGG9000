@@ -455,13 +455,6 @@ namespace EGG9000.Bot.Services {
             // Download the image from the attachment's URL
             var imageStream = await httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
-            //var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
-
-            //// Crop the image
-            //var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
-
-            //// Run tesseract - will either return an EI matching regex, or an empty string.
-            //var (eidMatch, extractedText) = TesseractHelper.RunTesseract(croppedImage);
 
             var croppedImage = EIIDScreenShots.CropScreenShot(image);
             var eiid = EIIDScreenShots.ReadText(croppedImage);
@@ -552,18 +545,15 @@ namespace EGG9000.Bot.Services {
             // Download the image from the attachment's URL
             var imageStream = await httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
-            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
 
-            // Crop the image
-            var croppedImage = TesseractHelper.GetCroppedImage(rgbaImage);
+            var croppedImage = EIIDScreenShots.CropScreenShot(image);
+            var eiid = EIIDScreenShots.ReadText(croppedImage);
+            var eiidMatch = Regex.Match(eiid, @"EI\d{16}");
 
-            // Run tesseract - will either return an EI matching regex, or an empty string.
-            var (eidMatch, extractedText) = TesseractHelper.RunTesseract(croppedImage);
-
-            if (!eidMatch.Success) {
+            if (!eiidMatch.Success) {
                 await message.Channel.SendMessageAsync(
                     "",
-                    embed: EmbedError("**Unable to detect your EI number from this screenshot**.\n\nPlease wait for staff assistance."),
+                    embed: EmbedError("**Unable to detect your EID from this screenshot**.\n\nPlease wait for staff assistance."),
                     messageReference: new MessageReference(message.Id)
                 );
                 return;
@@ -572,7 +562,7 @@ namespace EGG9000.Bot.Services {
             // Construct a new FauxCommand so we can hook into Registering
             var command = new FauxCommand(message, guild.Id);
 
-            await RegisterCommandsSlash._Register(command, db, _discord, _apilink, _bugsnag, eidMatch.Value, message.Author, _logger);
+            await RegisterCommandsSlash._Register(command, db, _discord, _apilink, _bugsnag, eiidMatch.Value, message.Author, _logger);
         }
 
         private async Task HandleMessageReceived(SocketMessage message) {

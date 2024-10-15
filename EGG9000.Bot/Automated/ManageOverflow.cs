@@ -315,7 +315,7 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
 
-                    foreach(var match in matches.Where(x => !coopCategory.PermissionOverwrites.Any(y => y.TargetId == x.OverflowRole.Id))) {
+                    foreach(var match in matches.Where(x => x != null && x.OverflowRole != null && !coopCategory.PermissionOverwrites.Any(y => y.TargetId == x?.OverflowRole?.Id))) {
                         if(cancellationToken.IsCancellationRequested) { continue; }
                         StillAlive();
                         await coopCategory.AddPermissionOverwriteAsync(match.OverflowRole, match.Overwrite.Permissions);
