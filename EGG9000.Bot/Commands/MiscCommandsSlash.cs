@@ -220,6 +220,12 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
+            var maxRolePosition = ((SocketGuildUser) command.User).Roles.Max(role => role.Position);
+            if(role.Position >= maxRolePosition) {
+                await command.RespondAsync("You cannot assign roles higher or equal than your own");
+                return;
+            }
+
             await command.DeferAsync();
             var userids = users.Select(x => x.Id);
             var existingTempRoles = await db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.Now && userids.Contains(x.UserId)).ToListAsync();
