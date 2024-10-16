@@ -1276,6 +1276,7 @@ music
             dbGuild.AllowGuilds = model.AllowGuilds;
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
+            dbGuild.UseWelcomeThreads = model.UseWelcomeThreads;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
             Console.WriteLine("Setting FAQTopicsEnabled to " + model.FAQTopicsEnabled);
@@ -1318,6 +1319,7 @@ music
             public bool PublicScoreGrid { get; set; }
             public string CoopNamePrefix { get; set; }
             public bool RemoveFindCoopSpot { get; set; }
+            public bool UseWelcomeThreads { get; set; }
             public bool AddOutsideCoops { get; set; }
             public bool FAQTopicsEnabled { get; set; }
             public int FAQTopicCooldownMinutes { get; set; }

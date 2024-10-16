@@ -103,6 +103,7 @@ namespace EGG9000.Common.Database.Entities {
                 return [.. EIDs.Split(',')];
             }
         }
+        public ulong WelcomeThreadId { get; set; } = ulong.MaxValue;
 
         public DateTimeOffset? LastFAQPosted { get; set; }
 

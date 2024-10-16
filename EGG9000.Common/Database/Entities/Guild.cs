@@ -129,6 +129,7 @@ namespace EGG9000.Common.Database.Entities {
         public string GroupRoles { get; set; }
         public bool PublicScoreGrid { get; set; }
         public bool RemoveFindCoopSpot { get; set; }
+        public bool UseWelcomeThreads { get; set; } = false;
     }
 
     [NotMapped]

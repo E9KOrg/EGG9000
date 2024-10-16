@@ -1,5 +1,4 @@
-﻿
-using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 using EGG9000.Bot;
 using EGG9000.Bot.Commands;
@@ -8,18 +7,15 @@ using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
-using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static System.Collections.Specialized.BitVector32;
 
 namespace EGG9000.Common.Services {
 
@@ -118,55 +114,72 @@ namespace EGG9000.Common.Services {
                 return;
 
             var guilds = await db.Guilds.ToListAsync();
-            var dbguild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
-            if(dbguild == null) {
-                dbguild = guilds.FirstOrDefault(x => x.OverflowServers.Any(y => y == user.Guild.Id));
-                if(dbguild != null) {
-                    //Handle Overflow Role
-                    var mainServer = _discord.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                    var overflowServers = _discord.Guilds.Where(x => dbguild.OverflowServers.Contains(x.Id));
-                    const ulong overflowRoleID = 775547850134257675;
-
-                    bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
-                        inAllOverFlows = overflowServers.All(o => o.Users.Any(u => u.Id == user.Id) || o.Id == user.Guild.Id);
-                    if(inMainWithRole && inAllOverFlows) {
-                        _logger.LogInformation("Removing overflow role for {user}, they joined all overflows", mainServer.Users.First(u => u.Id == user.Id).GetName());
-                        await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
-                    }
-
-                    //Handle assigned co-ops
-                    try {
-                        var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
-                        foreach(var xref in xrefs) {
-                            var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
-                            await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
-                            xref.AddedToChannel = true;
-                            await coopChannel.SendMessageAsync($"Here is your co-op {user.Mention}! The co-op name to join is {xref.Coop.Name}");
-                        }
-                        if(xrefs.Any()) {
-                            await db.SaveChangesAsync();
-                        }
-                    } catch(Exception e) {
-                        _bugsnag.Notify(e);
-                    }
-                }
+            var dbGuild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
+            if(dbGuild == null) {
+                dbGuild = guilds.FirstOrDefault(x => x.OverflowServers.Any(y => y == user.Guild.Id));
+                if(dbGuild != null) await HandleUserJoinedOverflows(user, db, dbGuild);
                 return;
             }
 
+            await HandleUserJoinedMainServer(user, db, dbGuild);
+        }
+
+        private async Task HandleUserJoinedOverflows(SocketGuildUser user, ApplicationDbContext db, Guild dbGuild) {
+            var mainServer = _discord.Guilds.First(x => x.Id == dbGuild.DiscordSeverId);
+            var overflowServers = _discord.Guilds.Where(x => dbGuild.OverflowServers.Contains(x.Id));
+            const ulong overflowRoleID = 775547850134257675;
+
+            bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
+                inAllOverFlows = overflowServers.All(o => o.Users.Any(u => u.Id == user.Id) || o.Id == user.Guild.Id);
+            if(inMainWithRole && inAllOverFlows) {
+                _logger.LogInformation("Removing overflow role for {user}, they joined all overflows", mainServer.Users.First(u => u.Id == user.Id).GetName());
+                await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
+            }
+
+            //Handle assigned co-ops
+            try {
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
+                foreach(var xref in xrefs) {
+                    var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
+                    await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                    xref.AddedToChannel = true;
+                    await coopChannel.SendMessageAsync($"Here is your co-op {user.Mention}! The co-op name to join is {xref.Coop.Name}");
+                }
+                if(xrefs.Any()) {
+                    await db.SaveChangesAsync();
+                }
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+            }
+        }
+
+        private async Task HandleUserJoinedMainServer(SocketGuildUser user, ApplicationDbContext db, Guild dbGuild) {
+            var useThreads = dbGuild.UseWelcomeThreads;
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
+            var socketGuild = _discord.Guilds.FirstOrDefault(g => g.Id == user.Guild.Id);
             if(dbuser is not null) {
                 if(dbuser.TempDisabled) {
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.Welcome, new() {
-                        Text = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this."
-                    }, _logger);
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+                    var tempDisabledText = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this.";
+                    if(useThreads) {
+                        var thread = await CreateUserWelcomeThread(welcomeChannel, db, dbGuild, socketGuild, dbuser, user);
+                        await thread.SendMessageAsync(tempDisabledText);
+                        await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled.\n{thread.Mention}" }, _logger);
+                    } else {
+                        await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.Welcome, new() { Text = tempDisabledText }, _logger);
+                        await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+                    }
                     return;
                 }
-                if(dbuser.GuildId != user.Guild.Id) {
+                if(dbuser.GuildId != 0 && dbuser.GuildId != user.Guild.Id) {
                     var moveServerCommandString = await _discord.GetSlashCommandStringAsync(user.Guild, "MoveServer");
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.Welcome, new() {
-                        Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the {moveServerCommandString} command."
-                    }, _logger);
+                    var moveServerText = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the {moveServerCommandString} command.";
+                    if(useThreads) {
+                        var thread = await CreateUserWelcomeThread(welcomeChannel, db, dbGuild, socketGuild, dbuser, user);
+                        await thread.SendMessageAsync(moveServerText);
+                    } else {
+                        await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.Welcome, new() { Text = moveServerText }, _logger);
+                    }
                     return;
                 }
                 dbuser.EggIncAccounts.ForEach(async account => {
@@ -183,20 +196,49 @@ namespace EGG9000.Common.Services {
                 var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
                 var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
                 var roleText = role is not null ? $" You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}" : "";
-                var response = await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
+                var response = await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
             }
 
             if(_debug) return;
 
-            var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
-            var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
-            var talkChannel = ChannelHelper.DetermineChannelType(dbguild, _discord.GetGuild(dbguild.DiscordSeverId), GuildChannelType.TalkToStaff);
-            if(talkChannel is not null) msg += $" If you have any questions feel free to ask us in {((SocketTextChannel)talkChannel).Mention}, we are glad you are here!";
+            var genericWelcomeMessage = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
+            var talkChannel = ChannelHelper.DetermineChannelType(dbGuild, _discord.GetGuild(dbGuild.DiscordSeverId), GuildChannelType.TalkToStaff);
+            if(talkChannel is not null) genericWelcomeMessage += $" If you have any questions feel free to ask us in {((SocketTextChannel)talkChannel).Mention}, we are glad you are here!";
 
-            await welcomeChannel.SendMessageAsync(msg);
+            if(useThreads) {
+                var thread = await CreateUserWelcomeThread(welcomeChannel, db, dbGuild, socketGuild, dbuser, user);
+                await thread.SendMessageAsync(genericWelcomeMessage);
+                await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
+            } else await welcomeChannel.SendMessageAsync(genericWelcomeMessage);
+        }
+
+        private static async Task<IThreadChannel> CreateUserWelcomeThread(SocketTextChannel welcomeChannel, ApplicationDbContext db, Guild dbGuild, SocketGuild socketGuild, DBUser dbUser, SocketGuildUser discordUser, IMessage originalMessage = null, bool deleteOriginalMessage = true) {
+            var thread = await welcomeChannel.CreateThreadAsync(
+                name: discordUser.Username,
+                type: ThreadType.PrivateThread,
+                message: originalMessage,
+                options: new RequestOptions() {
+                    RetryMode = RetryMode.RetryRatelimit,
+                }
+            );
+
+            if(thread == null) return null;
+
+            var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == dbGuild.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
+            if(staffRole != null) {
+                var pingIntoMessage = await thread.SendMessageAsync(".");
+                await pingIntoMessage.ModifyAsync(m => m.Content = staffRole.Mention);
+                await pingIntoMessage.DeleteAsync();
+            }
+
+            if(deleteOriginalMessage && originalMessage is not null) await originalMessage.DeleteAsync();
+            dbUser.WelcomeThreadId = thread.Id;
+            await db.SaveChangesAsyncRetry(2);
+
+            return thread;
         }
 
         public async Task UserLeft(SocketGuild guild, SocketUser user, ApplicationDbContext db) {
