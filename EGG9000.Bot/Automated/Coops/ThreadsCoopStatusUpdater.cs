@@ -656,7 +656,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                                 .ThenInclude(c => c.Contract)
                                             .FirstOrDefaultAsync(
                                                 x => x.User.DiscordId == discordUser.Id &&
-                                                x.Coop.Name.Equals(farm.CoopId, StringComparison.InvariantCultureIgnoreCase),
+                                                x.Coop.Name.ToLower() == farm.CoopId.ToLower(),
                                                 cancellationToken: CancellationToken.None
                                             );
                                         if(otherContractXref != null) {
