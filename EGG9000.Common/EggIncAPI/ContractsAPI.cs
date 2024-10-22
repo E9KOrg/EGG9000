@@ -8,7 +8,7 @@ using Ei;
 using Google.Protobuf;
 
 using Microsoft.Extensions.Caching.Memory;
-
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 using System;
@@ -252,49 +252,58 @@ namespace EGG9000.Bot.EggIncAPI {
             }, "EI4765194876354560", true);
         }
 
-        public static async Task<ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, string EIID = null, List<UserCoopXref> xrefs = null, CancellationToken cancellationToken = default) {
+        public static async Task<ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, string EIID = null, List<UserCoopXref> xrefs = null, ILogger _logger = null, CancellationToken cancellationToken = default) {
             var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
             using var client = new HttpClient(handler);
             client.BaseAddress = new Uri(BaseAddressNew);
 
-            var ms1 = new MemoryStream();
-            var model = new ContractCoopStatusRequest {
-                ContractIdentifier = ContractName,
-                CoopIdentifier = CoopName.ToLower(),
-                Rinfo = GetInfo(EIID ?? UserId),
-                UserId = EIID ?? UserId,
-                ClientVersion = ClientVersion
-            };
-            model.WriteTo(ms1);
-            ms1.Position = 0;
-            var sr = new StreamReader(ms1);
-            var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-            var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
-            client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-            client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-            client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-            bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-            var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
+            try {
+                var ms1 = new MemoryStream();
+                var model = new ContractCoopStatusRequest {
+                    ContractIdentifier = ContractName,
+                    CoopIdentifier = CoopName.ToLower(),
+                    Rinfo = GetInfo(EIID ?? UserId),
+                    UserId = EIID ?? UserId,
+                    ClientVersion = ClientVersion
+                };
+                model.WriteTo(ms1);
+                ms1.Position = 0;
+                var sr = new StreamReader(ms1);
+                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
+                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
+                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
+                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+                var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
 
-            if(response.IsSuccessStatusCode) {
-                var r = await response.Content.ReadAsStringAsync(cancellationToken);
-                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
-
-
-                var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
-                coopStatus.Success = true;
-                if(xrefs != null && coopStatus.Participants.Any(x => x.UserName == "[departed]")) {
-                    var departed = coopStatus.Participants.First(x => x.UserName == "[departed]");
-                    var matchingUser = xrefs.Where(x => x.LastStatus is not null).FirstOrDefault(x => x.LastStatus.ContributionAmount == departed.ContributionAmount);
-                    if(matchingUser is not null) {
-                        departed.UserName = matchingUser.LastStatus.UserName;
-                    }
+                if(response.IsSuccessStatusCode) {
+                    var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
+                    var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
+                    coopStatus.Success = true;
+                    return FixDepartedUsers(coopStatus, xrefs);
+                } else return null;
+            } catch(ArgumentNullException ex) {
+                if(_logger != null) {
+                    var paramName = ex.ParamName;
+                    _logger.LogError("ArgumentNullException in GetCoopStatus:\nParam Name: {pName}\n{message}\n{stackTrace}", paramName, ex.Message, ex.StackTrace);
                 }
-                return coopStatus;
-            } else {
                 return null;
             }
+        }
 
+        private static ContractCoopStatusResponse FixDepartedUsers(ContractCoopStatusResponse coopStatus, List<UserCoopXref> xrefs) {
+            var filteredXrefs = xrefs?.Where(
+                x => x.LastStatus?.ContributionAmount is not null && 
+                !string.IsNullOrEmpty(x.LastStatus?.UserName)
+            ).ToList();
+
+            if(filteredXrefs == null) return coopStatus;
+            foreach(var departedUser in coopStatus.Participants.Where(x => x.UserName == "[departed]")) {
+                var matchingUser = filteredXrefs.FirstOrDefault(x => x.LastStatus.ContributionAmount == departedUser.ContributionAmount);
+                if(matchingUser is not null) departedUser.UserName = matchingUser.LastStatus.UserName;
+            }
+            return coopStatus;
         }
 
         public static T GetFromAuthenticatedMessage<T>(byte[] authenticatedMessage) where T : IMessage, new() {
