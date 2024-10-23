@@ -46,6 +46,7 @@ namespace EGG9000.Bot.Services {
         private readonly DiscordHostedService _discord;
         private List<SlashCommandFunction> _slashCommandFunctions;
         private List<UserCommandFunction> _userCommandFunctions;
+        private List<MessageCommandFunction> _messageCommandFunctions;
         private List<ComponentCommandFunction> _componentCommandFunctions;
         private List<ModalCommandFunction> _modalFunctions;
         private readonly APILink _apilink;
@@ -125,6 +126,17 @@ namespace EGG9000.Bot.Services {
             }
         }
 
+        private async Task _discord_MessageCommandExecuted(SocketMessageCommand arg) {
+            try {
+                var command = _messageCommandFunctions.First(x => x.Name == arg.Data.Name || x.Details.Name == arg.Data.Name);
+                if(command == null) return;
+                _ = Task.Run(() => RunCommand(command, arg));
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
+            }
+        }
+
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
             //_ = arg.DeferAsync();
@@ -157,6 +169,8 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(SocketModal)) {
                             parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
+                            parameters.Add(arg);
+                        } else if(parameterInfo.ParameterType == typeof(SocketMessageCommand)) {
                             parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
                             parameters.Add(await _dbContextFactory.CreateDbContextAsync());
@@ -243,6 +257,7 @@ namespace EGG9000.Bot.Services {
 
                 _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
                 _discord.UserCommandExecuted += _discord_UserCommandExecuted;
+                _discord.MessageCommandExecuted += _discord_MessageCommandExecuted;
                 _discord.MessageReceived += _discord_MessageReceived;
                 _discord.ButtonExecuted += _discord_ButtonExecuted;
                 _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
@@ -293,14 +308,14 @@ namespace EGG9000.Bot.Services {
                 }
 
                 foreach(var command in _userCommandFunctions) {
-                    var guildCommand = new UserCommandBuilder {
+                    var userCommand = new UserCommandBuilder {
                         DefaultMemberPermissions = GuildPermission.UseApplicationCommands
                     };
-                    guildCommand.WithName(command.Details.Name ?? command.Name);
+                    userCommand.WithName(command.Details.Name ?? command.Name);
                     command.Name = command.Details.Name ?? command.Name;
 
                     if(command.Details.AdminOnly != StaffOnlyLevel.None) {
-                        guildCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
+                        userCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
                             StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
                             StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
                             StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
@@ -309,7 +324,27 @@ namespace EGG9000.Bot.Services {
                         };
                     }
 
-                    guildCommandProperties.Add(guildCommand.Build());
+                    guildCommandProperties.Add(userCommand.Build());
+                }
+
+                foreach(var command in _messageCommandFunctions) {
+                    var messageCommand = new MessageCommandBuilder {
+                        DefaultMemberPermissions = GuildPermission.UseApplicationCommands
+                    };
+                    messageCommand.WithName(command.Details.Name ?? command.Name);
+                    command.Name = command.Details?.Name ?? command.Name;
+
+                    if(command.Details.AdminOnly != StaffOnlyLevel.None) {
+                        messageCommand.DefaultMemberPermissions = command.Details.AdminOnly switch {
+                            StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
+                            StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                            StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                            StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                            _ => GuildPermission.UseApplicationCommands
+                        };
+                    }
+
+                    guildCommandProperties.Add(messageCommand.Build());
                 }
 
                 var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync([..globalCommandProperties]);
@@ -784,23 +819,30 @@ namespace EGG9000.Bot.Services {
             var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0);
+
             _userCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
-                      .SelectMany(t => t.GetMethods())
-                      .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0)
-                      .Select(x => new UserCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<UserCommandAttribute>(), Parameters = x.GetParameters() })
-                      .ToList();
+                .SelectMany(t => t.GetMethods())
+                    .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0)
+                    .Select(x => new UserCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<UserCommandAttribute>(), Parameters = x.GetParameters() })
+                    .ToList();
+
+            _messageCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+                .SelectMany(t => t.GetMethods())
+                    .Where(m => m.GetCustomAttributes(typeof(MessageCommandAttribute), false).Length > 0)
+                    .Select(x => new MessageCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<MessageCommandAttribute>(), Parameters = x.GetParameters() })
+                    .ToList();
 
             _componentCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                 .SelectMany(t => t.GetMethods())
-                      .Where(m => m.GetCustomAttributes(typeof(ComponentCommandAttribute), false).Length > 0)
-                      .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
-                      .ToList();
+                    .Where(m => m.GetCustomAttributes(typeof(ComponentCommandAttribute), false).Length > 0)
+                    .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
+                    .ToList();
 
             _modalFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
                 .SelectMany(t => t.GetMethods())
-                      .Where(m => m.GetCustomAttributes(typeof(ModalAttribute), false).Length > 0)
-                      .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })
-                      .ToList();
+                    .Where(m => m.GetCustomAttributes(typeof(ModalAttribute), false).Length > 0)
+                    .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })
+                    .ToList();
 
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;
@@ -809,6 +851,7 @@ namespace EGG9000.Bot.Services {
         public async Task StopAsync(CancellationToken cancellationToken) {
             _discord.SlashCommandExecuted -= _discord_SlashCommandExecuted;
             _discord.UserCommandExecuted -= _discord_UserCommandExecuted;
+            _discord.MessageCommandExecuted -= _discord_MessageCommandExecuted;
             _discord.MessageReceived -= _discord_MessageReceived;
             _discord.ButtonExecuted -= _discord_ButtonExecuted;
             _discord.SelectMenuExecuted -= _discord_SelectMenuExecuted;

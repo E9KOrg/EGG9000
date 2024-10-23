@@ -21,6 +21,11 @@ namespace EGG9000.Common.Commands {
         public StaffOnlyLevel AdminOnly;
     }
     [AttributeUsage(AttributeTargets.Method)]
+    public class MessageCommandAttribute : System.Attribute {
+        public string Name = "";
+        public StaffOnlyLevel AdminOnly;
+    }
+    [AttributeUsage(AttributeTargets.Method)]
     public class SlashCommandAttribute : System.Attribute {
         public string Description = "";
         public StaffOnlyLevel AdminOnly = StaffOnlyLevel.None;
@@ -53,6 +58,9 @@ namespace EGG9000.Common.Commands {
     }
     public class UserCommandFunction : CommandFunctionBase {
         public UserCommandAttribute Details { get; set; }
+    }
+    public class MessageCommandFunction : CommandFunctionBase {
+        public MessageCommandAttribute Details { get; set; }
     }
     public class ComponentCommandFunction : CommandFunctionBase {
         public ComponentCommandAttribute Details { get; set; }
