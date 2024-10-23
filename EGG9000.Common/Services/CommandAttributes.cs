@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,16 @@ namespace EGG9000.Common.Commands {
         public Type AutocompleteHandler;
         public bool PositiveOnly = false;
         public int StringMaxLength = 6000;
+    }
+
+    [AttributeUsage(AttributeTargets.Parameter)]
+    public class MessageParamAttribute : System.Attribute {
+        public string? Label = null;
+        public string Placeholder = "";
+        public TextInputStyle TextInputStyle = TextInputStyle.Short;
+        public int? MinLength = null;
+        public int? MaxLength = null;
+        public bool? Required = null;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]

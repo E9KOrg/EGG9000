@@ -15,6 +15,7 @@ namespace EGG9000.Common.Services {
         SocketMessage _originalMessage;
         SocketSlashCommand _socketSlashCommand;
         SocketUserCommand _socketUserCommand;
+        SocketMessageCommand _socketMessageCommand;
         SocketCommandBase _socketCommandBase;
 
         RestUserMessage _message;
@@ -24,6 +25,7 @@ namespace EGG9000.Common.Services {
             _originalMessage = message;
             _guildid = guildid;
         }
+
         public FauxCommand(SocketSlashCommand command) {
             _socketSlashCommand = command;
             _socketCommandBase = command;
@@ -34,12 +36,21 @@ namespace EGG9000.Common.Services {
             _socketCommandBase = command;
         }
 
+        public FauxCommand(SocketMessageCommand command) {
+            _socketMessageCommand = command;
+            _socketCommandBase = command;
+        }
+
 
         public static implicit operator FauxCommand(SocketSlashCommand command) {
             return new FauxCommand(command);
         }
 
         public static implicit operator FauxCommand(SocketUserCommand command) {
+            return new FauxCommand(command);
+        }
+
+        public static implicit operator FauxCommand(SocketMessageCommand command) {
             return new FauxCommand(command);
         }
 
@@ -126,12 +137,17 @@ namespace EGG9000.Common.Services {
                 if(_socketUserCommand is not null)
                     return new FauxApplicationCommandData {
                         Name = _socketUserCommand.Data.Name,
-                        Options = _socketUserCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList()
+                        Options = _socketUserCommand.Data.Options.Select(x => new FauxSocketCommandDataOption(x)).ToList()
+                    };
+                if(_socketMessageCommand is not null)
+                    return new FauxApplicationCommandData {
+                        Name = _socketMessageCommand.Data.Name,
+                        Options = _socketMessageCommand.Data.Options.Select(x => new FauxSocketCommandDataOption(x)).ToList()
                     };
                 if(_socketSlashCommand is not null)
                     return new FauxApplicationCommandData {
                         Name = _socketSlashCommand.Data.Name,
-                        Options = _socketSlashCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList()
+                        Options = _socketSlashCommand.Data.Options.Select(x => new FauxSocketCommandDataOption(x)).ToList()
                     };
                 var commandText = new Regex(@"^/(\w+)").Match(_originalMessage.Content).Groups[1].Value.ToLower();
 
@@ -139,19 +155,19 @@ namespace EGG9000.Common.Services {
                     var eggincid = new Regex(@"E[I1]\d+").Match(_originalMessage.Content).Value;
                     return new FauxApplicationCommandData {
                         Name = commandText,
-                        Options = new List<FauxSocketSlashCommandDataOption>() {
-                            new FauxSocketSlashCommandDataOption() { 
-                                Name = "eggincid", 
-                                Type = ApplicationCommandOptionType.String, 
+                        Options = [
+                            new FauxSocketCommandDataOption() {
+                                Name = "eggincid",
+                                Type = ApplicationCommandOptionType.String,
                                 Value = eggincid
                             }
-                        }
+                        ]
                     };
                 }
 
                 
 
-                return new FauxApplicationCommandData { Name = commandText, Options = new List<FauxSocketSlashCommandDataOption>() };
+                return new FauxApplicationCommandData { Name = commandText, Options = [] };
             }
         }
 
@@ -164,25 +180,25 @@ namespace EGG9000.Common.Services {
 
             public string Name { get; set; }
 
-            public IList<FauxSocketSlashCommandDataOption> Options {
+            public IList<FauxSocketCommandDataOption> Options {
                 get; set;
             }
         }
 
-        public class FauxSocketSlashCommandDataOption {
+        public class FauxSocketCommandDataOption {
             public string Name { get; set; }
             public ApplicationCommandOptionType Type { get; set; }
             public object Value { get; set; }
-            public List<FauxSocketSlashCommandDataOption> Options { get; set; }
+            public List<FauxSocketCommandDataOption> Options { get; set; }
 
-            public FauxSocketSlashCommandDataOption() {
+            public FauxSocketCommandDataOption() {
 
             }
-            public FauxSocketSlashCommandDataOption(IApplicationCommandInteractionDataOption option) {
+            public FauxSocketCommandDataOption(IApplicationCommandInteractionDataOption option) {
                 Name = option.Name;
                 Type = option.Type;
                 Value = option.Value;
-                Options = option.Options?.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList() ?? new List<FauxSocketSlashCommandDataOption>();
+                Options = option.Options?.Select(x => new FauxSocketCommandDataOption(x)).ToList() ?? new List<FauxSocketCommandDataOption>();
             }
         }
 

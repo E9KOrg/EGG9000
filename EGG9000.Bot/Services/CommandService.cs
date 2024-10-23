@@ -1,6 +1,5 @@
 ﻿
 using Discord;
-using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
@@ -29,7 +28,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -148,6 +146,10 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(GetParam(parameterInfo, arg));
                             continue;
                         }
+                        if(parameterInfo.GetCustomAttributes<MessageParamAttribute>().Any()) {
+                            parameters.Add(GetMessageParam(parameterInfo, arg));
+                            continue;
+                        }
                         if(parameterInfo.GetCustomAttributes<ComponentDataAttribute>().Any()) {
                             string[] data;
                             if(arg is SocketModal modal) {
@@ -235,7 +237,7 @@ namespace EGG9000.Bot.Services {
 
 
 
-        private static FauxSocketSlashCommandDataOption FindOption(string name, IList<FauxSocketSlashCommandDataOption> options) {
+        private static FauxSocketCommandDataOption FindOption(string name, IList<FauxSocketCommandDataOption> options) {
             var foundOption = options.FirstOrDefault(x => x.Name == name);
             if(foundOption != null) {
                 return foundOption;
@@ -409,7 +411,52 @@ namespace EGG9000.Bot.Services {
             }
         }
 
+        private static readonly List<Type> ImplementedMessageParamTypes = [
+            typeof(string),
+            typeof(uint),
+            typeof(int),
+        ];
 
+        private async static Task<object> GetMessageParam(ParameterInfo parameterInfo, IDiscordInteraction arg) {
+            if(arg is FauxCommand) {
+                return null;
+            } else {
+                var name = parameterInfo.Name;
+
+                if(!ImplementedMessageParamTypes.Contains(parameterInfo.ParameterType)) {
+                    throw new NotImplementedException($"Parameter type of {parameterInfo.ParameterType} is not handled as a MessageParam yet.");
+                }
+
+                var messageParamAttrib = parameterInfo.GetCustomAttribute<MessageParamAttribute>();
+                var textInputBuilder =
+                    new TextInputBuilder()
+                        .WithLabel(messageParamAttrib.Label ?? name)
+                        .WithRequired(messageParamAttrib?.Required ?? true)
+                        .WithStyle(messageParamAttrib.TextInputStyle);
+
+                // TODO: Right now since this is just string, uint, and int, we don't need a custom parser for default value types -> string
+                // But if we expand the MessageParamAttribute supported types in the future, we will need a forward and backward parser between
+                // newly implemented types and string, both so we can provide a default value, and parse the value back to the correct type
+                // after accepting it from the user - for right now, .ToString() is "good enough"
+                if(parameterInfo.HasDefaultValue) textInputBuilder.WithValue(parameterInfo.DefaultValue.ToString());
+
+                if(!string.IsNullOrEmpty(messageParamAttrib.Placeholder)) textInputBuilder.WithPlaceholder(messageParamAttrib.Placeholder);
+                if(messageParamAttrib.MinLength is not null) textInputBuilder.WithMinLength(messageParamAttrib.MinLength!.Value);
+                if(messageParamAttrib.MaxLength is not null) textInputBuilder.WithMaxLength(messageParamAttrib.MaxLength!.Value);
+
+                var modalPromptForInput =
+                    new ModalBuilder()
+                    .WithTitle($"Argument - `{messageParamAttrib.Label ?? name}`")
+                    .AddTextInput(textInputBuilder)
+                    .Build();
+
+                // TODO: Figure out how to send the modal and extract the value without having to spawn a secondary interaction????
+                // await arg.RespondWithModalAsync(modalPromptForInput);
+
+                // Cast the input back from Discord into the type of parameterInfo.ParameterType
+                return null;
+            }
+        }
 
         private static object GetParam(ParameterInfo parameterInfo, IDiscordInteraction arg) {
             if(arg is FauxCommand) {
