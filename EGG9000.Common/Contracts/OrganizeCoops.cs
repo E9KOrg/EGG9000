@@ -201,7 +201,7 @@ namespace EGG9000.Common.Contracts {
                     if(registerRewards is null) return false;
 
                     //Filter must either be empty, or have at least one reward that matches
-                    return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
+                    return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchLastReward(gradeSpec, r));
                 }
             }
 
