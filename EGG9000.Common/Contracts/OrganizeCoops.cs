@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
@@ -10,11 +11,11 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbguild, SocketGuild guild = null, int overrideNumber = 0) {
+        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbGuild, SocketGuild guild = null, int overrideNumber = 0) {
             var groups = new List<PotentialCoopGroup>();
             var excluded = new List<(string reason, UserByAccount account)>();
 
-            if(dbguild is not null && dbguild.DisableBG) {
+            if(dbGuild is not null && dbGuild.DisableBG) {
                 await guild.DownloadUsersAsync();
             }
 
@@ -26,7 +27,7 @@ namespace EGG9000.Common.Contracts {
                 UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
                 //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
                 Group = a.GetGroup(contract.Details.CcOnly),
-                RoleId = dbguild is not null && dbguild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbguild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
+                RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
             })).ToList();
 
             FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
@@ -50,24 +51,15 @@ namespace EGG9000.Common.Contracts {
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
 
             FilterAccounts(accounts, excluded, x => {
-                //With no BGs on guilds, filters are disabled - always true
-                if(dbguild is not null && dbguild.DisableBG) return true;
-
-                //If a player does not have a set grade, we can't check the rewards for that grade
-                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) return false;
-
                 //Try to find the right gradespec, if something goes wrong, default to false
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
                 if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return false;
 
-                //Figure out which list to use in case of a leggacy
-                var leggacyRegisterRewards = new List<Ei.RewardType>();
-                if(x.Account.LeggacyAutoRegisterRewards is null || x.Account.LeggacyAutoRegisterRewards.Count == 0) leggacyRegisterRewards = x.Account.AutoRegisterRewards;
-                else leggacyRegisterRewards = x.Account.LeggacyAutoRegisterRewards;
-
                 //Which list applies to the current contract?
-                var registerRewards = contract.Details.Leggacy ? leggacyRegisterRewards : x.Account.AutoRegisterRewards;
-                registerRewards ??= []; //If it's null, initialize it so it has a 0-count
+                var registerRewards = GetRegisterRewards(dbGuild, x, contract);
+
+                //Null here is not empty list, but an explicit "do not apply"
+                if(registerRewards is null) return false;
 
                 //Filter must either be empty, or have at least one reward that matches
                 return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
@@ -75,25 +67,25 @@ namespace EGG9000.Common.Contracts {
 
             // Run CheckOnPreviousComplete last so that all other filters are applied to `accounts` first
             // This fixes some issues with  RedoLeggacyOption.YesOtherAccountMatch
-            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
+            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(dbGuild, x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
 
             
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                 if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
                     continue;
                 var includeBg = new List<int>();
-                if(dbguild is not null && dbguild.DisableBG) {
-                    for(var i = 0; i < dbguild.GroupRoles.Split(",").Length; i++) {
+                if(dbGuild is not null && dbGuild.DisableBG) {
+                    for(var i = 0; i < dbGuild.GroupRoles.Split(",").Length; i++) {
                         var group = new PotentialCoopGroup {
                             Grade = grade,
                             BoardingGroup = i
                         };
-                        var roleid = guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[i]))?.Id ?? 0;
+                        var roleid = guild.GetRole(ulong.Parse(dbGuild.GroupRoles.Split(",")[i]))?.Id ?? 0;
                         if(roleid == 0) {
                             continue;
                         }
                         groups.Add(group);
-                        group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, 0, grade, contract.Details, [], true, AllowGuilds: dbguild.AllowGuilds, overrideNumber, roleid);
+                        group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, 0, grade, contract.Details, [], true, AllowGuilds: dbGuild.AllowGuilds, overrideNumber, roleid);
                     }
                 } else {
                     var bgLimit = contract.Details.CcOnly ? 4 : 3;
@@ -112,7 +104,7 @@ namespace EGG9000.Common.Contracts {
                         }
 
                         if(bg > SkipBG) {
-                            group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, bg, grade, contract.Details, includeBg, dontMergeDown, AllowGuilds: dbguild.AllowGuilds, overrideNumber);
+                            group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, bg, grade, contract.Details, includeBg, dontMergeDown, AllowGuilds: dbGuild.AllowGuilds, overrideNumber);
                         }
                     }
                 }
@@ -134,6 +126,30 @@ namespace EGG9000.Common.Contracts {
             return (groups, excluded);
         }
 
+        private static List<Ei.RewardType> GetRegisterRewards(Guild dbGuild, UserByAccount x, Contract contract) {
+            //With no BGs on guilds, filters are disabled - always empty
+            if(dbGuild is not null && dbGuild.DisableBG) return null;
+
+            //If a player does not have a set grade, we can't check the rewards for that grade
+            if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) return null;
+
+            //Try to find the right gradespec, if something goes wrong, default to false
+            var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
+            if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return null;
+
+            //Figure out which list to use in case of a leggacy
+            var leggacyRegisterRewards = new List<Ei.RewardType>();
+            if(x.Account.LeggacyAutoRegisterRewards is null || x.Account.LeggacyAutoRegisterRewards.Count == 0) leggacyRegisterRewards = x.Account.AutoRegisterRewards;
+            else leggacyRegisterRewards = x.Account.LeggacyAutoRegisterRewards;
+
+            //Which list applies to the current contract?
+            var registerRewards = contract.Details.Leggacy ? leggacyRegisterRewards : x.Account.AutoRegisterRewards;
+            registerRewards ??= []; //If it's null, initialize it so it has a 0-count
+
+            //Filter must either be empty, or have at least one reward that matches
+            return registerRewards;
+        }
+
         private static void FilterAccounts(List<UserByAccount> accounts, List<(string, UserByAccount)> excluded, Func<UserByAccount, bool> includeInCoopFilter, string reasonNotIncluded) {
             excluded.AddRange(accounts.Where(x => !includeInCoopFilter(x)).Select(x => (reasonNotIncluded, x)));
             accounts.RemoveAll(x => !includeInCoopFilter(x));
@@ -146,7 +162,7 @@ namespace EGG9000.Common.Contracts {
             return a1.GetGrade().Equals(a2.GetGrade()) || (c.cc_only && a1.HasActiveSubscription() && a2.HasActiveSubscription());
         }
 
-        private static bool CheckOnPreviousComplete(UserByAccount x, Contract contract, List<UserByAccount> otherAccounts) {
+        private static bool CheckOnPreviousComplete(Guild dbGuild, UserByAccount x, Contract contract, List<UserByAccount> otherAccounts) {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAll)
                 return true;
 
@@ -160,7 +176,7 @@ namespace EGG9000.Common.Contracts {
                 ua.Account.Id != x.Account.Id &&
                 MatchGrade(ua.Account, x.Account, contract) &&
                 MatchGroup(ua.Account, x.Account, contract) &&
-                CheckOnPreviousComplete(ua, contract, [])
+                CheckOnPreviousComplete(dbGuild, ua, contract, [])
             )) return true;
 
             if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
@@ -172,7 +188,20 @@ namespace EGG9000.Common.Contracts {
                 if(completedTwoRewards && !x.Account.DoTwoToThreeContracts) {
                     return false;
                 } else if(completedTwoRewards && x.Account.DoTwoToThreeContracts) {
-                    return true;
+                    // We want to see if the third reward matches filters
+
+                    //Try to find the right gradespec, if something goes wrong, default to false
+                    var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
+                    if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return false;
+
+                    //Which list applies to the current contract?
+                    var registerRewards = GetRegisterRewards(dbGuild, x, contract);
+
+                    //Null here is not empty list, but an explicit "do not apply"
+                    if(registerRewards is null) return false;
+
+                    //Filter must either be empty, or have at least one reward that matches
+                    return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
                 }
             }
 
