@@ -136,18 +136,23 @@ namespace EGG9000.Bot.Services {
         }
 
 
-        private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
+        private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg, List<object> processedParams = null) {
             //_ = arg.DeferAsync();
             if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5))) {
                 try {
-                    var parameters = new List<object>();
+                    var parameters = processedParams ?? [];
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
                             parameters.Add(GetParam(parameterInfo, arg));
                             continue;
                         }
                         if(parameterInfo.GetCustomAttributes<MessageParamAttribute>().Any()) {
-                            parameters.Add(GetMessageParam(parameterInfo, arg));
+                            var param = GetMessageParam(parameterInfo, arg);
+                            if (param != null) {
+                                parameters.Add(param);
+                                await RunCommand(command, arg, parameters);
+                                return;
+                            }
                             continue;
                         }
                         if(parameterInfo.GetCustomAttributes<ComponentDataAttribute>().Any()) {

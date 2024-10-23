@@ -51,7 +51,7 @@ namespace EGG9000.Common.Commands {
 
     [AttributeUsage(AttributeTargets.Parameter)]
     public class MessageParamAttribute : System.Attribute {
-        public string? Label = null;
+        public string Label = null;
         public string Placeholder = "";
         public TextInputStyle TextInputStyle = TextInputStyle.Short;
         public int? MinLength = null;
