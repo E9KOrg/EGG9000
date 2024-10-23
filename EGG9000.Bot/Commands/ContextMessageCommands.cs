@@ -16,7 +16,7 @@ namespace EGG9000.Bot.Commands {
 
         /*[MessageCommand(Name = "Reply as E9K", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task ReplyAsE9K(SocketMessageCommand command) {
-            command.
+            command.RespondWithModalAsync()
         }*/
     }
 }

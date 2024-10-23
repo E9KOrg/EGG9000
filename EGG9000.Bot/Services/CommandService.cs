@@ -417,7 +417,7 @@ namespace EGG9000.Bot.Services {
             typeof(int),
         ];
 
-        private async static Task<object> GetMessageParam(ParameterInfo parameterInfo, IDiscordInteraction arg) {
+        private static async Task<object> GetMessageParam(ParameterInfo parameterInfo, IDiscordInteraction arg) {
             if(arg is FauxCommand) {
                 return null;
             } else {
