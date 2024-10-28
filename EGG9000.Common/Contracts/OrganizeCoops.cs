@@ -53,6 +53,9 @@ namespace EGG9000.Common.Contracts {
                 //With no BGs on guilds, filters are disabled - always true
                 if(dbguild is not null && dbguild.DisableBG) return true;
 
+                // Colleggtible bypass should occur before any possible `return false`-s
+                if(UncompleteColleggtibleBypass(x, contract)) return true;
+
                 //If a player does not have a set grade, we can't check the rewards for that grade
                 if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) return false;
 
@@ -146,6 +149,13 @@ namespace EGG9000.Common.Contracts {
             return a1.GetGrade().Equals(a2.GetGrade()) || (c.cc_only && a1.HasActiveSubscription() && a2.HasActiveSubscription());
         }
 
+        private static bool UncompleteColleggtibleBypass(UserByAccount x, Contract contract) {
+            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
+                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
+            }
+            return false;
+        }
+ 
         private static bool CheckOnPreviousComplete(UserByAccount x, Contract contract, List<UserByAccount> otherAccounts) {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAll)
                 return true;
@@ -163,9 +173,8 @@ namespace EGG9000.Common.Contracts {
                 CheckOnPreviousComplete(ua, contract, [])
             )) return true;
 
-            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
-                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
-            }
+            // Colleggtible bypass should occur before any possible `return false`-s
+            if(UncompleteColleggtibleBypass(x, contract)) return true;
 
             if(contract.HadTwoRewards && contract.Details.GradeSpecs[((int)x.Account.GetGrade()) - 1].Goals.Count == 3) {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
