@@ -51,6 +51,9 @@ namespace EGG9000.Common.Contracts {
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
 
             FilterAccounts(accounts, excluded, x => {
+                // Colleggtible bypass should occur before any possible falsey returns
+                if(UncompleteColleggtibleBypass(x, contract)) return true;
+
                 //Try to find the right gradespec, if something goes wrong, default to false
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
                 if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return false;
@@ -121,8 +124,6 @@ namespace EGG9000.Common.Contracts {
                 }
             }
 
-
-
             return (groups, excluded);
         }
 
@@ -162,6 +163,13 @@ namespace EGG9000.Common.Contracts {
             return a1.GetGrade().Equals(a2.GetGrade()) || (c.cc_only && a1.HasActiveSubscription() && a2.HasActiveSubscription());
         }
 
+        private static bool UncompleteColleggtibleBypass(UserByAccount x, Contract contract) {
+            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
+                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
+            }
+            return false;
+        }
+
         private static bool CheckOnPreviousComplete(Guild dbGuild, UserByAccount x, Contract contract, List<UserByAccount> otherAccounts) {
             if(x.Account.RedoLeggacySelection == RedoLeggacyOption.YesAll)
                 return true;
@@ -179,9 +187,8 @@ namespace EGG9000.Common.Contracts {
                 CheckOnPreviousComplete(dbGuild, ua, contract, [])
             )) return true;
 
-            if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
-                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
-            }
+            // Colleggtible bypass should occur before any possible falsey returns
+            if(UncompleteColleggtibleBypass(x, contract)) return true;
 
             if(contract.HadTwoRewards && contract.Details.GradeSpecs[((int)x.Account.GetGrade()) - 1].Goals.Count == 3) {
                 var completedTwoRewards = (x.Account.Backup.Farms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2) || x.Account.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.NumGoalsAchieved == 2));
