@@ -850,7 +850,7 @@ namespace EGG9000.Site.Controllers {
                 Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
                 CustomEggs = await _db.GetCustomEggsAsync()
             };
-            model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? new List<UserCoopXref>());
+            model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
 
             if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                 var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
