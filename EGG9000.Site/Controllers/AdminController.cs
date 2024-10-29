@@ -643,7 +643,8 @@ namespace EGG9000.Site.Controllers {
                 x.Id,
                 x.DiscordId,
                 x.DiscordUsername,
-                x._eggIncIds
+                x._eggIncIds,
+                x.TempDisabled
             }).ToListAsync();
 
             var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < scoreThreshold).Select(y => {
@@ -653,7 +654,8 @@ namespace EGG9000.Site.Controllers {
                     DiscordUsername = user.DiscordUsername,
                     RunningScore = y.xref.RunningScore.Value, 
                     Grade = (Ei.Contract.Types.PlayerGrade)y.League,
-                    EggIncId = y.xref?.EggIncId ?? ""
+                    EggIncId = y.xref?.EggIncId ?? "",
+                    Disabled = user.TempDisabled
                 };
             });
 
@@ -747,6 +749,7 @@ namespace EGG9000.Site.Controllers {
             public IGuildUser DiscordUser { get; set; }
             public Ei.Contract.Types.PlayerGrade Grade { get; set; }
             public string EggIncId { get; set; }
+            public bool Disabled { get; set; }
         }
 
         public async Task<IActionResult> Sleepers() {
