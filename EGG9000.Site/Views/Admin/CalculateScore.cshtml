@@ -35,7 +35,9 @@
         @foreach (var user in Model.UsersBelowThreshold.OrderBy(x => x.RunningScore)) {
             <tr>
                 <td><img class="thumbnail" src="@PlayerGradeDetails.GetImage(user.Grade)" /></td>
-                <td onclick="copyIdToClipboard('@user.DiscordUsername.Split(" (")[0]', 'low-copy-notification-name')" title="Click to copy">@user.DiscordUsername</td>
+                <td style="color: @(user.Disabled ? "red" : "")" onclick="copyIdToClipboard('@user.DiscordUsername.Split(" (")[0]', 'low-copy-notification-name')" title="Click to copy">
+                    @user.DiscordUsername
+                </td>
                 <td>@user.RunningScore.ToString("G3")</td>
                 <td onclick="copyIdToClipboard('@user.DiscordId', 'low-copy-notification-discord')" title="Click to copy">@user.DiscordId</td>
                 <td onclick="copyIdToClipboard('@user.EggIncId', 'low-copy-notification-eid')" title="Click to copy">@user.EggIncId</td>
