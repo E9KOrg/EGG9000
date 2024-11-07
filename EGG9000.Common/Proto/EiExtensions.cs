@@ -102,6 +102,7 @@ namespace Ei {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
         public bool Completed {
             get {
+                if(Contract == null) return false; // Rare corrupted byte
                 var targetGoals = Contract.GradeSpecs.Count > 0 && Grade != PlayerGrade.GradeUnset ?
                     Contract.GradeSpecs[(int)(Grade - 1)].Goals.Count :
                     (Contract.GoalSets.Any() ?

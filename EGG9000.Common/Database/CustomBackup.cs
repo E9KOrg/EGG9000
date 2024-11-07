@@ -377,7 +377,7 @@ namespace EGG9000.Common.Database {
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
             var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
-    ?? backup.Contracts.Archive.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
+                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.Contract?.Identifier == farm.ContractId);
 
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
@@ -469,6 +469,7 @@ namespace EGG9000.Common.Database {
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts) {
             foreach(var contract in contracts) {
+                if(contract.Contract is null) continue; // Rare case of corrupted bytes
                 ArchivedFarms.Add(new CustomArchivedFarms(contract));
             }
         }
