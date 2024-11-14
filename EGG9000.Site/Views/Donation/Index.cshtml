@@ -77,7 +77,8 @@
 </div>
 
 
-
+@*
+    //!! removed apiKey, if you reenable we need to come up with a different solution
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap-tpls.min.js"></script>
@@ -99,7 +100,8 @@
                 $scope.error = '';
                 $scope.test = true;
 
-                $scope.stripe = Stripe('@apiKey');
+                //!! removed apiKey, if you reenable we need to come up with a different solution
+                //$scope.stripe = Stripe('@apiKey');
 
                 $scope.products = @Html.Raw(JsonConvert.SerializeObject(productsAndPrices));
                 console.log($scope.products);
