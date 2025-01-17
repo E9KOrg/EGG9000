@@ -32,13 +32,13 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
         public const string BaseAddressNew = "https://www.auxbrain.com/";
         public const string UserId = "EI5223299518300160";
-        public static uint ClientVersion { get; set; } = 67;
+        public static uint ClientVersion { get; set; } = 68;
 
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.33.0",
-                Build = "111290",
+                Version = "1.34.1",
+                Build = "111300",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en",
@@ -241,7 +241,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public static async Task<PeriodicalsResponse> GetPeriodicalsAsync() {
             return await Post<PeriodicalsResponse, GetPeriodicalsRequest>(new GetPeriodicalsRequest {
-                UserId = "EI4765194876354560",
+                UserId = "EI5482515761594368",
                 PiggyFull = false,
                 PiggyFoundFull = false,
                 SecondsFullRealtime = 2339576.17448521,
@@ -264,7 +264,8 @@ namespace EGG9000.Bot.EggIncAPI {
                     CoopIdentifier = CoopName.ToLower(),
                     Rinfo = GetInfo(EIID ?? UserId),
                     UserId = EIID ?? UserId,
-                    ClientVersion = ClientVersion
+                    ClientVersion = ClientVersion,
+                    ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
                 };
                 model.WriteTo(ms1);
                 ms1.Position = 0;
