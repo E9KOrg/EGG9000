@@ -33,7 +33,7 @@ namespace EGG9000.Site.Controllers {
     public class AdminController(UserManager<IdentityUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
-        public static readonly double scoreThreshold = 1e-2;
+        public static readonly double scoreThreshold = 0.05;
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<IdentityUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
@@ -563,11 +563,22 @@ namespace EGG9000.Site.Controllers {
                     ContractID = y.Coop.ContractID,
                     RunningScore = y.RunningScore,
                     Date = y.Coop.CoopCompleted ?? y.Coop.CoopEnds ?? y.CreatedOn
-                })
+                }),
+                Id = x.Id,
+                //AccountCount = x.EggIncAccounts.Count(),
+                //Standard = x.EggIncAccounts.Any(y => y.Backup.PermitLevel == 0)
             }).ToListAsync();
 
             slackers = slackers.Where(x => x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold && y.Date > DateTimeOffset.Now.AddMonths(-4))).ToList();
 
+
+            var ids = slackers.Select(x => x.Id).ToArray();
+            var users = await _db.DBUsers.Where(x => ids.Contains(x.Id)).ToListAsync();
+            foreach(var item in slackers) {
+                var account = users.First(x => x.Id == item.Id);
+                item.AccountCount = account.EggIncAccounts.Count;
+                item.Standard = account.EggIncAccounts.Any(y => y.Backup.PermitLevel == 0);
+            }
 
             ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
 
@@ -576,7 +587,10 @@ namespace EGG9000.Site.Controllers {
 
         public class Slacker {
             public string DiscordUsername { get; set; }
+            public bool Standard { get; set; }
+            public int AccountCount { get; set; }
             public IEnumerable<SlackerXref> UserCoopXrefs { get; set; }
+            public Guid Id { get; set; } 
         }
 
         public class SlackerXref {

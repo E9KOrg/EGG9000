@@ -12,18 +12,59 @@
 	string GetClass(float score) {
 		return score > 1e-1 ? "bg-success" : score > threshold ? "bg-warning" : "bg-danger";
 	}
+
+	var powersOf10 = new decimal[28 + 1 + 28];
+	powersOf10[28] = 1;
+	decimal pup = 1, pdown = 1;
+	for (int i = 1; i < 29; i++)
+	{
+		pup *= 10;
+		powersOf10[i + 28] = pup;
+		pdown /= 10;
+		powersOf10[28 - i] = pdown;
+	}
+
+	double round(float score) {
+		int digits = 2;
+		double v = score;
+		if (v == 0.0 || Double.IsNaN(v) || Double.IsInfinity(v))
+		{
+			return v;
+		}
+		else
+		{
+			int decimal_exponent = (int)Math.Floor(Math.Log10(Math.Abs(v))) + 1;
+			if (decimal_exponent < -28 + digits || decimal_exponent > 28 - digits)
+			{
+				// Decimals won't help outside their range of representation.
+				// Insert flawed Double solutions here if you like.
+				return v;
+			}
+			else
+			{
+				decimal d = (decimal)v;
+				decimal scale = powersOf10[decimal_exponent + 28];
+				return (double)(scale * Math.Round(d / scale, digits, MidpointRounding.AwayFromZero));
+			}
+		}
+	}
 }
 <p>
 	<ul>
-		<li>Red is running score below @threshold.ToString("#.#########") (@Math.Round(Math.Log10(threshold),1))</li>
+		<li>Red is running score below @threshold.ToString("#.#########")</li>
 		<li>Yellow is running score below 0.1</li>
 		<li>Gray means there haven't been enough contracts yet for running score (a running score will always be the average of 3 contracts)</li>
 		<li>The score is the small number in the bottom right</li>
 		<li>The running score contracts are in different orders for different people</li>
 		<li>If the first two columns are gray it means they haven't had a score in a month</li>
+		@{
+			var currentScores = Model.Select(x => new { User = x, RunningScore = x.UserCoopXrefs.Where(x => x.Score.HasValue).OrderByDescending(x => x.Date).FirstOrDefault()?.RunningScore });
+		}
+		<li>@currentScores.Count(x => x.RunningScore < threshold) users below @threshold.ToString("#.#########") (@currentScores.Count(x => x.RunningScore < threshold && x.User.Standard) standard)</li>
+		<li>@currentScores.Count(x => x.RunningScore < 0.1) users below 0.1 (@currentScores.Count(x => x.RunningScore < 0.1 && x.User.Standard) standard)</li>
 	</ul>
 </p>
-<button type="button" onclick="$('tr:not(.current)').toggle()">Toggle currently below threshold</button>
+<button type="button" onclick="$('tr:not(.current)').toggle()">Toggle currently below threshold </button>
 <table class="table">
 	<thead>
 		<tr>
@@ -42,12 +83,12 @@
 					<td  class="@(longTime ? "bg-secondary" : "")">@(lastContractTime.Humanize())</td>
 				@foreach(var xref in xrefs.Take(20)) {
 					if (xref?.RunningScore != null) {
-						<td style="position: relative;" class="@GetClass(xref.RunningScore.Value)">@Math.Round(Math.Log10((double)xref.RunningScore.Value),1)
-						<span style="position: absolute; right: 0; bottom: 0; left: 0; font-size: 70%" class="@(xref.Score.Value)">@Math.Round(Math.Log10((double)xref.Score.Value),1)</span>
+						<td style="position: relative;" class="@GetClass(xref.RunningScore.Value)">@round(xref.RunningScore.Value)
+						<span style="position: absolute; right: 0; bottom: 0; left: 0; font-size: 70%" class="@(xref.Score.Value)">@round(xref.Score.Value)</span>
 						</td>
 					} else if(xref?.Score != null) {
 						<td style="position: relative;" class="bg-secondary">
-							<span style="position: absolute; right: 0; bottom: 0; left: 0; font-size: 70%" class="@(xref.Score.Value)">@Math.Round(Math.Log10((double)xref.Score.Value),1)</span>
+							<span style="position: absolute; right: 0; bottom: 0; left: 0; font-size: 70%" class="@(xref.Score.Value)">@round(xref.Score.Value)</span>
 						</td>
 					} else {
 						<td></td>

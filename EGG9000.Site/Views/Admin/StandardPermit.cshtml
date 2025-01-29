@@ -46,7 +46,7 @@
     <tbody>
         @foreach(var user in users.OrderByDescending(x => x.LastRunnningScore)) {
             <tr>
-                <td><a href="/Home/ViewUser/@(user.Id)">@user.DiscordUsername</a></td>
+                <td><a href="/MyFarms/ViewUser?discordId=@(user.DiscordId)">@user.DiscordUsername</a></td>
                 <td>@user.DiscordId</td>
                 <td>@user.Backups.Count(x => x.PermitLevel == 0) of @user.Backups.Count()</td>
                 <td>@user.Registered.Value.ToString("yyyy-M-d")</td>

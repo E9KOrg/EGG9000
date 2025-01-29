@@ -27,7 +27,8 @@ namespace EGG9000.Bot.Automated {
                 var adminUsers = await _db.DBUsers.AsQueryable().Where(x => adminDiscordIds.Contains(x.DiscordId)).ToListAsync(CancellationToken.None);
 
                 var adminUserIds = adminUsers.Select(x => x.Id);
-                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => ((x.ThreadID != 0 && !x.ThreadArchived) || (x.DiscordChannelId != 0 && !x.DeletedChannel)) && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync(CancellationToken.None);
+                var sevenDaysAgo = DateTimeOffset.Now.AddDays(-7);
+                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => (x.ThreadID != 0 && !x.ThreadArchived) && x.CoopEnds > sevenDaysAgo && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync(CancellationToken.None);
 
 
                 var adminsWithChannels = adminUsers.OrderBy(x => x.DiscordUsername).Select(u => new {
