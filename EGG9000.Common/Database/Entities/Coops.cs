@@ -29,6 +29,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool Finished { get; set; }
         public uint League { get; set; }
         public bool AnyLeague { get; set; }
+        public bool SuccessfullyStarted { get; set; }
 
         public ulong DiscordChannelId { get; set; } // V2 - Comment out
         public ulong GuildId { get; set; }

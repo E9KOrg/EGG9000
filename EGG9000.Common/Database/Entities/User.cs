@@ -312,11 +312,11 @@ namespace EGG9000.Common.Database.Entities {
             public long ShipReturnTime { get; set; }
         }
 
-        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
+        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward, byte completedRewards) {
             return selectReward switch {
-                RewardType.Artifact => gradeSpec.Goals.Any(g => g.RewardType == RewardType.Artifact || g.RewardType == RewardType.ArtifactCase),
-                RewardType.PiggyMultiplier => gradeSpec.Goals.Any(g => g.RewardType == RewardType.PiggyMultiplier || g.RewardType == RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill),
-                _ => gradeSpec.Goals.Any(g => g.RewardType == selectReward),
+                RewardType.Artifact => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == RewardType.Artifact || g.RewardType == RewardType.ArtifactCase),
+                RewardType.PiggyMultiplier => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == RewardType.PiggyMultiplier || g.RewardType == RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill),
+                _ => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == selectReward),
             };
         }
 

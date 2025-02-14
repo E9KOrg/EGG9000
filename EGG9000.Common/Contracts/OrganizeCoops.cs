@@ -72,8 +72,10 @@ namespace EGG9000.Common.Contracts {
                 var registerRewards = contract.Details.Leggacy ? leggacyRegisterRewards : x.Account.AutoRegisterRewards;
                 registerRewards ??= []; //If it's null, initialize it so it has a 0-count
 
+                var completedRewards = x.Account.Backup.Farms.FirstOrDefault(y => y.ContractId == contract.ID)?.NumGoalsAchieved ?? x.Account.Backup.ArchivedFarms.FirstOrDefault(y => y.ContractId == contract.ID)?.NumGoalsAchieved ?? 0;
+
                 //Filter must either be empty, or have at least one reward that matches
-                return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r));
+                return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r, completedRewards));
             }, "Rewards not selected");
 
             // Run CheckOnPreviousComplete last so that all other filters are applied to `accounts` first

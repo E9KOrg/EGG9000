@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -313,10 +314,9 @@ namespace EGG9000.Bot.EggIncAPI {
             var message = new T();
             if(authMessageDecoded.Compressed) {
                 using var outMemoryStream = new MemoryStream();
-                using var outZStream = new ZOutputStream(outMemoryStream);
                 using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
-                CopyStream(inMemoryStream, outZStream);
-                outZStream.finish();
+                using var zlib = new ZLibStream(inMemoryStream, CompressionMode.Decompress);
+                zlib.CopyTo(outMemoryStream);
                 message.MergeFrom(outMemoryStream.ToArray());
             } else {
                 message.MergeFrom(authMessageDecoded.Message);
@@ -329,11 +329,11 @@ namespace EGG9000.Bot.EggIncAPI {
 
             var message = new T();
             if(authMessageDecoded.Compressed) {
+
                 using var outMemoryStream = new MemoryStream();
-                using var outZStream = new ZOutputStream(outMemoryStream);
                 using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
-                CopyStream(inMemoryStream, outZStream);
-                outZStream.finish();
+                using var zlib = new ZLibStream(inMemoryStream, CompressionMode.Decompress);
+                zlib.CopyTo(outMemoryStream);
                 message.MergeFrom(outMemoryStream.ToArray());
             } else {
                 message.MergeFrom(authMessageDecoded.Message);

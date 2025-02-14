@@ -61,11 +61,11 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+            //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("72fea962-0e1d-4ab0-b56e-08dc53f75398")).ToList();
             //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "HaltFilm93")];
+            coops = [.. coops.Where(x => x.Name == "foxheart")];
 #endif
 
 
@@ -198,7 +198,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
 
-
+                
                 timings.Set("GetStatus");
 
                 var statusReponse = new StatusResponse();
@@ -213,26 +213,27 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 //** Handle coop bot being started
-                if(statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound) {
+                if(!coop.SuccessfullyStarted &&  (statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound)) {
                     var messages = await (coopThread as SocketTextChannel).GetMessagesAsync().FlattenAsync();
-                    if(!messages.Any(x => x.Author.IsBot)) {
-                        _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}, attempting to start.", coop.Name);
-                        string EIID = null;
-                        var random = new Random();
-                        foreach(var account in coop.UserCoopsXrefs.OrderBy(x => random.Next())) {
-                            var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.EggIncId);
-                            if(r.Grade == (Ei.Contract.Types.PlayerGrade)coop.League) {
-                                EIID = account.EggIncId;
-                                break;
-                            }
+                    _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}, attempting to start.", coop.Name);
+                    string EIID = null;
+                    var random = new Random();
+                    foreach(var account in coop.UserCoopsXrefs.OrderBy(x => random.Next())) {
+                        var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.EggIncId);
+                        if(r.Grade == (Ei.Contract.Types.PlayerGrade)coop.League) {
+                            EIID = account.EggIncId;
+                            break;
                         }
-
-                        var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
-                    } else {
-                        _logger.LogWarning("Status is null for co-op: {coopName}", coop.Name);
                     }
 
+                    var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
+                    _logger.LogInformation($"Attempting to create coop for {coop.Name}, Result: {result}");
                     return;
+                }
+
+                if(!coop.SuccessfullyStarted && statusReponse.Status.Success ) {
+                    coop.SuccessfullyStarted = true;
+                    await _db.SaveChangesAsync(CancellationToken.None);
                 }
 
                 var status = statusReponse.Status;
@@ -411,7 +412,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             WaitingOnStarter = false,
                             UserId = user.DBUser.Id,
                             EggIncId = user.Backup.EggIncId,
-                            AddedToChannel = true,
+                            AddedToChannel = false,
                             CoopId = coop.Id,
                             CreatedOn = DateTimeOffset.UtcNow,
                             JoinedCoop = true,
@@ -668,14 +669,14 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                             // In the case this is 'coming from' an overflow server, and the user is not in the server, we want the mention to stick regardless
                                             discordUser ??= _client.Guilds.First(g => g.Id == findGuild.Id).GetUser(xref.User.DiscordId);
-                                            
+
                                             var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                             await coopThread.SendMessageAsync(message);
                                             var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
                                             var response = ChannelHelper.DetermineAndSend(_client, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
                                         }
                                     }
-                                    
+
                                     // And we always want to save the DB
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 }

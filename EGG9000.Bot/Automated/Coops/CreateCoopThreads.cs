@@ -135,7 +135,6 @@ namespace EGG9000.Bot.Automated.Coops {
                                 _logger.LogInformation("Thread created for {coopName} in {guild}", coop.Name, headerChannel.Guild.Name);
                                 await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                                 guildWithOverflow.LastAccessed = DateTimeOffset.Now;
-                                var users = (await _db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
                                 var dbguild = dbguilds.FirstOrDefault(x => x.Id == guildWithOverflow.Guild.Id);
                                 var overflowGuild = coop.OverflowGuildId > 0 ? _client.GetGuild(coop.OverflowGuildId) : guildWithOverflow.Guild;
 
@@ -146,7 +145,16 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                 tasks.Add(Task.Run(async () => {
                                     try {
-                                        await _threadsCoopStatusUpdater.ProcessCoop(coop.Id, overflowGuild, users, dbguild, cancellationToken);
+                                        //var users = (await _db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
+                                        var xrefs = await _db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.CoopId == coop.Id).ToListAsync();
+
+                                        var msg = await coopThread.SendMessageAsync($"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n");
+                                        var msg2 = await coopThread.SendMessageAsync("\u17B5");
+                                        var msg3 = await coopThread.SendMessageAsync("\u17B5");
+                                        var msg4 = await coopThread.SendMessageAsync("\u17B5");
+                                        var msg5 = await coopThread.SendMessageAsync("\u17B5");
+                                        coop.UpdateMessagesId = JsonConvert.SerializeObject(new List<ulong> { msg.Id, msg2.Id, msg3.Id, msg4.Id, msg5.Id, });
+                                        await _db.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
                                     } finally {
                                         throttler.Release();
                                     }
