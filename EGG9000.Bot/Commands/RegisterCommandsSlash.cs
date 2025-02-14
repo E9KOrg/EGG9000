@@ -252,13 +252,14 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
                 return;
             }
-            var Response = await apiLink.GetBackup(eggincid);
-            if(Response == null || Response.Farms == null || Response.Farms.Count == 0) {
+            var response = await ContractsAPI.FirstContact(eggincid); // await apiLink.GetBackup(eggincid);
+            var backup = new CustomBackup(response.Backup);
+            if(backup == null || backup.Farms == null || backup.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
                 return;
             }
-            if(Response.EggIncId != eggincid) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Error matching ID {eggincid} - {Response.EggIncId}"); });
+            if(backup.EggIncId != eggincid) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Error matching ID {eggincid} - {backup.EggIncId}"); });
                 return;
             }
 
@@ -273,7 +274,7 @@ namespace EGG9000.Bot.Commands {
 
             var existingAccount = user.EggIncAccounts.Count > 1 ? user.EggIncAccounts[accountnumber - 1] : user.EggIncAccounts.First();
             var newAccount = new EggIncAccount {
-                Id = Response.EggIncId,
+                Id = backup.EggIncId,
                 Group = existingAccount.Group,
                 UltraGroup = existingAccount.UltraGroup,
                 Guild = existingAccount.Guild,
@@ -348,18 +349,19 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var Response = await apiLink.GetBackup(eggincid);
-            if(Response?.Farms == null || Response.Farms.Count == 0) {
+            var firstContactResponse = await ContractsAPI.FirstContact(eggincid); // await apiLink.GetBackup(eggincid);
+            var backup = new CustomBackup(firstContactResponse.Backup);
+            if(backup?.Farms == null || backup.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
                 if(eggincid.StartsWith("E1")) {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    Response = await apiLink.GetBackup(eggincid);
+                    backup = await apiLink.GetBackup(eggincid);
                 }
             }
 
-            if(Response?.Farms == null || Response.Farms.Count == 0) {
+            if(backup?.Farms == null || backup.Farms.Count == 0) {
                 // TODO: REMOVE && false WHEN WE'RE READY TO GO LIVE
                 var addendum = (command.ChannelId == welcomeChannel.Id && false) ?
                     "\n\n**You can also _reply_ to this message with an uncropped screenshot of your Privacy & Data tab, and the bot will attempt to auto-register you.**" : "";
@@ -379,7 +381,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncAccounts = [new EggIncAccount { Id = Response.EggIncId, Backup = Response, Group = 1 }],
+                    EggIncAccounts = [new EggIncAccount { Id = backup.EggIncId, Backup = backup, Group = 1 }],
                     CreateOn = DateTimeOffset.Now,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -387,14 +389,14 @@ namespace EGG9000.Bot.Commands {
                 db.DBUsers.Add(dbuser);
                 addedUser = true;
             } else {
-                if(dbuser.EggIncAccounts.Any(y => y.Id == Response.EggIncId)) {
+                if(dbuser.EggIncAccounts.Any(y => y.Id == backup.EggIncId)) {
                     await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"You have already registered this EggInc ID with the bot."); });
                     return;
                 }
                 if(dbuser.EggIncAccounts.Count == 0) {
                     addedUser = true;
                 }
-                dbuser.EggIncAccounts.Add(new EggIncAccount { Id = Response.EggIncId, Backup = Response, Group = 1 });
+                dbuser.EggIncAccounts.Add(new EggIncAccount { Id = backup.EggIncId, Backup = backup, Group = 1 });
                 dbuser.UpdateAccounts();
             }
 
@@ -442,7 +444,7 @@ namespace EGG9000.Bot.Commands {
 
             var roleText = "";
             if(dbuser.EggIncAccounts.Count > 1) {
-                roleText = $"Your new account has been added with an EB of {Response.EarningsBonus.ToEggString()}";
+                roleText = $"Your new account has been added with an EB of {backup.EarningsBonus.ToEggString()}";
             } else if(role != null) {
                 roleText = $"You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}";
             }
@@ -457,7 +459,7 @@ namespace EGG9000.Bot.Commands {
 
             var compiledMessage = $"Welcome {user.Mention}! {roleText}.{faqText}";
             var response = await ChannelHelper.DetermineAndSend(_client, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = compiledMessage }, logger);
-            if(response == null) await command.Channel.SendMessageAsync(compiledMessage);
+            if(firstContactResponse == null) await command.Channel.SendMessageAsync(compiledMessage);
 
             //Only add the overflow role for the first registered account
             if(dbuser.EggIncAccounts.Count == 1) {

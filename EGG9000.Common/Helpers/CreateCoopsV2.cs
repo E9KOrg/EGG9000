@@ -149,7 +149,7 @@ namespace EGG9000.Common.Helpers {
                 UserId = userid,
                 UserName = userid,
                 Platform = Ei.Platform.Droid,
-                ClientVersion = 54,
+                ClientVersion = ContractsAPI.ClientVersion,
                 SoulPower = 4624103542699216300,
                 Eop = 4632655904192331776,
                 Grade = grade,
@@ -157,7 +157,12 @@ namespace EGG9000.Common.Helpers {
             };
 
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
-            return response ?? throw new Exception();
+
+            if(response is null || response.Success == false) {
+                throw new Exception($"Unable to create co-op for {coop.Name}: {response.Message}");
+            }
+
+            return response;
         }
 
 
