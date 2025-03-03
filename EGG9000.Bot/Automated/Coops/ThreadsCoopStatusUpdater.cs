@@ -25,6 +25,8 @@ using Microsoft.Extensions.Logging;
 
 using Newtonsoft.Json;
 
+using Polly;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -63,9 +65,9 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
             //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
-            //coops = coops.Where(x => x.Id == Guid.Parse("72fea962-0e1d-4ab0-b56e-08dc53f75398")).ToList();
+            coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            coops = [.. coops.Where(x => x.Name == "foxheart")];
+            //coops = [.. coops.Where(x => x.Name == "unitedfirst")];
 #endif
 
 
@@ -73,7 +75,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
             var throttler = new SemaphoreSlim(1);
 #else
-            var throttler = new SemaphoreSlim(5);
+            var throttler = new SemaphoreSlim(3);
 #endif
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -198,7 +200,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
 
-                
+
                 timings.Set("GetStatus");
 
                 var statusReponse = new StatusResponse();
@@ -213,7 +215,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 //** Handle coop bot being started
-                if(!coop.SuccessfullyStarted &&  (statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound)) {
+                if(!coop.AddedFromBackup && !coop.SuccessfullyStarted && (statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound)) {
                     var messages = await (coopThread as SocketTextChannel).GetMessagesAsync().FlattenAsync();
                     _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}, attempting to start.", coop.Name);
                     string EIID = null;
@@ -226,17 +228,22 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     }
 
-                    var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
+                    var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop.Name, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
                     _logger.LogInformation($"Attempting to create coop for {coop.Name}, Result: {result}");
                     return;
                 }
 
-                if(!coop.SuccessfullyStarted && statusReponse.Status.Success ) {
+                if(!coop.SuccessfullyStarted && statusReponse.Status.Success) {
                     coop.SuccessfullyStarted = true;
                     await _db.SaveChangesAsync(CancellationToken.None);
                 }
 
                 var status = statusReponse.Status;
+
+                if(status is null) {
+                    _logger.LogWarning($"Status for {coop.Name} is null");
+                    return;
+                }
 
                 if(coop.League != (uint)status.Grade) {
                     _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
@@ -1323,7 +1330,16 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private static async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
-            var statusTask = ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken);
+            var policy = Policy
+               .Handle<Exception>()
+               .WaitAndRetry(
+               [
+                 TimeSpan.FromSeconds(1),
+                            TimeSpan.FromSeconds(3),
+                            TimeSpan.FromSeconds(7)
+               ]);
+
+            var statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken));
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);
