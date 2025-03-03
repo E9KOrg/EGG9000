@@ -100,7 +100,7 @@ namespace EGG9000.Bot.Commands {
 
             logger.LogInformation("Attempting to fix {user} in {coop} by creating temp co-op", dbuser.DiscordUsername, coop.Name);
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(2);
             status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);

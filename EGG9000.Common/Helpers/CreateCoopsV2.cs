@@ -85,7 +85,7 @@ namespace EGG9000.Common.Helpers {
             //    coopLength -= Math.Abs((DateTimeOffset.Now - guildContract.Contract.GoodUntil).TotalSeconds);
             //}
 
-            await CreateCoopViaApi(contract.ID, grade, coop, secondsRemaining, EIID, allowAllGrades);
+            await CreateCoopViaApi(contract.ID, grade, coop.Name, secondsRemaining, EIID, allowAllGrades);
 
             await db.SaveChangesAsync();
             return coop;
@@ -93,7 +93,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
             userid ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -105,7 +105,7 @@ namespace EGG9000.Common.Helpers {
               ]);
 
             try {
-                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coop, secondsRemaining, userid, allowAllGrades));
+                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coopName, secondsRemaining, userid, allowAllGrades));
             } catch(Exception) {
                 return false;
             }
@@ -119,7 +119,7 @@ namespace EGG9000.Common.Helpers {
 
             var res = new Ei.ContractCoopStatusUpdateRequest {
                 ContractIdentifier = ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                CoopIdentifier = coopName.ToLower(),
                 Eop = 1, SoulPower = 24, UserId = userid, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userid, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
                 ProductionParams = new Ei.FarmProductionParams {
                     FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
@@ -132,8 +132,8 @@ namespace EGG9000.Common.Helpers {
 
             var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
                 ClientVersion = ContractsAPI.ClientVersion,
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = ContractID,
+                CoopIdentifier = coopName.ToLower(),
                 PlayerIdentifier = userid,
                 Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
                 RequestingUserId = userid
@@ -141,10 +141,10 @@ namespace EGG9000.Common.Helpers {
 
             return true;
         }
-        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, Coop coop, double secondsRemaining, string userid, bool allowAllGrades) {
+        private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
             var request = new Ei.CreateCoopRequest {
                 ContractIdentifier = ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                CoopIdentifier = coopName.ToLower(),
                 SecondsRemaining = secondsRemaining,
                 UserId = userid,
                 UserName = userid,
@@ -159,7 +159,7 @@ namespace EGG9000.Common.Helpers {
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
 
             if(response is null || response.Success == false) {
-                throw new Exception($"Unable to create co-op for {coop.Name}: {response.Message}");
+                throw new Exception($"Unable to create co-op for {coopName}: {response.Message}");
             }
 
             return response;

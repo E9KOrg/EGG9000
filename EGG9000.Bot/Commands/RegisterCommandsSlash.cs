@@ -144,7 +144,7 @@ namespace EGG9000.Bot.Commands {
 
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
             foreach(var xref in xrefs) {
-                await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, new Coop { Name = "test" + new Random().Next(10000), ContractID = coop.ContractID }, contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
+                await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName:"test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
             }
 
 

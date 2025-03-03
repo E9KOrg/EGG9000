@@ -279,7 +279,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Get help from staff, please give details")]
-        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message", Required = false)] bool keepPrivate = false) {
+        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message")] bool keepPrivate = false) {
             await command.DeferAsync(ephemeral: keepPrivate);
             var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
 
