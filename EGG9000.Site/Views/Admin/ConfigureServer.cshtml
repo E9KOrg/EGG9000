@@ -337,6 +337,7 @@
 				<input class="custom-input" type="checkbox" value="true" id="AddOutsideCoops" checked="@Model.AddOutsideCoops" /> Add Outside Co-ops from Backups
 			</label>
 		</div>
+		<label>Running Score Threshold <input style="margin-left: 3px;" class="custom-input" type="number" step="0.01" value="@Model.MinimumRunningScore" id="MinimumRunningScore" /></label>
 		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
 	</div>
 </div>
@@ -410,6 +411,7 @@
 						PublicScoreGrid: $("#PublicScoreGrid").is(":checked"),
 						RemoveFindCoopSpot: $("#RemoveFindCoopSpot").is(":checked"),
 						CoopNamePrefix: $("#CoopNamePrefix").val(),
+						MinimumRunningScore: $("#MinimumRunningScore").val(),
 						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),
 						FaqTopicsEnabled: $("#FaqTopicsEnabled").is(":checked"),
 						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val()

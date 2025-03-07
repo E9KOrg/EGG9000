@@ -18,6 +18,9 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+
+using NuGet.Versioning;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,7 +36,6 @@ namespace EGG9000.Site.Controllers {
     public class AdminController(UserManager<IdentityUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
-        public static readonly double scoreThreshold = 0.05;
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<IdentityUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
@@ -555,6 +557,10 @@ namespace EGG9000.Site.Controllers {
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var scoreThreshold = guild.MinimumRunningScore;
+            ViewBag.MinimumRunningScore = scoreThreshold;
 
             var slackers = await _db.DBUsers.AsQueryable().Include(x => x.UserCoopXrefs).Where(x => x.GuildId == user.GuildId && x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold)).Select(x => new Slacker {
                 DiscordUsername = x.DiscordUsername,
@@ -660,6 +666,10 @@ namespace EGG9000.Site.Controllers {
                 x._eggIncIds,
                 x.TempDisabled
             }).ToListAsync();
+
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var scoreThreshold = dbguild.MinimumRunningScore;
+
 
             var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < scoreThreshold).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
@@ -1295,6 +1305,7 @@ music
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
+            dbGuild.MinimumRunningScore = model.MinimumRunningScore;
             Console.WriteLine("Setting FAQTopicsEnabled to " + model.FAQTopicsEnabled);
             Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
             dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
@@ -1338,6 +1349,7 @@ music
             public bool AddOutsideCoops { get; set; }
             public bool FAQTopicsEnabled { get; set; }
             public int FAQTopicCooldownMinutes { get; set; }
+            public float MinimumRunningScore { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
