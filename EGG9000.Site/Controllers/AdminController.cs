@@ -33,7 +33,6 @@ namespace EGG9000.Site.Controllers {
     public class AdminController(UserManager<IdentityUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
-        public static readonly double scoreThreshold = 0.05;
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<IdentityUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
@@ -555,6 +554,7 @@ namespace EGG9000.Site.Controllers {
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var scoreThreshold = await _db.Guilds.FirstAsync(x => x.Id == id).MinimumRunningScore;
 
             var slackers = await _db.DBUsers.AsQueryable().Include(x => x.UserCoopXrefs).Where(x => x.GuildId == user.GuildId && x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold)).Select(x => new Slacker {
                 DiscordUsername = x.DiscordUsername,
@@ -1295,6 +1295,7 @@ music
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
+            dbGuild.MinimumRunningScore = model.MinimumRunningScore;
             Console.WriteLine("Setting FAQTopicsEnabled to " + model.FAQTopicsEnabled);
             Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
             dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;

@@ -44,6 +44,7 @@ namespace EGG9000.Common.Database.Entities {
         public string CoopCategories { get; set; }
         public string FinishedCategories { get; set; }
 
+	public float MinimumRunningScore { get; set; } = 0.05;
         public bool AddOutsideCoops { get; set; } = true;
 
         public string _coopSettingsJson { get; set; }
