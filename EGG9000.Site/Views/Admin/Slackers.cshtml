@@ -6,7 +6,8 @@
 
 	var contractIDs = contracts.OrderByDescending(x => x.GoodUntil).Select(x => x.ID);
 	contractIDs = contractIDs.Where(c => Model.Any(s => s.UserCoopXrefs.Any(x => c == x.ContractID && x.Score.HasValue))).ToList();
-	var threshold = EGG9000.Site.Controllers.AdminController.scoreThreshold;
+
+	var threshold = (float)ViewBag.MinimumRunningScore;
 
 
 	string GetClass(float score) {
