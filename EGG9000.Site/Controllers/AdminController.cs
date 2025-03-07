@@ -18,6 +18,9 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+
+using NuGet.Versioning;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -554,7 +557,10 @@ namespace EGG9000.Site.Controllers {
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
-            var scoreThreshold = await _db.Guilds.FirstAsync(x => x.Id == id).MinimumRunningScore;
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var scoreThreshold = guild.MinimumRunningScore;
+            ViewBag.MinimumRunningScore = scoreThreshold;
 
             var slackers = await _db.DBUsers.AsQueryable().Include(x => x.UserCoopXrefs).Where(x => x.GuildId == user.GuildId && x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold)).Select(x => new Slacker {
                 DiscordUsername = x.DiscordUsername,
@@ -660,6 +666,10 @@ namespace EGG9000.Site.Controllers {
                 x._eggIncIds,
                 x.TempDisabled
             }).ToListAsync();
+
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var scoreThreshold = dbguild.MinimumRunningScore;
+
 
             var xrefsBelowThreshold = scores.Where(x => x.xref.RunningScore < scoreThreshold).Select(y => {
                 var user = users.FirstOrDefault(u => u.Id == y.UserId);
@@ -1339,6 +1349,7 @@ music
             public bool AddOutsideCoops { get; set; }
             public bool FAQTopicsEnabled { get; set; }
             public int FAQTopicCooldownMinutes { get; set; }
+            public float MinimumRunningScore { get; set; }
         }
 
         //public async Task<IActionResult> SaveCoopCategories(ulong id, List<ulong> coopCategories) {
