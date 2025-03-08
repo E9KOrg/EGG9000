@@ -65,9 +65,9 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
             //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
-            coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
+            //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "unitedfirst")];
+            coops = [.. coops.Where(x => x.Name == "YieldSlot41")];
 #endif
 
 
@@ -82,6 +82,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(cancellationToken.IsCancellationRequested) break;
                 var dbguild = dbguilds.FirstOrDefault(x => x.DiscordSeverId == guildCoops.Key || x.OverflowServers.Any(y => y == guildCoops.Key));
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == guildCoops.Key);
+                var parentGuild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.Id);
                 if(guild == null)
                     continue;
                 await guild.DownloadUsersAsync();
@@ -100,7 +101,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         try {
                             var sw = new Stopwatch();
                             sw.Start();
-                            await ProcessCoop(coop.Id, guild, users, dbguild, cancellationToken);
+                            await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, cancellationToken);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
                             //_logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
@@ -127,7 +128,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public async Task ProcessCoop(Guid coopid, SocketGuild guild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken) {
+        public async Task ProcessCoop(Guid coopid, SocketGuild guild, SocketGuild parentGuild, List<UserWithBackup> users, Guild dbguild, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
@@ -180,7 +181,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(xref.CoopSetting is null && user is not null) {
                         xref.CoopSetting = new CoopSetting(xref, user.User, dbguild);
                         if(xref.CoopSetting.PingOnCoopCreated) {
-                            await SendDMWarning(_db, guild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created: ", coop);
+                            await SendDMWarning(_db, parentGuild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created: ", coop);
                             xref.CoopSetting.PingOnCoopCreated = false;
                         }
                         xref.UpdateCoopSetting();
@@ -374,7 +375,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     Xref = x.Xref,
                     User = x.DBUser,
                     Backup = x.Backup,
-                    DiscordUser = x.DBUser is not null ? guild.GetUser(x.DBUser.DiscordId) : null
+                    DiscordUser = x.DBUser is not null ? parentGuild.GetUser(x.DBUser.DiscordId) : null
                 }).ToList();
 
 
@@ -588,12 +589,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 } else {
                     var userList = new List<string>();
                     foreach(var userFarmDetails in usersNotJoined) {
-                        var xref = userFarmDetails.Xref;
                         try {
-                            var user = users.FirstOrDefault(x => x.User.Id == xref.GetID())?.User;
-                            user ??= await _db.DBUsers.FirstOrDefaultAsync(x => x.Id == xref.UserId, cancellationToken);
+                            //var xref = userFarmDetails.Xref;
+                            var user = users.FirstOrDefault(x => x.User.Id == userFarmDetails.Xref.GetID())?.User;
+                            user ??= await _db.DBUsers.FirstOrDefaultAsync(x => x.Id == userFarmDetails.Xref.UserId, cancellationToken);
 
-                            var discordUser = user == null ? null : guild.GetUser(user.DiscordId);
+                            var discordUser = user == null ? null : parentGuild.GetUser(user.DiscordId);
 
                             var mention = "";
 
@@ -601,7 +602,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 mention = $"{user.DiscordUsername} (Missing from server)";
                                 missingFromServer = true;
                             } else if(user.EggIncAccounts.Count > 1) {
-                                var eggaccount = user.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId);
+                                var eggaccount = user.EggIncAccounts.FirstOrDefault(x => x.Id == userFarmDetails.Xref.EggIncId);
                                 if(eggaccount != null)
                                     mention = $"{discordUser.Mention} ({eggaccount.Backup?.UserName ?? "No Name"})";
                             } else {
@@ -618,38 +619,38 @@ namespace EGG9000.Bot.Automated.Coops {
                             userList.Add(mention);
 
                             if(discordUser != null && !coop.Finished && coop.Status != CoopStatusEnum.Failed && coop.CoopEnds > DateTimeOffset.Now) {
-                                if(!xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
-                                    xref.JoinWarning24TillFinish = true;
+                                if(!userFarmDetails.Xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
+                                    userFarmDetails.Xref.JoinWarning24TillFinish = true;
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                     await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
-                                } else if(!xref.JoinWarning24h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
-                                    xref.JoinWarning24h = true;
-                                    xref.JoinWarning12h = true;
+                                } else if(!userFarmDetails.Xref.JoinWarning24h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
+                                    userFarmDetails.Xref.JoinWarning24h = true;
+                                    userFarmDetails.Xref.JoinWarning12h = true;
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                     await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 24h since added to co-op", coop);
-                                } else if(!xref.JoinWarning12h && xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
-                                    xref.JoinWarning12h = true;
+                                } else if(!userFarmDetails.Xref.JoinWarning12h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
+                                    userFarmDetails.Xref.JoinWarning12h = true;
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                     await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 12h since added to co-op", coop);
                                 }
 
 
                                 var hoursToKick = coop.Contract.cc_only ? 24 : 18;
-                                if(xref.CreatedOn < DateTimeOffset.Now.AddHours(-hoursToKick)) {
-                                    var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == xref.EggIncId).FirstOrDefault().Backup?.UserName})" : "";
-                                    await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, xref, discordUser, coopThread, dbguild, coop, false);
+                                if(userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-hoursToKick)) {
+                                    var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault().Backup?.UserName})" : "";
+                                    await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, userFarmDetails.Xref, discordUser, coopThread, dbguild, coop, false);
                                 }
                             }
 
-                            if(!xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.FinishedOrFailedOrExpired() && userFarmDetails.Farm is not null) {
+                            if(!userFarmDetails.Xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.FinishedOrFailedOrExpired() && userFarmDetails.Farm is not null) { 
                                 var farm = userFarmDetails.Farm;
                                 if(farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
                                     await coopThread.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op.");
-                                    xref.OutsideCoop = true;
+                                    userFarmDetails.Xref.OutsideCoop = true;
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 } else if(farm.CoopId.Length > 0 && farm.FarmType == Ei.FarmType.Contract) {
                                     // This should always happen so that no matter what, we're only sending one message
-                                    xref.OutsideCoop = true;
+                                    userFarmDetails.Xref.OutsideCoop = true;
 
                                     // Calculate a similarity scoreing to weed out typos
                                     var similarityScoring = FuzzySharp.Fuzz.Ratio(farm.CoopId.ToLower(), coop.Name.ToLower());
@@ -675,7 +676,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                             var findGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id || g.OverflowServersJson.Contains(guild.Id.ToString()), CancellationToken.None);
 
                                             // In the case this is 'coming from' an overflow server, and the user is not in the server, we want the mention to stick regardless
-                                            discordUser ??= _client.Guilds.First(g => g.Id == findGuild.Id).GetUser(xref.User.DiscordId);
+                                            discordUser ??= _client.Guilds.First(g => g.Id == findGuild.Id).GetUser(userFarmDetails.Xref.User.DiscordId);
 
                                             var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                             await coopThread.SendMessageAsync(message);
@@ -688,7 +689,9 @@ namespace EGG9000.Bot.Automated.Coops {
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 }
                             }
-                        } catch(Exception) { }
+                        } catch(Exception e) { 
+                            _bugsnag.Notify(e);
+                        }
                     }
                     lastMessage += $"Coop **{coop.Name}** is ready for the following to join: {string.Join(", ", userList)}\n";
                 }

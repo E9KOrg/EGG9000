@@ -191,7 +191,8 @@ namespace EGG9000.Bot.Commands {
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                var parentGuild = discord.Guilds.First(x => x.Id == dbguild.Id);
+                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
 
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
