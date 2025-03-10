@@ -70,7 +70,7 @@ namespace EGG9000.Common.Helpers {
                     }
                     averageEggs /= count;
 
-                    historiesOrderedBySoulPower[currentIndex].Score = count == 0 ? 1 : (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
+                    historiesOrderedBySoulPower[currentIndex].Score = count == 0 || averageEggs == 0 ? 1 : (float)(historiesOrderedBySoulPower[currentIndex].EggsShipped / averageEggs);
                 }
             }
 
