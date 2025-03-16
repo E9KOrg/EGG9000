@@ -234,7 +234,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                         .Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToList();
 
                     var jobs = AppDomain.CurrentDomain.GetAssemblies()
-                        .SelectMany(x => x.GetTypes())
+                        .SelectMany(x => x.GetExportedTypes())
                         .SelectMany(t => t.GetMethods())
                         .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                         .Select(m => new AutocompleteResult($"Job.{m.DeclaringType?.Name}", m.Name))

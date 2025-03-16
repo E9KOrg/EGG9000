@@ -761,7 +761,7 @@ namespace EGG9000.Bot.Services {
         }
 
         public Task StartAsync(CancellationToken cancellationToken) {
-            var slashCommands = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            var slashCommands = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(SlashCommandAttribute), false).Length > 0)
                       .Select(x => new SlashCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<SlashCommandAttribute>(), Parameters = x.GetParameters() })
@@ -781,22 +781,22 @@ namespace EGG9000.Bot.Services {
                     })
             ];
 
-            var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0);
-            _userCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            _userCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0)
                       .Select(x => new UserCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<UserCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
 
-            _componentCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            _componentCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
                 .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(ComponentCommandAttribute), false).Length > 0)
                       .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
                       .ToList();
 
-            _modalFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            _modalFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
                 .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(ModalAttribute), false).Length > 0)
                       .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })

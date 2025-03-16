@@ -71,6 +71,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #else
         var release = false;
 #endif
+
+        //release = true;
         //This will allow you to configure which parts of the bot you want to run if you don't want everything to run
 #if DEBUG
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
@@ -89,8 +91,12 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 x.AddConsumer<ShutdownConsumer>();
                 x.AddConsumer<ExpireCacheConsumer>();
                 x.AddConsumer<RestartConsumer>();
-                x.UsingRabbitMq((context, cfg) => {
+                //x.UsingRabbitMq((context, cfg) => {
+                //    cfg.ConfigureEndpoints(context);
+                //});
+                x.UsingInMemory((context, cfg) => {
                     cfg.ConfigureEndpoints(context);
+                    cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
                 });
             });
         } else {

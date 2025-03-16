@@ -21,8 +21,7 @@ namespace EGG9000.Bot.Services {
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
-
-            _jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())
+            _jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                       .Select(x =>
@@ -43,15 +42,20 @@ namespace EGG9000.Bot.Services {
         private async Task Main(CancellationToken cancellationToken) {
             while(!cancellationToken.IsCancellationRequested) {
                 try {
-                    var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.Now).OrderBy(x => x.NextRun);
+                    var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.Now && !x.Running).OrderBy(x => x.NextRun);
                     foreach(var job in jobs) {
                         job.NextRun = GetNextRun(job.Details.Cron);
                         _logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
                             job.DeclaringType.Name, job.Name, $"{DateTimeOffset.Now:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
-                        var timer = System.Diagnostics.Stopwatch.StartNew();
-                        await RunJobAsync(job);
-                        _logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
-                            job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
+                        
+                        _ = Task.Run(async () => {
+                            job.Running = true;
+                            var timer = System.Diagnostics.Stopwatch.StartNew();
+                            await RunJobAsync(job);
+                            _logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
+                                job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
+                            job.Running = false;
+                        });
                     }
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
@@ -111,6 +115,7 @@ namespace EGG9000.Bot.Services {
             public ParameterInfo[] Parameters { get; set; }
             public Type DeclaringType { get; set; }
             public DateTimeOffset NextRun { get; set; }
+            public bool Running { get; set; }
         }
     }
 
