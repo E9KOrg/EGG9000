@@ -75,7 +75,10 @@ namespace EGG9000.Site.Controllers {
             return Redirect("/");
         }
 #endif
-
+        public async Task<IActionResult> Alive() {
+            var contract = await _db.Contracts.FirstAsync();
+            return Content("Success");
+        }
 
         public async Task<IActionResult> Test() {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();

@@ -246,7 +246,6 @@ namespace EGG9000.Common.Helpers {
 
             var charPositions = FindCharPositions(image);
             var characters = new List<Image<Rgba32>>();
-            var outtext = "";
             foreach(var r in charPositions.Skip(1)) {
 
                 var retImage = new Image<Rgba32>(generatedImages.Sum(x => x.Item1.Width), generatedImages[0].Item1.Height * 2 + 20, new Rgba32(255, 255, 255));
@@ -412,7 +411,7 @@ namespace EGG9000.Common.Helpers {
                 }
                 var startx = x;
                 if(anyBlack) {
-                    for(x = x; x < rgbaImage.Width; x++) {
+                    for(; x < rgbaImage.Width; x++) {
                         anyBlack = false;
                         for(var y = 0; y < rgbaImage.Height; y++) {
                             var pixel = rgbaImage[x, y];

@@ -81,17 +81,17 @@ namespace EGG9000.Common.Database.Entities {
         public string _faqTopicsJson { get; set; }
         [NotMapped]
         private List<FAQTopic> _faqTopics { get; set; }
-        [NotMapped]
-        public List<FAQTopic> FAQTopics {
-            get {
-                _faqTopics ??= JsonConvert.DeserializeObject<List<FAQTopic>>(_faqTopicsJson ?? "[]");
-                return _faqTopics;
-            }
-            set {
-                _faqTopics = value;
-                _faqTopicsJson = JsonConvert.SerializeObject(value);
-            }
-        }
+        //[NotMapped]
+        //public List<FAQTopic> FAQTopics {
+        //    get {
+        //        _faqTopics ??= JsonConvert.DeserializeObject<List<FAQTopic>>(_faqTopicsJson ?? "[]");
+        //        return _faqTopics;
+        //    }
+        //    set {
+        //        _faqTopics = value;
+        //        _faqTopicsJson = JsonConvert.SerializeObject(value);
+        //    }
+        //}
         public bool FAQTopicsEnabled { get; set; }
         public int FAQTopicCooldownMinutes { get; set; }
 
