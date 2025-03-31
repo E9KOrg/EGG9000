@@ -20,6 +20,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Net.Http;
 using Polly;
 
+
+
+#if RELEASE
 namespace EGG9000.Bot.Jobs {
 
     public class UptimeKuma(ILogger<SubscriptionsCheckJob> logger) {
@@ -53,3 +56,4 @@ namespace EGG9000.Bot.Jobs {
         }
     }
 }
+#endif

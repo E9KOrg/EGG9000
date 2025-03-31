@@ -16,21 +16,23 @@ using System;
 using EGG9000.Bot.Helpers;
 using System.Reactive.Joins;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public static class FAQCommandSlash {
 
         [SlashCommand(Description = "Lookup brief explanations of key topics", AllowInDMs = true)]
-        public static Task FAQ(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(Description = "Topic or keyword", StringMaxLength = MAX_KEYWORD_LENGTH)] string query) {
-            return _faq(command, db, _client, query, false, "");
+        public static Task FAQ(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger _logger, [SlashParam(Description = "Topic or keyword", StringMaxLength = MAX_KEYWORD_LENGTH)] string query) {
+            return _faq(command, db, _client, query, false, "", _logger);
         }
 
         [SlashCommand(Description = "Lookup brief explanations of key topics/templates", AllowInDMs = true, AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task FAQ(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(Description = "Topic or keyword", StringMaxLength = MAX_KEYWORD_LENGTH)] string query, [SlashParam(Description = "Which message to respond to", Required = false)] string respondto = "") {
-            return _faq(command, db, _client, query, true, respondto);
+        public static Task FAQ(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger _logger, [SlashParam(Description = "Topic or keyword", StringMaxLength = MAX_KEYWORD_LENGTH)] string query, [SlashParam(Description = "Which message to respond to", Required = false)] string respondto = "") {
+            return _faq(command, db, _client, query, true, respondto, _logger);
         }
 
-        public static async Task _faq(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, string query, bool withStaffPerms, string respondTo) {
+        public static async Task _faq(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, string query, bool withStaffPerms, string respondTo, ILogger _logger) {
+            _logger.LogInformation($"Running FAQ for {query}");
             // Because this can be run in DMs, need a fallback
             var inDms = command.GuildId == null;
             var isEphemeral = !inDms;
@@ -50,13 +52,11 @@ namespace EGG9000.Bot.Commands {
                 }
                 respondToMessage = message.Id;
             }
-
             var userRunning = db.DBUsers.FirstOrDefault(x => x.DiscordId == command.User.Id);
             if(userRunning is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedError("Could not determine who you are."); });
                 return;
             }
-
             var guildId = inDms ? userRunning.GuildId : command.GuildId;
             var guildObj = db.Guilds.FirstOrDefault(g => g.Id == guildId || g.OverflowServersJson.Contains(guildId.ToString()));
             var socketGuild = _client.Guilds.FirstOrDefault(cg => cg.Id == guildObj.Id);
@@ -70,17 +70,19 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedError("Your server does not have FAQ Topics enabled."); });
                 return;
             }
-
             var runningUserDiscord = socketGuild.GetUser(userRunning.DiscordId);
             var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
 
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Any()) {
+                _logger.LogInformation($"Found FAQ Topic for {query}");
                 var builder = await FAQEmbedBuilder(_client, guildObj.Id, withStaffPerms, query, isEphemeral, respondToMessage, faqTopics, faqTopics.First());
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; });
             } else {
+                _logger.LogInformation($"No FAQ Topic for {query}");
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedCustom(EmbedHelpers.EmbedType.Alert, "No Results", $"Could not find any FAQ topics for the term `{query}`"); });
             }
+            _logger.LogInformation($"FAQ for {query} complete");
         }
 
         [ComponentCommand]

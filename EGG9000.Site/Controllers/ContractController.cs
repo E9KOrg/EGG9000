@@ -23,13 +23,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class ContractController(ApplicationDbContext db, DiscordSocketClient discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<ContractController> logger) : Controller {
-        private readonly ApplicationDbContext _db = db;
-        private readonly DiscordSocketClient _discord = discord;
-        private readonly Bugsnag.IClient _bugsnag = bugsnag;
-        private readonly IServiceProvider _provider = provider;
-        private readonly ILogger<ContractController> _logger = logger;
-
+    public class ContractController(ApplicationDbContext _db, DiscordSocketClient _discord, Bugsnag.IClient _bugsnag, IServiceProvider _provider, ILogger<ContractController> _logger) : Controller {
         public async Task<IActionResult> Index() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var contracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => x.GuildID == guildId && x.Contract.Created > DateTimeOffset.Now.AddMonths(-2)).OrderByDescending(x => x.Contract.Created).ToListAsync();
@@ -308,7 +302,7 @@ namespace EGG9000.Site.Controllers {
 
             var channel = targetCoop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID) : (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
-            var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, db, discordUser, dbuser, channel, null);
+            var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, _db, discordUser, dbuser, channel, null);
 
             if(xref == null) {
                 return Json(new { error = $"Unable to add permissions for {dbuser.DiscordUsername}, likely not in overflow server" });

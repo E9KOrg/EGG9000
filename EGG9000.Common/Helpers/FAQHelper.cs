@@ -21,7 +21,7 @@ namespace EGG9000.Common.Helpers {
 
         public static async Task<List<FAQTopic>> GetFAQTopicsAsync(this ApplicationDbContext db, Guild guild) {
             if(!db._cache.TryGetValue(guild.GetFAQCacheKey(), out List<FAQTopic> faqTopics)) {
-                faqTopics = (await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id)).FAQTopics;
+                faqTopics = await db.FAQTopics.Where(g => g.GuildId == guild.Id).ToListAsync();
                 db._cache.Set(guild.GetFAQCacheKey(), faqTopics, TimeSpan.FromDays(1));
             }
             return faqTopics ?? [];
@@ -33,10 +33,10 @@ namespace EGG9000.Common.Helpers {
 #else
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
 #endif
-            var faqTopics = (await db.GetFAQTopicsAsync(palaceGuild))?.Where(
-                f => f.PalaceFAQAppliesToGuild(guild) &&
+            var faqTopics = await db.GetFAQTopicsAsync(palaceGuild) ?? [];
+            faqTopics = faqTopics.Where(                f => f.PalaceFAQAppliesToGuild(guild) &&
                 (!f.StaffOnly || withStaffPerms)
-            ).ToList() ?? [];
+            ).ToList();
             if(guild.Id != palaceGuild.Id) {
                 var guildSpecificTopics = (await db.GetFAQTopicsAsync(guild)).Where(t => !t.StaffOnly || withStaffPerms);
                 faqTopics.AddRange(guildSpecificTopics);

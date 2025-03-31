@@ -7,7 +7,9 @@ namespace EGG9000.Common.Database.Entities {
         public Guid UserId { get; set; }
         public DBUser User { get; set; }
         public Guid? AdminUserId { get; set; }
+#nullable enable
         public DBUser? AdminUser { get; set; }
+#nullable disable
         public string Reason { get; set; }
     }
 

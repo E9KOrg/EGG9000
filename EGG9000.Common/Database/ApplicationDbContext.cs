@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database.Entities;
 
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,8 @@ namespace EGG9000.Common.Database {
     //    }
     //}
 
-    public class ApplicationDbContext : IdentityDbContext<IdentityUser> {
+    public class ApplicationDbContext : IdentityDbContext<IdentityUser>, IDataProtectionKeyContext {
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<Guild> Guilds { get; set; }
         public DbSet<Contract> Contracts { get; set; }
         public DbSet<Coop> Coops { get; set; }
@@ -53,6 +55,7 @@ namespace EGG9000.Common.Database {
         public DbSet<AutomationLog> AutomationLogs { get; set; }
         public DbSet<UpcomingContract> UpcomingContracts { get; set; }
         public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
+        public DbSet<FAQTopic> FAQTopics { get; set; }
 
         //    private IConfiguration _configuration;
         //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {

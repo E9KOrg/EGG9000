@@ -87,17 +87,31 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddBugsnag(configuration => {
                 configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
             });
+            services.AddOptions<RabbitMqTransportOptions>().Configure(options => { 
+                var host = hostContext.Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
+                if(host.Length > 1) {
+                    options.Host = host[0];
+                    options.User = host[1];
+                    options.Pass = host[2];
+                }
+            });
             services.AddMassTransit(x => {
                 x.AddConsumer<ShutdownConsumer>();
                 x.AddConsumer<ExpireCacheConsumer>();
                 x.AddConsumer<RestartConsumer>();
-                //x.UsingRabbitMq((context, cfg) => {
-                //    cfg.ConfigureEndpoints(context);
-                //});
-                x.UsingInMemory((context, cfg) => {
-                    cfg.ConfigureEndpoints(context);
-                    cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
-                });
+                var host = hostContext.Configuration.GetConnectionString("RabbitMQServer");
+                if(string.IsNullOrEmpty(host)) {
+                    logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
+                    x.UsingInMemory((context, cfg) => {
+                        cfg.ConfigureEndpoints(context);
+                        cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
+                    });
+                } else {
+                    logger.Log(NLog.LogLevel.Info, "Using RabbitMQ Server " + host);
+                    x.UsingRabbitMq((context, cfg) => {
+                        cfg.ConfigureEndpoints(context);
+                    });
+                }
             });
         } else {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");

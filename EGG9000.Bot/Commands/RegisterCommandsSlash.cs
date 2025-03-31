@@ -32,6 +32,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
+using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
@@ -126,26 +127,32 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
+        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
             }
-            var dbUser = await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == targetUser.Id);
+            var userid = useraccount.Split("|")[0];
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             if(dbUser is null) {
-                await command.RespondAsync($"Unable to locate DBUser entry for <@{targetUser.Id}>");
+                await command.RespondAsync($"ERROR: Unable to locate DBUser entry for user");
                 return;
             }
 
-            var xrefs = await db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == dbUser.Id && x.CoopId == coop.Id).ToListAsync();
 
+            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+
+            var xref = await db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == dbUser.Id && x.CoopId == coop.Id && x.EggIncId == account.Id);
+
+            if(xref == null) {
+                await command.RespondAsync($"ERROR: Unable to find xref");
+                return;
+            }
 
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            foreach(var xref in xrefs) {
-                await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName:"test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
-            }
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName:"test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
 
             await Task.Delay(2);
@@ -159,11 +166,11 @@ namespace EGG9000.Bot.Commands {
                 var parentGuild = _client.Guilds.First(x => x.Id == dbguild.Id);
                 await coopStatusUpdaterThreads.ProcessCoop(coop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
 
-                await command.Channel.SendMessageAsync($"Successfully removed {targetUser.Mention} from co-op, they should be able to rejoin now.");
+                await command.Channel.SendMessageAsync($"Successfully removed <@{dbUser.DiscordId}> from co-op, they should be able to rejoin now.");
                 await command.DeleteOriginalResponseAsync();
             } else {
                 logger.LogInformation("Did not {user} from {coop}", dbUser.DiscordUsername, coop.Name);
-                await command.ModifyOriginalResponseAsync($"Attempted to remove {targetUser.Mention} from co-op, please check again in a few minutes.");
+                await command.ModifyOriginalResponseAsync($"Attempted to remove <@{dbUser.DiscordId}> from co-op, please check again in a few minutes.");
             }
         }
 

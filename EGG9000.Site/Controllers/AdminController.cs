@@ -403,7 +403,7 @@ namespace EGG9000.Site.Controllers {
             var wasFound = false;
             FAQTopic topicToSave = null;
             if(faqTopic.InternalId != "") {
-                topicToSave = guild.FAQTopics.FirstOrDefault(f => f.InternalId == faqTopic.InternalId);
+                topicToSave = _db.FAQTopics.FirstOrDefault(f => f.InternalId == faqTopic.InternalId);
                 wasFound = topicToSave != null;
             } else {
                 topicToSave = faqTopic;
@@ -413,17 +413,10 @@ namespace EGG9000.Site.Controllers {
             if(!wasFound) {
                 topicToSave.GuildId = guildId;
                 topicToSave.CreatedById = ulong.Parse(logins.First().ProviderKey);
-                guild.FAQTopics = [
-                    .. guild.FAQTopics,
-                    topicToSave
-                ];
+                _db.FAQTopics.Add(faqTopic);
             } else {
                 faqTopic.GuildId = topicToSave.GuildId;
                 faqTopic.CreatedById = topicToSave.CreatedById;
-                var cloneList = new List<FAQTopic>(guild.FAQTopics) {
-                    [guild.FAQTopics.IndexOf(topicToSave)] = faqTopic
-                };
-                guild.FAQTopics = cloneList;
             }
 
             var guildKey = _db.InvalidateFAQTopics(guild);
@@ -441,12 +434,14 @@ namespace EGG9000.Site.Controllers {
             var wasFound = false;
             FAQTopic topicToDelete = null;
             if(faqTopic.InternalId != "") {
-                topicToDelete = guild.FAQTopics.FirstOrDefault(f => f.InternalId == faqTopic.InternalId);
+                topicToDelete = _db.FAQTopics.FirstOrDefault(f => f.InternalId == faqTopic.InternalId);
                 wasFound = topicToDelete != null;
             } else return Content("Failure");
 
             if(!wasFound) return Content("Failure");
-            else guild.FAQTopics = guild.FAQTopics.Where(faqItem => faqItem.InternalId != topicToDelete.InternalId).ToList();
+            else {
+                _db.FAQTopics.Remove(topicToDelete);
+            }
 
             var guildKey = _db.InvalidateFAQTopics(guild);
             await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));

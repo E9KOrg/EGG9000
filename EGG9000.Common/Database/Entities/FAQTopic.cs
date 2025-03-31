@@ -44,17 +44,8 @@ namespace EGG9000.Common.Database.Entities {
 
         public string GuildName { get; set; } = "";
         public string GuildIdString { get; set; } = "";
-        public ulong GuildId { 
-            get {
-                if (!ulong.TryParse(GuildIdString, out var id)) {
-                    id = ulong.MaxValue;
-                }
-                return id;
-            }
-            set {
-                GuildIdString = value.ToString();
-            }
-        }
+        public ulong GuildId { get; set; } 
+
         public string _subscribedGuildIds { get; set; } = "";
         [NotMapped]
         public List<ulong> SubscribedGuildIds {

@@ -18,6 +18,8 @@ namespace EGG9000.Common.Services {
         SocketCommandBase _socketCommandBase;
 
         RestUserMessage _message;
+        Boolean _fake = false;
+
         ulong? _guildid;
 
         public FauxCommand(SocketMessage message, ulong? guildid) {
@@ -34,6 +36,10 @@ namespace EGG9000.Common.Services {
             _socketCommandBase = command;
         }
 
+        public FauxCommand(bool fake = true) {
+            _fake = fake;
+        }
+
 
         public static implicit operator FauxCommand(SocketSlashCommand command) {
             return new FauxCommand(command);
@@ -45,6 +51,9 @@ namespace EGG9000.Common.Services {
 
 
         public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+            if(_fake)
+                return;
+
             //public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
             if(_socketCommandBase is not null && _socketCommandBase.HasResponded)
                 await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
@@ -59,6 +68,8 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task RespondWithFileAsync(FileAttachment attachment, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
+            if(_fake)
+                return;
             if(_socketCommandBase is not null && !_socketCommandBase.HasResponded)
                 await _socketCommandBase.RespondWithFileAsync(attachment, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
             else
@@ -67,6 +78,8 @@ namespace EGG9000.Common.Services {
 
 
         public async Task DeleteOriginalResponseAsync(RequestOptions options = null) {
+            if(_fake)
+                return;
             if(_socketCommandBase is not null)
                 await _socketCommandBase.DeleteOriginalResponseAsync(options);
             else
@@ -74,6 +87,8 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task DeferAsync(bool ephemeral = false, RequestOptions options = null) {
+            if(_fake)
+                return;
             if(_socketCommandBase is not null && !_socketCommandBase.HasResponded)
                 await _socketCommandBase.DeferAsync(ephemeral, options);
         }
@@ -90,6 +105,8 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task<IUserMessage> ModifyOriginalResponseAsync(Action<MessageProperties> func, RequestOptions options = null) {
+            if(_fake)
+                return null;
             if(_socketCommandBase is not null)
                 return await _socketCommandBase.ModifyOriginalResponseAsync(func, options);
             await _message.ModifyAsync(func, options);

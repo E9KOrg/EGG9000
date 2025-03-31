@@ -17,10 +17,10 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.6")
+                .HasAnnotation("ProductVersion", "9.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.AutomationLog", b =>
                 {
@@ -547,6 +547,61 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("ExpiringShells");
                 });
 
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.FAQTopic", b =>
+                {
+                    b.Property<string>("InternalId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("CreatedById")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<string>("CreatedByIdString")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmbedColorHex")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Explanation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<string>("GuildIdString")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GuildName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PalaceOnly")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("StaffOnly")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("int");
+
+                    b.Property<string>("_keywords")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("_subscribedGuildIds")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("InternalId");
+
+                    b.ToTable("FAQTopics");
+                });
+
             modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardCoop", b =>
                 {
                     b.Property<Guid>("id")
@@ -626,7 +681,7 @@ namespace EGG9000.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(20,0)");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<decimal>("Id"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<decimal>("Id"));
 
                     b.Property<string>("ActiveElites")
                         .HasColumnType("nvarchar(max)");
@@ -1063,6 +1118,25 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("UserSnapShots");
                 });
 
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataProtectionKeys");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -1096,7 +1170,7 @@ namespace EGG9000.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
                         .HasColumnType("nvarchar(max)");
@@ -1186,7 +1260,7 @@ namespace EGG9000.Common.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
                         .HasColumnType("nvarchar(max)");

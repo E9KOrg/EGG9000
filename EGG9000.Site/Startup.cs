@@ -14,16 +14,21 @@ using MassTransit;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Build.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+using NLog;
 
 using System;
 using System.IO.Compression;
@@ -37,8 +42,9 @@ namespace EGG9000.Site {
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services) {
-            Console.WriteLine(Configuration.GetConnectionString("DefaultConnection"));
-            Console.WriteLine(Configuration.GetChildren().Count());
+            services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>();
+            //_logger.LogInformation(Configuration.GetConnectionString("DefaultConnection"));
+            //_logger.LogInformation(Configuration.GetChildren().Count().ToString());
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection")));
@@ -69,8 +75,8 @@ namespace EGG9000.Site {
                 .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
 
 
-            Console.WriteLine(Configuration.GetConnectionString("ClientId"));
-            Console.WriteLine(Configuration.GetConnectionString("ClientSecret"));
+            //_logger.LogInformation(Configuration.GetConnectionString("ClientId"));
+            //_logger.LogInformation(Configuration.GetConnectionString("ClientSecret"));
 
             services.AddAuthentication(options => {
             }).AddDiscord(options => {
@@ -89,7 +95,6 @@ namespace EGG9000.Site {
 
 
 
-
             services.AddResponseCaching();
             services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
             services.AddRazorPages();
@@ -101,7 +106,7 @@ namespace EGG9000.Site {
             services.Configure<ForwardedHeadersOptions>(options => {
                 options.ForwardedHeaders =
                     ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                options.KnownNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
+                options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
             });
 
 
@@ -123,11 +128,28 @@ namespace EGG9000.Site {
             services.AddBugsnag(configuration => {
                 configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
             });
+            services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
+                var host = Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
+                if(host.Length > 1) {
+                    options.Host = host[0];
+                    options.User = host[1];
+                    options.Pass = host[2];
+                }
+            });
+            
             services.AddMassTransit(x => {
                 x.AddConsumer<ExpireCacheConsumer>();
-                x.UsingRabbitMq((context, cfg) => {
-                    cfg.ConfigureEndpoints(context);
-                });
+                var host = Configuration.GetConnectionString("RabbitMQServer");
+                if(string.IsNullOrEmpty(host)) {
+                    x.UsingInMemory((context, cfg) => {
+                        cfg.ConfigureEndpoints(context);
+                        cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
+                    });
+                } else {
+                    x.UsingRabbitMq((context, cfg) => {
+                        cfg.ConfigureEndpoints(context);
+                    });
+                }
             });
 #else
             services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());

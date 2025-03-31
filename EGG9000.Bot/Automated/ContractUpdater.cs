@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated {
-    public class ContractUpdater(IServiceProvider provider) : _UpdaterBase<ContractUpdater>(_updateInterval, TimeSpan.Zero, provider) {
+    public class ContractUpdater(IServiceProvider provider) : _UpdaterBase<ContractUpdater>(_updateInterval, TimeSpan.FromMinutes(10), provider) {
         public static readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(90);
         public readonly List<UserX> _users = [];
 
