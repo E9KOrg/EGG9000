@@ -33,7 +33,7 @@ namespace EGG9000.Bot.EggIncAPI {
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
         public const string BaseAddressNew = "https://www.auxbrain.com/";
         public const string UserId = "EI5223299518300160";
-        public static uint ClientVersion { get; set; } = 68;
+        public static uint ClientVersion { get; set; } = 69;
 
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new BasicRequestInfo {

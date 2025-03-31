@@ -225,6 +225,7 @@ message Backup {
         optional uint32 boost_tokens_given = 28;
         optional uint32 unclaimed_boost_tokens = 27;
         optional double gametime_until_next_boost_token = 29;
+        optional double total_step_time = 32;
     }
     
     repeated Simulation farms = 12;
@@ -593,6 +594,7 @@ message ContractSeasonRewardConfirmationRequest {
 message ContractSeasonInfo {
     optional string id = 1;
     optional string name = 3;
+    optional double start_time = 4;
     
     repeated GoalSet grade_goals = 2;
     message GoalSet {
@@ -633,7 +635,7 @@ message ContractPlayerInfo {
     repeated SeasonProgress season_progress = 15;
     message SeasonProgress {
         optional string season_id = 1;
-        optional bool active = 2;
+        optional bool active_DEP = 2;
         optional Contract.PlayerGrade starting_grade = 3;
         optional double total_cxp = 4;
         optional double cxp_last_reward_given = 5;
@@ -670,6 +672,7 @@ message ContractEvaluation {
     optional bool counted_in_season = 20;
     optional string season_id = 21;
     optional uint32 time_cheats = 27;
+    optional uint32 extra_players = 30;
     
     repeated PoorBehavior issues = 19;
     enum PoorBehavior {
@@ -713,6 +716,7 @@ message CoopCompletionSnapshot {
     repeated ContributorSnapshot contributors = 1;
     message ContributorSnapshot {
         optional double contribution = 1;
+        optional double total_step_time = 8;
         optional double last_contribution_time = 6;
         optional bool finalized = 7;
         optional double soul_power = 2;
@@ -1157,6 +1161,7 @@ message ContractCoopStatusUpdateRequest {
     optional double amount = 4;
     optional double rate = 5;
     optional uint32 time_cheats_detected = 6;
+    optional double total_step_time = 19;
     optional double soul_power = 7;
     optional uint32 eop = 15;
     optional uint32 boost_tokens = 9;
@@ -1364,6 +1369,7 @@ message LiveConfig {
         optional double new_player_event_duration = 11;
         optional bool contracts_club_available = 12;
         optional bool contracts_beta = 13;
+        optional bool season_rewards_enabled = 15;
     }
     
     optional HelpConfig help_config = 5;
@@ -1785,6 +1791,13 @@ message CollectContractArtifactRewardsRequest {
     optional uint32 league = 5;
     optional Contract.PlayerGrade grade = 6;
     optional uint32 goal_index = 3;
+    optional MissionInfo.Spaceship best_ship = 4;
+}
+
+message CollectSeasonArtifactRewardsRequest {
+    optional BasicRequestInfo rinfo = 1;
+    optional string season_identifier = 2;
+    optional double cxp = 3;
     optional MissionInfo.Spaceship best_ship = 4;
 }
 
@@ -2369,6 +2382,7 @@ message UserVerificationAnalysis {
     
     optional double start_time = 2;
     optional double completion_time = 3;
+    optional int32 verification_count = 37;
     optional double num_prestiges = 14;
     optional double soul_eggs = 15;
     optional uint32 eggs_of_prophecy = 27;

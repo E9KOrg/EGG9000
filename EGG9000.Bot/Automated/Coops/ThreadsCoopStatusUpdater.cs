@@ -215,24 +215,24 @@ namespace EGG9000.Bot.Automated.Coops {
                 timings.Set("Got status");
 
 
-                //** Handle coop bot being started
-                if(!coop.AddedFromBackup && !coop.SuccessfullyStarted && (statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound)) {
-                    var messages = await (coopThread as SocketTextChannel).GetMessagesAsync().FlattenAsync();
-                    _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}, attempting to start.", coop.Name);
-                    string EIID = null;
-                    var random = new Random();
-                    foreach(var account in coop.UserCoopsXrefs.OrderBy(x => random.Next())) {
-                        var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.EggIncId);
-                        if(r.Grade == (Ei.Contract.Types.PlayerGrade)coop.League) {
-                            EIID = account.EggIncId;
-                            break;
-                        }
-                    }
+                ////** Handle coop bot being started
+                //if(!coop.AddedFromBackup && !coop.SuccessfullyStarted && (statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound)) {
+                //    var messages = await (coopThread as SocketTextChannel).GetMessagesAsync().FlattenAsync();
+                //    _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}, attempting to start.", coop.Name);
+                //    string EIID = null;
+                //    var random = new Random();
+                //    foreach(var account in coop.UserCoopsXrefs.OrderBy(x => random.Next())) {
+                //        var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.EggIncId);
+                //        if(r.Grade == (Ei.Contract.Types.PlayerGrade)coop.League) {
+                //            EIID = account.EggIncId;
+                //            break;
+                //        }
+                //    }
 
-                    var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop.Name, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
-                    _logger.LogInformation($"Attempting to create coop for {coop.Name}, Result: {result}");
-                    return;
-                }
+                //    var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop.Name, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
+                //    _logger.LogInformation($"Attempting to create coop for {coop.Name}, Result: {result}");
+                //    return;
+                //}
 
                 if(!coop.SuccessfullyStarted && statusReponse.Status.Success) {
                     coop.SuccessfullyStarted = true;
