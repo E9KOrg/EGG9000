@@ -80,6 +80,13 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
+        public async Task<IActionResult> AliveDiscord() {
+
+            if(_discord.ConnectionState == ConnectionState.Connected)
+                return Content("Success");
+            else return StatusCode(503);
+        }
+
         public async Task<IActionResult> Test() {
             var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
             _db.RemoveRange(demerits);

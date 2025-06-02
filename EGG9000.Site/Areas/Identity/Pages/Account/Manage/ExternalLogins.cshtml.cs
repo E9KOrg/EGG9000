@@ -74,6 +74,8 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             // Request a redirect to the external login provider to link a login for the current user
             var redirectUrl = Url.Page("./ExternalLogins", pageHandler: "LinkLoginCallback");
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl, _userManager.GetUserId(User));
+            properties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(45);
+            properties.IsPersistent = true;
             return new ChallengeResult(provider, properties);
         }
 

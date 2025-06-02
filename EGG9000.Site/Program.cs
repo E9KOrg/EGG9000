@@ -139,17 +139,20 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ExpireTimeSpan = TimeSpan.FromDays(15);
     });
 
-    services.ConfigureApplicationCookie(options => {
-        options.LoginPath = $"/Identity/Account/Login";
-        options.LogoutPath = $"/Identity/Account/Logout";
-        options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
-        options.SlidingExpiration = true;
-        options.ExpireTimeSpan = TimeSpan.FromDays(15);
-    });
+    //services.ConfigureApplicationCookie(options => {
+    //    options.LoginPath = $"/Identity/Account/Login";
+    //    options.LogoutPath = $"/Identity/Account/Logout";
+    //    options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
+    //    options.SlidingExpiration = true;
+    //    options.ExpireTimeSpan = TimeSpan.FromDays(15);
+    //    options.se
+    //});
 
-    //services
-    //            .ConfigureApplicationCookie((options) => ConfigureAuthorizationCookie(options, "egg9000Cookie"))
-    //            .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
+    //services.ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
+
+    services
+                .ConfigureApplicationCookie((options) => ConfigureAuthorizationCookie(options, "egg9000Cookie"))
+                .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
 
 
     //_logger.LogInformation(Configuration.GetConnectionString("ClientId"));
@@ -166,6 +169,14 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             }
         };
         options.SaveTokens = true;
+    }).AddCookie(options => {
+        options.ExpireTimeSpan = TimeSpan.FromDays(45);
+        options.Cookie.Name = "egg9000Cookie";
+        options.Cookie.Expiration = TimeSpan.FromDays(45);
+        options.SlidingExpiration = true;
+        options.LoginPath = $"/Identity/Account/Login";
+        options.LogoutPath = $"/Identity/Account/Logout";
+        options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
     });
 
 
@@ -240,7 +251,10 @@ void ConfigureAuthorizationCookie(CookieAuthenticationOptions options, string co
     options.Cookie.Name = cookieName;
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.ExpireTimeSpan = TimeSpan.FromDays(150);
+    options.ExpireTimeSpan = TimeSpan.FromDays(15);
     options.SlidingExpiration = true;
-    options.Cookie.MaxAge = TimeSpan.FromDays(150);
+    options.Cookie.MaxAge = TimeSpan.FromDays(15);
+    options.LoginPath = $"/Identity/Account/Login";
+    options.LogoutPath = $"/Identity/Account/Logout";
+    options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
 }

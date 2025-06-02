@@ -67,7 +67,8 @@ namespace EGG9000.Bot.Automated.Coops {
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            coops = [.. coops.Where(x => x.Name == "YieldSlot41")];
+            //coops = [.. coops.Where(x => x.Name == "KendromeSpoke65")];
+            coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
 #endif
 
 
@@ -233,18 +234,18 @@ namespace EGG9000.Bot.Automated.Coops {
                 //    _logger.LogInformation($"Attempting to create coop for {coop.Name}, Result: {result}");
                 //    return;
                 //}
-
-                if(!coop.SuccessfullyStarted && statusReponse.Status.Success) {
-                    coop.SuccessfullyStarted = true;
-                    await _db.SaveChangesAsync(CancellationToken.None);
-                }
-
                 var status = statusReponse.Status;
 
                 if(status is null) {
                     _logger.LogWarning($"Status for {coop.Name} is null");
                     return;
                 }
+
+                if(!coop.SuccessfullyStarted && statusReponse.Status.Success) {
+                    coop.SuccessfullyStarted = true;
+                    await _db.SaveChangesAsync(CancellationToken.None);
+                }
+
 
                 if(coop.League != (uint)status.Grade) {
                     _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);

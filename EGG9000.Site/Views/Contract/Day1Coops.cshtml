@@ -5,9 +5,10 @@
     Guild dbguild = ViewBag.DBGuild;
     SocketGuild guild = ViewBag.Guild;
     var contract = (ViewBag.Contract as Contract).Details;
-
-    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
-    var boardingGroups = Model.coopGroups.GroupBy(x => x.BoardingGroup).Select(x => new {
+    var isLesserAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+    var boardingGroups = Model.coopGroups.GroupBy(x => x.BoardingGroup).Select(x => new
+    {
         BoardingGroup = new { Value = x.Key, Name = dbguild.DisableBG ? guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[x.Key])).Name : x.Key.ToString(), RoleId = dbguild.DisableBG ? ulong.Parse(dbguild.GroupRoles.Split(",")[x.Key]) : 0 },
         Grades = x.Where(y => (y.PotentialCoops?.Count ?? 0) > 0).Select(y => new {
             Grade = y.Grade.ToString(),
@@ -24,8 +25,8 @@
                         MultipleAccounts = u.User.EggIncAccounts.Count > 1,
                         AccountName = u.Account.Backup.UserName,
                         FromGroup = (u.Account.GetGroup(contract.CcOnly) != x.Key ? u.Account.GetGroup(contract.CcOnly) : 0),
-                        EggIncId = isAdmin ? u.Account.Backup.EggIncId : "",
-                        DatabaseId = isAdmin ? u.User.Id : Guid.Empty,
+                        EggIncId = isLesserAdmin ? u.Account.Backup.EggIncId : "",
+                        DatabaseId = isLesserAdmin ? u.User.Id : Guid.Empty,
                         Guild = u.Account.Guild,
                         Group = u.Account.GetGroup(contract.CcOnly),
                     };

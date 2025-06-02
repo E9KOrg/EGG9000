@@ -31,13 +31,13 @@
 	var piggyWinners = new List<RestGuildUser>();
 
 
-	@permitUsers.Count
-	<br />
+	// @permitUsers.Count
+	// <br />
 
-	@piggyUsers.Count
-	<br />
-	@Model.Count
-	<br />
+	// @piggyUsers.Count
+	// <br />
+	// @Model.Count
+	// <br />
 
 	for (var i = 0; i < Math.Min(5, permitUsers.Count); i++)
 	{
@@ -49,7 +49,7 @@
 		piggyWinners.Add(piggyPermit);
 	}
 }
-<h4>Permit Winners</h4>
+@* <h4>Permit Winners</h4>
 @foreach (var user in permitWinners)
 {
 	@user.GetName()
@@ -64,7 +64,7 @@
 	;
 	<br />
 
-}
+} *@
 
 <table>
 	<thead>

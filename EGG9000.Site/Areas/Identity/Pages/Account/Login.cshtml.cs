@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -59,6 +61,8 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
             var provider = "Discord";
             var redirectUrl = Url.Page("./ExternalLogin", pageHandler: "Callback", values: new { returnUrl });
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+            properties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(45);
+            properties.IsPersistent = true;
 
             return new ChallengeResult(provider, properties);
 

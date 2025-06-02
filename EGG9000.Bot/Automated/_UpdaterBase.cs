@@ -220,7 +220,8 @@ namespace EGG9000.Bot.Automated {
                 if(_cronExpression is not null) {
 
                 } else {
-                    await _timer.DisposeAsync();
+                    if(_timer is not null)
+                        await _timer.DisposeAsync();
                     _timer = null;
                 }
                 await _watchDogTimer.DisposeAsync();
