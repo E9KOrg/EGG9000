@@ -314,6 +314,9 @@
                             <span style="margin-right:10px;"><b><u>Ultra Boarding Group @account.UltraGroup</u></b></span>
                         }
                     }
+                    if(!String.IsNullOrWhiteSpace(account.Guild)) {
+                        <span style="margin-right:10px;"><b><u>Guild</u></b>: @account.Guild</span>
+                    }
                 }
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
                     <span style="margin-right:10px;" title="Date/Time displayed in local time"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToLocalTime().ToString("yyyy-MM-dd h:mm:ss tt")</span>

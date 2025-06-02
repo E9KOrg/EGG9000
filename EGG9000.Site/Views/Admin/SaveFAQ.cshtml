@@ -1,0 +1,41 @@
+﻿<div ng-controller="AdminPage">
+<textarea ng-model="json"></textarea>
+    <button ng-click="Save()">Save</button>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap-tpls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/1.2.0/angular-moment.min.js"></script>
+
+
+
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-animate.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-aria.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular-messages.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/angular_material/1.1.12/angular-material.min.js"></script>
+
+    <script>
+        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
+            .controller('AdminPage', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q',
+            function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+                                            // Action functions
+                                $scope.Save = function Save() {
+                                    $http({ method: 'POST', url: '/admin/savefaqtopic/', data: $scope.json, headers: { 'Content-Type': 'application/json' } })
+                                        .then(function successCallback(response) {
+                                            if (response.data.Error) {
+                                                alert(response.data.Error);
+                                                return;
+                                            }
+                                            $uibModalInstance.close();
+                                            location.reload();
+                                        }, function errorCallback(response) {
+                                            alert('Error Saving');
+                                        });
+                                };
+                            }]);
+    </script>
+}

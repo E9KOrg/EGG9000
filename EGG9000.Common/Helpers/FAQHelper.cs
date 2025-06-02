@@ -22,7 +22,7 @@ namespace EGG9000.Common.Helpers {
         public static async Task<List<FAQTopic>> GetFAQTopicsAsync(this ApplicationDbContext db, Guild guild) {
             if(!db._cache.TryGetValue(guild.GetFAQCacheKey(), out List<FAQTopic> faqTopics)) {
                 faqTopics = await db.FAQTopics.Where(g => g.GuildId == guild.Id).ToListAsync();
-                db._cache.Set(guild.GetFAQCacheKey(), faqTopics, TimeSpan.FromDays(1));
+                db._cache.Set(guild.GetFAQCacheKey(), faqTopics, TimeSpan.FromMinutes(30));
             }
             return faqTopics ?? [];
         }

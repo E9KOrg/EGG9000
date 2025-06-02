@@ -284,7 +284,10 @@ namespace EGG9000.Bot.EggIncAPI {
                     var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
                     coopStatus.Success = true;
                     return FixDepartedUsers(coopStatus, xrefs);
-                } else return null;
+                } else {
+                    //_logger.LogError("Error getting status for {coop}, {status}", CoopName, response.StatusCode);
+                    return null;
+                }
             } catch(ArgumentNullException ex) {
                 if(_logger != null) {
                     var paramName = ex.ParamName;
