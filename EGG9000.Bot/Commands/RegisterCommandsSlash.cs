@@ -351,9 +351,9 @@ namespace EGG9000.Bot.Commands {
                 logger.LogError(ex, "Error checking banned users");
             }
 
-            var existingUsers = await db.DBUsers.Where(x => x.GuildId == guildObj.Id && x.DiscordId != command.User.Id).ToListAsync();
+            var existingUsers = await db.DBUsers.ToListAsync();
             if(existingUsers.Any(u => u.EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
-                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with this server. Reach out to staff if you believe this is an error."); });
+                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
                 return;
             }
 
