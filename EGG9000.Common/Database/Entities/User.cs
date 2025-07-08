@@ -184,47 +184,51 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public List<EggIncAccount> EggIncAccounts {
             get {
-                if(_contractRegistrationByte is null) {
-                    _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
-                } else if(_accounts is not null) {
-                    return _accounts;
-                } else {
-                    _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
-                    bool needsUpdate = false;
-                    if(_accounts is null) {
-                        _accounts = new List<EggIncAccount>();
-                        needsUpdate = true;
-                    }
+                try {
+                    if(_contractRegistrationByte is null) {
+                        _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
+                    } else if(_accounts is not null) {
+                        return _accounts;
+                    } else {
+                        _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+                        bool needsUpdate = false;
+                        if(_accounts is null) {
+                            _accounts = new List<EggIncAccount>();
+                            needsUpdate = true;
+                        }
 
-                    if(_CustomBackups is not null && _CustomBackups.Length > 0) {
-                        var backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
-                        _accounts.ForEach(x => {
-                            x.Backup = backups.FirstOrDefault(y => y.EggIncId == x.Id);
-                        });
-                        _CustomBackups = new byte[0];
-                        needsUpdate = true;
-                    }
+                        if(_CustomBackups is not null && _CustomBackups.Length > 0) {
+                            var backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
+                            _accounts.ForEach(x => {
+                                x.Backup = backups.FirstOrDefault(y => y.EggIncId == x.Id);
+                            });
+                            _CustomBackups = new byte[0];
+                            needsUpdate = true;
+                        }
 
-                    _accounts.ForEach(account => {
-                        if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
-                            account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
-                        if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
-                            var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
-                            if(backupTime > account.PromotionTime) {
-                                account.LastGrade = account.Backup.Grade;
-                                needsUpdate = true;
+                        _accounts.ForEach(account => {
+                            if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
+                                account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
+                            if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
+                                var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
+                                if(backupTime > account.PromotionTime) {
+                                    account.LastGrade = account.Backup.Grade;
+                                    needsUpdate = true;
+                                }
                             }
+                            //Sync account's Device ID from backup
+                            if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
+                                account.DeviceID = account.Backup.DeviceId;
+                            }
+                        });
+                        if(needsUpdate) {
+                            UpdateAccounts();
                         }
-                        //Sync account's Device ID from backup
-                        if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
-                            account.DeviceID = account.Backup.DeviceId;
-                        }
-                    });
-                    if(needsUpdate) {
-                        UpdateAccounts();
                     }
-                }
-                return _accounts;
+                    return _accounts;
+                } catch(MessagePackSerializationException) {
+                    return new List<EggIncAccount>();
+                } catch(Exception) { throw; }
             } set {
                 if(value == null) {
                     Console.WriteLine("Trying to save NULL EggIncAccounts");

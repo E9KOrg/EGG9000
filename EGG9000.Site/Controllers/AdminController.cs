@@ -1045,7 +1045,7 @@ namespace EGG9000.Site.Controllers {
                 ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList()
             }).ToList();
 
-            return View(coopsWithChannels.Where(x => x.ExtraChannels.Any() || x.MainChannel is null).ToList());
+            return View(coopsWithChannels.Where(x => x.ExtraChannels.Any()).ToList());
         }
 
 
