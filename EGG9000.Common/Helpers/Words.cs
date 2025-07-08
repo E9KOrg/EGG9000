@@ -407,7 +407,6 @@ namespace EGG9000.Bot {
     "drone",
     "droop",
     "drove",
-    "drown",
     "drum",
     "dry",
     "duck",
