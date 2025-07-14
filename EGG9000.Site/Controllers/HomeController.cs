@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -492,6 +493,15 @@ namespace EGG9000.Site.Controllers {
             return View(leaderboard);
         }
 
+        //[Authorize]
+        //[OutputCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
+        //public async Task<IActionResult> EggDay() {
+        //    var loginuser = (await _userManager.GetUserAsync(User));
+        //    var logins = await _userManager.GetLoginsAsync(loginuser);
+        //    var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+        //}
+
         [Authorize]
         public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] string year = "", [FromQuery] ulong guildid = 0, [FromQuery] int prefix = 0) {
 
@@ -502,7 +512,7 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            var maxYearInt = (DateTimeOffset.Now.Month >= 7 && (DateTimeOffset.Now.Month >= 8 || DateTimeOffset.Now.Day > 15)) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
+            var maxYearInt = (DateTimeOffset.Now.Month >= 7 && (DateTimeOffset.Now.Month >= 8 || DateTimeOffset.Now.Day >= 14)) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
             if(!int.TryParse(year, out var yearInt)) {
                 yearInt = maxYearInt;
             }
@@ -539,13 +549,23 @@ namespace EGG9000.Site.Controllers {
                 var eggincids = accounts.Select(x => x.Account.Id).ToList();
 
 
-                var eggDayDate = new DateTime(yearInt, 07, 14, 11, 0, 0);
+                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.Now));
                 // Snapshots from 16th @ Midnight (after event is over)
-                var postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate.AddDays(1)).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
-                timings.Set("postEggDaySnapshots");
-                // Snapshots from 14th @ Midnight (before event started)
+
                 var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
                 timings.Set("preEggDaySnapshots");
+
+
+                List<UserSnapShot> postEggDaySnapshots;
+                if(DateTimeOffset.Now.Date == eggDayDate.Date) {
+                    //postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+                    postEggDaySnapshots = accounts.Where(x => preEggDaySnapshots.Any(y => y.EggIncID == x.Account.Id)).Select(x => new UserSnapShot { EarningsBonus = x.Account.Backup.EarningsBonus, EggIncID = x.Account.Id, EggsOfProphecy = x.Account.Backup.EggsOfProphecy, Prestiges = x.Account.Backup.NumPrestiges, SoulEggs = x.Account.Backup.SoulEggs, UserId = x.User.Id, Date = DateTime.Now }).ToList();
+                } else {
+                    var eggDayDateEnd = eggDayDate.AddDays(1).Date;
+                    postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date >= eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
+                }
+                timings.Set("postEggDaySnapshots");
+                // Snapshots from 14th @ Midnight (before event started)
 
 
                 results = postEggDaySnapshots.Select(x => {
