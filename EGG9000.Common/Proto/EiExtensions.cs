@@ -24,7 +24,10 @@ namespace Ei {
             get {
                 if(_participants != null)
                     return _participants;
-                _participants = new List<Types.ContributionInfo>();
+                _participants = [];
+                if (Contributors == null || Contributors.Count == 0) {
+                    return _participants;
+                }
                 foreach(var p in Contributors) {
                     p.TimeLeftSeconds = SecondsRemaining;
                     _participants.Add(p);
