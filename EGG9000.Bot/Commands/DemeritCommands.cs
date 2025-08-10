@@ -37,6 +37,9 @@ namespace EGG9000.Bot.Commands {
 
                 var message = $"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits";
                 await command.RespondAsync(message, ephemeral: hidden);
+                if (hidden) {
+                    await command.Channel.SendMessageAsync(message);
+                }
 
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
                 var response = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
