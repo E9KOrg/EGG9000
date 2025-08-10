@@ -18,7 +18,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         [SlashCommand(Description = "Add demerit to user", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task AddDemerit(FauxCommand command, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient) {
+        public static async Task AddDemerit(FauxCommand command, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient, [SlashParam(Required = false)] bool hidden = false) {
             try {
                 var admin = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
@@ -36,12 +36,12 @@ namespace EGG9000.Bot.Commands {
                 var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
 
                 var message = $"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits";
-                await command.RespondAsync(message);
+                await command.RespondAsync(message, ephemeral: hidden);
 
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
                 var response = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
             } catch(Exception e) {
-                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
+                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e), ephemeral: hidden);
             }
         }
 
