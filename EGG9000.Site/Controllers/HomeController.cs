@@ -557,7 +557,7 @@ namespace EGG9000.Site.Controllers {
 
 
                 List<UserSnapShot> postEggDaySnapshots;
-                if(DateTimeOffset.Now.Date == eggDayDate.Date) {
+                if(DateTimeOffset.Now.Date > eggDayDate && DateTimeOffset.Now.Date < eggDayDate.AddDays(1)) {
                     //postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
                     postEggDaySnapshots = accounts.Where(x => preEggDaySnapshots.Any(y => y.EggIncID == x.Account.Id)).Select(x => new UserSnapShot { EarningsBonus = x.Account.Backup.EarningsBonus, EggIncID = x.Account.Id, EggsOfProphecy = x.Account.Backup.EggsOfProphecy, Prestiges = x.Account.Backup.NumPrestiges, SoulEggs = x.Account.Backup.SoulEggs, UserId = x.User.Id, Date = DateTime.Now }).ToList();
                 } else {

@@ -9,14 +9,27 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
-    public class UserSnapShots(IServiceProvider provider) : _UpdaterBase<UserSnapShots>(TimeSpan.FromHours(1), TimeSpan.FromMinutes(1), provider) {
+    public class UserSnapShots(IServiceProvider provider) : _UpdaterBase<UserSnapShots>(TimeSpan.FromHours(5), TimeSpan.FromMinutes(1), provider) {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date, cancellationToken);
 
+
+            var eggDayDate = new DateTimeOffset(DateTimeOffset.Now.Year, 07, 14, 10, 55, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.Now));
+
+            var eggDay1 = DateTimeOffset.Now.Date == eggDayDate.Date;
+            var eggDay = DateTimeOffset.Now > eggDayDate && DateTimeOffset.Now < eggDayDate.AddDays(1).AddMinutes(30);
+            var eggDay2 = DateTimeOffset.Now.Date == eggDayDate.AddDays(1).Date;
+
+
             if(!hasSnapshots) {
+                if(eggDay1 && !eggDay)
+                    return;
+                if(eggDay2 && eggDay)
+                    return;
+
                 var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
                 var snapshots = 0;
                 foreach(var user in users) {
