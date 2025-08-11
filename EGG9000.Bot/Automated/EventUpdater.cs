@@ -92,7 +92,9 @@ namespace EGG9000.Bot.Automated {
             }
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             foreach(var dbguild in dbguilds) {
-                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+                if(guild is null)
+                    continue; 
                 var newName = "game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";
@@ -162,7 +164,9 @@ namespace EGG9000.Bot.Automated {
                 var customization = await _db.GetCustomizationAsync(dbguild, newEvent);
                 var (embed, embedImage) = await GetEventEmbed(_db, newEvent, customization, false, false);
 
-                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+                if(guild is null)
+                    continue;
                 var ccEventChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
 
@@ -207,7 +211,8 @@ namespace EGG9000.Bot.Automated {
                 var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
                 var (embed, embedImage) = await GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
 
-                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+                if(guild == null) continue;
                 var eventChannel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(eventChannel != null) {
                     foreach(var mid in messageIds) {
@@ -383,7 +388,8 @@ namespace EGG9000.Bot.Automated {
                 if(string.IsNullOrEmpty(shell.MessageIds)) {
                     var messageIDs = new List<(ulong, ulong)>();
                     foreach(var dbguild in dbguilds) {
-                        var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                        var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+                        if(guild is null) continue;
                         var channel = await _client.GetChannelAsync(GuildChannelType.LimitedTimeShells, guild);
                         if(channel is not null) {
                             var ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;

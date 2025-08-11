@@ -182,8 +182,9 @@ namespace EGG9000.Bot.Automated {
 
         private async Task AddContractChanelsIfNeeded(List<Guild> dbguilds, Contract contract, Ei.Contract contractResponse, ApplicationDbContext _db) {
             foreach(var dbguild in dbguilds) {
-                var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 0);
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+                if(guild is null)
+                    continue; var guildContract = contract.GuildContracts?.FirstOrDefault(x => x.ContractID == contract.ID && x.GuildID == guild.Id && x.League == 0);
                 if(guildContract == null) {
 
                     var subscriptionContractCategory = await _client.GetCategoryAsync(GuildChannelType.SubscriptionContractCategory, guild);

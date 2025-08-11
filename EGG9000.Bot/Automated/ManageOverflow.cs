@@ -22,7 +22,9 @@ namespace EGG9000.Bot.Automated {
 
             var users = await _db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync(CancellationToken.None);
             foreach(var guild in guilds) {
-                var mainServer = _client.Guilds.First(x => x.Id == guild.DiscordSeverId);
+                var mainServer = _client.Guilds.FirstOrDefault(x => x.Id == guild.DiscordSeverId);
+                if(mainServer is null)
+                    continue;
                 await mainServer.DownloadUsersAsync();
 
                 var members = users.Where(x => x.GuildId == guild.Id);

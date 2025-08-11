@@ -103,7 +103,11 @@ namespace EGG9000.Bot.Automated {
 
                     _logger.LogInformation("Working on leaderboard for {guild}", dbguild.Name);
 
-                    var guild = _client.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
+                    var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+                    if(guild is null) {
+                        _logger.LogWarning("Unable to find server {server}, {id}", dbguild.Name, dbguild.Id);
+                        continue;
+                    }
                     await guild.DownloadUsersAsync();
 
                     List<SocketGuild> overflowGuilds = null;

@@ -55,7 +55,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 .Count > 0) {
                 if(cancellationToken.IsCancellationRequested) return;
 
-                var guildIDs = allCoops.Select(x => x.GuildId).Distinct().ToArray();
+                var guildIDs = allCoops.Select(x => x.GuildId).Distinct().ToList();
 
 
                 var coops = new List<Coop>();
@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-                var contractIDs = coops.Select(x => x.ContractID).Distinct().ToArray();
+                var contractIDs = coops.Select(x => x.ContractID).Distinct().ToList();
                 var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => guildIDs.Contains(gc.GuildID) && contractIDs.Contains(gc.ContractID)).ToListAsync(cancellationToken);
                 var dbguilds = await _db.Guilds.Where(x => guildIDs.Contains(x.Id)).ToListAsync(cancellationToken);
 
@@ -145,8 +145,9 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                 tasks.Add(Task.Run(async () => {
                                     try {
-                                        //var users = (await _db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-                                        var xrefs = await _db.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.CoopId == coop.Id).ToListAsync();
+                                        var db2 = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                                        //var users = (await db2.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
+                                        var xrefs = await db2.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.CoopId == coop.Id).ToListAsync();
 
                                         var msg = await coopThread.SendMessageAsync($"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n");
                                         var msg2 = await coopThread.SendMessageAsync("\u17B5");
@@ -154,7 +155,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                         var msg4 = await coopThread.SendMessageAsync("\u17B5");
                                         var msg5 = await coopThread.SendMessageAsync("\u17B5");
                                         coop.UpdateMessagesId = JsonConvert.SerializeObject(new List<ulong> { msg.Id, msg2.Id, msg3.Id, msg4.Id, msg5.Id, });
-                                        await _db.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
+                                        await db2.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
                                     } finally {
                                         throttler.Release();
                                     }
