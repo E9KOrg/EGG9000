@@ -261,7 +261,7 @@ namespace EGG9000.Bot.Automated {
         public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
-            var percent = (1 - e.Multiplier) * 100;
+            var percent = Math.Round((1 - e.Multiplier) * 100, 2);
             var description = $"**{e.Subtitle}**\n";
             var title = "";
             FileAttachment? eventImage = null;
