@@ -324,6 +324,18 @@ namespace EGG9000.Common.Database.Entities {
             };
         }
 
+        public static bool MatchLastReward(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
+            var lastGoal = gradeSpec.Goals.LastOrDefault();
+            if(lastGoal == null) return false;
+            var lastType = lastGoal.RewardType;
+
+            return selectReward switch {
+                RewardType.Artifact => lastType == RewardType.Artifact || lastType == RewardType.ArtifactCase,
+                RewardType.PiggyMultiplier => lastType == RewardType.PiggyMultiplier || lastType == RewardType.PiggyLevelBump || lastType == RewardType.PiggyFill,
+                _ => lastType == selectReward,
+            };
+        }
+
         public void UpdateUserBreak() {
             var accountsWithExpire = this.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.Now).ToList();
 
