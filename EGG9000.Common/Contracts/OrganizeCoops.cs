@@ -51,10 +51,13 @@ namespace EGG9000.Common.Contracts {
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
 
             FilterAccounts(accounts, excluded, x => {
+                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset)
+                    return true;
                 // Colleggtible bypass should occur before any possible falsey returns
                 if(UncompleteColleggtibleBypass(x, contract)) return true;
 
                 //Try to find the right gradespec, if something goes wrong, default to false
+
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
                 if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return false;
 
