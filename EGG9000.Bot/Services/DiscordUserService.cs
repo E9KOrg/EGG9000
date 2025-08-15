@@ -181,7 +181,7 @@ namespace EGG9000.Common.Services {
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
                 var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
-                var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, []);
+                var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, [], _logger);
                 var roleText = role is not null ? $" You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}" : "";
                 var response = await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
