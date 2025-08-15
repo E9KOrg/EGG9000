@@ -205,7 +205,7 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
-                        _ = await DiscordHelpers.CheckRoles(_db, guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), [..userAccounts]);
+                        _ = await DiscordHelpers.CheckRoles(_db, guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), [..userAccounts], _logger);
                     }
 
                     await PostOverallLeaderboard(guild, users, recentContracts, _db);
