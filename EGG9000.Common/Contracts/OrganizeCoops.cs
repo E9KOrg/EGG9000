@@ -30,6 +30,8 @@ namespace EGG9000.Common.Contracts {
                 RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
             })).ToList();
 
+            FilterAccounts(accounts, excluded, x => x.Account.GetGrade() != Ei.Contract.Types.PlayerGrade.GradeUnset, "Grade is unset");
+
             FilterAccounts(accounts, excluded, x => x.Account.Backup is not null, "Backup is empty");
 
             FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
@@ -51,21 +53,27 @@ namespace EGG9000.Common.Contracts {
             FilterAccounts(accounts, excluded, x => !existingCoops.Any(y => y.UserCoopsXrefs.Any(z => z.EggIncId == x.Account.Backup.EggIncId)), "Already assigned a co-op");
 
             FilterAccounts(accounts, excluded, x => {
-                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset)
-                    return true;
-                // Colleggtible bypass should occur before any possible falsey returns
+                //With no BGs on guilds, filters are disabled - always true
+                if(dbGuild is not null && dbGuild.DisableBG) return true;
+
+                // Colleggtible bypass should occur before any possible `return false`-s
                 if(UncompleteColleggtibleBypass(x, contract)) return true;
 
-                //Try to find the right gradespec, if something goes wrong, default to false
+                //If a player does not have a set grade, we can't check the rewards for that grade
+                if(x.Account.GetGrade() == Ei.Contract.Types.PlayerGrade.GradeUnset) return false;
 
+                //Try to find the right gradespec, if something goes wrong, default to false
                 var gradeSpec = contract.Details.GradeSpecs.First(y => y.Grade == x.Account.GetGrade());
                 if(gradeSpec is null || gradeSpec.Grade != x.Account.GetGrade()) return false;
 
-                //Which list applies to the current contract?
-                var registerRewards = GetRegisterRewards(dbGuild, x, contract);
+                //Figure out which list to use in case of a leggacy
+                var leggacyRegisterRewards = new List<Ei.RewardType>();
+                if(x.Account.LeggacyAutoRegisterRewards is null || x.Account.LeggacyAutoRegisterRewards.Count == 0) leggacyRegisterRewards = x.Account.AutoRegisterRewards;
+                else leggacyRegisterRewards = x.Account.LeggacyAutoRegisterRewards;
 
-                //Null here is not empty list, but an explicit "do not apply"
-                if(registerRewards is null) return false;
+                //Which list applies to the current contract?
+                var registerRewards = contract.Details.Leggacy ? leggacyRegisterRewards : x.Account.AutoRegisterRewards;
+                registerRewards ??= []; //If it's null, initialize it so it has a 0-count
 
                 var completedRewards = x.Account.Backup.Farms.FirstOrDefault(y => y.ContractId == contract.ID)?.NumGoalsAchieved ?? x.Account.Backup.ArchivedFarms.FirstOrDefault(y => y.ContractId == contract.ID)?.NumGoalsAchieved ?? 0;
 
