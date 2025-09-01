@@ -21,7 +21,7 @@ namespace EGG9000.Bot {
             new(27, "o"),
             new(30, "N"),
             new(33, "d"),
-            new(36, "u"),
+            new(36, "U"),
             new(39, "D"),
             new(42, "Td"),
             new(45, "qd"),

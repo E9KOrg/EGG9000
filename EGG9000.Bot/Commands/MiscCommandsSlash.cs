@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            await command.DeferAsync();
+            await command.DeferAsync(ephemeral: true);
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });

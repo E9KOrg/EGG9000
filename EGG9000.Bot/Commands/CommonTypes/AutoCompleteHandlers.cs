@@ -116,7 +116,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg) {
-                var contracts = await _db.Contracts.Where(x => x.MaxUsers >  1 && x.GoodUntil > DateTimeOffset.Now).Select(x => new { x.ID, x.Name }).ToListAsync();
+                var contracts = await _db.Contracts.Where(x => x.MaxUsers >  1 && x.GoodUntil > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.ID, x.Name }).ToListAsync();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
                 await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
