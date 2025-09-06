@@ -99,7 +99,7 @@ namespace EGG9000.Bot.Commands {
 
             var xref = await db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             var props = await MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, db, dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
