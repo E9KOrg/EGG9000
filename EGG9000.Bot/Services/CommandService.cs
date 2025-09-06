@@ -349,8 +349,15 @@ namespace EGG9000.Bot.Services {
 
             var handler = paremeter.GetCustomAttributes<SlashParamAttribute>().First().AutocompleteHandler;
 
+
+            if(!_cache.TryGetValue("dbguilds", out List<Guild> dbguilds)) {
+                var db = _dbContextFactory.CreateDbContext();
+                dbguilds = db.Guilds.ToList();
+                _cache.Set("dbguilds", dbguilds, TimeSpan.FromHours(1));
+            }
+
             var autocompleteClass = ActivatorUtilities.CreateInstance(_provider, handler);
-            handler.GetMethod("Run").Invoke(autocompleteClass, [arg]);
+            handler.GetMethod("Run").Invoke(autocompleteClass, [arg, dbguilds]);
             return Task.CompletedTask;
         }
 

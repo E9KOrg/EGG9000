@@ -5,6 +5,7 @@ using EGG9000.Bot.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Services;
@@ -24,8 +25,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class UserAccountAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
+                var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 var users = await _db.DBUsers
                     .Where(
                         x => x.GuildId == guild.Id && (
@@ -50,7 +51,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class UserAccountChannelSpecificAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == arg.Channel.Id);
 
                 var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
@@ -85,8 +86,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class PersonalUserAccountAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
+                var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 var users = await _db.DBUsers
                     .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
                     .Take(10).ToListAsync();
@@ -115,7 +116,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class StaffContractAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var contracts = await _db.Contracts.Where(x => x.MaxUsers >  1 && x.GoodUntil > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.ID, x.Name }).ToListAsync();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
@@ -127,7 +128,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
             private readonly DiscordSocketClient _discord = client;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = _db.Guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 var discordGuild = _discord.GetGuild(guild.Id);
                 var discordUserPerms = discordGuild.GetUser(arg.User.Id).GuildPermissions.ToList();
@@ -153,7 +154,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class MoveGradeAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var coop = await _db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Channel.Id);
 
                 if(coop is null || coop.League == 0) {
@@ -173,7 +174,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         }
 
         public class GradeAutoComplete() : IAutoCompleteHandler {
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var result = Enumerable.Range(1, 5).Reverse().ToList()
                     .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x));
                 await arg.RespondAsync(
@@ -185,7 +186,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class RemoveFromCoopAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var users = await _db.UserCoopXrefs.Where(x => x.Coop.ThreadID == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
                 if(users.Count == 0) await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
@@ -198,8 +199,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class MoveToCoopCoopNameAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
-                var guild = await _db.Guilds.FirstAsync(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
+                var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 List<CoopMin> coops = null;
                 if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     coops = await _db.Coops.Include(x => x.Contract)
@@ -228,7 +229,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         public class ServiceNameAutoComplete(IServiceProvider serviceProvider) : IAutoCompleteHandler {
             private readonly IServiceProvider _serviceProvider = serviceProvider;
 
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 if(_allServicesAndJobs == null) {
                     var services = _serviceProvider.GetServices<IHostedService>().Where(x => x is IUpdaterService).OrderBy(x => x.GetType().Name)
                         .Select(c => new AutocompleteResult($"{c.GetType().Name}", c.GetType().Name)).ToList();
@@ -263,7 +264,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         #region AFXAutoCompletes
         public class ArtifactNameAutoComplete() : IAutoCompleteHandler {
             private readonly EiAfxDataRoot _eiAfxData = EggIncArtifacts.GetEiAfxData();
-            public async Task Run(SocketAutocompleteInteraction arg) {
+            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 IEnumerable<ArtifactFamily> artifactFamilies = [.. _eiAfxData.artifact_families];
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     artifactFamilies = artifactFamilies.Where(x => x.name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
