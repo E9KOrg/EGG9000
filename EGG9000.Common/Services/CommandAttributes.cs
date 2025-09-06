@@ -1,5 +1,7 @@
 ﻿using Discord.WebSocket;
 
+using EGG9000.Common.Database.Entities;
+
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -74,6 +76,6 @@ namespace EGG9000.Common.Commands {
     }
 
     public interface IAutoCompleteHandler {
-        public Task Run(SocketAutocompleteInteraction arg);
+        public Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds);
     }
 }
