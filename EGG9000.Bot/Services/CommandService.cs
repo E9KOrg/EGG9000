@@ -367,6 +367,7 @@ namespace EGG9000.Bot.Services {
         }
 
         private async Task _discord_SelectMenuExecuted(SocketMessageComponent arg) {
+            var start = Stopwatch.GetTimestamp();
             try {
                 var command = _componentCommandFunctions.First(x => x.Name == arg.Data.CustomId.Split(":")[0].ToLower());
 
@@ -378,6 +379,10 @@ namespace EGG9000.Bot.Services {
                 var frame = (new StackTrace(e, true)).GetFrame(0);
 
                 await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
+            } finally {
+                var end = Stopwatch.GetTimestamp();
+                var elapsed = end - start;
+                _logger.LogTrace("Button response took {elapsed}ms", elapsed);
             }
         }
 

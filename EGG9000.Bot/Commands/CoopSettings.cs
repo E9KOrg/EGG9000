@@ -58,7 +58,7 @@ namespace EGG9000.Bot.Commands {
             eBuilder.Description += "\n\nReceive a DM from the bot for any of the following";
             var builder = new ComponentBuilder();
 
-            var guild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == dbuser.GuildId);
+            var guild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             foreach(var coopSettingEnum in Enum.GetValues<GuildCoopSetting>()) {
                 var fi = coopSettingEnum.GetType().GetField(coopSettingEnum.ToString());
@@ -95,7 +95,7 @@ namespace EGG9000.Bot.Commands {
             await component.DeferAsync();
             var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == dbuser.GuildId);
+            var dbGuild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             var xref = await db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             var props = await MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, db, dbuser);
@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Commands {
             var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var openedFromContSets = data.Split(",").Length > 1 && Convert.ToBoolean(data.Split(",")[2]);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == dbuser.GuildId);
+            var dbGuild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             var settingName = data.Split(",")[0];
 
@@ -133,7 +133,7 @@ namespace EGG9000.Bot.Commands {
             var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var openedFromContSets = data.Split(",").Length > 1 && Convert.ToBoolean(data.Split(",")[2]);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == dbuser.GuildId);
+            var dbGuild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             var settingName = data.Split(",")[0];
 

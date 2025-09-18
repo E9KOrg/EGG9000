@@ -485,6 +485,46 @@
       "requiredFarmValue": 3.6E+65
     },
     {
+      "id": 50,
+      "imageUrlEnder": "a/ab/egg_curiosity.png",
+      "emoji": "<:Curiosity_Egg:1418052453152329809>",
+      "name": "Curiosity",
+      "value": 0.0000001,
+      "requiredFarmValue": 3.6E+65
+    },
+    {
+      "id": 51,
+      "imageUrlEnder": "a/ab/egg_integrity.png",
+      "emoji": "<:Integrity_Egg:1418052516595241010>",
+      "name": "Integrity",
+      "value": 0.0000001,
+      "requiredFarmValue": 3.6E+65
+    },
+    {
+      "id": 52,
+      "imageUrlEnder": "a/ab/egg_humility.png",
+      "emoji": "<:Humility_Egg:1418052494197526609>",
+      "name": "Humility",
+      "value": 0.0000001,
+      "requiredFarmValue": 3.6E+65
+    },
+    {
+      "id": 53,
+      "imageUrlEnder": "a/ab/egg_resilience.png",
+      "emoji": "<:Resilience_Egg:1418053160660107264>",
+      "name": "Resilience",
+      "value": 0.0000001,
+      "requiredFarmValue": 3.6E+65
+    },
+    {
+      "id": 54,
+      "imageUrlEnder": "a/ab/Egg_19.png",
+      "emoji": "<:Egg_29:694345628486074409>",
+      "name": "Enlightenment",
+      "value": 0.0000001,
+      "requiredFarmValue": 3.6E+65
+    },
+    {
       "id": 100,
       "imageUrlEnder": "a/ac/Egg_chocolate.png",
       "emoji": "<:Egg_chocolate:724341622929883217>",
