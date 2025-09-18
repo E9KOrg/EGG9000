@@ -401,7 +401,7 @@ namespace EGG9000.Common.Database {
                 BoostTokensSpent = (ushort)farm.BoostTokensSpent,
                 CashEarned = farm.CashEarned,
                 CashSpent = farm.CashSpent,
-                TimeCheatDebt = (long)farm.TimeCheatDebt,
+                TimeCheatDebt = (long)farm.TimeCheatDebtDEP,
                 BoostsUsed = (ushort)(contract?.BoostsUsed ?? 0),
                 TimeCheatsDetected = (ushort)farm.TimeCheatsDetected,
                 Habs = farm.Habs.Select(x => (ushort)x).ToList(),
@@ -430,7 +430,7 @@ namespace EGG9000.Common.Database {
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
             var farmIndex = backup.Farms.IndexOf(farm);
             if(backup.ArtifactsDb != null) {
-                var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? new List<Ei.ArtifactsDB.Types.ActiveArtifactSlot>() : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
+                var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? new List<Ei.ActiveArtifactSlot>() : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
                 var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
 
                 customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {

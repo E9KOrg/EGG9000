@@ -8,6 +8,9 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+using System;
+using System.Collections.Frozen;
+
 namespace EGG9000.Common.Database {
     //public class ApplicationDbContext : IDesignTimeDbContextFactory<ApplicationDbContext> {
     //    public ApplicationDbContext CreateDbContext(string[] args) {
@@ -57,6 +60,15 @@ namespace EGG9000.Common.Database {
         public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
         public DbSet<FAQTopic> FAQTopics { get; set; }
 
+        public FrozenSet<Guild> CachedGuilds {
+            get {
+                return _cache.GetOrCreate<FrozenSet<Guild>>("DbContext-Guilds", entry => {
+                    entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                    return Guilds.ToFrozenSet();
+                });
+            }
+        }
+
         //    private IConfiguration _configuration;
         //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {
         //        connstring
@@ -85,7 +97,7 @@ namespace EGG9000.Common.Database {
             base.OnModelCreating(builder);
             builder.Entity<UserCoopXref>().HasKey(x => new { x.UserId, x.CoopId, x.EggIncId });
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
-            builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League});
+            builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League });
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
             builder.Entity<DBCustomEgg>().HasKey(x => new { x.Identifier });

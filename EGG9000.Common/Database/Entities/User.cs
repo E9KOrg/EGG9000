@@ -190,7 +190,12 @@ namespace EGG9000.Common.Database.Entities {
                     } else if(_accounts is not null) {
                         return _accounts;
                     } else {
-                        _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+                        try {
+                            _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+                        } catch(MessagePackSerializationException) {
+                            _accounts = new List<EggIncAccount>();
+                            return _accounts;
+                        }
                         bool needsUpdate = false;
                         if(_accounts is null) {
                             _accounts = new List<EggIncAccount>();
