@@ -214,7 +214,8 @@
 
 							UserFarmDetails userFarmDetails = null;
 							if (coop is not null) {
-								userFarmDetails = GetCoopParticipants(coop, coop.Contract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+                                var coopContract = contracts.FirstOrDefault(x => x.ID == coop.ContractID);
+								userFarmDetails = GetCoopParticipants(coop, coopContract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
 							var score = Model.scores.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm?.ContractId)?.Evaluation;

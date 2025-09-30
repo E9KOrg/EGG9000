@@ -641,8 +641,8 @@ namespace EGG9000.Common.Helpers {
             str = str.Replace(" millisecond", "ms");
             str = str.Replace(" seconds", "s");
             str = str.Replace(" second", "s");
-            str = str.Replace(" minutes", "mi");
-            str = str.Replace(" minute", "mi");
+            str = str.Replace(" minutes", "m");
+            str = str.Replace(" minute", "m");
             str = str.Replace(" hours", "h");
             str = str.Replace(" hour", "h");
             str = str.Replace(" days", "d");

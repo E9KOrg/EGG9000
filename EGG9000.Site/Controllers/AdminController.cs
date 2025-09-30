@@ -20,6 +20,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
 
@@ -398,7 +399,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize]
-        public async Task<IActionResult> SaveFAQ() {
+        public IActionResult SaveFAQ() {
             return View();
         }
 
@@ -1004,16 +1005,24 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> SearchID([FromQuery] string id) {
-            var users = (await _db.DBUsers.AsQueryable().Select(x => new { x.Id, x.DiscordId, x.DiscordUsername, x._eggIncIds, x.EIDs, x.Usernames }).ToListAsync())
-                .Select(x => new DBUser { Id = x.Id, DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername, _eggIncIds = x._eggIncIds, EIDs = x.EIDs, Usernames = x.Usernames });
+            var discordIDRegex = new Regex(@"^\d+$");
+
+            if(discordIDRegex.IsMatch(id.Trim())) {
+                var userWithDiscordId = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId.ToString() == id);
+                if(userWithDiscordId is not null) {
+                    return RedirectToAction("ViewUser", "MyFarms", new {discordId = id });
+                }
+            }
+
+            var users = await _db.DBUsers.AsQueryable().ToListAsync();
 
             id = id.Trim();
 
             if(id.All(x => x >= '0' && x <= '9')) {
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
-            } else if(Regex.IsMatch(id.ToUpper(), "EI\\d{16}") && users.Any(u => u.EIDs is not null && u.EIDs.Split(",").Contains(id) && u.DiscordId != default)) {
+            } else if(Regex.IsMatch(id.ToUpper(), "EI\\d{16}") && users.Any(u => u.EggIncAccounts is not null && u.EggIncAccounts.Any(e => e.Id == id) && u.DiscordId != default)) {
                 id = id.ToUpper();
-                var matchingEidUser = users.FirstOrDefault(u => u.EIDs is not null && u.EIDs.Split(",").Contains(id) && u.DiscordId != default);
+                var matchingEidUser = users.FirstOrDefault(u => u.EggIncAccounts is not null && u.EggIncAccounts.Any(e => e.Id == id) && u.DiscordId != default);
                 if(matchingEidUser is null) return View(new List<DBUser>());
                 return RedirectToAction("ViewUser", "MyFarms", new { discordId = matchingEidUser.DiscordId });
             }

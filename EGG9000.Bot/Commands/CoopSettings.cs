@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Commands {
 
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Would you like to edit settings for just this co-op or this and future co-ops?"; x.Components = builder.Build(); x.Embed = null; });
             } else {
-                var props = await MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", false, false, db, dbuser);
+                var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", false, false, db, dbuser);
                 await command.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
             }
         }
@@ -45,11 +45,11 @@ namespace EGG9000.Bot.Commands {
             var coopOnly = data.Split(",").Length > 2 && Convert.ToBoolean(data.Split(",")[2]);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
-            var props = await MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", coopOnly, openedFromContSets, db, dbuser);
+            var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", coopOnly, openedFromContSets, db, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        public static async Task<MessageProperties> MainMenu(CoopSetting coopSetting, string prefix ,string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) {
+        public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix ,string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()
@@ -98,7 +98,7 @@ namespace EGG9000.Bot.Commands {
             var dbGuild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             var xref = await db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
-            var props = await MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, db, dbuser);
+            var props = MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, db, dbuser);
             await component.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            var props = await MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", false, openedFromContSets, db, dbuser);
+            var props = MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", false, openedFromContSets, db, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
@@ -146,7 +146,7 @@ namespace EGG9000.Bot.Commands {
 
             await db.SaveChangesAsync();
 
-            var props = await MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, db, dbuser);
+            var props = MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, db, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
     }

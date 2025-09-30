@@ -25,15 +25,20 @@
 		text-align: center !important;
 	}
 
-		th img, td img {
-			height: 20px;
-		}
+	a img, th img, td img {
+		height: 20px;
+	}
 
 	table {
 		width: auto !important;
 	}
 
-
+	@@media (min-width: 1024px) {
+		th, td {
+			padding-left: 10px !important;
+			padding-right:10px  !important;
+		}
+	}
 
 	.Me td {
 		background-color: #adffaa !important;
@@ -59,12 +64,37 @@
 				width: auto;
 			}
 </style>
-Sort by
-<a href="?sortby=se"><button class="btn btn-primary">Soul Eggs</button></a>
-<a href="?sortby=pe"><button class="btn btn-primary">Egg Of Prophecy</button></a>
-<a href="?sortby=start"><button class="btn btn-primary">First Contract</button></a>
-<a href="?sortby=permit"><button class="btn btn-primary">Permit</button></a>
-<a href="?sortby=mer"><button class="btn btn-primary">MER</button></a>
+Sort By:
+<a class="btn btn-primary" href="?sortby=se"><img src="~/images/Egg_soul.png" /></a>
+<a class="btn btn-primary" href="?sortby=pe"><img src="~/images/Egg_of_Prophecy.png" /></a>
+<a class="btn btn-primary" href="?sortby=start">First Contract</a>
+<a class="btn btn-primary" href="?sortby=permit">Permit</a>
+<a class="btn btn-primary" href="?sortby=mer">MER</a>
+<a class="btn btn-primary" href="?sortby=shifts">Shifts</a>
+<a class="btn btn-primary" href="?sortby=eot"><img src="~/images/egg_truth.png" /></a>
+<a class="btn btn-primary" href="?sortby=eott"><img src="~/images/egg_truth.png" alt="Eggs of Truth" /> w/Unclaimed</a>
+<a class="btn btn-primary" href="?sortby=eov">Total Eggs Of Virtue</a>
+<a class="btn btn-primary" href="?sortby=tepershift">TE/Shift</a>
+
+
+
+@*<div class="dropdown" style="display: inline-block;">
+  <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
+    Sort by
+  
+  <div class="dropdown-menu">
+<a class="dropdown-item" href="?sortby=se"><img src="~/images/Egg_soul.png" />Soul Eggs</a>
+<a class="dropdown-item" href="?sortby=pe"><img src="~/images/Egg_of_Prophecy.png" />Prophecy Egg</a>
+<a class="dropdown-item" href="?sortby=start">First Contract</a>
+<a class="dropdown-item" href="?sortby=permit">Permit</a>
+<a class="dropdown-item" href="?sortby=mer">MER</a>
+<a class="dropdown-item" href="?sortby=shifts">Shifts</a>
+<a class="dropdown-item" href="?sortby=eot"><img src="~/images/egg_truth.png" />Truth Egg</a>
+<a class="dropdown-item" href="?sortby=eott"><img src="~/images/egg_truth.png" alt="Eggs of Truth" /> w/Unclaimed</a>
+<a class="dropdown-item" href="?sortby=eov">Total Eggs Of Virtue</a>
+<a class="dropdown-item" href="?sortby=tepershift">TE/Shift</a>
+  </div>
+</div>*@
 <div class="row">
 	<div class="col">
 		<table class="table table-striped table-sm">
@@ -77,16 +107,23 @@ Sort by
 					}
 					<th><img src="~/images/Egg_soul.png" alt="Soul Eggs" /></th>
 					<th><img src="~/images/Egg_of_Prophecy.png" alt="Eggs of Prophecy" /></th>
+					<th><img src="~/images/egg_truth.png" alt="Eggs of Truth" /></th>
+					@if (ViewBag.SortBy == "eott" || ViewBag.SortBy == "eov" || ViewBag.SortBy == "tepershift") {
+						<th title="Eggs Of Truth including unclaimed"><img src="~/images/egg_truth.png" alt="Eggs of Truth" />+</th>
+						<th title="Sum Eggs of Virtue Shipped">EoV</th>
+						<th title="Eggs of Truth per Shift">TE/S</th>
+					}
 					<th>EB</th>
+					<th>Shifts</th>
 					<th></th>
-					<th title="Server Coops/All Coops">Coops</th>
+					@* <th title="Server Coops/All Coops">Coops</th> *@
 					@if (ViewBag.Oldest) {
 						<th>Joined</th>
 					}
 					@if (ViewBag.SortBy == "start") {
 						<th>Started</th>
 					}
-					<th>BG</th>
+					@* <th>BG</th> *@
 					@*<th>Registered</th>*@
 				</tr>
 			</thead>
@@ -142,10 +179,23 @@ Sort by
 			</td>
 
 			<td align="right"> @account.Backup.EggsOfProphecy </td>
+			<td align="right"> @account.Backup.EggsOfTruth </td>
+
+			@if (ViewBag.SortBy == "eott" || ViewBag.SortBy == "eov" || ViewBag.SortBy == "tepershift") {
+				<td align="right">@account.Backup.EggsOfTruthTotal</td>
+				<td align="right">@((account.Backup.VirtueEggsDelivered?.Sum() ?? 0).ToEggString())</td>
+				@if (account.Backup.ShiftCount > 0) {
+					<td align="right">@(((double)account.Backup.EggsOfTruthTotal / (double)account.Backup.ShiftCount).ToString("#.00"))</td>
+				} else
+				{
+					<td></td>
+				}
+			}
 
 			<td align="right" class="monospace"> @{
 					MonoSpace(account.Backup.EarningsBonus.ToEggString(true, numberOfDecimalPlaces: 2));
 				} </td>
+			<td align="right"> @account.Backup.ShiftCount </td>
 			<td align="right">
 				@if (account.Backup.PermitLevel == 0) {
 					<img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" />
@@ -154,19 +204,19 @@ Sort by
 				}
 				<img src="@PlayerGradeDetails.GetImage(account.Account.GetGrade())" />
 			</td>
-			<td align="right" class="monospace">
-				@{
-					var totalCoops = ((account.Backup.ArchivedFarms?.Count ?? 0) + (account.Backup.Farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Count()));
-					MonoSpace($"{account.TotalContracts}/{totalCoops}{(totalCoops < 100 ? " " : "")}");
-				}
-			</td>
+			@* <td align="right" class="monospace">
+			 	@{
+			 		var totalCoops = ((account.Backup.ArchivedFarms?.Count ?? 0) + (account.Backup.Farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Count()));
+			 		MonoSpace($"{account.TotalContracts}/{totalCoops}{(totalCoops < 100 ? " " : "")}");
+			 	}
+			 </td>*@
 			@if (ViewBag.Oldest) {
 				<td>@account.User.Registered.Value.ToString("yyyy-MM-dd")</td>
 			}
 			@if (ViewBag.SortBy == "start") {
 				<td>@(account.Started.ToString("yyyy-MM-dd"))</td>
 			}
-			<td>@account.Account.Group</td>
+			@* <td>@account.Account.Group</td>*@
 			@*<td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>*@
 		</tr>
 	}

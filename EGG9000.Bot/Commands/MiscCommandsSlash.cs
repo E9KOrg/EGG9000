@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Commands {
                         var format = Math.Abs(percentChange - Math.Round(percentChange)) < 0.01 ? "F0" : "F2";
 
                         var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
-                        builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                        builder.AddField("EB Gained", $"{change.ToEggString()} ({(percentChange > 0 ? "+" : "")}{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
                     } else {
                         builder.AddField("First Update", "No previous EB to compare to", true);
                     }
@@ -311,7 +311,7 @@ namespace EGG9000.Bot.Commands {
                     var messageToPing = await thread.SendMessageAsync(".");
                     await messageToPing.ModifyAsync(x => x.Content = staffTag);
                     await messageToPing.DeleteAsync();
-                    await thread.SendMessageAsync(text: "", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
+                    await thread.SendMessageAsync(text: $"{command.User.Mention}", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
 
                     var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message + " " + thread.Mention });
 

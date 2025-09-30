@@ -116,6 +116,24 @@ namespace EGG9000.Common.Database {
         public Dictionary<string, ulong> CustomEggMaxFarmSizeReached = [];
 
 
+        //[Key(43)]
+        //public uint EoV { get; set; } = 0;
+
+        [Key(44)]
+        public double[] VirtueEggsDelivered { get; set; }
+        [Key(45)]
+        public uint Resets { get; set; }
+        [Key(46)]
+        public uint ShiftCount { get; set; }
+        [Key(47)]
+        public uint[] EovEarned { get; set; }
+
+        [IgnoreMember]
+        public uint EggsOfTruth {get { return (uint?)EovEarned?.Sum(x => x) ?? (uint)0; } }
+
+        [IgnoreMember]
+        public int EggsOfTruthTotal {  get { return VirtueEggsDelivered?.Select(x => VirtueHelper.CurrentLevel(x)).Sum() ?? 0; } }
+
         /*
         * The previous formula used here was off by a level or two
         * 
@@ -181,17 +199,18 @@ namespace EGG9000.Common.Database {
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            Farms.Where(x => x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList()?.ForEach(f => f.Artifacts?.ForEach(a => artifacts.FirstOrDefault(x => x.Artifact.Equals(a)).Count--));
+            //Farms.Where(x => x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList();
+            Farms?.Where(x => !x.isVirtueEgg).ToList().ForEach(f => f.Artifacts?.ForEach(a => artifacts.FirstOrDefault(x => x.Artifact.Equals(a)).Count--));
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
 
         public List<ArtifactCount> GetAvailableArtifacts(CustomFarm farm) {
-            if(ArtifactHall is null || ArtifactHall.Count == 0) {
+            if(ArtifactHall is null || ArtifactHall.Count == 0 || farm.isVirtueEgg) {
                 return [];
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            Farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList()?.ForEach(f => f.Artifacts?.ForEach(a => artifacts.FirstOrDefault(x => x.Artifact.Equals(a)).Count--));
+            Farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList()?.ForEach(f => f.Artifacts?.ForEach(a => { var artifact = artifacts.FirstOrDefault(x => x.Artifact.Equals(a)); if(artifact is not null) artifact.Count--; } ));
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
 
@@ -227,6 +246,15 @@ namespace EGG9000.Common.Database {
 
             TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;
             SeasonCS = backup.Contracts.LastCpi?.SeasonCxp ?? -1;
+
+
+            //EoV = backup.Virtue?.EovEarned.FirstOrDefault() ?? 0;
+
+            VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? Array.Empty<double>();
+            Resets = backup.Virtue?.Resets ?? 0;
+            ShiftCount = backup.Virtue?.ShiftCount ?? 0;
+            EovEarned = backup.Virtue?.EovEarned.ToArray() ?? Array.Empty<uint>();
+
 
             HasDeviceId = backup.HasDeviceId;
             if(backup.HasDeviceId) DeviceId = backup.DeviceId;
@@ -430,20 +458,39 @@ namespace EGG9000.Common.Database {
             customFarm.Artifacts = new List<EggIncArtifactInstance>();
             var farmIndex = backup.Farms.IndexOf(farm);
             if(backup.ArtifactsDb != null) {
-                var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? new List<Ei.ActiveArtifactSlot>() : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
-                var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
+                if(farmIndex == 0 && (int)farm.EggType >= 50 && (int)farm.EggType <= 54) {
+                    //Handle Virtue Eggs
 
-                customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
-                    var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                    if(artifact == null)
-                        return null;
-                    artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
-                    return artifact;
-                }).Where(x => x != null));
+                    var activeArtifactSlots = backup.ArtifactsDb.VirtueAfxDb.ActiveArtifacts.Slots;
+                    var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.VirtueAfxDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
 
-                //customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null)
-                //    .SelectMany(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId)?.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y))));
-                customFarm.Artifacts = customFarm.Artifacts.Where(x => x != null).ToList();
+                    customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
+                        var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                        if(artifact == null)
+                            return null;
+                        artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
+                        return artifact;
+                    }).Where(x => x != null));
+
+                    //customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null)
+                    //    .SelectMany(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId)?.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y))));
+                    customFarm.Artifacts = customFarm.Artifacts.Where(x => x != null).ToList();
+                } else {
+                    var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? new List<Ei.ActiveArtifactSlot>() : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
+                    var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
+
+                    customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
+                        var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                        if(artifact == null)
+                            return null;
+                        artifact.Stones = x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null).ToList();
+                        return artifact;
+                    }).Where(x => x != null));
+
+                    //customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null)
+                    //    .SelectMany(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId)?.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y))));
+                    customFarm.Artifacts = customFarm.Artifacts.Where(x => x != null).ToList();
+                }
             }
 
 
@@ -479,7 +526,7 @@ namespace EGG9000.Common.Database {
         [IgnoreMember]
         public double ProphecyEggBonus { get { return EpicResearch is null ? 0 : ((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
         [IgnoreMember]
-        public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy); } }
+        public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy) * (Math.Pow(1.01, EggsOfTruth)); } }
 
         [IgnoreMember]
         public double MER { get {
@@ -594,6 +641,9 @@ namespace EGG9000.Common.Database {
             public double Value { get; set; }
         }
 
+        [IgnoreMember]
+        public bool isVirtueEgg { get { return (int)EggType >= 50 && (int)EggType <= 54; } }
+
         private CustomFarmStats _stats = null;
         public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, Contract contract = null) {
             if(_stats == null) {
@@ -654,6 +704,10 @@ namespace EGG9000.Common.Database {
                 _stats.MaxRunningBonus = Research.MaxRunningBonus(this, backup.EpicResearch) + EggIncArtifacts.GetMaxRunningBonusAdditive(this);
                 _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * Math.Round(EggIncArtifacts.GetHabSpaceMultiple(this), 5) * dimensionColleggtibleEffect[GameDimension.HabCapacity];
                 _stats.InternalHatchery = (int)(Research.InternalHatchery(this, backup.EpicResearch) * EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.InternalHatchery, this) * dimensionColleggtibleEffect[GameDimension.InternalHatcheryRate]);
+                if((int)EggType >= 50 && (int)EggType <= 54) {
+                    //Virtue Egg
+                    _stats.InternalHatchery = (int)((double)_stats.InternalHatchery * Math.Pow(1.1, backup.EggsOfTruth));
+                }
             }
             return _stats;
         }

@@ -5,6 +5,7 @@
 @using static EGG9000.Common.Coops.ArtifactCombos;
 @inject DiscordSocketClient DiscordClient
 @model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
+
 @{
     void artifactCell(EggIncArtifactInstance artifact, EggIncArtifactInstance current = null) {
         var changed = current != null && !artifact.Equals(current);
