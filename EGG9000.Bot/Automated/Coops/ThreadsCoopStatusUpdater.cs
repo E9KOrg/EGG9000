@@ -900,14 +900,15 @@ namespace EGG9000.Bot.Automated.Coops {
                             ) {
                                 emojis += "🔺";
                             }
-                        } else if(
-                                !coop.FinishedOrFailed() && (
-                                    timeRemaining.TotalHours < 3
-                                    || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
-                                ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
-                            ) {
-                            emojis += "🔘";
                         }
+                        //} else if(
+                        //        !coop.FinishedOrFailed() && (
+                        //            timeRemaining.TotalHours < 3
+                        //            || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
+                        //        ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
+                        //    ) {
+                        //    emojis += "🔘";
+                        //}
 
 
                         var percent = coopDetails.PercentProjectedForJoined;
