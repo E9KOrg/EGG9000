@@ -166,9 +166,9 @@ namespace EGG9000.Bot.Helpers {
 
                 var EarningsBonus = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus.ToEggString() ?? "";
 
+                var eb = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus ?? 0;
 
-
-                if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) {
+                if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) { //} && eb > dbUser.MaxEBForUser) {
                     var messages = new List<string> {
                     $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
                     $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
@@ -179,6 +179,10 @@ namespace EGG9000.Bot.Helpers {
                     $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
                     $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!"
                 };
+
+                    //if(eb > dbUser.MaxEBForUser) {
+                    //    dbUser.MaxEBForUser = eb;
+                    //}
 
                     switch(role.Name.Split(" ").First()) {
                         case "Farmer":

@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -77,7 +78,9 @@ namespace EGG9000.Common.JsonData.EiStatics {
         SoulEggCollectionRate,
         ResearchCost,
         EggLayingRate,
+        [Description("Co-op Earnings")]
         CoopMembersEarnings,
+        [Description("Co-op Egg Rate")]
         CoopMembersEggLayingRates,
         SoulEggBonus,
         RunningChickenBonus,

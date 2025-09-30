@@ -78,7 +78,7 @@
         }
         function setCookieMaxExpiry(n, v){
             const d = new Date();
-            d.setTime(d.getTime() + (24 * 60 * 60 * 1000));
+            d.setTime(d.getTime() + (400 * 24 * 60 * 60 * 1000));
             document.cookie = n + "=" + v + "; samesite=none;" + "expires=" + d.toUTCString() + ";" + "secure; max-age=31536000; path=/";
         }
 

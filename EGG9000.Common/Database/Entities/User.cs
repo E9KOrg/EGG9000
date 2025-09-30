@@ -93,6 +93,8 @@ namespace EGG9000.Common.Database.Entities {
                 _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
             }
         }
+        //public double MaxEBForUser { get; set; } = 0;
+
         public bool Banned { get; set; } = false;
         public string ServersBannedFrom { get; set; } = ""; //Comma delimited list of Server IDs
         public string Usernames { get; set; } = ""; //Comma delimited list of Username(s) associated with EggIncAccounts

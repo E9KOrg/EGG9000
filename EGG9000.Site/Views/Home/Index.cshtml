@@ -17,12 +17,14 @@
 
 <div class="text-center">
     @if (SignInManager.IsSignedIn(User)) {
+        <div>
         <div>Logged in as @User.Identity.Name</div>
-        <a class="" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a>
+        <a class="" asp-area="" asp-controller="Home" asp-action="Leaderboard">Leaderboard</a> |
+        <a href="/MyFarms#shipsfarms0">Virtue Details</a> |
         @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
             <a class="" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
         }
-
+        </div>
     } else {
         <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
     }

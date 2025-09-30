@@ -94,6 +94,7 @@
                             <tr>
                                 <th>Date</th>
                                 <th>PE</th>
+                                <th>EoT</th>
                                 <th style="text-align: right !important;">Soul Eggs</th>
                                 <th style="text-align: right !important;">EB</th>
                                 <th style="text-align: right !important;">MER</th>
@@ -104,6 +105,7 @@
                             <tr>
                                 <td>Latest</td>
                                 <td>@Model.backup.EggsOfProphecy</td>
+                                <td>@Model.backup.EggsOfTruth</td>
                                 <td align="right">@Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
                                 <td align="right">@Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
                                 <td align="right">@calculateMER(Model.backup.SoulEggs, Model.backup.EggsOfProphecy).ToString()</td>
@@ -114,6 +116,11 @@
                                 <tr>
                                     <td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
                                     <td>@snapshot.EggsOfProphecy</td>
+                                    <td>
+                                        @if(snapshot.EggsOfTruth > 0) {
+                                            @snapshot.EggsOfTruth
+                                        }
+                                    </td>
                                     <td align="right">@snapshot.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)</td>
                                     <td align="right">@snapshot.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)</td>
                                     <td align="right">@calculateMER(snapshot.SoulEggs, snapshot.EggsOfProphecy).ToString()</td>

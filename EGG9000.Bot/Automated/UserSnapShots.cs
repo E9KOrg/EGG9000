@@ -50,7 +50,8 @@ namespace EGG9000.Bot.Automated {
                                     EarningsBonus = backup.EarningsBonus,
                                     EggIncID = backup.EggIncId,
                                     EggsOfProphecy = backup.EggsOfProphecy,
-                                    SoulEggs = backup.SoulEggs
+                                    SoulEggs = backup.SoulEggs,
+                                    EggsOfTruth = backup.EggsOfTruth,
 
                                 });
                                 _logger.LogTrace("Adding Snapshot for {user}", user.Id);

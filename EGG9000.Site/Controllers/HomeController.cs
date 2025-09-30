@@ -81,7 +81,7 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
-        public async Task<IActionResult> AliveDiscord() {
+        public IActionResult AliveDiscord() {
 
             if(_discord.ConnectionState == ConnectionState.Connected)
                 return Content("Success");
@@ -427,6 +427,21 @@ namespace EGG9000.Site.Controllers {
                         break;
                     case "mer":
                         leaderboard = leaderboard.OrderByDescending(x => x.Backup.MER).ToList();
+                        break;
+                    case "eot":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfTruth).ToList();
+                        break;
+                    case "shifts":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.ShiftCount).ToList();                        
+                        break;
+                    case "eott":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfTruthTotal).ToList();
+                        break;
+                    case "eov":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.VirtueEggsDelivered?.Sum() ?? 0).ToList();
+                        break;
+                    case "tepershift":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.ShiftCount > 0 ? (double)x.Backup.EggsOfTruthTotal / (double)x.Backup.ShiftCount : 0).ToList();
                         break;
                 }
                 return View(leaderboard);
@@ -881,6 +896,10 @@ namespace EGG9000.Site.Controllers {
                 CustomEggs = await _db.GetCustomEggsAsync()
             };
             model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
+
+            if(model.CoopStatus == null && model.DbCoop?.LastStatusUpdate != null) {
+                model.CoopStatus = model.DbCoop.LastStatusUpdate;
+            }
 
             if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                 var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
