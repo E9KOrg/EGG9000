@@ -5,6 +5,8 @@ using Ei;
 
 using MessagePack;
 
+using Microsoft.EntityFrameworkCore;
+
 using Newtonsoft.Json;
 
 using System;
@@ -14,11 +16,13 @@ using System.Linq;
 
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
-    public class DBUser {
+    [Index(nameof(LastModified))]
+    public class DBUser : ILastModified {
         [NotMapped]
         public static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
 
         public Guid Id { get; set; }
+        public DateTimeOffset LastModified { get; set; } = DateTimeOffset.Now;
         public ulong DiscordId { get; set; }
         public string DiscordUsername { get; set; }
         //public string EggIncNames { get; set; }
