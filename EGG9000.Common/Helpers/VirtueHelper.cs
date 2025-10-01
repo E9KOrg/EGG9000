@@ -113,6 +113,8 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static TimeSpan GetTimeToThreshold(double eggsDelivered, double eggsPerSecond, double threshold, DateTimeOffset lastBackupTime, double currentChickens, double maxChickens, double maxShipping, double totalihr) {
+            if(totalihr == 0)
+                return GetTimeToThreshold(eggsDelivered, eggsPerSecond, threshold, lastBackupTime);
             if(eggsPerSecond <= 0) return TimeSpan.MaxValue;
             if(eggsDelivered >= threshold) return TimeSpan.Zero;
 
