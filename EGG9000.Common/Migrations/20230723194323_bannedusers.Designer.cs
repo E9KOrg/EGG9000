@@ -13,7 +13,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20230723194323_bannedusers")]
-    partial class bannedusers
+    partial class Bannedusers
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

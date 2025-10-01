@@ -11,7 +11,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20210111191449_showeb")]
-    partial class showeb
+    partial class Showeb
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

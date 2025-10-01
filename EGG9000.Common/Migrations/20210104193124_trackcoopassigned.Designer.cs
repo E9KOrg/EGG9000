@@ -11,7 +11,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20210104193124_trackcoopassigned")]
-    partial class trackcoopassigned
+    partial class Trackcoopassigned
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

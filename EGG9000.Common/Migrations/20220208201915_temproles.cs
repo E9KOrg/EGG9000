@@ -4,7 +4,7 @@ using System;
 #nullable disable
 
 namespace EGG9000.Common.Migrations {
-    public partial class temproles : Migration
+    public partial class Temproles : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
