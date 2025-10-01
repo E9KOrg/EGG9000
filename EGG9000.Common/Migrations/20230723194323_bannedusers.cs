@@ -3,7 +3,7 @@
 #nullable disable
 
 namespace EGG9000.Common.Migrations {
-    public partial class bannedusers : Migration
+    public partial class Bannedusers : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

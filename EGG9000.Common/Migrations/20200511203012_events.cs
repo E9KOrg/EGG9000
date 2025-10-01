@@ -2,7 +2,7 @@
 using System;
 
 namespace EGG9000.Common.Migrations {
-    public partial class events : Migration
+    public partial class Eventsm : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

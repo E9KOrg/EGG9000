@@ -13,7 +13,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20220208201915_temproles")]
-    partial class temproles
+    partial class Temproles
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
