@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,6 +82,18 @@ namespace EGG9000.Common.Database {
         [ActivatorUtilitiesConstructor]
         public ApplicationDbContext(IConfiguration configuration, IMemoryCache cache) : base(GetOptions(configuration)) {
             _cache = cache;
+            ChangeTracker.Tracked += OnEntityTracked;
+            ChangeTracker.StateChanged += OnEntityStateChanged;
+        }
+
+        void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
+            if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
+                entity.LastModified = DateTime.Now;
+        }
+
+        void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
+            if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
+                entity.LastModified = DateTime.Now;
         }
 
         private static DbContextOptions GetOptions(IConfiguration configuration) {
