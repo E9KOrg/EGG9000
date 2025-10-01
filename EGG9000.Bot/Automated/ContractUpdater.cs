@@ -183,6 +183,15 @@ namespace EGG9000.Bot.Automated {
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
 
+                if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && !guildContract.ReadyToScore && guildContract.Created < DateTimeOffset.Now - guildContract.Contract.ContractTime - TimeSpan.FromDays(3)) {
+                    var farmersUnion = guild.GetTextChannel(777303939442802710); //#farmers-union
+                    farmersUnion ??= await _client.GetChannelAsync(777303939442802710) as SocketTextChannel;
+                    if(farmersUnion != null) {
+                        await farmersUnion.SendMessageAsync(text: "", embed: EmbedHelpers.EmbedAlert($"The contract `{guildContract.Contract.GetE9KName(false)}` is ready to be scored."));
+                    }
+                    guildContract.ReadyToScore = true;
+                }
+
 
                 if(guildContract.Contract.GoodUntil.AddSeconds(guildContract.Contract.Details.LengthSeconds).AddDays(1) < DateTimeOffset.Now) {
                     if(channel != null) {
@@ -192,13 +201,8 @@ namespace EGG9000.Bot.Automated {
                     await dbGuild.DeleteCoopThreadHeadersAsync(_client, guildContract.Contract, _logger);
                     guildContract.DeletedChannel = true;
 
-                    if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.Now.AddMonths(-3) && !guildContract.HasScores) {
-                        var farmersUnion = guild.GetTextChannel(777303939442802710); //#farmers-union
-                        farmersUnion ??= await _client.GetChannelAsync(777303939442802710) as SocketTextChannel;
-                        if(farmersUnion != null) {
-                            await farmersUnion.SendMessageAsync(text: "", embed: EmbedHelpers.EmbedAlert($"The contract `{guildContract.Contract.GetE9KName(false)}` has finished, and is ready to be scored."));
-                        }
-                    }
+                    //if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.Now.AddMonths(-3) && !guildContract.HasScores) {
+                    //}
 
                     await _db.SaveChangesAsync();
                     return;
