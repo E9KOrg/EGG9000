@@ -18,8 +18,8 @@ namespace EGG9000.Common.Database {
 
             _semaphoreUser.Wait();
             try {
-                _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-                _cachedUsers = _db.DBUsers.ToList();
+            _lastCacheUpdateUser = DateTimeOffset.UtcNow;
+            _cachedUsers = _db.DBUsers.ToList();
             } finally {
                 _semaphoreUser.Release();
             }
