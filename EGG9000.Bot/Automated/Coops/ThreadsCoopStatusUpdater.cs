@@ -110,6 +110,8 @@ namespace EGG9000.Bot.Automated.Coops {
                             throttler.Release();
                         }
                     }, cancellationToken));
+
+                    StillAlive();
                 }
 
                 var watchdogCancellationSource = new CancellationTokenSource();
