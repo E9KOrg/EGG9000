@@ -89,6 +89,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
                 await _db.SaveChangesAsync(CancellationToken.None);
+                StillAlive();
             }
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             foreach(var dbguild in dbguilds) {
@@ -123,6 +124,7 @@ namespace EGG9000.Bot.Automated {
                     if(channel.Name != newName && channel != null) {
                         await channel.ModifyAsync(x => x.Name = newName);
                     }
+                    StillAlive();
                 }
 
                 //"Reset" vars
@@ -199,6 +201,7 @@ namespace EGG9000.Bot.Automated {
                 
                 //Always add the message id
                 if(message != null) messageIds.Add(message.Id);
+                StillAlive();
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
 
@@ -255,6 +258,7 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                 }
+                StillAlive();
             }
         }
 
