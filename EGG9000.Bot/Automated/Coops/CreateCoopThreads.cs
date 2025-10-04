@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var tasks = new List<Task>();
 
             while(
-                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ContractID != null &&  x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && !x.DeletedChannel).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
+                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
                 .Count > 0) {
                 if(cancellationToken.IsCancellationRequested) return;
 
@@ -129,6 +129,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var coopThread = await CreateThreadChannelAsync(coop.Name, headerChannel);
 
                             if(coopThread != null) {
+                                coop.Status = CoopStatusEnum.WaitingOnAssigned;
                                 coop.ThreadID = coopThread.Id;
                                 coop.ThreadParentChannel = headerChannel.Id;
                                 coop.OverflowGuildId = headerChannel.Guild.Id;

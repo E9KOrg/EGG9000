@@ -6,10 +6,13 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+
 using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+
 using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
 
 using System;
@@ -17,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
@@ -40,11 +44,12 @@ namespace EGG9000.Bot.Commands {
         #region AdminBypass
         [SlashCommand(Description = "Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
+            await command.DeferAsync(ephemeral: !System.Diagnostics.Debugger.IsAttached);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
             } else {
-                await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Select which account you would like to manage"; x.Components = GetAccountButtons(dbuser, "MCSMenu"); });
             }
         }
         #endregion

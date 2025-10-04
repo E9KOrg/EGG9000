@@ -190,6 +190,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.Configure<APILinkOptions>(x => x.AsyncLoadCache = true);
     services.AddSingleton<APILink>();
     services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+    services.AddHostedService<NewCoopChecker>();
 
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =
