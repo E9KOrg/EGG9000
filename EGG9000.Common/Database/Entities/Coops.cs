@@ -1,5 +1,7 @@
 ﻿using EGG9000.Common.Helpers;
 
+using Microsoft.EntityFrameworkCore;
+
 using Newtonsoft.Json;
 
 using System;
@@ -10,6 +12,7 @@ using System.IO.Compression;
 using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
+    [Index(nameof(Status))]
     public class Coop {
         public Guid Id { get; set; }
         public string ContractID { get; set; }
@@ -49,6 +52,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool ThreadArchived { get; set; } = false;
         public bool RolesAddedToThread { get; set; } = false;
 
+        
         public CoopStatusEnum Status { get; set; }
         //public int UnableToFind { get; set; }
         public bool PseudoExpired { get; set; } = false;
@@ -122,6 +126,7 @@ namespace EGG9000.Common.Database.Entities {
     public enum CoopStatusEnum {
         ManualWaitingOnCreation = 1,
         ManualCreated = 2,
+        WaitingOnThread = 3,
         WaitingOnStarter = 10,
         WaitingOnAssigned = 11,
         AllAssignedJoined = 12,

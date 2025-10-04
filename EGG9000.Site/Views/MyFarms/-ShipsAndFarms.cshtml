@@ -522,7 +522,8 @@
         var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
         var farmStats = farm.WithStats(Model.Backup, coop, Model.CustomEggs, null, contract);
         var ihrPerHab = Research.InternalHatchery(farm, Model.Backup.EpicResearch);
-        
+        var maxHabs = Math.Round(farmStats.HabSpace) <= farm.NumChickens;
+
         var offlineHatcheryMultiplier = Research.InternalHatcheryOfflineBonus(farm, Model.Backup.EpicResearch) + 1;
 
         var timeTillFull = VirtueHelper.GetTimeTillFull(farmStats.CurrentShippingRate, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60);
@@ -538,13 +539,20 @@
 
             
 
+            @if (Model.Backup.GetLastBackupDateTime() < DateTimeOffset.Now.AddMinutes(-15))
+            {
+                <div class="alert alert-warning" style="margin-bottom:0;" role="alert">
+                    Warning: Last backup was @((DateTimeOffset.Now - Model.Backup.GetLastBackupDateTime()).Humanize().ShortenTime()) ago, calculations may be inaccurate.
+                </div>
+            }
             <div class="card-body">
                 <div style="display: inline-block;">
                     Chickens: @farm.NumChickens.ToEggString()
                 </div>
                 <div>
                     Hab Space: @farmStats.HabSpace.ToEggString() 
-                    @if(farmStats.HabSpace == farm.NumChickens) {
+                    @if (maxHabs)
+                    {
                         <span style="color: orange;">Habs are filled</span>
                     } else if(ihrPerHab > 0) {
                         <span>(Full in @timeTillFull.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
@@ -660,7 +668,6 @@
                                 // var nextThresholdTime = timeLeft != double.PositiveInfinity ? (Model.Backup.GetLastBackupDateTime().AddSeconds(timeLeft) - DateTimeOffset.Now) : TimeSpan.MaxValue;
                                 // <span>@nextThresholdTime.Humanize(precision: 2).ShortenTime()</span>
                                 var maxedShipping = farmStats.CurrentShippingRate >= farmStats.MaxShippingRate;
-                                var maxHabs = farmStats.HabSpace <= farm.NumChickens;
 
 
                                 <div>No Growth 

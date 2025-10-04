@@ -12,6 +12,7 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
 using EGG9000.Site.Models;
+using EGG9000.Site.Services;
 
 using Google.Protobuf;
 
@@ -391,6 +392,9 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
         public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
+            if(NewCoopChecker.WaitingOnCoops) {
+                return View("LeaderboardTemporaryDown");
+            }
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
