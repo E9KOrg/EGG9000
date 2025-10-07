@@ -49,7 +49,7 @@ namespace EGG9000.Site.Controllers {
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
-            if(NewCoopChecker.WaitingOnCoops || true) {
+            if(NewCoopChecker.WaitingOnCoops) {
                 var weekAgo = DateTimeOffset.Now.AddDays(-7);
                 var user = await _db.DBUsers.Include(x => x.UserCoopXrefs.Where(y => y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop)).ThenInclude(y => y.Coop).ThenInclude(x => x.Contract).AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
                 _logger.LogInformation($"Time: {sw.ElapsedMilliseconds}");

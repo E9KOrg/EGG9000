@@ -94,10 +94,13 @@ namespace EGG9000.Bot.Commands {
 
             var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
 
-            var counts = artifacts.GroupBy(x => x.Artifact.Tier).Select(x => new { Tier = x.Key, Count = x.Sum(y => y.NumberCrafted) }).ToList();
+            var counts = artifacts.GroupBy(x => x.Artifact.Tier).Select(x => new { Tier = x.Key, Count = x.Sum(y => y.NumberCrafted) }).OrderBy(x => x.Tier).ToList();
             var emojis = ArtifactEmoji.Get();
 
-            foreach(var childIds in counts.OrderBy(x => x.Tier)) {
+            foreach(var childIds in counts) {
+                if(counts.Count > 1 && counts.IndexOf(childIds) == 0 && childIds.Count == 0 && counts.Any(x => x.Count > 1)) {
+                    continue;
+                }
                 var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.afx_id && x.Tier == childIds.Tier);
                 stringBuilder.AppendLine($"{emoji?.Emoji} {childIds.Count}");
                 //var artifact = backup.ArtifactHall.FirstOrDefault(x => x.Artifact)

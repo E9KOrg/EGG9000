@@ -93,6 +93,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 foreach(var coop in coops) {
+                    StillAlive();
                     if(coop.ContractID is null) {
                         if(CoopsTimeoutCounter.ContainsKey(coop.Name)) {
                             if(CoopsTimeoutCounter[coop.Name] > 60) {
