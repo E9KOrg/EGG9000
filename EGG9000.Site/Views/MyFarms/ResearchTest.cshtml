@@ -1,0 +1,29 @@
+﻿@using EGG9000.Common.JsonData
+
+@model CustomBackup
+
+
+@{
+    var researchData = EiResearch.Get();
+
+    var farm = Model.Farms.First();
+    var researchDiscount = Research.GetCommonResearchCostMultiplier(farm, Model.EpicResearch);
+    var incompleteResearch = new List<(CustomResearch, EiResearchItem)>();
+    foreach(var research in farm.CommonResearch)
+    {
+        var researchItem = researchData.FirstOrDefault(item => item.Id == research.Id);
+        if (researchItem != null && research.Level < researchItem.Levels)
+        {
+            incompleteResearch.Add((research, researchItem));
+        }
+    }
+
+    foreach (var (research, researchItem) in incompleteResearch)
+    {
+        <div>
+            <h4>@researchItem.Name (Level @research.Level/@researchItem.Levels) Next Cost = @((researchItem.Prices[(int)research.Level]).ToEggString(numberOfDecimalPlaces: 3)) @((researchItem.Prices[(int)research.Level] * researchDiscount).ToEggString(numberOfDecimalPlaces: 3))</h4>
+        </div>
+    }
+}
+<br />
+@researchDiscount

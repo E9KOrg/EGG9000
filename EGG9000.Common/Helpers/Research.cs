@@ -277,6 +277,19 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseRate / 60;
         }
 
+        public static double GetCommonResearchCostMultiplier(CustomFarm farm, List<CustomResearch> epic) {
+            double costMult = 1;
+            var item = Research.EpicResearchList.FirstOrDefault(x => x.Type == IT.ResearchCost);
+            if(item != null) {
+                var current = epic.First(x => x.Id == item.id);
+                var r = current.Level * (double)item.Increase;
+                if(r > 0) {
+                    costMult *= 1 - r;
+                }
+            }
+            return costMult;
+        }
+
         public static Dictionary<uint, uint> Vehicles = new Dictionary<uint, uint> {
             {0, 5000 },
                 {1, 15000},
