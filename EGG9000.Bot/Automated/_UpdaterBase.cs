@@ -272,7 +272,7 @@ namespace EGG9000.Bot.Automated {
                     //    await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Restart Succeeded.", options: new RequestOptions { CancelToken = _cts.Token });
                     //    return;
                     //}
-                    await dmChannel.SendMessageAsync($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted.ToShortTimeString()}, last completed {_this.LastCompleted.ToShortTimeString()}.", options: new RequestOptions { CancelToken = _this._cts.Token });
+                    await dmChannel.SendMessageAsync($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted.ToShortTimeString()}, last completed {_this.LastCompleted.ToShortTimeString()}, last alive {_this._lastAlive.DateTime.ToShortTimeString()}.", options: new RequestOptions { CancelToken = _this._cts.Token });
                     //_this._semaphoreSlim.Release();
                     //_this.Restarted = true;
                     //_this._lastMessageSent = DateTime.Now;

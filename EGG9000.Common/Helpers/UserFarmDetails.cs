@@ -65,7 +65,7 @@ namespace EGG9000.Common.Helpers {
                 if(Farm is null)
                     ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
                 DBUser = userWithbackup.User;
-                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId) : null;
+                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId)?.GetUser(DBUser.DiscordId) : null;
             }
         }
 

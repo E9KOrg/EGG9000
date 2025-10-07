@@ -584,10 +584,10 @@
                     Current Shipping Rate: @((farmStats.CurrentShippingRate * 60).ToEggString(true))/m <!--(@((farmStats.CurrentShippingRate).ToEggString(true, 3))/s)-->
                     @if(farmStats.CurrentShippingRate < farmStats.MaxShippingRate) {
                         if(timeTillFull.timeTillShippingFull < timeTillFull.timeTillHabsFull) {
-                            <span>(Full in @timeTillFull.timeTillShippingFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillShippingFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
+                            <span>(Will reach mach shipping before max habs, @timeTillFull.timeTillShippingFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillShippingFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
                         } else if(timeTillFull.timeTillHabsFull > TimeSpan.Zero && farmStats.InternalHatchery > 0)
                         {
-                            <span>(Will reach max habs before max shipping, max habs in @timeTillFull.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
+                            <span>(Will reach max habs before max shipping, @timeTillFull.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
                         }
                     }
                 </div>
