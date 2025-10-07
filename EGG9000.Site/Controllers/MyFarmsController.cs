@@ -1,4 +1,5 @@
 ﻿using Discord.WebSocket;
+
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
@@ -27,6 +28,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Event = EGG9000.Common.Database.Entities.Event;
 
 namespace EGG9000.Site.Controllers {
@@ -89,7 +91,7 @@ namespace EGG9000.Site.Controllers {
             var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
 
             var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
-            
+
             var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             /*var RawBackups = rawBackups;*/
@@ -118,7 +120,7 @@ namespace EGG9000.Site.Controllers {
             times.Set("Post backups");
 
 
-            Console.WriteLine(String.Join("\n",times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
+            Console.WriteLine(String.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
 
@@ -203,6 +205,15 @@ namespace EGG9000.Site.Controllers {
             public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
+        public async Task<IActionResult> ResearchTest() {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+
+            var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            return View(user.EggIncAccounts.First().Backup);
+        }
+
         public async Task<IActionResult> Roles() {
             var roles = await _userManager.GetRolesAsync(await _userManager.GetUserAsync(User));
             return Json(roles);
@@ -216,11 +227,11 @@ namespace EGG9000.Site.Controllers {
             return Redirect(Request.Headers["Referer"].ToString());
         }
 
-        public Dictionary<string, List<Common.Database.Entities.Contract>> GetUncompletedPEContracts(DBUser user,  List<Common.Database.Entities.Contract> contracts) {
+        public Dictionary<string, List<Common.Database.Entities.Contract>> GetUncompletedPEContracts(DBUser user, List<Common.Database.Entities.Contract> contracts) {
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,
                 account => account.Backup.ArchivedFarms
-                    .Where(f => 
+                    .Where(f =>
                         f.PEPossible > 0 && f.PEGained < f.PEPossible
                     )
                     .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))

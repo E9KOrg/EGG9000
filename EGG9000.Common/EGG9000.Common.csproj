@@ -50,6 +50,7 @@
     <None Remove="JsonData\eiafx-config.json" />
     <None Remove="JsonData\eiafx-data.json" />
     <None Remove="JsonData\ei-statics.json" />
+    <None Remove="JsonData\researches.json" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="10.1.1" />
@@ -109,5 +110,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="JsonData\ei-statics.json" />
     <EmbeddedResource Include="JsonData\ei-epic-research.json" />
+    <EmbeddedResource Include="JsonData\researches.json" />
   </ItemGroup>
 </Project>
