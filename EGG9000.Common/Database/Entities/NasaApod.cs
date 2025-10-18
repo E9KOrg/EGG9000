@@ -72,7 +72,7 @@ public class NasaApod {
 
         public PostedToEntry(Guild dbGuild, ulong channelId = 0) {
             GuildID = dbGuild.Id;
-            ChannelID = dbGuild.GetChannelId(GuildChannelType.NasaApodChannel) ?? channelId;
+            ChannelID = dbGuild.GetChannelId(GuildChannelType.NasaApod) ?? channelId;
         }
 
         public PostedToEntry(ulong guildId, ulong channelId) {

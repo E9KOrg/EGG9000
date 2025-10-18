@@ -266,6 +266,6 @@ namespace EGG9000.Common.Database.Entities {
         /*[Description("/R/Users with this role will be added to all coop threads")]
         AllCoopsRole = 44*/
         [Description("/TC/Optional: Where NASA Astronomy Pictures of the Day (APOD) will be posted")]
-        NasaApodChannel = 46
+        NasaApod = 46
     }
 }

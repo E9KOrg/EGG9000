@@ -1,11 +1,14 @@
 ﻿using Discord;
+using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
@@ -34,22 +37,31 @@ public static partial class NasaHelper {
         var match = YouTubeRegex().Match(url);
         return match.Success ? match.Groups["videoId"].Value : null;
     }
-
-    public class GuildNasaApodCache {
+#nullable disable
+    public class GuildNasaApodDetails(Guild guild) {
+        public Guild Guild { get; set; } = guild;
         public Guid LastApodPostedId { get; set; } = Guid.Empty;
         public ulong ChannelId { get; set; } = 0;
     }
 
-    public async Task<GuildNasaApodCache> GetNasaApodCache(this ApplicationDbContext db, Guild guild) {
-        if(!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodCache? cache)) {
+    public static async Task<GuildNasaApodDetails> GetNasaApodCache(this ApplicationDbContext db, Guild guild) {
+        if(!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
             var latestPosted = await db.NasaApods.OrderByDescending(a => a.Date).FirstOrDefaultAsync(a => a._postedToBytes != null && a._postedToBytes.Length > 0 && a.PostedToEntries.Any(pte => pte.GuildID == guild.Id));
+            cache = new GuildNasaApodDetails(guild) {
+                LastApodPostedId = latestPosted?.ID ?? Guid.Empty,
+                ChannelId = guild.GetChannelId(GuildChannelType.NasaApod) ?? 0,
+            };
             db._cache.Set(guild.GetNASACacheKey(), cache, TimeSpan.FromDays(1));
         }
         return cache;
     }
 
+    private static void SetNasaApodCache(this ApplicationDbContext db, Guild guild, GuildNasaApodDetails cache) {
+        db._cache.Set(guild.GetNASACacheKey(), cache, TimeSpan.FromDays(1));
+    }
+
     public static string InvalidateGuildNASACache(this ApplicationDbContext db, Guild guild) {
-        db._cache.Set(guild.GetNASACacheKey(), new GuildNasaApodCache(), TimeSpan.FromMilliseconds(1));
+        db._cache.Set(guild.GetNASACacheKey(), new GuildNasaApodDetails(guild), TimeSpan.FromMilliseconds(1));
         return guild.GetNASACacheKey();
     }
 
@@ -57,6 +69,46 @@ public static partial class NasaHelper {
         return $"NasaApodCache:Guild:{guild.Id}";
     }
 
+    private static async Task<FileAttachment?> GetFileAttachmentOrNull(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
+        if (!db._cache.TryGetValue(apod.GetApodImageBytesKey(), out byte[] imageBytes)) {
+            var b64String = await apod.GetNasaPictureAsB64OrEmpty(logger);
+            if(string.IsNullOrEmpty(b64String)) return null;
+            imageBytes = Convert.FromBase64String(b64String);
+            db._cache.Set(apod.GetApodImageBytesKey(), imageBytes, TimeSpan.FromDays(7));
+        }
+        return new FileAttachment(new MemoryStream(imageBytes), "APOD.jpeg", "Astronomy Picture of The Day");
+    }
+
+    private static string GetApodImageBytesKey(this NasaApod apod) {
+        return $"NasaApodImageBytes:Apod:{apod.ID}";
+    }
+
+    public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
+        var attachment = await apod.GetFileAttachmentOrNull(db, logger);
+        if (attachment is null || attachment is not FileAttachment fileAttachment) {
+            logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
+            return false;
+        }
+        var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"attachment://{fileAttachment.FileName}");
+        var sentMessage = await ChannelHelper.DetermineAndSend(client, details.Guild, GuildChannelType.NasaApod, new ChannelHelper.CustomDiscordMessage {
+            Embed = apodEmbed.Build(),
+            File = fileAttachment,
+            SendFile = true,
+            Components = apod.CreateEphemeralExplanationButton()
+        }, logger);
+        if (sentMessage != null) {
+            SetNasaApodCache(db, details.Guild, new GuildNasaApodDetails(details.Guild) {
+                LastApodPostedId = apod.ID,
+                ChannelId = details.ChannelId
+            });
+        }
+        return sentMessage != null;
+    }
+
+    private static MessageComponent CreateEphemeralExplanationButton(this NasaApod apod) =>
+        new ComponentBuilder().WithButton("Explanation", $"explanation_nasa|{apod.ID}", ButtonStyle.Primary).Build();
+
+#nullable enable
     public static async Task<NasaApod?> GetNasaApodResponseAsync(ILogger<dynamic> _logger, CancellationToken cancellationToken) {
         string? streamContentString = null;
         try {
@@ -84,7 +136,7 @@ public static partial class NasaHelper {
         }
     }
 
-    public static EmbedBuilder GetEmbedBuilder(this NasaApod apod) {
+    private static EmbedBuilder GetEmbedBuilder(this NasaApod apod) {
         var mediaTypeImage = apod.MediaType.Equals("image", StringComparison.OrdinalIgnoreCase);
         var isImage = mediaTypeImage || apod.Url.EndsWith(".jpg") || apod.Url.EndsWith(".jpeg") || apod.Url.EndsWith(".png") || apod.Url.EndsWith(".gif");
         var builder = new EmbedBuilder()
@@ -103,7 +155,7 @@ public static partial class NasaHelper {
         return builder;
     }
 
-    public static async Task<string> GetNasaPictureAsB64OrEmpty(this NasaApod apod, ILogger logger) {
+    private static async Task<string> GetNasaPictureAsB64OrEmpty(this NasaApod apod, ILogger logger) {
         try {
             using var client = new HttpClient();
             var response = await client.GetAsync(apod.BestUrl);
