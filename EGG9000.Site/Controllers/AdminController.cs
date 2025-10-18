@@ -1409,8 +1409,8 @@ music
             var model = JsonConvert.DeserializeObject<SaveChannelDetailsObject>(json);
             var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
             var invalidateApodGuildCache = (
-                (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApodChannel)?.Id ?? ulong.MinValue)
-                != (model.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApodChannel)?.Id ?? ulong.MinValue)
+                (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
+                != (model.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
             );
             dbGuild.CoopSettings = model.CoopSettingsOverrides;
             dbGuild.ChannelDetails = model.ChannelDetails;

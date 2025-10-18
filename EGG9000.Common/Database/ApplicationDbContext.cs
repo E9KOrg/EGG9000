@@ -108,6 +108,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<Merit>().HasOne(x => x.User).WithMany(x => x.Merits).OnDelete(DeleteBehavior.ClientCascade).HasForeignKey(x => x.UserId);
             builder.Entity<Merit>().HasOne(x => x.AdminUser).WithMany(x => x.MeritsGiven).IsRequired(false).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
 
+            builder.Entity<NasaApod>().HasKey(x => new { x.ID });
             builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("CURRENT_DATE");
 
             //builder.Entity<IdentityRole>().HasData(

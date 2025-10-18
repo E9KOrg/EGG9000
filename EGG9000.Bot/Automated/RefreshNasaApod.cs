@@ -22,11 +22,20 @@ namespace EGG9000.Bot.Automated {
             }
             var latestPostId = _latestApodCache!.ID;
 
-            var enabledGuilds = await _db.Guilds.Where(g => g.HasChannel(GuildChannelType.NasaApodChannel)).Select(g => new {
+            var enabledGuilds = await _db.Guilds.Where(g => g.HasChannel(GuildChannelType.NasaApod)).Select(g => new {
                 Guild = g,
                 Cache = _db.GetNasaApodCache(g).Result
             }).ToListAsync(cancellationToken);
+
+            var dbNeedsUpdate = false;
             var outOfDateGuilds = enabledGuilds.Where(g => g.Cache.LastApodPostedId != latestPostId);
+            foreach(var apodDetails in outOfDateGuilds) {
+                if (await apodDetails.Cache.TrySendNasaAPOD(_latestApodCache!, _client, _db, _logger)) {
+                    dbNeedsUpdate = true;
+                    _logger.LogInformation("Post APOD {} to Guild {GuildId}", _latestApodCache!.DateString, apodDetails.Guild.Id);
+                } else _logger.LogWarning("Failed to post APOD to Guild {GuildId}", apodDetails.Guild.Id);
+            }
+            if(dbNeedsUpdate) await _db.SaveChangesAsyncRetry(2, cancellationToken);
         }
 
         private async Task<bool> FetchNewAPOD(ApplicationDbContext _db, CancellationToken cancellationToken) {
