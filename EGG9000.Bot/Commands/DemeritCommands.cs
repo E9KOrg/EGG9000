@@ -110,15 +110,16 @@ namespace EGG9000.Bot.Commands {
             }
         }
         [SlashCommand(Description = "List demerits for user", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task DemeritsForUser(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+        public static async Task DemeritsForUser(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db, [SlashParam(Required = false)] bool hidden = false) {
+            await command.DeferAsync(ephemeral: hidden);
             try {
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
                 var demeritDesc = await GetDemerits(dbuser.Id, db);
 
-                await command.RespondAsync($"Demerit info for {user.Mention}\n{demeritDesc}", ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => x.Content = $"Demerit info for {user.Mention}\n{demeritDesc}");
             } catch(Exception e) {
-                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
+                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }
         }
 
@@ -141,24 +142,25 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
+            await command.DeferAsync();
             List<UserCoopXref> xref;
             var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
 
             if(targetCoop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError("This command can only be used in a co-op channel"));
+                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("This command can only be used in a co-op channel"));
                 return;
             }
 
             xref = await db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).ToListAsync();
 
             if(xref.Count == 0) {
-                await command.RespondAsync(content: "", embed: EmbedError("Unable to find user reference in co-op"));
+                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Unable to find user reference in co-op"));
                 return;
             }
 
             xref.ForEach(x => x.NoDemerit = true);
             await db.SaveChangesAsyncRetry(2);
-            await command.RespondAsync($"{user.Mention} will not receive automated demerits in this co-op.");
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"{user.Mention} will not receive automated demerits in this co-op.");
         }
     }
 }
