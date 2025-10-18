@@ -235,6 +235,7 @@ namespace EGG9000.Site.Controllers {
         //}
 
         public async Task<IActionResult> GetGraphs() {
+            _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             Dictionary<DateTimeOffset, int[]> days;
             var adminDaysCacheKey = $"AdminDays{guildId}";
@@ -655,7 +656,7 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
         public async Task<IActionResult> CalculateScore([FromQuery] string contractid) {
-
+            _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guildContracts = await _db.GuildContracts.Include(x => x.Contract).AsQueryable().Where(x => x.ContractID == contractid && x.GuildID == guildId).ToListAsync();
             var contractCoops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User)
@@ -837,6 +838,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Ghosts() {
+            _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 

@@ -205,7 +205,8 @@ namespace EGG9000.Bot.Automated {
                     }
                     _logger.LogInformation("Next run in {nextRunDelay} at {nextRunTime}", delay.Humanize(), _nextRunFromCron.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss"));
                     await Task.Delay((int)delay.TotalMilliseconds, _cts.Token);
-
+                } catch(TaskCanceledException) {
+                    _logger.LogInformation("Cron Loop cancelled");
                 } catch(Exception e) {
                     _bugsnag.Notify(e);
                     _logger.LogError(e, "Error running updater");
