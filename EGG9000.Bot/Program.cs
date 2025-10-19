@@ -147,6 +147,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<ManageOverflow>();
         services.AddHostedService<RemoveTempRoles>();
         services.AddHostedService<HandleGradeChanges>();
+        services.AddHostedService<RefreshNasaApod>();
 
 
         services.AddSingleton<JobService>();
@@ -155,7 +156,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<CommandService>();
         services.AddHostedService<DiscordUserService>();
 
-        services.AddSingleton<RefreshNasaApod>();
 #endif
     } catch(Exception e) {
         logger.Error(e, "Stopped program because of exception");

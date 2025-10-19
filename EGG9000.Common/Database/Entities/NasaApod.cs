@@ -22,6 +22,7 @@ public class NasaApod {
             }
             return _idCache;
         }
+        private set { _idCache = value; }
     }
     private Guid _idCache = Guid.Empty;
 
