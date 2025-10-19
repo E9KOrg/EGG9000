@@ -1,5 +1,4 @@
 ﻿using Discord;
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -14,6 +13,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static EGG9000.Bot.Common.Helpers.ChannelHelper;
 
 namespace EGG9000.Common.Helpers;
 
@@ -25,7 +25,7 @@ public static partial class NasaHelper {
     // # just change the BASE_URL and add api_key param to the Api URL.
     // public const string BASE_URL = "https://api.nasa.gov";
     private const string BASE_URL = "https://nasa.davidarthurcole.me";
-    private const string APOD_ENDPOINT = "/v1/apod";
+    private const string APOD_ENDPOINT = "/v1/apod/";
     private const string URL_PARAM_STRING = "?thumbs=true&hd=true";
     // public const string API_KEY = "";
     private const string NasaApiUrl = $"{BASE_URL}{APOD_ENDPOINT}{URL_PARAM_STRING}";
@@ -37,7 +37,38 @@ public static partial class NasaHelper {
         var match = YouTubeRegex().Match(url);
         return match.Success ? match.Groups["videoId"].Value : null;
     }
+
+    public static async Task<bool> FetchNewAPOD(ApplicationDbContext _db, ILogger logger, CancellationToken cancellationToken) {
+        var latestApod = await GetNasaApodResponseAsync(logger, cancellationToken);
+        if(latestApod is null) {
+            logger.LogWarning("Failed to fetch latest APOD.");
+            return false;
+        } else if(_latestApodCache is not null && latestApod.ID == _latestApodCache.ID) {
+            logger.LogInformation("No new APOD found.");
+            return false;
+        }
+
+        var existingApod = await GetLatestApod(_db);
+        if(existingApod is not null && latestApod.ID == existingApod.ID) {
+            logger.LogInformation("No new APOD found against database.");
+            _latestApodCache = existingApod;
+            return false;
+        }
+
+        logger.LogInformation("New APOD found: {Title} ({Date})", latestApod.Title, latestApod.DateString);
+        await _db.NasaApods.AddAsync(latestApod, cancellationToken);
+        _latestApodCache = latestApod;
+        return true;
+    }
+
+    public static async Task<NasaApod?> GetLatestApod(ApplicationDbContext _db) {
+        _latestApodCache ??= await _db.NasaApods.OrderByDescending(a => a.DateString).FirstOrDefaultAsync();
+        return _latestApodCache;
+    }
+
+    private static NasaApod? _latestApodCache = null;
 #nullable disable
+
     public class GuildNasaApodDetails(Guild guild) {
         public Guild Guild { get; set; } = guild;
         public Guid LastApodPostedId { get; set; } = Guid.Empty;
@@ -46,7 +77,11 @@ public static partial class NasaHelper {
 
     public static async Task<GuildNasaApodDetails> GetNasaApodCache(this ApplicationDbContext db, Guild guild) {
         if(!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
-            var latestPosted = await db.NasaApods.OrderByDescending(a => a.Date).FirstOrDefaultAsync(a => a._postedToBytes != null && a._postedToBytes.Length > 0 && a.PostedToEntries.Any(pte => pte.GuildID == guild.Id));
+            var latestPosted = db.NasaApods
+                .Where(a => a._postedToBytes != null)
+                .OrderByDescending(a => a.DateString)
+                .AsEnumerable()
+                .FirstOrDefault(a => a.PostedToEntries.Any(pte => pte.GuildID == guild.Id));
             cache = new GuildNasaApodDetails(guild) {
                 LastApodPostedId = latestPosted?.ID ?? Guid.Empty,
                 ChannelId = guild.GetChannelId(GuildChannelType.NasaApod) ?? 0,
@@ -76,26 +111,49 @@ public static partial class NasaHelper {
             imageBytes = Convert.FromBase64String(b64String);
             db._cache.Set(apod.GetApodImageBytesKey(), imageBytes, TimeSpan.FromDays(7));
         }
-        return new FileAttachment(new MemoryStream(imageBytes), "APOD.jpeg", "Astronomy Picture of The Day");
+        return new FileAttachment(new MemoryStream(imageBytes), "APOD.jpeg", "Astronomy Picture of the Day");
     }
 
     private static string GetApodImageBytesKey(this NasaApod apod) {
         return $"NasaApodImageBytes:Apod:{apod.ID}";
     }
 
-    public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
+    public static async Task<string> GetExplanationOrEmpty(Guid postGuid, ApplicationDbContext db) {
+        if (!db._cache.TryGetValue(postGuid.GetApodExplanationKey(), out string explanation)) {
+            var apod = await db.NasaApods.FirstOrDefaultAsync(a => a.ID == postGuid);
+            if (apod is null) return string.Empty;
+            explanation = apod.Explanation;
+            db._cache.Set(postGuid.GetApodExplanationKey(), explanation, TimeSpan.FromDays(7));
+        }
+        return explanation;
+    }
+
+    private static string GetApodExplanationKey(this Guid apodId) {
+        return $"NasaApodExplanation:Apod:{apodId}";
+    }
+
+    private static async Task<CustomDiscordMessage?> GetCustomMessage(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
         var attachment = await apod.GetFileAttachmentOrNull(db, logger);
-        if (attachment is null || attachment is not FileAttachment fileAttachment) {
+        if(attachment is null || attachment is not FileAttachment fileAttachment) {
             logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
-            return false;
+            return null;
         }
         var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"attachment://{fileAttachment.FileName}");
-        var sentMessage = await ChannelHelper.DetermineAndSend(client, details.Guild, GuildChannelType.NasaApod, new ChannelHelper.CustomDiscordMessage {
+        return new CustomDiscordMessage {
             Embed = apodEmbed.Build(),
             File = fileAttachment,
             SendFile = true,
             Components = apod.CreateEphemeralExplanationButton()
-        }, logger);
+        };
+    }
+
+    public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
+        var customMessage = await apod.GetCustomMessage(db, logger);
+        if (customMessage is null) {
+            logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
+            return false;
+        }
+        var sentMessage = await DetermineAndSend(client, details.Guild, GuildChannelType.NasaApod, customMessage, logger);
         if (sentMessage != null) {
             SetNasaApodCache(db, details.Guild, new GuildNasaApodDetails(details.Guild) {
                 LastApodPostedId = apod.ID,
@@ -105,20 +163,29 @@ public static partial class NasaHelper {
         return sentMessage != null;
     }
 
+    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this FauxCommand command, NasaApod apod, ApplicationDbContext db, ILogger logger) {
+        var customMessage = await apod.GetCustomMessage(db, logger);
+        if(customMessage is null) {
+            logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
+            return false;
+        }
+    }
+
     private static MessageComponent CreateEphemeralExplanationButton(this NasaApod apod) =>
-        new ComponentBuilder().WithButton("Explanation", $"explanation_nasa|{apod.ID}", ButtonStyle.Primary).Build();
+        new ComponentBuilder().WithButton("Explanation", $"APODExplanation:{apod.ID}", ButtonStyle.Primary).Build();
 
 #nullable enable
-    public static async Task<NasaApod?> GetNasaApodResponseAsync(ILogger<dynamic> _logger, CancellationToken cancellationToken) {
+    public static async Task<NasaApod?> GetNasaApodResponseAsync(ILogger logger, CancellationToken cancellationToken) {
         string? streamContentString = null;
         try {
             using var httpClient = new HttpClient();
+            logger.LogInformation("Trying to fetch from: {}", NasaApiUrl);
             var response = await httpClient.GetAsync(NasaApiUrl, cancellationToken);
             if(response is null || !response.IsSuccessStatusCode) {
-                _logger.LogWarning("Failed to retrieve NASA APOD. Status Code: {statusCode}", response?.StatusCode);
+                logger.LogWarning("Failed to retrieve NASA APOD. Status Code: {statusCode}", response?.StatusCode);
                 return null;
             } else if(response.Content is null || response.Content.Headers.ContentLength == 0) {
-                _logger.LogWarning("NASA APOD response content is empty.");
+                logger.LogWarning("NASA APOD response content is empty.");
                 return null;
             }
 
@@ -128,10 +195,10 @@ public static partial class NasaHelper {
             streamContentString = System.Text.Encoding.UTF8.GetString(contentBuffer);
             return JsonConvert.DeserializeObject<NasaApod>(streamContentString);
         } catch (HttpRequestException ex) {
-            _logger.LogError("HTTP request error ({statusCode}) while fetching NASA APOD: {message}", ex.StatusCode, ex.Message);
+            logger.LogError("HTTP request error ({statusCode}) while fetching NASA APOD: {message}", ex.StatusCode, ex.Message);
             return null;
         } catch(JsonSerializationException ex) {
-            _logger.LogError("Failed to deserialize NASA APOD response: {message}\nPath: {path}\nStream content string:\n{content}", ex.Message, ex.Path, streamContentString);
+            logger.LogError("Failed to deserialize NASA APOD response: {message}\nPath: {path}\nStream content string:\n{content}", ex.Message, ex.Path, streamContentString);
             return null;
         }
     }
@@ -143,7 +210,7 @@ public static partial class NasaHelper {
             .WithTitle(apod.Title)
             .WithUrl(apod.BestUrl)
             .WithFooter($"{apod.Copyright?.Replace("\n", "") ?? "[Photographer Unknown]"} | {apod.DateString}");
-        if(isImage) builder.WithImageUrl(apod.BestUrl); // Might need to be Url due to sizing constraints (?)
+        if(isImage) builder.WithImageUrl(apod.BestUrl);
         else {
             if(TryExtractYouTubeId(apod.BestUrl) is string videoId) {
                 var videoThumbnail = $"https://img.youtube.com/vi/{videoId}/maxresdefault.jpg";

@@ -2,6 +2,7 @@
 using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Linq;
@@ -43,12 +44,16 @@ namespace EGG9000.Bot.Common.Helpers {
             public bool SendFile { get; set; } = false;
         }
 
-        public static async Task<Discord.Rest.RestUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
+        public class CustomInteractionBasedDiscordMessage() : CustomDiscordMessage {
+            public bool Ephemeral { get; set; } = false;
+            public PollProperties PollProperties { get; set; } = null;
+        }
 
-            var discordGuild = _client.GetGuild(dbGuild.Id);
-            var channel = DetermineChannelType(dbGuild, discordGuild, channelType);
-            if(channel is null) return null;
+        public static async Task<IUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
+            return await SendCustomMessage(DetermineChannelType(dbGuild, _client.GetGuild(dbGuild.Id), channelType), message, logger);
+        }
 
+        public static async Task<IUserMessage> SendCustomMessage(object channel, CustomDiscordMessage message, ILogger logger = null) {
             if(channel.GetType() == typeof(SocketThreadChannel)) {
                 if(message.SendFile) {
                     return await ((SocketThreadChannel)channel).SendFileAsync(message.File, message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
@@ -60,6 +65,14 @@ namespace EGG9000.Bot.Common.Helpers {
                     return await ((SocketTextChannel)channel).SendFileAsync(message.File, message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 } else {
                     return await ((SocketTextChannel)channel).SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
+                }
+            } else if (channel.GetType() == typeof(FauxCommand) && channel is FauxCommand command) {
+                var ephemeral = (message as CustomInteractionBasedDiscordMessage)?.Ephemeral ?? false;
+                var pollProperties = (message as CustomInteractionBasedDiscordMessage)?.PollProperties ?? null;
+                if (command.HasResponded) {
+                    if (message.SendFile) {
+                        return await command.FollowupWithFilesAsync([message.File], message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
+                    }
                 }
             } else {
                 logger?.LogWarning("DetermineAndSend called, expected type of SocketTextChannel or SocketThreadChannel. Instead found type of {type}", channel.GetType());
