@@ -14,6 +14,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Common.Helpers.ChannelHelper;
+using static EGG9000.Common.Database.Entities.NasaApod;
 
 namespace EGG9000.Common.Helpers;
 
@@ -132,7 +133,7 @@ public static partial class NasaHelper {
         return $"NasaApodExplanation:Apod:{apodId}";
     }
 
-    private static async Task<CustomDiscordMessage?> GetCustomMessage(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
+    private static async Task<CustomDiscordMessage> GetCustomMessage(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
         var attachment = await apod.GetFileAttachmentOrNull(db, logger);
         if(attachment is null || attachment is not FileAttachment fileAttachment) {
             logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
@@ -155,6 +156,13 @@ public static partial class NasaHelper {
         }
         var sentMessage = await DetermineAndSend(client, details.Guild, GuildChannelType.NasaApod, customMessage, logger);
         if (sentMessage != null) {
+            apod.PostedToEntries = [
+                .. apod.PostedToEntries,
+                new PostedToEntry {
+                    GuildID = details.Guild.Id,
+                    ChannelID = details.ChannelId,
+                },
+            ];
             SetNasaApodCache(db, details.Guild, new GuildNasaApodDetails(details.Guild) {
                 LastApodPostedId = apod.ID,
                 ChannelId = details.ChannelId
@@ -169,7 +177,10 @@ public static partial class NasaHelper {
             logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
             return false;
         }
-        var sentMessage = await SendCustomMessage(client, command, customMessage, logger);
+        var customInteractionBasedMessage = new CustomInteractionBasedDiscordMessage(customMessage) {
+            Ephemeral = true,
+        };
+        var sentMessage = await SendCustomMessage(client, command, customInteractionBasedMessage, logger);
         return sentMessage != null;
     }
 

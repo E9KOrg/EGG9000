@@ -45,9 +45,26 @@ namespace EGG9000.Bot.Common.Helpers {
             public bool SendFile { get; set; } = false;
         }
 
-        public class CustomInteractionBasedDiscordMessage() : CustomDiscordMessage {
+        public class CustomInteractionBasedDiscordMessage : CustomDiscordMessage {
             public bool Ephemeral { get; set; } = false;
             public PollProperties PollProperties { get; set; } = null;
+
+            public CustomInteractionBasedDiscordMessage() { }
+
+            public CustomInteractionBasedDiscordMessage(CustomDiscordMessage baseMsg) {
+                Text = baseMsg.Text;
+                IsTTS = baseMsg.IsTTS;
+                Embed = baseMsg.Embed;
+                Options = baseMsg.Options;
+                AllowedMentions = baseMsg.AllowedMentions;
+                MessageReference = baseMsg.MessageReference;
+                Components = baseMsg.Components;
+                Stickers = baseMsg.Stickers;
+                Embeds = baseMsg.Embeds;
+                Flags = baseMsg.Flags;
+                File = baseMsg.File;
+                SendFile = baseMsg.SendFile;
+            }
         }
 
         public static async Task<IUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
