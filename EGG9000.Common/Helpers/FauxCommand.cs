@@ -133,7 +133,7 @@ namespace EGG9000.Common.Services {
             await RespondWithPremiumRequiredAsyncReturningMessage(options);
 
         public async Task<IUserMessage> RespondWithPremiumRequiredAsyncReturningMessage(RequestOptions options = null) {
-            return await RespondAsyncGettingMessage("", embed: EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing there, there's been an error."), options: options);
+            return await RespondAsyncGettingMessage("", embed: EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing this, there's been an error."), options: options);
         }
 
         public async Task<IUserMessage> RespondWithFilesAsyncGettingMessage(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
