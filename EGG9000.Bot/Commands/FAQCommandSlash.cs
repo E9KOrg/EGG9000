@@ -80,7 +80,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; });
             } else {
                 _logger.LogInformation($"No FAQ Topic for {query}");
-                await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedCustom(EmbedHelpers.EmbedType.Alert, "No Results", $"Could not find any FAQ topics for the term `{query}`"); });
+                await command.ModifyOriginalResponseAsync(x => { x.Embed = MakeCustomEmbed(EmbedHelpers.EmbedType.Alert, "No Results", $"Could not find any FAQ topics for the term `{query}`"); });
             }
             _logger.LogInformation($"FAQ for {query} complete");
         }
@@ -137,7 +137,7 @@ namespace EGG9000.Bot.Commands {
             var isOnCooldown = DateTimeOffset.Now - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
 
             if(isOnCooldown && !hasStaffPerms) {
-                await component.RespondAsync(embed: EmbedCustom(
+                await component.RespondAsync(embed: MakeCustomEmbed(
                         EmbedHelpers.EmbedType.Alert,
                         "Post Cooldown",
                         $"You are on cooldown, and will be able to post again {DiscordHelpers.TimeStamper(lastPostTime.AddMinutes(guildObj.FAQTopicCooldownMinutes), DiscordHelpers.DiscordTimestampFormat.Relative)}."

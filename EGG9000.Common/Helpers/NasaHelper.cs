@@ -163,12 +163,14 @@ public static partial class NasaHelper {
         return sentMessage != null;
     }
 
-    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this FauxCommand command, NasaApod apod, ApplicationDbContext db, ILogger logger) {
+    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this FauxCommand command, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
         var customMessage = await apod.GetCustomMessage(db, logger);
         if(customMessage is null) {
             logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
             return false;
         }
+        var sentMessage = await SendCustomMessage(client, command, customMessage, logger);
+        return sentMessage != null;
     }
 
     private static MessageComponent CreateEphemeralExplanationButton(this NasaApod apod) =>
