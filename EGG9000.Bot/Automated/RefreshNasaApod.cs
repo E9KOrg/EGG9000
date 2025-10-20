@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Automated;
         foreach(var apodDetails in outOfDateGuilds) {
             if (await apodDetails.Cache.TrySendNasaAPOD(latestPost, _client, _db, _logger)) {
                 dbNeedsUpdate = true;
-                _logger.LogInformation("Post APOD {} to Guild {GuildId}", latestPost.DateString, apodDetails.Guild.Id);
+                _logger.LogInformation("Posted APOD {} to Guild {GuildId}", latestPost.DateString, apodDetails.Guild.Id);
             } else _logger.LogWarning("Failed to post APOD to Guild {GuildId}", apodDetails.Guild.Id);
         }
         if(dbNeedsUpdate) await _db.SaveChangesAsyncRetry(2, cancellationToken);
