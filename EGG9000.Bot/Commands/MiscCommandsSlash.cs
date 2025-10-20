@@ -185,9 +185,10 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
+            await command.DeferAsync();
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
-                await command.RespondAsync("Updating coop...", ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
@@ -200,7 +201,7 @@ namespace EGG9000.Bot.Commands {
 
             var targetGuildContract = await db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetGuildContract != null) {
-                await command.RespondAsync("Updating contract...", ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
                 var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
                 await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, dbguild, command);
@@ -208,7 +209,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await command.RespondAsync(content: "", embed: EmbedError($"Command only works in contract or co-op channels"));
+            await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
         }
 
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]

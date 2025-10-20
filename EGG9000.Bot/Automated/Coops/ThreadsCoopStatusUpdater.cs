@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
             var throttler = new SemaphoreSlim(1);
 #else
-            var throttler = new SemaphoreSlim(3);
+            var throttler = new SemaphoreSlim(2);
 #endif
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -112,6 +112,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }, cancellationToken));
 
                     StillAlive();
+                    await Task.Delay(500, cancellationToken);
                 }
 
                 var watchdogCancellationSource = new CancellationTokenSource();
@@ -1041,7 +1042,11 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
 
                     //Estimate the time the coop is projected to finish
-                    coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
+                    try {
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
+                    } catch(ArgumentOutOfRangeException) {
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddYears(1);
+                    }
 
                     var totalRatePerHour = totalRate * 60 * 60;
                     if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {

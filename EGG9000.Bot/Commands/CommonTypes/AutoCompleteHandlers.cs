@@ -43,7 +43,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     var name = account.Account.Backup?.UserName;
                     results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup.EarningsBonus.ToEggString()})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                 }
-
                 await arg.RespondAsync(null, [.. results]);
             }
         }

@@ -127,6 +127,11 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(headerChannel == null) {
                             _logger.LogError("Unable to get header channel for {coop} in contract {contract}", coop.Name, guildContract.ContractID);
                         } else {
+                            if(coop.ThreadID > 0) {
+                                var existingThread = (SocketThreadChannel)await _client.GetChannelAsync(coop.ThreadID);
+                                _logger.LogWarning("Trying to create a new thread for {coop} already has a thread at {thread}", coop.Name, existingThread?.Name ?? "null");
+                                continue;
+                            }
                             var coopThread = await CreateThreadChannelAsync(coop.Name, headerChannel);
 
                             if(coopThread != null) {

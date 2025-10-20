@@ -210,8 +210,35 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
             var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
-
+            ViewBag.CustomEggs = await _db.GetCustomEggsAsync();
+            ViewBag.ResearchCostSubmissions = await _db.ResearchCostSubmissions.ToListAsync();
             return View(user.EggIncAccounts.First().Backup);
+        }
+
+        public class SubmitResearchCostModel {
+            public string Id { get; set; }
+            public int Level { get; set; }
+            public double Cost { get; set; }
+        }
+        public async Task<IActionResult> SubmitResearchCost([FromBody] SubmitResearchCostModel model) {
+            var loginuser = (await _userManager.GetUserAsync(User));
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var existing = await _db.ResearchCostSubmissions.FirstOrDefaultAsync(x => x.ID == model.Id && x.Level == model.Level && x.UserId == user.Id);
+            if(existing is null) {
+                existing = new ResearchCostSubmission {
+                    ID = model.Id,
+                    Level = model.Level,
+                    Cost = model.Cost,
+                    UserId = user.Id,
+                };
+                _db.ResearchCostSubmissions.Add(existing);
+            } else {
+                existing.Cost = model.Cost;
+                existing.SubmittedAt = DateTimeOffset.Now;
+            }
+            await _db.SaveChangesAsync();
+            return Ok();
         }
 
         public async Task<IActionResult> Roles() {
