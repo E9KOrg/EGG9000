@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace EGG9000.Common.Database.Entities;
 
@@ -52,18 +53,27 @@ public class NasaApod {
     [JsonIgnore]
     public byte[] _postedToBytes { get; set; }
     [NotMapped]
-    private PostedToEntry[] _postedToEntries { get; set; }
+    private PostedToEntry[] _postedToEntries;
+    [NotMapped]
+    private readonly Lock _postedToLock = new();
     [NotMapped]
     public PostedToEntry[] PostedToEntries {
         get {
-            if (_postedToEntries != null) return _postedToEntries;
-            if (_postedToBytes == null || _postedToBytes.Length == 0) return [];
-            _postedToEntries = MessagePackSerializer.Deserialize<PostedToEntry[]>(_postedToBytes);
-            return _postedToEntries;
+            if(_postedToEntries != null) return _postedToEntries;
+            lock(_postedToLock) {
+                if(_postedToBytes == null || _postedToBytes.Length == 0)
+                    _postedToEntries = [];
+                else
+                    _postedToEntries = MessagePackSerializer.Deserialize<PostedToEntry[]>(_postedToBytes) ?? [];
+
+                return _postedToEntries;
+            }
         }
         set {
-            _postedToEntries = value;
-            _postedToBytes = MessagePackSerializer.Serialize(value);
+            lock(_postedToLock) {
+                _postedToEntries = value ?? [];
+                _postedToBytes = MessagePackSerializer.Serialize(_postedToEntries);
+            }
         }
     }
 
