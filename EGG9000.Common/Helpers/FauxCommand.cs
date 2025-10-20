@@ -141,14 +141,14 @@ namespace EGG9000.Common.Services {
                 return null;
             if(_socketCommandBase is not null) {
                 if (_socketCommandBase.HasResponded) 
-                    return _socketCommandBase.ModifyOriginalResponseAsync(o => {
+                    return await _socketCommandBase.ModifyOriginalResponseAsync(o => {
                         o.Content = text;
                         o.Embeds = embeds;
                         o.AllowedMentions = allowedMentions;
                         o.Components = components;
                         o.Embed = embed;
                         o.Attachments = attachments.ToList();
-                    }).Result;
+                    });
                 else {
                     await _socketCommandBase.RespondWithFilesAsync(attachments, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
                     return await _socketCommandBase.GetOriginalResponseAsync();
