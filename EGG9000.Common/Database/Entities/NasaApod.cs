@@ -17,7 +17,7 @@ public class NasaApod {
         get {
             if (_idCache == Guid.Empty) {
                 var inputBytes = Encoding.UTF8.GetBytes($"{Url}|{Title}");
-                var hashBytes = System.Security.Cryptography.SHA1.HashData(inputBytes);
+                var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
                 _idCache = new Guid([.. hashBytes.Take(16)]);
             }
             return _idCache;
