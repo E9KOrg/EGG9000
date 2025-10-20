@@ -135,7 +135,7 @@ public static partial class NasaHelper {
 
     private static async Task<CustomDiscordMessage> GetCustomMessage(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
         var attachment = await apod.GetFileAttachmentOrNull(db, logger);
-        if(attachment is null || attachment is not FileAttachment fileAttachment) {
+        if(attachment is not FileAttachment fileAttachment) {
             logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
             return null;
         }
