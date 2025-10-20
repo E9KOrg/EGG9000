@@ -57,13 +57,14 @@ namespace EGG9000.Bot.Commands {
         #region MainMenu
         [SlashCommand(Description = "My Contract Settings", AllowInDMs = true)]
         public static async Task MyContractSettings(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync(ephemeral: !System.Diagnostics.Debugger.IsAttached);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.ModifyOriginalResponseAsync(x =>  x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
             } else if(dbuser.GuildId == 0) {
-                await command.RespondAsync(content: "", embed: EmbedError($"It looks like the bot is unable to see what server you are registered with, please use the command `/moveserver` and then try this command again."), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"It looks like the bot is unable to see what server you are registered with, please use the command `/moveserver` and then try this command again."));
             } else {
-                await command.RespondAsync("Select which account you would like to manage", components: GetAccountButtons(dbuser, "MCSMenu"), ephemeral: !System.Diagnostics.Debugger.IsAttached);
+                await command.ModifyOriginalResponseAsync(x => { x.Content = "Select which account you would like to manage"; x.Components = GetAccountButtons(dbuser, "MCSMenu"); });
             }
         }
 

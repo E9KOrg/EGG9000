@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251008050137_ResearchCostSubmissionsFixKey")]
+    partial class ResearchCostSubmissionsFixKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -849,45 +852,6 @@ namespace EGG9000.Common.Migrations
 
                     b.ToTable("Merit");
                 });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.NasaApod", b => {
-                b.Property<Guid>("ID")
-                    .ValueGeneratedOnAdd()
-                    .HasColumnType("uniqueidentifier");
-
-                b.Property<string>("Copyright")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("DateString")
-                    .ValueGeneratedOnAdd()
-                    .HasColumnType("nvarchar(max)")
-                    .HasDefaultValueSql("CONVERT(varchar(10), GETUTCDATE(), 23)");
-
-                b.Property<string>("Explanation")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("HdUrl")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("MediaType")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("ThumbnailUrl")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("Title")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<string>("Url")
-                    .HasColumnType("nvarchar(max)");
-
-                b.Property<byte[]>("_postedToBytes")
-                    .HasColumnType("varbinary(max)");
-
-                b.HasKey("ID");
-
-                b.ToTable("NasaApods");
-            });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ResearchCostSubmission", b =>
                 {

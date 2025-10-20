@@ -4,7 +4,7 @@
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
 }
 
-@if (isAdmin || Model.DbGuild.PublicScoreGrid)
+@if (isAdmin || (Model.DbGuild?.PublicScoreGrid ?? false))
 {
     <a href="/Contract/RecentScoresGrid" class="btn btn-primary">Recent Scores Grid</a>
 }

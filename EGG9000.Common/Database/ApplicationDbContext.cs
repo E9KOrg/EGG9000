@@ -59,6 +59,7 @@ namespace EGG9000.Common.Database {
         public DbSet<UpcomingContract> UpcomingContracts { get; set; }
         public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
         public DbSet<FAQTopic> FAQTopics { get; set; }
+        public DbSet<ResearchCostSubmission> ResearchCostSubmissions { get; set; }
         public DbSet<NasaApod> NasaApods { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {

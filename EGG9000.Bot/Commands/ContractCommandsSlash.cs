@@ -489,7 +489,7 @@ namespace EGG9000.Bot.Commands {
                     GuildId = guildContract.GuildID,
                     Name = coopname,
                     MaxUsers = guildContract.Contract.MaxUsers,
-                    Status = CoopStatusEnum.WaitingOnAssigned,
+                    Status = CoopStatusEnum.WaitingOnThread,
                     League = grade,
                     AnyLeague = anygrade,
                     CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)

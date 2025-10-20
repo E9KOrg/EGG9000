@@ -55,6 +55,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="10.1.1" />
     <PackageReference Include="Bugsnag.AspNet.Core" Version="3.1.0" />
+    <PackageReference Include="CsvHelper" Version="33.1.0" />
     <PackageReference Include="Google.Protobuf" Version="3.23.4" />
     <PackageReference Include="Grpc.Net.Client" Version="2.55.0" />
     <PackageReference Include="Grpc.Tools" Version="2.56.2">
@@ -104,6 +105,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="JsonData\ArtifactEmoji.json" />
+    <EmbeddedResource Include="JsonData\curiosity_research.csv" />
     <EmbeddedResource Include="JsonData\eiafx-config.json" />
     <EmbeddedResource Include="JsonData\eiafx-data.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

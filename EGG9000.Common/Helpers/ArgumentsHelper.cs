@@ -38,6 +38,10 @@ namespace EGG9000.Bot {
             new(78, "QV"),
         ];
 
+        public static double FromEggString(this string arg) {
+            return NumberFromStringDouble(arg);
+        }
+
         public static string ToEggString(this double number, bool showdecimalplaces = false, int numberOfDecimalPlaces = -1) {
             return NumberToString(number, showdecimalplaces, numberOfDecimalPlaces);
         }
@@ -147,6 +151,9 @@ namespace EGG9000.Bot {
 
                 var number = double.Parse(numberPortion);
 
+                if(size == "O") {
+                    size = "o";
+                }
 
                 if(bignums.Any(x => x.Value == size)) {
                     var value = bignums.First(x => x.Value == size);
