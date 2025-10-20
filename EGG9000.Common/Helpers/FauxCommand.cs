@@ -1,9 +1,8 @@
 ﻿// Ignore Spelling: Faux
 
 using Discord;
-using Discord.Rest;
 using Discord.WebSocket;
-
+using EGG9000.Common.Helpers.Discord;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,16 +10,15 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {
-    public class FauxCommand : IDiscordInteraction {
-        SocketMessage _originalMessage;
-        SocketSlashCommand _socketSlashCommand;
-        SocketUserCommand _socketUserCommand;
-        SocketCommandBase _socketCommandBase;
+    public partial class FauxCommand : IDiscordInteraction {
+        private readonly SocketMessage _originalMessage;
+        private readonly SocketSlashCommand _socketSlashCommand;
+        private readonly SocketUserCommand _socketUserCommand;
+        private readonly SocketCommandBase _socketCommandBase;
 
-        RestUserMessage _message;
-        Boolean _fake = false;
-
-        ulong? _guildid;
+        private IUserMessage _message;
+        private readonly bool _fake = false;
+        private readonly ulong? _guildid;
 
         public FauxCommand(SocketMessage message, ulong? guildid) {
             _originalMessage = message;
@@ -49,21 +47,26 @@ namespace EGG9000.Common.Services {
             return new FauxCommand(command);
         }
 
+        public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) =>
+            await RespondAsyncGettingMessage(content, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
 
-        public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+        public async Task<IUserMessage> RespondAsyncGettingMessage(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
             if(_fake)
-                return;
+                return null;
 
             //public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
             if(_socketCommandBase is not null && _socketCommandBase.HasResponded)
-                await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
-            else if(_socketCommandBase is not null)
+                return await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
+            else if(_socketCommandBase is not null) {
                 await _socketCommandBase.RespondAsync(content, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
+                _message = await _socketCommandBase.GetOriginalResponseAsync();
+            }
             else
                 _message = await _originalMessage.Channel.SendMessageAsync(content, messageReference: new MessageReference(_originalMessage.Id, _originalMessage.Channel.Id));
+            return _message;
         }
 
-        public Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
+        public Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) {
             throw new NotImplementedException();
         }
 
@@ -109,6 +112,11 @@ namespace EGG9000.Common.Services {
                 return null;
             if(_socketCommandBase is not null)
                 return await _socketCommandBase.ModifyOriginalResponseAsync(func, options);
+
+            _message ??= await GetOriginalResponseAsync();
+            if(_message is null)
+                return null;
+
             await _message.ModifyAsync(func, options);
             return _message;
         }
@@ -121,21 +129,54 @@ namespace EGG9000.Common.Services {
             return await ModifyOriginalResponseAsync(x => x.Content = content);
         }
 
-        public Task RespondWithPremiumRequiredAsync(RequestOptions options = null) {
+        public async Task RespondWithPremiumRequiredAsync(RequestOptions options = null) =>
+            await RespondWithPremiumRequiredAsyncReturningMessage(options);
+
+        public async Task<IUserMessage> RespondWithPremiumRequiredAsyncReturningMessage(RequestOptions options = null) {
+            return await RespondAsyncGettingMessage("", embed: EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing there, there's been an error."), options: options);
+        }
+
+        public async Task<IUserMessage> RespondWithFilesAsyncGettingMessage(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+            if(_fake)
+                return null;
+            if(_socketCommandBase is not null) {
+                if (_socketCommandBase.HasResponded) 
+                    return _socketCommandBase.ModifyOriginalResponseAsync(o => {
+                        o.Content = text;
+                        o.Embeds = embeds;
+                        o.AllowedMentions = allowedMentions;
+                        o.Components = components;
+                        o.Embed = embed;
+                        o.Attachments = attachments.ToList();
+                    }).Result;
+                else {
+                    await _socketCommandBase.RespondWithFilesAsync(attachments, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
+                    return await _socketCommandBase.GetOriginalResponseAsync();
+                }
+            }
             throw new NotImplementedException();
         }
 
+        public async Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) =>
+            await RespondWithFilesAsyncGettingMessage(attachments, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
 
-        public Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
+        private async Task<IUserMessage> FollowUpAsync(string text = null, IEnumerable<FileAttachment> attachments = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) {
+            if(_fake)
+                return null;
+            if(_socketCommandBase is not null)
+                if (attachments is not null && attachments.Any())
+                    return await _socketCommandBase.FollowupWithFilesAsync(attachments, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll, flags);
+                else 
+                    return await _socketCommandBase.FollowupAsync(text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll, flags);
             throw new NotImplementedException();
         }
 
-        public Task<IUserMessage> FollowupAsync(string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
-            throw new NotImplementedException();
+        public async Task<IUserMessage> FollowupAsync(string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) {
+            return await FollowUpAsync(text, null, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
         }
 
-        public Task<IUserMessage> FollowupWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
-            throw new NotImplementedException();
+        public Task<IUserMessage> FollowupWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) {
+            return FollowUpAsync(text, attachments, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
         }
 
         public FauxApplicationCommandData Data {
@@ -143,26 +184,26 @@ namespace EGG9000.Common.Services {
                 if(_socketUserCommand is not null)
                     return new FauxApplicationCommandData {
                         Name = _socketUserCommand.Data.Name,
-                        Options = _socketUserCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList()
+                        Options = [.. _socketUserCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x))]
                     };
                 if(_socketSlashCommand is not null)
                     return new FauxApplicationCommandData {
                         Name = _socketSlashCommand.Data.Name,
-                        Options = _socketSlashCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList()
+                        Options = [.. _socketSlashCommand.Data.Options.Select(x => new FauxSocketSlashCommandDataOption(x))]
                     };
-                var commandText = new Regex(@"^/(\w+)").Match(_originalMessage.Content).Groups[1].Value.ToLower();
+                var commandText = CommandRegex().Match(_originalMessage.Content).Groups[1].Value.ToLower();
 
                 if(commandText == "register") {
-                    var eggincid = new Regex(@"E[I1]\d+").Match(_originalMessage.Content).Value;
+                    var eggincid = EIRegex().Match(_originalMessage.Content).Value;
                     return new FauxApplicationCommandData {
                         Name = commandText,
-                        Options = new List<FauxSocketSlashCommandDataOption>() {
-                            new FauxSocketSlashCommandDataOption() { 
-                                Name = "eggincid", 
+                        Options = [
+                            new FauxSocketSlashCommandDataOption() {
+                                Name = "eggincid",
                                 Type = ApplicationCommandOptionType.String, 
                                 Value = eggincid
                             }
-                        }
+                        ]
                     };
                 }
 
@@ -334,5 +375,16 @@ namespace EGG9000.Common.Services {
                 throw new NotImplementedException();
             }
         }
+
+        public ulong AttachmentSizeLimit {
+            get {
+                throw new NotImplementedException();
+            }
+        }
+
+        [GeneratedRegex(@"^/(\w+)")]
+        private static partial Regex CommandRegex();
+        [GeneratedRegex(@"E[I1]\d+")]
+        private static partial Regex EIRegex();
     }
 }

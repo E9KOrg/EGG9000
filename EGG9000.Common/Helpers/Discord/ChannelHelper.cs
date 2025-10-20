@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -50,32 +51,42 @@ namespace EGG9000.Bot.Common.Helpers {
         }
 
         public static async Task<IUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
-            return await SendCustomMessage(DetermineChannelType(dbGuild, _client.GetGuild(dbGuild.Id), channelType), message, logger);
+            return await SendCustomMessage(_client, DetermineChannelType(dbGuild, _client.GetGuild(dbGuild.Id), channelType), message, logger);
         }
 
-        public static async Task<IUserMessage> SendCustomMessage(object channel, CustomDiscordMessage message, ILogger logger = null) {
-            if(channel.GetType() == typeof(SocketThreadChannel)) {
+        public static async Task<IUserMessage> SendCustomMessage(DiscordSocketClient _client, object target, CustomDiscordMessage message, ILogger logger = null) {
+            if(target.GetType() == typeof(SocketThreadChannel)) {
+                var threadChannel = (SocketThreadChannel)target;
                 if(message.SendFile) {
-                    return await ((SocketThreadChannel)channel).SendFileAsync(message.File, message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
+                    return await threadChannel.SendFileAsync(message.File, message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 } else {
-                    return await ((SocketThreadChannel)channel).SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
+                    return await threadChannel.SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 }
-            } else if(channel.GetType() == typeof(SocketTextChannel)) {
+            } else if(target.GetType() == typeof(SocketTextChannel)) {
+                var socketTextChannel = (SocketTextChannel)target;
                 if(message.SendFile) {
-                    return await ((SocketTextChannel)channel).SendFileAsync(message.File, message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
+                    return await socketTextChannel.SendFileAsync(message.File, message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 } else {
-                    return await ((SocketTextChannel)channel).SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
+                    return await socketTextChannel.SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 }
-            } else if (channel.GetType() == typeof(FauxCommand) && channel is FauxCommand command) {
+            } else if (target.GetType() == typeof(FauxCommand) && target is FauxCommand command) {
                 var ephemeral = (message as CustomInteractionBasedDiscordMessage)?.Ephemeral ?? false;
                 var pollProperties = (message as CustomInteractionBasedDiscordMessage)?.PollProperties ?? null;
                 if (command.HasResponded) {
                     if (message.SendFile) {
                         return await command.FollowupWithFilesAsync([message.File], message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
+                    } else {
+                        return await command.FollowupAsync(message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
+                    }
+                } else {
+                    if (message.SendFile) {
+                        return await command.RespondWithFilesAsyncGettingMessage([message.File], message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
+                    } else {
+                        return await command.RespondAsyncGettingMessage(message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
                     }
                 }
             } else {
-                logger?.LogWarning("DetermineAndSend called, expected type of SocketTextChannel or SocketThreadChannel. Instead found type of {type}", channel.GetType());
+                logger?.LogWarning("DetermineAndSend called, expected type of SocketTextChannel or SocketThreadChannel. Instead found type of {type}", target.GetType());
                 return null;
             }
         }

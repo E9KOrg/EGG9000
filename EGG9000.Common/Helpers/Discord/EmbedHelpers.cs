@@ -32,8 +32,8 @@ namespace EGG9000.Common.Helpers.Discord {
             return new EmbedBuilder().WithColor(Color.LightOrange).WithDescription(warningText).WithAuthor(new EmbedAuthorBuilder().WithName("Warning").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
 
-        public static Embed EmbedError(string errorText) {
-            return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName("Error").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
+        public static Embed EmbedError(string errorText, string name = "Error") {
+            return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName(name).WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
 
         public static Embed EmbedInternalError(string errorText) {
@@ -50,7 +50,7 @@ namespace EGG9000.Common.Helpers.Discord {
             );
         }
 
-        public static Embed EmbedCustom(EmbedType embedType, string embedTitle, string embedText) {
+        public static Embed MakeCustomEmbed(EmbedType embedType, string embedTitle, string embedText) {
             return new EmbedBuilder().WithColor(embedType switch {
                 EmbedType.Success => Color.Green,
                 EmbedType.InProgress => Color.Blue,
