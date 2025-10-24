@@ -39,6 +39,10 @@ public static partial class NasaHelper {
         return match.Success ? match.Groups["videoId"].Value : null;
     }
 
+    private static readonly HttpClient _sharedClient = new() {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
+
     public static async Task<bool> FetchNewAPOD(ApplicationDbContext _db, ILogger logger, CancellationToken cancellationToken) {
         var latestApod = await GetNasaApodResponseAsync(logger, cancellationToken);
         if(latestApod is null) {
@@ -191,9 +195,8 @@ public static partial class NasaHelper {
     public static async Task<NasaApod?> GetNasaApodResponseAsync(ILogger logger, CancellationToken cancellationToken) {
         string? streamContentString = null;
         try {
-            using var httpClient = new HttpClient();
             logger.LogInformation("Trying to fetch from: {}", NasaApiUrl);
-            var response = await httpClient.GetAsync(NasaApiUrl, cancellationToken);
+            var response = await _sharedClient.GetAsync(NasaApiUrl, cancellationToken);
             if(response is null || !response.IsSuccessStatusCode) {
                 logger.LogWarning("Failed to retrieve NASA APOD. Status Code: {statusCode}", response?.StatusCode);
                 return null;
@@ -237,8 +240,7 @@ public static partial class NasaHelper {
 
     private static async Task<string> GetNasaPictureAsB64OrEmpty(this NasaApod apod, ILogger logger) {
         try {
-            using var client = new HttpClient();
-            var response = await client.GetAsync(apod.BestUrl);
+            var response = await _sharedClient.GetAsync(apod.BestUrl);
             if(response.IsSuccessStatusCode) {
                 var imageBytes = await response.Content.ReadAsByteArrayAsync();
                 return Convert.ToBase64String(imageBytes);
