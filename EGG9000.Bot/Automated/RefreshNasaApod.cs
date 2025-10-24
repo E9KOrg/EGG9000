@@ -23,10 +23,13 @@ namespace EGG9000.Bot.Automated;
             return;
         }
 
-        var enabledGuilds = await _db.Guilds.Select(g => new {
-            Guild = g,
-            Cache = _db.GetNasaApodCache(g).Result
-        }).ToListAsync(cancellationToken);
+        var guilds = await _db.Guilds.ToListAsync(cancellationToken);
+        var enabledGuilds = await Task.WhenAll(
+            guilds.Select(async g => new {
+                Guild = g,
+                Cache = await _db.GetNasaApodCache(g)
+            })
+        );
 
         var outOfDateGuilds = enabledGuilds.Where(g => g.Cache.ChannelId != 0 && g.Cache.LastApodPostedId != latestPost.ID);
         foreach(var apodDetails in outOfDateGuilds) {
