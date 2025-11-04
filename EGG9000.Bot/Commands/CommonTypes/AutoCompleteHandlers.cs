@@ -22,19 +22,21 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
 
         #region UserAutoCompletes
-        public class UserAccountAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
+        public class UserAccountAutoComplete(ApplicationDbContext db, DatabaseCache cache) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
+            private readonly DatabaseCache _cache = cache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                var users = await _db.DBUsers
+                var allusers = await _cache.GetDbUsers();
+                var users = allusers
                     .Where(
                         x => x.GuildId == guild.Id && (
-                            EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%") || //Match discord username
+                            x.DiscordUsername.Contains(arg.Data.Current.Value.ToString(), StringComparison.OrdinalIgnoreCase) || // EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%") || //Match discord username
                             x.Usernames.Contains((string)arg.Data.Current.Value) //Or match egg inc username
                         )
                     )
-                    .Take(10).ToListAsync();
+                    .Take(10);
 
                 var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
 
@@ -82,14 +84,16 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class PersonalUserAccountAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
+        public class PersonalUserAccountAutoComplete(ApplicationDbContext db, DatabaseCache cache) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
+            private readonly DatabaseCache _cache = cache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                var users = await _db.DBUsers
+                var allusers = await _cache.GetDbUsers();
+                var users = allusers
                     .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
-                    .Take(10).ToListAsync();
+                    .Take(10);
 
                 var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
 
