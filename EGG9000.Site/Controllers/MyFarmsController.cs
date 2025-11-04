@@ -34,7 +34,7 @@ using Event = EGG9000.Common.Database.Entities.Event;
 namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
-        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache) : Controller {
+        RoleManager<IdentityRole> roleManager, APILink apiLink, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -44,6 +44,7 @@ namespace EGG9000.Site.Controllers {
         private readonly DiscordSocketClient _discord = discord;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IMemoryCache _cache = cache;
+        private readonly DatabaseCache _databaseCache = databaseCache;
 
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
@@ -53,7 +54,10 @@ namespace EGG9000.Site.Controllers {
 
             if(NewCoopChecker.WaitingOnCoops) {
                 var weekAgo = DateTimeOffset.Now.AddDays(-7);
-                var user = await _db.DBUsers.Include(x => x.UserCoopXrefs.Where(y => y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop)).ThenInclude(y => y.Coop).ThenInclude(x => x.Contract).AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+                var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+                var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
+                user.UserCoopXrefs = xrefs;
+                //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs.Where(y => y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop)).ThenInclude(y => y.Coop).ThenInclude(x => x.Contract).AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
                 _logger.LogInformation($"Time: {sw.ElapsedMilliseconds}");
                 return View("Temporary", user);
             }
@@ -114,6 +118,8 @@ namespace EGG9000.Site.Controllers {
 
             if(update) {
                 user.UpdateAccounts();
+                Console.WriteLine("Saving updated backups to DB");
+                Console.WriteLine(String.Join(",",_db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Select(x => x.Entity.GetType())));
                 await _db.SaveChangesAsync();
             }
 
@@ -151,6 +157,9 @@ namespace EGG9000.Site.Controllers {
                 //var scores = await ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
 
                 scoring.Add((account.Id, scores));
+            }
+            if(update) {
+                user.UpdateAccounts();
             }
             return update;
         }
