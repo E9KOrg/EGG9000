@@ -13,6 +13,9 @@ using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(Status))]
+    [Index(nameof(DiscordChannelId), nameof(ThreadArchived), nameof(CoopEnds), nameof(ThreadID))]
+    [Index(nameof(ThreadID), nameof(Created))]
+    [Index(nameof(ThreadID))]
     public class Coop {
         public Guid Id { get; set; }
         public string ContractID { get; set; }
