@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            await command.DeferAsync(ephemeral: true);
+            await command.DeferAsync(ephemeral: command.IsDMInteraction ? false : true);
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
@@ -171,21 +171,22 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
+            await command.DeferAsync();
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Command only works in co-op channels"));
+                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
                 return;
             }
 
 
             targetCoop.Name = correctcoopname;
             await db.SaveChangesAsync();
-            await command.RespondAsync($"Co-op renamed to {correctcoopname}");
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
         }
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
-            await command.DeferAsync();
+            await command.DeferAsync(ephemeral: true);
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");

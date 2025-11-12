@@ -32,8 +32,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 var users = allusers
                     .Where(
                         x => x.GuildId == guild.Id && (
-                            x.DiscordUsername.Contains(arg.Data.Current.Value.ToString(), StringComparison.OrdinalIgnoreCase) || // EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%") || //Match discord username
-                            x.Usernames.Contains((string)arg.Data.Current.Value) //Or match egg inc username
+                            (x.DiscordUsername?.Contains(arg.Data.Current.Value.ToString(), StringComparison.OrdinalIgnoreCase) ?? false) || // EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%") || //Match discord username
+                            (x.Usernames?.Contains((string)arg.Data.Current.Value) ?? false) //Or match egg inc username
                         )
                     )
                     .Take(10);
@@ -199,21 +199,20 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class MoveToCoopCoopNameAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
-            private readonly ApplicationDbContext _db = db;
+        public class MoveToCoopCoopNameAutoComplete(DatabaseCache dbCache) : IAutoCompleteHandler {
+            private readonly DatabaseCache _dbCache = dbCache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 List<CoopMin> coops = null;
                 if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    coops = await _db.Coops.Include(x => x.Contract)
-                        .Where(x => x.ThreadID == arg.ChannelId)
-                        .Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
+                    coops = _dbCache.ActiveCoopsWithFiveMinuteDelay()
+                        .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
                 }
 
-                coops ??= await _db.Coops.Include(x => x.Contract)
-                    .Where(x => EF.Functions.Like(x.Name, $"{(string)arg.Data.Current.Value}%") && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
-                    .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract.Name, League = x.League }).ToListAsync();
+                coops ??= _dbCache.ActiveCoopsWithFiveMinuteDelay()
+                    .Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
+                    .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
 
                 await arg.RespondAsync(null, coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
             }

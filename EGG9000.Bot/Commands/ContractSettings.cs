@@ -798,12 +798,18 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
 
             var account = dbuser.EggIncAccounts[index];
+            var guildNameDifferent = account.Guild != name.Truncate(100);
             account.Guild = name.Truncate(100);
-            dbuser.UpdateAccounts();
+            var changed = dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-
             var mainMenu = MainMenu(dbuser, account, index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = mainMenu.Components.GetValueOrDefault(); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+            if(!changed && !guildNameDifferent) {
+                await modal.UpdateAsync(x => {
+                    x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = mainMenu.Components.GetValueOrDefault(); x.Embeds = new Embed[] { mainMenu.Embed.GetValueOrDefault(null), new EmbedBuilder().WithColor(Color.Red).WithTitle("No changes were made").WithDescription("No changes were made but were supposed to, please try again. (Kendrome is attempting to figure out why this happening to fix it)").Build() };
+                });
+            } else {
+                await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = mainMenu.Components.GetValueOrDefault(); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
+            }
         }
         #endregion
     }

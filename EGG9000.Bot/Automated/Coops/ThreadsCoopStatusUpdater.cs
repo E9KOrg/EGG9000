@@ -368,6 +368,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     await _db.SaveChangesAsync(CancellationToken.None);
                     if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
                         await coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account.");
+                        await BoolSendDm(participant.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
                     } else {
                         await coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}> has joined the co-op");
                     }
@@ -438,7 +439,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         };
                         _db.UserCoopXrefs.Add(xref);
                         if(coop.UserCoopsXrefs.Any(x => x.UserId == user.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
-                            await coopThread.SendMessageAsync($"<@{user.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account.");
+                            await WrongAccountWarning(user, coopThread, _db, user.Backup.EggIncId);
                         } else {
                             await coopThread.SendMessageAsync($"<@{user.DBUser.DiscordId}> has joined the co-op");
                         }
@@ -1520,6 +1521,12 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
+        public async Task WrongAccountWarning(UserFarmDetails user, IThreadChannel coopThread, ApplicationDbContext _db, string WrongEIID) {
+
+            await coopThread.SendMessageAsync($"<@{user.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account.");
+            await BoolSendDm(user.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
+
+        }
         public async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discordUser, IThreadChannel coopChannel, string Message, Coop coop) {
             if(discordUser is null)
                 return;
