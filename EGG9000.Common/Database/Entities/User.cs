@@ -240,7 +240,8 @@ namespace EGG9000.Common.Database.Entities {
                 } catch(MessagePackSerializationException) {
                     return new List<EggIncAccount>();
                 } catch(Exception) { throw; }
-            } set {
+            }
+            set {
                 if(value == null) {
                     Console.WriteLine("Trying to save NULL EggIncAccounts");
                 } else {
@@ -251,20 +252,21 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
-        public void UpdateAccounts() {
+        public bool UpdateAccounts() {
             if(_eggIncIds is not null)
                 _eggIncIds = null;
-            if(_accounts is not null) {
-                _contractRegistrationByte = MessagePackSerializer.Serialize(_accounts, lz4Options);
-                Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
-                EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
-            } 
+            var compressedAccounts = MessagePackSerializer.Serialize(_accounts, lz4Options);
+            var changed = compressedAccounts != _contractRegistrationByte;
+            _contractRegistrationByte = compressedAccounts;
+            Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
+            EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
+            return changed;
         }
 
         public DateTimeOffset CreateOn { get; set; }
         public DateTimeOffset? Registered { get; set; }
 
-        public bool IsFreshEgg() { 
+        public bool IsFreshEgg() {
             return Registered is not null && Registered.Value > DateTimeOffset.UtcNow.AddDays(-7);
         }
 
@@ -293,7 +295,7 @@ namespace EGG9000.Common.Database.Entities {
             switch(dmResult) {
                 case DiscordHelpersExt.DMResult.Success:
                     if(DMSBlocked) DMSBlocked = false; return true;
-                case DiscordHelpersExt.DMResult.CannotSendToUser: 
+                case DiscordHelpersExt.DMResult.CannotSendToUser:
                     if(!DMSBlocked) DMSBlocked = true; return true;
                 default:
                     break;

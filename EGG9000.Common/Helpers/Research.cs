@@ -130,7 +130,12 @@ namespace EGG9000.Bot.EggIncAPI {
         }
 
         public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract, List<DBCustomEgg> customEggs) {
-            double baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
+            double baseValue = 0.01;
+            try {
+                baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
+            } catch(NullReferenceException) {
+                throw new Exception($"Egg type {farm.EggType} not found in database.");
+            }
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
