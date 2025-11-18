@@ -11,7 +11,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20200511203012_events")]
-    partial class events
+    partial class Eventsm
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

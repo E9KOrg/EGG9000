@@ -13,7 +13,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20220215220247_demerittrackcontractid")]
-    partial class demerittrackcontractid
+    partial class Demerittrackcontractid
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

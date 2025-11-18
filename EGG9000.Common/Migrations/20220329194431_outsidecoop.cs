@@ -3,7 +3,7 @@
 #nullable disable
 
 namespace EGG9000.Common.Migrations {
-    public partial class outsidecoop : Migration
+    public partial class Outsidecoop : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

@@ -117,8 +117,25 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseValue;
         }
 
+        public static double InternalHatcheryOfflineBonus(CustomFarm farm, List<CustomResearch> epic) {
+            double baseValue = 0;
+            foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.InternalHatcheryOffline)) {
+                var current = epic.First(x => x.Id == item.id);
+                var r = current.Level * (double)item.Increase;
+                if(r > 0) {
+                    baseValue += r;
+                }
+            }
+            return baseValue;
+        }
+
         public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract, List<DBCustomEgg> customEggs) {
-            double baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
+            double baseValue = 0.01;
+            try {
+                baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
+            } catch(NullReferenceException) {
+                throw new Exception($"Egg type {farm.EggType} not found in database.");
+            }
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
@@ -265,6 +282,19 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseRate / 60;
         }
 
+        public static double GetCommonResearchCostMultiplier(CustomFarm farm, List<CustomResearch> epic) {
+            double costMult = 1;
+            var item = Research.EpicResearchList.FirstOrDefault(x => x.Type == IT.ResearchCost);
+            if(item != null) {
+                var current = epic.First(x => x.Id == item.id);
+                var r = current.Level * (double)item.Increase;
+                if(r > 0) {
+                    costMult *= 1 - r;
+                }
+            }
+            return costMult;
+        }
+
         public static Dictionary<uint, uint> Vehicles = new Dictionary<uint, uint> {
             {0, 5000 },
                 {1, 15000},
@@ -287,7 +317,7 @@ namespace EGG9000.Bot.EggIncAPI {
             new ResearchItem { id = "cheaper_research", Name = "Lab Upgrade", Levels = 10, Increase = 0.05M, Type = IT.ResearchCost, Epic = true },
             new ResearchItem { id = "silo_capacity", Name = "Silo Capacity", Levels = 20, Increase = 6M, Type = IT.Other, Epic = true },
             new ResearchItem { id = "int_hatch_sharing", Name = "Internal Hatchery Sharing", Levels = 10, Increase = 0.1M, Type = IT.Other, Epic = true },
-            new ResearchItem { id = "int_hatch_calm", Name = "Internal Hatchery Calm", Levels = 20, Increase = 0.1M, Type = IT.Other, Epic = true },
+            new ResearchItem { id = "int_hatch_calm", Name = "Internal Hatchery Calm", Levels = 20, Increase = 0.1M, Type = IT.InternalHatcheryOffline, Epic = true },
             new ResearchItem { id = "soul_eggs", Name = "Soul Food", Levels = 140, Increase = 0.01M, Type = IT.Other, Epic = true },
             new ResearchItem { id = "epic_egg_laying", Name = "Epic Comfy Nests", Levels = 20, Increase = 0.05M, Type = IT.EggLayingRate, Epic = true },
             new ResearchItem { id = "transportation_lobbyist", Name = "Transportation Lobbyists", Levels = 30, Increase = 0.05M, Type = IT.VehicleCapacity , Epic = true},
@@ -372,6 +402,7 @@ namespace EGG9000.Bot.EggIncAPI {
             EggLayingAndValue,
             HabCapacity,
             InternalHatchery,
+            InternalHatcheryOffline,
             VehicleCapacity,
             HoverVehicleCapacity,
             FleetSize,

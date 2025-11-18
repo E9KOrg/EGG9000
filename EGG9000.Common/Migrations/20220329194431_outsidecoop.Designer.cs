@@ -13,7 +13,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20220329194431_outsidecoop")]
-    partial class outsidecoop
+    partial class Outsidecoop
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {

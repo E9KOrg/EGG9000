@@ -1,30 +1,30 @@
 ﻿@using Stripe
 @{
     ViewData["Title"] = "Donate";
-    var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User?.Identity;
-    var id = "";
-    if(claimsIdentity != null) {
-        id = claimsIdentity.Claims.FirstOrDefault(x => x.Type == "DbUserId")?.Value;
-    }
+    // var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User?.Identity;
+    // var id = "";
+    // if(claimsIdentity != null) {
+    //     id = claimsIdentity.Claims.FirstOrDefault(x => x.Type == "DbUserId")?.Value;
+    // }
 
-    bool test = Context.Request.Host.ToString().ToLower() != "egg9000.com";
+    // bool test = Context.Request.Host.ToString().ToLower() != "egg9000.com";
 
-    var apiKey = test ? "pk_test_51Huh4PFPOewxUi5tXVcMBVmbf40xuj8OyLOeZWN9PuXjAgA3GSJm7HDf7RBua00nNQg7nCGD6PAed6pB5FKhIbnf00EDsKRTs2" : "pk_live_51Huh4PFPOewxUi5tjhgfB2JXEH1lYCexPDy3G30BdCoFkqlptp071hN99FTmJ9XxSHpTRld4wZjOhF2rD0VSKSo900uYmuB4yG";
+    // var apiKey = test ? "pk_test_51Huh4PFPOewxUi5tXVcMBVmbf40xuj8OyLOeZWN9PuXjAgA3GSJm7HDf7RBua00nNQg7nCGD6PAed6pB5FKhIbnf00EDsKRTs2" : "pk_live_51Huh4PFPOewxUi5tjhgfB2JXEH1lYCexPDy3G30BdCoFkqlptp071hN99FTmJ9XxSHpTRld4wZjOhF2rD0VSKSo900uYmuB4yG";
 
-    Stripe.StripeConfiguration.ApiKey = test ? "sk_test_51Huh4PFPOewxUi5tQQHemFZFQ4x5CJ7edl8MmlS4QkIr2hFXcUSlp5DGL406mlg2MiJO6utmgHBDv5vL9Kgyqp5500L5GcePwf" : "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";
-    var options = new ProductListOptions { Limit = 10, Active = true };
-    var services = new ProductService();
-    var products = services.List(options);
+    // Stripe.StripeConfiguration.ApiKey = test ? "sk_test_51Huh4PFPOewxUi5tQQHemFZFQ4x5CJ7edl8MmlS4QkIr2hFXcUSlp5DGL406mlg2MiJO6utmgHBDv5vL9Kgyqp5500L5GcePwf" : "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";
+    // var options = new ProductListOptions { Limit = 10, Active = true };
+    // var services = new ProductService();
+    // var products = services.List(options);
 
-    var prices = new PriceService().List(new PriceListOptions { Limit = 20, Active = true,  });
+    // var prices = new PriceService().List(new PriceListOptions { Limit = 20, Active = true,  });
 
-    var productsAndPrices = products.Select(y => new {
-        y.Description,
-        image = y.Images.First(),
-        y.Name,
-        price = prices.Where(z => z.ProductId == y.Id).FirstOrDefault(x => x.UnitAmount  == 100)
-    }).OrderByDescending(x => x.Name).Where(x => x.price != null);
-    ;
+    // var productsAndPrices = products.Select(y => new {
+    //     y.Description,
+    //     image = y.Images.First(),
+    //     y.Name,
+    //     price = prices.Where(z => z.ProductId == y.Id).FirstOrDefault(x => x.UnitAmount  == 100)
+    // }).OrderByDescending(x => x.Name).Where(x => x.price != null);
+    // ;
 }
 
 <div ng-controller="donation">

@@ -230,6 +230,8 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("ContractID");
 
+                    b.HasIndex("Status");
+
                     b.ToTable("Coops");
                 });
 
@@ -315,6 +317,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<decimal?>("LastGuild")
                         .HasColumnType("decimal(20,0)");
 
+                    b.Property<DateTimeOffset>("LastModified")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset>("LastSleepingNotification")
                         .HasColumnType("datetimeoffset");
 
@@ -381,6 +386,8 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DiscordId");
+
+                    b.HasIndex("LastModified");
 
                     b.ToTable("Users");
                 });
@@ -801,6 +808,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("OutsideCoops")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("ReadyToScore")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Skip")
                         .HasColumnType("nvarchar(max)");
 
@@ -843,6 +853,28 @@ namespace EGG9000.Common.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Merit");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ResearchCostSubmission", b =>
+                {
+                    b.Property<string>("ID")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<double>("Cost")
+                        .HasColumnType("float");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("ID", "Level", "UserId");
+
+                    b.ToTable("ResearchCostSubmissions");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b =>
@@ -1105,6 +1137,9 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("float");
 
                     b.Property<decimal>("EggsOfProphecy")
+                        .HasColumnType("decimal(20,0)");
+
+                    b.Property<decimal>("EggsOfTruth")
                         .HasColumnType("decimal(20,0)");
 
                     b.Property<decimal>("Prestiges")

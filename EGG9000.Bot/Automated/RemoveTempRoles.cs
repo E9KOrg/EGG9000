@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
@@ -7,11 +8,13 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
-    public class RemoveTempRoles(IServiceProvider provider, ApplicationDbContext context) : _UpdaterBase<RemoveTempRoles>(_updateInterval, TimeSpan.Zero, provider) {
-        public static readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(1);
-        private readonly ApplicationDbContext _db = context;
+    public class RemoveTempRoles(IServiceProvider provider) : _UpdaterBase<RemoveTempRoles>(_updateInterval, TimeSpan.Zero, provider) {
+        public static readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(5);
+        //private readonly ApplicationDbContext _db = context;
+        //private readonly IServiceProvider _provider = provider;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var rolesToRemove = await _db.TemporaryRoles.Where(x => x.Expires < DateTimeOffset.Now && !x.IsRemoved).ToListAsync(CancellationToken.None);
             foreach(var role in rolesToRemove) {
                 try {

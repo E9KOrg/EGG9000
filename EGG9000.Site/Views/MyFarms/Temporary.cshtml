@@ -1,0 +1,25 @@
+﻿@model DBUser
+
+<h4>My Farms is temporarily disabled while coops are being created, please check back shortly. Any open coop assignments will be listed below.</h4>
+
+@if (Model.UserCoopXrefs.Count > 0)
+{
+    <div class="alert alert-danger">
+        <h5>Coop Assignments</h5>
+        @foreach (var xref in Model.UserCoopXrefs.OrderByDescending(x => x.CreatedOn))
+        {
+            <div>
+
+                Coop <u>@xref.Coop.Name</u> for contract <u>@xref.Coop.Contract.Name</u>
+                @if (Model.EggIncAccounts.Count > 1)
+                {
+                    @: with account <u>@Model.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Name</u>
+                }
+                (Started @((DateTimeOffset.Now - xref.Coop.Created).Humanize()) ago)
+            </div>
+        }
+    </div>
+} else
+{
+    <i>No New Coop Assignments</i>
+}

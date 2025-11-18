@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var tasks = new List<Task>();
 
             while(
-                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.ContractID != null &&  x.ThreadID == 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && !x.DeletedChannel).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
+                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
                 .Count > 0) {
                 if(cancellationToken.IsCancellationRequested) return;
 
@@ -93,6 +93,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 foreach(var coop in coops) {
+                    StillAlive();
                     if(coop.ContractID is null) {
                         if(CoopsTimeoutCounter.ContainsKey(coop.Name)) {
                             if(CoopsTimeoutCounter[coop.Name] > 60) {
@@ -126,9 +127,15 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(headerChannel == null) {
                             _logger.LogError("Unable to get header channel for {coop} in contract {contract}", coop.Name, guildContract.ContractID);
                         } else {
+                            if(coop.ThreadID > 0) {
+                                var existingThread = (SocketThreadChannel)await _client.GetChannelAsync(coop.ThreadID);
+                                _logger.LogWarning("Trying to create a new thread for {coop} already has a thread at {thread}", coop.Name, existingThread?.Name ?? "null");
+                                continue;
+                            }
                             var coopThread = await CreateThreadChannelAsync(coop.Name, headerChannel);
 
                             if(coopThread != null) {
+                                coop.Status = CoopStatusEnum.WaitingOnAssigned;
                                 coop.ThreadID = coopThread.Id;
                                 coop.ThreadParentChannel = headerChannel.Id;
                                 coop.OverflowGuildId = headerChannel.Guild.Id;

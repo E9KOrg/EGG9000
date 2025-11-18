@@ -120,6 +120,8 @@ namespace EGG9000.Bot.Commands {
             }
 
             await db.SaveChangesAsync();
+
+            db.Entry(dbUser).Reload();
             var json = JsonConvert.SerializeObject(dbUser.EggIncAccounts, Formatting.Indented);
 
             Embed[] embedArray = [EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>"), .. AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray()];
@@ -183,15 +185,16 @@ namespace EGG9000.Bot.Commands {
             await _Accept(command, db, _client, targetUser);
         }
         public static async Task _Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IUser targetUser) {
+            await command.DeferAsync();
             var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             if(guild == null) {
-                await command.RespondAsync("Unable to find server, please run this command in a server");
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Unable to find server, please run this command in a server");
                 return;
             }
             if(dbUser is not null) {
                 if(dbUser.TempDisabled) {
-                    await command.RespondAsync($"Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this.");
                     return;
                 }
 
@@ -206,11 +209,11 @@ namespace EGG9000.Bot.Commands {
                     await CleanWelcomeChannel(guild, _client, targetUser);
                     return;
                 } else if(dbUser.GuildId == command.GuildId && dbUser.EggIncAccounts.Count == 0) {
-                    await command.RespondAsync($"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{targetUser.Mention}, you have already accepted the rules. Please use the command `/register EI#####`, where EI##### is your Egg Inc ID, to find your ID please go to Settings, then Privacy & Data, and find the letters & numbers in the bottom center of the window.");
                     return;
                 } else if(dbUser.GuildId > 0) {
                     var moveServerCommandString = await _client.GetSlashCommandStringAsync(guild, "MoveServer");
-                    await command.RespondAsync($"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the ${moveServerCommandString} command.");
+                    await command.ModifyOriginalResponseAsync(x => x.Content = $"{targetUser.Mention}, looks like you are registered with another server, if you would like to move to this server use the ${moveServerCommandString} command.");
                     return;
                 } else {
 

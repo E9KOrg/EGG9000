@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,6 +60,7 @@ namespace EGG9000.Common.Database {
         public DbSet<UpcomingContract> UpcomingContracts { get; set; }
         public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
         public DbSet<FAQTopic> FAQTopics { get; set; }
+        public DbSet<ResearchCostSubmission> ResearchCostSubmissions { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -81,6 +83,21 @@ namespace EGG9000.Common.Database {
         [ActivatorUtilitiesConstructor]
         public ApplicationDbContext(IConfiguration configuration, IMemoryCache cache) : base(GetOptions(configuration)) {
             _cache = cache;
+            ChangeTracker.Tracked += OnEntityTracked;
+            ChangeTracker.StateChanged += OnEntityStateChanged;
+            //Console.WriteLine("ApplicationDbContext created");
+        }
+
+        void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
+            //Console.WriteLine($"Entity tracked: {e.Entry.Entity.GetType().Name}");
+            if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
+                entity.LastModified = DateTimeOffset.Now;
+        }
+
+        void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
+            //Console.WriteLine($"Entity state changed: {e.Entry.Entity.GetType().Name} from {e.OldState} to {e.NewState}");
+            if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
+                entity.LastModified = DateTimeOffset.Now;
         }
 
         private static DbContextOptions GetOptions(IConfiguration configuration) {

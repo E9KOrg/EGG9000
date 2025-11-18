@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
         public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            await command.DeferAsync(ephemeral: true);
+            await command.DeferAsync(ephemeral: command.IsDMInteraction ? false : true);
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Commands {
                         var format = Math.Abs(percentChange - Math.Round(percentChange)) < 0.01 ? "F0" : "F2";
 
                         var timeStampDifference = (id.LastEBTime.Value - backupDate).Humanize();
-                        builder.AddField("EB Gained", $"{change.ToEggString()} (+{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
+                        builder.AddField("EB Gained", $"{change.ToEggString()} ({(percentChange > 0 ? "+" : "")}{percentChange.ToString(format)}%)\n{timeStampDifference}", true);
                     } else {
                         builder.AddField("First Update", "No previous EB to compare to", true);
                     }
@@ -171,23 +171,25 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
+            await command.DeferAsync();
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Command only works in co-op channels"));
+                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
                 return;
             }
 
 
             targetCoop.Name = correctcoopname;
             await db.SaveChangesAsync();
-            await command.RespondAsync($"Co-op renamed to {correctcoopname}");
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
         }
 
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
+            await command.DeferAsync(ephemeral: true);
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
-                await command.RespondAsync("Updating coop...", ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
@@ -200,7 +202,7 @@ namespace EGG9000.Bot.Commands {
 
             var targetGuildContract = await db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetGuildContract != null) {
-                await command.RespondAsync("Updating contract...", ephemeral: true);
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
                 var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
                 await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, dbguild, command);
@@ -208,7 +210,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await command.RespondAsync(content: "", embed: EmbedError($"Command only works in contract or co-op channels"));
+            await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
         }
 
         [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
@@ -311,7 +313,7 @@ namespace EGG9000.Bot.Commands {
                     var messageToPing = await thread.SendMessageAsync(".");
                     await messageToPing.ModifyAsync(x => x.Content = staffTag);
                     await messageToPing.DeleteAsync();
-                    await thread.SendMessageAsync(text: "", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
+                    await thread.SendMessageAsync(text: $"{command.User.Mention}", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
 
                     var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message + " " + thread.Mention });
 

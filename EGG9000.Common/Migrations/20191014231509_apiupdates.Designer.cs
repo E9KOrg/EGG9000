@@ -11,7 +11,7 @@ namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20191014231509_apiupdates")]
-    partial class apiupdates
+    partial class Apiupdates
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
