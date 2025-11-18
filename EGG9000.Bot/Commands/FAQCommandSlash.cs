@@ -114,6 +114,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task PostFAQ(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService _client) {
+            await component.DeferAsync();
             var splits = data.Split(",");
 
             var guildId = ulong.Parse(splits[0]);
@@ -124,7 +125,7 @@ namespace EGG9000.Bot.Commands {
             var respondTo = ulong.Parse(splits[5]);
 
             if(!isEphemeral) {
-                await component.RespondAsync(embed: EmbedError("Cannot re-post from a non-ephemeral message.\n\nHow did you do this?"), ephemeral: true);
+                await component.UpdateAsync(x => x.Embed = EmbedError("Cannot re-post from a non-ephemeral message.\n\nHow did you do this?"));
                 return;
             }
 
@@ -137,7 +138,7 @@ namespace EGG9000.Bot.Commands {
             var isOnCooldown = DateTimeOffset.Now - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
 
             if(isOnCooldown && !hasStaffPerms) {
-                await component.RespondAsync(embed: EmbedCustom(
+                await component.UpdateAsync(x => x.Embed = EmbedCustom(
                         EmbedHelpers.EmbedType.Alert,
                         "Post Cooldown",
                         $"You are on cooldown, and will be able to post again {DiscordHelpers.TimeStamper(lastPostTime.AddMinutes(guildObj.FAQTopicCooldownMinutes), DiscordHelpers.DiscordTimestampFormat.Relative)}."
@@ -147,7 +148,7 @@ namespace EGG9000.Bot.Commands {
 
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Count == 0 || faqTopics[targetIndex] == null) {
-                await component.RespondAsync(embed: EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."), ephemeral: true);
+                await component.UpdateAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."));
                 return;
             }
 

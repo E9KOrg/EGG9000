@@ -489,7 +489,7 @@ namespace EGG9000.Bot.Commands {
                     GuildId = guildContract.GuildID,
                     Name = coopname,
                     MaxUsers = guildContract.Contract.MaxUsers,
-                    Status = CoopStatusEnum.WaitingOnAssigned,
+                    Status = CoopStatusEnum.WaitingOnThread,
                     League = grade,
                     AnyLeague = anygrade,
                     CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
@@ -915,6 +915,9 @@ namespace EGG9000.Bot.Commands {
                     var coop = newCoopResponse.FoundCoop;
                     var users = coop.UserCoopsXrefs.Select(c => c.User).ToList().SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
                     var statusReponse = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+                    if(statusReponse is null || !statusReponse.Success || statusReponse.Contributors is null) {
+                        statusReponse = coop.LastStatusUpdate; //Fallback to last known status
+                    }
                     var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, customEggs, _client, statusReponse);
                     var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                     var league = (int)coop.League;

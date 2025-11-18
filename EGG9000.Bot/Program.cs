@@ -62,6 +62,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.EnableSensitiveDataLogging(true);
         });
 
+        services.AddSingleton<DatabaseCache>();
         services.AddSingleton<Words>();
 
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);

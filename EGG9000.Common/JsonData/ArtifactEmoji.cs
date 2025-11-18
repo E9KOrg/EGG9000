@@ -30,7 +30,10 @@ namespace EGG9000.Common.JsonData {
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
             Instance = JsonConvert.DeserializeObject<List<ArtifactEmojiItem>>(json);
-
+            Instance.ForEach(x => {
+                if(x.Emoji.Contains("stone", StringComparison.OrdinalIgnoreCase))
+                    x.Tier--;
+                }); // Convert to 0-based index
             return Instance;
         }
     }

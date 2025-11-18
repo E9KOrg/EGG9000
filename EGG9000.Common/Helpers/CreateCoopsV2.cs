@@ -55,7 +55,7 @@ namespace EGG9000.Common.Helpers {
                 GuildId = guild.Id,
                 Name = words.GetCoopName(accounts, guild, dbguild),
                 MaxUsers = contract.MaxUsers,
-                Status = CoopStatusEnum.WaitingOnAssigned,
+                Status = CoopStatusEnum.WaitingOnThread,
                 League = (uint)grade,
                 AnyLeague = allowAllGrades,
                 CoopEnds = coopEnds,

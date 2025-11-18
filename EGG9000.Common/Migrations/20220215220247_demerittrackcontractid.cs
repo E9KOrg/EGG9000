@@ -3,7 +3,7 @@
 #nullable disable
 
 namespace EGG9000.Common.Migrations {
-    public partial class demerittrackcontractid : Migration
+    public partial class Demerittrackcontractid : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

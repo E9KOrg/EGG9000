@@ -3,7 +3,7 @@
 #nullable disable
 
 namespace EGG9000.Common.Migrations {
-    public partial class temproles2 : Migration
+    public partial class Temproles2 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

@@ -368,10 +368,10 @@ namespace EGG9000.Common.Helpers {
             },
             new EggIncArtifact {
                 Name = ArtifactNames.LunarTotem, Boost = EggIncBoostTypeEnum.AwayEarnings, //done
-                L0R0 = 1.5f,
-                L1R0 = 2, L1R1 = 2.5f,
-                L2R0 = 4, L2R1 = 5,
-                L3R0 = 6, L3R1 = 8, L3R2 = 10
+                L0R0 = 2,
+                L1R0 = 3, L1R1 = 8,
+                L2R0 = 20, L2R1 = 40,
+                L3R0 = 50, L3R1 = 100, L3R2 = 150, L2R3 = 200
             },
             new EggIncArtifact {
                 Name = ArtifactNames.MercurysLens, Boost = EggIncBoostTypeEnum.FarmValue, //done

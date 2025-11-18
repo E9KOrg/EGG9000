@@ -25,6 +25,7 @@ namespace EGG9000.Common.Database.Entities {
         public UInt32 League { get; set; }
         public int BoardingGroup { get; set; }
         public bool CcOnly { get; set; }
+        public bool ReadyToScore { get; set; }
 
         //[NotMapped]
         //public List<Guid> StartersList { 

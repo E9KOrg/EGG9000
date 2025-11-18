@@ -67,7 +67,7 @@ namespace EGG9000.Bot.Automated.Coops {
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "KendromeSpoke65")];
+            coops = [.. coops.Where(x => x.Name == "AmpleWad98")];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
 #endif
 
@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
             var throttler = new SemaphoreSlim(1);
 #else
-            var throttler = new SemaphoreSlim(3);
+            var throttler = new SemaphoreSlim(2);
 #endif
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -110,6 +110,9 @@ namespace EGG9000.Bot.Automated.Coops {
                             throttler.Release();
                         }
                     }, cancellationToken));
+
+                    StillAlive();
+                    await Task.Delay(500, cancellationToken);
                 }
 
                 var watchdogCancellationSource = new CancellationTokenSource();
@@ -363,7 +366,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     _db.Add(xref);
                     participant.AddXref(xref);
                     await _db.SaveChangesAsync(CancellationToken.None);
-                    await coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}> has joined the co-op");
+                    if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
+                        await coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account.");
+                        await BoolSendDm(participant.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
+                    } else {
+                        await coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}> has joined the co-op");
+                    }
                 }
 
 
@@ -430,6 +438,11 @@ namespace EGG9000.Bot.Automated.Coops {
                             WasAssigned = false
                         };
                         _db.UserCoopXrefs.Add(xref);
+                        if(coop.UserCoopsXrefs.Any(x => x.UserId == user.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
+                            await WrongAccountWarning(user, coopThread, _db, user.Backup.EggIncId);
+                        } else {
+                            await coopThread.SendMessageAsync($"<@{user.DBUser.DiscordId}> has joined the co-op");
+                        }
                     }
                 }
 
@@ -643,7 +656,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 }
                             }
 
-                            if(!userFarmDetails.Xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.FinishedOrFailedOrExpired() && userFarmDetails.Farm is not null) { 
+                            if(!userFarmDetails.Xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.FinishedOrFailedOrExpired() && userFarmDetails.Farm is not null) {
                                 var farm = userFarmDetails.Farm;
                                 if(farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
                                     await coopThread.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op.");
@@ -690,7 +703,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     await _db.SaveChangesAsync(CancellationToken.None);
                                 }
                             }
-                        } catch(Exception e) { 
+                        } catch(Exception e) {
                             _bugsnag.Notify(e);
                         }
                     }
@@ -900,14 +913,15 @@ namespace EGG9000.Bot.Automated.Coops {
                             ) {
                                 emojis += "🔺";
                             }
-                        } else if(
-                                !coop.FinishedOrFailed() && (
-                                    timeRemaining.TotalHours < 3
-                                    || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
-                                ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
-                            ) {
-                            emojis += "🔘";
                         }
+                        //} else if(
+                        //        !coop.FinishedOrFailed() && (
+                        //            timeRemaining.TotalHours < 3
+                        //            || status.SecondsRemaining > 0 && status.SecondsRemaining < TimeSpan.FromHours(6).TotalSeconds
+                        //        ) && (coop.LastStatusUpdate?.Participants.Count ?? 0) < coop.Contract.Details.MaxCoopSize && !status.Public
+                        //    ) {
+                        //    emojis += "🔘";
+                        //}
 
 
                         var percent = coopDetails.PercentProjectedForJoined;
@@ -1038,7 +1052,11 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
 
                     //Estimate the time the coop is projected to finish
-                    coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
+                    try {
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
+                    } catch(ArgumentOutOfRangeException) {
+                        coop.ProjectedFinish = DateTimeOffset.Now.AddYears(1);
+                    }
 
                     var totalRatePerHour = totalRate * 60 * 60;
                     if(coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed) {
@@ -1503,6 +1521,12 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
+        public async Task WrongAccountWarning(UserFarmDetails user, IThreadChannel coopThread, ApplicationDbContext _db, string WrongEIID) {
+
+            await coopThread.SendMessageAsync($"<@{user.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account.");
+            await BoolSendDm(user.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
+
+        }
         public async Task SendDMWarning(ApplicationDbContext db, SocketGuildUser discordUser, IThreadChannel coopChannel, string Message, Coop coop) {
             if(discordUser is null)
                 return;

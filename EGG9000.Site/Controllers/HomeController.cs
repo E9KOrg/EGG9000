@@ -12,6 +12,7 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Migrations;
 using EGG9000.Common.Services;
 using EGG9000.Site.Models;
+using EGG9000.Site.Services;
 
 using Google.Protobuf;
 
@@ -49,7 +50,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController(ILogger<HomeController> logger, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<IdentityUser> signInManager,
-        DiscordSocketClient discord, APILink apiLink, ApplicationDbContext db, IMemoryCache cache) : Controller {
+        DiscordSocketClient discord, APILink apiLink, ApplicationDbContext db, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
 
         private readonly ILogger<HomeController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -59,6 +60,7 @@ namespace EGG9000.Site.Controllers {
         private readonly APILink _apiLink = apiLink;
         private readonly IMemoryCache _cache = cache;
         private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly DatabaseCache _databaseCache = databaseCache;
 
 #if DEBUG || DEV9002
         public async Task<IActionResult> DebugLogin([FromQuery] string id) {
@@ -81,37 +83,11 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
-        public async Task<IActionResult> AliveDiscord() {
+        public IActionResult AliveDiscord() {
 
             if(_discord.ConnectionState == ConnectionState.Connected)
                 return Content("Success");
             else return StatusCode(503);
-        }
-
-        public async Task<IActionResult> Test() {
-            var demerits = await _db.Demerit.Where(x => x.When > DateTimeOffset.Now.AddHours(-10)).ToListAsync();
-            _db.RemoveRange(demerits);
-            await _db.SaveChangesAsync();
-            var coops = await _db.Coops.Where(c => !c.ThreadArchived).ToListAsync();
-
-            var messagesDeleted = 0;
-            foreach(var coop in coops) {
-                var channel = (SocketThreadChannel)await _discord.GetChannelAsync(coop.ThreadID);
-
-                if(channel is not null && !channel.IsArchived) {
-                    var messages = await channel.GetMessagesAsync().FlattenAsync();
-
-                    var messagesToDeleted = messages.Where(x => x.CreatedAt > DateTimeOffset.Now.AddHours(-10) && x.Author.IsBot && x.Content.Contains("Demerit added to"));
-                    if(messagesToDeleted.Any()) {
-                        Console.WriteLine($"Deleting {messages.Count()} messages from {coop.Name}");
-                        messagesDeleted += messagesToDeleted.Count();
-                        await channel.DeleteMessagesBatchAsync(messagesToDeleted);
-                    }
-
-                }
-            }
-
-            return Json(messagesDeleted);
         }
 
         private static async Task<Ei.SaveBackupResponse> SubmitBackup(Ei.Backup backup) {
@@ -348,8 +324,8 @@ namespace EGG9000.Site.Controllers {
 
             //var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites ?? "[]");
             //inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards ?? "[]"));
-
-            var rawusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
+            var allUsers = await _databaseCache.GetDbUsers();
+            var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
                 x.DiscordUsername,
                 x.GuildId,
@@ -359,7 +335,7 @@ namespace EGG9000.Site.Controllers {
                 x.Registered,
                 //                    Contracts = x.UserCoopXrefs.Select(y => y.Coop.ContractID),
                 DBUser = x
-            }).ToListAsync();
+            });
             //rawusers = rawusers.Where(x => !inactiveUsers.Any(y => y.DatabaseId == x.Id)).ToList();
             //var users = rawusers.Select(x => new DBUser {
             //    DiscordId = x.DiscordId,
@@ -391,6 +367,9 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
         public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
+            if(NewCoopChecker.WaitingOnCoops) {
+                return View("LeaderboardTemporaryDown");
+            }
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
@@ -427,6 +406,21 @@ namespace EGG9000.Site.Controllers {
                         break;
                     case "mer":
                         leaderboard = leaderboard.OrderByDescending(x => x.Backup.MER).ToList();
+                        break;
+                    case "eot":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfTruth).ToList();
+                        break;
+                    case "shifts":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.ShiftCount).ToList();                        
+                        break;
+                    case "eott":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfTruthTotal).ToList();
+                        break;
+                    case "eov":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.VirtueEggsDelivered?.Sum() ?? 0).ToList();
+                        break;
+                    case "tepershift":
+                        leaderboard = leaderboard.OrderByDescending(x => x.Backup.ShiftCount > 0 ? (double)x.Backup.EggsOfTruthTotal / (double)x.Backup.ShiftCount : 0).ToList();
                         break;
                 }
                 return View(leaderboard);
@@ -881,6 +875,10 @@ namespace EGG9000.Site.Controllers {
                 CustomEggs = await _db.GetCustomEggsAsync()
             };
             model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
+
+            if(model.CoopStatus == null && model.DbCoop?.LastStatusUpdate != null) {
+                model.CoopStatus = model.DbCoop.LastStatusUpdate;
+            }
 
             if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
                 var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,

@@ -114,7 +114,6 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapRazorPages();
-
 app.Run();
 
 
@@ -190,6 +189,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.Configure<APILinkOptions>(x => x.AsyncLoadCache = true);
     services.AddSingleton<APILink>();
     services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+    services.AddHostedService<NewCoopChecker>();
+    services.AddSingleton<DatabaseCache>();
 
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =

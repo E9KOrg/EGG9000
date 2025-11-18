@@ -1,6 +1,9 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+
+using System;
 
 namespace EGG9000.Common.Database.Entities {
+    [Index(nameof(ContractIdentifier))]
     public class UserCsHistoryEntry {
         public string ContractIdentifier { get; set; }
         public string CoopIdentifier { get; set; }
