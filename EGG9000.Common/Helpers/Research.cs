@@ -134,7 +134,7 @@ namespace EGG9000.Bot.EggIncAPI {
             try {
                 baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;
             } catch(NullReferenceException) {
-                throw new Exception($"Egg type {farm.EggType} not found in database.");
+                throw new Exception($"Egg type {farm.EggType} ({(int)farm.EggType}) not found in database.");
             }
             foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);

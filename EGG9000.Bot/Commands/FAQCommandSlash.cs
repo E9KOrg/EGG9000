@@ -76,8 +76,9 @@ namespace EGG9000.Bot.Commands {
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Any()) {
                 _logger.LogInformation($"Found FAQ Topic for {query}");
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Found, please wait..."); 
                 var builder = await FAQEmbedBuilder(_client, guildObj.Id, withStaffPerms, query, isEphemeral, respondToMessage, faqTopics, faqTopics.First());
-                await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; });
+                await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; x.Content = null; });
             } else {
                 _logger.LogInformation($"No FAQ Topic for {query}");
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = MakeCustomEmbed(EmbedHelpers.EmbedType.Alert, "No Results", $"Could not find any FAQ topics for the term `{query}`"); });

@@ -1,5 +1,7 @@
 ﻿using EGG9000.Common.Database.Entities;
 
+using Humanizer;
+
 using Microsoft.Build.Framework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -13,19 +15,18 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
     public class DatabaseCache {
-        private readonly ApplicationDbContext _db;
         private readonly ILogger<DatabaseCache> _logger;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public DatabaseCache(ApplicationDbContext db, IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<DatabaseCache> logger) {
-            _db = db;
-            _logger = logger;
+        public DatabaseCache(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<DatabaseCache> logger) {
             _dbContextFactory = dbContextFactory;
+            _logger = logger;
+            var db = dbContextFactory.CreateDbContext();
 
             _semaphoreUser.Wait();
             try {
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-                _cachedUsers = _db.DBUsers.ToList();
+                _cachedUsers = db.DBUsers.ToList();
             } finally {
                 _semaphoreUser.Release();
             }
@@ -41,9 +42,11 @@ namespace EGG9000.Common.Database {
         public async Task<List<DBUser>> GetDbUsers() {
             await _semaphoreUser.WaitAsync();
             try {
+                var db = await _dbContextFactory.CreateDbContextAsync();
                 var currentCacheTime = _lastCacheUpdateUser;
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-                var updatedUsers = await _db.DBUsers.Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
+                var updatedUsers = await db.DBUsers.Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
+                _logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
                 _cachedUsers.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));
                 _cachedUsers.AddRange(updatedUsers);
 
