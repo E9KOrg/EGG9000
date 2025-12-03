@@ -139,7 +139,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
                         if(!coop.AddedFromBackup) {
-                            var creator = ContractsAPI.CreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
+                            var creator = ContractsAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
                             await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default);
 
                             if(creator != default) {

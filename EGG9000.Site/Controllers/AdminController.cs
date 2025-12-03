@@ -1588,9 +1588,9 @@ music
             return View(users);
         }
 
-        public async Task<IActionResult> CheckCreators() {
+        public async Task<IActionResult> CheckCoopCreators() {
             var creators = new List<(string EggIncId, PlayerGrade Grade, string Name, ContractPlayerInfo Info)>();
-            foreach(var a in ContractsAPI.CreatorIds) {
+            foreach(var a in ContractsAPI.CoopCreatorIds) {
                 var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), a.EggIncId);
                 creators.Add((a.EggIncId, a.Grade, a.Name, r));
             }
