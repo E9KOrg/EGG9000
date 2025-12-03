@@ -22,7 +22,7 @@ namespace EGG9000.Bot.Automated {
 #endif
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
-            await RunFairnessScores(sendMessages: true, returnScoreset: false, cancellationToken);
+            await RunFairnessScores(sendMessages: true, returnScoreSet: false, cancellationToken);
             //await RunCraftingLevelCheck(cancellationToken, true, false);
         }
 
@@ -69,6 +69,8 @@ namespace EGG9000.Bot.Automated {
             if(sendMessages) {
                 foreach(var outlier in upperOutliers) {
                     if(cancellationToken.IsCancellationRequested) return;
+                    await WaitOnCoopsBeingCreated(cancellationToken);
+
                     DBUser user;
                     if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
                     else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
@@ -93,7 +95,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreset, CancellationToken cancellationToken) {
+        public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreSet, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync(CancellationToken.None);
@@ -184,7 +186,7 @@ namespace EGG9000.Bot.Automated {
                 await _db.SaveChangesAsync(CancellationToken.None);
             }
 
-            return returnScoreset ? scoreSet : [];
+            return returnScoreSet ? scoreSet : [];
         }
     }
 }

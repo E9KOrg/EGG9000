@@ -77,7 +77,7 @@ namespace EGG9000.Bot.Automated {
                                 message += $"\n{string.Join("\n", backup.FuelAmounts.Select(x => $"{EggIncStatics.GetEggById(x.Key, null, dbEggs).emoji} - {x.Value.ToEggString()} ({Math.Round(x.Value / tankSize * 100)}%)"))}";
                             }
                         } catch(Exception e) {
-                            _bugsnag.Notify(e);
+                            _bugSnag.Notify(e);
                         }
 
                         shipDm.Sent = true;
@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Automated {
                         }
                         await _db.SaveChangesAsync(CancellationToken.None);
                     } catch(Exception e) {
-                        _bugsnag.Notify(e);
+                        _bugSnag.Notify(e);
                         _logger.LogError(e, "UpdateNextShipDM Error");
                     }
                 }

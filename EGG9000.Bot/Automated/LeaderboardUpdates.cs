@@ -98,6 +98,7 @@ namespace EGG9000.Bot.Automated {
                 timings.Finished();
 
                 foreach(var dbguild in dbguilds) {
+                    await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested)
                         break;
 
@@ -135,6 +136,7 @@ namespace EGG9000.Bot.Automated {
                         });
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
+                            await WaitOnCoopsBeingCreated(cancellationToken);
                             if(cancellationToken.IsCancellationRequested) {
                                 continue;
                             }
@@ -185,6 +187,7 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogInformation("Handling promotions for {guild}", guild.Name);
 
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {
+                        await WaitOnCoopsBeingCreated(cancellationToken);
                         if(cancellationToken.IsCancellationRequested)
                             break;
 
@@ -212,7 +215,7 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogInformation("Finished updating Leaderboard");
                 }
             } catch(Exception e) {
-                _bugsnag.Notify(e);
+                _bugSnag.Notify(e);
                 _logger.LogError(e, "**************ERROR in LeaderboardUpdater**********");
             }
 

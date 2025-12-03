@@ -186,11 +186,12 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class RemoveFromCoopAutoComplete(ApplicationDbContext db) : IAutoCompleteHandler {
-            private readonly ApplicationDbContext _db = db;
+        public class RemoveFromCoopAutoComplete(IDbContextFactory<ApplicationDbContext> dbContextFactory) : IAutoCompleteHandler {
+            //private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var users = await _db.UserCoopXrefs.Where(x => x.Coop.ThreadID == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
+                var db = await dbContextFactory.CreateDbContextAsync();
+                var users = await db.UserCoopXrefs.Where(x => x.Coop.ThreadID == arg.Channel.Id).Select(x => new { x.UserId, x.EggIncId, x.User.DiscordUsername, x.User }).ToListAsync();
                 if(users.Count == 0) await arg.RespondAsync("Command only works in a co-op channel and where users are assigned.");
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
