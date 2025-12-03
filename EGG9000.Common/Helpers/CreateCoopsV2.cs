@@ -1,14 +1,18 @@
 ﻿using Discord;
 using Discord.WebSocket;
+
 using EGG9000.Bot;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+
 using Polly;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,24 +30,30 @@ namespace EGG9000.Common.Helpers {
         public const int PrimaryMaxThreads = 975;
         public const int OverflowMaxThreads = 995;
 
-        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbguild, uint Group, bool allowAllGrades) {
+        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbGuild, uint Group, bool allowAllGrades) {
             var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            string EIID = null;
 
-            foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
-                var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
-                if(r?.Grade == grade) {
-                    EIID = account.Account.Id;
-                    break;
+            string creatorId = null;
+
+            if(ContractsAPI.CreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
+                creatorId = ContractsAPI.CreatorIds.First(x => x.Grade == grade).EggIncId;
+            } else {
+
+                foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
+                    var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
+                    if(r?.Grade == grade) {
+                        creatorId = account.Account.Id;
+                        break;
+                    }
                 }
-            }
 
-            if(string.IsNullOrEmpty(EIID)) {
-                var account = accounts.OrderByDescending(x => x.Account.Backup.LastBackupTime).First();
-                EIID = account.Account.Id;
-                //GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
-                //throw new Exception($"Unable to a find user in the grade {grade}");
+                if(string.IsNullOrEmpty(creatorId)) {
+                    var account = accounts.OrderByDescending(x => x.Account.Backup.LastBackupTime).First();
+                    creatorId = account.Account.Id;
+                    //GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
+                    //throw new Exception($"Unable to a find user in the grade {grade}");
+                }
             }
 
             var secondsRemaining = Math.Max(contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
@@ -53,13 +63,13 @@ namespace EGG9000.Common.Helpers {
                 ContractID = contract.ID,
                 Created = DateTimeOffset.Now,
                 GuildId = guild.Id,
-                Name = words.GetCoopName(accounts, guild, dbguild),
+                Name = words.GetCoopName(accounts, guild, dbGuild),
                 MaxUsers = contract.MaxUsers,
                 Status = CoopStatusEnum.WaitingOnThread,
                 League = (uint)grade,
                 AnyLeague = allowAllGrades,
                 CoopEnds = coopEnds,
-                CreatorID = EIID,
+                CreatorID = creatorId,
                 Group = Group
             };
 
@@ -85,7 +95,6 @@ namespace EGG9000.Common.Helpers {
             //    coopLength -= Math.Abs((DateTimeOffset.Now - guildContract.Contract.GoodUntil).TotalSeconds);
             //}
 
-            await CreateCoopViaApi(contract.ID, grade, coop.Name, secondsRemaining, EIID, allowAllGrades);
 
             await db.SaveChangesAsync();
             return coop;
@@ -93,8 +102,8 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
-            userid ??= ContractsAPI.UserId;
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades) {
+            userId ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
               .WaitAndRetry(
@@ -105,7 +114,7 @@ namespace EGG9000.Common.Helpers {
               ]);
 
             try {
-                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coopName, secondsRemaining, userid, allowAllGrades));
+                await policy.Execute(async () => await _CreateCoop(ContractID, grade, coopName, secondsRemaining, userId, allowAllGrades));
             } catch(Exception) {
                 return false;
             }
@@ -120,7 +129,7 @@ namespace EGG9000.Common.Helpers {
             var res = new Ei.ContractCoopStatusUpdateRequest {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coopName.ToLower(),
-                Eop = 1, SoulPower = 24, UserId = userid, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userid, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
+                Eop = 1, SoulPower = 24, UserId = userId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
                 ProductionParams = new Ei.FarmProductionParams {
                     FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
                 }
@@ -129,25 +138,35 @@ namespace EGG9000.Common.Helpers {
             var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
 
 
-
-            var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+            var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
                 ClientVersion = ContractsAPI.ClientVersion,
                 ContractIdentifier = ContractID,
-                CoopIdentifier = coopName.ToLower(),
-                PlayerIdentifier = userid,
-                Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-                RequestingUserId = userid
-            }, userid);
+                CoopIdentifier = coopName.ToLower(), PlayerIdentifier = userId,
+            }, userId);
+            //var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+            //    ClientVersion = ContractsAPI.ClientVersion,
+            //    ContractIdentifier = ContractID,
+            //    CoopIdentifier = coopName.ToLower(),
+            //    PlayerIdentifier = userId,
+            //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+            //    RequestingUserId = userId
+            //}, userId);
 
             return true;
         }
         private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
+            var userName = userid;
+
+            if(ContractsAPI.CreatorIds.Any(x => x.EggIncId == userid)) {
+                userName = $"E9K-{grade}";
+            }
+
             var request = new Ei.CreateCoopRequest {
                 ContractIdentifier = ContractID,
                 CoopIdentifier = coopName.ToLower(),
                 SecondsRemaining = secondsRemaining,
                 UserId = userid,
-                UserName = userid,
+                UserName = userName,
                 Platform = Ei.Platform.Droid,
                 ClientVersion = ContractsAPI.ClientVersion,
                 SoulPower = 4624103542699216300,
@@ -159,21 +178,21 @@ namespace EGG9000.Common.Helpers {
             var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
 
             if(response is null || response.Success == false) {
-                throw new Exception($"Unable to create co-op for {coopName}: {response.Message}");
+                throw new Exception($"Unable to create co-op for {coopName}: {response?.Message ?? "Null response"}");
             }
 
             return response;
         }
 
 
-        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbuserid, string EggIncId, string eggIncName, ApplicationDbContext db, IUser user, DBUser dbuser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
+        public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbUserId, string EggIncId, string eggIncName, ApplicationDbContext db, IUser user, DBUser dbUser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,
                 CreatedOn = DateTimeOffset.Now,
                 JoinedCoop = false,
                 Starter = false,
-                UserId = dbuserid,
+                UserId = dbUserId,
                 WaitingOnStarter = false,
                 EggIncId = EggIncId,
                 WasAssigned = true
@@ -181,7 +200,7 @@ namespace EGG9000.Common.Helpers {
 
             var eggEmoji = EggIncStatics.GetEggById(targetCoop.Contract.Details.Egg, targetCoop.Contract, await db.GetCustomEggsAsync()).emoji;
             var mention = user.Mention;
-            if(dbuser.EggIncAccounts.Count > 1) {
+            if(dbUser.EggIncAccounts.Count > 1) {
                 mention += $"({eggIncName})";
             }
             try {

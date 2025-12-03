@@ -31,14 +31,14 @@ namespace EGG9000.Bot.Jobs {
                         continue;
                     }
 
-                    if(!account.SentBreakWarning && account.OnBreakUntil > DateTimeOffset.FromUnixTimeSeconds(0).AddDays(1)) {
+                    if(!account.SentBreakWarning && account.OnBreakUntil < DateTimeOffset.Now.AddDays(1) && account.OnBreakUntil > DateTimeOffset.Now.AddDays(-1)) {
                         _logger.LogInformation("Sending warning to {user}", user.DiscordUsername);
-                        var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
+                        //var nextContract = CronExpression.Parse("0 11 * * MON,WED,FRI").GetNextOccurrence(account.OnBreakUntil, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"));
 
                         var mcs = (await _discord.GetGlobalApplicationCommandsAsync()).FirstOrDefault(c => c.Type == Discord.ApplicationCommandType.Slash && c.Name == "mycontractsettings");
                         var message = $"Your break for {account.Backup?.UserName ?? "(No Name)"} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}." +
-                            $"\n\nPlease use the {(mcs is not null ? $"</mycontractsettings:{mcs?.Id ?? 0}>" : "`/mycontractsettings`")} command to extend your break if you need more time, otherwise you will be assigned a co-op for the next contract on " +
-                            $"{DiscordHelpers.TimeStamper(nextContract.Value, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}.";
+                            $"\n\nPlease use the {(mcs is not null ? $"</mycontractsettings:{mcs?.Id ?? 0}>" : "`/mycontractsettings`")} command to extend your break if you need more time, otherwise you will be assigned co-ops after " +
+                            $"{DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}. (If this time is after a contract release but before the last BG, you would be assigned during a later BG)";
                         var dmResult = await DiscordHelpersExt.BoolSendDm(discorduser, message, _db);
                         if(dmResult != DiscordHelpersExt.DMResult.DiscordError) account.BreakWarningSent(user);
                     }

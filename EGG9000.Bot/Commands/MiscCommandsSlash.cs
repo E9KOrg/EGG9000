@@ -309,7 +309,7 @@ namespace EGG9000.Bot.Commands {
             if(keepPrivate) {
                 var channelForThreads = await ChannelHelper.GetTextChannel(db, _client, guildFind, socketGuild, GuildChannelType.PrivateCallStaff);
                 if(channelForThreads is not null) {
-                    var thread = await channelForThreads.CreateThreadAsync(name: $"{command.User.GlobalName ?? command.User.Username} [callstaff]", type: ThreadType.PrivateThread);
+                    var thread = await channelForThreads.CreateThreadAsync(name: $"{command.User.GlobalName ?? command.User.Username} [callstaff]", type: ThreadType.PrivateThread, invitable: false);
                     var messageToPing = await thread.SendMessageAsync(".");
                     await messageToPing.ModifyAsync(x => x.Content = staffTag);
                     await messageToPing.DeleteAsync();
