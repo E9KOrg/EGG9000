@@ -920,8 +920,8 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = unbanEmbed; });
         }
 
-        [SlashCommand(Description = "Kick and user and send them a link to an appeal form", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser[] users, [SlashParam] string reason, [SlashParam(Required = false)] bool banaccount = false) {
+        [SlashCommand(Description = "Kick user with dm", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser[] users, [SlashParam] string reason, [SlashParam] bool includeAppealLink, [SlashParam(Required = false)] bool banaccount = false) {
             await command.DeferAsync();
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
@@ -944,7 +944,11 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
                 try {
-                    await dmChannel.SendMessageAsync($"You have been {(banaccount ? "banned" : "kicked")} from {guild.Name} for the reason: {reason}.");
+                    await dmChannel.SendMessageAsync(
+                        $"You have been {(banaccount ? "banned" : "kicked")} from {guild.Name} for the reason: {reason}." 
+                        + (includeAppealLink ?  "If you would like to appeal this, please use the following form https://forms.gle/NqrqnDZzJ7YaqpAfA" : "")
+                    );
+
                 } catch(HttpException) {
                     kickedWithoutDm = true;
                 }

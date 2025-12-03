@@ -272,7 +272,7 @@ namespace EGG9000.Bot.Automated {
 
             } catch(Exception e) {
                 _logger.LogError(e, "Error Updating Contracts Channel");
-                _bugsnag.Notify(e);
+                _bugSnag.Notify(e);
             }
 
         }

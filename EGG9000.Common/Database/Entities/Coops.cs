@@ -103,13 +103,13 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
-        public static void CopyTo(Stream src, Stream dest) {
+        public static void CopyTo(Stream src, Stream dst) {
             byte[] bytes = new byte[4096];
 
             int cnt;
 
             while((cnt = src.Read(bytes, 0, bytes.Length)) != 0) {
-                dest.Write(bytes, 0, cnt);
+                dst.Write(bytes, 0, cnt);
             }
         }
 

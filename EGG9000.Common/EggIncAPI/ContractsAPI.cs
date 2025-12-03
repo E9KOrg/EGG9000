@@ -32,7 +32,15 @@ namespace EGG9000.Bot.EggIncAPI {
         //public const string BaseAddressNew = "https://ctx-dot-auxbrainhome.appspot.com/";
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
         public const string BaseAddressNew = "https://www.auxbrain.com/";
-        public const string UserId = "EI5223299518300160";
+        //public const string UserId = "EI5223299518300160";
+        public const string UserId = "EI6145601714651136";
+
+        public static readonly List<(string EggIncId, Ei.Contract.Types.PlayerGrade Grade)> CreatorIds = new() {
+            ("EI5697922697920512", Ei.Contract.Types.PlayerGrade.GradeC), //Kendrome mini-2
+            ("EI6145601714651136", Ei.Contract.Types.PlayerGrade.GradeAa), //Grae Mini
+            //("EI5223299518300160", Ei.Contract.Types.PlayerGrade.GradeAaa) //Kendrome mini-1
+        };
+
         public static uint ClientVersion { get; set; } = 71;
 
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {

@@ -41,12 +41,22 @@ namespace EGG9000.Common.Helpers.Discord {
         }
 
         public static Embed EmbedExceptionFrame(Exception e) {
-            var frame = new StackTrace(e, true).GetFrame(0);
+            foreach(var frame in new StackTrace(e, true).GetFrames() ?? Array.Empty<StackFrame>()) {
+                if (frame.GetFileLineNumber() > 0) {
+                    return EmbedInternalError(
+                        $"**Message**:\n{e.Message}\n\n" +
+                        $"**Frame info**:\n\t" +
+                            $"File: {Path.GetFileName(Path.GetFileName(frame.GetFileName() ?? "")) ?? "(Unknown)"}\n\t" +
+                            $"Line: {frame.GetFileLineNumber()}"
+                    );
+                }
+            }
+            var frame2 = new StackTrace(e, true).GetFrame(0);
             return EmbedInternalError(
                 $"**Message**:\n{e.Message}\n\n" +
                 $"**Frame info**:\n\t" +
-                    $"File: {Path.GetFileName(frame.GetFileName() ?? "") ?? "(Unknown)"}\n\t" +
-                    $"Line: {frame.GetFileLineNumber()}"
+                    $"File: {Path.GetFileName(frame2.GetFileName() ?? "") ?? "(Unknown)"}\n\t" +
+                    $"Line: {frame2.GetFileLineNumber()}"
             );
         }
 
