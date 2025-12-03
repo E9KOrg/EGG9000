@@ -36,8 +36,8 @@ namespace EGG9000.Common.Helpers {
 
             string creatorId = null;
 
-            if(ContractsAPI.CreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
-                creatorId = ContractsAPI.CreatorIds.First(x => x.Grade == grade).EggIncId;
+            if(ContractsAPI.CoopCreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
+                creatorId = ContractsAPI.CoopCreatorIds.First(x => x.Grade == grade).EggIncId;
             } else {
 
                 foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
@@ -160,7 +160,7 @@ namespace EGG9000.Common.Helpers {
         private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
             var userName = userid;
 
-            if(ContractsAPI.CreatorIds.Any(x => x.EggIncId == userid)) {
+            if(ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == userid)) {
                 userName = $"E9K-{grade}";
             }
 
