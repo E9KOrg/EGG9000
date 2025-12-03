@@ -130,7 +130,7 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogInformation("Adding co-op {coopname} from backups", coopname);
                     var coop = new Coop {
                         ContractID = contractid, Created = DateTimeOffset.Now, GuildId = guildid, Name = coopname,
-                        MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnAssigned, League = grade,
+                        MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnThread, League = grade,
                         CoopEnds = DateTimeOffset.FromUnixTimeSeconds(endtime),
                         AddedFromBackup = true,
                     };
