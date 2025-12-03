@@ -12,6 +12,8 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using EGG9000.Site.Services;
 
+using Ei;
+
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
@@ -37,6 +39,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
+using static Ei.Contract.Types;
+
+using Contract = EGG9000.Common.Database.Entities.Contract;
 using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
@@ -1581,6 +1586,16 @@ music
         public async Task<IActionResult> Guilds() {
             var users = await _db.DBUsers.Where(x => x.GuildId == GetGuildID()).ToListAsync();
             return View(users);
+        }
+
+        public async Task<IActionResult> CheckCreators() {
+            var creators = new List<(string EggIncId, PlayerGrade Grade, string Name, ContractPlayerInfo Info)>();
+            foreach(var a in ContractsAPI.CreatorIds) {
+                var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), a.EggIncId);
+                creators.Add((a.EggIncId, a.Grade, a.Name, r));
+            }
+
+            return View(creators);
         }
     }
 }
