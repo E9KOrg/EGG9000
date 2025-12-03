@@ -10,10 +10,12 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
+using EGG9000.Site.Services;
 
 using MassTransit;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -235,6 +237,10 @@ namespace EGG9000.Site.Controllers {
         //}
 
         public async Task<IActionResult> GetGraphs() {
+            if(NewCoopChecker.WaitingOnCoops) {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
             _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             Dictionary<DateTimeOffset, int[]> days;
@@ -284,7 +290,7 @@ namespace EGG9000.Site.Controllers {
                 }).ToList(),
                 Guild = guild,
                 ContractsToScore = contractsToScore,
-                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && x.Status == CoopStatusEnum.WaitingOnAssigned && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now)
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && x.Status == CoopStatusEnum.WaitingOnThread && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now)
             });
         }
 
@@ -1014,7 +1020,7 @@ namespace EGG9000.Site.Controllers {
             if(discordIDRegex.IsMatch(id.Trim())) {
                 var userWithDiscordId = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId.ToString() == id);
                 if(userWithDiscordId is not null) {
-                    return RedirectToAction("ViewUser", "MyFarms", new {discordId = id });
+                    return RedirectToAction("ViewUser", "MyFarms", new { discordId = id });
                 }
             }
 

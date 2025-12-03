@@ -1,6 +1,7 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
+using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -258,7 +259,7 @@ namespace EGG9000.Bot.Automated {
         private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
 
             if(_debug) return;
-
+            _coopsBeingCreatedService.SetCoopsAreBeingCreated(true);
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG} for Contract {contract}", guild.Name, skipbg + 1, contract.Name);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
@@ -277,7 +278,7 @@ namespace EGG9000.Bot.Automated {
                     } catch(Exception e) {
                         var frame = (new StackTrace(e, true)).GetFrame(0);
                         _logger.LogError(e, "⚠️ERROR staring co-op");
-                        _bugsnag.Notify(e);
+                        _bugSnag.Notify(e);
                     }
 
                 });

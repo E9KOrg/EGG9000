@@ -92,6 +92,7 @@ namespace EGG9000.Bot.Automated {
 
 
                foreach(var u in onlyMainWithoutRole) {
+                    await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
@@ -101,6 +102,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 foreach(var u in mainServer.Users.Where(x => x.Roles.Count == 1 && x.Roles.Any(y => y.Id == overflowRoleID) && !x.IsBot)) {
+                    await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
@@ -110,6 +112,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 foreach(var u in bothAllWithRole) {
+                    await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
@@ -120,6 +123,7 @@ namespace EGG9000.Bot.Automated {
 
 
                 foreach(var overflowServer in overflowServers) {
+                    await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }
@@ -131,6 +135,7 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     foreach(var overflowUser in overflowServer.Users) {
+                        await WaitOnCoopsBeingCreated(cancellationToken);
                         if(cancellationToken.IsCancellationRequested) {
                             break;
                         }

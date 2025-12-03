@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Automated {
                             }
                         }
                     } catch(Exception e) {
-                        _bugsnag.Notify(e);
+                        _bugSnag.Notify(e);
                         _logger.LogError(e, "Error checking for grade update");
                     }
                 });

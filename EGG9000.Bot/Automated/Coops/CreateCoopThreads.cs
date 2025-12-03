@@ -30,13 +30,16 @@ using static EGG9000.Common.Helpers.Prefarm;
 using System.Collections.Concurrent;
 using MassTransit.Internals;
 using Microsoft.Extensions.Caching.Memory;
+using static Ei.Contract.Types;
+using EGG9000.Bot.Services;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
-        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
+        private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
+
 
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
@@ -92,6 +95,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 var headerChannels = await GetOrCreateHeaderChannelsForCoops(_db, coops, dbguilds, guildContracts);
 
 
+                if(coops.Count > 5) {
+                    _coopsBeingCreatedService.SetCoopsAreBeingCreated(true);
+                }
                 foreach(var coop in coops) {
                     StillAlive();
                     if(coop.ContractID is null) {
@@ -123,6 +129,12 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
+                        var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
+
+                        if(!coop.AddedFromBackup) {
+                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague);
+                        }
+
                         var headerChannel = await GetHeaderChannelAndWait(headerChannels, coop);
                         if(headerChannel == null) {
                             _logger.LogError("Unable to get header channel for {coop} in contract {contract}", coop.Name, guildContract.ContractID);
@@ -178,7 +190,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
             }
-
+            _coopsBeingCreatedService.SetCoopsAreBeingCreated(false);
         ExitWhile:
 
             if(tasks.Count > 0) {
@@ -196,6 +208,9 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
+        private async Task StartCoopAndCreateThread() {
+
+        }
 
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {

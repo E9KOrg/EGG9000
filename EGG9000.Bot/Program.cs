@@ -140,7 +140,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<ContractUpdater>();
         services.AddHostedService(provider => provider.GetService<ContractUpdater>());
 
-        services.AddHostedService<UserCxpUpdater>();
+        services.AddHostedService<UserCXPUpdater>();
         services.AddHostedService<NewContracts>();
         services.AddHostedService<CreateCoopThreads>();
         services.AddHostedService<ShipReturnDM>();
@@ -150,6 +150,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<HandleGradeChanges>();
         services.AddHostedService<RefreshNasaApod>();
 
+        services.AddSingleton<CoopsBeingCreatedService>();
 
         services.AddSingleton<JobService>();
         services.AddHostedService(provider => provider.GetService<JobService>());
