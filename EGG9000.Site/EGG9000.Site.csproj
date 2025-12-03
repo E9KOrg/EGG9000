@@ -9,6 +9,9 @@
   <Target Name="PostPublish" AfterTargets="FileSystemPublish">
     <Exec Command=".\postpublish.bat" />
   </Target>
+  <PropertyGroup>
+    <HotReloadAutoRestart>true</HotReloadAutoRestart>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
@@ -28,6 +31,9 @@
     <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Remove="nlog.config" />
+  </ItemGroup>
   <ItemGroup>
     <None Remove="tessdata\eng.traineddata" />
     <None Remove="tessdata\eng_ei.traineddata" />
@@ -84,6 +90,11 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Fonts\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="nlog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Update="Fonts\always together.otf">

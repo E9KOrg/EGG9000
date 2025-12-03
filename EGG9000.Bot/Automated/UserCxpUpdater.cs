@@ -17,7 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
-    public class UserCxpUpdater(IServiceProvider provider) : _UpdaterBase<UserCxpUpdater>(_runTime, provider) {
+    public class UserCXPUpdater(IServiceProvider provider) : _UpdaterBase<UserCXPUpdater>(_runTime, provider) {
 #if DEBUG
         private static readonly CronExpression _runTime = CronExpression.Parse("* * * * *");
 #else
@@ -44,11 +44,12 @@ namespace EGG9000.Bot.Automated {
             var existingScores = await _db.UserCsHistoryEntries.ToListAsync(CancellationToken.None);
             _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {
+                await WaitOnCoopsBeingCreated(cancellationToken);
                 if(cancellationToken.IsCancellationRequested) break;
                 StillAlive();
                 var scoresToAdd = new List<UserCsHistoryEntry>();
                 var skipped = 0;
-                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, cancellationToken) => {
+                await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = cancellationToken }, async (user, cancellationToken) => {
                     //Loop through each account of the user
                     foreach(var account in user.EggIncAccounts.Where(x => x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                         if(cancellationToken.IsCancellationRequested) break;
@@ -77,7 +78,7 @@ namespace EGG9000.Bot.Automated {
                                 }
                             }
                         } catch(Exception ex) {
-                            _bugsnag.Notify(ex);
+                            _bugSnag.Notify(ex);
                             _logger.LogError(ex, "Error with {user} {account}", user.DiscordUsername, account.Id);
                         }
                     }

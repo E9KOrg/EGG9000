@@ -30,6 +30,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using NLog;
+using NLog.Web;
+
 using System;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -63,16 +66,13 @@ using System.Threading.Tasks;
 //}
 
 
-using var loggerFactory = LoggerFactory.Create(loggingBuilder => loggingBuilder
-    .SetMinimumLevel(LogLevel.Trace)
-    .AddConsole());
-
-ILogger logger = loggerFactory.CreateLogger<Program>();
-logger.LogInformation("Configuring...");
+var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:5013");
-
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
 ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
@@ -121,11 +121,16 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
     //_logger.LogInformation(Configuration.GetConnectionString("DefaultConnection"));
     //_logger.LogInformation(Configuration.GetChildren().Count().ToString());
-    services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(
-            Configuration.GetConnectionString("DefaultConnection")));
+    services.AddDbContext<ApplicationDbContext>(
+        options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")),
+        contextLifetime: ServiceLifetime.Scoped,
+        optionsLifetime: ServiceLifetime.Singleton);
 
 
+    services.AddDbContextFactory<ApplicationDbContext>(options => {
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
+        options.EnableSensitiveDataLogging(true);
+    });
 
     services.AddIdentity<IdentityUser, IdentityRole>(options => {
         options.SignIn.RequireConfirmedAccount = false;

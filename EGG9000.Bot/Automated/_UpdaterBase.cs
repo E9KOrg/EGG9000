@@ -2,6 +2,7 @@
 
 using Discord;
 
+using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -55,12 +56,12 @@ namespace EGG9000.Bot.Automated {
         private UpdaterOptions<T> _options;
         public APILink _apiLink;
 
-        protected Bugsnag.IClient _bugsnag;
+        protected Bugsnag.IClient _bugSnag;
         protected ILogger<T> _logger;
         protected IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
         protected ulong _CPGuildId;
-
+        protected CoopsBeingCreatedService _coopsBeingCreatedService => _provider.GetService<CoopsBeingCreatedService>();   
 
         public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider) {
             _initiate(provider);
@@ -69,6 +70,7 @@ namespace EGG9000.Bot.Automated {
 
         }
 
+        // Ignore Spelling: cron
         public _UpdaterBase(CronExpression cronExpression, IServiceProvider provider) {
             _initiate(provider);
             _cronExpression = cronExpression;
@@ -86,7 +88,7 @@ namespace EGG9000.Bot.Automated {
             _apiLink = provider.GetService<APILink>();
             _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
             Instance = this;
-            _bugsnag = provider.GetService<Bugsnag.IClient>();
+            _bugSnag = provider.GetService<Bugsnag.IClient>();
             _provider = provider;
             _ = ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 
@@ -108,6 +110,13 @@ namespace EGG9000.Bot.Automated {
 
         public void StillAlive() {
             _lastAlive = DateTimeOffset.Now;
+        }
+
+        public async Task WaitOnCoopsBeingCreated(CancellationToken cancellationToken) {
+            while(_coopsBeingCreatedService.AreCoopsBeingCreated()) {
+                _logger.LogTrace("Waiting on coops being created...");
+                await Task.Delay(60000, cancellationToken);
+            }
         }
 
         public void ChangeUpdateInterval(TimeSpan newUpdateInterval) {
@@ -146,7 +155,7 @@ namespace EGG9000.Bot.Automated {
 
                     }
                 } catch(Exception e) {
-                    _bugsnag.Notify(e);
+                    _bugSnag.Notify(e);
                     _logger.LogError(e, "Error during run: {Message}", e.Message);
                 } finally {
                     _logger.LogInformation("Releasing semaphore");
@@ -178,7 +187,7 @@ namespace EGG9000.Bot.Automated {
                 }
                 initialStart = false;
             } catch(Exception e) {
-                _bugsnag.Notify(e);
+                _bugSnag.Notify(e);
                 _logger.LogError(e, "Error starting");
             }
             return Task.CompletedTask;
@@ -208,7 +217,7 @@ namespace EGG9000.Bot.Automated {
                 } catch(TaskCanceledException) {
                     _logger.LogInformation("Cron Loop cancelled");
                 } catch(Exception e) {
-                    _bugsnag.Notify(e);
+                    _bugSnag.Notify(e);
                     _logger.LogError(e, "Error running updater");
                 }
             }
@@ -241,7 +250,7 @@ namespace EGG9000.Bot.Automated {
                 _logger.LogInformation("STOP: Stopped successfully");
             } catch(TaskCanceledException) {
             } catch(Exception e) {
-                _bugsnag.Notify(e);
+                _bugSnag.Notify(e);
                 _logger.LogError(e, "Error stopping");
             }
         }
@@ -276,7 +285,7 @@ namespace EGG9000.Bot.Automated {
                     await dmChannel.SendMessageAsync($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted.ToShortTimeString()}, last completed {_this.LastCompleted.ToShortTimeString()}, last alive {_this._lastAlive.DateTime.ToShortTimeString()}.", options: new RequestOptions { CancelToken = _this._cts.Token });
                     //_this._semaphoreSlim.Release();
                     //_this.Restarted = true;
-                    //_this._lastMessageSent = DateTime.Now;
+                    _this._lastMessageSent = DateTime.Now;
 
                     //_this._timer.Change(TimeSpan.Zero, _this.UpdateInterval);
                 }

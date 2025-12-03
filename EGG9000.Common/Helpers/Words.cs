@@ -578,7 +578,6 @@ namespace EGG9000.Bot {
     "grill",
     "grip",
     "grit",
-    "groom",
     "growl",
     "grub",
     "grunt",

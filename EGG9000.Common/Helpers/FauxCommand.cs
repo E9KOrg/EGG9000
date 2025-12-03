@@ -259,7 +259,7 @@ namespace EGG9000.Common.Services {
 
         public bool IsDMInteraction {
             get {
-                throw new NotImplementedException();
+                return _socketCommandBase?.IsDMInteraction ?? throw new NotImplementedException();
             }
         }
 

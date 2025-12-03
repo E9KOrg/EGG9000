@@ -33,6 +33,8 @@ namespace EGG9000.Bot.Automated {
                 var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
                 var snapshots = 0;
                 foreach(var user in users) {
+                    await WaitOnCoopsBeingCreated(cancellationToken);
+
                     try {
                         foreach(var account in user.EggIncAccounts) {
                             var backup = account.Backup;
@@ -62,7 +64,7 @@ namespace EGG9000.Bot.Automated {
                             }
                         }
                     } catch(Exception e) {
-                        _bugsnag.Notify(e);
+                        _bugSnag.Notify(e);
                     }
                 }
                 await _db.SaveChangesAsync(CancellationToken.None);
