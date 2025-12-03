@@ -102,7 +102,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true) {
             userId ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -138,19 +138,22 @@ namespace EGG9000.Common.Helpers {
             var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
 
 
-            var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
-                ContractIdentifier = ContractID,
-                CoopIdentifier = coopName.ToLower(), PlayerIdentifier = userId,
-            }, userId);
-            //var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+            //var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
             //    ClientVersion = ContractsAPI.ClientVersion,
             //    ContractIdentifier = ContractID,
-            //    CoopIdentifier = coopName.ToLower(),
-            //    PlayerIdentifier = userId,
-            //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-            //    RequestingUserId = userId
+            //    CoopIdentifier = coopName.ToLower(), PlayerIdentifier = userId,
             //}, userId);
+
+            if(kickCreator) {
+                var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+                    ClientVersion = ContractsAPI.ClientVersion,
+                    ContractIdentifier = ContractID,
+                    CoopIdentifier = coopName.ToLower(),
+                    PlayerIdentifier = userId,
+                    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+                    RequestingUserId = userId
+                }, userId);
+            }
 
             return true;
         }

@@ -32,6 +32,7 @@ using MassTransit.Internals;
 using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
 using EGG9000.Bot.Services;
+using EGG9000.Bot.EggIncAPI;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
@@ -39,6 +40,12 @@ namespace EGG9000.Bot.Automated.Coops {
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
+        private readonly Dictionary<CreatorInfo, DateTimeOffset> CreatorLastUsed = new();
+        public class CreatorInfo {
+            public string EggIncId { get; set; }
+            public string ContractId { get; set; }
+            public PlayerGrade Grade { get; set; }
+        }
 
 
 
@@ -132,7 +139,12 @@ namespace EGG9000.Bot.Automated.Coops {
                         var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
                         if(!coop.AddedFromBackup) {
-                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague);
+                            var creator = ContractsAPI.CreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
+                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default);
+
+                            if(creator != default) {
+                                CreatorLastUsed[new CreatorInfo() { EggIncId = creator.EggIncId, ContractId = coop.ContractID, Grade = (PlayerGrade)coop.League }] = DateTimeOffset.Now;
+                            }
                         }
 
                         var headerChannel = await GetHeaderChannelAndWait(headerChannels, coop);
@@ -206,10 +218,23 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 _logger.LogInformation("Finished created {count} co-ops", tasks.Count);
             }
+
+            await MoveCreatorsToBlankCoop();
         }
 
         private async Task StartCoopAndCreateThread() {
 
+        }
+
+        private async Task MoveCreatorsToBlankCoop() {
+            foreach(var creator in CreatorLastUsed.Keys.ToList()) {
+                if(CreatorLastUsed[creator].AddMinutes(2) < DateTimeOffset.Now) {
+                    var blankCoopName = $"bc{DateTimeOffset.Now.ToUnixTimeSeconds()}";
+                    _logger.LogInformation("Moving creator {creator} to blank coop {coop}", creator, blankCoopName);
+                    await CreateCoopViaApi(creator.ContractId, creator.Grade, blankCoopName, 3600, creator.EggIncId, false, kickCreator: false);
+                    CreatorLastUsed.Remove(creator);
+                }
+            }
         }
 
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
