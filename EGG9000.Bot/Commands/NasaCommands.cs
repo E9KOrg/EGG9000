@@ -16,11 +16,11 @@ namespace EGG9000.Bot.Commands {
             var explanation = await NasaHelper.GetExplanationOrEmpty(apodId, db);
             if (explanation.IsNullOrEmpty()) {
                 var failureEmbed = EmbedHelpers.EmbedWarning("No explanation found for this APOD.");
-                await component.RespondAsync("", embed: failureEmbed, ephemeral: false);
+                await component.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
             }
             var explainEmbed = EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Success, "APOD Explanation", explanation);
-            await component.RespondAsync("", embed: explainEmbed, ephemeral: false);
+            await component.RespondAsync("", embed: explainEmbed, ephemeral: true);
         }
 
         [SlashCommand(Description = "View NASA's latest Astronomy Picture of the Day (APOD)")]
