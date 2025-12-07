@@ -139,7 +139,7 @@ namespace EGG9000.Bot.Commands {
             var isOnCooldown = DateTimeOffset.Now - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
 
             if(isOnCooldown && !hasStaffPerms) {
-                await component.UpdateAsync(x => x.Embed = EmbedCustom(
+                await component.UpdateAsync(x => x.Embed = MakeCustomEmbed(
                         EmbedHelpers.EmbedType.Alert,
                         "Post Cooldown",
                         $"You are on cooldown, and will be able to post again {DiscordHelpers.TimeStamper(lastPostTime.AddMinutes(guildObj.FAQTopicCooldownMinutes), DiscordHelpers.DiscordTimestampFormat.Relative)}."
