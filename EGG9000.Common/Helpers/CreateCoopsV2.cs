@@ -36,8 +36,8 @@ namespace EGG9000.Common.Helpers {
 
             string creatorId = null;
 
-            if(ContractsAPI.CreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
-                creatorId = ContractsAPI.CreatorIds.First(x => x.Grade == grade).EggIncId;
+            if(ContractsAPI.CoopCreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
+                creatorId = ContractsAPI.CoopCreatorIds.First(x => x.Grade == grade).EggIncId;
             } else {
 
                 foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
@@ -102,7 +102,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true) {
             userId ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -138,26 +138,29 @@ namespace EGG9000.Common.Helpers {
             var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
 
 
-            var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
-                ContractIdentifier = ContractID,
-                CoopIdentifier = coopName.ToLower(), PlayerIdentifier = userId,
-            }, userId);
-            //var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+            //var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
             //    ClientVersion = ContractsAPI.ClientVersion,
             //    ContractIdentifier = ContractID,
-            //    CoopIdentifier = coopName.ToLower(),
-            //    PlayerIdentifier = userId,
-            //    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-            //    RequestingUserId = userId
+            //    CoopIdentifier = coopName.ToLower(), PlayerIdentifier = userId,
             //}, userId);
+
+            if(kickCreator) {
+                var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+                    ClientVersion = ContractsAPI.ClientVersion,
+                    ContractIdentifier = ContractID,
+                    CoopIdentifier = coopName.ToLower(),
+                    PlayerIdentifier = userId,
+                    Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+                    RequestingUserId = userId
+                }, userId);
+            }
 
             return true;
         }
         private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
             var userName = userid;
 
-            if(ContractsAPI.CreatorIds.Any(x => x.EggIncId == userid)) {
+            if(ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == userid)) {
                 userName = $"E9K-{grade}";
             }
 

@@ -654,7 +654,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
-                    var gradeProgressPercent = Math.Round(Math.Round(account.Backup?.GradeProgress ?? 0, 4) * 100, 2);
+                    var gradeProgressPercent = Math.Round(account.Backup?.GradeProgress ?? 0 * 100, 2);
 
                     if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
                         var percentageString = $"{gradeProgressPercent}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))} :chart_with_upwards_trend:";
