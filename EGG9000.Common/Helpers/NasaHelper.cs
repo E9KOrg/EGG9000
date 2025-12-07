@@ -81,11 +81,16 @@ public static partial class NasaHelper {
     }
 
     public static async Task<GuildNasaApodDetails> GetNasaApodCache(this ApplicationDbContext db, Guild guild) {
-        if(!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
-            var latestPosted = db.NasaApods
-                .Where(a => a._postedToBytes != null && a.PostedToEntries.Any(pte => pte.GuildID == guild.Id))
+        if (!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
+            var recentPostedCandidates = await db.NasaApods
+                .Where(a => a._postedToBytes != null)
                 .OrderByDescending(a => a.DateString)
-                .FirstOrDefault();
+                .Take(100)
+                .ToListAsync();
+
+            var latestPosted = recentPostedCandidates
+                .FirstOrDefault(a => (a.PostedToEntries?.Any(pte => pte.GuildID == guild.Id)).GetValueOrDefault(false));
+
             cache = new GuildNasaApodDetails(guild) {
                 LastApodPostedId = latestPosted?.ID ?? Guid.Empty,
                 ChannelId = guild.GetChannelId(GuildChannelType.NasaApod) ?? 0,
