@@ -39,15 +39,21 @@ namespace EGG9000.Common.Coops {
                 var nonBoostArtifacts = available.Where(x => x.Artifact.Boost != EggIncBoostTypeEnum.EggShippingRate && x.Artifact.Boost != EggIncBoostTypeEnum.EggLayingRate && x.Artifact.Boost != EggIncBoostTypeEnum.CoopMembersEggLayingRates).OrderByDescending(x => x.Slots).ToList();
                 var currentNonBoostArtifacts = farm.Artifacts.Where(x => x.Boost != EggIncBoostTypeEnum.EggShippingRate && x.Boost != EggIncBoostTypeEnum.EggLayingRate && x.Boost != EggIncBoostTypeEnum.CoopMembersEggLayingRates).Select(x => new ArtifactCountWithSlots(x, EggIncArtifacts.SlotCount(x))).ToList();
 
+
+
                 for(var i = 0; i < 3; i++) {
                     var maxSlot = currentNonBoostArtifacts.MaxBy(x => x.Slots);
                     if(maxSlot is not null && maxSlot.Slots >= (nonBoostArtifacts.FirstOrDefault()?.Slots ?? 0)) {
                         currentNonBoostArtifacts.Remove(maxSlot);
-                    } else {
+                    } else if(nonBoostArtifacts.Count > 0) {
                         maxSlot = nonBoostArtifacts.First();
                         nonBoostArtifacts.Remove(maxSlot);
                     }
                     toProcess.Add(maxSlot);
+                }
+                
+                if(toProcess.All(x => x is null)) {
+                    return new List<EggIncArtifactInstance>();
                 }
 
                 foreach(var artifactCount in toProcess.GroupBy(x => new {x.Artifact.Rarity, x.Artifact.Tier, x.Artifact }).Select(x => x.First())) {

@@ -194,6 +194,17 @@ namespace EGG9000.Bot.EggIncAPI {
                         e.Rinfo = GetInfo(UserId);
                         base64 = e.ToByteString().ToBase64();
                         break;
+                    case Backup b: {
+                            url = "ei/save_backup_secure";
+                            var memorySteam = new MemoryStream();
+                            b.WriteTo(memorySteam);
+                            memorySteam.Position = 0;
+                            var messageData = memorySteam.ToArray();
+                            var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                            base64 = message.ToByteString().ToBase64();
+                            authenticated = true;
+                        }
+                        break;
                     case BasicRequestInfo e: {
                             if(typeof(TResponse) == typeof(ContractPlayerInfo)) {
                                 url = "ei_ctx/get_contract_player_info";

@@ -215,14 +215,24 @@ namespace EGG9000.Common.Services {
         public static TimeSpan GetSemaphoreTimeout() {
             return _semaphoreTimeoutTime;
         }
+
+
     }
+
+
+
     public class DiscordSemaphore(SocketGuild guild, SemaphoreSlim semaphore) {
         public readonly SocketGuild Guild = guild;
         public readonly SemaphoreSlim Semaphore = semaphore;
     }
 
     public static class DiscordExtensions {
-
+        public static async Task SendDMToKendrome(this DiscordSocketClient _discord, string message) {
+            var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
+            if(kendromedmchannel is not null) {
+                await kendromedmchannel.SendMessageAsync(message);
+            }
+        }
         public static SemaphoreSlim GetServerSemaphore(this SocketGuild guild) {
             return DiscordHostedService.GetOrCreateSemaphore(guild);
         }
@@ -335,7 +345,7 @@ namespace EGG9000.Common.Services {
                 if(channels.Count() > 5) {
                     logger.LogError("Pattern matching failed for {guild} with the following channels: {channels} (They were not deleted)", sg.Name, String.Join(",", channels.Select(x => x.Name)));
                     continue;
-                    
+
                 }
 
                 foreach(var channel in channels) {
@@ -378,7 +388,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
-            if(contract is null || string.IsNullOrEmpty(contract.Name) ) return "unknown-contract";
+            if(contract is null || string.IsNullOrEmpty(contract.Name)) return "unknown-contract";
             return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
         }
 

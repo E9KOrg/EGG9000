@@ -193,13 +193,9 @@ namespace EGG9000.Common.Services {
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
                                         _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
-                                        var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
-                                        if(kendromedmchannel is not null) {
-                                            await kendromedmchannel.SendMessageAsync($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
-                                            ContractsAPI.ClientVersion = (uint)_LastClientVersion;
-                                        } else {
-                                            _logger.LogError("Unable to get DM channel for Kendrome");
-                                        }
+                                        
+                                        await _discord.SendDMToKendrome($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                        ContractsAPI.ClientVersion = (uint)_LastClientVersion;
                                     }
 
                                     backups.Add(backupResponse.Backup);

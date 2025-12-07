@@ -251,6 +251,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     await _db.SaveChangesAsync(CancellationToken.None);
                 }
 
+                await CheckForCoopCreatorStillIn(coop, status);
+
 
                 if(coop.League != (uint)status.Grade) {
                     _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
@@ -527,7 +529,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var threadObj = coopThread as SocketThreadChannel;
                 //var currentUsers = coop.UserCoopsXrefs.Where(u => u.JoinedCoop).Select(u => u.User.DiscordId).Distinct().ToList();
                 var currentUserDiscordIds = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).Select(x => users.FirstOrDefault(u => u.User.Id == x.UserId)).Where(x => x is not null).Select(x => x.User.DiscordId);
-                foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null)) {
+                foreach(var userStatus in coopDetails.CoopParticipants.Where(x => x.Xref != null && x.DiscordUser is not null)) {
                     if(!userStatus.Xref.AddedToChannel) {
                         usersNeedingChannelPermissions.Add(userStatus.DiscordUser.Id);
                     } else if(userStatus.DiscordUser is not null && !threadObj.Users.Any(x => x.Id == userStatus.DiscordUser.Id) && !currentUserDiscordIds.Any(u => u == userStatus.DiscordUser.Id)) {
@@ -1113,7 +1115,13 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-
+        private async Task CheckForCoopCreatorStillIn(Coop coop, Ei.ContractCoopStatusResponse status) {
+            if(!ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID))
+                return;
+            if(status.Contributors.Any(x => x.UserId == coop.CreatorID)) {
+                _logger.LogError("Coop creator {creator} is still in coop {coop}", coop.CreatorID, coop.Name);
+            }
+        }
 
         public class UserWithStatus {
             public CustomBackup Backup { get; set; }
@@ -1364,7 +1372,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             TimeSpan.FromSeconds(7)
                ]);
 
-            var statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, cancellationToken: cancellationToken));
+            var statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, cancellationToken: cancellationToken));
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);

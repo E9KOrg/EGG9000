@@ -83,7 +83,8 @@ namespace EGG9000.Site.Controllers {
             var loginUserId = ulong.Parse(logins.First().ProviderKey);
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
-            _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}, {user.DiscordUsername}");
+            _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
+            _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
             //var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
 
