@@ -83,10 +83,9 @@ public static partial class NasaHelper {
     public static async Task<GuildNasaApodDetails> GetNasaApodCache(this ApplicationDbContext db, Guild guild) {
         if(!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
             var latestPosted = db.NasaApods
-                .Where(a => a._postedToBytes != null)
+                .Where(a => a._postedToBytes != null && a.PostedToEntries.Any(pte => pte.GuildID == guild.Id))
                 .OrderByDescending(a => a.DateString)
-                .AsEnumerable()
-                .FirstOrDefault(a => a.PostedToEntries.Any(pte => pte.GuildID == guild.Id));
+                .FirstOrDefault();
             cache = new GuildNasaApodDetails(guild) {
                 LastApodPostedId = latestPosted?.ID ?? Guid.Empty,
                 ChannelId = guild.GetChannelId(GuildChannelType.NasaApod) ?? 0,
@@ -155,7 +154,7 @@ public static partial class NasaHelper {
     public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
         var customMessage = await apod.GetCustomMessage(db, logger);
         if (customMessage is null) {
-            logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
+            logger.LogWarning("Failed to get Custom Message for APOD ID: {apodId}", apod.ID);
             return false;
         }
         var sentMessage = await DetermineAndSend(client, details.Guild, GuildChannelType.NasaApod, customMessage, logger);
@@ -178,7 +177,7 @@ public static partial class NasaHelper {
     public static async Task<bool> TrySendLatestNasaAPODAdHoc(this FauxCommand command, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
         var customMessage = await apod.GetCustomMessage(db, logger);
         if(customMessage is null) {
-            logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
+            logger.LogWarning("Failed to get Custom Message for APOD ID: {apodId}", apod.ID);
             return false;
         }
         var customInteractionBasedMessage = new CustomInteractionBasedDiscordMessage(customMessage) {
@@ -200,13 +199,13 @@ public static partial class NasaHelper {
             if(response is null || !response.IsSuccessStatusCode) {
                 logger.LogWarning("Failed to retrieve NASA APOD. Status Code: {statusCode}", response?.StatusCode);
                 return null;
-            } else if(response.Content is null || response.Content.Headers.ContentLength == 0) {
-                logger.LogWarning("NASA APOD response content is empty.");
+            } else if(response.Content is null || !response.Content.Headers.ContentLength.HasValue || response.Content.Headers.ContentLength == 0) {
+                logger.LogWarning("NASA APOD response content is empty or content length is not specified.");
                 return null;
             }
 
             var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var contentBuffer = new byte[response.Content.Headers.ContentLength ?? 0];
+            var contentBuffer = new byte[response.Content.Headers.ContentLength!.Value];
             await contentStream.ReadExactlyAsync(contentBuffer, cancellationToken);
             streamContentString = System.Text.Encoding.UTF8.GetString(contentBuffer);
             return JsonConvert.DeserializeObject<NasaApod>(streamContentString);
