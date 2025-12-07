@@ -991,7 +991,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         highestEBMessage = $"**\nHighest EB**: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}";
 
                     var createdByMessage = "";
-                    if(!string.IsNullOrEmpty(coop.CreatorID) && !ContractsAPI.CreatorIds.Any(x => x.EggIncId == coop.CreatorID)) {
+                    if(!string.IsNullOrEmpty(coop.CreatorID) && !ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID)) {
                         var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
                         if(creator != null) {
                             var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);

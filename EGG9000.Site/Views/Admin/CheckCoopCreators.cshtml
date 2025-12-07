@@ -1,0 +1,19 @@
+﻿@using Ei
+@using static Ei.Contract.Types
+@model List<(string EggIncId, PlayerGrade Grade, string Name, ContractPlayerInfo Info)>
+
+
+@{
+    ViewData["Title"] = "Check Coop Creators";
+}
+
+@foreach(var creator in Model)
+{
+    <div>
+        <h3>@creator.Grade (@creator.EggIncId - @creator.Name)</h3>
+        <p>API Grade: @creator.Info.Grade</p>
+        <p>Progress: @Math.Round(creator.Info.GradeProgress * 100, 2)%</p>
+        <p>Status: @creator.Info.Status</p>
+        <hr />
+    </div>
+}
