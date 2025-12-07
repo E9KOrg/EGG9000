@@ -618,7 +618,7 @@ namespace EGG9000.Site.Controllers {
             slackers = slackers.Where(x => x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold && y.Date > DateTimeOffset.Now.AddMonths(-4))).ToList();
 
 
-            var ids = slackers.Select(x => x.Id).ToArray();
+            var ids = slackers.Select(x => x.Id).ToList();
             var users = await _db.DBUsers.Where(x => ids.Contains(x.Id)).ToListAsync();
             foreach(var item in slackers) {
                 var account = users.First(x => x.Id == item.Id);

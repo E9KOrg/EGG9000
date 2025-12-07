@@ -492,7 +492,8 @@ namespace EGG9000.Bot.Commands {
                     Status = CoopStatusEnum.WaitingOnThread,
                     League = grade,
                     AnyLeague = anygrade,
-                    CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining)
+                    CoopEnds = DateTimeOffset.Now.AddSeconds(status.SecondsRemaining),
+                    AddedFromBackup = true
                 };
                 db.Coops.Add(coop);
                 await db.SaveChangesAsync();

@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
@@ -488,6 +489,46 @@ namespace EGG9000.Bot.Commands {
             var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
 
             await command.Channel.SendMessageAsync($"{pings} {message}");
+        }
+
+        [SlashCommand(Description = "Fix where the server doesn't show them as joined", AdminOnly = StaffOnlyLevel.FarmHand)]
+        public static async Task FixJoinIssue(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, ApplicationDbContext db) {
+            await command.DeferAsync(ephemeral: true);
+
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            if(coop == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
+                return;
+            }
+
+            var userid = useraccount.Split("|")[0];
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbUser is null) {
+                await command.RespondAsync($"ERROR: Unable to locate DBUser entry for user");
+                return;
+            }
+
+            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+
+            var joinResponse = await ContractsAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+
+                ContractIdentifier = coop.ContractID,
+                CoopIdentifier = coop.Name.ToLower(),
+                UserId = account.Id, 
+                ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
+            }, account.Id);
+
+
+            var updateResponse = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
+                ContractIdentifier = coop.ContractID,
+                CoopIdentifier = coop.Name.ToLower(),
+                Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
+                ProductionParams = new Ei.FarmProductionParams {
+                    FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
+                }
+            }, account.Id, true);
+
+            await command.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
         }
     }
 }
