@@ -4,7 +4,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -17,17 +16,13 @@ namespace EGG9000.Common.Consumers {
         public Task Consume(ConsumeContext<ExpireCacheMessage> context) {
             var assemblyConfigurationAttribute = typeof(ExpireCacheMessage).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>();
             var buildConfigurationName = assemblyConfigurationAttribute?.Configuration;
-            _logger.LogInformation($"Removing cache item for key: {context.Message.Key}");
+            _logger.LogInformation("[{build}] Removing cache item for key: {key}", buildConfigurationName, context.Message.Key);
             _cache.Remove(context.Message.Key);
             return Task.CompletedTask;
         }
     }
-    public class ExpireCacheMessage {
-        public ExpireCacheMessage(String key) {
-            Key = key;
-        }
-        public string Key { get; set; }
-
+    public class ExpireCacheMessage(string key) {
+        public string Key { get; set; } = key;
     }
 
 }

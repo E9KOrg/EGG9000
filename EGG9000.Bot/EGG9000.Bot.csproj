@@ -47,7 +47,7 @@
     <PackageReference Include="Bugsnag.AspNet.Core" Version="3.1.0" />
     <PackageReference Include="Cronos" Version="0.7.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="Discord.Net" Version="3.15.3" />
+    <PackageReference Include="Discord.Net" Version="3.18.0" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="Google.Protobuf" Version="3.23.4" />
     <PackageReference Include="Grpc.Net.Client" Version="2.55.0" />
