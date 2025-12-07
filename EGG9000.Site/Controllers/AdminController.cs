@@ -1421,6 +1421,10 @@ music
             }
             var model = JsonConvert.DeserializeObject<SaveChannelDetailsObject>(json);
             var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+            var invalidateApodGuildCache = (
+                (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
+                != (model.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
+            );
             dbGuild.CoopSettings = model.CoopSettingsOverrides;
             dbGuild.ChannelDetails = model.ChannelDetails;
             dbGuild.CoopCategories = model.CoopCategories;
@@ -1437,6 +1441,10 @@ music
             Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
             dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
             dbGuild.FAQTopicCooldownMinutes = model.FAQTopicCooldownMinutes;
+            if(invalidateApodGuildCache) {
+                var guildNasaKey = _db.InvalidateGuildNASACache(dbGuild);
+                await _publishEndpoint.Publish(new ExpireCacheMessage(guildNasaKey));
+            }
             await _db.SaveChangesAsync();
 
             return Ok();
