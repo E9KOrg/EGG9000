@@ -113,6 +113,9 @@ namespace EGG9000.Common.Database.Entities {
         public bool HasChannel(GuildChannelType channelType) {
             return ChannelDetails.Any(x => x.ChannelType == channelType && x.Id > 0);
         }
+        public ulong? GetChannelId(GuildChannelType channelType) {
+            return ChannelDetails.FirstOrDefault(x => x.ChannelType == channelType)?.Id;
+        }
         public ServerCoopSetting GetCoopSetting(GuildCoopSetting coopSetting) {
             return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) ?? new ServerCoopSetting { CoopSetting = coopSetting };
         }
@@ -262,5 +265,7 @@ namespace EGG9000.Common.Database.Entities {
         ProPermitRole = 43,
         /*[Description("/R/Users with this role will be added to all coop threads")]
         AllCoopsRole = 44*/
+        [Description("/TC/Optional: Where NASA Astronomy Pictures of the Day (APOD) will be posted")]
+        NasaApod = 46
     }
 }
