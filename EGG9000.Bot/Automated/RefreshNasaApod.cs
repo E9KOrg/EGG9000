@@ -1,13 +1,17 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using MassTransit.Initializers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using static EGG9000.Common.Helpers.NasaHelper;
 
 namespace EGG9000.Bot.Automated; 
  public class RefreshNasaApod(IServiceProvider provider) : _UpdaterBase<RefreshNasaApod>(TimeSpan.FromMinutes(15), TimeSpan.Zero, provider) {
@@ -24,12 +28,11 @@ namespace EGG9000.Bot.Automated;
         }
 
         var guilds = await _db.Guilds.ToListAsync(cancellationToken);
-        var enabledGuilds = await Task.WhenAll(
-            guilds.Select(async g => new {
-                Guild = g,
-                Cache = await _db.GetNasaApodCache(g)
-            })
-        );
+
+        var enabledGuilds = new List<(Guild Guild, GuildNasaApodDetails Cache)>();
+        foreach(var guild in guilds) {
+            enabledGuilds.Add((guild, await _db.GetNasaApodCache(guild)));
+        }
 
         var outOfDateGuilds = enabledGuilds.Where(g => g.Cache.ChannelId != 0 && g.Cache.LastApodPostedId != latestPost.ID);
         foreach(var apodDetails in outOfDateGuilds) {
