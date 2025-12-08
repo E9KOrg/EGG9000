@@ -228,7 +228,7 @@ public static partial class NasaHelper {
         var isImage = mediaTypeImage || apod.Url.EndsWith(".jpg") || apod.Url.EndsWith(".jpeg") || apod.Url.EndsWith(".png") || apod.Url.EndsWith(".gif");
         var builder = new EmbedBuilder()
             .WithTitle(apod.Title)
-            .WithUrl(apod.BestUrl)
+            .WithUrl(ToYouTubeWatchUrl(apod.BestUrl))
             .WithFooter($"{apod.Copyright?.Replace("\n", "") ?? "[Photographer Unknown]"} | {apod.DateString}");
         if(isImage) builder.WithImageUrl(apod.BestUrl);
         else {
@@ -240,6 +240,12 @@ public static partial class NasaHelper {
             builder.WithDescription("_(Today's astronomy 'picture' is a video, click the title to watch it)_");
         }
         return builder;
+    }
+
+    public static string ToYouTubeWatchUrl(string url) {
+        if(string.IsNullOrWhiteSpace(url)) return url;
+        var id = TryExtractYouTubeId(url);
+        return string.IsNullOrEmpty(id) ? url : $"https://www.youtube.com/watch?v={id}";
     }
 
     private static async Task<string> GetNasaPictureAsB64OrEmpty(this NasaApod apod, ILogger logger) {
