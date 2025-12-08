@@ -33,6 +33,7 @@ using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
 using EGG9000.Bot.Services;
 using EGG9000.Bot.EggIncAPI;
+using MassTransit;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
@@ -45,6 +46,17 @@ namespace EGG9000.Bot.Automated.Coops {
             public string EggIncId { get; set; }
             public string ContractId { get; set; }
             public PlayerGrade Grade { get; set; }
+
+            public override bool Equals(object obj) {
+                if(obj is CreatorInfo other) {
+                    return EggIncId == other.EggIncId && ContractId == other.ContractId && Grade == other.Grade;
+                }
+                return false;
+            }
+
+            public override int GetHashCode() {
+                return HashCode.Combine(EggIncId, ContractId, Grade);
+            }
         }
 
 
@@ -227,11 +239,23 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private async Task MoveCreatorsToBlankCoop() {
-            foreach(var creator in CreatorLastUsed.Keys.ToList()) {
-                if(CreatorLastUsed[creator].AddMinutes(2) < DateTimeOffset.Now) {
+            // Collect keys to remove first to avoid modifying the dictionary while iterating
+            var now = DateTimeOffset.Now;
+            var expiredCreators = CreatorLastUsed
+                .Where(kv => kv.Value.AddMinutes(2) < now)
+                .Select(kv => kv.Key)
+                .ToList();
+
+            foreach(var creator in expiredCreators) {
+                try {
                     var blankCoopName = $"bc{DateTimeOffset.Now.ToUnixTimeSeconds()}";
-                    _logger.LogInformation("Moving creator {creator} to blank coop {coop}", creator, blankCoopName);
+                    _logger.LogInformation("Moving creator {creator} {grade} to blank coop {coop}", creator.EggIncId, creator.Grade, blankCoopName);
                     await CreateCoopViaApi(creator.ContractId, creator.Grade, blankCoopName, 3600, creator.EggIncId, false, kickCreator: false);
+                } catch(Exception ex) {
+                    _logger.LogError(ex, "Failed to move creator {creator} to blank coop", creator.EggIncId);
+                    continue;
+                } finally {
+                    // Remove after attempt to ensure the entry is cleaned up regardless of success/failure
                     CreatorLastUsed.Remove(creator);
                 }
             }
