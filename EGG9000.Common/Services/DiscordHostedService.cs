@@ -1,6 +1,8 @@
 ﻿using Bugsnag;
 
 using Discord;
+using Discord.Net.Rest;
+using Discord.Net.WebSockets;
 using Discord.WebSocket;
 
 using EGG9000.Common.Contracts;
@@ -20,6 +22,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -33,13 +36,24 @@ namespace EGG9000.Common.Services {
         private readonly IMemoryCache _cache;
         private readonly IServiceProvider _provider;
         private readonly ILogger<DiscordHostedService> _logger;
+
+        //private static readonly WebProxy proxy = new WebProxy("http://localhost", 8888);
+
+
         private static readonly DiscordSocketConfig config = new() {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages |
-                             GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent
+                             GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent,
+            //WebSocketProvider = DefaultWebSocketProvider.Create(proxy),
+            //RestClientProvider = DefaultRestClientProvider.Create(true, proxy)
+
         };
         private static readonly List<DiscordSemaphore> _serverSemaphores = [];
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
+#if DEBUG
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+#endif
+
             _configuration = Configuration;
             _provider = provider;
             _logger = logger;

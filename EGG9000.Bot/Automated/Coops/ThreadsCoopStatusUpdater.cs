@@ -31,6 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,12 +64,13 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            //coops = coops.Where(x => x.GuildId == 656455567858073601).ToList();
+            coops = [.. coops.Where(x => x.ThreadID == 1450187730322718793)];
+            //coops = coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-1) && x.GuildId == 656455567858073601 && x.OverflowGuildId == 1147264073659064420).ToList();
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
             //coops = [.. coops.Where(x => x.Name == "AmpleWad98")];
-            coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
+            //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
 #endif
 
@@ -77,7 +79,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #if DEBUG
             var throttler = new SemaphoreSlim(1);
 #else
-            var throttler = new SemaphoreSlim(2);
+            var throttler = new SemaphoreSlim(10);
 #endif
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
             foreach(var guildCoops in guildCoopGroups) {
@@ -90,7 +92,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 await guild.DownloadUsersAsync();
                 _logger.LogInformation("Coops for guild: {guildName}, Count {count}", guild.Name, guildCoops.Count());
 
-                var tasks = new List<Task>();
+                var tasks = new List<(Task task, DateTimeOffset started)>();
 
                 var rng = new Random();
                 foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
@@ -98,29 +100,35 @@ namespace EGG9000.Bot.Automated.Coops {
                     await WaitOnCoopsBeingCreated(cancellationToken);
 
                     while(!await throttler.WaitAsync(20000, cancellationToken)) {
-                        _logger.LogInformation("Waiting on throttle");
+                        var incompleteTasks = tasks.Where(x => !x.task.IsCompletedSuccessfully);
+
+                        _logger.LogInformation("Waiting on throttle, {info}", string.Join(", ", incompleteTasks.Select(x => $"{x.task.Id} {x.task.Status} {x.task.Exception?.Message} {x.task.IsCanceled} {x.task.IsFaulted} {x.task.IsCompleted} {(DateTimeOffset.Now - x.started).Humanize()}")));
+
                     }
-                    tasks.Add(Task.Run(async () => {
+                    tasks.Add((Task.Run(async () => {
                         try {
                             var sw = new Stopwatch();
                             sw.Start();
-                            await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, cancellationToken);
+
+                            var ct = new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token;
+
+                            await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, cancellationToken).WaitAsync(ct);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
                             //_logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
                         } finally {
                             throttler.Release();
                         }
-                    }, cancellationToken));
+                    }, cancellationToken), DateTimeOffset.Now));
 
                     StillAlive();
-                    await Task.Delay(500, cancellationToken);
+                    await Task.Delay(5000, cancellationToken);
                 }
 
                 var watchdogCancellationSource = new CancellationTokenSource();
                 var watchdogCancelToken = watchdogCancellationSource.Token;
                 var watchdogTask = Task.Delay(TimeSpan.FromMinutes(10), watchdogCancelToken);
-                var allTasks = Task.WhenAll(tasks);
+                var allTasks = Task.WhenAll(tasks.Select(x => x.task));
                 var completedTask = await Task.WhenAny(allTasks, watchdogTask);
 
                 if(completedTask == watchdogTask) { // Timeout occurred
@@ -130,7 +138,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-                _logger.LogInformation("Co-op Count: {count}, Successful: {successful}, Error: {errors}, Guild: {guild}", guildCoops.Count(), tasks.Count(x => !x.IsFaulted), tasks.Count(x => x.IsFaulted), guild.Name);
+                _logger.LogInformation("Co-op Count: {count}, Successful: {successful}, Error: {errors}, Guild: {guild}", guildCoops.Count(), tasks.Count(x => !x.task.IsFaulted), tasks.Count(x => x.task.IsFaulted), guild.Name);
             }
         }
 
@@ -547,8 +555,16 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 timings.Set(5.1);
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
+
+                ////var inThread = (await coopThread.GetUsersAsync().FlattenAsync()).Any(x => x.Id == 861607701493448704);
+                //var threadUsers = (await coopThread.GetUsersAsync().FlattenAsync()).ToList();
+
+                //var role = guild.Roles.FirstOrDefault(x => x.Name.Contains("Farm Hand"));
+
+                //var ow = role is null ? null : coopThread.GetPermissionOverwrite(role);
+                //if(!coop.RolesAddedToThread || ow is null  || ow.Value.ViewChannel == PermValue.Inherit || ow.Value.ViewChannel == PermValue.Deny) {
                 if(!coop.RolesAddedToThread) {
-                    List<ulong> roleMembersCaught = [];
+                List<ulong> roleMembersCaught = [];
                     try {
                         (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
                             .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
@@ -573,20 +589,28 @@ namespace EGG9000.Bot.Automated.Coops {
                     IUserMessage editPingsInto = null;
                     var deleteAfter = false;
 
-                    if((await coopThread.GetPinnedMessagesAsync()).Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() is IUserMessage existingBotMessage) {
-                        editPingsInto = existingBotMessage;
-                        currentContent = existingBotMessage.Content;
-                        pingsPerCycle = (1500 - currentContent.Length) / 22;
-                    } else {
-                        editPingsInto = await coopThread.SendMessageAsync("[Ping into]");
-                        deleteAfter = true;
+
+                    try {
+                        var pins = await coopThread.GetPinnedMessagesAsync();
+                        IUserMessage existingBotMessage = pins.Where(m => m.Author.IsBot && m.Content != "\u17B5").LastOrDefault() as IUserMessage;
+
+                        if(existingBotMessage != null) {
+                            editPingsInto = existingBotMessage;
+                            currentContent = existingBotMessage.Content;
+                            pingsPerCycle = (1500 - currentContent.Length) / 22;
+                        } else {
+                            editPingsInto = await coopThread.SendMessageAsync("[Ping into]");
+                            deleteAfter = true;
+                        }
+                        while(pingsLeft.Count > 0) {
+                            await editPingsInto.ModifyAsync(m => m.Content = currentContent + " " + string.Join(" ", pingsLeft.Take(pingsPerCycle).ToList()));
+                            // Remove pingsPerCycle entries from pingsLeft
+                            pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
+                        }
+                        if(deleteAfter) await editPingsInto.DeleteAsync();
+                    } catch {
+                        _logger.LogWarning("Failed to send/coalesce pings for {coop}", coopName);
                     }
-                    while(pingsLeft.Count > 0) {
-                        await editPingsInto.ModifyAsync(m => m.Content = currentContent + " " + string.Join(" ", pingsLeft.Take(pingsPerCycle).ToList()));
-                        // Remove pingsPerCycle entries from pingsLeft
-                        pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
-                    }
-                    if(deleteAfter) await editPingsInto.DeleteAsync();
                 }
                 timings.Set(5.3);
                 var usersAdded = usersNeedingChannelPermissions.Distinct().ToList();
@@ -1207,8 +1231,12 @@ namespace EGG9000.Bot.Automated.Coops {
                                     }
                                 }
                                 if(!post.IsPinned) {
-                                    pinnedMessages = true;
-                                    await post.PinAsync();
+                                    try {
+                                        await post.PinAsync();
+                                        pinnedMessages = true;
+                                    } catch(JsonReaderException) {
+                                        _logger.LogWarning("JsonReaderException when pinning message in coop {coop}", coop.Name);
+                                    }
                                 }
                             } catch(Exception e) {
                                 _logger.LogError(e, "Error updating messages");

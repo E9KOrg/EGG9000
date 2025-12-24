@@ -208,7 +208,7 @@ namespace Ei {
 
     public partial class CustomEgg {
         public string GetEmojiName() {
-            return Name.ToLowerInvariant().Transform(To.TitleCase).Replace(" ", "_") + "_Egg";
+            return Name.ToLowerInvariant().Transform(To.TitleCase).Replace(" ", "_").Replace(".", "_") + "_Egg";
         }
     }
 

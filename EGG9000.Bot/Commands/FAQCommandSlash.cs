@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Commands {
             var respondTo = ulong.Parse(splits[5]);
 
             if(!isEphemeral) {
-                await component.UpdateAsync(x => x.Embed = EmbedError("Cannot re-post from a non-ephemeral message.\n\nHow did you do this?"));
+                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Cannot re-post from a non-ephemeral message.\n\nHow did you do this?"));
                 return;
             }
 
@@ -139,7 +139,7 @@ namespace EGG9000.Bot.Commands {
             var isOnCooldown = DateTimeOffset.Now - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
 
             if(isOnCooldown && !hasStaffPerms) {
-                await component.UpdateAsync(x => x.Embed = MakeCustomEmbed(
+                await component.ModifyOriginalResponseAsync(x => x.Embed = MakeCustomEmbed(
                         EmbedHelpers.EmbedType.Alert,
                         "Post Cooldown",
                         $"You are on cooldown, and will be able to post again {DiscordHelpers.TimeStamper(lastPostTime.AddMinutes(guildObj.FAQTopicCooldownMinutes), DiscordHelpers.DiscordTimestampFormat.Relative)}."
@@ -149,14 +149,14 @@ namespace EGG9000.Bot.Commands {
 
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Count == 0 || faqTopics[targetIndex] == null) {
-                await component.UpdateAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."));
+                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."));
                 return;
             }
 
             var embed = (await FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, faqTopics[targetIndex], runningUserDiscord)).EmbedBuilder.Build();
             var messageRef = respondTo != ulong.MaxValue ? new MessageReference(respondTo, failIfNotExists: false) : null;
             await component.Channel.SendMessageAsync(embed: embed, messageReference: messageRef);
-            await component.UpdateAsync(x => { x.Embed = EmbedSuccess("Posted."); x.Components = null; });
+            await component.ModifyOriginalResponseAsync(x => { x.Embed = EmbedSuccess("Posted."); x.Components = null; });
         }
 
         public static async Task<FAQBuilder> FAQEmbedBuilder(DiscordHostedService _client, ulong guildId, bool withStaffPerms, string query, bool isEphemeral, ulong? respondTo, List<FAQTopic> faqTopics, FAQTopic currentItem, IGuildUser poster = null) {

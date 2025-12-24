@@ -168,17 +168,21 @@ namespace EGG9000.Bot.Helpers {
 
                 var eb = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus ?? 0;
 
+                if(role != existingRole) {
+                    logger.LogInformation("Role change for {user} in guild {guild} from {oldrole} to {newrole}, Positions {oldpos} {newpos}", discordUser.GetName(), guild.Name, existingRole?.Name ?? "None", role?.Name ?? "None", existingRole?.Position, role?.Position);
+                }
+
                 if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) { //} && eb > dbUser.MaxEBForUser) {
                     var messages = new List<string> {
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
-                    $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!"
-                };
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! Eggstraordinary work!",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} You made it this far. Looking forward to your next level-up!",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Challenge is to never stop prestiging, keep it up!",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Prestiging is like a reversed limbo, how high can you go?",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Afraid of heights? Hope not, you're climbing higher and higher up the leaderboard!",
+                        $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!"
+                    };
 
                     //if(eb > dbUser.MaxEBForUser) {
                     //    dbUser.MaxEBForUser = eb;
@@ -289,7 +293,7 @@ namespace EGG9000.Bot.Helpers {
 
                 return role;
             }catch(Exception e) {
-                logger?.LogError(e,"", null);
+                logger?.LogError(e + $" Userid: {discordUser?.Id} {discordUser?.DisplayName}","", null);
                 return null;
             }
         }
@@ -474,7 +478,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckNAHRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var nahRole = await _client.GetRoleAsync(GuildChannelType.NAHRole, Guild);
             if(nahRole is not null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null && x.Backup.MaxFarmSizeReached.ContainsKey(Ei.Egg.Enlightenment)).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 19845000000);
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null && (int)x.Backup.MaxEggReached >= 19 && x.Backup.MaxFarmSizeReached is not null && x.Backup.MaxFarmSizeReached.ContainsKey(Ei.Egg.Enlightenment)).Any(b => b.Backup.MaxFarmSizeReached[Ei.Egg.Enlightenment] >= 20_837_250_000);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == nahRole.Id);
 
                 if(!hasRole && needsRole) {
