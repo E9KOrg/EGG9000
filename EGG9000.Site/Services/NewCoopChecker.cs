@@ -46,9 +46,9 @@ namespace EGG9000.Site.Services {
             using (var scope = _factory.CreateScope()) {
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var coopCount = await db.Coops.Where(x => x.Status == Common.Database.Entities.CoopStatusEnum.WaitingOnThread).CountAsync();
-                if(coopCount > 0 && WaitingOnCoops == false)
+                if(coopCount > 20 && WaitingOnCoops == false)
                     WaitingOnCoops = true;
-                else if(coopCount == 0 && WaitingOnCoops == true)
+                else if(coopCount < 10 && WaitingOnCoops == true)
                     WaitingOnCoops = false;
 
                 _logger.LogInformation(

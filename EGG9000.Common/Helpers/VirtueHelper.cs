@@ -51,9 +51,9 @@ namespace EGG9000.Common.Helpers {
                         var level = CurrentLevel(eggsShipped);
                         var nextThreshold = GetThresholdForLevel(level + 1);
                         var progress = eggsShipped / nextThreshold;
-                        var t2 = GetThresholdForLevel(j + 2);
+                        var t2 = GetThresholdForLevel(level + 2);
                         var p2 = eggsShipped / t2;
-                        var t3 = GetThresholdForLevel(j + 3);
+                        var t3 = GetThresholdForLevel(level + 3);
                         var p3 = eggsShipped / t3;
                         return new VirtueEggStats {
                             Delivered = eggsShipped, Level = level, Progress = progress, NextThreshold = nextThreshold, Progress2 = p2, NextThreshold2 = t2, Progress3 = p3, NextThreshold3 = t3

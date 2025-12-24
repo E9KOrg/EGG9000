@@ -36,9 +36,9 @@ namespace EGG9000.Bot.EggIncAPI {
         public const string UserId = "EI6145601714651136";
 
         public static readonly List<(string EggIncId, Ei.Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = new() {
-            ("EI5697922697920512", Ei.Contract.Types.PlayerGrade.GradeB, "Kendrome mini-2"),
-            ("EI6145601714651136", Ei.Contract.Types.PlayerGrade.GradeAa, "Grae Mini"),
-            ("EI5138581853306880", Ei.Contract.Types.PlayerGrade.GradeAaa, "Melina"),
+            //("EI5697922697920512", Ei.Contract.Types.PlayerGrade.GradeB, "Kendrome mini-2"),
+            //("EI6145601714651136", Ei.Contract.Types.PlayerGrade.GradeAa, "Grae Mini"),
+            //("EI5138581853306880", Ei.Contract.Types.PlayerGrade.GradeAaa, "Melina"),
             //("EI5223299518300160", Ei.Contract.Types.PlayerGrade.GradeAa, "Kendrome mini-1")
         };
 
