@@ -6,6 +6,7 @@ using EGG9000.Bot.Common.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
@@ -455,7 +456,6 @@ namespace EGG9000.Bot.Helpers {
                     await DiscordUser.RemoveRoleAsync(gameOutdatedRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing outdated role for {user}", DiscordUser.GetName());
                 }
-
             }
         }
 

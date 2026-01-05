@@ -23,10 +23,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-//using static EGG9000.Bot.Automated.LeaderboardUpdater;
-
-namespace EGG9000.Bot.EggIncAPI {
-
+namespace EGG9000.Common.EggIncAPI {
 
     public class ContractsAPI {
         //public const string BaseAddressNew = "https://ctx-dot-auxbrainhome.appspot.com/";
@@ -138,8 +135,6 @@ namespace EGG9000.Bot.EggIncAPI {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using var client = new HttpClient(handler);
                 client.BaseAddress = new Uri(BaseAddressNew);
-                //var ms1 = new MemoryStream();
-                //var outCodedStream = new CodedOutputStream(ms1);
 
                 var url = "";
                 var base64 = "";
@@ -147,27 +142,18 @@ namespace EGG9000.Bot.EggIncAPI {
                     case JoinCoopRequest e: {
                             url = "ei/join_coop";
                             e.Rinfo = GetInfo(UserId);
-                            //e.WriteTo(ms1);
                             base64 = e.ToByteString().ToBase64();
                             break;
                         }
                     case GetPeriodicalsRequest e:
                         url = "ei/get_periodicals";
                         e.Rinfo = GetInfo(UserId, true);
-                        //e.WriteTo(ms1);
                         base64 = e.ToByteString().ToBase64();
                         break;
                     case CreateCoopRequest e: {
                             url = "ei/create_coop";
                             e.Rinfo = GetInfo(UserId);
 
-                            //var memorySteam = new MemoryStream();
-                            //e.WriteTo(memorySteam);
-                            //memorySteam.Position = 0;
-                            //var messageData = memorySteam.ToArray();
-                            //var message = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData) };
-                            //message.WriteTo(ms1);
-                            //e.WriteTo(ms1);
                             base64 = e.ToByteString().ToBase64();
                             var b64 = e.ToByteString().ToBase64();
                             break;
@@ -175,13 +161,11 @@ namespace EGG9000.Bot.EggIncAPI {
                     case QueryCoopRequest e:
                         url = "ei/query_coop";
                         e.Rinfo = GetInfo(UserId);
-                        //e.WriteTo(ms1);
                         base64 = e.ToByteString().ToBase64();
                         break;
                     case UpdateCoopPermissionsRequest e:
                         url = "ei/update_coop_permissions";
                         e.Rinfo = GetInfo(UserId);
-                        //e.WriteTo(ms1);
                         base64 = e.ToByteString().ToBase64();
                         break;
                     case ContractCoopStatusUpdateRequest e:
@@ -228,32 +212,22 @@ namespace EGG9000.Bot.EggIncAPI {
                         throw new Exception($"Missing Info for {typeof(TRequest).Name}");
                 }
                 var json = JsonConvert.SerializeObject(data);
-                //ms1.Position = 0;
-                //var sr = new StreamReader(ms1);
-                //var bytes = Encoding.ASCII.GetBytes(sr.ReadToEnd());
-                //var base64 = Convert.ToBase64String(bytes);
+
                 var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
                 client.DefaultRequestHeaders.Add("User-Agent", "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                 bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
-
-
                 var response = await client.PostAsync(url, bac);
+                if (!response.IsSuccessStatusCode) return default;
 
-                if(response.IsSuccessStatusCode) {
-                    var r = await response.Content.ReadAsStringAsync();
-                    var responseString = System.Convert.FromBase64String(r);
-
-                    if(authenticated) {
-                        return GetFromAuthenticatedMessage<TResponse>(responseString);
-                    } else {
-                        var parse = new MessageParser<TResponse>(() => new TResponse());
-                        return parse.ParseFrom(responseString);
-                    }
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                if(authenticated) {
+                    return GetFromAuthenticatedMessage<TResponse>(responseString);
                 } else {
-                    return default;
+                    var parse = new MessageParser<TResponse>(() => new TResponse());
+                    return parse.ParseFrom(responseString);
                 }
             } catch(Exception) {
                 return default;
@@ -297,17 +271,14 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                 bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+                
                 var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
+                if(!response.IsSuccessStatusCode) return null;
 
-                if(response.IsSuccessStatusCode) {
-                    var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
-                    var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
-                    coopStatus.Success = true;
-                    return FixDepartedUsers(coopStatus, xrefs);
-                } else {
-                    //_logger.LogError("Error getting status for {coop}, {status}", CoopName, response.StatusCode);
-                    return null;
-                }
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
+                var coopStatus = GetFromAuthenticatedMessage<ContractCoopStatusResponse>(responseString);
+                coopStatus.Success = true;
+                return FixDepartedUsers(coopStatus, xrefs);
             } catch(ArgumentNullException ex) {
                 if(_logger != null) {
                     var paramName = ex.ParamName;
@@ -332,7 +303,7 @@ namespace EGG9000.Bot.EggIncAPI {
         }
 
         public static T GetFromAuthenticatedMessage<T>(byte[] authenticatedMessage) where T : IMessage, new() {
-            var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(authenticatedMessage);
+            var authMessageDecoded = AuthenticatedMessage.Parser.ParseFrom(authenticatedMessage);
 
             var message = new T();
             if(authMessageDecoded.Compressed) {
@@ -375,11 +346,10 @@ namespace EGG9000.Bot.EggIncAPI {
         }
 
         public static string GetHash(byte[] byteArray) {
-            var sha256Hash = SHA256.Create();
             var _magic = 0x3b9af419;
-            var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(sha256Hash.ComputeHash(Encoding.ASCII.GetBytes("THE SECRETS OF THE UNIVERSE WILL BE UNLOCKED"))));
+            var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(SHA256.HashData(Encoding.ASCII.GetBytes("THE SECRETS OF THE UNIVERSE WILL BE UNLOCKED"))));
             byteArray[_magic % byteArray.Length] = 0x1b;
-            return ByteArrayToString(sha256Hash.ComputeHash([.. byteArray.Concat(_salt)]));
+            return ByteArrayToString(SHA256.HashData([.. byteArray.Concat(_salt)]));
         }
 
         public static string ByteArrayToString(byte[] ba) {
@@ -391,9 +361,8 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
         public static async Task<EggIncFirstContactResponse> FirstContact(string UserId) {
-            if(UserId.StartsWith("EI"))
-                return await FirstContactNew(UserId);
-            //return new Ei.EggIncFirstContactResponse { Success = false, Error = "Error old ID" };
+            if(UserId.StartsWith("EI")) return await FirstContactNew(UserId);
+
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using var client = new HttpClient(handler);
@@ -402,10 +371,10 @@ namespace EGG9000.Bot.EggIncAPI {
                 var ms1 = new MemoryStream();
                 new EggIncFirstContactRequest {
                     ClientVersion = ClientVersion,
-                    Platform = Ei.Platform.Droid,
+                    Platform = Platform.Droid,
                     UserId = UserId
                 }.WriteTo(ms1);
-                //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
+
                 ms1.Position = 0;
                 var messageData = ms1.ToArray();
                 var ms2 = new MemoryStream();
@@ -413,49 +382,27 @@ namespace EGG9000.Bot.EggIncAPI {
 
                 ms2.Position = 0;
                 var sr = new StreamReader(ms2);
-
                 var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-
-
                 var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
-
-
 
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                 bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
-                HttpResponseMessage response;
+                var response = await client.PostAsync("ei/first_contact_secure", bac);
 
-                //try {
-                response = await client.PostAsync("ei/first_contact_secure", bac);
-                //} catch(Exception) {
-                //await Task.Delay(500);
-                //response = await client.PostAsync("ei/first_contact", bac);
-                //}
+                if (!response.IsSuccessStatusCode) return new EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
 
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
 
-                string r;
-                if(response.IsSuccessStatusCode) {
-                    r = await response.Content.ReadAsStringAsync();
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                var ms = new MemoryStream();
+                ms.Write(responseString);
+                ms.Position = 0;
 
-                    var ms = new MemoryStream();
-                    ms.Write(responseString);
-                    ms.Position = 0;
-
-
-
-                    var backup = Ei.EggIncFirstContactResponse.Parser.ParseFrom(ms);
-
-                    //var coop = Serializer.Deserialize<Ei.EggIncFirstContactResponse>(ms);
-                    backup.Success = true;
-                    return backup;
-                } else {
-                    return new EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
-                }
-
+                var backup = EggIncFirstContactResponse.Parser.ParseFrom(ms);
+                backup.Success = true;
+                return backup;
             } catch(Exception e) {
                 return new EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
             }
@@ -491,33 +438,23 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                 bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
-                HttpResponseMessage response;
+                var response = await client.PostAsync("ei/first_contact_secure", bac);
 
-                //try {
-                response = await client.PostAsync("ei/first_contact_secure", bac);
-                //} catch(Exception) {
-                //    await Task.Delay(500);
-                //    response = await client.PostAsync("ei/first_contact", bac);
-                //}
+                if (!response.IsSuccessStatusCode) return "Error";
 
-                if(response.IsSuccessStatusCode) {
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
-                    var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(responseString);
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                var authMessageDecoded = AuthenticatedMessage.Parser.ParseFrom(responseString);
 
-                    if(authMessageDecoded.Compressed) {
-                        using var outMemoryStream = new MemoryStream();
-                        using var outZStream = new ZOutputStream(outMemoryStream);
-                        using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
-                        CopyStream(inMemoryStream, outZStream);
-                        outZStream.finish();
-                        return Convert.ToBase64String(outMemoryStream.ToArray());
-                    } else {
-                        return authMessageDecoded.Message.ToString();
-                    }
+                if(authMessageDecoded.Compressed) {
+                    using var outMemoryStream = new MemoryStream();
+                    using var outZStream = new ZOutputStream(outMemoryStream);
+                    using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
+                    CopyStream(inMemoryStream, outZStream);
+                    outZStream.finish();
+                    return Convert.ToBase64String(outMemoryStream.ToArray());
                 } else {
-                    return "Error";
+                    return authMessageDecoded.Message.ToString();
                 }
-
             } catch(Exception) {
                 return "Error";
             }
@@ -532,7 +469,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 var ms1 = new MemoryStream();
                 var request = new EggIncFirstContactRequest {
                     ClientVersion = ClientVersion,
-                    Platform = Ei.Platform.Droid,
+                    Platform = Platform.Droid,
                     EiUserId = UserId,
                     DeviceId = UserId,
                     Username = "",
@@ -555,29 +492,13 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
                 bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
-                HttpResponseMessage response;
+                var response = await client.PostAsync("ei/first_contact_secure", bac); response = await client.PostAsync("ei/first_contact", bac);
+                if (!response.IsSuccessStatusCode) return new EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
 
-                //try {
-                response = await client.PostAsync("ei/first_contact_secure", bac);
-                //} catch(Exception) {
-                //    await Task.Delay(500);
-                //    response = await client.PostAsync("ei/first_contact", bac);
-                //}
-
-                string r;
-                if(response.IsSuccessStatusCode) {
-                    r = await response.Content.ReadAsStringAsync();
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
-
-
-                    var backup = GetFromAuthenticatedMessage<EggIncFirstContactResponse>(responseString);
-
-
-                    backup.Success = true;
-                    return backup;
-                } else {
-                    return new EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
-                }
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                var backup = GetFromAuthenticatedMessage<EggIncFirstContactResponse>(responseString);
+                backup.Success = true;
+                return backup;
 
             } catch(Exception e) {
                 return new EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
@@ -612,23 +533,9 @@ namespace EGG9000.Bot.EggIncAPI {
                 //    await Task.Delay(500);
                 //    response = await client.PostAsync("ei/first_contact", bac);
                 //}
-
-                string r;
-                if(response.IsSuccessStatusCode) {
-                    r = await response.Content.ReadAsStringAsync();
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
-
-
-                    var backup = GetFromAuthenticatedMessage<Backup>(responseString);
-
-
-                    //backup.Success = true;
-                    return backup;
-                } else {
-                    //return new Ei.EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
-                    return null;
-                }
-
+                if(!response.IsSuccessStatusCode) return null;
+                var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                return GetFromAuthenticatedMessage<Backup>(responseString);
             } catch(Exception) {
                 //return new Ei.EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
                 return null;

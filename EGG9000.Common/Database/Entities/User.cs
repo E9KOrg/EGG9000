@@ -25,7 +25,6 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset LastModified { get; set; } = DateTimeOffset.Now;
         public ulong DiscordId { get; set; }
         public string DiscordUsername { get; set; }
-        //public string EggIncNames { get; set; }
         public string _eggIncIds { get; set; }
         public DateTimeOffset LastSleepingNotification { get; set; }
         public ushort GuildCoops { get; set; }
@@ -42,20 +41,19 @@ namespace EGG9000.Common.Database.Entities {
         public bool SkipNoArtifacts { get; set; }
         public bool SkipNoPiggyDouble { get; set; }
         [NotMapped]
-        public List<Ei.RewardType> PingForRewards {
+        public List<RewardType> PingForRewards {
             get {
-                if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
-                    return new List<Ei.RewardType> { Ei.RewardType.UnknownReward };
-                }
-                var rewards = new List<Ei.RewardType>();
+                if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) return [RewardType.UnknownReward];
+                
+                var rewards = new List<RewardType>();
                 if(SkipNoPE)
-                    rewards.Add(Ei.RewardType.EggsOfProphecy);
+                    rewards.Add(RewardType.EggsOfProphecy);
                 if(SkipNoArtifacts) {
-                    rewards.Add(Ei.RewardType.Artifact);
-                    rewards.Add(Ei.RewardType.ArtifactCase);
+                    rewards.Add(RewardType.Artifact);
+                    rewards.Add(RewardType.ArtifactCase);
                 }
                 if(SkipNoPiggyDouble)
-                    rewards.Add(Ei.RewardType.PiggyMultiplier);
+                    rewards.Add(RewardType.PiggyMultiplier);
                 return rewards;
             }
         }
@@ -113,67 +111,14 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? LastFAQPosted { get; set; }
 
         [NotMapped]
-        private List<CustomBackup> _backups { get; set; }
-
-        [NotMapped]
-        private List<CustomBackup> Backups {
-            get {
-                return EggIncAccounts.Select(x => x.Backup).ToList();
-                //if(_backups != null)
-                //    return _backups;
-                //if(_CustomBackups == null)
-                //    return new List<CustomBackup>();
-                //_backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
-                //return _backups;
-            }
-            //set {
-            //    foreach(var account in EggIncAccounts) {
-            //        var backup = value.FirstOrDefault(x => x.EggIncId == account.Id);
-            //        if(backup is not null && backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && backup.Grade != account.LastGrade) {
-            //            var backupTime = DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime);
-            //            if(backupTime > account.PromotionTime) {
-            //                account.LastGrade = backup.Grade;
-            //                UpdateAccounts();
-            //            }
-            //        }
-            //    }
-            //    _backups = value;
-            //    _CustomBackups = MessagePackSerializer.Serialize(value, lz4Options);
-            //}
-        }
-
-        //public Ei.Contract.Types.PlayerGrade GetGrade(string EIID) {
-        //    var backup = Backups.FirstOrDefault(x => x.EggIncId == EIID);
-        //    var account = EggIncAccounts.FirstOrDefault(x => x.Id == EIID);
-        //    if(backup != null && account.PromotionTime > backup.GetLastBackupDateTime())
-        //        return account.LastGrade;
-        //    if(backup is not null && backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset)
-        //        return backup.Grade;
-        //    if(account is not null && account.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
-        //        return account.LastGrade;
-
-        //    if(backup is not null) {
-        //        var farms = new List<(float, Ei.Contract.Types.PlayerGrade)>();
-        //        farms.AddRange(backup.Farms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((float)x.TimeAccepted, x.Grade)));
-        //        farms.AddRange(backup.ArchivedFarms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((float)x.TimeAccepted, x.Grade)));
-        //        var latestFarms = farms.OrderByDescending(x => x.Item1).ToList();
-        //        if(latestFarms.Count > 0) {
-        //            return latestFarms.First().Item2;
-        //        }
-        //    }
-        //    return Ei.Contract.Types.PlayerGrade.GradeUnset;
-        //}
-
-        [NotMapped]
         private List<ShipDM> _shipDMs { get; set; }
 
         [NotMapped]
         public List<ShipDM> ShipDMs {
             get {
-                if(_shipDMs != null)
-                    return _shipDMs;
-                if(_shipDMsByte == null)
-                    return null;
+                if(_shipDMs != null) return _shipDMs;
+                else if(_shipDMsByte == null) return null;
+
                 _shipDMs = MessagePackSerializer.Deserialize<List<ShipDM>>(_shipDMsByte, lz4Options);
                 return _shipDMs;
             }
@@ -185,6 +130,62 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _contractRegistrationByte { get; set; }
 
+        /**
+         * Called when _accounts is accessed, and IS null, and needs to be refreshed from the database/from backups.
+         */
+        private List<EggIncAccount> HandleAccountsGet() {
+            try {
+                _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+            } catch(MessagePackSerializationException) {
+                _accounts = [];
+                return _accounts;
+            }
+
+            var needsUpdate = false;
+            if(_accounts is null) {
+                _accounts = [];
+                needsUpdate = true;
+            }
+
+            if(_CustomBackups?.Length > 0) {
+                var backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
+                _accounts.ForEach(x => {
+                    x.Backup = backups.FirstOrDefault(y => y.EggIncId == x.Id);
+                });
+                _CustomBackups = [];
+                needsUpdate = true;
+            }
+
+            _accounts.ForEach(account => {
+                if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
+                    account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
+                if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
+                    var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
+                    if(backupTime > account.PromotionTime) {
+                        account.LastGrade = account.Backup.Grade;
+                        needsUpdate = true;
+                    }
+                }
+                //Sync account's Device ID from backup
+                if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
+                    account.DeviceID = account.Backup.DeviceId;
+                }
+                //Sync Subscription Info from backup
+                if(account.Backup is not null) {
+                    if(account.Backup.SubscriptionEnds != account.SubscriptionEnds) {
+                        account.SubscriptionEnds = account.Backup.SubscriptionEnds;
+                        needsUpdate = true;
+                    }
+                    if(account.Backup.SubscriptionLevel != account.SubscriptionLevel) {
+                        account.SubscriptionLevel = account.Backup.SubscriptionLevel;
+                        needsUpdate = true;
+                    }
+                }
+            });
+            if(needsUpdate) UpdateAccounts();
+            return _accounts;
+        }
+
         [NotMapped]
         private List<EggIncAccount> _accounts = null;
         [NotMapped]
@@ -193,52 +194,12 @@ namespace EGG9000.Common.Database.Entities {
                 try {
                     if(_contractRegistrationByte is null) {
                         _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
-                    } else if(_accounts is not null) {
                         return _accounts;
-                    } else {
-                        try {
-                            _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
-                        } catch(MessagePackSerializationException) {
-                            _accounts = new List<EggIncAccount>();
-                            return _accounts;
-                        }
-                        bool needsUpdate = false;
-                        if(_accounts is null) {
-                            _accounts = new List<EggIncAccount>();
-                            needsUpdate = true;
-                        }
-
-                        if(_CustomBackups is not null && _CustomBackups.Length > 0) {
-                            var backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
-                            _accounts.ForEach(x => {
-                                x.Backup = backups.FirstOrDefault(y => y.EggIncId == x.Id);
-                            });
-                            _CustomBackups = new byte[0];
-                            needsUpdate = true;
-                        }
-
-                        _accounts.ForEach(account => {
-                            if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
-                                account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
-                            if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
-                                var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
-                                if(backupTime > account.PromotionTime) {
-                                    account.LastGrade = account.Backup.Grade;
-                                    needsUpdate = true;
-                                }
-                            }
-                            //Sync account's Device ID from backup
-                            if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
-                                account.DeviceID = account.Backup.DeviceId;
-                            }
-                        });
-                        if(needsUpdate) {
-                            UpdateAccounts();
-                        }
                     }
-                    return _accounts;
+                    if(_accounts is not null) return _accounts;
+                    else return HandleAccountsGet();
                 } catch(MessagePackSerializationException) {
-                    return new List<EggIncAccount>();
+                    return [];
                 } catch(Exception) { throw; }
             }
             set {
@@ -272,23 +233,13 @@ namespace EGG9000.Common.Database.Entities {
 
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
-        public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            return EggIncAccounts.Any(x => x.Id == proto.UserId);
-        }
-
-
-        public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
+        public void UpdateNameAndId(ContractCoopStatusResponse.Types.ContributionInfo proto) {
             var eggIncIds = EggIncAccounts;
             var nameId = eggIncIds.First(x => x.Id == proto.UserId);
+            if(!string.IsNullOrEmpty(nameId.Id)) return;
 
-            var update = false;
-            if(string.IsNullOrEmpty(nameId.Id)) {
-                nameId.Id = proto.UserId;
-                update = true;
-            }
-            if(update) {
-                UpdateAccounts();//Force JSON Update
-            }
+            nameId.Id = proto.UserId;
+            UpdateAccounts(); //Force JSON Update
         }
 
         public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
@@ -312,10 +263,8 @@ namespace EGG9000.Common.Database.Entities {
         public void RemoveID(string id) {
             var eggIncIds = EggIncAccounts;
             eggIncIds.RemoveAll(x => x.Id.ToLower() == id.ToLower());
-            UpdateAccounts();//Force JSON Update
+            UpdateAccounts(); //Force JSON Update
         }
-
-
 
         [MessagePackObject]
         public class ShipDM {
@@ -350,12 +299,12 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public void UpdateUserBreak() {
-            var accountsWithExpire = this.EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.Now).ToList();
+            var accountsWithExpire = EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.Now).ToList();
 
             if(accountsWithExpire.Count == 0) {
-                this.NextBreakExpire = null;
-            } else if(this.EggIncAccounts.Count > 0) {
-                this.NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
+                NextBreakExpire = null;
+            } else if(EggIncAccounts.Count > 0) {
+                NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
             }
 
         }
@@ -370,7 +319,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(2)]
         public DateTimeOffset OnBreakUntil { get; set; }
         [Key(3)]
-        public List<Ei.RewardType> AutoRegisterRewards { get; set; }
+        public List<RewardType> AutoRegisterRewards { get; set; }
         [Key(4)]
         public bool bool1 { get; set; } //Not being used
         [Key(5)]
@@ -412,7 +361,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(25)]
         public bool AFSMarkedClean { get; set; } = false;
         [Key(26)]
-        public List<Ei.RewardType> LeggacyAutoRegisterRewards { get; set; }
+        public List<RewardType> LeggacyAutoRegisterRewards { get; set; }
         [Key(27)]
         public bool PingForNCUltra { get; set; } = false;
         [Key(28)]
@@ -456,9 +405,7 @@ namespace EGG9000.Common.Database.Entities {
         public void BreakWarningSent(DBUser dbuser) {
             SentBreakWarning = true;
             dbuser.UpdateUserBreak();
-
         }
-
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
@@ -478,7 +425,6 @@ namespace EGG9000.Common.Database.Entities {
                 }
             }
             return Ei.Contract.Types.PlayerGrade.GradeUnset;
-
         }
 
 

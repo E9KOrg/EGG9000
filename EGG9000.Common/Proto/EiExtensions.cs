@@ -103,14 +103,60 @@ namespace Ei {
 
     public partial class LocalContract {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
+        
+        public Dictionary<PlayerGrade, GradeSpec> CustomGradeSpecs {
+            get {
+                if (_customGradeSpecs is not null) return _customGradeSpecs;
+
+                _customGradeSpecs = [];
+                if (Contract == null) return _customGradeSpecs; // Rare corrupted byte
+
+                _customGradeSpecs = Contract.GradeSpecs
+                    .Select((spec, index) => new { spec, index })
+                    .ToDictionary(
+                        x => (PlayerGrade)(x.index + 1),
+                        x => x.spec
+                    );
+                return _customGradeSpecs;
+            }
+        }
+        private Dictionary<PlayerGrade, GradeSpec> _customGradeSpecs;
+
+        public Dictionary<PlayerGrade, GoalSet> CustomGoalSets {
+            get {
+                if (_customGoalSets is not null) return _customGoalSets;
+                _customGoalSets = [];
+                if (Contract == null) return _customGoalSets; // Rare corrupted byte
+                _customGoalSets = Contract.GoalSets
+                    .Select((set, index) => new { set, index })
+                    .ToDictionary(
+                        x => (PlayerGrade)(x.index),
+                        x => x.set
+                    );
+                return _customGoalSets;
+            }
+
+        }
+        private Dictionary<PlayerGrade, GoalSet> _customGoalSets;
+
+        public uint GoalCount {
+            get {
+                if (_goalCount != 0) return _goalCount;
+                else if(Contract == null) return 0; // Rare corrupted byte
+                else if(Grade == PlayerGrade.GradeUnset || CustomGradeSpecs.Count <= 0) {
+                    if(CustomGoalSets.Count == 0) return 0;
+                    _goalCount = (uint)(CustomGoalSets[0].Goals.Count);
+                } else _goalCount = (uint)(CustomGradeSpecs[Grade].Goals.Count);
+                return _goalCount;
+            }
+        }
+        private uint _goalCount = 0;
+
+
         public bool Completed {
             get {
-                if(Contract == null) return false; // Rare corrupted byte
-                var targetGoals = Contract.GradeSpecs.Count > 0 && Grade != PlayerGrade.GradeUnset ?
-                    Contract.GradeSpecs[(int)(Grade - 1)].Goals.Count :
-                    (Contract.GoalSets.Any() ?
-                    Contract.GoalSets[0].Goals.Count : Contract.Goals.Count);
-                return NumGoalsAchieved == targetGoals;
+                if(Contract == null || GoalCount == 0) return false; // Rare corrupted byte
+                else return NumGoalsAchieved == GoalCount;
             }
         }
     }
