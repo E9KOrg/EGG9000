@@ -1,13 +1,12 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
-using EGG9000.Common.Helpers;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Bot.EggIncAPI {
+namespace EGG9000.Common.Helpers {
     public class Research {
 
         public class ResearchItem {

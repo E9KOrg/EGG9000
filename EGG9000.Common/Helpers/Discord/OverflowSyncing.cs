@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Database.Entities;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,7 +20,7 @@ namespace EGG9000.Common.Helpers.Discord {
             var overflowCommands = overflowServers.SelectMany(x => x.GetApplicationCommandsAsync().Result).ToList();
 
             foreach(var command in commands) {
-                var permissions = await ContractsAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", client_secret);
+                var permissions = await EggIncAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", client_secret);
 
                 if(permissions.Permissions is null)
                     continue;
@@ -43,7 +42,7 @@ namespace EGG9000.Common.Helpers.Discord {
 
                     var overflowCommand = overflowCommands.FirstOrDefault(x => x.Guild.Id == overflowServer.Id && x.Name == command.Name);
 
-                    var currentOverflowPermissions = await ContractsAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", client_secret);
+                    var currentOverflowPermissions = await EggIncAPI.DiscordRestGetBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", client_secret);
 
 
                     var match = true;
@@ -59,7 +58,7 @@ namespace EGG9000.Common.Helpers.Discord {
                     }
 
                     if(match == false) {
-                        var response = await ContractsAPI.DiscordRestPutUser<GuildApplicationCommandPermissions, GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", user_access_token, overflowPermissions);
+                        var response = await EggIncAPI.DiscordRestPutUser<GuildApplicationCommandPermissions, GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", user_access_token, overflowPermissions);
                         sb.AppendLine("Permissions for " + command.Name + " on " + overflowServer.Name);
                     } else {
                         sb.AppendLine("Skipping permissions for " + command.Name + " on " + overflowServer.Name);

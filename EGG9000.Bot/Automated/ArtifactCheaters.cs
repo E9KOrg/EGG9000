@@ -166,7 +166,7 @@ namespace EGG9000.Bot.Automated {
                         var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
                         var sendResponse = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.CheaterThread, new() {
                             Text = message,
-                            Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier),
+                            Embed = Commands.Informational.ArtifactCommands._inventoryEmbed(user, outlier),
                             File = image,
                             SendFile = true,
                         });
@@ -176,7 +176,7 @@ namespace EGG9000.Bot.Automated {
 
                         await sendResponse.ModifyAsync(x => {
                             x.Content = message;
-                            x.Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier, imageUrl);
+                            x.Embed = Commands.Informational.ArtifactCommands._inventoryEmbed(user, outlier, imageUrl);
                         });
                     }
 

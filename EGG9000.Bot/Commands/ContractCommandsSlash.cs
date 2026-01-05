@@ -2,7 +2,7 @@ using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -13,7 +13,6 @@ using EGG9000.Common.Services;
 using Ei;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 using System;
@@ -26,7 +25,6 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 using static Ei.Contract.Types;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 using Exception = System.Exception;
 
@@ -70,7 +68,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
-            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            var status = await EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status is null) { //Safeguarding
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is unresponsive, please try again in a minute or two."); });
@@ -103,11 +101,11 @@ namespace EGG9000.Bot.Commands {
             await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(2);
-            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            status = await EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status.Participants.Count == contract.MaxUsers) {
                 logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
-                var res3 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+                var res3 = await EggIncAPI.Send(new Ei.KickPlayerCoopRequest {
                     ClientVersion = 24,
                     ContractIdentifier = coop.ContractID,
                     CoopIdentifier = coop.Name,
@@ -115,7 +113,7 @@ namespace EGG9000.Bot.Commands {
                 }, coop.CreatorID);
 
                 await Task.Delay(2);
-                status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+                status = await EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name);
             }
 
 
@@ -149,8 +147,8 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
+            var response = await EggIncAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                ClientVersion = EggIncAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = true,
@@ -234,7 +232,7 @@ namespace EGG9000.Bot.Commands {
                 var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
 
                 //Fetch a new backup so they don't lose access to this channel when role update happens
-                var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                var rawBackup = await EggIncAPI.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
 
                 if((uint)customBackup.Grade != newgrade) {
@@ -415,8 +413,8 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
+            var response = await EggIncAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                ClientVersion = EggIncAPI.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = false,
@@ -481,7 +479,7 @@ namespace EGG9000.Bot.Commands {
 
             var contractChannel = (await _client.GetChannelAsync(guildContract.DiscordChannelId) as SocketTextChannel);
 
-            var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
+            var status = await EggIncAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
             if(status != null && status.Success) {
                 var coop = new Coop {
                     ContractID = guildContract.ContractID,
@@ -533,7 +531,7 @@ namespace EGG9000.Bot.Commands {
         //            break;
         //    }
 
-        //    var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
+        //    var status = await EggIncAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
         //    if(status != null && status.Success) {
 
         //        var coop = new Coop {
@@ -915,7 +913,7 @@ namespace EGG9000.Bot.Commands {
                     var customEggs = await db.GetCustomEggsAsync();
                     var coop = newCoopResponse.FoundCoop;
                     var users = coop.UserCoopsXrefs.Select(c => c.User).ToList().SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-                    var statusReponse = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+                    var statusReponse = await EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name);
                     if(statusReponse is null || !statusReponse.Success || statusReponse.Contributors is null) {
                         statusReponse = coop.LastStatusUpdate; //Fallback to last known status
                     }

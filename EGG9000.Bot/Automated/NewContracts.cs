@@ -1,10 +1,10 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.API;
 using EGG9000.Common.Helpers;
 
 using Microsoft.EntityFrameworkCore;
@@ -18,7 +18,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordExtensions;
 using Contract = EGG9000.Common.Database.Entities.Contract;
@@ -41,7 +41,7 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
-            var contractsResponse = await ContractsAPI.GetPeriodicalsAsync();
+            var contractsResponse = await EGG9000.Common.API.EggIncAPI.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
                 _logger.LogWarning("⚠️ERROR: Invalid Contract Response");

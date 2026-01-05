@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
@@ -21,9 +20,10 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
+using EGG9000.Common.API;
 
 namespace EGG9000.Bot.Commands {
     public static class MiscCommandsSlash {
@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Commands {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
-                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup, backup);
+                backup = new CustomBackup((await EggIncAPI.FirstContact(id.Id)).Backup, backup);
                 if(dbUser.EggIncAccounts.Count > 1) {
                     builder.AddField("――――――――――――――――――", $"**{backup.UserName}**");
                 }
@@ -119,7 +119,7 @@ namespace EGG9000.Bot.Commands {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
-                backup = new CustomBackup((await ContractsAPI.FirstContact(id.Id)).Backup, backup);
+                backup = new CustomBackup((await EggIncAPI.FirstContact(id.Id)).Backup, backup);
                 var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
 
                 var nextRankText = "";

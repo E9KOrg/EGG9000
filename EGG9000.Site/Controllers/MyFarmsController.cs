@@ -1,7 +1,6 @@
 ﻿using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
+using EGG9000.Common.API;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
@@ -20,8 +19,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-
-using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
@@ -69,14 +66,9 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
-
-
             Console.WriteLine("ViewUser");
             var times = new TimingsFactory(_logger);
             times.Start();
-
-
-
 
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
@@ -85,7 +77,6 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
-            //var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
 
             times.Set("User prep");
@@ -94,8 +85,7 @@ namespace EGG9000.Site.Controllers {
             var getBackupsTask = GetBackups(user, scoring);
 
             var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
-
-            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
+            var contracts = await _db.Contracts.AsQueryable().ToListAsync();
 
             var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
@@ -105,14 +95,12 @@ namespace EGG9000.Site.Controllers {
             var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
             var EpicResearchConfig = Root.Get().epicResearchItems;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
-            var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
+            var uncompletedPes = GetUncompletedPEContracts(user, contracts);
 
-            List<DBCustomEgg> dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
+            var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
                 return _db.CustomEggs.ToList();
             });
-
-            //var dbCustomEggs = await _db.GetCustomEggsAsync();
 
             times.Set("Pre backups");
             var update = await getBackupsTask;
@@ -128,21 +116,16 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(String.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
+            return View("Index", new MyFarmsModel(user, contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
 
         private async Task<bool> GetBackups(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
             var update = false;
 
             foreach(var account in user.EggIncAccounts) {
-                var rawBackup = await ContractsAPI.FirstContact(account.Id);
-                //rawBackups.Add(rawBackup.Backup);
+                var rawBackup = await EggIncAPI.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
-                //var json = JsonSerializer.Serialize(customBackup);
-                //var json = Newtonsoft.Json.JsonConvert.SerializeObject(customBackup);
-                //var customBackupAfterJson = Newtonsoft.Json.JsonConvert.DeserializeObject<CustomBackup>(json);
 
-                //var response = await _apiLink.GetBackup(accounts.Id);
                 Console.WriteLine($"Getting backups for {account.Name}");
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
@@ -150,12 +133,10 @@ namespace EGG9000.Site.Controllers {
                 }
                 //Console.WriteLine(customBackup.SpaceMissions.Count);
 
-                MyContracts scores = _cache.GetOrCreate($"{account.Id}-MyContracts", entry => {
+                var scores = _cache.GetOrCreate($"{account.Id}-MyContracts", entry => {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-                    return ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id).GetAwaiter().GetResult();
+                    return EggIncAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id).GetAwaiter().GetResult();
                 });
-
-                //var scores = await ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
 
                 scoring.Add((account.Id, scores));
             }

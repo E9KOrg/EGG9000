@@ -1,6 +1,5 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;

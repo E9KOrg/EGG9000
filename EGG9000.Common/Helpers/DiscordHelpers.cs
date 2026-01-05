@@ -2,17 +2,15 @@
 using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
+using EGG9000.Bot;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
@@ -24,7 +22,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public static class DiscordHelpersExt {
         public static string GetName(this IGuildUser user) {
             return string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
@@ -445,7 +443,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckOudatedGameRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var gameOutdatedRole = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild);
             if(gameOutdatedRole != null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < ContractsAPI.ClientVersion);
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < EGG9000.Common.API.EggIncAPI.ClientVersion);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == gameOutdatedRole.Id);
 
                 if(!hasRole && needsRole) {

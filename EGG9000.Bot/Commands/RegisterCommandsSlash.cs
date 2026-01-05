@@ -7,8 +7,7 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
+using EGG9000.Common.API;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -158,7 +157,7 @@ namespace EGG9000.Bot.Commands {
 
 
             await Task.Delay(2);
-            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            var status = await EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status.Participants.Count < contract.MaxUsers) {
                 logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
@@ -263,7 +262,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
                 return;
             }
-            var response = await ContractsAPI.FirstContact(eggincid); // await apiLink.GetBackup(eggincid);
+            var response = await EggIncAPI.FirstContact(eggincid); // await apiLink.GetBackup(eggincid);
             var backup = new CustomBackup(response.Backup);
             if(backup == null || backup.Farms == null || backup.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
@@ -302,7 +301,7 @@ namespace EGG9000.Bot.Commands {
             else user.EggIncAccounts = [newAccount];
 
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, account?.Backup ?? null); //Pass current backup to maintain username where possible
+                var customBackup = new CustomBackup((await EggIncAPI.FirstContact(account.Id))?.Backup, account?.Backup ?? null); //Pass current backup to maintain username where possible
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -360,7 +359,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var firstContactResponse = await ContractsAPI.FirstContact(eggincid); // await apiLink.GetBackup(eggincid);
+            var firstContactResponse = await EggIncAPI.FirstContact(eggincid); // await apiLink.GetBackup(eggincid);
             var backup = new CustomBackup(firstContactResponse.Backup);
             if(backup?.Farms == null || backup.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
@@ -556,7 +555,7 @@ namespace EGG9000.Bot.Commands {
             //Pull a fresh backup before userstatus
             if(pullFreshBackup) {
                 foreach(var account in dbuser.EggIncAccounts) {
-                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    var rawBackup = await EggIncAPI.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
@@ -687,8 +686,8 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "None" : account.Guild, true);
                 }
 
-                if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
-                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {ContractsAPI.ClientVersion} ⚠️");
+                if(backup.ClientVersion < EggIncAPI.ClientVersion && backup.ClientVersion > 0) {
+                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {EggIncAPI.ClientVersion} ⚠️");
                 }
 
                 /*

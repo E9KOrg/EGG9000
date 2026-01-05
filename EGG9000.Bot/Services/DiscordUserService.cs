@@ -1,27 +1,23 @@
 ﻿
 using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot;
 using EGG9000.Bot.Commands;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
+using EGG9000.Common.API;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
-using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static System.Collections.Specialized.BitVector32;
 
-namespace EGG9000.Common.Services {
+namespace EGG9000.Bot.Services {
 
     public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) : IHostedService {
 
@@ -170,7 +166,7 @@ namespace EGG9000.Common.Services {
                     return;
                 }
                 dbuser.EggIncAccounts.ForEach(async account => {
-                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    var rawBackup = await EggIncAPI.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) return;
                     var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                     account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;

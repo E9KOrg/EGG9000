@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Bot.Automated {

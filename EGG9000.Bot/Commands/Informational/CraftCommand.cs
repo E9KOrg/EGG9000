@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -90,7 +89,7 @@ namespace EGG9000.Bot.Commands {
                 return null;
             }
 
-            backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, backup);
+            backup = new CustomBackup((await EggIncAPI.FirstContact(account.Id)).Backup, backup);
 
             var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
 
@@ -183,7 +182,7 @@ namespace EGG9000.Bot.Commands {
                 return null;
             }
 
-            backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, backup);
+            backup = new CustomBackup((await EggIncAPI.FirstContact(account.Id)).Backup, backup);
             stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
             stringBuilder.AppendLine();
 

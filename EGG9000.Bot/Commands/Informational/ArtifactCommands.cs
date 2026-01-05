@@ -1,6 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -17,7 +17,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public static class ArtifactCommands {
 
         [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
@@ -66,7 +66,7 @@ namespace EGG9000.Bot.Commands {
 
         public static async Task _viewInventory(FauxCommand command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
             //Pull and save a fresh backup
-            var backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, account.Backup ?? null);
+            var backup = new CustomBackup((await EggIncAPI.FirstContact(account.Id)).Backup, account.Backup ?? null);
             account.Backup.ArtifactHall = backup.ArtifactHall;
             user.UpdateAccounts();
             await db.SaveChangesAsync();

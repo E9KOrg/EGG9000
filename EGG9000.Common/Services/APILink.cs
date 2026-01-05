@@ -1,6 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.SharedModels;
@@ -189,13 +189,13 @@ namespace EGG9000.Common.Services {
                                 }
                                 if(!backupResponse.Backup.EmptyBackup) {
                                     if(_ReportUpdatedClientVersion &&
-                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion &&
+                                        backupResponse.Backup.ClientVersion > EggIncAPI.ClientVersion &&
                                         backupResponse.Backup.ClientVersion > _LastClientVersion) {
                                         _LastClientVersion = backupResponse.Backup.ClientVersion;
-                                        _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
+                                        _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", EggIncAPI.ClientVersion, _LastClientVersion);
                                         
-                                        await _discord.SendDMToKendrome($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
-                                        ContractsAPI.ClientVersion = (uint)_LastClientVersion;
+                                        await _discord.SendDMToKendrome($"ClientVersion Update from {EggIncAPI.ClientVersion} to {_LastClientVersion}");
+                                        EggIncAPI.ClientVersion = (uint)_LastClientVersion;
                                     }
 
                                     backups.Add(backupResponse.Backup);

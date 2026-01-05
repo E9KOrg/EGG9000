@@ -2,7 +2,7 @@
 using Discord.Rest;
 using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -24,11 +24,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
-
-using NuGet.Versioning;
 
 using System;
 using System.Collections.Generic;
@@ -68,8 +65,8 @@ namespace EGG9000.Site.Controllers {
 
             //var id = user.Backups.First().EggIncId;
 
-            //var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-            //    ClientVersion = ContractsAPI.ClientVersion,
+            //var r = await EggIncAPI.Send(new Ei.KickPlayerCoopRequest {
+            //    ClientVersion = EggIncAPI.ClientVersion,
             //    ContractIdentifier = "spring-break-2022",
             //    CoopIdentifier = "earlydancer51",
             //    PlayerIdentifier = "EI6427300328898560",
@@ -94,7 +91,7 @@ namespace EGG9000.Site.Controllers {
 
 
 
-            var coopStatus = await ContractsAPI.GetCoopStatus(contractID, wrongcoopcode.ToLower().Trim());
+            var coopStatus = await EggIncAPI.GetCoopStatus(contractID, wrongcoopcode.ToLower().Trim());
             if(coopStatus is null) {
                 //await command.ModifyOriginalResponseAsync(m => m.Content = $"⚠️ERROR: Unable to find co-op {wrongcoopcode}");
                 //return;
@@ -113,8 +110,8 @@ namespace EGG9000.Site.Controllers {
             }
 
             if(coopStatus.Public) {
-                var r2 = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                    ClientVersion = ContractsAPI.ClientVersion,
+                var r2 = await EggIncAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                    ClientVersion = EggIncAPI.ClientVersion,
                     ContractIdentifier = contractID,
                     CoopIdentifier = wrongcoopcode,
                     Public = false,
@@ -122,8 +119,8 @@ namespace EGG9000.Site.Controllers {
                 }, coopStatus.CreatorId);
             }
 
-            var r = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
+            var r = await EggIncAPI.Send(new Ei.KickPlayerCoopRequest {
+                ClientVersion = EggIncAPI.ClientVersion,
                 ContractIdentifier = contractID,
                 CoopIdentifier = wrongcoopcode,
                 PlayerIdentifier = participant.UserId,
@@ -132,8 +129,8 @@ namespace EGG9000.Site.Controllers {
             }, coopStatus.CreatorId);
 
             if(coopStatus.Public)
-                await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                    ClientVersion = ContractsAPI.ClientVersion,
+                await EggIncAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                    ClientVersion = EggIncAPI.ClientVersion,
                     ContractIdentifier = contractID,
                     CoopIdentifier = wrongcoopcode,
                     Public = true,
@@ -323,7 +320,7 @@ namespace EGG9000.Site.Controllers {
             var dbCustomizations = await _db.EventCustomizations.ToListAsync();
             var eventTypes = dbCustomizations.Select(x => x.Type).ToList();
 
-            var periodicalsResponse = await ContractsAPI.GetPeriodicalsAsync();
+            var periodicalsResponse = await EggIncAPI.GetPeriodicalsAsync();
             var periodicalsTypes = periodicalsResponse.Events.Events.Where(x => !eventTypes.Contains(x.Type)).Select(x => x.Type).ToList();
             eventTypes.AddRange(periodicalsTypes);
 
@@ -1598,8 +1595,8 @@ music
 
         public async Task<IActionResult> CheckCoopCreators() {
             var creators = new List<(string EggIncId, PlayerGrade Grade, string Name, ContractPlayerInfo Info)>();
-            foreach(var a in ContractsAPI.CoopCreatorIds) {
-                var r = await ContractsAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), a.EggIncId);
+            foreach(var a in EggIncAPI.CoopCreatorIds) {
+                var r = await EggIncAPI.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), a.EggIncId);
                 creators.Add((a.EggIncId, a.Grade, a.Name, r));
             }
 

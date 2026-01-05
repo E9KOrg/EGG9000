@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
+using EGG9000.Common.API;
 using EGG9000.Common.Services;
 using EGG9000.Common.SharedModels;
 using Microsoft.AspNetCore.Mvc;
@@ -48,27 +48,17 @@ namespace EGG9000.APILinkSite.Controllers {
 
         private async Task<BackupResponse> _getBackup(BackupRequest request) {
             Ei.EggIncFirstContactResponse backup;
-            //var hasCache = _cache.TryGetValue(request.UserId, out backup);
-            //if(hasCache && backup.Backup?.Settings?.LastBackupTime == request.LastBackupTime) {
-            //    //_logger.LogInformation($"Unchanged: ID {request.UserId} LastBackTime {request.LastBackupTime}");
-            //    return new Ei.EggIncFirstContactResponse { Unchanged = true, EiUserId = request.UserId };
-            //}
 
-            backup = await ContractsAPI.FirstContact(request.UserId);
+            backup = await EggIncAPI.FirstContact(request.UserId);
             
             if(backup.Backup?.Settings != null && (float)backup.Backup.Settings.LastBackupTime == request.LastBackupTime) {
                 return new BackupResponse { Unchanged = true, EggIncId = request.UserId };
             }
             backup.EiUserId = request.UserId;
 
-            //_cache.Set(request.UserId, backup, DateTimeOffset.Now.AddDays(7));
-            //_logger.LogInformation($"Changed: ID {request.UserId} LastBackTime {request.LastBackupTime} NewLastBackupTime {backup.Backup?.Settings?.LastBackupTime}");
-            //_bugsnag.Breadcrumbs.Leave($"Attempting to get custombackup for {request.UserId}");
-
             try {
-                var customBackup = new CustomBackup(backup.Backup);
                 return new BackupResponse {
-                    Backup = customBackup,
+                    Backup = new CustomBackup(backup.Backup),
                     EggIncId = request.UserId, Unchanged = false
                 };
             } catch (Exception e) {

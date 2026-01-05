@@ -1,6 +1,5 @@
 ﻿using Cronos;
-
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.API;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -56,7 +55,7 @@ namespace EGG9000.Bot.Automated {
                         try {
 
                             //Get every score of the user's contracts
-                            var scores = await ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
+                            var scores = await EggIncAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
 
                             if(scores?.Contracts is null) {
                                 _logger.LogWarning("Unable to get scores for {user} {account}", user.DiscordUsername, account.Id);

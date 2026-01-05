@@ -1,6 +1,5 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
@@ -16,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace EGG9000.Bot.Jobs {
 
@@ -81,10 +79,10 @@ namespace EGG9000.Bot.Jobs {
 
         private async Task CheckSubscription(ApplicationDbContext db, DiscordSocketClient _client, DBUser user, EggIncAccount account, Guild dbGuild, SocketGuild guild) {
             try {
-                var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                subscriptionStatus ??= await await Task.Delay(250).ContinueWith(async x => await ContractsAPI.GetUserSubscription(account.Id));
+                var subscriptionStatus = await EGG9000.Common.API.EggIncAPI.GetUserSubscription(account.Id);
+                subscriptionStatus ??= await await Task.Delay(250).ContinueWith(async x => await EGG9000.Common.API.EggIncAPI.GetUserSubscription(account.Id));
                 if (subscriptionStatus is null) {
-                    _logger.LogWarning("Null response from ContractsAPI.GetUserSubscription for account ID {accountId}", account.Id);
+                    _logger.LogWarning("Null response from EggIncAPI.GetUserSubscription for account ID {accountId}", account.Id);
                     return;
                 }
 

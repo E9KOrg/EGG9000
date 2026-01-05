@@ -12,7 +12,6 @@ using static EGG9000.Common.Helpers.CreateCoopsV2;
 using Humanizer;
 
 using MassTransit.Initializers;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,26 +21,20 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using static EGG9000.Common.Helpers.Prefarm;
-using System.Collections.Concurrent;
 using MassTransit.Internals;
-using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
-using EGG9000.Bot.Services;
-using EGG9000.Bot.EggIncAPI;
-using MassTransit;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
-        private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
-        private readonly Dictionary<CreatorInfo, DateTimeOffset> CreatorLastUsed = new();
+        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
+        private readonly Dictionary<CreatorInfo, DateTimeOffset> CreatorLastUsed = [];
         public class CreatorInfo {
             public string EggIncId { get; set; }
             public string ContractId { get; set; }
@@ -151,7 +144,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
                         if(!coop.AddedFromBackup) {
-                            var creator = ContractsAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
+                            var creator = EGG9000.Common.API.EggIncAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
                             await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default);
 
                             if(creator != default) {

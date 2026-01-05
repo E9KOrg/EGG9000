@@ -6,8 +6,6 @@ using EGG9000.Common.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using static EGG9000.Common.Database.CustomFarm;
 using static Ei.GameModifier.Types;
@@ -31,7 +29,7 @@ namespace EGG9000.Common.Helpers {
                 });
 
             // Fill in any missing game dimensions (i.e., dimensions without colleggtibles):
-            foreach(GameDimension dimension in Enum.GetValues(typeof(GameDimension))) {
+            foreach(var dimension in Enum.GetValues<GameDimension>()) {
                 if(!dimensionColleggtibleEffect.ContainsKey(dimension)) dimensionColleggtibleEffect[dimension] = 1.0;
             }
 

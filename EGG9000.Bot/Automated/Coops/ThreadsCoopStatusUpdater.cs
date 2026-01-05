@@ -3,7 +3,6 @@ using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -19,7 +18,6 @@ using MassTransit.Testing;
 using MassTransit.Util;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -31,12 +29,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
@@ -227,30 +224,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
                 timings.Set("Got status");
-
-
-                ////** Handle coop bot being started
-                //if(!coop.AddedFromBackup && !coop.SuccessfullyStarted && (statusReponse.Status is null || statusReponse.Status.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.CoopNotFound)) {
-                //    var messages = await (coopThread as SocketTextChannel).GetMessagesAsync().FlattenAsync();
-                //    _logger.LogCritical("Status is null and there are no channel messages for co-op: {coopName}, attempting to start.", coop.Name);
-                //    string EIID = null;
-                //    var random = new Random();
-                //    foreach(var account in coop.UserCoopsXrefs.OrderBy(x => random.Next())) {
-                //        var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.EggIncId);
-                //        if(r.Grade == (Ei.Contract.Types.PlayerGrade)coop.League) {
-                //            EIID = account.EggIncId;
-                //            break;
-                //        }
-                //    }
-
-                //    var result = await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coop.Name, coop.Contract.Details.LengthSeconds, EIID, coop.AnyLeague);
-                //    _logger.LogInformation($"Attempting to create coop for {coop.Name}, Result: {result}");
-                //    return;
-                //}
                 var status = statusReponse.Status;
 
                 if(status is null) {
-                    _logger.LogWarning($"Status for {coop.Name} is null");
+                    _logger.LogWarning("Status for {coopName} is null", coop.Name);
                     return;
                 }
 
@@ -273,10 +250,10 @@ namespace EGG9000.Bot.Automated.Coops {
                     //Attempt to fix not started co-op
                     _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
 
-                    var joinResponse = await ContractsAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+                    var joinResponse = await EGG9000.Common.API.EggIncAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
-                        UserId = coop.CreatorID, ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
+                        UserId = coop.CreatorID, ClientVersion = EGG9000.Common.API.EggIncAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
                     }, coop.CreatorID, false);
 
 
@@ -289,15 +266,15 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     };
 
-                    var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
+                    var response = await EGG9000.Common.API.EggIncAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
 
 
                     await Task.Delay(1000, cancellationToken);
-                    var checkStatus = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), coop.CreatorID, cancellationToken: cancellationToken);
+                    var checkStatus = await EGG9000.Common.API.EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), coop.CreatorID, cancellationToken: cancellationToken);
 
 
-                    var kickPlayer = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
-                        ClientVersion = ContractsAPI.ClientVersion,
+                    var kickPlayer = await EGG9000.Common.API.EggIncAPI.Send(new Ei.KickPlayerCoopRequest {
+                        ClientVersion = EGG9000.Common.API.EggIncAPI.ClientVersion,
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
                         PlayerIdentifier = coop.CreatorID,
@@ -355,8 +332,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
                 //** Handle creation account not being kicked from co-op
-                if(coopDetails.CoopParticipants.Any(x => x.Account?.Id == ContractsAPI.UserId) && !coop.FinishedOrFailedOrExpired()) {
-                    var success = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest { Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = ContractsAPI.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = ContractsAPI.UserId, RequestingUserId = ContractsAPI.UserId, Rinfo = ContractsAPI.GetInfo(ContractsAPI.UserId) }, ContractsAPI.UserId);
+                if(coopDetails.CoopParticipants.Any(x => x.Account?.Id == EGG9000.Common.API.EggIncAPI.UserId) && !coop.FinishedOrFailedOrExpired()) {
+                    var success = await EGG9000.Common.API.EggIncAPI.Send(new Ei.KickPlayerCoopRequest { Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EGG9000.Common.API.EggIncAPI.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = EGG9000.Common.API.EggIncAPI.UserId, RequestingUserId = EGG9000.Common.API.EggIncAPI.UserId, Rinfo = EGG9000.Common.API.EggIncAPI.GetInfo(EGG9000.Common.API.EggIncAPI.UserId) }, EGG9000.Common.API.EggIncAPI.UserId);
                     _logger.LogInformation("Attempted to kick co-op creator to free up spot for {co-op}, it returned {status}", coop.Name, success.ToString());
                 }
 
@@ -1017,7 +994,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         highestEBMessage = $"**\nHighest EB**: {highestEB.DBUser.DiscordUsername} at {highestEB.Backup.EarningsBonus.ToEggString()} {(usersNotJoined.Any(x => x?.EggIncId == highestEB.Backup.EggIncId) ? "has not joined yet." : "**has joined!**")}";
 
                     var createdByMessage = "";
-                    if(!string.IsNullOrEmpty(coop.CreatorID) && !ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID)) {
+                    if(!string.IsNullOrEmpty(coop.CreatorID) && !EGG9000.Common.API.EggIncAPI.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID)) {
                         var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
                         if(creator != null) {
                             var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
@@ -1140,7 +1117,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private async Task CheckForCoopCreatorStillIn(Coop coop, Ei.ContractCoopStatusResponse status) {
-            if(!ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID))
+            if(!EGG9000.Common.API.EggIncAPI.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID))
                 return;
             if(status.Contributors.Any(x => x.UserId == coop.CreatorID)) {
                 _logger.LogError("Coop creator {creator} is still in coop {coop}", coop.CreatorID, coop.Name);
@@ -1400,7 +1377,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             TimeSpan.FromSeconds(7)
                ]);
 
-            var statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, cancellationToken: cancellationToken));
+            var statusTask = policy.Execute(async () => await EGG9000.Common.API.EggIncAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, cancellationToken: cancellationToken));
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);

@@ -1,6 +1,6 @@
 ﻿using Discord;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
+using EGG9000.Common.API;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -8,21 +8,18 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.Services;
 using Ei;
-using Humanizer.Localisation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.MissionInfo.Types;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public static class ForumlaCommands {
         public enum MERChoice {
             [Discord.Interactions.ChoiceDisplay("Current")] Current = 0,
@@ -163,7 +160,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         private static async Task<Embed> LLCCalculate(EggIncAccount account, string userName, IMemoryCache _cache, ILogger _logger) {
-            var backup = await ContractsAPI.FirstContact(account.Id);
+            var backup = await EggIncAPI.FirstContact(account.Id);
 
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is null || account?.Backup?.ArtifactHall is null) {
                 return EmbedError($"Unable to retrieve backup, please try again later.");

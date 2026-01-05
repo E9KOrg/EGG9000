@@ -23,29 +23,29 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EGG9000.Common.EggIncAPI {
+namespace EGG9000.Common.API {
 
-    public class ContractsAPI {
+    public class EggIncAPI {
         //public const string BaseAddressNew = "https://ctx-dot-auxbrainhome.appspot.com/";
         //static string BaseAddressOld = "http://afx-2-dot-auxbrainhome.appspot.com/";
         public const string BaseAddressNew = "https://www.auxbrain.com/";
         //public const string UserId = "EI5223299518300160";
         public const string UserId = "EI6145601714651136";
 
-        public static readonly List<(string EggIncId, Ei.Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = new() {
+        public static readonly List<(string EggIncId, Ei.Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [
             //("EI5697922697920512", Ei.Contract.Types.PlayerGrade.GradeB, "Kendrome mini-2"),
             //("EI6145601714651136", Ei.Contract.Types.PlayerGrade.GradeAa, "Grae Mini"),
             //("EI5138581853306880", Ei.Contract.Types.PlayerGrade.GradeAaa, "Melina"),
             //("EI5223299518300160", Ei.Contract.Types.PlayerGrade.GradeAa, "Kendrome mini-1")
-        };
+        ];
 
         public static uint ClientVersion { get; set; } = 71;
 
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.34.1",
-                Build = "111300",
+                Version = "1.35.4",
+                Build = "111331",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en",
@@ -100,7 +100,6 @@ namespace EGG9000.Common.EggIncAPI {
 
                 if(response.IsSuccessStatusCode) {
                     var r = await response.Content.ReadAsStringAsync();
-
                     return true;
                 } else {
                     return false;
