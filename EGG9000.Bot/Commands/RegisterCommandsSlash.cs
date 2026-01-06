@@ -249,14 +249,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, apiLink, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
+        public static async Task UpdateID(DiscordSocketClient _client, FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(_client, command, db, apiLink, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, apiLink, eggincid, targetUser, accountnumber);
+        public static async Task UpdateID(DiscordSocketClient _client, FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(_client, command, db, apiLink, eggincid, targetUser, accountnumber);
         }
-        public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
+        public static async Task _UpdateID(DiscordSocketClient _client, FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             await command.DeferAsync(ephemeral: true);
             if(targetUser is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
@@ -273,16 +273,16 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
 
-            if(accountnumber == 0 && user.EggIncAccounts.Count > 1) {
+            if(accountnumber == 0 && dbUser.EggIncAccounts.Count > 1) {
                 var count = 1;
-                var accounts = string.Join("\n", user.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
+                var accounts = string.Join("\n", dbUser.EggIncAccounts.Select(x => $"{count++} {x.Backup?.UserName} EB: {x.Backup?.EarningsBonus.ToEggString()}"));
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User has multiple accounts, please specifiy which account `/updateid {{eggincid}} {{accountnumber}}`\n{accounts}"); });
                 return;
             }
 
-            var existingAccount = user.EggIncAccounts.Count > 1 ? user.EggIncAccounts[accountnumber - 1] : user.EggIncAccounts.First();
+            var existingAccount = dbUser.EggIncAccounts.Count > 1 ? dbUser.EggIncAccounts[accountnumber - 1] : dbUser.EggIncAccounts.First();
             var newAccount = new EggIncAccount {
                 Id = backup.EggIncId,
                 Group = existingAccount.Group,
@@ -297,19 +297,23 @@ namespace EGG9000.Bot.Commands {
                 DoTwoToThreeContracts = existingAccount.DoTwoToThreeContracts,
             };
 
-            if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
-            else user.EggIncAccounts = [newAccount];
+            if(dbUser.EggIncAccounts.Count > 1) dbUser.EggIncAccounts[accountnumber - 1] = newAccount;
+            else dbUser.EggIncAccounts = [newAccount];
 
-            foreach(var account in user.EggIncAccounts) {
+            var socketGuild = _client.Guilds.FirstOrDefault(x => x.Id == dbUser.GuildId);
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == socketGuild.Id);
+
+            foreach(var account in dbUser.EggIncAccounts) {
                 var customBackup = new CustomBackup((await EggIncAPI.FirstContact(account.Id))?.Backup, account?.Backup ?? null); //Pass current backup to maintain username where possible
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
+                    await account.UpdateSubscriptionFromCustomBackup(_client, socketGuild, dbGuild, dbUser);
                 }
             }
-            user.UpdateAccounts();
+            dbUser.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, user, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("EID Updated")).ToArray(); });
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = AccountsString(db, dbUser, apiLink, false).Result.Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("EID Updated")).ToArray(); });
 
         }
 
@@ -542,19 +546,22 @@ namespace EGG9000.Bot.Commands {
         }
         public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
             await command.DeferAsync(ephemeral: !showInChannel);
-            var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser == null) {
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
                 return;
             }
-            if(dbuser.EggIncAccounts == null || dbuser.EggIncAccounts.Count == 0) {
+            if(dbUser.EggIncAccounts == null || dbUser.EggIncAccounts.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No registered accounts found for <@{user.Id}>"); });
                 return;
             }
 
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbUser.GuildId);
+
             //Pull a fresh backup before userstatus
             if(pullFreshBackup) {
-                foreach(var account in dbuser.EggIncAccounts) {
+                var socketGuild = _client.Guilds.FirstOrDefault(x => x.Id == dbUser.GuildId);
+                foreach(var account in dbUser.EggIncAccounts) {
                     var rawBackup = await EggIncAPI.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
@@ -563,43 +570,42 @@ namespace EGG9000.Bot.Commands {
                     var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                     if(customBackup?.Farms is not null) {
                         account.Backup = customBackup;
+                        await account.UpdateSubscriptionFromCustomBackup(_client, socketGuild, dbGuild, dbUser);
                     }
                 }
-                dbuser.UpdateAccounts();
+                dbUser.UpdateAccounts();
                 await db.SaveChangesAsync();
             }
 
-            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
-
             //Get a list of all builders from the AccountsString - see method for why this needs to be a list
-            var builders = await AccountsString(db, dbuser, apiLink, admin);
+            var builders = await AccountsString(db, dbUser, apiLink, admin);
 
             //Grab the last builder from the list to add footers to
             var lastBuilder = builders.LastOrDefault();
             if(lastBuilder.Footer == null) lastBuilder.WithFooter("");
 
-            if(dbuser.TempDisabled) lastBuilder.Footer.Text += $"\n❗User is disabled";
+            if(dbUser.TempDisabled) lastBuilder.Footer.Text += $"\n❗User is disabled";
 
             if(command.Channel is SocketDMChannel) {
-                if(dbuser.GuildId > 0) {
-                    lastBuilder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbuser.GuildId).Name}";
+                if(dbUser.GuildId > 0) {
+                    lastBuilder.Footer.Text += $"\nRegistered with the server {_client.GetGuild(dbUser.GuildId).Name}";
                 } else {
                     lastBuilder.Footer.Text += $"\nNot registered with a guild";
                 }
-            } else if(guild is not null && dbuser.GuildId == guild.Id && !dbuser.TempDisabled) {
+            } else if(dbGuild is not null && dbUser.GuildId == dbGuild.Id && !dbUser.TempDisabled) {
                 lastBuilder.Footer.Text += $"\nProperly registered with this server";
-            } else if(guild is null || dbuser.GuildId != guild.Id) {
+            } else if(dbGuild is null || dbUser.GuildId != dbGuild.Id) {
                 lastBuilder.Footer.Text += $"\nNot registered with this server, try the /moveserver command";
             }
 
-            if(dbuser.Registered.HasValue) {
-                lastBuilder.Footer.Text += $"\nJoined the bot on {dbuser.Registered.Value:MMM dd, yyyy}";
+            if(dbUser.Registered.HasValue) {
+                lastBuilder.Footer.Text += $"\nJoined the bot on {dbUser.Registered.Value:MMM dd, yyyy}";
             } else {
                 lastBuilder.Footer.Text += $"\nMissing bot registration date";
             }
 
-            if(guild is not null && dbuser.GuildId > 0 && !dbuser.TempDisabled && user is SocketGuildUser guildUser && guild.Id == guildUser.Guild.Id) {
-                _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), guildUser, dbuser, _client, null, []);
+            if(dbGuild is not null && dbUser.GuildId > 0 && !dbUser.TempDisabled && user is SocketGuildUser guildUser && dbGuild.Id == guildUser.Guild.Id) {
+                _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbUser.GuildId), guildUser, dbUser, _client, null, []);
             }
 
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);

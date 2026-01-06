@@ -1,5 +1,5 @@
 ﻿using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;

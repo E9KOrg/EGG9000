@@ -44,8 +44,8 @@ namespace EGG9000.Common.API {
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.35.4",
-                Build = "111331",
+                Version = "1.34.1",
+                Build = "111300",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en",

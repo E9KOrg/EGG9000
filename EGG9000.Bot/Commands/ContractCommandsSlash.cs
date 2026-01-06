@@ -244,6 +244,7 @@ namespace EGG9000.Bot.Commands {
                 }
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
+                    await account.UpdateSubscriptionFromCustomBackup(_client, mainGuild, dbGuild, dbuser);
                     dbuser.UpdateAccounts();
                 }
                 await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);

@@ -114,13 +114,13 @@ namespace EGG9000.Bot.Services {
                 return;
 
             var guilds = await db.Guilds.ToListAsync();
-            var dbguild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
-            if(dbguild == null) {
-                dbguild = guilds.FirstOrDefault(x => x.OverflowServers.Any(y => y == user.Guild.Id));
-                if(dbguild != null) {
+            var dbGuild = guilds.FirstOrDefault(x => x.DiscordSeverId == user.Guild.Id);
+            if(dbGuild == null) {
+                dbGuild = guilds.FirstOrDefault(x => x.OverflowServers.Any(y => y == user.Guild.Id));
+                if(dbGuild != null) {
                     //Handle Overflow Role
-                    var mainServer = _discord.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
-                    var overflowServers = _discord.Guilds.Where(x => dbguild.OverflowServers.Contains(x.Id));
+                    var mainServer = _discord.Guilds.First(x => x.Id == dbGuild.DiscordSeverId);
+                    var overflowServers = _discord.Guilds.Where(x => dbGuild.OverflowServers.Contains(x.Id));
                     const ulong overflowRoleID = 775547850134257675;
 
                     bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
@@ -149,37 +149,38 @@ namespace EGG9000.Bot.Services {
                 return;
             }
 
-            var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser is not null) {
-                if(dbuser.TempDisabled) {
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.Welcome, new() {
+            var dbUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbUser is not null) {
+                if(dbUser.TempDisabled) {
+                    await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.Welcome, new() {
                         Text = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this."
                     }, _logger);
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+                    await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
                     return;
                 }
-                if(dbuser.GuildId != user.Guild.Id) {
+                if(dbUser.GuildId != user.Guild.Id) {
                     var moveServerCommandString = await _discord.GetSlashCommandStringAsync(user.Guild, "MoveServer");
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.Welcome, new() {
+                    await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.Welcome, new() {
                         Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the {moveServerCommandString} command."
                     }, _logger);
                     return;
                 }
-                dbuser.EggIncAccounts.ForEach(async account => {
+                dbUser.EggIncAccounts.ForEach(async account => {
                     var rawBackup = await EggIncAPI.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) return;
                     var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                     account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;
+                    await account.UpdateSubscriptionFromCustomBackup(_discord, user.Guild, dbGuild, dbUser);
                 });
-                if(dbuser.GuildId == 0 && await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id)) {
-                    dbuser.GuildId = user.Guild.Id;
+                if(dbUser.GuildId == 0 && await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbUser.Id && x.Coop.GuildId == user.Guild.Id)) {
+                    dbUser.GuildId = user.Guild.Id;
                 }
-                dbuser.UpdateAccounts();
+                dbUser.UpdateAccounts();
                 await db.SaveChangesAsync();
-                var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
-                var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, [], _logger);
+                var earningsBonus = dbUser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
+                var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbUser, _discord, null, [], _logger);
                 var roleText = role is not null ? $" You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}" : "";
-                var response = await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
+                var response = await ChannelHelper.DetermineAndSend(_discord, dbGuild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
             }
@@ -189,7 +190,7 @@ namespace EGG9000.Bot.Services {
             var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, user.Guild);
             var rulesChannel = await _discord.GetChannelAsync(GuildChannelType.Rules, user.Guild);
             var msg = $"Welcome to the server {user.Mention}! Please read {rulesChannel.Mention} and then use the </accept:1095116354329268368> command when you are ready.";
-            var talkChannel = ChannelHelper.DetermineChannelType(dbguild, _discord.GetGuild(dbguild.DiscordSeverId), GuildChannelType.TalkToStaff);
+            var talkChannel = ChannelHelper.DetermineChannelType(dbGuild, _discord.GetGuild(dbGuild.DiscordSeverId), GuildChannelType.TalkToStaff);
             if(talkChannel is not null) msg += $" If you have any questions feel free to ask us in {((SocketTextChannel)talkChannel).Mention}, we are glad you are here!";
 
             await welcomeChannel.SendMessageAsync(msg);

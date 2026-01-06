@@ -127,7 +127,7 @@ namespace EGG9000.Common.Database {
         [Key(47)]
         public uint[] EovEarned { get; set; }
         [Key(48)]
-        public double SubscriptionEnds { get; set; }
+        public double SubscriptionEnds { get; set; } = 0;
         [Key(49)]
         public UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
 
@@ -403,7 +403,10 @@ namespace EGG9000.Common.Database {
 
             var hasActiveStatus = subInfo.HasStatus && (subInfo.Status == UserSubscriptionInfo.Types.Status.Active || subInfo.Status == UserSubscriptionInfo.Types.Status.GracePeriod);
             var inSubPeriod = subInfo.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            if (!hasActiveStatus || !inSubPeriod) return;
+            if(!hasActiveStatus || !inSubPeriod) {
+                SubscriptionEnds = subInfo.PeriodEnd;
+                return;
+            }
 
             SubscriptionLevel = subInfo.SubscriptionLevel;
             SubscriptionEnds = subInfo.PeriodEnd;

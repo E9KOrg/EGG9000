@@ -683,7 +683,7 @@ namespace EGG9000.Common.Helpers {
                 hash = hash * 23 + Value.GetHashCode();
                 hash = hash * 23 + Additive.GetHashCode();
                 hash = hash * 23 + Id.GetHashCode();
-                foreach(var stone in Stones ?? new List<EggIncArtifactInstance>()) {
+                foreach(var stone in Stones ?? []) {
                     hash = hash * 23 + stone.GetHashCode();
                 }
 

@@ -1,4 +1,6 @@
-﻿using EGG9000.Bot.Helpers;
+﻿using Discord;
+using Discord.WebSocket;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
 
 using Ei;
@@ -13,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
@@ -169,17 +172,6 @@ namespace EGG9000.Common.Database.Entities {
                 //Sync account's Device ID from backup
                 if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                     account.DeviceID = account.Backup.DeviceId;
-                }
-                //Sync Subscription Info from backup
-                if(account.Backup is not null) {
-                    if(account.Backup.SubscriptionEnds != account.SubscriptionEnds) {
-                        account.SubscriptionEnds = account.Backup.SubscriptionEnds;
-                        needsUpdate = true;
-                    }
-                    if(account.Backup.SubscriptionLevel != account.SubscriptionLevel) {
-                        account.SubscriptionLevel = account.Backup.SubscriptionLevel;
-                        needsUpdate = true;
-                    }
                 }
             });
             if(needsUpdate) UpdateAccounts();
@@ -427,6 +419,17 @@ namespace EGG9000.Common.Database.Entities {
             return Ei.Contract.Types.PlayerGrade.GradeUnset;
         }
 
+        public async Task UpdateSubscriptionFromCustomBackup(DiscordSocketClient _client, SocketGuild guild, Guild dbGuild, DBUser user) {
+            if(Backup is null) return;
+            
+            if(Backup.SubscriptionEnds != SubscriptionEnds) {
+                SubscriptionEnds = Backup.SubscriptionEnds;
+            }
+            if(Backup.SubscriptionLevel != SubscriptionLevel) {
+                await SubscriptionHelper.SubscriptionLevelChanged(_client, guild, dbGuild, user, this);
+                SubscriptionLevel = Backup.SubscriptionLevel;
+            }
+        }
 
         public bool HasActiveSubscription() {
             if(SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {

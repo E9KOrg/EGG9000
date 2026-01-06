@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 
 using EGG9000.Common.API;
 using EGG9000.Common.Database;
@@ -75,6 +76,8 @@ namespace EGG9000.Site.Controllers {
             var loginUserId = ulong.Parse(logins.First().ProviderKey);
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            var dbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
@@ -82,7 +85,7 @@ namespace EGG9000.Site.Controllers {
             times.Set("User prep");
 
 
-            var getBackupsTask = GetBackups(user, scoring);
+            var getBackupsTask = GetBackups(dbGuild, user, scoring);
 
             var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
             var contracts = await _db.Contracts.AsQueryable().ToListAsync();
@@ -119,16 +122,18 @@ namespace EGG9000.Site.Controllers {
             return View("Index", new MyFarmsModel(user, contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
         }
 
-        private async Task<bool> GetBackups(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
+        private async Task<bool> GetBackups(Guild dbGuild, DBUser dbUser, List<(string EggIncId, MyContracts MyContracts)> scoring) {
             var update = false;
+            var socketGuild = _discord.GetGuild(dbGuild.DiscordSeverId);
 
-            foreach(var account in user.EggIncAccounts) {
+            foreach(var account in dbUser.EggIncAccounts) {
                 var rawBackup = await EggIncAPI.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
 
                 Console.WriteLine($"Getting backups for {account.Name}");
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
+                    await account.UpdateSubscriptionFromCustomBackup(_discord, socketGuild, dbGuild, dbUser);
                     update = true;
                 }
                 //Console.WriteLine(customBackup.SpaceMissions.Count);
@@ -141,7 +146,7 @@ namespace EGG9000.Site.Controllers {
                 scoring.Add((account.Id, scores));
             }
             if(update) {
-                user.UpdateAccounts();
+                dbUser.UpdateAccounts();
             }
             return update;
         }

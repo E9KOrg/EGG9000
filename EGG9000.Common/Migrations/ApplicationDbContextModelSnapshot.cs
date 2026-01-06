@@ -42,7 +42,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("AutomationLogs");
+                    b.ToTable("AutomationLogs", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b =>
@@ -121,7 +121,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("ID");
 
-                    b.ToTable("Contracts");
+                    b.ToTable("Contracts", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
@@ -238,7 +238,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID");
 
-                    b.ToTable("Coops");
+                    b.ToTable("Coops", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.DBCustomEgg", b =>
@@ -272,7 +272,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("Identifier");
 
-                    b.ToTable("CustomEggs");
+                    b.ToTable("CustomEggs", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b =>
@@ -395,7 +395,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("LastModified");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Demerit", b =>
@@ -431,7 +431,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Demerit");
+                    b.ToTable("Demerit", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Donation", b =>
@@ -456,7 +456,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Donations");
+                    b.ToTable("Donations", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Event", b =>
@@ -491,7 +491,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("Events");
+                    b.ToTable("Events", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.EventCustomization", b =>
@@ -522,7 +522,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("Type");
 
-                    b.ToTable("EventCustomizations");
+                    b.ToTable("EventCustomizations", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ExpiringShell", b =>
@@ -557,7 +557,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("ExpiringShells");
+                    b.ToTable("ExpiringShells", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.FAQTopic", b =>
@@ -612,7 +612,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("InternalId");
 
-                    b.ToTable("FAQTopics");
+                    b.ToTable("FAQTopics", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardCoop", b =>
@@ -638,7 +638,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("GlobalLeaderboardCoops");
+                    b.ToTable("GlobalLeaderboardCoops", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardUser", b =>
@@ -685,7 +685,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("GlobalLeaderboardUsers");
+                    b.ToTable("GlobalLeaderboardUsers", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Guild", b =>
@@ -776,7 +776,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Guilds");
+                    b.ToTable("Guilds", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.GuildContract", b =>
@@ -831,7 +831,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("ContractID", "GuildID", "League");
 
-                    b.ToTable("GuildContracts");
+                    b.ToTable("GuildContracts", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Merit", b =>
@@ -858,7 +858,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Merit");
+                    b.ToTable("Merit", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.NasaApod", b =>
@@ -898,7 +898,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("ID");
 
-                    b.ToTable("NasaApods");
+                    b.ToTable("NasaApods", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ResearchCostSubmission", b =>
@@ -920,7 +920,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("ID", "Level", "UserId");
 
-                    b.ToTable("ResearchCostSubmissions");
+                    b.ToTable("ResearchCostSubmissions", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b =>
@@ -948,7 +948,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("UserId", "RoleId", "Created");
 
-                    b.ToTable("TemporaryRoles");
+                    b.ToTable("TemporaryRoles", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b =>
@@ -979,7 +979,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("ContractId");
 
-                    b.ToTable("UpcomingContracts");
+                    b.ToTable("UpcomingContracts", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b =>
@@ -1018,7 +1018,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserCoopStatuses");
+                    b.ToTable("UserCoopStatuses", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopXref", b =>
@@ -1149,7 +1149,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("UserId", "JoinedCoop");
 
-                    b.ToTable("UserCoopXrefs");
+                    b.ToTable("UserCoopXrefs", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCsHistoryEntry", b =>
@@ -1173,7 +1173,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("ContractIdentifier");
 
-                    b.ToTable("UserCsHistoryEntries");
+                    b.ToTable("UserCsHistoryEntries", (string)null);
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserSnapShot", b =>
@@ -1204,7 +1204,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("UserId", "Date", "EggIncID");
 
-                    b.ToTable("UserSnapShots");
+                    b.ToTable("UserSnapShots", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -1223,7 +1223,7 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
