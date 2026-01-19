@@ -25,8 +25,8 @@ using Polly;
 #if RELEASE
 namespace EGG9000.Bot.Jobs {
 
-    public class UptimeKuma(ILogger<SubscriptionsCheckJob> logger) {
-        private readonly ILogger<SubscriptionsCheckJob> _logger = logger;
+    public class UptimeKuma(ILogger<UptimeKuma> logger) {
+        private readonly ILogger<UptimeKuma> _logger = logger;
         private readonly HttpClient httpClient = new HttpClient();
 
 

@@ -1,4 +1,5 @@
-﻿using EGG9000.Bot.Helpers;
+﻿using Discord.WebSocket;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Helpers;
 
 using Ei;
@@ -13,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
@@ -185,61 +187,60 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _contractRegistrationByte { get; set; }
 
+        /**
+         * Called when _accounts is accessed, and IS null, and needs to be refreshed from the database/from backups.
+         */
+        private List<EggIncAccount> HandleAccountsGet() {
+            try {
+                _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+            } catch(MessagePackSerializationException) {
+                _accounts = [];
+                return _accounts;
+            }
+
+            var needsUpdate = false;
+            if(_accounts is null) {
+                _accounts = [];
+                needsUpdate = true;
+            }
+
+            if(_CustomBackups?.Length > 0) {
+                var backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
+                _accounts.ForEach(x => {
+                    x.Backup = backups.FirstOrDefault(y => y.EggIncId == x.Id);
+                });
+                _CustomBackups = [];
+                needsUpdate = true;
+            }
+
+            _accounts.ForEach(account => {
+                if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
+                    account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
+                if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
+                    var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
+                    if(backupTime > account.PromotionTime) {
+                        account.LastGrade = account.Backup.Grade;
+                        needsUpdate = true;
+                    }
+                }
+                //Sync account's Device ID from backup
+                if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
+                    account.DeviceID = account.Backup.DeviceId;
+                }
+            });
+            if(needsUpdate) UpdateAccounts();
+            return _accounts;
+        }
+
         [NotMapped]
         private List<EggIncAccount> _accounts = null;
         [NotMapped]
         public List<EggIncAccount> EggIncAccounts {
             get {
-                try {
-                    if(_contractRegistrationByte is null) {
-                        _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
-                    } else if(_accounts is not null) {
-                        return _accounts;
-                    } else {
-                        try {
-                            _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
-                        } catch(MessagePackSerializationException) {
-                            _accounts = new List<EggIncAccount>();
-                            return _accounts;
-                        }
-                        bool needsUpdate = false;
-                        if(_accounts is null) {
-                            _accounts = new List<EggIncAccount>();
-                            needsUpdate = true;
-                        }
-
-                        if(_CustomBackups is not null && _CustomBackups.Length > 0) {
-                            var backups = MessagePackSerializer.Deserialize<List<CustomBackup>>(_CustomBackups, lz4Options);
-                            _accounts.ForEach(x => {
-                                x.Backup = backups.FirstOrDefault(y => y.EggIncId == x.Id);
-                            });
-                            _CustomBackups = new byte[0];
-                            needsUpdate = true;
-                        }
-
-                        _accounts.ForEach(account => {
-                            if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
-                                account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
-                            if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
-                                var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
-                                if(backupTime > account.PromotionTime) {
-                                    account.LastGrade = account.Backup.Grade;
-                                    needsUpdate = true;
-                                }
-                            }
-                            //Sync account's Device ID from backup
-                            if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
-                                account.DeviceID = account.Backup.DeviceId;
-                            }
-                        });
-                        if(needsUpdate) {
-                            UpdateAccounts();
-                        }
-                    }
-                    return _accounts;
-                } catch(MessagePackSerializationException) {
-                    return new List<EggIncAccount>();
-                } catch(Exception) { throw; }
+                if(_contractRegistrationByte is null) {
+                    _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
+                }
+                return _accounts ?? HandleAccountsGet();
             }
             set {
                 if(value == null) {
@@ -481,6 +482,17 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
+        public async Task UpdateSubscriptionFromCustomBackup(DiscordSocketClient _client, SocketGuild guild, Guild dbGuild, DBUser user) {
+            if(Backup is null) return;
+
+            if(Backup.SubscriptionEnds != SubscriptionEnds) {
+                SubscriptionEnds = Backup.SubscriptionEnds;
+            }
+            if(Backup.SubscriptionLevel != SubscriptionLevel) {
+                await SubscriptionHelper.SubscriptionLevelChanged(_client, guild, dbGuild, user, this);
+                SubscriptionLevel = Backup.SubscriptionLevel;
+            }
+        }
 
         public bool HasActiveSubscription() {
             if(SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {

@@ -105,26 +105,33 @@ namespace EGG9000.Common.Services {
             var backups = await GetUserBackups(eggIncIds, token, longBackup, forceAll);
             var lUsers = new List<LeaderboardUser>();
 
-            foreach(var user in users) {
-                if(token.IsCancellationRequested)
-                    return null;
-                foreach(var eggInc in user.EggIncAccounts.Where(e => !string.IsNullOrEmpty(e.Id))) {
-                    var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
-                    var account = user.EggIncAccounts.FirstOrDefault(b => b.Id == eggInc.Id);
+            var guildGroupedUsers = users.GroupBy(u => u.GuildId);
+            foreach(var guild in guildGroupedUsers) {
+                var socketGuild = _discord.GetGuild(guild.Key);
+                var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Key);
+                foreach(var dbUser in guild) {
+                    if(token.IsCancellationRequested)
+                        return null;
+                    foreach(var eggInc in dbUser.EggIncAccounts.Where(e => !string.IsNullOrEmpty(e.Id))) {
+                        var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
+                        var account = dbUser.EggIncAccounts.FirstOrDefault(b => b.Id == eggInc.Id);
 
-                    if(backup?.Farms != null && account is not null && (backup.LastBackupTime != account.Backup?.LastBackupTime || forceAll)) {
-                        account.Backup = backup;
-                        user.UpdateAccounts();
-                    }
-                    backup ??= account?.Backup;
+                        if(backup?.Farms != null && account is not null && (backup.LastBackupTime != account.Backup?.LastBackupTime || forceAll)) {
+                            account.Backup = backup;
+                            await account.UpdateSubscriptionFromCustomBackup(_discord, socketGuild, dbGuild, dbUser);
+                            dbUser.UpdateAccounts();
+                        }
+                        backup ??= account?.Backup;
 
-                    if(backup != null) {
-                        lUsers.Add(new LeaderboardUser { User = user, Backup = backup });
-                    } else {
-                        //_logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
+                        if(backup != null) {
+                            lUsers.Add(new LeaderboardUser { User = dbUser, Backup = backup });
+                        } else {
+                            //_logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
+                        }
                     }
                 }
             }
+
             //_logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
             await db.SaveChangesAsync();
             return lUsers;
