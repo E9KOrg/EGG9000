@@ -183,7 +183,12 @@ namespace EGG9000.Bot.Automated {
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
 
-                if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && !guildContract.ReadyToScore && guildContract.Created < DateTimeOffset.Now - guildContract.Contract.ContractTime - TimeSpan.FromDays(3)) {
+                if(
+                    guildContract.Contract.MaxUsers > 1 
+                    && guildContract.GuildID == 656455567858073601 
+                    && !guildContract.ReadyToScore 
+                    && guildContract.Created < DateTimeOffset.Now - guildContract.Contract.ContractTime - TimeSpan.FromDays(3)
+                    && guildContract.Contract.Details.GradeSpecs.All(x => x.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds)) {
                     var farmersUnion = guild.GetTextChannel(777303939442802710); //#farmers-union
                     farmersUnion ??= await _client.GetChannelAsync(777303939442802710) as SocketTextChannel;
                     if(farmersUnion != null) {

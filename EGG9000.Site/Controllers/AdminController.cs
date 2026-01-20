@@ -281,7 +281,7 @@ namespace EGG9000.Site.Controllers {
             var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable()
                 .Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3) && !x.HasScores)
                 .OrderBy(x => x.Created).ToListAsync();
-            var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.Created < DateTimeOffset.Now - y.Contract.ContractTime - TimeSpan.FromDays(3))).Select(x => x.First().Contract).ToList();
+            var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.Contract.Details.GradeSpecs.Any(gs => gs.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds) && y.Created < DateTimeOffset.Now - y.Contract.ContractTime - TimeSpan.FromDays(3))).Select(x => x.First().Contract).ToList();
 
             return View(new IndexViewModel {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
