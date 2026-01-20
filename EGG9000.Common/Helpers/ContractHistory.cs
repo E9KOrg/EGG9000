@@ -13,7 +13,10 @@ namespace EGG9000.Common.Helpers {
             var histories = new List<UserContractScore>();
             var skipped = 0;
             var xrefcount = 0;
-            foreach(var coop in coops.Where(x => x.LastStatusUpdate != null)) {
+
+            var gradesMoreThanADay = contract.Details.GradeSpecs.Where(x => x.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds).Select(x => x.Grade);
+
+            foreach(var coop in coops.Where(x => x.LastStatusUpdate != null && gradesMoreThanADay.Any(y => (int)y == x.League))) {
                 var coopStatus = coop.LastStatusUpdate;
                 foreach(var xref in coop.UserCoopsXrefs.Where(x => x.JoinedCoop)) {
 
