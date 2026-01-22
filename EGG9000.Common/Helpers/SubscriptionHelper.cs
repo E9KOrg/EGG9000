@@ -13,7 +13,7 @@ namespace EGG9000.Common.Helpers {
 #nullable enable
         public static async Task SubscriptionLevelChanged(DiscordSocketClient _client, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? _logger = null) {
 #nullable disable
-            await SendUltraLogMessage(_client, dbGuild, user, account, (int?)account.SubscriptionLevel ?? -1, (int)account.Backup.SubscriptionLevel);
+            await SendUltraLogMessage(_client, dbGuild, user, account, (int?)account.SubscriptionLevel ?? -1, (int?)account.Backup.SubscriptionLevel ?? -1);
 
             var standardRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
             var proRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;

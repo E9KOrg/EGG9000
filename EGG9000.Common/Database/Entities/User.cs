@@ -25,6 +25,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public Guid Id { get; set; }
         public DateTimeOffset LastModified { get; set; } = DateTimeOffset.Now;
+        public DateTimeOffset? LastBackupCheck { get; set; }
         public ulong DiscordId { get; set; }
         public string DiscordUsername { get; set; }
         //public string EggIncNames { get; set; }
