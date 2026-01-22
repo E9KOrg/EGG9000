@@ -66,9 +66,8 @@ namespace EGG9000.APILinkSite.Controllers {
             //_bugsnag.Breadcrumbs.Leave($"Attempting to get custombackup for {request.UserId}");
 
             try {
-                var customBackup = new CustomBackup(backup.Backup);
                 return new BackupResponse {
-                    Backup = customBackup,
+                    Backup = new CustomBackup(backup.Backup),
                     EggIncId = request.UserId, Unchanged = false
                 };
             } catch (Exception e) {
