@@ -69,7 +69,7 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
-                var Response = await apiLink.GetBackup(dbUser.EggIncAccounts.First().Id);
+                var Response = await ContractsAPI.GetBackupAsync(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
@@ -250,14 +250,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Update your EggIncID if it has changed", AllowInDMs = true)]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, apiLink, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
+        public static async Task UpdateID(DiscordSocketClient _client, FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(_client, command, db, apiLink, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
         }
         [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, apiLink, eggincid, targetUser, accountnumber);
+        public static async Task UpdateID(DiscordSocketClient _client, FauxCommand command, ApplicationDbContext db, APILink apiLink, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
+            await _UpdateID(_client, command, db, apiLink, eggincid, targetUser, accountnumber);
         }
-        public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
+        public static async Task _UpdateID(DiscordSocketClient _client, FauxCommand command, ApplicationDbContext db, APILink apiLink, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             await command.DeferAsync(ephemeral: true);
             if(targetUser is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
@@ -301,10 +301,14 @@ namespace EGG9000.Bot.Commands {
             if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
             else user.EggIncAccounts = [newAccount];
 
+            var socketGuild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == socketGuild.Id);
+
             foreach(var account in user.EggIncAccounts) {
                 var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, account?.Backup ?? null); //Pass current backup to maintain username where possible
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
+                    await account.UpdateSubscriptionFromCustomBackup(_client, socketGuild, dbGuild, user);
                 }
             }
             user.UpdateAccounts();
@@ -368,7 +372,7 @@ namespace EGG9000.Bot.Commands {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    backup = await apiLink.GetBackup(eggincid);
+                    backup = await ContractsAPI.GetBackupAsync(eggincid);
                 }
             }
 
@@ -553,8 +557,11 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
+
             //Pull a fresh backup before userstatus
             if(pullFreshBackup) {
+                var socketGuild = _client.Guilds.FirstOrDefault(x => x.Id == dbuser.GuildId);
                 foreach(var account in dbuser.EggIncAccounts) {
                     var rawBackup = await ContractsAPI.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) {
@@ -564,6 +571,7 @@ namespace EGG9000.Bot.Commands {
                     var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                     if(customBackup?.Farms is not null) {
                         account.Backup = customBackup;
+                        await account.UpdateSubscriptionFromCustomBackup(_client, socketGuild, dbGuild, dbuser);
                     }
                 }
                 dbuser.UpdateAccounts();
@@ -641,7 +649,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var backup = await apiLink.GetBackup(account.Id);
+                var backup = await ContractsAPI.GetBackupAsync(account.Id);
                 if(backup == null)
                     continue;
 
