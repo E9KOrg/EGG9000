@@ -7,10 +7,11 @@ using MessagePack;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static Ei.ArtifactSpec.Types;
+
 using static Ei.Contract.Types;
-using static Ei.GameModifier.Types;
 using static Ei.MissionInfo.Types;
+using static Ei.ArtifactSpec.Types;
+using static Ei.GameModifier.Types;
 
 namespace EGG9000.Common.Database {
     [MessagePackObject]
@@ -126,11 +127,6 @@ namespace EGG9000.Common.Database {
         public uint ShiftCount { get; set; }
         [Key(47)]
         public uint[] EovEarned { get; set; }
-        [Key(48)]
-        public double SubscriptionEnds { get; set; } = 0;
-        [Key(49)]
-        public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
-
 
         [IgnoreMember]
         public uint EggsOfTruth {get { return (uint?)EovEarned?.Sum(x => x) ?? (uint)0; } }
@@ -259,7 +255,6 @@ namespace EGG9000.Common.Database {
             ShiftCount = backup.Virtue?.ShiftCount ?? 0;
             EovEarned = backup.Virtue?.EovEarned.ToArray() ?? Array.Empty<uint>();
 
-            SetSubscriptionInfo(backup);
 
             HasDeviceId = backup.HasDeviceId;
             if(backup.HasDeviceId) DeviceId = backup.DeviceId;
@@ -406,21 +401,6 @@ namespace EGG9000.Common.Database {
                     a.Spec.Rarity == x.Artifact.Spec.Rarity
                 )
             ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count }));
-        }
-
-        private void SetSubscriptionInfo(Ei.Backup backup) {
-            var subInfo = backup.SubInfo;
-            if(subInfo is null) return;
-
-            var hasActiveStatus = subInfo.HasStatus && (subInfo.Status == Ei.UserSubscriptionInfo.Types.Status.Active || subInfo.Status == Ei.UserSubscriptionInfo.Types.Status.GracePeriod);
-            var inSubPeriod = subInfo.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            if(!hasActiveStatus || !inSubPeriod) {
-                SubscriptionEnds = subInfo.PeriodEnd;
-                return;
-            }
-
-            SubscriptionLevel = subInfo.SubscriptionLevel;
-            SubscriptionEnds = subInfo.PeriodEnd;
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {

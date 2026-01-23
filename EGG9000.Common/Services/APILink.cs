@@ -89,139 +89,132 @@ namespace EGG9000.Common.Services {
             AUTHENTICATION_KEY = _configuration["ConnectionStrings:Token"];
         }
 
-        //private static string GetUserBackupKey(string UserId) {
-        //    return $"UserBackup-{UserId}";
-        //}
+        private static string GetUserBackupKey(string UserId) {
+            return $"UserBackup-{UserId}";
+        }
 
-        //public void AddExistingBackups(IEnumerable<EggIncAccount> accounts) {
-        //    foreach(var account in accounts.Where(x => x.Backup is not null)) {
-        //        var key = GetUserBackupKey(account.Id);
-        //        _cache.Set(key, account.Backup, DateTimeOffset.Now.AddDays(7));
-        //    }
-        //}
+        public void AddExistingBackups(IEnumerable<EggIncAccount> accounts) {
+            foreach(var account in accounts.Where(x => x.Backup is not null)) {
+                var key = GetUserBackupKey(account.Id);
+                _cache.Set(key, account.Backup, DateTimeOffset.Now.AddDays(7));
+            }
+        }
 
-        //public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, CancellationToken token, bool longBackup = false, bool forceAll = false) {
-        //    var eggIncIds = users.SelectMany(u => u.EggIncAccounts.Where(e => !string.IsNullOrWhiteSpace(e.Id)).Select(e => e.Id));
-        //    var backups = await GetUserBackups(eggIncIds, token, longBackup, forceAll);
-        //    var lUsers = new List<LeaderboardUser>();
+        public async Task<List<LeaderboardUser>> GetUserBackups(List<DBUser> users, ApplicationDbContext db, CancellationToken token, bool longBackup = false, bool forceAll = false) {
+            var eggIncIds = users.SelectMany(u => u.EggIncAccounts.Where(e => !string.IsNullOrWhiteSpace(e.Id)).Select(e => e.Id));
+            var backups = await GetUserBackups(eggIncIds, token, longBackup, forceAll);
+            var lUsers = new List<LeaderboardUser>();
 
-        //    var guildGroupedUsers = users.GroupBy(u => u.GuildId);
-        //    foreach(var guild in guildGroupedUsers) {
-        //        var socketGuild = _discord.GetGuild(guild.Key);
-        //        var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Key);
-        //        foreach(var dbUser in guild) {
-        //            if(token.IsCancellationRequested)
-        //                return null;
-        //            foreach(var eggInc in dbUser.EggIncAccounts.Where(e => !string.IsNullOrEmpty(e.Id))) {
-        //                var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
-        //                var account = dbUser.EggIncAccounts.FirstOrDefault(b => b.Id == eggInc.Id);
+            foreach(var user in users) {
+                if(token.IsCancellationRequested)
+                    return null;
+                foreach(var eggInc in user.EggIncAccounts.Where(e => !string.IsNullOrEmpty(e.Id))) {
+                    var backup = backups.FirstOrDefault(b => b.EggIncId == eggInc.Id);
+                    var account = user.EggIncAccounts.FirstOrDefault(b => b.Id == eggInc.Id);
 
-        //                if(backup?.Farms != null && account is not null && (backup.LastBackupTime != account.Backup?.LastBackupTime || forceAll)) {
-        //                    account.Backup = backup;
-        //                    await account.UpdateSubscriptionFromCustomBackup(_discord, socketGuild, dbGuild, dbUser);
-        //                    dbUser.UpdateAccounts();
-        //                }
-        //                backup ??= account?.Backup;
+                    if(backup?.Farms != null && account is not null && (backup.LastBackupTime != account.Backup?.LastBackupTime || forceAll)) {
+                        account.Backup = backup;
+                        user.UpdateAccounts();
+                    }
+                    backup ??= account?.Backup;
 
-        //                if(backup != null) {
-        //                    lUsers.Add(new LeaderboardUser { User = dbUser, Backup = backup });
-        //                } else {
-        //                    //_logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
-        //                }
-        //            }
-        //        }
-        //    }
+                    if(backup != null) {
+                        lUsers.Add(new LeaderboardUser { User = user, Backup = backup });
+                    } else {
+                        //_logger.LogWarning("Missing backup for {user} {eiid}", user.DiscordUsername, eggInc.Id);
+                    }
+                }
+            }
+            //_logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
+            await db.SaveChangesAsync();
+            return lUsers;
+        }
 
-        //    //_logger.LogInformation("Saving {changecount} changes to db", db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Count());
-        //    await db.SaveChangesAsync();
-        //    return lUsers;
-        //}
+        public async Task<List<CustomBackup>> GetUserBackups(IEnumerable<string> eggIncIds, CancellationToken token, bool longBackup = false, bool forceAll = false) {
+            var backupsNeeded = new List<BackupRequest>();
+            var backups = new List<CustomBackup>();
 
-        //public async Task<List<CustomBackup>> GetUserBackups(IEnumerable<string> eggIncIds, CancellationToken token, bool longBackup = false, bool forceAll = false) {
-        //    var backupsNeeded = new List<BackupRequest>();
-        //    var backups = new List<CustomBackup>();
+            foreach(var eggIncId in eggIncIds) {
+                if(token.IsCancellationRequested)
+                    return null;
 
-        //    foreach(var eggIncId in eggIncIds) {
-        //        if(token.IsCancellationRequested)
-        //            return null;
+                var key = GetUserBackupKey(eggIncId);
+                CustomBackup currentBackup = null;
+                float lastBackupTime = -1;
+                if(!forceAll && _cache.TryGetValue(key, out currentBackup)) {
+                    if(currentBackup.Farms is not null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
 
-        //        var key = GetUserBackupKey(eggIncId);
-        //        CustomBackup currentBackup = null;
-        //        float lastBackupTime = -1;
-        //        if(!forceAll && _cache.TryGetValue(key, out currentBackup)) {
-        //            if(currentBackup.Farms is not null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
+                        if(currentBackup.CacheAdded < DateTime.Now.AddMinutes(10) && ((DateTime.Now - currentBackup.CacheAdded).TotalMinutes < 5 || longBackup)) {
+                            backups.Add(currentBackup);
+                            continue;
+                        }
 
-        //                if(currentBackup.CacheAdded < DateTime.Now.AddMinutes(10) && ((DateTime.Now - currentBackup.CacheAdded).TotalMinutes < 5 || longBackup)) {
-        //                    backups.Add(currentBackup);
-        //                    continue;
-        //                }
+                        lastBackupTime = currentBackup.LastBackupTime;
+                    }
+                }
+                if(eggIncId.StartsWith("EI")) {
+                    backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime});
+                }
+            }
 
-        //                lastBackupTime = currentBackup.LastBackupTime;
-        //            }
-        //        }
-        //        if(eggIncId.StartsWith("EI")) {
-        //            backupsNeeded.Add(new BackupRequest { UserId = eggIncId, LastBackupTime = forceAll ? 0 : lastBackupTime});
-        //        }
-        //    }
+            if(backupsNeeded.Count > 0) {
+                var throttler = new SemaphoreSlim(2);
+                var tasks = new List<Task>();
+                var responses = new ConcurrentQueue<ApiResponse<List<Ei.EggIncFirstContactResponse>>>();
+                var url = $"{urlBase}GetBackups";
+                var partitions = Partition(backupsNeeded, 25);
+                var i = 1;
+                foreach(var partition in partitions) {
+                    if(token.IsCancellationRequested)
+                        return null;
 
-        //    if(backupsNeeded.Count > 0) {
-        //        var throttler = new SemaphoreSlim(2);
-        //        var tasks = new List<Task>();
-        //        var responses = new ConcurrentQueue<ApiResponse<List<Ei.EggIncFirstContactResponse>>>();
-        //        var url = $"{urlBase}GetBackups";
-        //        var partitions = Partition(backupsNeeded, 25);
-        //        var i = 1;
-        //        foreach(var partition in partitions) {
-        //            if(token.IsCancellationRequested)
-        //                return null;
-
-        //            await throttler.WaitAsync();
-        //            _logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
-        //            i++;
-        //            tasks.Add(Task.Run(async () => {
-        //                try {
-        //                    var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
-        //                    if(response.Data is null) {
-        //                        _logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
-        //                        return;
-        //                    }
-        //                    _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
-        //                    foreach(var backupResponse in response.Data) {
-        //                        var key = GetUserBackupKey(backupResponse.EggIncId);
-        //                        if(backupResponse.Unchanged) {
-        //                            if(_cache.TryGetValue(key, out CustomBackup currentBackup)) {
-        //                                backups.Add(currentBackup);
-        //                                continue;
-        //                            }
-        //                        }
-        //                        if(!backupResponse.Backup.EmptyBackup) {
-        //                            if(_ReportUpdatedClientVersion &&
-        //                                backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion &&
-        //                                backupResponse.Backup.ClientVersion > _LastClientVersion) {
-        //                                _LastClientVersion = backupResponse.Backup.ClientVersion;
-        //                                _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
+                    await throttler.WaitAsync();
+                    _logger.LogInformation("Handling partition {count} of {total}", i, partitions.Count());
+                    i++;
+                    tasks.Add(Task.Run(async () => {
+                        try {
+                            var response = await SendAsync<List<BackupResponse>>(url, partition, HttpMethod.Get);
+                            if(response.Data is null) {
+                                _logger.LogError("Error getting backups for partition, status code: {code}", response.StatusCode);
+                                return;
+                            }
+                            _logger.LogInformation("Changed {count} of {total}", response.Data.Count(x => !x.Unchanged), response.Data.Count);
+                            foreach(var backupResponse in response.Data) {
+                                var key = GetUserBackupKey(backupResponse.EggIncId);
+                                if(backupResponse.Unchanged) {
+                                    if(_cache.TryGetValue(key, out CustomBackup currentBackup)) {
+                                        backups.Add(currentBackup);
+                                        continue;
+                                    }
+                                }
+                                if(!backupResponse.Backup.EmptyBackup) {
+                                    if(_ReportUpdatedClientVersion &&
+                                        backupResponse.Backup.ClientVersion > ContractsAPI.ClientVersion &&
+                                        backupResponse.Backup.ClientVersion > _LastClientVersion) {
+                                        _LastClientVersion = backupResponse.Backup.ClientVersion;
+                                        _logger.LogWarning("ClietVersion Update from {CurrentVersion} {NewVesrion}", ContractsAPI.ClientVersion, _LastClientVersion);
                                         
-        //                                await _discord.SendDMToKendrome($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
-        //                                ContractsAPI.ClientVersion = (uint)_LastClientVersion;
-        //                            }
+                                        await _discord.SendDMToKendrome($"ClientVersion Update from {ContractsAPI.ClientVersion} to {_LastClientVersion}");
+                                        ContractsAPI.ClientVersion = (uint)_LastClientVersion;
+                                    }
 
-        //                            backups.Add(backupResponse.Backup);
-        //                            backupResponse.Backup.CacheAdded = DateTime.Now;
-        //                            _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
-        //                        }
-        //                    }
-        //                } catch(Exception e) {
-        //                    _logger.LogError("Error getting backup from APILink {exception}", e);
-        //                } finally {
-        //                    throttler.Release();
-        //                }
-        //            }));
-        //        }
+                                    backups.Add(backupResponse.Backup);
+                                    backupResponse.Backup.CacheAdded = DateTime.Now;
+                                    _cache.Set(key, backupResponse.Backup, DateTimeOffset.Now.AddDays(7));
+                                }
+                            }
+                        } catch(Exception e) {
+                            _logger.LogError("Error getting backup from APILink {exception}", e);
+                        } finally {
+                            throttler.Release();
+                        }
+                    }));
+                }
 
-        //        await Task.WhenAll(tasks);
-        //    }
-        //    return backups;
-        //}
+                await Task.WhenAll(tasks);
+            }
+            return backups;
+        }
 
         public async Task<List<ulong>> AddUsersToChannel(CoopPermissions coopPermissions) {
             coopPermissions.UserIds = coopPermissions.UserIds.Distinct().ToList();
@@ -264,57 +257,57 @@ namespace EGG9000.Common.Services {
             return addedUsers;
         }
 
-        //public async Task<CustomBackup> GetBackup(string UserId) {
-        //    var key = GetUserBackupKey(UserId);
-        //    CustomBackup currentBackup = null;
-        //    float lastBackupTime = -123;
-        //    if(_cache.TryGetValue(key, out currentBackup)) {
-        //        if(currentBackup.Farms != null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
-        //            lastBackupTime = currentBackup.LastBackupTime;
-        //        }
-        //    }
-        //    string errorMessage;
-        //    try {
-        //        HttpResponseMessage response;
-        //        var url = $"{urlBase}GetBackup";
-        //        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        //        //Add content
-        //        var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
-        //        request.Content = new StringContent(content, Encoding.UTF8, "application/json");
-        //        //Add headers
-        //        request.Headers.Accept.Clear();
-        //        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        public async Task<CustomBackup> GetBackup(string UserId) {
+            var key = GetUserBackupKey(UserId);
+            CustomBackup currentBackup = null;
+            float lastBackupTime = -123;
+            if(_cache.TryGetValue(key, out currentBackup)) {
+                if(currentBackup.Farms != null && !currentBackup.Farms.All(f => f.Vehicles == null)) {
+                    lastBackupTime = currentBackup.LastBackupTime;
+                }
+            }
+            string errorMessage;
+            try {
+                HttpResponseMessage response;
+                var url = $"{urlBase}GetBackup";
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                //Add content
+                var content = JsonConvert.SerializeObject(new BackupRequest { LastBackupTime = lastBackupTime, UserId = UserId });
+                request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                //Add headers
+                request.Headers.Accept.Clear();
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        //        //Send the request
-        //        response = await _httpClient.SendAsync(request);
-        //        if(response.IsSuccessStatusCode) {
-        //            var json = await response.Content.ReadAsStringAsync();
-        //            var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
-        //            var backupFromResponse = backupResponse.Backup;
-        //            if(backupResponse.Unchanged) {
-        //                return currentBackup;
-        //            }
-        //            if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup?.UserName)) {
-        //                backupFromResponse.UserName = currentBackup.UserName;
-        //            }
-        //            if(backupResponse.Backup.Farms != null) {
-        //                _cache.Set(key, backupFromResponse, DateTimeOffset.Now.AddDays(7));
-        //            }
-        //            return backupFromResponse;
-        //        } else {
-        //            var errorContent = response.Content.ReadAsStringAsync();
-        //            errorMessage = response.StatusCode.ToString();
-        //        }
-        //    } catch(Exception e) {
-        //        errorMessage = e.Message;
-        //    }
+                //Send the request
+                response = await _httpClient.SendAsync(request);
+                if(response.IsSuccessStatusCode) {
+                    var json = await response.Content.ReadAsStringAsync();
+                    var backupResponse = JsonConvert.DeserializeObject<BackupResponse>(json);
+                    var backupFromResponse = backupResponse.Backup;
+                    if(backupResponse.Unchanged) {
+                        return currentBackup;
+                    }
+                    if(string.IsNullOrEmpty(backupFromResponse.UserName) && !string.IsNullOrEmpty(currentBackup?.UserName)) {
+                        backupFromResponse.UserName = currentBackup.UserName;
+                    }
+                    if(backupResponse.Backup.Farms != null) {
+                        _cache.Set(key, backupFromResponse, DateTimeOffset.Now.AddDays(7));
+                    }
+                    return backupFromResponse;
+                } else {
+                    var errorContent = response.Content.ReadAsStringAsync();
+                    errorMessage = response.StatusCode.ToString();
+                }
+            } catch(Exception e) {
+                errorMessage = e.Message;
+            }
 
-        //    if(currentBackup != null) {
-        //        return currentBackup;
-        //    }
+            if(currentBackup != null) {
+                return currentBackup;
+            }
 
-        //    return null;
-        //}
+            return null;
+        }
 
         public class ApiResponse<T> {
             public HttpStatusCode StatusCode { get; set; }
@@ -374,25 +367,25 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task StartAsync(CancellationToken cancellationToken) {
-            //if(_settings.AsyncLoadCache) {
-            //    //_logger.LogInformation("Async Loading Users");
-            //    _ = GetUsers();
-            //} else {
-            //    await GetUsers();
-            //}
+            if(_settings.AsyncLoadCache) {
+                //_logger.LogInformation("Async Loading Users");
+                _ = GetUsers();
+            } else {
+                await GetUsers();
+            }
         }
 
-        //public async Task GetUsers() {
-        //    // _logger.LogInformation("Getting User Backups for Cache");
-        //    var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        //    var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
-        //    var backups = usersTask.SelectMany(x => x.EggIncAccounts);
-        //    if(backups != null) {
-        //        AddExistingBackups(backups);
-        //    }
-        //    //_logger.LogInformation("Finished Getting User Backups for Cache");
+        public async Task GetUsers() {
+            // _logger.LogInformation("Getting User Backups for Cache");
+            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var usersTask = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync();
+            var backups = usersTask.SelectMany(x => x.EggIncAccounts);
+            if(backups != null) {
+                AddExistingBackups(backups);
+            }
+            //_logger.LogInformation("Finished Getting User Backups for Cache");
 
-        //}
+        }
 
         public Task StopAsync(CancellationToken cancellationToken) {
             return Task.CompletedTask;

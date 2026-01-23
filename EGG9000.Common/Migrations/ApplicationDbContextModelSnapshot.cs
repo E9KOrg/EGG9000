@@ -317,9 +317,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<decimal>("GuildId")
                         .HasColumnType("decimal(20,0)");
 
-                    b.Property<DateTimeOffset?>("LastBackupCheck")
-                        .HasColumnType("datetimeoffset");
-
                     b.Property<DateTimeOffset?>("LastFAQPosted")
                         .HasColumnType("datetimeoffset");
 
