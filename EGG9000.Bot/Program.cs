@@ -149,7 +149,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<RemoveTempRoles>();
         services.AddHostedService<HandleGradeChanges>();
         services.AddHostedService<RefreshNasaApod>();
-        services.AddHostedService<UpdateBackups>();
 
         services.AddSingleton<CoopsBeingCreatedService>();
 

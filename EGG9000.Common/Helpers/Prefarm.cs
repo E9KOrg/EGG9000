@@ -330,8 +330,7 @@ namespace EGG9000.Common.Helpers {
                     foreach(var c in coop.LastStatusUpdate.Contributors) {
                         var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == c.UserId);
                         if(prefarm == null) {
-                            tasks.Add(ContractsAPI.GetBackupAsync(c.UserId));
-
+                            tasks.Add(apiLink.GetBackup(c.UserId));
                         }
                     }
                 }
