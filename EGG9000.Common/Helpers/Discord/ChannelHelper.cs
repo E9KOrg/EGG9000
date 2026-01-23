@@ -72,8 +72,6 @@ namespace EGG9000.Bot.Common.Helpers {
         }
 
         public static async Task<IUserMessage> SendCustomMessage(DiscordSocketClient _client, object target, CustomDiscordMessage message, ILogger logger = null) {
-            if(target == null) return null;
-
             if(target.GetType() == typeof(SocketThreadChannel)) {
                 var threadChannel = (SocketThreadChannel)target;
                 if(message.SendFile) {

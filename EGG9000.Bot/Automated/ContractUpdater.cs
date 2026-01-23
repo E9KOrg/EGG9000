@@ -64,8 +64,12 @@ namespace EGG9000.Bot.Automated {
 
 
 #if DEBUG
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
+                //dbusers = dbusers.Take(100).ToList();
+                //_ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
                 //await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 #else
+                _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
                 await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
 #endif
 
