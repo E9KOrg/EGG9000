@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  # Blue instance (built from the same Dockerfile)
+  bot_blue:
+    build:
+      context: .
+      dockerfile: EGG9000.Bot/Dockerfile
+    image: egg9000/bot:blue
+    restart: unless-stopped
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Production
+      # default: not active unless override sets BOT_ACTIVE=true
+      - BOT_ACTIVE=false
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=EGG9000;User Id=sa;Password=Your_password123;
+      - ConnectionStrings__RabbitMQServer=amqp://user:pass@rabbitmq:5672
+    depends_on:
+      - rabbitmq
+      - db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Green instance (same image / build)
+  bot_green:
+    build:
+      context: .
+      dockerfile: EGG9000.Bot/Dockerfile
+    image: egg9000/bot:green
+    restart: unless-stopped
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Production
+      # default: not active unless override sets BOT_ACTIVE=true
+      - BOT_ACTIVE=false
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=EGG9000;User Id=sa;Password=Your_password123;
+      - ConnectionStrings__RabbitMQServer=amqp://user:pass@rabbitmq:5672
+    depends_on:
+      - rabbitmq
+      - db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pass
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "Your_password123"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $${SA_PASSWORD} -Q 'select 1'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sql_data:

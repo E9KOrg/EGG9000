@@ -24,6 +24,8 @@ using NLog;
 using NLog.Web;
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
@@ -62,10 +64,25 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.EnableSensitiveDataLogging(true);
         });
 
+        // Register active monitor so every instance watches the shared deployment record
+        services.AddHostedService<EGG9000.Bot.Services.ActiveMonitorHostedService>();
+
         services.AddSingleton<DatabaseCache>();
         services.AddSingleton<Words>();
 
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
+
+        // Respect BOT_ACTIVE environment/config value.
+        // Default to true for backward compatibility; set BOT_ACTIVE=false in docker-compose to run passive instance.
+        var botActive = hostContext.Configuration.GetValue("BOT_ACTIVE", true);
+        logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
+        var botColor = hostContext.Configuration.GetValue<string>("BOT_COLOR") ?? "blue";
+        logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
+        if (!botActive) {
+            // Passive mode: register minimal services and a no-op hosted service so the container stays up
+            logger.Log(NLog.LogLevel.Info, "Color mismatch, aborting startup.");
+            throw new Exception("Color mismatch, aborting startup.");
+        }
 
 #if RELEASE
         var release = true;
@@ -164,5 +181,23 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         throw;
     } finally {
         LogManager.Shutdown();
+    }
+}
+
+internal class PassiveHostedService : IHostedService
+{
+    readonly ILogger<PassiveHostedService> _logger;
+    public PassiveHostedService(ILogger<PassiveHostedService> logger) => _logger = logger;
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("PassiveHostedService started. Instance is passive and will not process messages.");
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("PassiveHostedService stopping.");
+        return Task.CompletedTask;
     }
 }

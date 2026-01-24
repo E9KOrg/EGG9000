@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  bot_blue:
+    environment:
+      - BOT_ACTIVE=false
+    labels:
+      - "deployment.version=blue"
+
+  bot_green:
+    environment:
+      - BOT_ACTIVE=true
+    labels:
+      - "deployment.version=green"
