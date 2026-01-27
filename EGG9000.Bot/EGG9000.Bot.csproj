@@ -106,7 +106,4 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Properties\PublishProfiles\registry.hub.docker.com_kendrome.pubxml" />
-  </ItemGroup>
 </Project>

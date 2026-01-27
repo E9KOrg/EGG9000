@@ -185,7 +185,18 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
 
 
-
+#if RELEASE
+        services.Configure<ActiveMonitorOptions>(options => {
+            options.ServiceType = "site";
+            options.ColorConfigKey = "SITE_COLOR";
+            options.PollIntervalSeconds = 10;
+        });
+        // Register active monitor so every instance watches the shared deployment record
+        // 1. Register the concrete class as a Singleton so other services can find it
+        services.AddSingleton<ActiveMonitorHostedService>();
+        // 2. Register it as a Hosted Service by resolving the existing Singleton instance
+        services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
+#endif
 
     services.AddResponseCaching();
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
@@ -196,6 +207,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
+    services.AddHostedService<DockerCheckService>();
 
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =

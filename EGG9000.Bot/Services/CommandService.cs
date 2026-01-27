@@ -53,6 +53,7 @@ namespace EGG9000.Bot.Services {
         private readonly Bugsnag.IClient _bugsnag;
         private readonly SemaphoreSlim _semaphoreSlim = new(50);
         private readonly ContractUpdater _contractUpdater;
+        private readonly ActiveMonitorHostedService _activeMonitorHostedService;
         //private readonly CoopStatusUpdater _coopStatusUpdater;
         private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads;
         private readonly JobService _jobService;
@@ -61,7 +62,6 @@ namespace EGG9000.Bot.Services {
         private readonly ILogger<CommandService> _logger;
         private readonly List<(SocketApplicationCommand command, ulong guildid)> _discordCommands = [];
         private readonly List<(SocketApplicationCommand command, ulong guildid)> _globalCommands = [];
-        private readonly IPublishEndpoint _publishEndpoint;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly IMemoryCache _cache;
         public CommandService(IConfiguration Configuration,
@@ -76,13 +76,13 @@ namespace EGG9000.Bot.Services {
                 ApplicationDbContext context,
                 IServiceProvider serviceProvider,
                 ILogger<CommandService> logger,
-                IPublishEndpoint publishEndpoint, IDbContextFactory<ApplicationDbContext> dbContextFactory,
-                IMemoryCache cache
+                IDbContextFactory<ApplicationDbContext> dbContextFactory,
+                IMemoryCache cache,
+                ActiveMonitorHostedService activeMonitorHostedService
             ) {
             _discord = discord;
             _apilink = apilink;
             _words = words;
-            _publishEndpoint = publishEndpoint;
 
             _bugsnag = bugsnag;
             _contractUpdater = contractUpdater;
@@ -95,6 +95,7 @@ namespace EGG9000.Bot.Services {
             _logger = logger;
             _dbContextFactory = dbContextFactory;
             _cache = cache;
+            _activeMonitorHostedService = activeMonitorHostedService;
             logger.LogInformation($"Initiating CommandService");
         }
 
@@ -249,8 +250,7 @@ namespace EGG9000.Bot.Services {
                 _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
                 _discord.ModalSubmitted += _discord_ModalSubmitted;
 
-                await _publishEndpoint.Publish(new ShutdownMessage());
-
+                _ = _activeMonitorHostedService.SetActiveColorAsync();
 
                 _logger.LogInformation("Creating slash commands");
                 List<ApplicationCommandProperties> guildCommandProperties = [];
