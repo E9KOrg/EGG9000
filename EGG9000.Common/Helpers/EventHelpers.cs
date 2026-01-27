@@ -31,7 +31,10 @@ namespace EGG9000.Common.Helpers {
 #if DEV9002
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
 #else
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
+            var palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == 656455567858073601);
+            if(palaceGuild == null) {
+                palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
+            }
 #endif
             var gCustomizations = await db.GetCustomizationsAsync(dbguild);
             var pCustomizations = await db.GetCustomizationsAsync(palaceGuild);

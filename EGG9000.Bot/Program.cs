@@ -27,6 +27,30 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
+// Set up logger before anything else
+var logger = LogManager.Setup().GetCurrentClassLogger();
+logger.Log(NLog.LogLevel.Info, "Main Start");
+
+// Build a minimal configuration to check BOT_ACTIVE before building the full host
+var tempConfig = new ConfigurationBuilder()
+    .AddEnvironmentVariables()
+    .AddUserSecrets<Program>()
+    .Build();
+
+var botActive = tempConfig.GetValue("BOT_ACTIVE", true);
+var botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
+
+logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
+logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
+
+if (!botActive)
+{
+    logger.Log(NLog.LogLevel.Info, "Bot set to not active. Exiting gracefully without starting services.");
+    LogManager.Shutdown();
+    return; // Exit cleanly without throwing exception
+}
+
+// If BOT_ACTIVE is true, proceed with normal host build
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging => {
         logging.ClearProviders();
@@ -42,8 +66,7 @@ await Host.CreateDefaultBuilder(args)
     .RunAsync();
 
 void ConfigureServices(HostBuilderContext hostContext, IServiceCollection services) {
-    var logger = LogManager.Setup().GetCurrentClassLogger();
-    logger.Log(NLog.LogLevel.Info, "Main Start");
+    logger.Log(NLog.LogLevel.Info, "ConfigureServices Start");
     try {
         var serviceProvider = services.BuildServiceProvider();
         StaticLoggerFactory.Initialize(serviceProvider.GetRequiredService<ILoggerFactory>());
@@ -64,25 +87,24 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.EnableSensitiveDataLogging(true);
         });
 
+
+#if RELEASE
+        services.Configure<ActiveMonitorOptions>(options => {
+            options.ServiceType = "bot";
+            options.ColorConfigKey = "BOT_COLOR";
+            options.PollIntervalSeconds = 10;
+        });
         // Register active monitor so every instance watches the shared deployment record
-        services.AddHostedService<EGG9000.Bot.Services.ActiveMonitorHostedService>();
+        // 1. Register the concrete class as a Singleton so other services can find it
+        services.AddSingleton<ActiveMonitorHostedService>();
+        // 2. Register it as a Hosted Service by resolving the existing Singleton instance
+        services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
+#endif
 
         services.AddSingleton<DatabaseCache>();
         services.AddSingleton<Words>();
 
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
-
-        // Respect BOT_ACTIVE environment/config value.
-        // Default to true for backward compatibility; set BOT_ACTIVE=false in docker-compose to run passive instance.
-        var botActive = hostContext.Configuration.GetValue("BOT_ACTIVE", true);
-        logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
-        var botColor = hostContext.Configuration.GetValue<string>("BOT_COLOR") ?? "blue";
-        logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
-        if (!botActive) {
-            // Passive mode: register minimal services and a no-op hosted service so the container stays up
-            logger.Log(NLog.LogLevel.Info, "Color mismatch, aborting startup.");
-            throw new Exception("Color mismatch, aborting startup.");
-        }
 
 #if RELEASE
         var release = true;
@@ -105,7 +127,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddBugsnag(configuration => {
                 configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
             });
-            services.AddOptions<RabbitMqTransportOptions>().Configure(options => { 
+            services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
                 var host = hostContext.Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
                 if(host.Length > 1) {
                     options.Host = host[0];
@@ -184,19 +206,16 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
     }
 }
 
-internal class PassiveHostedService : IHostedService
-{
+internal class PassiveHostedService : IHostedService {
     readonly ILogger<PassiveHostedService> _logger;
     public PassiveHostedService(ILogger<PassiveHostedService> logger) => _logger = logger;
 
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
+    public Task StartAsync(CancellationToken cancellationToken) {
         _logger.LogInformation("PassiveHostedService started. Instance is passive and will not process messages.");
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
+    public Task StopAsync(CancellationToken cancellationToken) {
         _logger.LogInformation("PassiveHostedService stopping.");
         return Task.CompletedTask;
     }

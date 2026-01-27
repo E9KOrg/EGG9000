@@ -1,10 +1,61 @@
-bin/
-obj/
-.vs/
-.git/
-.gitignore
-*.user
-*.suo
-node_modules/
+.bash_history
+.cache
+.cargo
+.composer
+.hsperfdata
+.idea
+.npm
+.nuget
+.pytest_cache
+.Rhistory
+.Rproj.user
+.rproj.data
+.sass-cache
+_sass
+
+# Logs
+logs
 *.log
-version.txt
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Node
+node_modules
+npm-debug.log
+
+# Visual Studio
+.vs
+.vscode
+
+# Rider
+.idea
+*.sln.iml
+
+# misc
+.DS_Store
+*.pem
+*.pfx
+*.pub
+*.cache
+*.out
+*.dll
+*.exe
+*.so
+*.dylib
+*.a
+*.o
+*.target.xml
+*.svcmap
+*.pdb
+*_i.c
+*_p.c
+*_h.c
+*.ilk
+*.log
+*.lock.json
+*.suo
+*.user
+*.userprefs

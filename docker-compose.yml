@@ -1,75 +1,128 @@
 version: "3.9"
 
+x-environment: &default-environment
+  DOTNET_ENVIRONMENT: Production
+  ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__DefaultConnection: ...
+  ConnectionStrings__RabbitMQServer: ...
+  ConnectionStrings__ClientId: ...
+  ConnectionStrings__Token: ...
+  ConnectionStrings__ClientSecret: ...
+  ConnectionStrings__BugSnagApiKey: ...
+  ConnectionStrings__APILinkUrl: ...
 services:
-  # Blue instance (built from the same Dockerfile)
+  # Blue bot instance
   bot_blue:
-    build:
-      context: .
-      dockerfile: EGG9000.Bot/Dockerfile
-    image: egg9000/bot:blue
-    restart: unless-stopped
+    image: kendrome/egg9000bot:latest
+    restart: on-failure
     environment:
-      - DOTNET_ENVIRONMENT=Production
-      - ASPNETCORE_ENVIRONMENT=Production
-      # default: not active unless override sets BOT_ACTIVE=true
-      - BOT_ACTIVE=false
-      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=EGG9000;User Id=sa;Password=Your_password123;
-      - ConnectionStrings__RabbitMQServer=amqp://user:pass@rabbitmq:5672
-    depends_on:
-      - rabbitmq
-      - db
+      << : *default-environment
+      BOT_ACTIVE: "true"
+      BOT_COLOR: blue
+      # App will read from /run/secrets/ via DockerSecretsHelper
+    networks:
+      - egg9000_network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  # Green instance (same image / build)
+  # Green bot instance
   bot_green:
-    build:
-      context: .
-      dockerfile: EGG9000.Bot/Dockerfile
-    image: egg9000/bot:green
-    restart: unless-stopped
+    image: kendrome/egg9000bot:latest
+    restart: on-failure
     environment:
-      - DOTNET_ENVIRONMENT=Production
-      - ASPNETCORE_ENVIRONMENT=Production
-      # default: not active unless override sets BOT_ACTIVE=true
-      - BOT_ACTIVE=false
-      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=EGG9000;User Id=sa;Password=Your_password123;
-      - ConnectionStrings__RabbitMQServer=amqp://user:pass@rabbitmq:5672
-    depends_on:
-      - rabbitmq
-      - db
+      << : *default-environment
+      BOT_ACTIVE: "false"
+      BOT_COLOR: green
+    networks:
+      - egg9000_network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  rabbitmq:
-    image: rabbitmq:3-management
+  # Blue site instance
+  site_blue:
+    image: kendrome/egg9000site:latest
+    restart: always
     environment:
-      RABBITMQ_DEFAULT_USER: user
-      RABBITMQ_DEFAULT_PASS: pass
+      << : *default-environment
+      ASPNETCORE_URLS: http://+:5013
+      SITE_ACTIVE: "false"
+      SITE_COLOR: blue
+      Docker__Host: unix:///var/run/docker.sock
+    networks:
+      - egg9000_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
-      - "15672:15672"
-      - "5672:5672"
-
-  db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      SA_PASSWORD: "Your_password123"
-      ACCEPT_EULA: "Y"
-    ports:
-      - "1433:1433"
-    volumes:
-      - sql_data:/var/opt/mssql
+      - "5013:5013"
     healthcheck:
-      test: [ "CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $${SA_PASSWORD} -Q 'select 1'" ]
+      test: ["CMD", "curl", "-f", "http://localhost:5013/health"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 3
+      start_period: 40s
+    volumes:
+      - //./pipe/docker_engine:/var/run/docker.sock  # Docker Desktop on Windows → Linux container
 
-volumes:
-  sql_data:
+#   # Green site instance
+#   site_green:
+#     image: kendrome/egg9000site:latest
+#     restart: on-failure
+#     environment:
+#       << : *default-environment
+#       ASPNETCORE_URLS=http://+:8080
+#       SITE_ACTIVE=false
+#       SITE_COLOR=green
+#       Docker__Host: unix:///var/run/docker.sock
+ 
+#     depends_on:
+#       - db
+#       - rabbitmq
+#     networks:
+#       - egg9000_network
+#     logging:
+#       driver: "json-file"
+#       options:
+#         max-size: "10m"
+#         max-file: "3"
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 3
+#       start_period: 40s
+
+#   # Caddy reverse proxy
+#   caddy:
+#     image: caddy:2-alpine
+#     restart: unless-stopped
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#       - "443:443/udp"
+#     volumes:
+#       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+#       - caddy_data:/data
+#       - caddy_config:/config
+#     networks:
+#       - egg9000_network
+#     depends_on:
+#       - site_blue
+#       - site_green
+ 
+
+# volumes:
+#   caddy_data:
+#   caddy_config:
+
+networks:
+  egg9000_network:
+    driver: bridge
