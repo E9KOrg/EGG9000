@@ -3,8 +3,8 @@ version: "3.9"
 x-environment: &default-environment
   DOTNET_ENVIRONMENT: Production
   ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__RabbitMQServer: rabbitmq|e9k|KA#42HG9
   ConnectionStrings__DefaultConnection: ...
-  ConnectionStrings__RabbitMQServer: ...
   ConnectionStrings__ClientId: ...
   ConnectionStrings__Token: ...
   ConnectionStrings__ClientSecret: ...
@@ -22,6 +22,8 @@ services:
       # App will read from /run/secrets/ via DockerSecretsHelper
     networks:
       - egg9000_network
+    depends_on:
+     - rabbitmq
     logging:
       driver: "json-file"
       options:
@@ -38,6 +40,8 @@ services:
       BOT_COLOR: green
     networks:
       - egg9000_network
+    depends_on:
+     - rabbitmq
     logging:
       driver: "json-file"
       options:
@@ -56,6 +60,8 @@ services:
       Docker__Host: unix:///var/run/docker.sock
     networks:
       - egg9000_network
+    depends_on:
+     - rabbitmq
     logging:
       driver: "json-file"
       options:
@@ -71,6 +77,19 @@ services:
       start_period: 40s
     volumes:
       - //./pipe/docker_engine:/var/run/docker.sock  # Docker Desktop on Windows → Linux container
+
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: e9k
+      RABBITMQ_DEFAULT_PASS: KA#42HG9
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - egg9000_network
 
 #   # Green site instance
 #   site_green:

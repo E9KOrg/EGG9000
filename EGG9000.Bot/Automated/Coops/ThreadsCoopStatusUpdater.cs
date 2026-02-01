@@ -391,6 +391,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 timings.Set(1);
 
 
+                // Set time joined so we can later track and alert when a new BG might be worth it.
+                coopDetails.CoopParticipants.Where(x => x.Xref?.Joined is null && x.CoopStatus is not null).ToList().ForEach(x => x.Xref.Joined = DateTimeOffset.UtcNow);
+
+
                 var usersWithStatus = coopDetails.CoopParticipants.Select(x => new UserWithStatus {
                     Status = x.CoopStatus,
                     Xref = x.Xref,

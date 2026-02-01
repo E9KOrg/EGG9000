@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11415.281 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Bot", "EGG9000.Bot\EGG9000.Bot.csproj", "{76A9F853-4FDF-4D2F-80F4-923D4871F7B1}"
 EndProject
@@ -23,6 +23,13 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Common.Test", "EGG9000.Common.Test\EGG9000.Common.Test.csproj", "{2050A667-DF5D-4971-B07C-774BF1E478C9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestBot", "BotTesting\TestBot.csproj", "{9A09B76F-484C-4060-BBAA-93915FF49A35}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docker", "Docker", "{0F8969B7-8E86-4A21-BECC-F28963FBC1AD}"
+	ProjectSection(SolutionItems) = preProject
+		deploy-secrets-remote.ps1 = deploy-secrets-remote.ps1
+		docker-compose.yml = docker-compose.yml
+		publish-docker.ps1 = publish-docker.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

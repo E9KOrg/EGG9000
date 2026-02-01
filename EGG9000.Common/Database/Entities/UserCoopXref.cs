@@ -33,6 +33,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public DateTimeOffset? LastStatusTime { get; set; }
         public DateTimeOffset? SleepingWarningTime { get; set; }
+        public DateTimeOffset? Joined { get; set; }
         public string Status { get; set; }
         public bool TimeCheatReported { get; set; }
 
