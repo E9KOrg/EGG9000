@@ -581,6 +581,7 @@ namespace EGG9000.Bot.Services {
             var db = await _dbContextFactory.CreateDbContextAsync();
             var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
             if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
+                _logger.LogInformation("Detected boost message in CP guild from {user}", message.Author.Username);
                 var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id);
                 var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
                 await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty, guild: dbGuild);
