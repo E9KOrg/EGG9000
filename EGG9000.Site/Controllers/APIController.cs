@@ -122,9 +122,9 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
 #if RELEASE
-            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != Common.Services.APILink.AUTHENTICATION_KEY) {
-                return NotFound();
-            }
+            //if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != Common.Services.APILink.AUTHENTICATION_KEY) {
+            //    return NotFound();
+            //}
 #endif
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
             if(user == null) {

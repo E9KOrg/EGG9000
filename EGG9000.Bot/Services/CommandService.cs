@@ -2,6 +2,7 @@
 using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
+
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Commands;
@@ -13,15 +14,19 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+
 using MassTransit;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,6 +38,7 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Services.FauxCommand;
 
@@ -96,7 +102,20 @@ namespace EGG9000.Bot.Services {
             _dbContextFactory = dbContextFactory;
             _cache = cache;
             _activeMonitorHostedService = activeMonitorHostedService;
-            logger.LogInformation($"Initiating CommandService");
+            logger.LogInformation($"Initiating CommandService - Pre Bugsnag Test");
+
+
+            // ... Bugsnag setup ...
+
+            // Test that Bugsnag is working (remove after verification)
+            try {
+                bugsnag.Notify(new Exception("test-bugsnag"));
+                _logger.LogInformation($"Bugsnag API Key: {bugsnag.Configuration.ApiKey}");
+                _logger.LogInformation("Bugsnag test exception sent");
+            } catch (Exception e) {
+                _logger.LogError(e, "Bugnsag error");
+            }
+            _logger.LogInformation($"Bugsnag test completed");
         }
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
@@ -171,7 +190,7 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_words);
                         } else if(parameterInfo.ParameterType == typeof(SocketUser)) {
                             parameters.Add(arg.User);
-                        //} else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
+                            //} else if(parameterInfo.ParameterType == typeof(CoopStatusUpdater)) {
                             //parameters.Add(_coopStatusUpdater);
                         } else if(parameterInfo.ParameterType == typeof(ThreadsCoopStatusUpdater)) {
                             parameters.Add(_coopStatusUpdaterThreads);
@@ -185,7 +204,7 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_bugsnag);
                         } else if(parameterInfo.ParameterType == typeof(ILogger)) {
                             parameters.Add(_logger);
-                        }else if(parameterInfo.ParameterType == typeof(IMemoryCache)) {
+                        } else if(parameterInfo.ParameterType == typeof(IMemoryCache)) {
                             parameters.Add(_cache);
                         } else {
                             throw new ArgumentException($"Parameter `{parameterInfo.Name}` is of type `{parameterInfo.ParameterType}`, which has not been implemented to be passed to commands.");
@@ -193,7 +212,7 @@ namespace EGG9000.Bot.Services {
                     }
 
                     _logger.LogInformation("Running command {command} for user: {username}", command.Name, arg.User.Username);
-                    await (Task)command.MethodInfo.Invoke(null, [..parameters]);
+                    await (Task)command.MethodInfo.Invoke(null, [.. parameters]);
                 } catch(UserNotInServerException unfe) {
                     await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
                 } catch(InvalidOperationException) {
@@ -230,7 +249,7 @@ namespace EGG9000.Bot.Services {
 
             foreach(var option in options) {
                 if(option.Options != null) {
-                    foundOption = FindOption(name, [..option.Options]);
+                    foundOption = FindOption(name, [.. option.Options]);
                     if(foundOption != null) {
                         return foundOption;
                     }
@@ -259,7 +278,7 @@ namespace EGG9000.Bot.Services {
                 foreach(var command in _slashCommandFunctions) {
                     var guildCommand = new SlashCommandBuilder {
                         Name = command.Name,
-                        Description = $"{(command.Details.AdminOnly != StaffOnlyLevel.None ? "(Admin Only)":"")} {command.Details.Description}",
+                        Description = $"{(command.Details.AdminOnly != StaffOnlyLevel.None ? "(Admin Only)" : "")} {command.Details.Description}",
                         DefaultMemberPermissions = command.Details.AdminOnly switch {
                             StaffOnlyLevel.Admin => (GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles),
                             StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
@@ -312,12 +331,12 @@ namespace EGG9000.Bot.Services {
                     guildCommandProperties.Add(guildCommand.Build());
                 }
 
-                var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync([..globalCommandProperties]);
+                var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync([.. globalCommandProperties]);
                 _globalCommands.AddRange(globalCommands.Select(y => (y, (ulong)0)));
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
 
-                    var discordCommands = await guild.BulkOverwriteApplicationCommandAsync([..guildCommandProperties]);
+                    var discordCommands = await guild.BulkOverwriteApplicationCommandAsync([.. guildCommandProperties]);
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
             } catch(Exception exception) {
@@ -445,7 +464,7 @@ namespace EGG9000.Bot.Services {
             _ = HandleMessageReceived(message);
             return Task.CompletedTask;
         }
-        
+
         private async Task HandleTestOCR(SocketMessage message, ApplicationDbContext db) {
             if(message.Attachments.Count == 0) return;
             if(message.Reference == null || message.Reference.MessageId.Value == default || message.Channel.Id != message.Reference.ChannelId) return;
@@ -521,7 +540,7 @@ namespace EGG9000.Bot.Services {
             var meritText = "Assisting the E9K devs during EID detection testing 🤖❤️";
 
             var hasMeritAlready = dbUser.Merits.Any(m => m.Reason == meritText);
-            if(hasMeritAlready) return;            
+            if(hasMeritAlready) return;
 
             await MeritCommands.CreateMerit(meritText, db, _discord, message.Author, null, guild: guild);
         }
@@ -562,7 +581,7 @@ namespace EGG9000.Bot.Services {
             var eiid = EIIDScreenShots.ReadText(croppedImage);
             var eiidMatch = Regex.Match(eiid, @"EI\d{16}");
 
-            if (!eiidMatch.Success) {
+            if(!eiidMatch.Success) {
                 await message.Channel.SendMessageAsync(
                     "",
                     embed: EmbedError("**Unable to detect your EID from this screenshot**.\n\nPlease wait for staff assistance."),
@@ -588,10 +607,10 @@ namespace EGG9000.Bot.Services {
                 await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
             }
 
-            
-            if (!message.Author.IsBot && guild != null) {
+
+            if(!message.Author.IsBot && guild != null) {
                 await HandleScreenshotRegistration(message, guild, db);
-            } else if (!message.Author.IsBot && message.Channel is SocketDMChannel) {
+            } else if(!message.Author.IsBot && message.Channel is SocketDMChannel) {
                 await HandleTestOCR(message, db);
             }
 
@@ -712,7 +731,7 @@ namespace EGG9000.Bot.Services {
                         Value = Convert.ToInt32(value)
                     });
                 }
-                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, 0, int.MaxValue, guildCommand, subCommand, [..choices]);
+                AddOption(name, ApplicationCommandOptionType.Integer, description: slashParamDetails.Description, isRequired: slashParamDetails.Required, isAutocomplete: slashParamDetails.AutocompleteHandler is not null, positiveOnly: slashParamDetails.PositiveOnly, maxValue: double.MinValue, 0, int.MaxValue, guildCommand, subCommand, [.. choices]);
                 return;
             }
             if(parameterInfo.ParameterType == typeof(SocketUser[])) {

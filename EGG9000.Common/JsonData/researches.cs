@@ -20,6 +20,25 @@ namespace EGG9000.Common.JsonData {
     public class EiResearch {
         private static List<EiResearchItem> _Instance { get; set; }
 
+
+
+        public static List<EiResearchItem> GetData() {
+            if(_Instance != null) {
+                return _Instance;
+            }
+
+            var assembly = Assembly.GetExecutingAssembly();
+
+            var resourceName = assembly.GetManifestResourceNames()
+                .Single(str => str.EndsWith("researches.json"));
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            using var reader = new StreamReader(stream);
+            var json = reader.ReadToEnd();
+            _Instance = JsonConvert.DeserializeObject<List<EiResearchItem>>(json);
+            return _Instance;
+        }
+
         public static List<EiResearchItem> Get(List<ResearchCostSubmission> researchCostSubmissions) {
             //if(_Instance != null) {
             //    return _Instance;

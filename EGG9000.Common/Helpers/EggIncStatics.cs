@@ -78,7 +78,7 @@ namespace EGG9000.Common.Helpers {
                 case Ei.RewardType.Gold:
                     return $"<:Egg_Golden:692439755798872075>  {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.EpicResearchItem:
-                    var researchItem = (JsonData.EIEpicResearch.Root.Get().epicResearchItems.AsQueryable().FirstOrDefault(x => x.id == goal.RewardSubType.ToLower()));
+                    var researchItem = (JsonData.EIEpicResearch.EiEpicResearch.Get().epicResearchItems.AsQueryable().FirstOrDefault(x => x.id == goal.RewardSubType.ToLower()));
                     var goldenEggRefund = (int)(researchItem?.Costs?.Last() * goal?.RewardAmount);
                     var goldenEggRefundString = $" (<:Golden_Egg_GE:692439755798872075> {(goldenEggRefund >= 1000 ? (goldenEggRefund / 1000).ToString() + 'K' : goldenEggRefund)})";
                     return $"{researchItem?.title ?? ToStartCase(goal.RewardSubType)} +{goal.RewardAmount}{(goldenEggRefund == default ? "" : goldenEggRefundString)}";

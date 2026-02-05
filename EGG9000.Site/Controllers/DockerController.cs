@@ -176,6 +176,7 @@ namespace EGG9000.Site.Controllers {
             };
             var newContainer = await client.Containers.CreateContainerAsync(createParams);
             var started = await client.Containers.StartContainerAsync(newContainer.ID, new ContainerStartParameters());
+            _logger.LogInformation("Started new container {name} with image {image}", createParams.Name, newImage);
         }
         private async Task RecreateContainer(DockerClient client, ContainerListResponse containerInfo, string newImage) {
             var info = await client.Containers.InspectContainerAsync(containerInfo.ID);

@@ -434,7 +434,8 @@ namespace EGG9000.Common.Helpers {
 #if RELEASE
             var baseUrl = "https://egg9000.com";
 #else
-            var baseUrl = "https://localhost:44314";
+            //var baseUrl = "https://localhost:44314";
+            var baseUrl = "https://egg9000.dev.sglade.com";
 #endif
 
             var apiUrl = $"{baseUrl}/api/generateinventoryb64";

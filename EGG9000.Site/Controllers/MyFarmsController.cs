@@ -103,7 +103,7 @@ namespace EGG9000.Site.Controllers {
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
             var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel && !x.JoinedCoop).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
-            var EpicResearchConfig = Root.Get().epicResearchItems;
+            var EpicResearchConfig = EiEpicResearch.Get().epicResearchItems;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 

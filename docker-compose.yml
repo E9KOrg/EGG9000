@@ -60,6 +60,16 @@ services:
       Docker__Host: unix:///var/run/docker.sock
     networks:
       - egg9000_network
+    ports:
+      - "5013:5013"
+    volumes:
+      # Correct syntax for Docker Desktop on Windows with Linux containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Grant access to Docker socket (choose one):
+    # Option A: Run as root (simpler but less secure)
+    user: root
+    # Option B: Add to docker group (more secure, requires group ID)
+    # user: "1000:999"  # Replace 999 with your docker group ID
     depends_on:
      - rabbitmq
     logging:
@@ -67,17 +77,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    ports:
-      - "5013:5013"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5013/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 40s
-    volumes:
-      - //./pipe/docker_engine:/var/run/docker.sock  # Docker Desktop on Windows → Linux container
-
 
   rabbitmq:
     image: rabbitmq:3.12-management

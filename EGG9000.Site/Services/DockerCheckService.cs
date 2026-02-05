@@ -1,6 +1,7 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -13,12 +14,16 @@ namespace EGG9000.Site.Services {
     public class DockerCheckService : BackgroundService {
         private readonly ILogger<DockerCheckService> _logger;
         private readonly TimeSpan _interval = TimeSpan.FromMinutes(0.5);
+        private readonly IConfiguration _config;
+        private string DockerHost => _config["Docker:Host"] ?? "npipe://./pipe/docker_engine";
 
-        public DockerCheckService(ILogger<DockerCheckService> logger) {
+        public DockerCheckService(ILogger<DockerCheckService> logger, IConfiguration config) {
             _logger = logger;
+            _config = config;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+#if RELEASE
             using var timer = new PeriodicTimer(_interval);
 
             _logger.LogInformation("Interval service started.");
@@ -30,14 +35,17 @@ namespace EGG9000.Site.Services {
                     _logger.LogError(ex, "Error during interval task execution.");
                 }
             }
+#endif
         }
 
         private async Task DoWorkAsync() {
             _logger.LogTrace("DockerController timer tick");
-            var client = new DockerClientConfiguration(new Uri("http://192.168.0.164:2375")).CreateClient();
+            var client = new DockerClientConfiguration(new Uri(DockerHost)).CreateClient();
             var containers = await client.Containers.ListContainersAsync(new ContainersListParameters() {
                 All = true
             });
+            _logger.LogInformation("Found {count} containers", containers.Count);
+
             var botContainers = containers.Where(c => c.Names.Any(n => n.Contains("egg9000-bot"))).ToList();
 
             var botBlue = botContainers.FirstOrDefault(c => c.Names.Any(n => n.Contains("blue")));

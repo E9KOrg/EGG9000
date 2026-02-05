@@ -19,46 +19,57 @@ using NLog.Web;
 
 //using TestBot;
 
-await Host.CreateDefaultBuilder(args)
-    .ConfigureLogging(logging => {
-        logging.ClearProviders();
-        logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
-    }).UseNLog()
-    .ConfigureServices((hostContext, services) => {
-        var logger = LogManager.Setup()
-                           .GetCurrentClassLogger();
-        logger.Log(NLog.LogLevel.Info, "Main Start");
+//await Host.CreateDefaultBuilder(args)
+//    .ConfigureLogging(logging => {
+//        logging.ClearProviders();
+//        logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+//    }).UseNLog()
+//    .ConfigureServices((hostContext, services) => {
+//        var logger = LogManager.Setup()
+//                           .GetCurrentClassLogger();
+//        logger.Log(NLog.LogLevel.Info, "Main Start");
 
 
-        var Configuration = new ConfigurationBuilder()
-            .AddUserSecrets<Program>()
-            .Build();
+//        var Configuration = new ConfigurationBuilder()
+//            .AddUserSecrets<Program>()
+//            .Build();
 
-        services.Configure<HostOptions>(options => {
-            options.ShutdownTimeout = TimeSpan.FromMinutes(5);
-        });
+//        services.Configure<HostOptions>(options => {
+//            options.ShutdownTimeout = TimeSpan.FromMinutes(5);
+//        });
 
-        services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(
-                Configuration.GetConnectionString("DefaultConnection")));
+//        services.AddDbContext<ApplicationDbContext>(options =>
+//            options.UseSqlServer(
+//                Configuration.GetConnectionString("DefaultConnection")));
 
-        //services.AddMassTransit(x => {
-        //    x.AddConsumer<ShutdownConsumer>();
-        //    x.UsingRabbitMq((context, cfg) => {
-        //        cfg.ConfigureEndpoints(context);
-        //    });
-        //});
-        services.AddBugsnag();
-        services.AddMemoryCache();
-        services.AddSingleton<DiscordHostedService>();
-        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-        //services.AddSingleton<APILink>();
-        //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
+//        //services.AddMassTransit(x => {
+//        //    x.AddConsumer<ShutdownConsumer>();
+//        //    x.UsingRabbitMq((context, cfg) => {
+//        //        cfg.ConfigureEndpoints(context);
+//        //    });
+//        //});
+//        services.AddBugsnag();
+//        services.AddMemoryCache();
+//        services.AddSingleton<DiscordHostedService>();
+//        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+//        //services.AddSingleton<APILink>();
+//        //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
-        //services.AddHostedService<CommandService>();
-        //services.AddHostedService<UpcomingContracts>();
+//        //services.AddHostedService<CommandService>();
+//        //services.AddHostedService<UpcomingContracts>();
 
 
-    }).ConfigureAppConfiguration((context, config) => {
-        config.AddUserSecrets<Program>();
-    }).Build().RunAsync();
+//    }).ConfigureAppConfiguration((context, config) => {
+//        config.AddUserSecrets<Program>();
+//    }).Build().RunAsync();
+
+
+var bugsnag = new Bugsnag.Client(new Bugsnag.Configuration("d5141d01f0e9f20506c3dcaa9110fe01"));
+
+try {
+    throw new System.NotImplementedException();
+} catch(System.Exception ex) {
+    bugsnag.Notify(ex);
+}
+
+await Task.Delay(1000);

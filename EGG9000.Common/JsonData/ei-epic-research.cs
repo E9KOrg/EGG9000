@@ -40,11 +40,11 @@ namespace EGG9000.Common.JsonData.EIEpicResearch {
 
     }
 
-    public class Root {
+    public class EiEpicResearch {
         public List<EpicResearchItem> epicResearchItems { get; set; }
 
-        private static Root Instance = null;
-        public static Root Get() {
+        private static EiEpicResearch Instance = null;
+        public static EiEpicResearch Get() {
             if (Instance != null) {
                 return Instance;
             }
@@ -55,7 +55,7 @@ namespace EGG9000.Common.JsonData.EIEpicResearch {
             using var stream = assembly.GetManifestResourceStream(resourceName);
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<Root>(json);
+            Instance = JsonConvert.DeserializeObject<EiEpicResearch>(json);
             return Instance;
         }
     }

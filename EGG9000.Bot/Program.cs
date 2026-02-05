@@ -1,7 +1,5 @@
 ﻿using Bugsnag.AspNet.Core;
-
 using Discord.WebSocket;
-
 using EGG9000.Bot;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
@@ -9,65 +7,77 @@ using EGG9000.Bot.Services;
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
-
 using MassTransit;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
 using NLog;
 using NLog.Web;
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reflection;
+using System.Collections.Generic;
+
+using Newtonsoft.Json;
 
 // Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
 logger.Log(NLog.LogLevel.Info, "Main Start");
 
-// Build a minimal configuration to check BOT_ACTIVE before building the full host
-var tempConfig = new ConfigurationBuilder()
-    .AddEnvironmentVariables()
-    .AddUserSecrets<Program>()
-    .Build();
-
-var botActive = tempConfig.GetValue("BOT_ACTIVE", true);
-var botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
-
-logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
-logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
-
-if (!botActive)
+try
 {
-    logger.Log(NLog.LogLevel.Info, "Bot set to not active. Exiting gracefully without starting services.");
+    // Build a minimal configuration to check BOT_ACTIVE before building the full host
+    var tempConfig = new ConfigurationBuilder()
+        .AddEnvironmentVariables()
+        .AddUserSecrets<Program>(optional: true) // Optional for Docker scenarios
+        .Build();
+
+    var botActive = tempConfig.GetValue("BOT_ACTIVE", true);
+    var botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
+
+    logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
+    logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
+
+    if (!botActive)
+    {
+        logger.Log(NLog.LogLevel.Info, "Bot set to not active. Exiting gracefully without starting services.");
+        LogManager.Shutdown();
+        return; // Exit cleanly without throwing exception
+    }
+
+    // If BOT_ACTIVE is true, proceed with normal host build
+    await Host.CreateDefaultBuilder(args)
+        .ConfigureLogging(logging => {
+            logging.ClearProviders();
+            logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+        })
+        .UseNLog()
+        .ConfigureAppConfiguration((context, config) => {
+            config.AddUserSecrets<Program>(optional: true); // Optional for Docker scenarios
+        })
+        .UseDefaultServiceProvider(options => options.ValidateScopes = false)
+        .ConfigureServices(ConfigureServices)
+        .Build()
+        .RunAsync();
+}
+catch (Exception ex)
+{
+    logger.Error(ex, "Fatal error during startup");
     LogManager.Shutdown();
-    return; // Exit cleanly without throwing exception
+    throw;
 }
 
-// If BOT_ACTIVE is true, proceed with normal host build
-await Host.CreateDefaultBuilder(args)
-    .ConfigureLogging(logging => {
-        logging.ClearProviders();
-        logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
-    })
-    .UseNLog()
-    .ConfigureAppConfiguration((context, config) => {
-        config.AddUserSecrets<Program>();
-    })
-    .UseDefaultServiceProvider(options => options.ValidateScopes = false)
-    .ConfigureServices(ConfigureServices)
-    .Build()
-    .RunAsync();
-
-void ConfigureServices(HostBuilderContext hostContext, IServiceCollection services) {
+void ConfigureServices(HostBuilderContext hostContext, IServiceCollection services)
+{
     logger.Log(NLog.LogLevel.Info, "ConfigureServices Start");
-    try {
+    try
+    {
         var serviceProvider = services.BuildServiceProvider();
         StaticLoggerFactory.Initialize(serviceProvider.GetRequiredService<ILoggerFactory>());
 
@@ -77,16 +87,34 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddMemoryCache();
 
+        // Get connection string - supports both Docker secrets and local development
+        var connectionString = DockerSecretsHelper.GetConfigOrSecret(
+            hostContext.Configuration,
+            "ConnectionStrings:DefaultConnection",
+            "db_connection_string");
+
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' not found. " +
+                "Ensure it's set in: " +
+                "1. Docker secrets (db_connection_string), or " +
+                "2. User secrets (dotnet user-secrets set ConnectionStrings:DefaultConnection \"...\"), or " +
+                "3. Environment variable (ConnectionStrings__DefaultConnection)");
+        }
+
+        logger.Log(NLog.LogLevel.Info, "Using connection string from: " + 
+            (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
+
         services.AddDbContext<ApplicationDbContext>(options => {
-            options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
+            options.UseSqlServer(connectionString, x => x.MigrationsAssembly("EGG9000.Common"));
             options.EnableSensitiveDataLogging(true);
         });
 
         services.AddDbContextFactory<ApplicationDbContext>(options => {
-            options.UseSqlServer(hostContext.Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
+            options.UseSqlServer(connectionString, x => x.MigrationsAssembly("EGG9000.Common"));
             options.EnableSensitiveDataLogging(true);
         });
-
 
 #if RELEASE
         services.Configure<ActiveMonitorOptions>(options => {
@@ -94,16 +122,12 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.ColorConfigKey = "BOT_COLOR";
             options.PollIntervalSeconds = 10;
         });
-        // Register active monitor so every instance watches the shared deployment record
-        // 1. Register the concrete class as a Singleton so other services can find it
         services.AddSingleton<ActiveMonitorHostedService>();
-        // 2. Register it as a Hosted Service by resolving the existing Singleton instance
         services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
 #endif
 
         services.AddSingleton<DatabaseCache>();
         services.AddSingleton<Words>();
-
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 
 #if RELEASE
@@ -112,42 +136,70 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         var release = false;
 #endif
 
-        //release = true;
-        //This will allow you to configure which parts of the bot you want to run if you don't want everything to run
 #if DEBUG
+
+
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
         if(serviceCustomize is not null && !release) {
             var method = serviceCustomize.GetMethod("ConfigureServices");
             method.Invoke(null, [hostContext, services]);
         }
-#else
 
+#else
         if(release) {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
-            services.AddBugsnag(configuration => {
-                configuration.ApiKey = hostContext.Configuration.GetConnectionString("BugSnagApiKey");
-            });
+            
+            var bugsnagKey = DockerSecretsHelper.GetConfigOrSecret(
+                hostContext.Configuration,
+                "ConnectionStrings:BugSnagApiKey",
+                "bugsnag_api_key");
+
+            var bugsnagConfig = new Bugsnag.Configuration(bugsnagKey);
+            var bs = new Bugsnag.Client(bugsnagConfig);
+            // Register as singleton for background services
+            services.AddSingleton<Bugsnag.IClient>(bs);
+
+            // Test Bugsnag is working
+            if (bs != null)
+            {
+                try
+                {
+                    bs.Notify(new Exception("Bugsnag test - startup successful"));
+                    logger.Log(NLog.LogLevel.Info, "Bugsnag test notification sent");
+                }
+                catch (Exception ex)
+                {
+                    logger.Log(NLog.LogLevel.Error, ex, "Failed to send Bugsnag test notification");
+                }
+                logger.Log(NLog.LogLevel.Info, JsonConvert.SerializeObject(bs.Configuration));
+            }
+            
+            var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
+                hostContext.Configuration,
+                "ConnectionStrings:RabbitMQServer",
+                "rabbitmq_connection");
+            
             services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
-                var host = hostContext.Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
-                if(host.Length > 1) {
+                var host = rabbitmqConn?.Split("|");
+                if(host?.Length > 1) {
                     options.Host = host[0];
                     options.User = host[1];
                     options.Pass = host[2];
                 }
             });
+            
             services.AddMassTransit(x => {
                 x.AddConsumer<ShutdownConsumer>();
                 x.AddConsumer<ExpireCacheConsumer>();
                 x.AddConsumer<RestartConsumer>();
-                var host = hostContext.Configuration.GetConnectionString("RabbitMQServer");
-                if(string.IsNullOrEmpty(host)) {
+                if(string.IsNullOrEmpty(rabbitmqConn)) {
                     logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
                     x.UsingInMemory((context, cfg) => {
                         cfg.ConfigureEndpoints(context);
                         cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
                     });
                 } else {
-                    logger.Log(NLog.LogLevel.Info, "Using RabbitMQ Server " + host);
+                    logger.Log(NLog.LogLevel.Info, "Using RabbitMQ Server");
                     x.UsingRabbitMq((context, cfg) => {
                         cfg.ConfigureEndpoints(context);
                     });
@@ -168,7 +220,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<LeaderboardUpdater>();
 
         services.AddHostedService<ArtifactCheaters>();
-
         services.AddHostedService<StaffCoopsMessage>();
         services.AddHostedService<EventUpdater>();
 
@@ -190,7 +241,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<RefreshNasaApod>();
 
         services.AddSingleton<CoopsBeingCreatedService>();
-
         services.AddSingleton<JobService>();
         services.AddHostedService(provider => provider.GetService<JobService>());
 
@@ -201,7 +251,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
     } catch(Exception e) {
         logger.Error(e, "Stopped program because of exception");
         throw;
-    } finally {
+    }
+    finally {
         LogManager.Shutdown();
     }
 }
