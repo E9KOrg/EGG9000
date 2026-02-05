@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.SharedModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -86,7 +87,7 @@ namespace EGG9000.Common.Services {
             _ReportUpdatedClientVersion = options.CurrentValue.ReportUpdatedClientVersion;
             _discord = discord;
             _logger = logger;
-            AUTHENTICATION_KEY = _configuration["ConnectionStrings:Token"];
+            AUTHENTICATION_KEY = DockerSecretsHelper.GetConfigOrSecret(_configuration, "ConnectionStrings:Token", "token");
         }
 
         private static string GetUserBackupKey(string UserId) {

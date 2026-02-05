@@ -231,9 +231,21 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.Providers.Add<GzipCompressionProvider>();
         options.EnableForHttps = true;
     });
-    services.AddBugsnag(configuration => {
-        configuration.ApiKey = Configuration.GetConnectionString("BugSnagApiKey");
-    });
+
+
+    var bugsnagConfig = new Bugsnag.Configuration(Configuration.GetConnectionString("BugSnagApiKey"));
+    var bs = new Bugsnag.Client(bugsnagConfig);
+    services.AddSingleton<Bugsnag.IClient>(bs);
+    // Test Bugsnag is working
+    if(bs != null) {
+        try {
+            bs.Notify(new Exception("Bugsnag test - startup successful"));
+            logger.Log(NLog.LogLevel.Info, "Bugsnag test notification sent");
+        } catch(Exception ex) {
+            logger.Log(NLog.LogLevel.Error, ex, "Failed to send Bugsnag test notification");
+        }
+    }
+
     services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
         var host = Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
         if(host.Length > 1) {

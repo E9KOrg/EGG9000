@@ -222,6 +222,14 @@
       "_numLevels": 7,
       "title": "Fuel Tank",
       "description": "Store extra eggs to be used as fuel for rockets"
+    },
+    {
+      "order": 50,
+      "id": "epic_silo_quality"
+    },
+    {
+      "order": 51,
+      "id":  "warp_shift"
     }
   ]
 }

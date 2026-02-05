@@ -13,6 +13,8 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using EGG9000.Common.Services;
 
+using Ei;
+
 using Humanizer;
 
 using MassTransit.Testing;
@@ -50,7 +52,7 @@ namespace EGG9000.Bot.Automated.Coops {
         private static readonly TimeSpan interval = TimeSpan.FromMinutes(15);
 #endif
         private readonly Dictionary<ulong, SocketTextChannel> _demeritChannels = [];
-
+        private static Random rand = new Random();
 
         public class UserX {
             public SocketGuildUser SocketGuildUser { get; set; }
@@ -64,7 +66,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            coops = [.. coops.Where(x => x.ThreadID == 1450187730322718793)];
+            coops = [.. coops.Where(x => x.Id == Guid.Parse("eb1353a9-32ae-4c03-e379-08de4a63aaaf"))];
             //coops = coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-1) && x.GuildId == 656455567858073601 && x.OverflowGuildId == 1147264073659064420).ToList();
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
@@ -392,7 +394,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 // Set time joined so we can later track and alert when a new BG might be worth it.
-                coopDetails.CoopParticipants.Where(x => x.Xref?.Joined is null && x.CoopStatus is not null).ToList().ForEach(x => x.Xref.Joined = DateTimeOffset.UtcNow);
+                coopDetails.CoopParticipants.Where(x => x.Xref is not null && x.Xref?.Joined is null && x.CoopStatus is not null).ToList().ForEach(x => x.Xref.Joined = DateTimeOffset.UtcNow);
 
 
                 var usersWithStatus = coopDetails.CoopParticipants.Select(x => new UserWithStatus {
@@ -1276,7 +1278,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Contract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, EGG9000.Common.Database.Entities.Contract contract) {
             var table = new List<List<FixedWidthCell>> {new () {
                 new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new("Discord", CellAlignment.Center),
@@ -1394,7 +1396,7 @@ namespace EGG9000.Bot.Automated.Coops {
             return messages;
         }
 
-        private static async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
+        private async Task<StatusResponse> GetStatus(Coop coop, ITextChannel channel, CancellationToken cancellationToken) {
             var policy = Policy
                .Handle<Exception>()
                .WaitAndRetry(
@@ -1403,8 +1405,15 @@ namespace EGG9000.Bot.Automated.Coops {
                             TimeSpan.FromSeconds(3),
                             TimeSpan.FromSeconds(7)
                ]);
+            Task<ContractCoopStatusResponse> statusTask;
 
-            var statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, cancellationToken: cancellationToken));
+
+            if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop)) {
+                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, cancellationToken: cancellationToken));
+            } else {
+                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
+                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, cancellationToken: cancellationToken));
+            }
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);

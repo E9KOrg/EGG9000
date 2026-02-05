@@ -8,9 +8,9 @@
     <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
-  <Target Name="RunBotOnHomeControl" AfterTargets="Publish">
+  <!--<Target Name="RunBotOnHomeControl" AfterTargets="Publish">
     <Exec Command=".\runbot.bat" />
-  </Target>
+  </Target>-->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>embedded</DebugType>
     <DebugSymbols>true</DebugSymbols>
@@ -106,4 +106,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" />
+  </Target>
 </Project>
