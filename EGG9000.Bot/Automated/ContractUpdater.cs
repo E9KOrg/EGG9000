@@ -63,15 +63,6 @@ namespace EGG9000.Bot.Automated {
                 var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id).ToListAsync(CancellationToken.None);
 
 
-#if DEBUG
-                //_ = await _apiLink.GetUserBackups(dbusers, _db, forceAll: true);
-                //dbusers = dbusers.Take(100).ToList();
-                //_ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
-                //await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
-#else
-                _ = await _apiLink.GetUserBackups(dbusers, _db, cancellationToken);
-                await ShipReturnDM.UpdateNextShipDM(dbusers, _db);
-#endif
 
                 var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);
                 //var contractIds = groupGuildContracts.Select(x => x.ContractID);

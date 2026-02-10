@@ -154,7 +154,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> XmlOut(string ei) {
             //var rawBackup = await ContractsAPI.FirstContact(ei);
             //var backup = new CustomBackup(rawBackup.Backup);
-            var backup = await _apiLink.GetBackup(ei);
+            var backup = await ContractsAPI.GetBackupAsync(ei);
             return new ObjectResult(backup);
         }
 
@@ -162,7 +162,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
-            var backup = await _apiLink.GetBackup(ei);
+            var backup = await ContractsAPI.GetBackupAsync(ei);
             return new ObjectResult(backup);
         }
 
@@ -850,7 +850,7 @@ namespace EGG9000.Site.Controllers {
             var user = new DBUser {
                 UserCoopXrefs = new List<UserCoopXref>()
             };
-            var backup = await _apiLink.GetBackup(id);
+            var backup = await ContractsAPI.GetBackupAsync(id);
             user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } };
             user.DiscordUsername = backup.UserName;
             //return Json(response);
@@ -907,17 +907,10 @@ namespace EGG9000.Site.Controllers {
                 }));
 
                 model.UserInfos.AddRange(existingBackups.Where(x => x.Contribution != null));
-                backupsNeeded = backupsNeeded.Where(x => !existingBackups.Any(y => y.Contribution?.UserId == x.UserId)).ToList();
                 model.League = model.DbCoop.League;
             } else {
                 model.League = (uint)model.CoopStatus.Grade;
             }
-            var backups = await _apiLink.GetUserBackups(backupsNeeded.Select(x => x.UserId), new CancellationToken(), true);
-            model.UserInfos.AddRange(backups.Select(b => new CoopUserInfo {
-                Contribution = model.CoopStatus.Contributors.First(c => c.UserId == b.EggIncId),
-                Backup = b,
-                Farm = b.Farms.FirstOrDefault(f => f.CoopId == CoopId)
-            }));
 
             model.UserInfos.AddRange(model.CoopStatus.Contributors.Where(x => !model.UserInfos.Any(y => x.UserId == y.Contribution?.UserId)).Select(x => new CoopUserInfo {
                 Contribution = x

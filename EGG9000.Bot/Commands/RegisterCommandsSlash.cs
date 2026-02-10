@@ -69,7 +69,7 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
-                var Response = await apiLink.GetBackup(dbUser.EggIncAccounts.First().Id);
+                var Response = await ContractsAPI.GetBackupAsync(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = Response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
@@ -368,7 +368,7 @@ namespace EGG9000.Bot.Commands {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    backup = await apiLink.GetBackup(eggincid);
+                    backup = await ContractsAPI.GetBackupAsync(eggincid);
                 }
             }
 
@@ -641,7 +641,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var backup = await apiLink.GetBackup(account.Id);
+                var backup = await ContractsAPI.GetBackupAsync(account.Id);
                 if(backup == null)
                     continue;
 
