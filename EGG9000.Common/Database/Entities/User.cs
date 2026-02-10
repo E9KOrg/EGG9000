@@ -17,6 +17,7 @@ using System.Linq;
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
     [Index(nameof(LastModified))]
+    [Index(nameof(LastBackupCheck))]
     public class DBUser : ILastModified {
         [NotMapped]
         public static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
@@ -80,6 +81,8 @@ namespace EGG9000.Common.Database.Entities {
         public string Notes { get; set; }
         public byte[] _coopSettingByte { get; set; }
         public DateTimeOffset? NextBreakExpire { get; set; }
+        public DateTimeOffset? LastBackupCheck { get; set; }
+
         [NotMapped]
         private CoopSetting _coopSetting { get; set; }
         [NotMapped]

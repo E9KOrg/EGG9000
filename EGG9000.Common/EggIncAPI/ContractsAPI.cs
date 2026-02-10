@@ -1,6 +1,7 @@
 ﻿
 using ComponentAce.Compression.Libs.zlib;
 
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
 using Ei;
@@ -638,6 +639,14 @@ namespace EGG9000.Bot.EggIncAPI {
             }
         }
 
+        public static async Task<CustomBackup> GetBackupAsync(string EggIncId) {
+            var firstContact = await FirstContact(EggIncId);
+            if(firstContact.Success) {
+                return new CustomBackup(firstContact.Backup, null);
+            } else {
+                return null;
+            }
+        }
         public static async Task<Backup> BotFirstContact(string UserId) {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };

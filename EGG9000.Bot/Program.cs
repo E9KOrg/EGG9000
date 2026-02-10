@@ -162,23 +162,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.ReleaseStage = "production";
             });
 
-
-            // Test Bugsnag is working
-            if (bs != null)
-            {
-                try
-                {
-                    bs.Notify(new Exception("Bugsnag test - startup successful"));
-                    logger.Log(NLog.LogLevel.Info, "Bugsnag test notification sent");
-                }
-                catch (Exception ex)
-                {
-                    logger.Log(NLog.LogLevel.Error, ex, "Failed to send Bugsnag test notification");
-                }
-                logger.Log(NLog.LogLevel.Info, JsonConvert.SerializeObject(bs.Configuration));
-            }
-            throw new Exception("Bugsnag test exception to verify configuration");
-
             var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
@@ -244,6 +227,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<RemoveTempRoles>();
         services.AddHostedService<HandleGradeChanges>();
         services.AddHostedService<RefreshNasaApod>();
+        services.AddHostedService<UpdateBackups>();
 
         services.AddSingleton<CoopsBeingCreatedService>();
         services.AddSingleton<JobService>();

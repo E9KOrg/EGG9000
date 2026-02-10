@@ -190,7 +190,7 @@ namespace EGG9000.Site.Controllers {
 
             //Get fresh backups
             foreach(var account in user.EggIncAccounts) {
-                var backup = await _apiLink.GetBackup(account.Id);
+                var backup = await ContractsAPI.GetBackupAsync(account.Id);
                 if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
                     account.Backup = backup;
                 }
