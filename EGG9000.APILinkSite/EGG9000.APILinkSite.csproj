@@ -3,6 +3,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <UserSecretsId>a03a2b0e-9174-495f-b104-7da233418296</UserSecretsId>
     <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <LangVersion>preview</LangVersion>
@@ -30,6 +31,7 @@
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.5.192" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.3" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="NLog" Version="5.2.2" />
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.2" />
     <PackageReference Include="NLog.Targets.GraylogHttp" Version="2.0.1" />

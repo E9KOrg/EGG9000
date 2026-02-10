@@ -117,9 +117,16 @@ namespace EGG9000.Bot.Jobs {
             };
         }
 
-        public static async Task SendUltraLogMessage(DiscordSocketClient _client, Guild dbGuild, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel) {
+        public async Task SendUltraLogMessage(DiscordSocketClient _client, Guild dbGuild, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel) {
             var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`) " : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
-            _ = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.UltraLog, new() { Text = message});
+            try {
+                _ = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.UltraLog, new() { Text = message });
+            } catch(Exception e) {
+                _logger.LogWarning($"Failed to send ULTRA log message for {dbGuild.Name}");
+                _bugsnag.Breadcrumbs.Leave(dbGuild.Name);   
+                _bugsnag.Notify(e);
+            }
+
         }
 
         public async Task CheckRole(ulong roleid, DBUser dbuser, bool pro, SocketGuildUser user) {

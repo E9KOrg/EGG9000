@@ -106,11 +106,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         logger.Log(NLog.LogLevel.Info, "Using connection string from: " + 
             (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
 
-        services.AddDbContext<ApplicationDbContext>(options => {
-            options.UseSqlServer(connectionString, x => x.MigrationsAssembly("EGG9000.Common"));
-            options.EnableSensitiveDataLogging(true);
-        });
-
         services.AddDbContextFactory<ApplicationDbContext>(options => {
             options.UseSqlServer(connectionString, x => x.MigrationsAssembly("EGG9000.Common"));
             options.EnableSensitiveDataLogging(true);
@@ -155,9 +150,18 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 "bugsnag_api_key");
 
             var bugsnagConfig = new Bugsnag.Configuration(bugsnagKey);
+            
             var bs = new Bugsnag.Client(bugsnagConfig);
+
             // Register as singleton for background services
             services.AddSingleton<Bugsnag.IClient>(bs);
+
+            services.AddBugsnag(options => {
+                options.ApiKey = bugsnagKey;
+                options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+                options.ReleaseStage = "production";
+            });
+
 
             // Test Bugsnag is working
             if (bs != null)
@@ -173,7 +177,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 }
                 logger.Log(NLog.LogLevel.Info, JsonConvert.SerializeObject(bs.Configuration));
             }
-            
+            throw new Exception("Bugsnag test exception to verify configuration");
+
             var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
