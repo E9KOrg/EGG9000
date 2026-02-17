@@ -12,25 +12,25 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Automated {
     public static class SubscriptionUpdater {
 
-        public static async Task UpdateSubscriptionForAccount(DiscordSocketClient _client, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger logger = null) {
+        public static async Task UpdateSubscriptionForAccount(DiscordSocketClient client, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger logger = null) {
             // Use API-based subscription check since the proto SubInfo field is not available on iOS yet
             // Once SubInfo is available in the proto for all platforms, this can be updated to read from Backup
             try {
                 var subscriptionStatus = await ContractsAPI.GetUserSubscription(account.Id);
-                if(subscriptionStatus is null) {
+                if (subscriptionStatus is null) {
                     return;
                 }
 
-                if(subscriptionStatus.HasStatus && (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod) && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
-                    if(account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
-                        await SendUltraLogMessage(_client, dbGuild, user, account, (int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel);
+                if (subscriptionStatus.HasStatus && (subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.Active || subscriptionStatus.Status == UserSubscriptionInfo.Types.Status.GracePeriod) && subscriptionStatus.PeriodEnd > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
+                    if (account.SubscriptionLevel != subscriptionStatus.SubscriptionLevel) {
+                        await SendUltraLogMessage(client, dbGuild, user, account, (int?)account.SubscriptionLevel ?? -1, (int)subscriptionStatus.SubscriptionLevel);
                         account.SubscriptionLevel = subscriptionStatus.SubscriptionLevel;
                     }
-                    if(account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
+                    if (account.SubscriptionEnds != subscriptionStatus.PeriodEnd) {
                         account.SubscriptionEnds = subscriptionStatus.PeriodEnd;
                     }
-                } else if(account.SubscriptionLevel.HasValue) {
-                    await SendUltraLogMessage(_client, dbGuild, user, account, (int?)account.SubscriptionLevel ?? -1, -1);
+                } else if (account.SubscriptionLevel.HasValue) {
+                    await SendUltraLogMessage(client, dbGuild, user, account, (int?)account.SubscriptionLevel ?? -1, -1);
                     account.SubscriptionLevel = null;
                 }
             } catch(Exception ex) {
@@ -48,10 +48,10 @@ namespace EGG9000.Bot.Automated {
             };
         }
 
-        private static async Task SendUltraLogMessage(DiscordSocketClient _client, Guild dbGuild, DBUser user, EggIncAccount account, int oldLevel, int intNewLevel) {
-            var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup?.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`) " : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(intNewLevel)}`.";
+        private static async Task SendUltraLogMessage(DiscordSocketClient client, Guild dbGuild, DBUser user, EggIncAccount account, int oldLevel, int newLevel) {
+            var message = $"<@{user.DiscordId}>'s {(user.EggIncAccounts.Count > 1 && (account.Backup?.UserName?.Length ?? 0) > 0 ? $" (`{account.Backup.UserName}`) " : "")}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(newLevel)}`.";
             try {
-                _ = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.UltraLog, new() { Text = message });
+                _ = await ChannelHelper.DetermineAndSend(client, dbGuild, GuildChannelType.UltraLog, new() { Text = message });
             } catch(Exception) {
                 // Silently ignore log message failures
             }
