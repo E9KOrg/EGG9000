@@ -3,7 +3,7 @@ version: "3.9"
 x-environment: &default-environment
   DOTNET_ENVIRONMENT: Production
   ASPNETCORE_ENVIRONMENT: Production
-  ConnectionStrings__RabbitMQServer: rabbitmq|e9k|KA#42HG9
+  ConnectionStrings__RabbitMQServer: rabbitmq|${RABBITMQ_DEFAULT_USER:-guest}|${RABBITMQ_DEFAULT_PASS:-change_me}
   ConnectionStrings__DefaultConnection: ...
   ConnectionStrings__ClientId: ...
   ConnectionStrings__Token: ...
@@ -88,8 +88,8 @@ services:
     image: rabbitmq:3.12-management
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: e9k
-      RABBITMQ_DEFAULT_PASS: KA#42HG9
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change_me}
     ports:
       - "5672:5672"
       - "15672:15672"

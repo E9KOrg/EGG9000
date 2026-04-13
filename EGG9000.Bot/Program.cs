@@ -21,6 +21,7 @@ using NLog.Web;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Prometheus;
 using System.Reflection;
 using System.Collections.Generic;
 
@@ -29,6 +30,8 @@ using Newtonsoft.Json;
 // Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
 logger.Log(NLog.LogLevel.Info, "Main Start");
+
+string botColor;
 
 try
 {
@@ -39,7 +42,9 @@ try
         .Build();
 
     var botActive = tempConfig.GetValue("BOT_ACTIVE", true);
-    var botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
+    botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
+
+    NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}_{botColor}");
 
     logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
     logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
@@ -236,6 +241,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<CommandService>();
         services.AddHostedService<DiscordUserService>();
 
+
+        services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
+        services.AddHostedService<PrometheusMetricServerHostedService>();
 #endif
     } catch(Exception e) {
         logger.Error(e, "Stopped program because of exception");

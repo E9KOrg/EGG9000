@@ -24,6 +24,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using Prometheus;
+
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 
@@ -112,11 +114,27 @@ namespace EGG9000.Bot.Services {
                 bugsnag.Notify(new Exception("test-bugsnag"));
                 _logger.LogInformation($"Bugsnag API Key: {bugsnag.Configuration.ApiKey}");
                 _logger.LogInformation("Bugsnag test exception sent");
-            } catch (Exception e) {
+            } catch(Exception e) {
                 _logger.LogError(e, "Bugnsag error");
             }
             _logger.LogInformation($"Bugsnag test completed");
         }
+
+
+
+        private static readonly Histogram RunCommandDuration = Metrics
+            .CreateHistogram("bot_runcommand_duration_seconds",
+                "RunCommand execution time",
+                new HistogramConfiguration {
+                    Buckets = Histogram.ExponentialBuckets(0.005, 2, 12)
+                });
+
+        private static readonly Counter RunCommandTotal =
+            Metrics.CreateCounter("bot_runcommand_total", "Total RunCommand calls");
+
+        private static readonly Counter RunCommandFailures =
+            Metrics.CreateCounter("bot_runcommand_failures_total", "Failed RunCommand calls");
+
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
             try {
@@ -147,9 +165,10 @@ namespace EGG9000.Bot.Services {
 
 
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
-            //_ = arg.DeferAsync();
-            if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5))) {
-                try {
+            var sw = Stopwatch.StartNew();
+            RunCommandTotal.Inc();
+            try {
+                if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5))) {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
@@ -213,29 +232,33 @@ namespace EGG9000.Bot.Services {
 
                     _logger.LogInformation("Running command {command} for user: {username}", command.Name, arg.User.Username);
                     await (Task)command.MethodInfo.Invoke(null, [.. parameters]);
-                } catch(UserNotInServerException unfe) {
-                    await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
-                } catch(InvalidOperationException) {
-                    await arg.RespondAsync(text: "", embed: EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"));
-                } catch(Exception e) {
-                    try {
-                        _bugsnag.Notify(e);
-                        if(arg.HasResponded) {
-                            await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedExceptionFrame(e); });
-                        } else {
-                            await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
-                        }
-                    } catch(Exception) {
-
-                    }
-                } finally {
-                    _semaphoreSlim.Release();
+                } else {
+                    _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
+                    _logger.LogWarning("Command Semaphore Limit Hit");
+                    await arg.RespondAsync(text: "", embed: EmbedError("Unable to run command at this time, please try again in a minute"));
                 }
+            } catch(UserNotInServerException unfe) {
+                RunCommandFailures.Inc();
+                await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
+            } catch(InvalidOperationException) {
+                RunCommandFailures.Inc();
+                await arg.RespondAsync(text: "", embed: EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"));
+            } catch(Exception e) {
+                RunCommandFailures.Inc();
+                try {
+                    _bugsnag.Notify(e);
+                    if(arg.HasResponded) {
+                        await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedExceptionFrame(e); });
+                    } else {
+                        await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
+                    }
+                } catch(Exception) {
 
-            } else {
-                _bugsnag.Notify(new Exception("Command Semaphore Limit Hit"));
-                _logger.LogWarning("Command Semaphore Limit Hit");
-                await arg.RespondAsync(text: "", embed: EmbedError("Unable to run command at this time, please try again in a minute"));
+                }
+            } finally {
+                _semaphoreSlim.Release();
+                sw.Stop();
+                RunCommandDuration.Observe(sw.Elapsed.TotalSeconds);
             }
         }
 

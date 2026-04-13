@@ -262,3 +262,10 @@ __pycache__/
 /EGG9000.Bot/runbot.bat
 /EGG9000.Bot/ServiceCustomize.cs
 /EGG9000.Bot/version.txt
+
+# Local secret/config files
+**/secrets.json
+**/.env
+**/.env.*
+**/appsettings.Local.json
+**/appsettings.*.local.json

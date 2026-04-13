@@ -113,14 +113,16 @@ namespace EGG9000.Bot.Automated {
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
                     var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
-                    // Kevin being bad causing problems - Fallback leggacy detection
-                    if(!contractResponse.Leggacy) {
-                        contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
-                    }
 
                     var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
+                        // Kevin being bad causing problems - Fallback leggacy detection
+                        if(!contractResponse.Leggacy) {
+                            _logger.LogWarning("Contract {contractid} is not marked as leggacy, checking if it is actually new or if it's just a Kevin update without the flag", contractResponse.Identifier);
+                            contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
+                        }
+
                         contract = new Contract {
                             ID = contractResponse.Identifier,
                             Created = DateTime.Now,
@@ -143,6 +145,7 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsync(CancellationToken.None);
 
                         needsUpdate = true;
+                        _logger.LogInformation("Contract {contractid} added", contract.ID);
                     } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
                         if(contract.Created < DateTime.Now.AddMonths(-3)) {
                             contract.Created = DateTimeOffset.Now;
@@ -166,6 +169,7 @@ namespace EGG9000.Bot.Automated {
                         contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
                         contract.cc_only = contractResponse.CcOnly;
                         await _db.SaveChangesAsync(CancellationToken.None);
+                        _logger.LogInformation("Contract {contractid} updated", contract.ID);
                     }
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);

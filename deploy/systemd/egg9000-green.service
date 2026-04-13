@@ -1,0 +1,23 @@
+[Unit]
+Description=EGG9000 Bot (Green)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=egg9000
+Group=egg9000
+WorkingDirectory=/opt/egg9000/green
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=BOT_ACTIVE=true
+Environment=BOT_COLOR=green
+EnvironmentFile=-/etc/egg9000/bot.common.env
+ExecStart=/usr/bin/dotnet /opt/egg9000/green/EGG9000.Bot.dll
+Restart=always
+RestartSec=5
+TimeoutStopSec=120
+KillSignal=SIGINT
+SyslogIdentifier=egg9000-bot-green
+
+[Install]
+WantedBy=multi-user.target

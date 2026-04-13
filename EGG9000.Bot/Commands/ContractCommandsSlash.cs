@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
-            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status is null) { //Safeguarding
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is unresponsive, please try again in a minute or two."); });
@@ -103,7 +103,7 @@ namespace EGG9000.Bot.Commands {
             await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(2);
-            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status.Participants.Count == contract.MaxUsers) {
                 logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
@@ -481,7 +481,7 @@ namespace EGG9000.Bot.Commands {
 
             var contractChannel = (await _client.GetChannelAsync(guildContract.DiscordChannelId) as SocketTextChannel);
 
-            var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
+            var status = await ContractsAPI.GetCoopStatusBot(guildContract.ContractID, coopname.ToLower());
             if(status != null && status.Success) {
                 var coop = new Coop {
                     ContractID = guildContract.ContractID,
