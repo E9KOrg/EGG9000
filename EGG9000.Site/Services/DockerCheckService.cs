@@ -1,6 +1,8 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
 
+using EGG9000.Common.Services;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,9 +19,11 @@ namespace EGG9000.Site.Services {
         private readonly IConfiguration _config;
         private string DockerHost => _config["Docker:Host"] ?? "npipe://./pipe/docker_engine";
 
-        public DockerCheckService(ILogger<DockerCheckService> logger, IConfiguration config) {
+        public DockerCheckService(ILogger<DockerCheckService> logger, IConfiguration config, ActiveMonitorHostedService activeMonitorHostedService) {
             _logger = logger;
             _config = config;
+
+            _ = activeMonitorHostedService.SetActiveColorAsync();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {

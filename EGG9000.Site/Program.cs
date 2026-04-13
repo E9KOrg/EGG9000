@@ -196,6 +196,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         services.AddSingleton<ActiveMonitorHostedService>();
         // 2. Register it as a Hosted Service by resolving the existing Singleton instance
         services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
+    services.AddHostedService<DockerCheckService>();
 #endif
 
     services.AddResponseCaching();
@@ -207,7 +208,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
-    services.AddHostedService<DockerCheckService>();
 
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =

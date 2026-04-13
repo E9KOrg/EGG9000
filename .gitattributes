@@ -1,7 +1,16 @@
+File: .gitattributes
+````````
 ###############################################################################
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
 * text=auto
+
+# Linux deployment files must stay LF (shebang-sensitive)
+*.sh text eol=lf
+*.service text eol=lf
+
+# Windows command scripts should stay CRLF
+*.bat text eol=crlf
 
 ###############################################################################
 # Set default behavior for command prompt diff.

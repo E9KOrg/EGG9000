@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
+using EGG9000.Common.JsonData;
 using EGG9000.Common.Services;
 
 using Microsoft.AspNetCore.Authorization;
@@ -34,6 +35,114 @@ namespace EGG9000.Site.Controllers {
             _logger = logger;
             _dbFactory = dbFactory;
         }
+
+        #region Site
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> NewImageWebhook() {
+            // Read raw request body
+            string body;
+            using(var sr = new StreamReader(Request.Body)) {
+                body = await sr.ReadToEndAsync();
+            }
+
+            if(string.IsNullOrWhiteSpace(body)) {
+                _logger.LogWarning("Docker webhook called with empty body.");
+                return BadRequest("empty body");
+            }
+
+            var webHookData = JsonConvert.DeserializeObject<DockerHubJson.WebHookPost>(body);
+
+            // Extract common Docker Hub webhook fields (guarded)
+            string tag = webHookData?.push_data?.tag;
+            string repo = webHookData?.repository?.repo_name;
+
+            string pusher = webHookData?.push_data?.pusher;
+            _logger.LogInformation("Docker Hub webhook received. repo={repo} tag={tag} pusher={pusher}", repo, tag, pusher);
+
+            if(tag is not null) {
+                await PullUpdatedImage(tag, repo, repo.Contains("bot") ? "bot":"site");
+            }
+
+            return Ok(new { received = true, repository = repo, tag });
+        }
+
+
+        [AllowAnonymous]
+        public async Task<IActionResult> PullUpdatedImage(string tag, string repo, string type) {
+            var client = new DockerClientConfiguration(new Uri(DockerHost)).CreateClient();
+
+            var progress = new Progress<JSONMessage>(async m => {
+                _logger.LogInformation("Docker pull progress: {status} {progressMessage} for {repo}", m.Status, m.ProgressMessage, repo);
+                if(m.Status == "Pull complete") {
+                    _logger.LogInformation("Docker image pull complete: {tag}", tag);
+                    await NewImagePullComplete(client, tag, repo, type);
+                }
+
+
+            });
+
+            await client.Images.CreateImageAsync(
+                new Docker.DotNet.Models.ImagesCreateParameters {
+                    FromImage = repo,
+                    Tag = tag
+                },
+                null,
+                progress);
+
+
+
+            return Content("");
+        }
+
+        private async Task NewImagePullComplete(DockerClient client, string tag, string repo, string type) {
+            var containers = await client.Containers.ListContainersAsync(new ContainersListParameters() {
+                All = true
+            });
+            var typeContainers = containers.Where(c => c.Names.Any(n => n.Contains($"egg9000-{type}"))).ToList();
+
+
+            var currentBlue = typeContainers.FirstOrDefault(c => c.Names.Any(n => n.Contains("blue")));
+            var currentGreen = typeContainers.FirstOrDefault(c => c.Names.Any(n => n.Contains("green")));
+
+            await using var ctx = await _dbFactory.CreateDbContextAsync();
+            var conn = ctx.Database.GetDbConnection();
+            await conn.OpenAsync();
+
+
+            var activeColor = await ActiveMonitorHostedService.ReadActiveColorAsync(conn, type, CancellationToken.None);
+            _logger.LogInformation(JsonConvert.SerializeObject(typeContainers, Formatting.Indented));
+            switch(activeColor) {
+                case "blue":
+                    if(currentBlue is not null) {
+                        if(currentGreen is not null) {
+                            _logger.LogWarning($"Removing old green {type} container before updating blue.");
+                            await client.Containers.RemoveContainerAsync(currentGreen.ID, new ContainerRemoveParameters() { Force = true, RemoveVolumes = true });
+                        }
+                        await RecreateContainer(client, currentBlue, $"kendrome/egg9000{type}:{tag}", "blue", "green");
+
+                    } else {
+                        _logger.LogWarning($"No blue {type} container found to update.");
+                    }
+                    break;
+                case "green":
+                    if(currentGreen is not null) {
+                        if(currentBlue is not null) {
+                            _logger.LogWarning($"Removing old blue {type} container before updating green.");
+                            await client.Containers.RemoveContainerAsync(currentBlue.ID, new ContainerRemoveParameters() { Force = true, RemoveVolumes = true });
+                        }
+                        await RecreateContainer(client, currentGreen, $"kendrome/egg9000{type}:{tag}", "green", "blue");
+                    } else {
+                        _logger.LogWarning($"No green {type} container found to update.");
+                    }
+                    break;
+                default:
+                    _logger.LogWarning("Active color for {type} service is unknown: {color}", type, activeColor);
+                    break;
+            }
+        }
+        #endregion
+
 
         // Docker Hub posts JSON to this endpoint. Keep it AllowAnonymous if Docker Hub can't authenticate.
         [HttpPost]
@@ -93,14 +202,20 @@ namespace EGG9000.Site.Controllers {
             return Ok(new { received = true, repository = repo, tag });
         }
 
+
+
         [AllowAnonymous]
         public async Task<IActionResult> PullImage(string tag) {
            var client = new DockerClientConfiguration(new Uri(DockerHost)).CreateClient();
             
-            var progress = new Progress<JSONMessage>(m => {
+            var progress = new Progress<JSONMessage>(async m => {
+                _logger.LogInformation("Docker pull progress: {status} {progressMessage}", m.Status, m.ProgressMessage);
                 if(m.Status == "Pull complete") {
                     _logger.LogInformation("Docker image pull complete: {tag}", tag);
+                    await HandleNewImage(client, tag);
                 }
+
+
             });
 
             await client.Images.CreateImageAsync(
@@ -111,14 +226,20 @@ namespace EGG9000.Site.Controllers {
                 null,
                 progress);
 
+
+
+            return Content("");
+        }
+
+        private async Task HandleNewImage(DockerClient client, string tag) {
             var containers = await client.Containers.ListContainersAsync(new ContainersListParameters() {
                 All = true
             });
             var botContainers = containers.Where(c => c.Names.Any(n => n.Contains("egg9000-bot"))).ToList();
-            
-            
-            
-            
+
+
+
+
             var botBlue = botContainers.FirstOrDefault(c => c.Names.Any(n => n.Contains("blue")));
             var botGreen = botContainers.FirstOrDefault(c => c.Names.Any(n => n.Contains("green")));
 
@@ -128,7 +249,7 @@ namespace EGG9000.Site.Controllers {
 
 
             var activeColor = await ActiveMonitorHostedService.ReadActiveColorAsync(conn, "bot", CancellationToken.None);
-
+            _logger.LogInformation(JsonConvert.SerializeObject(botContainers, Formatting.Indented));
             switch(activeColor) {
                 case "blue":
                     if(botBlue is not null) {
@@ -137,6 +258,7 @@ namespace EGG9000.Site.Controllers {
                             await client.Containers.RemoveContainerAsync(botGreen.ID, new ContainerRemoveParameters() { Force = true, RemoveVolumes = true });
                         }
                         await RecreateContainer(client, botBlue, $"kendrome/egg9000bot:{tag}", "blue", "green");
+
                     } else {
                         _logger.LogWarning("No blue bot container found to update.");
                     }
@@ -156,8 +278,6 @@ namespace EGG9000.Site.Controllers {
                     _logger.LogWarning("Active color for bot service is unknown: {color}", activeColor);
                     break;
             }
-
-            return Content("");
         }
 
         private async Task RecreateContainer(DockerClient client, ContainerListResponse containerInfo, string newImage, string oldColor, string newColor) {
@@ -172,7 +292,7 @@ namespace EGG9000.Site.Controllers {
                 Name = containerInfo.Names.FirstOrDefault()?.TrimStart('/').Replace(oldColor, newColor),
                 Env = env,
                 Labels = labels,
-                HostConfig = info.HostConfig
+                HostConfig = info.HostConfig, 
             };
             var newContainer = await client.Containers.CreateContainerAsync(createParams);
             var started = await client.Containers.StartContainerAsync(newContainer.ID, new ContainerStartParameters());

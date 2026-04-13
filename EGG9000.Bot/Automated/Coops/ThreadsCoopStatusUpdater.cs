@@ -66,12 +66,12 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            coops = [.. coops.Where(x => x.Id == Guid.Parse("eb1353a9-32ae-4c03-e379-08de4a63aaaf"))];
+            //coops = [.. coops.Where(x => x.Id == Guid.Parse("eb1353a9-32ae-4c03-e379-08de4a63aaaf"))];
             //coops = coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-1) && x.GuildId == 656455567858073601 && x.OverflowGuildId == 1147264073659064420).ToList();
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "AmpleWad98")];
+            coops = [.. coops.Where(x => x.Name == "PaperFetch64")];
             //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
 #endif
@@ -802,40 +802,40 @@ namespace EGG9000.Bot.Automated.Coops {
                 //Checking if users are gusset glitching
                 var afCheaterChannel = ChannelHelper.DetermineChannelType(dbGuild, guild, GuildChannelType.CheaterThread);
                 if(afCheaterChannel != null && !status.AllGoalsAchieved) {
-                    var contractScalar = coop.Contract.Details?.GradeSpecs[((int)coop.League) - 1]?.Modifiers?.FirstOrDefault(m => m.Dimension == Ei.GameModifier.Types.GameDimension.HabCapacity)?.Value ?? 1;
-                    foreach(var u in usersWithStatus.Where(x => x.Xref is not null && !x.Xref.GussetCheatDetected)) {
-                        var farm = u.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
-                        if(farm is null) continue;
-                        /* AFFECT ALL HABS */
-                        double allScalar = 1;
-                        allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "hab_capacity1")?.Level * 0.05 ?? 0); //5% per level
-                        allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "microlux")?.Level * 0.05 ?? 0); //5% per level
-                        allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "grav_plating")?.Level * 0.02 ?? 0); //2% per level
-                        allScalar *= contractScalar; // Indeterminate before runtime
+                    //var contractScalar = coop.Contract.Details?.GradeSpecs[((int)coop.League) - 1]?.Modifiers?.FirstOrDefault(m => m.Dimension == Ei.GameModifier.Types.GameDimension.HabCapacity)?.Value ?? 1;
+                    //foreach(var u in usersWithStatus.Where(x => x.Xref is not null && !x.Xref.GussetCheatDetected)) {
+                    //    var farm = u.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
+                    //    if(farm is null) continue;
+                    //    /* AFFECT ALL HABS */
+                    //    double allScalar = 1;
+                    //    allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "hab_capacity1")?.Level * 0.05 ?? 0); //5% per level
+                    //    allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "microlux")?.Level * 0.05 ?? 0); //5% per level
+                    //    allScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "grav_plating")?.Level * 0.02 ?? 0); //2% per level
+                    //    allScalar *= contractScalar; // Indeterminate before runtime
 
-                        /* AFFECT PORTAL HABS */
-                        double portalScalar = 1;
-                        portalScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "wormhole_dampening")?.Level * 0.02 ?? 0); //2% per level
+                    //    /* AFFECT PORTAL HABS */
+                    //    double portalScalar = 1;
+                    //    portalScalar *= 1 + (farm.CommonResearch.FirstOrDefault(c => c.Id == "wormhole_dampening")?.Level * 0.02 ?? 0); //2% per level
 
-                        var currentChickens = farm.NumChickens;
+                    //    var currentChickens = farm.NumChickens;
 
-                        var farmWithStats = farm.WithStats(u.Backup, coop, new List<DBCustomEgg>());
-                        var scaledMaxChickens = farmWithStats.HabSpace + 0.01; //0.01 offset, again for rounding
+                    //    var farmWithStats = farm.WithStats(u.Backup, coop, new List<DBCustomEgg>());
+                    //    var scaledMaxChickens = farmWithStats.HabSpace + 0.01; //0.01 offset, again for rounding
 
-                        //If they aren't surpassing the scaled limit, they aren't cheating
-                        if(currentChickens <= (scaledMaxChickens * 1.01)) continue; //1% offset for rounding errors
+                    //    //If they aren't surpassing the scaled limit, they aren't cheating
+                    //    if(currentChickens <= (scaledMaxChickens * 1.01)) continue; //1% offset for rounding errors
 
-                        var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
-                        if(gusset is null) {
-                            await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.CheaterThread,
-                                new() {
-                                    Text =
-                                    $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.ThreadID}> (`{coop.Name}`):\n" +
-                                    $"```\nMax hab space:\t   {(ulong)farmWithStats.HabSpace:n0}\nCurrent chickens:\t{currentChickens:n0}\n```"
-                                });
-                            u.Xref.GussetCheatDetected = true;
-                        }
-                    }
+                    //    var gusset = farm.Artifacts.FirstOrDefault(a => a.Artifact.ToLower().Contains("gusset"));
+                    //    if(gusset is null) {
+                    //        await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.CheaterThread,
+                    //            new() {
+                    //                Text =
+                    //                $"User <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) may have glitched to remove a gusset after boosting, in the coop <#{coop.ThreadID}> (`{coop.Name}`):\n" +
+                    //                $"```\nMax hab space:\t   {(ulong)farmWithStats.HabSpace:n0}\nCurrent chickens:\t{currentChickens:n0}\n```"
+                    //            });
+                    //        u.Xref.GussetCheatDetected = true;
+                    //    }
+                    //}
                     foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && u.Xref is not null && !u.Xref.TimeCheatReported).ToList()) {
                         var account = u.User?.EggIncAccounts?.FirstOrDefault(a => a.Id.ToLower() == u.Backup?.EggIncId.ToLower());
                         if(account is null || account.TimeCheatsMarkedClean) continue;
@@ -1410,6 +1410,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop)) {
                 statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, cancellationToken: cancellationToken));
+                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, cancellationToken: cancellationToken));
             } else {
                 var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
                 statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, cancellationToken: cancellationToken));
