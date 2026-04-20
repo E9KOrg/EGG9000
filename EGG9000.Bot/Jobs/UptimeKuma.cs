@@ -1,22 +1,10 @@
-﻿using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
-using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
-using System.Threading;
-using Ei;
+﻿using EGG9000.Bot.Services;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Net.Http;
 using Polly;
 
@@ -25,9 +13,9 @@ using Polly;
 #if RELEASE
 namespace EGG9000.Bot.Jobs {
 
-    public class UptimeKuma(ILogger<SubscriptionsCheckJob> logger) {
-        private readonly ILogger<SubscriptionsCheckJob> _logger = logger;
-        private readonly HttpClient httpClient = new HttpClient();
+    public class UptimeKuma(ILogger<UptimeKuma> logger) {
+        private readonly ILogger<UptimeKuma> _logger = logger;
+        private readonly HttpClient httpClient = new();
 
 
         [Job("0/30 * * * * *")]
