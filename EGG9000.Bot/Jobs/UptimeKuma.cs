@@ -21,24 +21,26 @@ namespace EGG9000.Bot.Jobs {
         [Job("0/30 * * * * *")]
         public async Task Send() {
             var policy = Policy
-               .Handle<Exception>()
-               .WaitAndRetry(
-               [
-                 TimeSpan.FromSeconds(1),
-                            TimeSpan.FromSeconds(3),
-                            TimeSpan.FromSeconds(7)
-               ]);
+                .Handle<Exception>()
+                .WaitAndRetryAsync(
+                [
+                    TimeSpan.FromSeconds(1),
+                    TimeSpan.FromSeconds(3),
+                    TimeSpan.FromSeconds(7)
+                ]);
 
 
             //https://uptime.dev.sglade.com/api/push/yIc6q6ocjd?status=up&msg=OK&ping=
 
 
             try {
-                var response = await policy.Execute(async () => await httpClient.GetAsync("https://uptime.dev.sglade.com/api/push/yIc6q6ocjd?status=up&msg=OK")); ;
-                if(!response.IsSuccessStatusCode) {
+                var response = await policy.ExecuteAsync(() =>
+                    httpClient.GetAsync("https://uptime.dev.sglade.com/api/push/yIc6q6ocjd?status=up&msg=OK"));
+
+                if (!response.IsSuccessStatusCode) {
                     _logger.LogError("Failed to send uptime notification");
                 }
-            } catch(Exception e) {
+            } catch (Exception e) {
                 _logger.LogError(e, "Failed to send uptime notification");
             }
         }

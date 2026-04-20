@@ -335,8 +335,8 @@ namespace EGG9000.Common.Database.Entities {
         public CustomBackup Backup {
             get;
             set {
-                SubscriptionEnds = value.SubscriptionEnds;
-                SubscriptionLevel = value.SubscriptionLevel;
+                SubscriptionEnds = value?.SubscriptionEnds ?? 0;
+                SubscriptionLevel = value?.SubscriptionLevel;
                 field = value;
             }
         }
