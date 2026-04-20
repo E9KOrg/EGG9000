@@ -332,7 +332,14 @@ namespace EGG9000.Common.Database.Entities {
         [Key(9)]
         public DateTimeOffset PromotionTime { get; set; }
         [Key(10)]
-        public CustomBackup Backup { get; set; }
+        public CustomBackup Backup {
+            get;
+            set {
+                SubscriptionEnds = value.SubscriptionEnds;
+                SubscriptionLevel = value.SubscriptionLevel;
+                field = value;
+            }
+        }
         [Key(11)]
         public int RedoScoreThreshold { get; set; } = 20000;
         [Key(12)]
