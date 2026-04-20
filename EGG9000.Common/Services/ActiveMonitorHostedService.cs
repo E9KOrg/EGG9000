@@ -147,6 +147,7 @@ END";
             await cmd.ExecuteNonQueryAsync(ct);
         }
 
+#nullable enable
         public static async Task<string?> ReadActiveColorAsync(DbConnection conn, string serviceType, CancellationToken ct)
         {
             await using var cmd = conn.CreateCommand();
@@ -159,6 +160,7 @@ END";
             var result = await cmd.ExecuteScalarAsync(ct);
             return result is DBNull ? null : result?.ToString();
         }
+#nullable disable
 
         private static async Task UpsertActiveColorAsync(DbConnection conn, string serviceType, string color, CancellationToken ct)
         {
