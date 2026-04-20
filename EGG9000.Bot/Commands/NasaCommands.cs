@@ -14,7 +14,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task APODExplanation(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var apodId = System.Guid.Parse(data);
             var explanation = await NasaHelper.GetExplanationOrEmpty(apodId, db);
-            if (explanation.IsNullOrEmpty()) {
+            if (string.IsNullOrEmpty(explanation)) {
                 var failureEmbed = EmbedHelpers.EmbedWarning("No explanation found for this APOD.");
                 await component.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
