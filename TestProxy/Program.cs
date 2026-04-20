@@ -12,12 +12,12 @@ using Titanium.Web.Proxy.EventArguments;
 using Titanium.Web.Proxy.Models;
 
 namespace TestProxy {
-    class Program {
+    public class Program {
         public static ProxyServer proxyServer;
 
         public static int OnBeforeTunnelConnectRequest { get; private set; }
 
-        static void Main(string[] args) {
+        public static void Main(string[] args) {
             proxyServer = new ProxyServer();
             proxyServer.BeforeRequest += ProxyServer_BeforeRequest;
             proxyServer.BeforeResponse += ProxyServer_BeforeResponse;
@@ -26,7 +26,7 @@ namespace TestProxy {
                 // Use self-issued generic certificate on all https requests
                 // Optimizes performance by not creating a certificate for each https-enabled domain
                 // Useful when certificate trust is not required by proxy clients
-                GenericCertificate = new X509Certificate2(@"D:\Websites\EGG9000\TestProxy\proxy.crt", "joshtrek")
+                GenericCertificate = X509CertificateLoader.LoadPkcs12FromFile(@"D:\Websites\EGG9000\TestProxy\proxy.crt", "joshtrek")
             };
 
             // Fired when a CONNECT request is received
@@ -50,15 +50,15 @@ namespace TestProxy {
             return Task.CompletedTask;
         }
 
-        private static async System.Threading.Tasks.Task ProxyServer_BeforeResponse(object sender, Titanium.Web.Proxy.EventArguments.SessionEventArgs e) {
+        private static async Task ProxyServer_BeforeResponse(object sender, Titanium.Web.Proxy.EventArguments.SessionEventArgs e) {
             //http://afx-2-dot-auxbrainhome.appspot.com/ei/first_contact_secure
             Console.WriteLine($"BEfore Request: {e.HttpClient.Request.Host} {e.HttpClient.Request.RequestUriString}");
             if(e.HttpClient.Request.Host.Contains("auxbrain") || e.HttpClient.Request.Host.Contains("egg")) {
                 Console.WriteLine($"Response: {e.HttpClient.Request.RequestUriString}");
-                var responseString = System.Convert.FromBase64String(await e.GetResponseBodyAsString());
+                var responseString = Convert.FromBase64String(await e.GetResponseBodyAsString());
 
                 Console.WriteLine();
-                Console.WriteLine(await e.GetResponseBodyAsString());
+                Console.WriteLine(responseString);
                 Console.WriteLine();
 
             }

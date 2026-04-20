@@ -8,6 +8,9 @@
     <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
   <!--<Target Name="RunBotOnHomeControl" AfterTargets="Publish">
     <Exec Command=".\runbot.bat" />
   </Target>-->

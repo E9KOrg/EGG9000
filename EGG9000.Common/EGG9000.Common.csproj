@@ -16,6 +16,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9002|AnyCPU'">
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Migrations\20200428213742_TrackEliteContracts.cs" />
     <Compile Remove="Migrations\20200428213742_TrackEliteContracts.Designer.cs" />
