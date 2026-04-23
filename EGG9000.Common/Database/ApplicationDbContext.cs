@@ -5,33 +5,52 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 using System;
 using System.Collections.Frozen;
+using System.IO;
+using System.Reflection;
 
 namespace EGG9000.Common.Database {
-    //public class ApplicationDbContext : IDesignTimeDbContextFactory<ApplicationDbContext> {
-    //    public ApplicationDbContext CreateDbContext(string[] args) {
-    //        //Console.WriteLine("Creating DB Context");
-    //        // Get environment
-    //        string environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+    public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext> {
+        public ApplicationDbContext CreateDbContext(string[] args) {
+            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+                ?? "Development";
 
-    //        // Build config
-    //        var Configuration = new ConfigurationBuilder()
-    //            .AddUserSecrets<Secrets>()
-    //            .Build();
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var siteDirectory = Path.Combine(currentDirectory, "EGG9000.Site");
+            var basePath = File.Exists(Path.Combine(currentDirectory, "appsettings.json"))
+                ? currentDirectory
+                : siteDirectory;
 
-    //        //var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-    //        var connectionString = Configuration["ConnectionStrings:DefaultConnection"];
-    //        //optionsBuilder.UseSqlServer(connectionString, b => { b.MigrationsAssembly("EGG9000.Common"); b.CommandTimeout(120); });
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(basePath)
+                .AddJsonFile("appsettings.json", optional: true)
+                .AddJsonFile($"appsettings.{environment}.json", optional: true)
+                .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
+                .AddEnvironmentVariables()
+                .Build();
 
+            var connectionString = configuration.GetConnectionString("DefaultConnection")
+                ?? configuration["ConnectionStrings:DefaultConnection"];
 
-    //        return new ApplicationDbContext(connectionString);
-    //    }
-    //}
+            if(string.IsNullOrWhiteSpace(connectionString))
+                throw new InvalidOperationException($"Connection string 'DefaultConnection' was not found for environment '{environment}'.");
+
+            var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            optionsBuilder.UseSqlServer(connectionString, options => {
+                options.MigrationsAssembly("EGG9000.Common");
+                options.EnableRetryOnFailure();
+                options.CommandTimeout(120);
+            });
+
+            return new ApplicationDbContext(optionsBuilder.Options);
+        }
+    }
 
     public class ApplicationDbContext : IdentityDbContext<IdentityUser>, IDataProtectionKeyContext {
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
@@ -81,9 +100,8 @@ namespace EGG9000.Common.Database {
         //    //    }
 
         public readonly IMemoryCache _cache;
-        [ActivatorUtilitiesConstructor]
-        public ApplicationDbContext(IConfiguration configuration, IMemoryCache cache) : base(GetOptions(configuration)) {
-            _cache = cache;
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMemoryCache? cache = null) : base(options) {
+            _cache = cache ?? new MemoryCache(new MemoryCacheOptions());
             ChangeTracker.Tracked += OnEntityTracked;
             ChangeTracker.StateChanged += OnEntityStateChanged;
             //Console.WriteLine("ApplicationDbContext created");
@@ -99,15 +117,6 @@ namespace EGG9000.Common.Database {
             //Console.WriteLine($"Entity state changed: {e.Entry.Entity.GetType().Name} from {e.OldState} to {e.NewState}");
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.Now;
-        }
-
-        private static DbContextOptions GetOptions(IConfiguration configuration) {
-            //        var Configuration = new ConfigurationBuilder()
-            //.AddUserSecrets<Secrets>()
-            //.Build();
-            //Console.WriteLine(Configuration["ConnectionStrings:DefaultConnection"]);
-            //Console.WriteLine(Configuration.GetConnectionString("DefaultConnection"));
-            return SqlServerDbContextOptionsExtensions.UseSqlServer(new DbContextOptionsBuilder(), configuration["ConnectionStrings:DefaultConnection"], options => { options.EnableRetryOnFailure(); options.CommandTimeout(120); }).Options;
         }
 
 

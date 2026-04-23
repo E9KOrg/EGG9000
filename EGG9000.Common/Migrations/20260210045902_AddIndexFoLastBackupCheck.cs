@@ -11,28 +11,47 @@ namespace EGG9000.Common.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "LastBackupCheck",
-                table: "Users",
-                type: "datetimeoffset",
-                nullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Users', 'LastBackupCheck') IS NULL
+                BEGIN
+                    ALTER TABLE [Users] ADD [LastBackupCheck] datetimeoffset NULL;
+                END
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Users_LastBackupCheck",
-                table: "Users",
-                column: "LastBackupCheck");
+            migrationBuilder.Sql("""
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE name = 'IX_Users_LastBackupCheck'
+                      AND object_id = OBJECT_ID('[Users]')
+                )
+                BEGIN
+                    CREATE INDEX [IX_Users_LastBackupCheck] ON [Users]([LastBackupCheck]);
+                END
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Users_LastBackupCheck",
-                table: "Users");
+            migrationBuilder.Sql("""
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE name = 'IX_Users_LastBackupCheck'
+                      AND object_id = OBJECT_ID('[Users]')
+                )
+                BEGIN
+                    DROP INDEX [IX_Users_LastBackupCheck] ON [Users];
+                END
+                """);
 
-            migrationBuilder.DropColumn(
-                name: "LastBackupCheck",
-                table: "Users");
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('Users', 'LastBackupCheck') IS NOT NULL
+                BEGIN
+                    ALTER TABLE [Users] DROP COLUMN [LastBackupCheck];
+                END
+                """);
         }
     }
 }
