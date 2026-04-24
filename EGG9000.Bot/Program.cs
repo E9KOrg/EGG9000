@@ -116,7 +116,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             options.EnableSensitiveDataLogging(true);
         });
 
-#if RELEASE
+#if !DEBUG
         services.Configure<ActiveMonitorOptions>(options => {
             options.ServiceType = "bot";
             options.ColorConfigKey = "BOT_COLOR";
@@ -242,8 +242,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<DiscordUserService>();
 
 
-        services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
-        services.AddHostedService<PrometheusMetricServerHostedService>();
+        //services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
+        //services.AddHostedService<PrometheusMetricServerHostedService>();
 #endif
     } catch(Exception e) {
         logger.Error(e, "Stopped program because of exception");
