@@ -23,8 +23,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
-    public static class TimeUtils {
-        public static DateTimeOffset RoundToClosestFifteen(this DateTimeOffset dto) {
+    static internal class TimeUtils {
+        static internal DateTimeOffset RoundToClosestFifteen(this DateTimeOffset dto) {
             var totalMinutes = dto.TimeOfDay.TotalMinutes;
             var roundedTotalMinutes = Math.Round(totalMinutes / 15.0) * 15.0;
             var roundedDto = new DateTimeOffset(dto.Date.AddMinutes(roundedTotalMinutes), dto.Offset);
@@ -52,12 +52,26 @@ namespace EGG9000.Bot.Automated {
                 return;
             }
 
+            _logger.LogDebug("Received {apiCount} events from API; {dbCount} recent events in DB",
+                response.Events.Events.Count, recentEvents.Count);
+
             var endedEvents = recentEvents.Where(x => !x.Ended && !response.Events.Events.Any(y => y.Identifier == x.Identifier)).ToList();
 
+            if(endedEvents.Count > 0) {
+                _logger.LogInformation("Found {count} ended event(s)", endedEvents.Count);
+            }
+
             foreach(var e in endedEvents) {
+                _logger.LogInformation("Marking event as ended: Type={type}, Identifier={identifier}, Multiplier={multiplier}, Ends={ends:o}",
+                    e.Type, e.Identifier, e.Multiplier, e.Ends);
                 e.Ended = true;
                 await UpdateMessages(e, _db, Ended: true);
             }
+
+            int newCount = 0;
+            int significantChangeCount = 0;
+            int timeChangeCount = 0;
+            int unchangedCount = 0;
 
             var events = response.Events.Events.ToList();
             foreach(var evt in events) {
@@ -65,12 +79,29 @@ namespace EGG9000.Bot.Automated {
                 if(currentEvent == null) {
                     var newEvent = new Event(evt);
                     newEvent.Ends = newEvent.Ends.RoundToClosestFifteen();
+                    _logger.LogInformation("New event detected: Type={type}, Identifier={identifier}, Subtitle='{subtitle}', Multiplier={multiplier}, Ends={ends:o}, CcOnly={ccOnly}",
+                        newEvent.Type, newEvent.Identifier, newEvent.Subtitle, newEvent.Multiplier, newEvent.Ends, newEvent.CcOnly);
                     _db.Add(newEvent);
                     recentEvents.Add(newEvent);
                     await PostMessages(newEvent, _db);
+                    newCount++;
                 } else {
                     var significantChange = currentEvent.SignficantlyDifferent(evt);
                     var timeChange = Math.Abs(currentEvent.Ends.Subtract(responseDateTime.AddSeconds(evt.SecondsRemaining)).TotalSeconds) > 240;
+
+                    if(significantChange) {
+                        _logger.LogInformation(
+                            "Significant change detected for {identifier}. " +
+                            "Type: '{oldType}' -> '{newType}'. " +
+                            "Subtitle: '{oldSubtitle}' -> '{newSubtitle}'. " +
+                            "Multiplier: {oldMultiplier} -> {newMultiplier}. " +
+                            "Will cross out existing message(s) and post new one(s).",
+                            currentEvent.Identifier,
+                            currentEvent.Type, evt.Type,
+                            currentEvent.Subtitle, evt.Subtitle,
+                            currentEvent.Multiplier, evt.Multiplier);
+                        significantChangeCount++;
+                    }
 
                     currentEvent.Type = evt.Type;
                     currentEvent.Subtitle = evt.Subtitle;
@@ -81,21 +112,40 @@ namespace EGG9000.Bot.Automated {
                         if(significantChange) {
                             await UpdateMessages(currentEvent, _db, Crossout: true);
                             await PostMessages(currentEvent, _db);
-                        } else if (timeChange) {
-                            _logger.LogInformation($"Time change for {currentEvent.Type}, of {currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds} seconds");
+                        } else if(timeChange) {
+                            var delta = currentEvent.Ends.Subtract(DateTimeOffset.UtcNow.AddSeconds(evt.SecondsRemaining)).TotalSeconds;
+                            _logger.LogInformation(
+                                "Time change for {type} ({identifier}) of {delta} seconds. " +
+                                "Old Ends={oldEnds:o}, New Ends={newEnds:o}",
+                                currentEvent.Type, currentEvent.Identifier, delta,
+                                currentEvent.Ends, responseDateTime.AddSeconds(evt.SecondsRemaining).RoundToClosestFifteen());
                             currentEvent.Ends = responseDateTime.AddSeconds(evt.SecondsRemaining).RoundToClosestFifteen();
                             await UpdateMessages(currentEvent, _db);
+                            timeChangeCount++;
+                        } else {
+                            unchangedCount++;
                         }
+                    } else {
+                        _logger.LogWarning("Event {identifier} has no MessageIds; skipping update/repost logic.", currentEvent.Identifier);
                     }
                 }
                 await _db.SaveChangesAsync(CancellationToken.None);
                 StillAlive();
             }
+
+            if(newCount == 0 && significantChangeCount == 0 && timeChangeCount == 0 && endedEvents.Count == 0) {
+                _logger.LogDebug("EventUpdater finished: no new events, no changes, no ended events ({unchanged} existing events unchanged).", unchangedCount);
+            } else {
+                _logger.LogInformation(
+                    "EventUpdater finished: {new} new, {significant} significant change(s), {time} time change(s), {ended} ended, {unchanged} unchanged.",
+                    newCount, significantChangeCount, timeChangeCount, endedEvents.Count, unchangedCount);
+            }
+
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild is null)
-                    continue; 
+                    continue;
                 var newName = "game-events";
                 var singleEmoji = "";
                 var stackedEmoji = "";
@@ -122,6 +172,7 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     if(channel.Name != newName && channel != null) {
+                        _logger.LogInformation("Renaming game-events channel in {guild}: '{oldName}' -> '{newName}'", guild.Name, channel.Name, newName);
                         await channel.ModifyAsync(x => x.Name = newName);
                     }
                     StillAlive();
@@ -154,12 +205,16 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     if(ccChannel.Name != newName && ccChannel != null) {
+                        _logger.LogInformation("Renaming subscriber-game-events channel in {guild}: '{oldName}' -> '{newName}'", guild.Name, ccChannel.Name, newName);
                         await ccChannel.ModifyAsync(x => x.Name = newName);
                     }
                 }
             }
         }
         private async Task PostMessages(Event newEvent, ApplicationDbContext _db) {
+            _logger.LogInformation("PostMessages: posting event {type} ({identifier}), Multiplier={multiplier}, CcOnly={ccOnly}, Ends={ends:o}",
+                newEvent.Type, newEvent.Identifier, newEvent.Multiplier, newEvent.CcOnly, newEvent.Ends);
+
             var messageIds = new List<ulong>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
@@ -183,6 +238,7 @@ namespace EGG9000.Bot.Automated {
                     if(eventChannel != null) {
                         var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
                         message = await eventChannel.SendFileIfExistsAsync(embedImage, text: ultraNotification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
+                        _logger.LogDebug("PostMessages: sent CC event (no ping) to non-CC channel in {guild}, messageId={messageId}", guild.Name, message?.Id);
                     }
 
                     //If the CC event channel was found, that's where we'll ping for CC events
@@ -190,24 +246,33 @@ namespace EGG9000.Bot.Automated {
                         var ccMessage = await ccEventChannel.SendFileIfExistsAsync(embedImage, text: notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
                         //Add the CC event channel message to the IDs
                         messageIds.Add(ccMessage.Id);
+                        _logger.LogDebug("PostMessages: sent CC event (with ping={hasPing}) to CC channel in {guild}, messageId={messageId}",
+                            notification != null, guild.Name, ccMessage.Id);
                     }
                 } else {
                     //Only send to non-CC channel, with ping
                     if(eventChannel != null) {
                         message = await eventChannel.SendFileIfExistsAsync(embedImage, text: notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        _logger.LogDebug("PostMessages: sent event (with ping={hasPing}) to event channel in {guild}, messageId={messageId}",
+                            notification != null, guild.Name, message?.Id);
                     }
                 }
 
-                
+
                 //Always add the message id
                 if(message != null) messageIds.Add(message.Id);
                 StillAlive();
             }
             newEvent.MessageIds = JsonConvert.SerializeObject(messageIds);
-
+            _logger.LogInformation("PostMessages: posted {count} message(s) for event {type} ({identifier})",
+                messageIds.Count, newEvent.Type, newEvent.Identifier);
         }
 
         private async Task UpdateMessages(Event currentEvent, ApplicationDbContext _db, bool Ended = false, bool Crossout = false) {
+            var reason = Ended ? "ENDED" : Crossout ? "CROSSOUT" : "UPDATE";
+            _logger.LogInformation("UpdateMessages [{reason}]: updating event {type} ({identifier})",
+                reason, currentEvent.Type, currentEvent.Identifier);
+
             var messageIds = JsonConvert.DeserializeObject<List<ulong>>(currentEvent.MessageIds);
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
             foreach(var dbguild in dbguilds) {
@@ -231,9 +296,11 @@ namespace EGG9000.Bot.Automated {
                                     msg.Content = (notification != null && !currentEvent.CcOnly) ? $"<@&{notification.RoleID}>" : null;
                                     msg.Attachments = embedImage.HasValue ? new List<FileAttachment> { embedImage.Value } : [];
                                 });
+                                _logger.LogDebug("UpdateMessages [{reason}]: modified messageId={messageId} in event channel of {guild}",
+                                    reason, mid, guild.Name);
                             }
-                        } catch(Exception) {
-                            _logger.LogWarning("Error Updating Messages for {guild}", guild.Name);
+                        } catch(Exception ex) {
+                            _logger.LogWarning(ex, "Error Updating Messages for {guild} (event channel, messageId={messageId})", guild.Name, mid);
                         }
                     }
                 }
@@ -252,9 +319,11 @@ namespace EGG9000.Bot.Automated {
                                     msg.Content = notification != null ? $"<@&{notification.RoleID}>" : null;
                                     msg.Attachments = embedImage.HasValue ? new List<FileAttachment> { embedImage.Value } : [];
                                 });
+                                _logger.LogDebug("UpdateMessages [{reason}]: modified messageId={messageId} in CC event channel of {guild}",
+                                    reason, mid, guild.Name);
                             }
-                        } catch(Exception) {
-                            _logger.LogWarning("Error Updating Messages for {guild}", guild.Name);
+                        } catch(Exception ex) {
+                            _logger.LogWarning(ex, "Error Updating Messages for {guild} (cc channel, messageId={messageId})", guild.Name, mid);
                         }
                     }
                 }
@@ -262,7 +331,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false){
+        public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false) {
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = Math.Round((1 - e.Multiplier) * 100, 2);
@@ -297,7 +366,7 @@ namespace EGG9000.Bot.Automated {
 
             string discordImagePath;
             var generatedImage = await _db.GetEventImageAsync(e);
-            if (generatedImage is null) { // Either the site had an issue, or the image didn't exist
+            if(generatedImage is null) { // Either the site had an issue, or the image didn't exist
                 discordImagePath = e.CcOnly ? "https://cdn.discordapp.com/emojis/1131045418319495369.webp?size=96&quality=lossless"
                     : "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751";
             } else {
@@ -343,18 +412,26 @@ namespace EGG9000.Bot.Automated {
                 if(expiringShell is null) {
                     expiringShell = new ExpiringShell(shell);
                     if(shell.SecondsRemaining > 240) {
+                        _logger.LogInformation("New expiring shell detected: Identifier={identifier}, Name={name}, AssetType={assetType}, Price={price}, SecondsRemaining={secondsRemaining}",
+                            shell.Identifier, shell.Name, shell.AssetType, shell.Price, shell.SecondsRemaining);
                         shellsToUpdate.Add(expiringShell);
                         db.ExpiringShells.Add(expiringShell);
                         await db.SaveChangesAsync();
                     }
 
                 } else {
-                    if(expiringShell.Name != shell.Name ||
-                        (expiringShell.Expires - DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining)).Duration() > TimeSpan.FromMinutes(1) ||
-                        expiringShell.Price != shell.Price ||
-                        expiringShell.AssetType != shell.AssetType ||
-                        shell.SecondsRemaining < 0
-                    ) {
+                    var nameChanged = expiringShell.Name != shell.Name;
+                    var timeChanged = (expiringShell.Expires - DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining)).Duration() > TimeSpan.FromMinutes(1);
+                    var priceChanged = expiringShell.Price != shell.Price;
+                    var assetTypeChanged = expiringShell.AssetType != shell.AssetType;
+                    var expired = shell.SecondsRemaining < 0;
+
+                    if(nameChanged || timeChanged || priceChanged || assetTypeChanged || expired) {
+                        _logger.LogInformation(
+                            "Shell change detected for {identifier}: " +
+                            "nameChanged={nameChanged}, timeChanged={timeChanged}, priceChanged={priceChanged}, assetTypeChanged={assetTypeChanged}, expired={expired}",
+                            shell.Identifier, nameChanged, timeChanged, priceChanged, assetTypeChanged, expired);
+
                         expiringShell.Name = shell.Name;
                         expiringShell.Expires = DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining);
                         expiringShell.Price = shell.Price;
@@ -390,6 +467,7 @@ namespace EGG9000.Bot.Automated {
             foreach(var shell in expiringShells) {
                 var embed = GetShellEmbed(shell);
                 if(string.IsNullOrEmpty(shell.MessageIds)) {
+                    _logger.LogInformation("Posting new shell messages for {identifier} ({name})", shell.Identifier, shell.Name);
                     var messageIDs = new List<(ulong, ulong)>();
                     foreach(var dbguild in dbguilds) {
                         var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
@@ -401,10 +479,12 @@ namespace EGG9000.Bot.Automated {
                             var message = await channel.SendMessageAsync(ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null, embed: embed);
 
                             messageIDs.Add((channel.Id, message.Id));
+                            _logger.LogDebug("Posted shell message in {guild}, messageId={messageId}", guild.Name, message.Id);
                         }
                     }
                     shell.MessageIds = JsonConvert.SerializeObject(messageIDs);
                 } else {
+                    _logger.LogDebug("Updating shell messages for {identifier} ({name})", shell.Identifier, shell.Name);
                     var messageIDs = JsonConvert.DeserializeObject<List<(ulong, ulong)>>(shell.MessageIds);
                     foreach(var message in messageIDs) {
                         var channel = _client.GetChannel(message.Item1);
