@@ -375,7 +375,7 @@ namespace EGG9000.Bot.Commands {
                     await command.RespondAsync(content: "", embed: EmbedError("Non-subscribed account cannot be assigned to subscriber-only contract"));
                     return;
                 case PotentialCoopCode.AlreadyAssigned:
-                    await command.RespondAsync(content: "", embed: EmbedError("$User is already assigned a coop for contract {contract.Name}: <#{newCoopResponse.ReturnArgs[0]}>"));
+                    await command.RespondAsync(content: "", embed: EmbedError($"User is already assigned a coop for contract {contract.Name}: <#{newCoopResponse.ReturnArgs[0]}>"));
                     return;
                 case PotentialCoopCode.NoGrade:
                     await command.RespondAsync(content: "", embed: EmbedError("User does not have a grade set, and cannot be moved into a coop"));
