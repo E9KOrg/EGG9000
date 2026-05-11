@@ -273,7 +273,9 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     artifactFamilies = artifactFamilies.Where(x => x.name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
                 }
 
-                await arg.RespondAsync(null, artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).Take(25).ToArray());
+                try {
+                    await arg.RespondAsync(null, artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).Take(25).ToArray());
+                } catch(TimeoutException) { }
             }
         }
         #endregion
