@@ -307,7 +307,7 @@ namespace EGG9000.Bot.Automated {
                     foreach(var overwrite in coopCategory.PermissionOverwrites) {
                         if(cancellationToken.IsCancellationRequested) { continue; }
                         StillAlive();
-                        var match = matches.FirstOrDefault(x => x.OverflowRole.Id == overwrite.TargetId);
+                        var match = matches.FirstOrDefault(x => x.OverflowRole?.Id == overwrite.TargetId);
                         if(match == null) {
                             if(overwrite.TargetType == PermissionTarget.Role) {
                                 await coopCategory.RemovePermissionOverwriteAsync(overflowServer.GetRole(overwrite.TargetId));

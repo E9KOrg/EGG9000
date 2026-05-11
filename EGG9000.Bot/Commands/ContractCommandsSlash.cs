@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Commands {
             await Task.Delay(TimeSpan.FromSeconds(2));
             status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
-            if(status.Participants.Count == contract.MaxUsers) {
+            if(status?.Participants?.Count == contract.MaxUsers) {
                 logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
                 var res3 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
                     ClientVersion = 24,
@@ -119,7 +119,7 @@ namespace EGG9000.Bot.Commands {
             }
 
 
-            if(status.Participants.Count < contract.MaxUsers) {
+            if(status?.Participants?.Count < contract.MaxUsers) {
                 logger.LogInformation("Successfully remove {user} from {coop}", dbuser.DiscordUsername, coop.Name);
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();

@@ -160,7 +160,7 @@ namespace EGG9000.Bot.Commands {
             await Task.Delay(TimeSpan.FromSeconds(2));
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
-            if(status.Participants.Count < contract.MaxUsers) {
+            if(status?.Participants?.Count < contract.MaxUsers) {
                 logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
                 var guild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();

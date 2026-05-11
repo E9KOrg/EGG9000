@@ -144,6 +144,7 @@ namespace EGG9000.Common.Services {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
                         foreach(var xref in xrefs) {
                             var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
+                            if(coopChannel is null) continue;
                             await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                             xref.AddedToChannel = true;
                             await coopChannel.SendMessageAsync($"Here is your co-op {user.Mention}! The co-op name to join is {xref.Coop.Name}");
