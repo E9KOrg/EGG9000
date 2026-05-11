@@ -264,7 +264,7 @@ namespace EGG9000.Bot.Services {
 
                 }
             } finally {
-                _semaphoreSlim.Release();
+                if(semaphoreAcquired) _semaphoreSlim.Release();
                 sw.Stop();
                 RunCommandDuration.Observe(sw.Elapsed.TotalSeconds);
             }
