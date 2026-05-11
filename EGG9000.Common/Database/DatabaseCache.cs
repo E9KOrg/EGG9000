@@ -62,10 +62,14 @@ namespace EGG9000.Common.Database {
         }
         private Timer _timerActiveCoops;
         private async Task RefreshActiveCoopsCache() {
-            var db = await _dbContextFactory.CreateDbContextAsync();
-            _logger.LogInformation("Refreshing active coops cache");
-            var coops = await db.Coops.Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToListAsync();
-            _cachedActiveCoops = coops;
+            try {
+                var db = await _dbContextFactory.CreateDbContextAsync();
+                _logger.LogInformation("Refreshing active coops cache");
+                var coops = await db.Coops.Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToListAsync();
+                _cachedActiveCoops = coops;
+            } catch(Exception e) {
+                _logger.LogError(e, "Error refreshing active coops cache");
+            }
         }
     }
 }

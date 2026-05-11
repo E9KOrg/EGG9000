@@ -1247,6 +1247,8 @@ namespace EGG9000.Bot.Automated.Coops {
                                         _logger.LogWarning("JsonReaderException when pinning message in coop {coop}", coop.Name);
                                     }
                                 }
+                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.MissingPermissions) {
+                                _logger.LogWarning("Missing permissions to update message in coop {coop}", coop.Name);
                             } catch(Exception e) {
                                 _logger.LogError(e, "Error updating messages");
                                 _bugSnag.Notify(e);
