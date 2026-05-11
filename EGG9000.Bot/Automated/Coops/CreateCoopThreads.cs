@@ -191,13 +191,14 @@ namespace EGG9000.Bot.Automated.Coops {
                                         var db2 = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
                                         //var users = (await db2.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
                                         var xrefs = await db2.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.CoopId == coop.Id).ToListAsync();
+                                        var coopToUpdate = await db2.Coops.FirstAsync(c => c.Id == coop.Id);
 
                                         var msg = await coopThread.SendMessageAsync($"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n");
                                         var msg2 = await coopThread.SendMessageAsync("\u17B5");
                                         var msg3 = await coopThread.SendMessageAsync("\u17B5");
                                         var msg4 = await coopThread.SendMessageAsync("\u17B5");
                                         var msg5 = await coopThread.SendMessageAsync("\u17B5");
-                                        coop.UpdateMessagesId = JsonConvert.SerializeObject(new List<ulong> { msg.Id, msg2.Id, msg3.Id, msg4.Id, msg5.Id, });
+                                        coopToUpdate.UpdateMessagesId = JsonConvert.SerializeObject(new List<ulong> { msg.Id, msg2.Id, msg3.Id, msg4.Id, msg5.Id, });
                                         await db2.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
                                     } finally {
                                         throttler.Release();
@@ -232,10 +233,6 @@ namespace EGG9000.Bot.Automated.Coops {
             }
 
             await MoveCreatorsToBlankCoop();
-        }
-
-        private async Task StartCoopAndCreateThread() {
-
         }
 
         private async Task MoveCreatorsToBlankCoop() {
@@ -423,6 +420,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 category = categories.OrderBy(x => x.DiscordCategory.Position).FirstOrDefault(x => x.CurrentCount < 50);
             }
 #endif
+            if(category == null) {
+                _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
+                return null;
+            }
             return await OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger);
         }
 
