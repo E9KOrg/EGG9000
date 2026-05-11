@@ -27,7 +27,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly DatabaseCache _cache = cache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                if(guild is null) return;
                 var allusers = await _cache.GetDbUsers();
                 var users = allusers
                     .Where(
@@ -43,7 +44,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
                     var name = account.Account.Backup?.UserName;
-                    results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup.EarningsBonus.ToEggString()})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                    results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup?.EarningsBonus.ToEggString() ?? "?"})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                 }
                 await arg.RespondAsync(null, [.. results]);
             }
@@ -55,9 +56,12 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == arg.Channel.Id);
 
-                var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
-                if(coop is null || coop.FinishedOrFailedOrExpired() || eidsIn.Count == 0) {
+                if(coop is null || coop.FinishedOrFailedOrExpired()) {
                     return; //Needs to be used in an active coop channel with users in it
+                }
+                var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
+                if(eidsIn.Count == 0) {
+                    return;
                 }
 
                 //Filter users by current search
@@ -89,7 +93,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly DatabaseCache _cache = cache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                if(guild is null) return;
                 var allusers = await _cache.GetDbUsers();
                 var users = allusers
                     .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
@@ -101,7 +106,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
                     if(account.User.EggIncAccounts.Count > 1) {
                         var name = account.Account.Backup?.UserName;
-                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup.EarningsBonus.ToEggString()}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
+                        results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup?.EarningsBonus.ToEggString() ?? "?"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     } else {
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     }
@@ -196,7 +201,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     users = users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
-                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).ToList().Select(x => new AutocompleteResult(x.DiscordUsername + " - " + x.User.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)", x.UserId.ToString())));
+                await arg.RespondAsync(users.DistinctBy(x => x.EggIncId).Take(25).Select(x => new AutocompleteResult(x.DiscordUsername + " - " + (x.User?.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)"), x.UserId.ToString())));
             }
         }
 
