@@ -102,7 +102,7 @@ namespace EGG9000.Bot.Commands {
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
             await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
-            await Task.Delay(2);
+            await Task.Delay(TimeSpan.FromSeconds(2));
             status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status.Participants.Count == contract.MaxUsers) {
@@ -114,7 +114,7 @@ namespace EGG9000.Bot.Commands {
                     PlayerIdentifier = xref.EggIncId, Reason = KickPlayerCoopRequest.Types.Reason.Private, RequestingUserId = coop.CreatorID
                 }, coop.CreatorID);
 
-                await Task.Delay(2);
+                await Task.Delay(TimeSpan.FromSeconds(2));
                 status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
             }
 
