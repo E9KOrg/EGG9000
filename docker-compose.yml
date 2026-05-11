@@ -23,7 +23,8 @@ services:
     networks:
       - egg9000_network
     depends_on:
-     - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -41,7 +42,8 @@ services:
     networks:
       - egg9000_network
     depends_on:
-     - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -71,7 +73,8 @@ services:
     # Option B: Add to docker group (more secure, requires group ID)
     # user: "1000:999"  # Replace 999 with your docker group ID
     depends_on:
-     - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:
@@ -95,6 +98,12 @@ services:
       - "15672:15672"
     networks:
       - egg9000_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 #   # Green site instance
 #   site_green:
