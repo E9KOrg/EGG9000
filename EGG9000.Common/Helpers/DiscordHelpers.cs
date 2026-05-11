@@ -169,7 +169,7 @@ namespace EGG9000.Bot.Helpers {
                 var eb = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus ?? 0).FirstOrDefault()?.Backup.EarningsBonus ?? 0;
 
                 if(role != existingRole) {
-                    logger.LogInformation("Role change for {user} in guild {guild} from {oldrole} to {newrole}, Positions {oldpos} {newpos}", discordUser.GetName(), guild.Name, existingRole?.Name ?? "None", role?.Name ?? "None", existingRole?.Position, role?.Position);
+                    logger?.LogInformation("Role change for {user} in guild {guild} from {oldrole} to {newrole}, Positions {oldpos} {newpos}", discordUser.GetName(), guild.Name, existingRole?.Name ?? "None", role?.Name ?? "None", existingRole?.Position, role?.Position);
                 }
 
                 if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) { //} && eb > dbUser.MaxEBForUser) {
