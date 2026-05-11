@@ -167,8 +167,10 @@ namespace EGG9000.Bot.Services {
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
+            var semaphoreAcquired = false;
             try {
-                if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5))) {
+                semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
+                if(semaphoreAcquired) {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
