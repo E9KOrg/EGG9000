@@ -138,14 +138,15 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Makes a co-op public", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task MakePublic(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync();
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find coop for channel {command.Channel.Name}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find coop for channel {command.Channel.Name}"); });
                 return;
             }
 
             if(string.IsNullOrEmpty(coop.CreatorID)) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find creator for {command.Channel.Name}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find creator for {command.Channel.Name}"); });
                 return;
             }
 
@@ -158,9 +159,9 @@ namespace EGG9000.Bot.Commands {
             }, coop.CreatorID);
 
             if(response.Success) {
-                await command.RespondAsync($"{coop.Name} is now public.");
+                await command.ModifyOriginalResponseAsync($"{coop.Name} is now public.");
             } else {
-                await command.RespondAsync($"{coop.Name} should now be public.");
+                await command.ModifyOriginalResponseAsync($"{coop.Name} should now be public.");
             }
         }
 
@@ -403,15 +404,16 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Makes this co-op private", AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task MakePrivate(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync();
             var name = new Regex(@"\w+").Match(command.Channel.Name.ToLower()).Value;
             var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(coop == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find coop for this channel {command.Channel.Name}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find coop for this channel {command.Channel.Name}"); });
                 return;
             }
 
             if(string.IsNullOrEmpty(coop.CreatorID)) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to find creator for {command.Channel.Name}"));
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find creator for {command.Channel.Name}"); });
                 return;
             }
 
@@ -424,9 +426,9 @@ namespace EGG9000.Bot.Commands {
             }, coop.CreatorID);
 
             if(response.Success) {
-                await command.RespondAsync($"{coop.Name} is now private.");
+                await command.ModifyOriginalResponseAsync($"{coop.Name} is now private.");
             } else {
-                await command.RespondAsync($"{coop.Name} should now be private.");
+                await command.ModifyOriginalResponseAsync($"{coop.Name} should now be private.");
             }
         }
 
