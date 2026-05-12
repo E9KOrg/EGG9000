@@ -194,7 +194,9 @@ namespace EGG9000.Bot.Automated {
 
                     var subscriptionContractCategory = await _client.GetCategoryAsync(GuildChannelType.SubscriptionContractCategory, guild);
                     var contractCategory = (contract.cc_only && subscriptionContractCategory is not null) ? subscriptionContractCategory : await _client.GetCategoryAsync(GuildChannelType.ContractCategory, guild);
-                    var contractChannel = await guild.CreateTextChannelAsync((contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier, x => { x.CategoryId = contractCategory.Id; x.Topic = ""; });
+                    var capturedCategoryId = contractCategory.Id;
+                    var capturedChannelName = (contractResponse.MaxCoopSize > 1 ? "🐣" : "👤") + contractResponse.Identifier;
+                    var contractChannel = await _queue.EnqueueLowAsync(() => guild.CreateTextChannelAsync(capturedChannelName, x => { x.CategoryId = capturedCategoryId; x.Topic = ""; }));
 
                     guildContract = new GuildContract {
                         ContractID = contract.ID,
@@ -224,7 +226,10 @@ namespace EGG9000.Bot.Automated {
                         var ultraMessageOut = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
 
                         foreach(var pingableUser in pingableUsers) {
-                            var dmResult = await BoolSendDm(_client.GetUser(pingableUser.DiscordId), ultraMessageOut, _db);
+                            var capturedPingUser = _client.GetUser(pingableUser.DiscordId);
+                            var capturedUltraMessage = ultraMessageOut;
+                            var capturedDb = _db;
+                            var dmResult = await _queue.EnqueueLowAsync(() => BoolSendDm(capturedPingUser, capturedUltraMessage, capturedDb));
                             if(dmResult != DMResult.Success) {
                                 _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} {reason}.", pingableUser.DiscordUsername, dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)");
                             }

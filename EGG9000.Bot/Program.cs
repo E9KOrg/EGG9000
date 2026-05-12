@@ -92,6 +92,10 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddMemoryCache();
 
+        services.AddSingleton<DiscordQueueService>();
+        services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
+        services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
+
         // Get connection string - supports both Docker secrets and local development
         var connectionString = DockerSecretsHelper.GetConfigOrSecret(
             hostContext.Configuration,
@@ -205,7 +209,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         }
 
         services.AddSingleton<DiscordHostedService>();
-        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
+        services.AddSingleton<DiscordSocketClient>(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
         services.AddSingleton<APILink>();
         services.AddHostedService(provider => provider.GetService<APILink>());
 

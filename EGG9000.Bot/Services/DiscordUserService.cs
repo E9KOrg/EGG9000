@@ -37,10 +37,10 @@ namespace EGG9000.Common.Services {
 #endif
 
         public Task StartAsync(CancellationToken cancellationToken) {
-            _discord.UserJoined += Client_UserJoined;
-            _discord.UserLeft += Client_UserLeft;
-            _discord.ChannelDestroyed += _discord_ChannelDestroyed;
-            _discord.ThreadDeleted += _discord_ThreadDeleted;
+            _discord.Gateway.UserJoined += Client_UserJoined;
+            _discord.Gateway.UserLeft += Client_UserLeft;
+            _discord.Gateway.ChannelDestroyed += _discord_ChannelDestroyed;
+            _discord.Gateway.ThreadDeleted += _discord_ThreadDeleted;
             return Task.CompletedTask;
         }
 
@@ -71,7 +71,7 @@ namespace EGG9000.Common.Services {
                 if(guildContract is not null) {
                     var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
                     _logger.LogInformation("Deleting header channels for {contract} because discord report the contract channel was deleted", guildContract.Contract.Name);
-                    await dbGuild.DeleteCoopThreadHeadersAsync(_discord, guildContract.Contract, _logger);
+                    await dbGuild.DeleteCoopThreadHeadersAsync(_discord.Gateway, guildContract.Contract, _logger);
                     guildContract.DeletedChannel = true;
                     await db.SaveChangesAsync();
                     return;
@@ -92,9 +92,10 @@ namespace EGG9000.Common.Services {
         }
 
         public Task StopAsync(CancellationToken cancellationToken) {
-            _discord.UserJoined -= Client_UserJoined;
-            _discord.UserLeft -= Client_UserLeft;
-            _discord.ChannelDestroyed -= _discord_ChannelDestroyed;
+            _discord.Gateway.UserJoined -= Client_UserJoined;
+            _discord.Gateway.UserLeft -= Client_UserLeft;
+            _discord.Gateway.ChannelDestroyed -= _discord_ChannelDestroyed;
+            _discord.Gateway.ThreadDeleted -= _discord_ThreadDeleted;
             return Task.CompletedTask;
         }
 
@@ -162,15 +163,15 @@ namespace EGG9000.Common.Services {
             var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser is not null) {
                 if(dbuser.TempDisabled) {
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.Welcome, new() {
+                    await ChannelHelper.DetermineAndSend(_discord.Gateway, dbguild, GuildChannelType.Welcome, new() {
                         Text = $"Welcome to the server {user.Mention}! Looks like staff have previously disabled your account. Please wait for someone to reach out to discuss this."
                     }, _logger);
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
+                    await ChannelHelper.DetermineAndSend(_discord.Gateway, dbguild, GuildChannelType.BannedUserThread, new() { Text = $"{user.Mention} just joined and is disabled." }, _logger);
                     return;
                 }
                 if(dbuser.GuildId != user.Guild.Id) {
                     var moveServerCommandString = await _discord.GetSlashCommandStringAsync(user.Guild, "MoveServer");
-                    await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.Welcome, new() {
+                    await ChannelHelper.DetermineAndSend(_discord.Gateway, dbguild, GuildChannelType.Welcome, new() {
                         Text = $"Welcome to the server {user.Mention}! Looks like you are currently registered with another server. If you would like to move to this server use the {moveServerCommandString} command."
                     }, _logger);
                     return;
@@ -189,7 +190,7 @@ namespace EGG9000.Common.Services {
                 var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
                 var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, [], _logger);
                 var roleText = role is not null ? $" You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}" : "";
-                var response = await ChannelHelper.DetermineAndSend(_discord, dbguild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
+                var response = await ChannelHelper.DetermineAndSend(_discord.Gateway, dbguild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
                 await RegisterCommandsSlash.CleanWelcomeChannel(user.Guild, _discord, user);
                 return;
             }

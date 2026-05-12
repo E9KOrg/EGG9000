@@ -96,12 +96,18 @@ namespace EGG9000.Bot.Automated {
                             _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
                         }
 
-                        var dmResult = await BoolSendDm(discordUser, message, _db);
+                        var capturedUser = discordUser;
+                        var capturedMessage = message;
+                        var capturedDb = _db;
+                        var dmResult = await _queue.EnqueueLowAsync(() => BoolSendDm(capturedUser, capturedMessage, capturedDb));
                         if(dmResult != DMResult.Success) {
                             var dbguild = await _db.Guilds.FirstAsync(x => x.DiscordSeverId == user.GuildId, CancellationToken.None);
                             var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id ==  dbguild.Id);
-                            var response = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.WarningMessagesForUser, new() 
-                            { Text = $"<@{user.DiscordId}> you have elected to receive DMs for Ship Return status, but {(dmResult == DMResult.CannotSendToUser ? "have blocked the bot from sending you DMs" : "Discord is not responding")}" });
+                            var capturedDbGuild = dbguild;
+                            var capturedUserId = user.DiscordId;
+                            var capturedReason = dmResult == DMResult.CannotSendToUser ? "have blocked the bot from sending you DMs" : "Discord is not responding";
+                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, capturedDbGuild, GuildChannelType.WarningMessagesForUser, new()
+                            { Text = $"<@{capturedUserId}> you have elected to receive DMs for Ship Return status, but {capturedReason}" }));
                         }
                         await _db.SaveChangesAsync(CancellationToken.None);
                     } catch(Exception e) {

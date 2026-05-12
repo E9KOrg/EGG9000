@@ -86,7 +86,7 @@ namespace EGG9000.Bot.Automated {
                     var message = $"User <@{user.DiscordId}> may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
 #endif
 
-                    var response = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.CheaterThread, new() { Text = message });
+                    var response = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() { Text = message });
 
                     outlier.CraftingWarningSent = true;
                     user.UpdateAccounts();
@@ -159,12 +159,12 @@ namespace EGG9000.Bot.Automated {
 
                     var (B64, Config) = await ArtifactHelpers.InventoryB64(outlier);
                     if(string.IsNullOrEmpty(B64)) {
-                        var sendResponse = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.CheaterThread, new() {
+                        var sendResponse = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() {
                             Text = message
                         });
                     } else {
                         var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
-                        var sendResponse = await ChannelHelper.DetermineAndSend(_client, dbGuild, GuildChannelType.CheaterThread, new() {
+                        var sendResponse = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() {
                             Text = message,
                             Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier),
                             File = image,
