@@ -190,21 +190,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     return;
                 }
 
-
-                //** Send Co-op has been created DM
-                foreach(var xref in coop.UserCoopsXrefs) {
-                    var user = users.FirstOrDefault(x => x.User.Id == xref.UserId);
-                    if(xref.CoopSetting is null && user is not null) {
-                        xref.CoopSetting = new CoopSetting(xref, user.User, dbGuild);
-                        if(xref.CoopSetting.PingOnCoopCreated && !xref.JoinedCoop) {
-                            await SendDMWarning(_db, parentGuild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created", coop);
-                            xref.CoopSetting.PingOnCoopCreated = false;
-                        }
-                        xref.UpdateCoopSetting();
-                    }
-                }
-                await _db.SaveChangesAsync(CancellationToken.None);
-
                 //Make sure the thread isn't archived before continuing
                 if(coopThread.IsArchived) {
                     try {
@@ -565,6 +550,21 @@ namespace EGG9000.Bot.Automated.Coops {
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
                 }
+
+                //** Send Co-op has been created DM (after JoinedCoop is populated from status)
+                foreach(var xref in coop.UserCoopsXrefs) {
+                    var user = users.FirstOrDefault(x => x.User.Id == xref.UserId);
+                    if(xref.CoopSetting is null && user is not null) {
+                        xref.CoopSetting = new CoopSetting(xref, user.User, dbGuild);
+                        if(xref.CoopSetting.PingOnCoopCreated && !xref.JoinedCoop) {
+                            await SendDMWarning(_db, parentGuild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created", coop);
+                            xref.CoopSetting.PingOnCoopCreated = false;
+                        }
+                        xref.UpdateCoopSetting();
+                    }
+                }
+                await _db.SaveChangesAsync(CancellationToken.None);
+
                 timings.Set(5.1);
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
 
