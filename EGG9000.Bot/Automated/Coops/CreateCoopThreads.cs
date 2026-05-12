@@ -38,7 +38,6 @@ using MassTransit;
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
-        private const double THREAD_CREATION_DELAY_MS = 6050;
 
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
         private readonly Dictionary<CreatorInfo, DateTimeOffset> CreatorLastUsed = new();
@@ -168,7 +167,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 _logger.LogWarning("Trying to create a new thread for {coop} already has a thread at {thread}", coop.Name, existingThread?.Name ?? "null");
                                 continue;
                             }
-                            var coopThread = await CreateThreadChannelAsync(coop.Name, headerChannel);
+                            var coopThread = await _queue.EnqueueLowAsync<IThreadChannel>(() => CreateThreadChannelAsync(coop.Name, headerChannel));
 
                             if(coopThread != null) {
                                 coop.Status = CoopStatusEnum.WaitingOnAssigned;
@@ -193,12 +192,17 @@ namespace EGG9000.Bot.Automated.Coops {
                                         var xrefs = await db2.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.CoopId == coop.Id).ToListAsync();
                                         var coopToUpdate = await db2.Coops.FirstAsync(c => c.Id == coop.Id);
 
-                                        var msg = await coopThread.SendMessageAsync($"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n");
-                                        var msg2 = await coopThread.SendMessageAsync("\u17B5");
-                                        var msg3 = await coopThread.SendMessageAsync("\u17B5");
-                                        var msg4 = await coopThread.SendMessageAsync("\u17B5");
-                                        var msg5 = await coopThread.SendMessageAsync("\u17B5");
-                                        coopToUpdate.UpdateMessagesId = JsonConvert.SerializeObject(new List<ulong> { msg.Id, msg2.Id, msg3.Id, msg4.Id, msg5.Id, });
+                                        var capturedThread = coopThread;
+                                        var introText = $"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n";
+                                        var msgIds = await _queue.EnqueueLowAsync<List<ulong>>(async () => {
+                                            var m1 = await capturedThread.SendMessageAsync(introText);
+                                            var m2 = await capturedThread.SendMessageAsync("\u17B5");
+                                            var m3 = await capturedThread.SendMessageAsync("\u17B5");
+                                            var m4 = await capturedThread.SendMessageAsync("\u17B5");
+                                            var m5 = await capturedThread.SendMessageAsync("\u17B5");
+                                            return new List<ulong> { m1.Id, m2.Id, m3.Id, m4.Id, m5.Id };
+                                        });
+                                        coopToUpdate.UpdateMessagesId = JsonConvert.SerializeObject(msgIds);
                                         await db2.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
                                     } finally {
                                         throttler.Release();
@@ -312,25 +316,18 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         object __headerChannelLock = new object();
-        private async Task<SocketGuildChannel> GetHeaderChannelAndWait(List<HeaderChannelsForGuild> headerChannels, Coop coop) {
+        private Task<SocketGuildChannel> GetHeaderChannelAndWait(List<HeaderChannelsForGuild> headerChannels, Coop coop) {
             SocketGuildChannel headerChannel;
-            DateTimeOffset lastAccessed;
             lock(__headerChannelLock) {
                 var headerChannelsForGuild = headerChannels.First(x => x.GuildId == coop.GuildId);
                 var currentChannels = headerChannelsForGuild.HeaderChannels.Where(x => x.League == coop.League && x.ContractId == coop.ContractID).ToList();
                 var lastAccessedObject = headerChannelsForGuild.LastAccessed.Where(la => currentChannels.Any(x => x.ServerId == la.ServerId)).OrderBy(la => la.LastAccessed).First();
                 var serverHeaderChannel = currentChannels.First(x => x.ServerId == lastAccessedObject.ServerId);
                 headerChannel = serverHeaderChannel.HeaderChannel;
-                lastAccessed = lastAccessedObject.LastAccessed;
                 lastAccessedObject.LastAccessed = DateTimeOffset.Now;
             }
 
-            if(lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) > DateTimeOffset.Now) {
-                var timeToDelay = lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) - DateTimeOffset.Now;
-                _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
-                await Task.Delay(timeToDelay);
-            }
-            return headerChannel;
+            return Task.FromResult(headerChannel);
         }
 
         private async Task<List<HeaderChannelsForGuild>> GetOrCreateHeaderChannelsForCoops(ApplicationDbContext db, List<Coop> coops, List<Guild> guilds, List<GuildContract> guildContracts) {
@@ -424,7 +421,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
                 return null;
             }
-            return await OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger);
+            return await _queue.EnqueueLowAsync<SocketGuildChannel>(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger));
         }
 
         //private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers) {

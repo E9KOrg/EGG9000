@@ -179,7 +179,7 @@ public static partial class NasaHelper {
             logger.LogWarning("Failed to get Custom Message for APOD ID: {apodId}", apod.ID);
             return false;
         }
-        var sentMessage = await DetermineAndSend(client, details.Guild, GuildChannelType.NasaApod, customMessage, logger);
+        var sentMessage = await DetermineAndSend(client.Gateway, details.Guild, GuildChannelType.NasaApod, customMessage, logger);
         if (sentMessage != null) {
             apod.PostedToEntries = [
                 .. apod.PostedToEntries,
@@ -205,7 +205,7 @@ public static partial class NasaHelper {
         var customInteractionBasedMessage = new CustomInteractionBasedDiscordMessage(customMessage) {
             Ephemeral = true,
         };
-        var sentMessage = await SendCustomMessage(client, command, customInteractionBasedMessage, logger);
+        var sentMessage = await SendCustomMessage(client.Gateway, command, customInteractionBasedMessage, logger);
         return sentMessage != null;
     }
 

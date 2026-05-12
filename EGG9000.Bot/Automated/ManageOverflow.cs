@@ -63,7 +63,7 @@ namespace EGG9000.Bot.Automated {
                 }
                 await HandleChannelPermissionSyncs(mainServer, overflowServers, cancellationToken);
                 await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
-                _client.RoleUpdated += _client_RoleUpdated;
+                _client.Gateway.RoleUpdated += _client_RoleUpdated;
 
 #if DEBUG
                 //continue;
