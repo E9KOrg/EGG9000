@@ -59,6 +59,7 @@ namespace EGG9000.Bot.Automated {
 
         protected Bugsnag.IClient _bugSnag;
         protected ILogger<T> _logger;
+        protected IDiscordQueue _queue;
         protected IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
         protected ulong _CPGuildId;
@@ -90,6 +91,7 @@ namespace EGG9000.Bot.Automated {
             _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
             Instance = this;
             _bugSnag = provider.GetService<Bugsnag.IClient>();
+            _queue = provider.GetRequiredService<IDiscordQueue>();
             _provider = provider;
             _ = ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 

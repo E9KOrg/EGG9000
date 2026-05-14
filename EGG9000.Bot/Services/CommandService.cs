@@ -202,7 +202,7 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
                             parameters.Add(await _dbContextFactory.CreateDbContextAsync());
                         } else if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
-                            parameters.Add(_discord);
+                            parameters.Add(_discord.Gateway);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
                             parameters.Add(_discord);
                         } else if(parameterInfo.ParameterType == typeof(APILink)) {
@@ -292,13 +292,13 @@ namespace EGG9000.Bot.Services {
         private async Task CreateCommands() {
             try {
 
-                _discord.SlashCommandExecuted += _discord_SlashCommandExecuted;
-                _discord.UserCommandExecuted += _discord_UserCommandExecuted;
-                _discord.MessageReceived += _discord_MessageReceived;
-                _discord.ButtonExecuted += _discord_ButtonExecuted;
-                _discord.SelectMenuExecuted += _discord_SelectMenuExecuted;
-                _discord.AutocompleteExecuted += _discord_AutocompleteExecuted;
-                _discord.ModalSubmitted += _discord_ModalSubmitted;
+                _discord.Gateway.SlashCommandExecuted += _discord_SlashCommandExecuted;
+                _discord.Gateway.UserCommandExecuted += _discord_UserCommandExecuted;
+                _discord.Gateway.MessageReceived += _discord_MessageReceived;
+                _discord.Gateway.ButtonExecuted += _discord_ButtonExecuted;
+                _discord.Gateway.SelectMenuExecuted += _discord_SelectMenuExecuted;
+                _discord.Gateway.AutocompleteExecuted += _discord_AutocompleteExecuted;
+                _discord.Gateway.ModalSubmitted += _discord_ModalSubmitted;
 
                 _ = _activeMonitorHostedService.SetActiveColorAsync();
 
@@ -362,7 +362,7 @@ namespace EGG9000.Bot.Services {
                     guildCommandProperties.Add(guildCommand.Build());
                 }
 
-                var globalCommands = await _discord.BulkOverwriteGlobalApplicationCommandsAsync([.. globalCommandProperties]);
+                var globalCommands = await _discord.Gateway.BulkOverwriteGlobalApplicationCommandsAsync([.. globalCommandProperties]);
                 _globalCommands.AddRange(globalCommands.Select(y => (y, (ulong)0)));
                 foreach(var guild in _discord.Guilds) {
                     _logger.LogInformation("Creating slash commands for {guild}", guild.Name);
@@ -573,7 +573,7 @@ namespace EGG9000.Bot.Services {
             var hasMeritAlready = dbUser.Merits.Any(m => m.Reason == meritText);
             if(hasMeritAlready) return;
 
-            await MeritCommands.CreateMerit(meritText, db, _discord, message.Author, null, guild: guild);
+            await MeritCommands.CreateMerit(meritText, db, _discord.Gateway, message.Author, null, guild: guild);
         }
 
         private async Task HandleScreenshotRegistration(SocketMessage message, SocketGuild guild, ApplicationDbContext db) {
@@ -634,7 +634,7 @@ namespace EGG9000.Bot.Services {
                 _logger.LogInformation("Detected boost message in CP guild from {user}", message.Author.Username);
                 var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id);
                 var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
-                await MeritCommands.CreateMerit("Boosted the server!", db, _discord, message.Author, Guid.Empty, guild: dbGuild);
+                await MeritCommands.CreateMerit("Boosted the server!", db, _discord.Gateway, message.Author, Guid.Empty, guild: dbGuild);
                 await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
             }
 
@@ -870,13 +870,13 @@ namespace EGG9000.Bot.Services {
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
-            _discord.SlashCommandExecuted -= _discord_SlashCommandExecuted;
-            _discord.UserCommandExecuted -= _discord_UserCommandExecuted;
-            _discord.MessageReceived -= _discord_MessageReceived;
-            _discord.ButtonExecuted -= _discord_ButtonExecuted;
-            _discord.SelectMenuExecuted -= _discord_SelectMenuExecuted;
-            _discord.AutocompleteExecuted -= _discord_AutocompleteExecuted;
-            _discord.ModalSubmitted += _discord_ModalSubmitted;
+            _discord.Gateway.SlashCommandExecuted -= _discord_SlashCommandExecuted;
+            _discord.Gateway.UserCommandExecuted -= _discord_UserCommandExecuted;
+            _discord.Gateway.MessageReceived -= _discord_MessageReceived;
+            _discord.Gateway.ButtonExecuted -= _discord_ButtonExecuted;
+            _discord.Gateway.SelectMenuExecuted -= _discord_SelectMenuExecuted;
+            _discord.Gateway.AutocompleteExecuted -= _discord_AutocompleteExecuted;
+            _discord.Gateway.ModalSubmitted -= _discord_ModalSubmitted;
             _logger.LogInformation("Stopped listening to slash commands");
             if(_semaphoreSlim.CurrentCount > 0) {
                 _logger.LogInformation("Waiting on semaphore to shutdown");

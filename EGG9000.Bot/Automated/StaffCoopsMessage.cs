@@ -39,7 +39,9 @@ namespace EGG9000.Bot.Automated {
                 var channel = guild.GetTextChannel(guildInfo.ChannelID);
                 var message = (RestUserMessage)await channel.GetMessageAsync(guildInfo.MessageID);
 
-                await message.ModifyAsync(x => x.Content = string.Join("\n", adminsWithChannels.Select(x => $"{x.Admin.DiscordUsername}: {string.Join(", ", x.Channels)}")));
+                var capturedContent = string.Join("\n", adminsWithChannels.Select(x => $"{x.Admin.DiscordUsername}: {string.Join(", ", x.Channels)}"));
+                var capturedMessage = message;
+                _queue.EnqueueLow(() => capturedMessage.ModifyAsync(x => x.Content = capturedContent));
             }
         }
 
