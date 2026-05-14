@@ -330,6 +330,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var overflowGuildUser = guild.GetUser(participant.DBUser.DiscordId);
                     if(overflowGuildUser is not null && !overflowGuildUser.Roles.Any(x => x.Id == gradeRole.Id || x.Name.Contains("ULTRA")) && participant.CoopStatus?.UserName != "[departed]") {
                         var headChannel = guild.GetTextChannel(coopThread.CategoryId.Value);
+                        if(headChannel is null) continue;
                         if(!headChannel.PermissionOverwrites.Any(x => x.TargetId == overflowGuildUser.Id)) {
                             await headChannel.AddPermissionOverwriteAsync(overflowGuildUser, new OverwritePermissions(viewChannel: PermValue.Allow));
 
@@ -1572,6 +1573,7 @@ namespace EGG9000.Bot.Automated.Coops {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFinished ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFinished = false;
                 userStatus.Xref.UpdateCoopSetting();
+                if(userStatus.DiscordUser is null) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished.", db);
                 if(dmResult != DMResult.Success) {

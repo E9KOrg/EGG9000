@@ -242,7 +242,9 @@ namespace EGG9000.Common.Services {
 
     public static class DiscordExtensions {
         public static async Task SendDMToKendrome(this DiscordSocketClient _discord, string message) {
-            var kendromedmchannel = await _discord.GetUser(248865520756064257).CreateDMChannelAsync();
+            var kendromeUser = _discord.GetUser(248865520756064257);
+            if(kendromeUser is null) return;
+            var kendromedmchannel = await kendromeUser.CreateDMChannelAsync();
             if(kendromedmchannel is not null) {
                 await kendromedmchannel.SendMessageAsync(message);
             }
