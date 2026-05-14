@@ -167,8 +167,10 @@ namespace EGG9000.Bot.Services {
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
+            var semaphoreAcquired = false;
             try {
-                if(await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5))) {
+                semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
+                if(semaphoreAcquired) {
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
@@ -239,10 +241,16 @@ namespace EGG9000.Bot.Services {
                 }
             } catch(UserNotInServerException unfe) {
                 RunCommandFailures.Inc();
-                await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
+                if(arg.HasResponded)
+                    await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."); });
+                else
+                    await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
             } catch(InvalidOperationException) {
                 RunCommandFailures.Inc();
-                await arg.RespondAsync(text: "", embed: EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"));
+                if(arg.HasResponded)
+                    await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"); });
+                else
+                    await arg.RespondAsync(text: "", embed: EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"));
             } catch(Exception e) {
                 RunCommandFailures.Inc();
                 try {
@@ -256,7 +264,7 @@ namespace EGG9000.Bot.Services {
 
                 }
             } finally {
-                _semaphoreSlim.Release();
+                if(semaphoreAcquired) _semaphoreSlim.Release();
                 sw.Stop();
                 RunCommandDuration.Observe(sw.Elapsed.TotalSeconds);
             }

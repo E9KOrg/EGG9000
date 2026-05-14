@@ -428,11 +428,15 @@ namespace EGG9000.Common.Helpers {
             if(status is not null) {
                 foreach(var participant in status.Participants) {
 
-                    //Try and match UUID
-                    var backup = backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)));
+                    //Try and match UUID (skip if UUID is empty to avoid false positives)
+                    var backup = !string.IsNullOrEmpty(participant.Uuid)
+                        ? backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)))
+                        : null;
                     //UserWithBackup backup = null;
                     if(backup is not null) {
-                        var thisXref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == backup.User.Id && x.EggIncId == backup.Backup.EggIncId);
+                        var thisXref = coop?.UserCoopsXrefs.FirstOrDefault(x => x.UserId == backup.User.Id && x.EggIncId == backup.Backup.EggIncId);
+                        // UUID matched a backup but the exact account's xref wasn't found (e.g. multi-account user, stale backup) - fall back to EggIncId
+                        thisXref ??= coop?.UserCoopsXrefs.FirstOrDefault(x => x.EggIncId == participant.GetID());
                         coopParticipants.Add(new UserFarmDetails(coop, thisXref, participant, contract, backup, customEggs, discord, league));
                     } else {
                         if(participant.UserName == "[departed]") continue;
