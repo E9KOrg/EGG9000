@@ -149,7 +149,8 @@ namespace EGG9000.Bot.Automated {
                                 $"({(dbCoop is not null? $"<#{dbCoop.ThreadID}> - `{dbCoop.Name}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
                                 $"for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
-                            var result = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.BreakCoopLog, new() { Text = message });
+                            var capturedMessage = message;
+                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, dbguild, GuildChannelType.BreakCoopLog, new() { Text = capturedMessage }));
 
                             breakCooper.User.Account.BreakCoopWarningSent = true;
                             breakCooper.User.User.UpdateAccounts();
@@ -175,7 +176,8 @@ namespace EGG9000.Bot.Automated {
                             var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{merCheater.User.DiscordId}>{(merCheater.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")} may be cheating. MER is higher than expected, at `{mer:n2}`, after `{(int)merCheater.Backup.NumPrestiges}` prestiges.";
 
-                            var result = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.CheaterThread, new() { Text = message });
+                            var capturedMerMessage = message;
+                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, dbguild, GuildChannelType.CheaterThread, new() { Text = capturedMerMessage }));
 
                             merCheater.Account.MERWarningSent = true;
                             merCheater.User.UpdateAccounts();
@@ -202,8 +204,9 @@ namespace EGG9000.Bot.Automated {
 
                         if(!dbUser.showEB && !string.IsNullOrEmpty(discordUser.Nickname) && discordUser.GetCleanName() != discordUser.Nickname && discordUser.Guild.OwnerId != discordUser.Id) {
                             try {
+                                var capturedUser = discordUser;
                                 _logger.LogInformation("Updating {user} to {newname}", discordUser.Nickname, discordUser.GetCleanName());
-                                await discordUser.ModifyAsync(x => x.Nickname = discordUser.GetCleanName());
+                                await _queue.EnqueueLowAsync<bool>(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
                             } catch(Exception) {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
@@ -258,20 +261,27 @@ namespace EGG9000.Bot.Automated {
             for(var i = 0; i < Math.Max(msgs.Count, table1.Count); i++) {
                 if(msgs.Count > i && table1.Count > i) {
                     if(table1[i] == "@@@EMBED") {
-                        await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Embed = GetEmbed(guild, channel, msgs[0], dbguild); msg.Content = ""; });
+                        var capturedMsg = (RestUserMessage)msgs[i];
+                        var capturedEmbed = GetEmbed(guild, channel, msgs[0], dbguild);
+                        _queue.EnqueueLow(() => capturedMsg.ModifyAsync(msg => { msg.Embed = capturedEmbed; msg.Content = ""; }));
                     } else if(msgs[i].Content != table1[i]) {
-                        await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Embed = null; msg.Content = table1[i]; });
+                        var capturedMsg = (RestUserMessage)msgs[i];
+                        var capturedContent = table1[i];
+                        _queue.EnqueueLow(() => capturedMsg.ModifyAsync(msg => { msg.Embed = null; msg.Content = capturedContent; }));
                     }
                 } else if(msgs.Count <= i) {
                     if(table1[i] == "@@@EMBED") {
                         if(msgs.Count > 0) {
-                            await channel.SendMessageAsync(embed: GetEmbed(guild, channel, msgs[0], dbguild));
+                            var capturedEmbed = GetEmbed(guild, channel, msgs[0], dbguild);
+                            _queue.EnqueueLow(() => channel.SendMessageAsync(embed: capturedEmbed));
                         }
                     } else {
-                        var msg = await channel.SendMessageAsync(table1[i]);
+                        var capturedContent = table1[i];
+                        _queue.EnqueueLow(() => channel.SendMessageAsync(capturedContent));
                     }
                 } else {
-                    await ((RestUserMessage)msgs[i]).ModifyAsync(msg => { msg.Content = "\u17B5"; msg.Embed = null; });
+                    var capturedMsg = (RestUserMessage)msgs[i];
+                    _queue.EnqueueLow(() => capturedMsg.ModifyAsync(msg => { msg.Content = "\u17B5"; msg.Embed = null; }));
                     //await ((RestUserMessage)msgs[i]).DeleteAsync();
                 }
             }

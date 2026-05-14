@@ -38,6 +38,7 @@ namespace EGG9000.Common.Services {
             _fake = fake;
         }
 
+        public static FauxCommand CreateFake() => new(fake: true);
 
         public static implicit operator FauxCommand(SocketSlashCommand command) {
             return new FauxCommand(command);
@@ -67,7 +68,7 @@ namespace EGG9000.Common.Services {
         }
 
         public Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) {
-            throw new NotImplementedException();
+            throw new NotSupportedException(nameof(RespondWithFilesAsync));
         }
 
         public async Task RespondWithFileAsync(FileAttachment attachment, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
@@ -97,7 +98,7 @@ namespace EGG9000.Common.Services {
         }
 
         public Task RespondWithModalAsync(Modal modal, RequestOptions options = null) {
-            throw new NotImplementedException();
+            throw new NotSupportedException(nameof(RespondWithModalAsync));
         }
 
         public async Task<IUserMessage> GetOriginalResponseAsync(RequestOptions options = null) {
@@ -154,7 +155,7 @@ namespace EGG9000.Common.Services {
                     return await _socketCommandBase.GetOriginalResponseAsync();
                 }
             }
-            throw new NotImplementedException();
+            throw new NotSupportedException(nameof(RespondWithFilesAsyncGettingMessage));
         }
 
         public async Task RespondWithFilesAsync(IEnumerable<FileAttachment> attachments, string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) =>
@@ -168,7 +169,7 @@ namespace EGG9000.Common.Services {
                     return await _socketCommandBase.FollowupWithFilesAsync(attachments, text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll, flags);
                 else 
                     return await _socketCommandBase.FollowupAsync(text, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll, flags);
-            throw new NotImplementedException();
+            throw new NotSupportedException(nameof(FollowUpAsync));
         }
 
         public async Task<IUserMessage> FollowupAsync(string text = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null, MessageFlags flags = MessageFlags.None) {
@@ -214,11 +215,7 @@ namespace EGG9000.Common.Services {
         }
 
         public class FauxApplicationCommandData {
-            public ulong Id {
-                get {
-                    throw new NotImplementedException();
-                }
-            }
+            public ulong Id => throw new NotSupportedException(nameof(Id));
 
             public string Name { get; set; }
 
@@ -260,17 +257,9 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public string Token {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public string Token => throw new NotSupportedException(nameof(Token));
 
-        public int Version {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public int Version => throw new NotSupportedException(nameof(Version));
 
         public bool HasResponded {
             get {
@@ -286,21 +275,13 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public string UserLocale {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public string UserLocale => throw new NotSupportedException(nameof(UserLocale));
 
-        public string GuildLocale {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public string GuildLocale => throw new NotSupportedException(nameof(GuildLocale));
 
         public bool IsDMInteraction {
             get {
-                return _socketCommandBase?.IsDMInteraction ?? throw new NotImplementedException();
+                return _socketCommandBase?.IsDMInteraction ?? throw new NotSupportedException(nameof(IsDMInteraction));
             }
         }
 
@@ -322,11 +303,7 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public ulong ApplicationId {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public ulong ApplicationId => throw new NotSupportedException(nameof(ApplicationId));
 
         public DateTimeOffset CreatedAt {
             get {
@@ -334,53 +311,17 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        IDiscordInteractionData IDiscordInteraction.Data {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        IDiscordInteractionData IDiscordInteraction.Data => throw new NotSupportedException(nameof(IDiscordInteraction.Data));
 
-        public IReadOnlyCollection<IEntitlement> Entitlements {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public IReadOnlyCollection<IEntitlement> Entitlements => throw new NotSupportedException(nameof(Entitlements));
 
-        //public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners {
-        //    get {
-        //        throw new NotImplementedException();
-        //    }
-        //}
+        public GuildPermissions Permissions => throw new NotSupportedException(nameof(Permissions));
 
-        //public InteractionContextType? ContextType {
-        //    get {
-        //        throw new NotImplementedException();
-        //    }
-        //}
+        public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners => throw new NotSupportedException(nameof(IntegrationOwners));
 
-        public GuildPermissions Permissions {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public InteractionContextType? ContextType => throw new NotSupportedException(nameof(ContextType));
 
-        public IReadOnlyDictionary<ApplicationIntegrationType, ulong> IntegrationOwners {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public InteractionContextType? ContextType {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public ulong AttachmentSizeLimit {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public ulong AttachmentSizeLimit => throw new NotSupportedException(nameof(AttachmentSizeLimit));
 
         [GeneratedRegex(@"^/(\w+)")]
         private static partial Regex CommandRegex();

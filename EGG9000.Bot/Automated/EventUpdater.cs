@@ -18,6 +18,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -173,7 +174,8 @@ namespace EGG9000.Bot.Automated {
 
                     if(channel.Name != newName && channel != null) {
                         _logger.LogInformation("Renaming game-events channel in {guild}: '{oldName}' -> '{newName}'", guild.Name, channel.Name, newName);
-                        await channel.ModifyAsync(x => x.Name = newName);
+                        var capturedNewName = newName;
+                        _queue.EnqueueLow(() => channel.ModifyAsync(x => x.Name = capturedNewName));
                     }
                     StillAlive();
                 }
@@ -206,7 +208,8 @@ namespace EGG9000.Bot.Automated {
 
                     if(ccChannel.Name != newName && ccChannel != null) {
                         _logger.LogInformation("Renaming subscriber-game-events channel in {guild}: '{oldName}' -> '{newName}'", guild.Name, ccChannel.Name, newName);
-                        await ccChannel.ModifyAsync(x => x.Name = newName);
+                        var capturedCcNewName = newName;
+                        _queue.EnqueueLow(() => ccChannel.ModifyAsync(x => x.Name = capturedCcNewName));
                     }
                 }
             }
@@ -237,13 +240,19 @@ namespace EGG9000.Bot.Automated {
                     //Send to non-CCs without ping
                     if(eventChannel != null) {
                         var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
-                        message = await eventChannel.SendFileIfExistsAsync(embedImage, text: ultraNotification != null ? $"<@&{ultraNotification.RoleID}>" : null, embed: embed);
+                        var capturedEmbedImage = embedImage;
+                        var capturedEmbed = embed;
+                        var capturedUltraPingText = ultraNotification != null ? $"<@&{ultraNotification.RoleID}>" : null;
+                        message = await _queue.EnqueueLowAsync(() => eventChannel.SendFileIfExistsAsync(capturedEmbedImage, text: capturedUltraPingText, embed: capturedEmbed));
                         _logger.LogDebug("PostMessages: sent CC event (no ping) to non-CC channel in {guild}, messageId={messageId}", guild.Name, message?.Id);
                     }
 
                     //If the CC event channel was found, that's where we'll ping for CC events
                     if(ccEventChannel != null) {
-                        var ccMessage = await ccEventChannel.SendFileIfExistsAsync(embedImage, text: notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        var capturedCcEmbedImage = embedImage;
+                        var capturedCcEmbed = embed;
+                        var capturedCcPingText = notification != null ? $"<@&{notification.RoleID}>" : null;
+                        var ccMessage = await _queue.EnqueueLowAsync(() => ccEventChannel.SendFileIfExistsAsync(capturedCcEmbedImage, text: capturedCcPingText, embed: capturedCcEmbed));
                         //Add the CC event channel message to the IDs
                         messageIds.Add(ccMessage.Id);
                         _logger.LogDebug("PostMessages: sent CC event (with ping={hasPing}) to CC channel in {guild}, messageId={messageId}",
@@ -252,7 +261,10 @@ namespace EGG9000.Bot.Automated {
                 } else {
                     //Only send to non-CC channel, with ping
                     if(eventChannel != null) {
-                        message = await eventChannel.SendFileIfExistsAsync(embedImage, text: notification != null ? $"<@&{notification.RoleID}>" : null, embed: embed);
+                        var capturedEmbedImage = embedImage;
+                        var capturedEmbed = embed;
+                        var capturedPingText = notification != null ? $"<@&{notification.RoleID}>" : null;
+                        message = await _queue.EnqueueLowAsync(() => eventChannel.SendFileIfExistsAsync(capturedEmbedImage, text: capturedPingText, embed: capturedEmbed));
                         _logger.LogDebug("PostMessages: sent event (with ping={hasPing}) to event channel in {guild}, messageId={messageId}",
                             notification != null, guild.Name, message?.Id);
                     }
@@ -278,6 +290,9 @@ namespace EGG9000.Bot.Automated {
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
                 var (embed, embedImage) = await GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
+                byte[] embedImageBytes = embedImage.HasValue ? ((MemoryStream)embedImage.Value.Stream).ToArray() : null;
+                string embedImageFileName = embedImage.HasValue ? embedImage.Value.FileName : null;
+                string embedImageDescription = embedImage.HasValue ? embedImage.Value.Description : null;
 
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild == null) continue;
@@ -291,11 +306,15 @@ namespace EGG9000.Bot.Automated {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
                                     .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
-                                await message.ModifyAsync(msg => {
-                                    msg.Embed = embed;
-                                    msg.Content = (notification != null && !currentEvent.CcOnly) ? $"<@&{notification.RoleID}>" : null;
-                                    msg.Attachments = embedImage.HasValue ? new List<FileAttachment> { embedImage.Value } : [];
-                                });
+                                var capturedMessage = message;
+                                var capturedEmbed = embed;
+                                var capturedEmbedImage = embedImageBytes != null ? new FileAttachment(new MemoryStream(embedImageBytes), embedImageFileName, embedImageDescription) : (FileAttachment?)null;
+                                var capturedContent = (notification != null && !currentEvent.CcOnly) ? $"<@&{notification.RoleID}>" : null;
+                                _queue.EnqueueLow(() => capturedMessage.ModifyAsync(msg => {
+                                    msg.Embed = capturedEmbed;
+                                    msg.Content = capturedContent;
+                                    msg.Attachments = capturedEmbedImage.HasValue ? new List<FileAttachment> { capturedEmbedImage.Value } : [];
+                                }));
                                 _logger.LogDebug("UpdateMessages [{reason}]: modified messageId={messageId} in event channel of {guild}",
                                     reason, mid, guild.Name);
                             }
@@ -314,11 +333,15 @@ namespace EGG9000.Bot.Automated {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
                                     .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
-                                await message.ModifyAsync(msg => {
-                                    msg.Embed = embed;
-                                    msg.Content = notification != null ? $"<@&{notification.RoleID}>" : null;
-                                    msg.Attachments = embedImage.HasValue ? new List<FileAttachment> { embedImage.Value } : [];
-                                });
+                                var capturedMessage = message;
+                                var capturedEmbed = embed;
+                                var capturedEmbedImage = embedImageBytes != null ? new FileAttachment(new MemoryStream(embedImageBytes), embedImageFileName, embedImageDescription) : (FileAttachment?)null;
+                                var capturedContent = notification != null ? $"<@&{notification.RoleID}>" : null;
+                                _queue.EnqueueLow(() => capturedMessage.ModifyAsync(msg => {
+                                    msg.Embed = capturedEmbed;
+                                    msg.Content = capturedContent;
+                                    msg.Attachments = capturedEmbedImage.HasValue ? new List<FileAttachment> { capturedEmbedImage.Value } : [];
+                                }));
                                 _logger.LogDebug("UpdateMessages [{reason}]: modified messageId={messageId} in CC event channel of {guild}",
                                     reason, mid, guild.Name);
                             }
@@ -475,8 +498,9 @@ namespace EGG9000.Bot.Automated {
                         var channel = await _client.GetChannelAsync(GuildChannelType.LimitedTimeShells, guild);
                         if(channel is not null) {
                             var ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
-
-                            var message = await channel.SendMessageAsync(ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null, embed: embed);
+                            var capturedShellPingText = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null;
+                            var capturedEmbed = embed;
+                            var message = await _queue.EnqueueLowAsync(() => channel.SendMessageAsync(capturedShellPingText, embed: capturedEmbed));
 
                             messageIDs.Add((channel.Id, message.Id));
                             _logger.LogDebug("Posted shell message in {guild}, messageId={messageId}", guild.Name, message.Id);
@@ -491,7 +515,11 @@ namespace EGG9000.Bot.Automated {
                         var dbguild = dbguilds.First(x => x.ChannelDetails.Any(x => x.Id == channel?.Id));
                         var ShellsRole = dbguild.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.LimitedTimeShellsRole)?.Id;
                         if(channel is not null) {
-                            await (channel as SocketTextChannel).ModifyMessageAsync(message.Item2, msg => { msg.Embed = embed; msg.Content = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null; });
+                            var capturedChannel = channel as SocketTextChannel;
+                            var capturedMessageId = message.Item2;
+                            var capturedEmbed = embed;
+                            var capturedShellRolePingText = ShellsRole.HasValue ? $"<@&{ShellsRole}>" : null;
+                            _queue.EnqueueLow(() => capturedChannel.ModifyMessageAsync(capturedMessageId, msg => { msg.Embed = capturedEmbed; msg.Content = capturedShellRolePingText; }));
                         }
                     }
                 }

@@ -3,6 +3,7 @@
 using Discord;
 using Discord.Net.Rest;
 using Discord.Net.WebSockets;
+using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Common.Contracts;
@@ -29,13 +30,16 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {
-    public class DiscordHostedService : DiscordSocketClient {
+    public class DiscordHostedService {
         public bool IsReady { get; private set; }
         private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
         private readonly ApplicationDbContext _db;
         private readonly IMemoryCache _cache;
         private readonly IServiceProvider _provider;
         private readonly ILogger<DiscordHostedService> _logger;
+
+        private readonly DiscordSocketClient _gateway;
+        private readonly DiscordRestClient _rest;
 
         //private static readonly WebProxy proxy = new WebProxy("http://localhost", 8888);
 
@@ -49,7 +53,28 @@ namespace EGG9000.Common.Services {
         };
         private static readonly List<DiscordSemaphore> _serverSemaphores = [];
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
-        public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) : base(config) {
+
+        // The gateway socket client, for use by CommandService and extension methods
+        public DiscordSocketClient Gateway => _gateway;
+
+        // Forwarding properties so _UpdaterBase and background jobs (_client.Guilds, _client.GetGuild etc.) work unchanged
+        public IReadOnlyCollection<SocketGuild> Guilds => _gateway.Guilds;
+        public SocketGuild GetGuild(ulong id) => _gateway.GetGuild(id);
+        public SocketUser GetUser(ulong id) => _gateway.GetUser(id);
+        public IChannel GetChannel(ulong id) => _gateway.GetChannel(id);
+        public ConnectionState ConnectionState => _gateway.ConnectionState;
+        public Task SendDMToKendrome(string message) => _gateway.SendDMToKendrome(message);
+
+        // REST client, for callers that need guild/member lookups not available on the socket client
+        public DiscordRestClient Rest => _rest;
+
+        // Application emotes - used by NewContracts.cs and FAQCommandSlash.cs
+        public Task<IReadOnlyCollection<Emote>> GetApplicationEmotesAsync() => _gateway.GetApplicationEmotesAsync();
+
+        // Async channel lookup by raw ID - used by ContractUpdater.cs and CreateCoopThreads.cs
+        public Task<IChannel> GetChannelAsync(ulong id) => (_gateway as IDiscordClient).GetChannelAsync(id);
+
+        public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) {
 #if DEBUG
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 #endif
@@ -58,19 +83,23 @@ namespace EGG9000.Common.Services {
             _provider = provider;
             _logger = logger;
 
-            Log += PrintLog;
-            Ready += DiscordHostedService_Ready;
-            LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
-            StartAsync().Wait();
+            _gateway = new DiscordSocketClient(config);
+            _rest = new DiscordRestClient();
+
+            _gateway.Log += PrintLog;
+            _gateway.Ready += DiscordHostedService_Ready;
+            _gateway.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
+            _gateway.StartAsync().Wait();
+            _rest.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]).Wait();
 
             _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
-            while(ConnectionState != ConnectionState.Connected) { }
+            while(_gateway.ConnectionState != ConnectionState.Connected) { }
             _logger.Log(LogLevel.Information, "Discord Ready");
 
             _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             _cache = cache;
 
-            foreach(var guild in Guilds) {
+            foreach(var guild in _gateway.Guilds) {
                 _serverSemaphores.Add(new DiscordSemaphore(guild, new(1, 1)));
             }
         }
@@ -81,23 +110,23 @@ namespace EGG9000.Common.Services {
         }
 
         public async Task RestartAsync() {
-            if(ConnectionState != ConnectionState.Connected) {
+            if(_gateway.ConnectionState != ConnectionState.Connected) {
                 throw new RestartDiscordException("Not connected yet - cannot restart.", Severity.Warning);
             }
 
             try {
                 //Logout subtasks
-                await LogoutAsync();
-                await StopAsync();
+                await _gateway.LogoutAsync();
+                await _gateway.StopAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
-                while(ConnectionState == ConnectionState.Connected) { }
+                while(_gateway.ConnectionState == ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Disconnected...");
 
                 //Log back in
-                await LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]);
-                await StartAsync();
+                await _gateway.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]);
+                await _gateway.StartAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
-                while(ConnectionState != ConnectionState.Connected) { }
+                while(_gateway.ConnectionState != ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Ready");
             } catch(Exception ex) {
                 throw new RestartDiscordException(ex.Message, Severity.Error);
@@ -120,9 +149,9 @@ namespace EGG9000.Common.Services {
 
         private Task DiscordHostedService_Ready() {
             IsReady = true;
-            SetGameAsync("").Wait();
+            _gateway.SetGameAsync("").Wait();
 
-            foreach(var guild in Guilds) {
+            foreach(var guild in _gateway.Guilds) {
                 _logger.Log(LogLevel.Information, "Download guild users for {Guild}", guild.Name);
 
                 guild.DownloadUsersAsync().Wait();
@@ -211,7 +240,7 @@ namespace EGG9000.Common.Services {
                 if(channelDetail == null || channelDetail.Id == 0)
                     return default;
 
-                return (T)Convert.ChangeType(GetChannel(channelDetail.Id), typeof(T));
+                return (T)Convert.ChangeType(_gateway.GetChannel(channelDetail.Id), typeof(T));
             } catch(Exception e) {
                 _logger.LogError(e, "Error getting channel or category");
                 return default;
@@ -384,7 +413,7 @@ namespace EGG9000.Common.Services {
 
         public static async Task<IReadOnlyCollection<SocketApplicationCommand>> GetCachedApplicationCommands(this DiscordHostedService discord) {
             if(!commandCache.TryGetValue("GLOBAL", out IReadOnlyCollection<SocketApplicationCommand> commands)) {
-                commands = await discord.GetGlobalApplicationCommandsAsync();
+                commands = await discord.Gateway.GetGlobalApplicationCommandsAsync();
                 commandCache.Set("GLOBAL", commands, TimeSpan.FromMinutes(10));
             }
             return commands;
@@ -420,7 +449,7 @@ namespace EGG9000.Common.Services {
         public static async Task<Emote> CreateCustomEggEmoji(this DiscordHostedService _client, Ei.CustomEgg newEgg, Emote? emoteToReplace) {
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             var emojiName = newEgg.GetEmojiName();
-            var existingEmotes = await _client.GetApplicationEmotesAsync();
+            var existingEmotes = await _client.Gateway.GetApplicationEmotesAsync();
             // Download the image from aux
             var imageUrl = newEgg.Icon.Url.ToString();
             byte[] imageBytes;
@@ -457,12 +486,12 @@ namespace EGG9000.Common.Services {
             var discordImage = new Image(imageStream);
 
             // Upload the image as a GuildEmote
-            var newAppEmote = await _client.CreateApplicationEmoteAsync(emojiName, discordImage);
+            var newAppEmote = await _client.Gateway.CreateApplicationEmoteAsync(emojiName, discordImage);
 
             if(emoteToReplace != null && newAppEmote != null) {
-                var appEmote = await _client.GetApplicationEmoteAsync(emoteToReplace.Id);
+                var appEmote = await _client.Gateway.GetApplicationEmoteAsync(emoteToReplace.Id);
                 if(appEmote is not null) {
-                    await _client.DeleteApplicationEmoteAsync(emoteToReplace.Id, options: new RequestOptions() {
+                    await _client.Gateway.DeleteApplicationEmoteAsync(emoteToReplace.Id, options: new RequestOptions() {
                         RetryMode = RetryMode.RetryRatelimit | RetryMode.RetryTimeouts
                     });
                 }
