@@ -297,13 +297,14 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(cancellationToken.IsCancellationRequested) return;
 
+                var customEggs = await _db.GetCustomEggsAsync();
 
                 if(coop.League == 0) {
                     //Fix if grade is set to 0
                     coop.League = (uint)status.Grade;
                 }
 
-                var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, await _db.GetCustomEggsAsync(), _client, statusReponse.Status);
+                var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, customEggs, _client, statusReponse.Status);
 
 
                 if(CheckForCreator(coop, coopDetails)) {
@@ -364,7 +365,10 @@ namespace EGG9000.Bot.Automated.Coops {
                     };
                     _db.Add(xref);
                     participant.AddXref(xref);
+                }
+                if(participantsInCoopButWithoutXref.Count > 0)
                     await _db.SaveChangesAsync(CancellationToken.None);
+                foreach(var participant in participantsInCoopButWithoutXref) {
                     if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
                         await coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account.");
                         await BoolSendDm(participant.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
@@ -402,12 +406,11 @@ namespace EGG9000.Bot.Automated.Coops {
                         var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId == coop.Name.ToLower());
                         if(farm != null) {
                             _bugSnag.Breadcrumbs.Leave($"User: {user.DiscordUser?.Id}, {user.Backup?.EggIncId}");
-                            user.FarmStats = farm.WithStats(user.Backup, coop, await _db.GetCustomEggsAsync());
+                            user.FarmStats = farm.WithStats(user.Backup, coop, customEggs);
                             user.SiloTime = awayTime * farm.SilosOwned;
                             var siloTimeHours = user.SiloTime / 60;
                             if(user.Xref is not null && user.Xref.SiloTimeHours != siloTimeHours) {
                                 user.Xref.SiloTimeHours = (float)siloTimeHours;
-                                await _db.SaveChangesAsync(CancellationToken.None);
                             }
                         }
                     }
@@ -1047,7 +1050,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     ;
 
 
-                    embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract, await _db.GetCustomEggsAsync()).image));
+                    embedBuilder.WithAuthor(new EmbedAuthorBuilder().WithName($"{coop.Contract.Name} - Coop Code: {coop.Name}").WithIconUrl(EggIncStatics.GetEggByContract(coop.Contract, customEggs).image));
 
 
                     var updates = UpdateInterval.TotalMinutes;
@@ -1244,6 +1247,8 @@ namespace EGG9000.Bot.Automated.Coops {
                                         _logger.LogWarning("JsonReaderException when pinning message in coop {coop}", coop.Name);
                                     }
                                 }
+                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.MissingPermissions) {
+                                _logger.LogWarning("Missing permissions to update message in coop {coop}", coop.Name);
                             } catch(Exception e) {
                                 _logger.LogError(e, "Error updating messages");
                                 _bugSnag.Notify(e);

@@ -153,6 +153,8 @@ namespace EGG9000.Bot.Automated {
                         Restarted = false;
                         await _client.SendDMToKendrome($"{GetType().Name} successfully restarted.");
                     }
+                } catch(OperationCanceledException) {
+                    _logger.LogInformation("Run cancelled");
                 } catch(Exception e) {
                     _bugSnag.Notify(e);
                     _logger.LogError(e, "Error during run: {Message}", e.Message);
@@ -193,7 +195,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async Task LoopForCronExpression() {
-            while(!_cts.IsCancellationRequested) {
+            while(_cts?.IsCancellationRequested == false) {
                 try {
 
                     if(_nextRunFromCron < DateTimeOffset.Now) {

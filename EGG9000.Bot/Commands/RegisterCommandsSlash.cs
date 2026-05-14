@@ -157,7 +157,7 @@ namespace EGG9000.Bot.Commands {
             await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName:"test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
 
-            await Task.Delay(2);
+            await Task.Delay(TimeSpan.FromSeconds(2));
             var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status.Participants.Count < contract.MaxUsers) {

@@ -65,24 +65,29 @@ namespace EGG9000.Common.Services {
         }
 
         private async Task HandleChannelDeleted(SocketChannel arg) {
-            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var guildContract = await db.GuildContracts.Include(x => x.Contract).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
-            if(guildContract is not null) {
-                var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
-                _logger.LogInformation("Deleting header channels for {contract} because discord report the contract channel was deleted", guildContract.Contract.Name);
-                await dbGuild.DeleteCoopThreadHeadersAsync(_discord, guildContract.Contract, _logger);
-                guildContract.DeletedChannel = true;
-                await db.SaveChangesAsync();
-                return;
-            }
-            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
-            if(coop is not null && coop.ThreadID != 0) {
-                _logger.LogInformation($"Marking thread archived due to channel deletion for {coop.Name}");
-                coop.ThreadArchived = true;
-                await db.SaveChangesAsync();
-            } else if(coop is not null && coop.DiscordChannelId != 0) {
-                coop.DeletedChannel = true;
-                await db.SaveChangesAsync();
+            try {
+                var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var guildContract = await db.GuildContracts.Include(x => x.Contract).FirstOrDefaultAsync(x => x.DiscordChannelId == arg.Id);
+                if(guildContract is not null) {
+                    var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
+                    _logger.LogInformation("Deleting header channels for {contract} because discord report the contract channel was deleted", guildContract.Contract.Name);
+                    await dbGuild.DeleteCoopThreadHeadersAsync(_discord, guildContract.Contract, _logger);
+                    guildContract.DeletedChannel = true;
+                    await db.SaveChangesAsync();
+                    return;
+                }
+                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+                if(coop is not null && coop.ThreadID != 0) {
+                    _logger.LogInformation($"Marking thread archived due to channel deletion for {coop.Name}");
+                    coop.ThreadArchived = true;
+                    await db.SaveChangesAsync();
+                } else if(coop is not null && coop.DiscordChannelId != 0) {
+                    coop.DeletedChannel = true;
+                    await db.SaveChangesAsync();
+                }
+            } catch(Exception e) {
+                _bugsnag.Notify(e);
+                logger.LogError(e, "Error handling channel deletion for channel {channelId}", arg.Id);
             }
         }
 
