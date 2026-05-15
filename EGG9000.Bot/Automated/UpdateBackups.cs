@@ -27,20 +27,18 @@ namespace EGG9000.Bot.Automated {
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var longestBackupAgo = await _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled && x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefaultAsync() ?? DateTimeOffset.UtcNow;
+
+
+            var usersToCheck = await _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(45).ToListAsync();
+            var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
             _logger.LogInformation($"Longest backup check ago: {(DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2)}");
-
-
-            var usersToCheck = await _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(30).ToListAsync();
-            longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
-            _logger.LogInformation($"Longest backup check ago 2: {(DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2)}");
 
             var guilds = await _db.Guilds.ToListAsync();
 
             times.Set("Fetched DB Users");
 
 
-            var throttler = new SemaphoreSlim(3);
+            var throttler = new SemaphoreSlim(4);
 
             var tasks = new List<Task>();
 
