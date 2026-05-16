@@ -71,15 +71,16 @@ namespace EGG9000.Bot.Automated.Coops {
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            coops = [.. coops.Where(x => x.Name == "PaperFetch64")];
+            //coops = [.. coops.Where(x => x.Name == "JollySneer63")];
             //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
+            //coops = [.. coops.Where(x => x.OverflowGuildId == 798897541717688390)];
 #endif
 
 
             var completedCoops = 0;
 #if DEBUG
-            var throttler = new SemaphoreSlim(1);
+            var throttler = new SemaphoreSlim(10);
 #else
             var throttler = new SemaphoreSlim(10);
 #endif
@@ -97,6 +98,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var tasks = new List<(Task task, DateTimeOffset started)>();
 
                 var rng = new Random();
+                var errors = 0;
                 foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
                     if(cancellationToken.IsCancellationRequested) break;
                     await WaitOnCoopsBeingCreated(cancellationToken);
@@ -107,20 +109,24 @@ namespace EGG9000.Bot.Automated.Coops {
                         _logger.LogInformation("Waiting on throttle, {info}", string.Join(", ", incompleteTasks.Select(x => $"{x.task.Id} {x.task.Status} {x.task.Exception?.Message} {x.task.IsCanceled} {x.task.IsFaulted} {x.task.IsCompleted} {(DateTimeOffset.Now - x.started).Humanize()}")));
 
                     }
+
                     tasks.Add((Task.Run(async () => {
+                        var status = false;
                         try {
                             var sw = new Stopwatch();
                             sw.Start();
 
                             var ct = new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token;
 
-                            await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, cancellationToken).WaitAsync(ct);
+                            status = await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, cancellationToken).WaitAsync(ct);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
                             //_logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
                         } finally {
                             throttler.Release();
                         }
+                        if(!status)
+                            errors++;
                     }, cancellationToken), DateTimeOffset.Now));
 
                     StillAlive();
@@ -140,11 +146,11 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-                _logger.LogInformation("Co-op Count: {count}, Successful: {successful}, Error: {errors}, Guild: {guild}", guildCoops.Count(), tasks.Count(x => !x.task.IsFaulted), tasks.Count(x => x.task.IsFaulted), guild.Name);
+                _logger.LogInformation("Co-op Count: {count}, Successful: {successful}, Error: {errors}, Guild: {guild}", guildCoops.Count(), tasks.Count() - errors, errors, guild.Name);
             }
         }
 
-        public async Task ProcessCoop(Guid coopId, SocketGuild guild, SocketGuild parentGuild, List<UserWithBackup> users, Guild dbGuild, CancellationToken cancellationToken) {
+        public async Task<bool> ProcessCoop(Guid coopId, SocketGuild guild, SocketGuild parentGuild, List<UserWithBackup> users, Guild dbGuild, CancellationToken cancellationToken) {
             var timings = new TimingsFactory(null);
             timings.Start();
             string coopName = null;
@@ -157,12 +163,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopId, cancellationToken);
                 if(coop == null) {
                     _logger.LogWarning("Unable to find co-op with id {coopid}", coopId);
-                    return;
+                    return false;
                 }
 
 
                 if(coop.ContractID == "test-contract") {
-                    return;
+                    return false;
                 }
 
                 //** Get Coop Thread
@@ -187,7 +193,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(coopThread == null) {
                     _logger.LogWarning("ERROR FINDING THREAD FOR CO-OP: {coopName}", coop.Name);
-                    return;
+                    return false;
                 }
 
                 //Make sure the thread isn't archived before continuing
@@ -196,7 +202,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         await _queue.EnqueueLowAsync<bool>(async () => { await coopThread.ModifyAsync(t => t.Archived = false); return true; });
                     } catch(Exception) {
                         _logger.LogError("Could not un-archive thread for {coop}.", coop.Name);
-                        return;
+                        return false;
                     }
                 }
 
@@ -210,7 +216,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     statusReponse = await GetStatus(coop, coopThread, cancellationToken);
                 } catch(TaskCanceledException) {
                     _logger.LogWarning("Timeout getting status for {coopName}", coop.Name);
-                    return;
+                    return false;
                 }
 
                 timings.Set("Got status");
@@ -238,7 +244,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(status is null) {
                     _logger.LogWarning($"Status for {coop.Name} is null");
-                    return;
+                    return false;
                 }
 
                 if(!coop.SuccessfullyStarted && statusReponse.Status.Success) {
@@ -255,7 +261,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 if(coop.League == 0) {
                     _logger.LogWarning("{coopName} is returning Grade as 0", coopName);
-                    return;
+                    return false;
                 } else if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
                     //Attempt to fix not started co-op
                     _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
@@ -295,7 +301,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var finalChannelUpdate = false;
 
-                if(cancellationToken.IsCancellationRequested) return;
+                if(cancellationToken.IsCancellationRequested) return false;
 
                 var customEggs = await _db.GetCustomEggsAsync();
 
@@ -1155,6 +1161,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogError(e, "Error in co-op {coopid}", coopName ?? coopId.ToString());
                 _bugSnag.Notify(e);
             }
+
+            return true;
         }
 
         private async Task CheckForCoopCreatorStillIn(Coop coop, Ei.ContractCoopStatusResponse status) {
@@ -1435,20 +1443,22 @@ namespace EGG9000.Bot.Automated.Coops {
                ]);
             Task<ContractCoopStatusResponse> statusTask;
 
-
             if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop)) {
-                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, cancellationToken: cancellationToken));
-                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, cancellationToken: cancellationToken));
+                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
+                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
             } else {
-                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
-                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, cancellationToken: cancellationToken));
+                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
+                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
+                //var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
+                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, _logger: _logger, cancellationToken: cancellationToken));
             }
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);
             if(statusTask.Result is null) {
+                _logger.LogWarning("Status task for {coop} is null, first time {first}", coop.Name, !coop.UserCoopsXrefs.Any(x => x.JoinedCoop));
+            } 
 
-            }
             return new StatusResponse {
                 Status = statusTask.Result,
                 DiscordMessages = messageTask.Result
