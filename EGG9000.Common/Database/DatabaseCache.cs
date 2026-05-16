@@ -1,4 +1,4 @@
-﻿using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Database.Entities;
 
 using Humanizer;
 
@@ -22,37 +22,34 @@ namespace EGG9000.Common.Database {
             _dbContextFactory = dbContextFactory;
             _logger = logger;
             var db = dbContextFactory.CreateDbContext();
-
-            _semaphoreUser.Wait();
-            try {
-                _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-                _cachedUsers = db.DBUsers.ToList();
-            } finally {
-                _semaphoreUser.Release();
-            }
-
+            _lastCacheUpdateUser = DateTimeOffset.UtcNow;
+            _cachedUsers = db.DBUsers.ToList();
 
             RefreshActiveCoopsCache().Wait();
             _timerActiveCoops = new Timer(async _ => await RefreshActiveCoopsCache(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+            _timerUsers = new Timer(async _ => await RefreshUserCache(), null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
         }
 
-        private List<DBUser> _cachedUsers;
+        private volatile List<DBUser> _cachedUsers;
         private DateTimeOffset _lastCacheUpdateUser;
-        private readonly SemaphoreSlim _semaphoreUser = new SemaphoreSlim(1, 1);
-        public async Task<List<DBUser>> GetDbUsers() {
-            await _semaphoreUser.WaitAsync();
+        private Timer _timerUsers;
+
+        public List<DBUser> GetCachedUsers() => _cachedUsers;
+        public Task<List<DBUser>> GetDbUsers() => Task.FromResult(_cachedUsers);
+
+        private async Task RefreshUserCache() {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
                 var currentCacheTime = _lastCacheUpdateUser;
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
                 var updatedUsers = await db.DBUsers.Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
                 _logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
-                _cachedUsers.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));
-                _cachedUsers.AddRange(updatedUsers);
-
-                return _cachedUsers;
-            } finally {
-                _semaphoreUser.Release();
+                var newList = new List<DBUser>(_cachedUsers);
+                newList.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));
+                newList.AddRange(updatedUsers);
+                _cachedUsers = newList;
+            } catch(Exception e) {
+                _logger.LogError(e, "Error refreshing user cache");
             }
         }
 

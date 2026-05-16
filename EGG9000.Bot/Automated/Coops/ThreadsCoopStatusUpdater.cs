@@ -1300,13 +1300,13 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     }
                     if(pinnedMessages) {
-                        try {
-                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                            _queue.EnqueueLow(() => coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage)));
-                        } catch(TimeoutException) {
-                            var messages = await coopChannel.GetMessagesAsync().FlattenAsync();
-                            _queue.EnqueueLow(() => coopChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage)));
-                        }
+                        var capturedCoopChannelForDelete = coopChannel;
+                        _queue.EnqueueLow(async () => {
+                            try {
+                                var messages = await capturedCoopChannelForDelete.GetMessagesAsync().FlattenAsync();
+                                await capturedCoopChannelForDelete.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
+                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) { }
+                        });
                     }
 
                 }
