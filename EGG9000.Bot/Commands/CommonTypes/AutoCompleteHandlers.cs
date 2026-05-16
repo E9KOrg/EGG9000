@@ -29,7 +29,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 if(guild is null) return;
-                var allusers = await _cache.GetDbUsers();
+                var allusers = _cache.GetCachedUsers();
                 var users = allusers
                     .Where(
                         x => x.GuildId == guild.Id && (
@@ -95,7 +95,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
                 if(guild is null) return;
-                var allusers = await _cache.GetDbUsers();
+                var allusers = _cache.GetCachedUsers();
                 var users = allusers
                     .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
                     .Take(10);

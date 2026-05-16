@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database.Entities {
     [Table("Users")]
@@ -436,6 +437,18 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
+
+        public async Task UpdateSubscriptionFromCustomBackup(Discord.WebSocket.DiscordSocketClient gateway, Discord.WebSocket.SocketGuild guild, Guild dbGuild, DBUser user) {
+            if(Backup is null) return;
+
+            if(Backup.SubscriptionEnds != SubscriptionEnds) {
+                SubscriptionEnds = Backup.SubscriptionEnds;
+            }
+            if(Backup.SubscriptionLevel != SubscriptionLevel) {
+                await SubscriptionHelper.SubscriptionLevelChanged(gateway, guild, dbGuild, user, this);
+                SubscriptionLevel = Backup.SubscriptionLevel;
+            }
+        }
 
         public bool HasActiveSubscription() {
             if(SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
