@@ -114,6 +114,8 @@ namespace EGG9000.Common.Services {
                 await foreach(var item in channel.Reader.ReadAllAsync(ct)) {
                     try {
                         await item.Operation();
+                    } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) {
+                        _logger.LogDebug("DiscordQueue: message no longer exists (10008), skipping");
                     } catch(Exception ex) {
                         _logger.LogError(ex, "DiscordQueue worker error");
                         _bugsnag?.Notify(ex);
