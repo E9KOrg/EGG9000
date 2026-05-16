@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Automated {
 
                     var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
                     var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                    //await account.UpdateSubscriptionFromCustomBackup(_client, guild, dbGuild, user);
+                    await account.UpdateSubscriptionFromCustomBackup(_client.Gateway, guild, dbGuild, user);
                     update = true;
 
                     // TODO: Track current game version and notify if newer version is available
