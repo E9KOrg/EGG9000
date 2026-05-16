@@ -1,7 +1,10 @@
-﻿using EGG9000.Bot.EggIncAPI;
+﻿using Discord.WebSocket;
+
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Migrations;
 
 using Humanizer;
@@ -38,7 +41,7 @@ namespace EGG9000.Bot.Automated {
             times.Set("Fetched DB Users");
 
 
-            var throttler = new SemaphoreSlim(4);
+            var throttler = new SemaphoreSlim(6);
 
             var tasks = new List<Task>();
 
@@ -72,11 +75,24 @@ namespace EGG9000.Bot.Automated {
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {
+                    if(backup.SubscriptionLevel != account.Backup.SubscriptionLevel)
+                        _logger.LogInformation("{user} subscription has changed from {prev} to {current}", user.DiscordUsername, account.Backup.SubscriptionLevel, backup.SubscriptionLevel);
+
                     account.Backup = backup;
 
-                    var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                    var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                    //await account.UpdateSubscriptionFromCustomBackup(_client, guild, dbGuild, user);
+
+                    if(backup.SubscriptionLevel != account.SubscriptionLevel) {
+                        var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                        var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                        account.SubscriptionLevel = backup.SubscriptionLevel;
+                        await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account);
+                    }
+
+                    if(backup.SubscriptionEnds != account.SubscriptionEnds) {
+                        account.SubscriptionEnds = backup.SubscriptionEnds;
+                    }
+
+
                     update = true;
 
                     // TODO: Track current game version and notify if newer version is available
