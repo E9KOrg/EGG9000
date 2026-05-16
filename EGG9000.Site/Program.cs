@@ -196,7 +196,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         services.AddSingleton<ActiveMonitorHostedService>();
         // 2. Register it as a Hosted Service by resolving the existing Singleton instance
         services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
-    services.AddHostedService<DockerCheckService>();
 #endif
 
     services.AddResponseCaching();

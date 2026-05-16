@@ -71,7 +71,9 @@ namespace EGG9000.Bot.Automated {
         private async Task UpdateUser(DBUser user, List<Guild> guilds) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
-                var backup = await ContractsAPI.GetBackupAsync(account.Id);
+                var firstContact = await ContractsAPI.FirstContact(account.Id);
+
+                var backup = new CustomBackup(firstContact.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {
@@ -81,17 +83,30 @@ namespace EGG9000.Bot.Automated {
                     account.Backup = backup;
 
 
-                    if(backup.SubscriptionLevel != account.SubscriptionLevel) {
-                        var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                        var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                        account.SubscriptionLevel = backup.SubscriptionLevel;
-                        await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account);
-                    }
+                    if(firstContact.Backup.SubInfo is null) {
+                        _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
+                        var subscription = await ContractsAPI.GetUserSubscription(backup.EggIncId);
+                        if(account.SubscriptionLevel != subscription.SubscriptionLevel) {
+                            var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                            var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                            account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
+                            account.Backup.SubscriptionEnds = subscription.PeriodEnd;
 
-                    if(backup.SubscriptionEnds != account.SubscriptionEnds) {
-                        account.SubscriptionEnds = backup.SubscriptionEnds;
-                    }
+                            await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account, _logger);
+                        }
+                    } else {
 
+                        if(backup.SubscriptionLevel != account.SubscriptionLevel) {
+                            var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                            var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                            account.SubscriptionLevel = backup.SubscriptionLevel;
+                            await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account, _logger);
+                        }
+
+                        if(backup.SubscriptionEnds != account.SubscriptionEnds) {
+                            account.SubscriptionEnds = backup.SubscriptionEnds;
+                        }
+                    }
 
                     update = true;
 
