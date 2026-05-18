@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated.Coops {
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "JollySneer63")];
+            coops = [.. coops.Where(x => x.Name == "RerunRock37")];
             //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
             //coops = [.. coops.Where(x => x.OverflowGuildId == 798897541717688390)];
@@ -1151,6 +1151,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     await UpdateChannel(msgs, embedBuilder.Build(), coopThread, coop, statusReponse.DiscordMessages);
                 }
 
+
+                coop.LastUpdateToChannel = DateTimeOffset.Now;
+                _logger.LogInformation("Finished updating coop {coop} channel, saving to database, {coopTime}", coop.Name, coop.LastUpdateToChannel);
                 await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
 
 
@@ -1160,6 +1163,7 @@ namespace EGG9000.Bot.Automated.Coops {
             } catch(Exception e) {
                 _logger.LogError(e, "Error in co-op {coopid}", coopName ?? coopId.ToString());
                 _bugSnag.Notify(e);
+                return false;
             }
 
             return true;
@@ -1447,10 +1451,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
                 //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
             } else {
-                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
+                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
                 //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
-                //var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
-                //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, _logger: _logger, cancellationToken: cancellationToken));
+                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
+                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, _logger: _logger, cancellationToken: cancellationToken));
             }
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
