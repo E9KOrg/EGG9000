@@ -162,7 +162,7 @@ END";
         }
 #nullable disable
 
-        private static async Task UpsertActiveColorAsync(DbConnection conn, string serviceType, string color, CancellationToken ct)
+        public static async Task UpsertActiveColorAsync(DbConnection conn, string serviceType, string color, CancellationToken ct)
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = @"

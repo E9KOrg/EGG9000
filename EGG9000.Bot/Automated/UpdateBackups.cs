@@ -30,13 +30,13 @@ namespace EGG9000.Bot.Automated {
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+            var guilds = await _db.Guilds.ToListAsync();
+            var guildIDs = guilds.Select(x => x.Id).ToHashSet();
 
-
-            var usersToCheck = await _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(45).ToListAsync();
+            var usersToCheck = await _db.DBUsers.Where(x => guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(45).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
             _logger.LogInformation($"Longest backup check ago: {(DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2)}");
 
-            var guilds = await _db.Guilds.ToListAsync();
 
             times.Set("Fetched DB Users");
 
@@ -68,17 +68,18 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
 
-        private async Task UpdateUser(DBUser user, List<Guild> guilds) {
+        public async Task UpdateUser(DBUser user, List<Guild> guilds) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
                 var firstContact = await ContractsAPI.FirstContact(account.Id);
+                var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
 
+                if(dbGuild is null)
+                    continue;
                 var backup = new CustomBackup(firstContact.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {
-                    if(backup.SubscriptionLevel != account.Backup.SubscriptionLevel)
-                        _logger.LogInformation("{user} subscription has changed from {prev} to {current}", user.DiscordUsername, account.Backup.SubscriptionLevel, backup.SubscriptionLevel);
 
                     account.Backup = backup;
 
@@ -87,8 +88,8 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
                         var subscription = await ContractsAPI.GetUserSubscription(backup.EggIncId);
                         if(account.SubscriptionLevel != subscription.SubscriptionLevel) {
+                            _logger.LogInformation("{user} subscription has changed from {prev} to {current}", user.DiscordUsername, account.SubscriptionLevel, subscription.SubscriptionLevel);
                             var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                            var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
                             account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
                             account.Backup.SubscriptionEnds = subscription.PeriodEnd;
 
@@ -97,8 +98,8 @@ namespace EGG9000.Bot.Automated {
                     } else {
 
                         if(backup.SubscriptionLevel != account.SubscriptionLevel) {
+                            _logger.LogInformation("{user} subscription has changed from {prev} to {current}", user.DiscordUsername, account.Backup.SubscriptionLevel, backup.SubscriptionLevel);
                             var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                            var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
                             account.SubscriptionLevel = backup.SubscriptionLevel;
                             await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account, _logger);
                         }
