@@ -22,8 +22,8 @@ namespace EGG9000.Bot.EggIncAPI {
         public static double GetEggLayingRatePerSec(CustomFarm farm, List<CustomResearch> epic) {
             double ratePerMin = farm.NumChickens * 2;
 
-            foreach(var item in Research.EpicResearchList) {
-                if(item.Type == Research.IT.EggLayingRate || item.Type == Research.IT.EggLayingAndValue) {
+            foreach(var item in EpicResearchList) {
+                if(item.Type == IT.EggLayingRate || item.Type == IT.EggLayingAndValue) {
                     var current = epic.First(x => x.Id == item.id);
                     var r = current.Level * (double)item.Increase;
                     if(r > 0) {
@@ -32,8 +32,8 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
 
-            foreach(var item in Research.CommonResearchList) {
-                if(item.Type == Research.IT.EggLayingRate || item.Type == Research.IT.EggLayingAndValue) {
+            foreach(var item in CommonResearchList) {
+                if(item.Type == IT.EggLayingRate || item.Type == IT.EggLayingAndValue) {
                     var current = farm.CommonResearch.First(x => x.Id == item.id);
                     var r = current.Level * (double)item.Increase;
                     if(r > 0) {
@@ -47,8 +47,8 @@ namespace EGG9000.Bot.EggIncAPI {
         public static double GetEggLayingRatePerSec(CustomFarm farm, List<CustomResearch> epic, TimingsFactory timings) {
             double ratePerMin = farm.NumChickens * 2;
             timings.Set("ratePerMin");
-            foreach(var item in Research.CommonResearchList) {
-                if(item.Type == Research.IT.EggLayingRate || item.Type == Research.IT.EggLayingAndValue) {
+            foreach(var item in CommonResearchList) {
+                if(item.Type == IT.EggLayingRate || item.Type == IT.EggLayingAndValue) {
                     var current = farm.CommonResearch.First(x => x.Id == item.id);
                     var r = current.Level * (double)item.Increase;
                     if(r > 0) {
@@ -57,7 +57,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
             timings.Set("Common");
-            var epicItems = Research.EpicResearchList.Where(x => x.Type == Research.IT.EggLayingRate || x.Type == Research.IT.EggLayingAndValue).ToArray();
+            var epicItems = EpicResearchList.Where(x => x.Type == IT.EggLayingRate || x.Type == IT.EggLayingAndValue).ToArray();
             timings.Set("epicItems");
             foreach(var item in epicItems) {
                 var current = epic.First(x => x.Id == item.id);
@@ -74,16 +74,15 @@ namespace EGG9000.Bot.EggIncAPI {
         public static double MaxRunningBonus(CustomFarm farm, List<CustomResearch> epic) {
             double baseValue = 5;
 
-            foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.MaxRunningBonus)) {
+            foreach(var item in EpicResearchList.Where(x => x.Type == IT.MaxRunningBonus)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
                     baseValue += r;
-                    //Console.Write($"Increase: {r}")
                 }
             }
 
-            foreach(var item in Research.CommonResearchList.Where(x => x.Type == Research.IT.MaxRunningBonus)) {
+            foreach(var item in CommonResearchList.Where(x => x.Type == IT.MaxRunningBonus)) {
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
@@ -97,7 +96,7 @@ namespace EGG9000.Bot.EggIncAPI {
         public static double InternalHatchery(CustomFarm farm, List<CustomResearch> epic) {
             double baseValue = 0;
 
-            foreach(var item in Research.CommonResearchList.Where(x => x.Type == Research.IT.InternalHatchery)) {
+            foreach(var item in CommonResearchList.Where(x => x.Type == IT.InternalHatchery)) {
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
@@ -106,7 +105,7 @@ namespace EGG9000.Bot.EggIncAPI {
             }
 
 
-            foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.InternalHatchery)) {
+            foreach(var item in EpicResearchList.Where(x => x.Type == IT.InternalHatchery)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
@@ -119,7 +118,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public static double InternalHatcheryOfflineBonus(CustomFarm farm, List<CustomResearch> epic) {
             double baseValue = 0;
-            foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.InternalHatcheryOffline)) {
+            foreach(var item in EpicResearchList.Where(x => x.Type == IT.InternalHatcheryOffline)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
@@ -136,7 +135,7 @@ namespace EGG9000.Bot.EggIncAPI {
             } catch(NullReferenceException) {
                 throw new Exception($"Egg type {farm.EggType} ({(int)farm.EggType}) not found in database.");
             }
-            foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue)) {
+            foreach(var item in EpicResearchList.Where(x => x.Type == IT.EggValue || x.Type == IT.EggLayingAndValue)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
@@ -144,7 +143,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
 
-            foreach(var item in Research.CommonResearchList.Where(x => x.Type == Research.IT.EggValue || x.Type == Research.IT.EggLayingAndValue || x.Type == IT.EggValueMultiply)) {
+            foreach(var item in CommonResearchList.Where(x => x.Type == IT.EggValue || x.Type == IT.EggLayingAndValue || x.Type == IT.EggValueMultiply)) {
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
                 if(current.Level == 0)
                     continue;
@@ -162,9 +161,8 @@ namespace EGG9000.Bot.EggIncAPI {
         }
 
         public static double GetHabSpace(CustomFarm farm, List<CustomResearch> epic) {
-            double baseValue = EggIncHabSpace.GetBaseHabSpace(farm);
-            //return baseValue;
-            foreach(var item in Research.EpicResearchList.Where(x => x.Type == Research.IT.HabCapacity)) {
+            var baseValue = EggIncHabSpace.GetBaseHabSpace(farm);
+            foreach(var item in EpicResearchList.Where(x => x.Type == IT.HabCapacity)) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
                 if(r > 0) {
@@ -172,7 +170,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
 
-            foreach(var item in Research.CommonResearchList.Where(x => x.Type == Research.IT.HabCapacity)) {
+            foreach(var item in CommonResearchList.Where(x => x.Type == IT.HabCapacity)) {
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
                 if(current.Level == 0)
                     continue;
@@ -192,7 +190,7 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseAwayTime;
         }
 
-        public static Double GetFarmSiloTime(Ei.PlayerFarmInfo farmInfo) {
+        public static double GetFarmSiloTime(Ei.PlayerFarmInfo farmInfo) {
             var baseAwayTime = 60;
             var epicSilo = farmInfo.EpicResearch.FirstOrDefault(x => x.Id == "silo_capacity");
             if(epicSilo != null) {
@@ -201,16 +199,6 @@ namespace EGG9000.Bot.EggIncAPI {
             return baseAwayTime * farmInfo.SilosOwned;
         }
 
-        //public static double GetEggShippedRatePerSec(CustomFarm farm, List<CustomResearch> epic) {
-        //    var laying = GetEggLayingRatePerSec(farm, epic);
-        //    var shipping = GetShippingCapacityPerSec(farm, epic);
-
-        //    if(shipping < laying) {
-        //        //Console.WriteLine($"Shipping maxed");
-        //    }
-        //    return Math.Min(laying, shipping);
-        //}
-
         public static double GetShippingCapacityPerSec(CustomFarm farm, List<CustomResearch> epic) {
             var vehicles = Vehicles;
 
@@ -218,7 +206,7 @@ namespace EGG9000.Bot.EggIncAPI {
             double hoverMultiplier = 1;
             double hyperLoopMultipler = 1;
 
-            foreach(var item in Research.EpicResearchList) {
+            foreach(var item in EpicResearchList) {
                 if(item.Type != IT.VehicleCapacity)
                     continue;
                 var current = epic.First(x => x.Id == item.id);
@@ -230,7 +218,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
 
-            foreach(var item in Research.CommonResearchList) {
+            foreach(var item in CommonResearchList) {
                 if(item.Type != IT.VehicleCapacity)
                     continue;
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
@@ -242,7 +230,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
 
-            foreach(var item in Research.CommonResearchList) {
+            foreach(var item in CommonResearchList) {
                 if(item.Type != IT.HoverVehicleCapacity)
                     continue;
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
@@ -253,7 +241,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 }
             }
 
-            foreach(var item in Research.CommonResearchList) {
+            foreach(var item in CommonResearchList) {
                 if(item.Type != IT.HyperloopCapacity)
                     continue;
                 var current = farm.CommonResearch.First(x => x.Id == item.id);
@@ -284,7 +272,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         public static double GetCommonResearchCostMultiplier(CustomFarm farm, List<CustomResearch> epic) {
             double costMult = 1;
-            var item = Research.EpicResearchList.FirstOrDefault(x => x.Type == IT.ResearchCost);
+            var item = EpicResearchList.FirstOrDefault(x => x.Type == IT.ResearchCost);
             if(item != null) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
@@ -295,7 +283,7 @@ namespace EGG9000.Bot.EggIncAPI {
             return costMult;
         }
 
-        public static Dictionary<uint, uint> Vehicles = new Dictionary<uint, uint> {
+        public static Dictionary<uint, uint> Vehicles = new() {
             {0, 5000 },
                 {1, 15000},
                 {2, 50000},
@@ -310,7 +298,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 {11, 50000000},
         };
 
-        public static List<ResearchItem> EpicResearchList = new List<ResearchItem>{
+        public static List<ResearchItem> EpicResearchList = [
             new ResearchItem { id = "epic_internal_incubators", Name = "Epic Int. Hatcheries", Levels = 20, Increase = 0.05M, Type = IT.InternalHatchery, Epic = true },
             new ResearchItem { id = "epic_clucking", Name = "Epic Clucking", Levels = 20, Increase = 0.001M, Type = IT.RunningBonus, Epic = true },
             new ResearchItem { id = "epic_multiplier", Name = "Epic Multiplier", Levels = 100, Increase = 2, Type = IT.MaxRunningBonus, Epic = true },
@@ -322,9 +310,9 @@ namespace EGG9000.Bot.EggIncAPI {
             new ResearchItem { id = "epic_egg_laying", Name = "Epic Comfy Nests", Levels = 20, Increase = 0.05M, Type = IT.EggLayingRate, Epic = true },
             new ResearchItem { id = "transportation_lobbyist", Name = "Transportation Lobbyists", Levels = 30, Increase = 0.05M, Type = IT.VehicleCapacity , Epic = true},
             new ResearchItem { id = "prophecy_bonus", Name = "Prophecy Bonus", Levels = 5, Increase = .01M, Type = IT.Other, Epic = true },
-        };
+        ];
 
-        public static List<ResearchItem> CommonResearchList = new List<ResearchItem> {
+        public static List<ResearchItem> CommonResearchList = [
             new ResearchItem { id = "comfy_nests", Name = "Comfortable Nests", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
             new ResearchItem { id = "nutritional_sup", Name = "Nutritional Supplements", Levels = 40, Increase = 0.25M, Type = IT.EggValue },
             //new ResearchItem { id = "better_incubators", Name = "", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
@@ -393,7 +381,7 @@ namespace EGG9000.Bot.EggIncAPI {
             new ResearchItem { id = "timeline_splicing", Name = "Timeline Splicing", Levels = 1, Increase = 10M, Type = IT.EggValueMultiply },
             new ResearchItem { id = "hyper_portalling", Name = "Hyper Portalling", Levels = 25, Increase = 0.05M, Type = IT.HyperloopCapacity },
             new ResearchItem { id = "relativity_optimization", Name = "Relativity Optimization", Levels = 10, Increase = 0.1M, Type = IT.EggLayingRate },
-        };
+        ];
 
         public enum IT {
             EggValueMultiply,
