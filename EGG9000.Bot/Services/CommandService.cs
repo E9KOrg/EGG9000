@@ -713,7 +713,13 @@ namespace EGG9000.Bot.Services {
                             hasPerms = command.Details.AdminOnly == StaffOnlyLevel.None || (message.Author as SocketGuildUser).GuildPermissions.ToList().Contains(associatedPerm);
                         }
 
-                        var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel)?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
+                        var permChannel = message.Channel switch {
+                            SocketThreadChannel threadChannel => threadChannel.ParentChannel,
+                            SocketTextChannel textChannel => textChannel,
+                            _ => null
+                        };
+                        var canUseCommandsInChannel = !permChannel?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
+
                         if(hasPerms && (parentHasChild || bypass) && canUseCommandsInChannel) {
                             var warningEmbed = EmbedWarning(
                                 $"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
