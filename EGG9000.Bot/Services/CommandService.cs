@@ -152,6 +152,14 @@ namespace EGG9000.Bot.Services {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
             var semaphoreAcquired = false;
+            if(arg is SocketMessageComponent preDefer && !preDefer.HasResponded) {
+                try {
+                    await preDefer.DeferAsync();
+                } catch(Exception ex) {
+                    _logger.LogWarning(ex, "Failed to pre-defer component interaction for {Command}", command.Name);
+                    return;
+                }
+            }
             try {
                 semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(semaphoreAcquired) {
@@ -391,7 +399,18 @@ namespace EGG9000.Bot.Services {
             }
 
             var autocompleteClass = ActivatorUtilities.CreateInstance(_provider, handler);
-            handler.GetMethod("Run").Invoke(autocompleteClass, [arg, dbguilds]);
+            var acSw = Stopwatch.StartNew();
+            _ = Task.Run(async () => {
+                try {
+                    await (Task)handler.GetMethod("Run").Invoke(autocompleteClass, [arg, dbguilds]);
+                    _logger.LogDebug("Autocomplete {Handler} completed in {Ms}ms", handler.Name, acSw.ElapsedMilliseconds);
+                } catch(Exception ex) {
+                    var inner = ex is System.Reflection.TargetInvocationException ? ex.InnerException : ex;
+                    _logger.LogWarning("Autocomplete {Handler} failed after {Ms}ms: {Message}", handler.Name, acSw.ElapsedMilliseconds, inner?.Message);
+                    if(inner is not TimeoutException)
+                        _bugsnag.Notify(inner ?? ex);
+                }
+            });
             return Task.CompletedTask;
         }
 
