@@ -52,11 +52,14 @@ namespace EGG9000.Bot.Commands {
             var originalUserId = ulong.Parse(dataObjs[2]);
 
             if(component.User.Id != originalUserId) {
-                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                if(component.HasResponded)
+                    await component.ModifyOriginalResponseAsync(x => { x.Content = null; x.Embed = EmbedError("This wasn't yours to run - don't click others' commands!"); x.Components = null; });
+                else
+                    await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
                 return;
             }
 
-            await component.DeferAsync();
+            if(!component.HasResponded) await component.DeferAsync();
 
             var dbUser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null) return;

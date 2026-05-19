@@ -886,7 +886,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task FindCoopSpotForAccount(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
+            if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coops are being filtered. This may take a few seconds."); x.Components = null; });
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             var dbguild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == component.GuildId);
@@ -966,7 +966,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task AcceptCoopOffer(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
+            if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Attempting to move you to the coop. This may take a few seconds."); x.Components = null; });
             var discordUser = component.User;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == component.User.Id);
@@ -997,7 +997,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task NoSpotsCreateCoop(SocketMessageComponent component, DiscordSocketClient _client, Words _words, IServiceProvider _provider, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
+            if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coop is being created. This may take a few seconds."); x.Components = null; });
             var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             var contractid = data.Split("|")[0];
