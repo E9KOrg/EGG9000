@@ -104,23 +104,7 @@ namespace EGG9000.Bot.Services {
             _dbContextFactory = dbContextFactory;
             _cache = cache;
             _activeMonitorHostedService = activeMonitorHostedService;
-            logger.LogInformation($"Initiating CommandService - Pre Bugsnag Test");
-
-
-            // ... Bugsnag setup ...
-
-            // Test that Bugsnag is working (remove after verification)
-            try {
-                bugsnag.Notify(new Exception("test-bugsnag"));
-                _logger.LogInformation($"Bugsnag API Key: {bugsnag.Configuration.ApiKey}");
-                _logger.LogInformation("Bugsnag test exception sent");
-            } catch(Exception e) {
-                _logger.LogError(e, "Bugnsag error");
-            }
-            _logger.LogInformation($"Bugsnag test completed");
         }
-
-
 
         private static readonly Histogram RunCommandDuration = Metrics
             .CreateHistogram("bot_runcommand_duration_seconds",
