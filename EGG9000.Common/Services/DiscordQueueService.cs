@@ -116,6 +116,15 @@ namespace EGG9000.Common.Services {
                         await item.Operation();
                     } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) {
                         _logger.LogDebug("DiscordQueue: message no longer exists (10008), skipping");
+                    } catch(TimeoutException) {
+                        _logger.LogWarning("DiscordQueue: operation timed out, retrying in 1s");
+                        try {
+                            await Task.Delay(1000, ct);
+                            await item.Operation();
+                        } catch(Exception retryEx) {
+                            _logger.LogError(retryEx, "DiscordQueue retry also failed");
+                            _bugsnag?.Notify(retryEx);
+                        }
                     } catch(Exception ex) {
                         _logger.LogError(ex, "DiscordQueue worker error");
                         _bugsnag?.Notify(ex);

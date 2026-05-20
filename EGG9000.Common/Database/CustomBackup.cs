@@ -1,5 +1,4 @@
-﻿using EGG9000.Bot.EggIncAPI;
-using EGG9000.Common.Database.Entities;
+﻿using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using Google.Protobuf.Collections;
@@ -692,26 +691,6 @@ namespace EGG9000.Common.Database {
 
                 var eggLayingResearch = Research.GetEggLayingRatePerSec(this, backup.EpicResearch);
                 var eggLayingArtifact = EggIncArtifacts.GetEggLayingRateMultiple(this);
-
-                //var dimensionColleggtibleEffect = new Dictionary<GameDimension, double>();
-                //customEggs.Where(x => backup.GetColleggtibleLevel(x.Identifier) != 0)
-                //    .Select(x => {
-                //        var collegtibleLevel = backup.GetColleggtibleLevel(x.Identifier);
-                //        return new Colleggtible() {
-                //            Dimension = x.Modifiers[0].GetGameDimension(),
-                //            Value = x.Modifiers[(int)collegtibleLevel - 1].Value,
-                //        };
-                //    }).ToList().ForEach(colleggtible => {
-                //        if(!dimensionColleggtibleEffect.TryGetValue(colleggtible.Dimension, out double currentValue)) {
-                //            dimensionColleggtibleEffect[colleggtible.Dimension] = 1.0;
-                //        }
-                //        dimensionColleggtibleEffect[colleggtible.Dimension] *= colleggtible.Value;
-                //    });
-
-                //// Fill in any missing game dimensions (i.e., dimensions without colleggtibles):
-                //foreach(GameDimension dimension in Enum.GetValues(typeof(GameDimension))) {
-                //    if(!dimensionColleggtibleEffect.ContainsKey(dimension)) dimensionColleggtibleEffect[dimension] = 1.0;
-                //}
 
                 var dimensionColleggtibleEffect = Colleggtibles.GetCollectibleData(customEggs, backup);
 
