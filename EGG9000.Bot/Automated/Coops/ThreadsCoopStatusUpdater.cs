@@ -71,10 +71,11 @@ namespace EGG9000.Bot.Automated.Coops {
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            coops = [.. coops.Where(x => x.Name == "RerunRock37")];
+            //coops = [.. coops.Where(x => x.Name == "unitedsmalls1")];
             //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
             //coops = [.. coops.Where(x => x.OverflowGuildId == 798897541717688390)];
+            coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
 #endif
 
 
@@ -84,7 +85,7 @@ namespace EGG9000.Bot.Automated.Coops {
 #else
             var throttler = new SemaphoreSlim(10);
 #endif
-            var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => x.Count());
+            var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => rand.Next());
             foreach(var guildCoops in guildCoopGroups) {
                 if(cancellationToken.IsCancellationRequested) break;
                 var dbguild = dbguilds.FirstOrDefault(x => x.DiscordSeverId == guildCoops.Key || x.OverflowServers.Any(y => y == guildCoops.Key));
@@ -104,7 +105,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     await WaitOnCoopsBeingCreated(cancellationToken);
 
                     while(!await throttler.WaitAsync(20000, cancellationToken)) {
-                        var incompleteTasks = tasks.Where(x => !x.task.IsCompletedSuccessfully);
+                        var incompleteTasks = tasks.Where(x => x.task.Status == TaskStatus.Running || x.task.Status == TaskStatus.WaitingForActivation || x.task.Status == TaskStatus.WaitingToRun);
 
                         _logger.LogInformation("Waiting on throttle, {info}", string.Join(", ", incompleteTasks.Select(x => $"{x.task.Id} {x.task.Status} {x.task.Exception?.Message} {x.task.IsCanceled} {x.task.IsFaulted} {x.task.IsCompleted} {(DateTimeOffset.Now - x.started).Humanize()}")));
 
@@ -1153,7 +1154,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 coop.LastUpdateToChannel = DateTimeOffset.Now;
-                _logger.LogInformation("Finished updating coop {coop} channel, saving to database, {coopTime}", coop.Name, coop.LastUpdateToChannel);
                 await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
 
 
@@ -1450,6 +1450,8 @@ namespace EGG9000.Bot.Automated.Coops {
             if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop)) {
                 statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
                 //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
+            } else if(coop.LastUpdateToChannel is null || coop.LastUpdateToChannel < DateTimeOffset.Now.AddHours(-4)) {
+                statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
             } else {
                 //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, EIID: coop.CreatorID, _logger: _logger, cancellationToken: cancellationToken));
                 //statusTask = policy.Execute(async () => await ContractsAPI.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));

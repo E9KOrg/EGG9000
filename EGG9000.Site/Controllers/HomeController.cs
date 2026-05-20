@@ -100,17 +100,14 @@ namespace EGG9000.Site.Controllers {
                 //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
                 ms1.Position = 0;
                 var messageData = ms1.ToArray();
-                var ms2 = new MemoryStream();
-                new Ei.AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = ContractsAPI.GetHash(messageData) }.WriteTo(ms2);
+                var authMessage = new Ei.AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = ContractsAPI.GetHash(messageData) };
 
-                ms2.Position = 0;
-                var sr = new StreamReader(ms2);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                var base64 = ContractsAPI.GetEncodedMessage(authMessage);
+
+                var bac = await ContractsAPI.GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
                 HttpResponseMessage response;
 
