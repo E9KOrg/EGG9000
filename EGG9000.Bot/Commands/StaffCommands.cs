@@ -12,6 +12,7 @@ using Humanizer;
 using MassTransit;
 using MassTransit.SagaStateMachine;
 
+using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -228,12 +229,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Select X random users with Y role", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task SelectRoleUsers(FauxCommand command, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers, 
+        public static async Task SelectRoleUsers(FauxCommand command, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers,
             [SlashParam(Required = true, Description = "Role the user(s) should have")] SocketRole role, [SlashParam(Required = false, Description = "Second role [...]")] SocketRole role2, [SlashParam(Required = false, Description = "Third role [...]")] SocketRole role3,
             [SlashParam(Required = false, Description = "Role the user(s) should NOT have")] SocketRole antiRole, [SlashParam(Required = false, Description = "Second role [...]")] SocketRole antiRole2, [SlashParam(Required = false, Description = "Third role [...]")] SocketRole antiRole3) {
             try {
                 var randomUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users
-                    .Where( u =>
+                    .Where(u =>
                         u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3))
                         && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
                     )
@@ -480,7 +481,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task PingEveryoneInCoop(FauxCommand command, [SlashParam] string message, ApplicationDbContext db) {
             var coop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.ChannelId);
             if(coop == null) {
-                await command.RespondAsync($"Error finding co-op for this thread", ephemeral: true); 
+                await command.RespondAsync($"Error finding co-op for this thread", ephemeral: true);
                 return;
             }
 
@@ -514,7 +515,7 @@ namespace EGG9000.Bot.Commands {
 
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
-                UserId = account.Id, 
+                UserId = account.Id,
                 ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
             }, account.Id);
 
@@ -529,6 +530,35 @@ namespace EGG9000.Bot.Commands {
             }, account.Id, true);
 
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
+        }
+
+        [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task CoopStats(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync();
+            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now).ToListAsync();
+            var stats = new StringBuilder();
+            stats.AppendLine($"**Coop Threads Last Updated**");
+            var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.Now - x.LastUpdateToChannel.Value).TotalHours));
+
+            foreach(var group in coopGroups) {
+                stats.AppendLine($"<{group.Key}h: {group.Count()}");
+            }
+            stats.AppendLine($"\n**No Updates Yet**");
+
+            if(coops.Count(x => x.LastUpdateToChannel is null) > 30) {
+                stats.AppendLine($"Too many to list ({coops.Count(x => x.LastUpdateToChannel is null)})");
+            } else {
+                foreach(var coop in coops.Where(x => x.LastUpdateToChannel is null)) {
+                    stats.AppendLine($"<#{coop.ThreadID}>");
+                }
+            }
+
+            var messages = DiscordMessageSplitter.SplitMessage(stats.ToString(), "\n");
+
+            await command.RespondAsync(messages.First());
+            for(var i = 1; i < messages.Count; i++) {
+                await command.Channel.SendMessageAsync(messages[i]);
+            }
         }
     }
 }

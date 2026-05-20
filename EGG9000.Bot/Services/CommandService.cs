@@ -245,7 +245,8 @@ namespace EGG9000.Bot.Services {
                     await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."); });
                 else
                     await arg.RespondAsync(text: "", embed: EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."));
-            } catch(InvalidOperationException) {
+            } catch(InvalidOperationException e) {
+                _bugsnag.Notify(e);
                 RunCommandFailures.Inc();
                 if(arg.HasResponded)
                     await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"); });

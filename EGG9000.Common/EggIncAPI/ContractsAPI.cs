@@ -10,6 +10,7 @@ using Google.Protobuf;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+
 using Newtonsoft.Json;
 
 using System;
@@ -17,6 +18,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -48,8 +50,8 @@ namespace EGG9000.Bot.EggIncAPI {
         public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
             var info = new BasicRequestInfo {
                 ClientVersion = ClientVersion,
-                Version = "1.35.5",
-                Build = "111334",
+                Version = "1.35.3",
+                Build = "1.35.3.1",
                 Platform = "IOS",
                 Country = "US",
                 Language = "en",
@@ -61,24 +63,34 @@ namespace EGG9000.Bot.EggIncAPI {
             return info;
         }
 
+        public static string GetEncodedMessage(IMessage message) {
+            var ms1 = new MemoryStream();
+            message.WriteTo(ms1);
+            var base64 = Convert.ToBase64String(ms1.ToArray());
+            return base64;
+        }
+
+        public static async Task<ByteArrayContent> GetBAC(string base64) {
+            var content = new FormUrlEncodedContent(new[] {
+                new KeyValuePair<string, string>("data", base64)
+            });
+            var bytes = await content.ReadAsByteArrayAsync();
+
+            return new ByteArrayContent(bytes) { Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded") } };
+        }
+
         public static async Task<bool> Send<T2>(T2 data, string UserId) where T2 : Google.Protobuf.IMessage {
             try {
                 var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                 using var client = new HttpClient(handler);
                 client.BaseAddress = new Uri(BaseAddressNew);
-                var outStream = new MemoryStream();
-                var outCodedStream = new CodedOutputStream(outStream);
-                data.WriteTo(outCodedStream);
-                outCodedStream.Flush();
-                outStream.Position = 0;
-                var sr = new StreamReader(outStream);
-                var str = sr.ReadToEnd();
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(str));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+
+
+                var base64 = GetEncodedMessage(data);
+                var bac = await GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
 
                 var url = "";
@@ -228,16 +240,11 @@ namespace EGG9000.Bot.EggIncAPI {
                     default:
                         throw new Exception($"Missing Info for {typeof(TRequest).Name}");
                 }
-                var json = JsonConvert.SerializeObject(data);
-                //ms1.Position = 0;
-                //var sr = new StreamReader(ms1);
-                //var bytes = Encoding.ASCII.GetBytes(sr.ReadToEnd());
-                //var base64 = Convert.ToBase64String(bytes);
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+
+                var bac = await GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
 
 
@@ -274,13 +281,16 @@ namespace EGG9000.Bot.EggIncAPI {
             }, "EI4765194876354560", true);
         }
 
+
+
         public static async Task<ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, string EIID = null, List<UserCoopXref> xrefs = null, ILogger _logger = null, CancellationToken cancellationToken = default) {
             var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
-            using var client = new HttpClient(handler);
+            using var client = new HttpClient(handler) {
+                DefaultRequestVersion = HttpVersion.Version20
+            };
             client.BaseAddress = new Uri(BaseAddressNew);
 
             try {
-                var ms1 = new MemoryStream();
                 var model = new ContractCoopStatusRequest {
                     ContractIdentifier = ContractName,
                     CoopIdentifier = CoopName.ToLower(),
@@ -289,15 +299,16 @@ namespace EGG9000.Bot.EggIncAPI {
                     ClientVersion = ClientVersion,
                     ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
                 };
-                model.WriteTo(ms1);
-                ms1.Position = 0;
-                var sr = new StreamReader(ms1);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
-                client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+                var base64 = GetEncodedMessage(model);
+                var bac = await GetBAC(base64);
+                //client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
+
+
+                client.DefaultRequestHeaders.Add("cookie", $"session=9cd692e4-050e-4cb9-a305-993bd28441b2");
+                client.DefaultRequestHeaders.Add("user-agent", "egginc/1.35.3.1 CFNetwork/1410.1 Darwin/22.6.0");
+                client.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
+                client.DefaultRequestHeaders.Add("accept-language", "en-US,en;q=0.9");
+                client.DefaultRequestHeaders.Add("accept", "*/*");
                 var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
 
                 if(response.IsSuccessStatusCode) {
@@ -330,7 +341,6 @@ namespace EGG9000.Bot.EggIncAPI {
             client.BaseAddress = new Uri(BaseAddressNew);
 
             try {
-                var ms1 = new MemoryStream();
                 var model = new ContractCoopStatusRequest {
                     ContractIdentifier = ContractName,
                     CoopIdentifier = CoopName.ToLower(),
@@ -339,15 +349,11 @@ namespace EGG9000.Bot.EggIncAPI {
                     ClientVersion = ClientVersion,
                     ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
                 };
-                model.WriteTo(ms1);
-                ms1.Position = 0;
-                var sr = new StreamReader(ms1);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                var base64 = GetEncodedMessage(model); ;
+                var bac = await GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
                 var response = await client.PostAsync("ei/coop_status_bot", bac, cancellationToken);
 
                 if(response.IsSuccessStatusCode) {
@@ -374,7 +380,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
         private static ContractCoopStatusResponse FixDepartedUsers(ContractCoopStatusResponse coopStatus, List<UserCoopXref> xrefs) {
             var filteredXrefs = xrefs?.Where(
-                x => x.LastStatus?.ContributionAmount is not null && 
+                x => x.LastStatus?.ContributionAmount is not null &&
                 !string.IsNullOrEmpty(x.LastStatus?.UserName)
             ).ToList();
 
@@ -463,23 +469,19 @@ namespace EGG9000.Bot.EggIncAPI {
                 //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
                 ms1.Position = 0;
                 var messageData = ms1.ToArray();
-                var ms2 = new MemoryStream();
-                new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) }.WriteTo(ms2);
-
-                ms2.Position = 0;
-                var sr = new StreamReader(ms2);
-
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
+                var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
 
 
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                var base64 = GetEncodedMessage(authMessage);
+
+
+                var bac = await GetBAC(base64);
 
 
 
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
                 HttpResponseMessage response;
 
@@ -534,17 +536,13 @@ namespace EGG9000.Bot.EggIncAPI {
                 //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
                 ms1.Position = 0;
                 var messageData = ms1.ToArray();
-                var ms2 = new MemoryStream();
-                new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) }.WriteTo(ms2);
+                var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
 
-                ms2.Position = 0;
-                var sr = new StreamReader(ms2);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                var base64 = GetEncodedMessage(authMessage);
+                var bac = await GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
                 HttpResponseMessage response;
 
@@ -598,17 +596,14 @@ namespace EGG9000.Bot.EggIncAPI {
                 //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
                 ms1.Position = 0;
                 var messageData = ms1.ToArray();
-                var ms2 = new MemoryStream();
-                new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) }.WriteTo(ms2);
+                var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
 
-                ms2.Position = 0;
-                var sr = new StreamReader(ms2);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                var base64 = GetEncodedMessage(authMessage);
+                var bac = await GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
+                
 
                 HttpResponseMessage response;
 
@@ -653,19 +648,15 @@ namespace EGG9000.Bot.EggIncAPI {
                 using var client = new HttpClient(handler);
                 client.BaseAddress = new Uri(BaseAddressNew);
 
-                var ms1 = new MemoryStream();
-                new EggIncFirstContactRequest {
+                var req = new EggIncFirstContactRequest {
                     EiUserId = UserId,
                     DeviceId = "EGG9000"
-                }.WriteTo(ms1);
-                ms1.Position = 0;
-                var sr = new StreamReader(ms1);
-                var base64 = Convert.ToBase64String(Encoding.ASCII.GetBytes(sr.ReadToEnd()));
-                var bac = new ByteArrayContent(Encoding.ASCII.GetBytes("data=" + base64));
+                };
+                var base64 = GetEncodedMessage(req);
+                var bac = await GetBAC(base64);
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                bac.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
 
                 HttpResponseMessage response;
 

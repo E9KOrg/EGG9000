@@ -269,3 +269,4 @@ __pycache__/
 **/.env.*
 **/appsettings.Local.json
 **/appsettings.*.local.json
+/EGG9000.Bot/Test.cs
