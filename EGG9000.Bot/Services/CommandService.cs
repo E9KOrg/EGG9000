@@ -104,23 +104,7 @@ namespace EGG9000.Bot.Services {
             _dbContextFactory = dbContextFactory;
             _cache = cache;
             _activeMonitorHostedService = activeMonitorHostedService;
-            logger.LogInformation($"Initiating CommandService - Pre Bugsnag Test");
-
-
-            // ... Bugsnag setup ...
-
-            // Test that Bugsnag is working (remove after verification)
-            try {
-                bugsnag.Notify(new Exception("test-bugsnag"));
-                _logger.LogInformation($"Bugsnag API Key: {bugsnag.Configuration.ApiKey}");
-                _logger.LogInformation("Bugsnag test exception sent");
-            } catch(Exception e) {
-                _logger.LogError(e, "Bugnsag error");
-            }
-            _logger.LogInformation($"Bugsnag test completed");
         }
-
-
 
         private static readonly Histogram RunCommandDuration = Metrics
             .CreateHistogram("bot_runcommand_duration_seconds",
@@ -168,6 +152,14 @@ namespace EGG9000.Bot.Services {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
             var semaphoreAcquired = false;
+            /*if(arg is SocketMessageComponent preDefer && !preDefer.HasResponded) {
+                try {
+                    await preDefer.DeferAsync();
+                } catch(Exception ex) {
+                    _logger.LogWarning(ex, "Failed to pre-defer component interaction for {Command}", command.Name);
+                    return;
+                }
+            }*/
             try {
                 semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(semaphoreAcquired) {
@@ -408,7 +400,18 @@ namespace EGG9000.Bot.Services {
             }
 
             var autocompleteClass = ActivatorUtilities.CreateInstance(_provider, handler);
-            handler.GetMethod("Run").Invoke(autocompleteClass, [arg, dbguilds]);
+            var acSw = Stopwatch.StartNew();
+            _ = Task.Run(async () => {
+                try {
+                    await (Task)handler.GetMethod("Run").Invoke(autocompleteClass, [arg, dbguilds]);
+                    _logger.LogDebug("Autocomplete {Handler} completed in {Ms}ms", handler.Name, acSw.ElapsedMilliseconds);
+                } catch(Exception ex) {
+                    var inner = ex is System.Reflection.TargetInvocationException ? ex.InnerException : ex;
+                    _logger.LogWarning("Autocomplete {Handler} failed after {Ms}ms: {Message}", handler.Name, acSw.ElapsedMilliseconds, inner?.Message);
+                    if(inner is not TimeoutException)
+                        _bugsnag.Notify(inner ?? ex);
+                }
+            });
             return Task.CompletedTask;
         }
 
@@ -711,7 +714,13 @@ namespace EGG9000.Bot.Services {
                             hasPerms = command.Details.AdminOnly == StaffOnlyLevel.None || (message.Author as SocketGuildUser).GuildPermissions.ToList().Contains(associatedPerm);
                         }
 
-                        var canUseCommandsInChannel = !(message.Channel as SocketGuildChannel)?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
+                        var permChannel = message.Channel switch {
+                            SocketThreadChannel threadChannel => threadChannel.ParentChannel,
+                            SocketTextChannel textChannel => textChannel,
+                            _ => null
+                        };
+                        var canUseCommandsInChannel = !permChannel?.PermissionOverwrites?.Any(p => p.Permissions.UseApplicationCommands == PermValue.Deny) ?? true;
+
                         if(hasPerms && (parentHasChild || bypass) && canUseCommandsInChannel) {
                             var warningEmbed = EmbedWarning(
                                 $"Looks like you attempted to run a command but Discord sent it as a normal message instead. Make sure a pop-up comes up when you start typing a command, " +
