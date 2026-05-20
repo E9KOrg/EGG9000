@@ -115,7 +115,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand]
         public static async Task PostFAQ(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService _client) {
-            await component.DeferAsync();
+            if(!component.HasResponded) await component.DeferAsync();
             var splits = data.Split(",");
 
             var guildId = ulong.Parse(splits[0]);

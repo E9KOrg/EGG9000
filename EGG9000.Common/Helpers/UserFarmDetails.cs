@@ -1,9 +1,7 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
