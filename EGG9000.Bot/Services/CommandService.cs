@@ -152,14 +152,14 @@ namespace EGG9000.Bot.Services {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
             var semaphoreAcquired = false;
-            if(arg is SocketMessageComponent preDefer && !preDefer.HasResponded) {
+            /*if(arg is SocketMessageComponent preDefer && !preDefer.HasResponded) {
                 try {
                     await preDefer.DeferAsync();
                 } catch(Exception ex) {
                     _logger.LogWarning(ex, "Failed to pre-defer component interaction for {Command}", command.Name);
                     return;
                 }
-            }
+            }*/
             try {
                 semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(semaphoreAcquired) {
