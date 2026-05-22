@@ -14,6 +14,7 @@ namespace EGG9000.Common.Database.Entities {
     [Index(nameof(UserId), nameof(JoinedCoop))]
     [Index(nameof(JoinedCoop), nameof(CreatedOn))]
     [Index(nameof(JoinedCoop))]
+    [Index(nameof(CoopId))]
     public class UserCoopXref {
         public Guid UserId { get; set; }
         public Guid CoopId { get; set; }
