@@ -14,14 +14,8 @@ namespace EGG9000.Common.Helpers {
     public class SubscriptionHelper {
 
 #nullable enable
-        public static async Task SubscriptionLevelChanged(DiscordSocketClient gateway, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? logger = null) {
+        public static async Task SubscriptionLevelChanged(DiscordSocketClient gateway, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? logger = null, UserSubscriptionInfo.Types.Level? oldLevel = null) {
 #nullable disable
-
-            var orignalLevel = account.SubscriptionLevel;
-
-            account.SubscriptionLevel = account.Backup.SubscriptionLevel;
-            account.SubscriptionEnds = account.Backup.SubscriptionEnds;
-
             var standardRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
             var proRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
@@ -35,7 +29,7 @@ namespace EGG9000.Common.Helpers {
                     changed = true;
                 }
                 if(changed) {
-                    await SendUltraLogMessage(gateway, dbGuild, user, account, (int?)orignalLevel ?? -1, (int?)account.Backup?.SubscriptionLevel ?? -1);
+                    await SendUltraLogMessage(gateway, dbGuild, user, account, (int?)oldLevel ?? -1, (int?)account.SubscriptionLevel ?? -1);
                 }
             }
         }
