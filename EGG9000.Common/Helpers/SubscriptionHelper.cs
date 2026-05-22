@@ -72,8 +72,6 @@ namespace EGG9000.Common.Helpers {
                 await user.AddRoleAsync(roleId);
                 logger?.LogInformation("Added {level} subscription role to {user}", pro ? "pro" : "standard", user.Username);
                 changed = true;
-            } else {
-                logger?.LogInformation("No role change needed for {user} (hasRole: {hasRole}, needsRole: {needsRole})", user.Username, hasRole, needsRole);
             }
             return changed;
         }
