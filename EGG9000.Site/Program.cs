@@ -207,6 +207,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
+    services.AddHostedService<UserCacheRefreshService>();
+    services.AddHostedService<ActiveCoopsCacheRefreshService>();
 
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =

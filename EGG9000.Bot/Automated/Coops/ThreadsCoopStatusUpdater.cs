@@ -81,9 +81,9 @@ namespace EGG9000.Bot.Automated.Coops {
 
             var completedCoops = 0;
 #if DEBUG
-            var throttler = new SemaphoreSlim(10);
+            var throttler = new SemaphoreSlim(3);
 #else
-            var throttler = new SemaphoreSlim(10);
+            var throttler = new SemaphoreSlim(3);
 #endif
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => rand.Next());
             foreach(var guildCoops in guildCoopGroups) {

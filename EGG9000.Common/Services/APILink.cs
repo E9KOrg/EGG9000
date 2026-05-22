@@ -367,13 +367,14 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken) {
+        public Task StartAsync(CancellationToken cancellationToken) {
             //if(_settings.AsyncLoadCache) {
             //    //_logger.LogInformation("Async Loading Users");
             //    _ = GetUsers();
             //} else {
             //    await GetUsers();
             //}
+            return Task.CompletedTask;
         }
 
         //public async Task GetUsers() {
