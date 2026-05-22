@@ -87,7 +87,7 @@ namespace EGG9000.Common.Services {
                 }
             } catch(Exception e) {
                 _bugsnag.Notify(e);
-                logger.LogError(e, "Error handling channel deletion for channel {channelId}", arg.Id);
+                _logger.LogError(e, "Error handling channel deletion for channel {channelId}", arg.Id);
             }
         }
 

@@ -532,6 +532,48 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
         }
 
+        [SlashCommand(Description = "Database load, cache sizes, and process memory", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        public static async Task DbLoad(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync(ephemeral: true);
+
+            var sw = Stopwatch.StartNew();
+            await db.Database.ExecuteSqlRawAsync("SELECT 1");
+            var pingMs = sw.ElapsedMilliseconds;
+
+            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            var workingMb = proc.WorkingSet64 / 1_048_576.0;
+            var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
+
+            var cacheCount = db._cache is MemoryCache mc ? mc.Count : -1;
+
+            var trackerEntries = db.ChangeTracker.Entries().ToList();
+            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
+
+            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);
+            var dbUsers = await db.DBUsers.CountAsync();
+            var contracts = await db.Contracts.CountAsync();
+            var events = await db.Events.CountAsync();
+            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1));
+
+            var rows = new List<List<FixedWidthCell>> {
+                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
+                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
+                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
+                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
+                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
+                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
+                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
+                null,
+                new() { new("DBUsers"), new($"{dbUsers:N0}", CellAlignment.Right) },
+                new() { new("Active Coops"), new($"{activeCoops:N0}", CellAlignment.Right) },
+                new() { new("Contracts"), new($"{contracts:N0}", CellAlignment.Right) },
+                new() { new("Events"), new($"{events:N0}", CellAlignment.Right) },
+                new() { new("AutoLogs 24h"), new($"{autoLogs:N0}", CellAlignment.Right) },
+            };
+
+            await command.RespondAsync($"```\n{GetTable(rows)}```", ephemeral: true);
+        }
+
         [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task CoopStats(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();

@@ -175,7 +175,13 @@ namespace EGG9000.Bot.Automated.Coops {
                                 coop.ThreadParentChannel = headerChannel.Id;
                                 coop.OverflowGuildId = headerChannel.Guild.Id;
                                 _logger.LogInformation("Thread created for {coopName} in {guild}", coop.Name, headerChannel.Guild.Name);
-                                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                                using var writeScope = _provider.CreateScope();
+                                var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                                await writeDb.Coops.Where(c => c.Id == coop.Id).ExecuteUpdateAsync(s => s
+                                    .SetProperty(c => c.Status, coop.Status)
+                                    .SetProperty(c => c.ThreadID, coop.ThreadID)
+                                    .SetProperty(c => c.ThreadParentChannel, coop.ThreadParentChannel)
+                                    .SetProperty(c => c.OverflowGuildId, coop.OverflowGuildId));
                                 guildWithOverflow.LastAccessed = DateTimeOffset.Now;
                                 var dbguild = dbguilds.FirstOrDefault(x => x.Id == guildWithOverflow.Guild.Id);
                                 var overflowGuild = coop.OverflowGuildId > 0 ? _client.GetGuild(coop.OverflowGuildId) : guildWithOverflow.Guild;
