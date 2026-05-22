@@ -76,37 +76,27 @@ namespace EGG9000.Bot.Automated {
 
                 if(dbGuild is null)
                     continue;
+                var oldLevel = account.SubscriptionLevel;
                 var backup = new CustomBackup(firstContact.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {
 
+                    // Backup setter auto-syncs account.SubscriptionLevel and account.SubscriptionEnds
                     account.Backup = backup;
-
 
                     if(firstContact.Backup.SubInfo is null) {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
                         var subscription = await ContractsAPI.GetUserSubscription(backup.EggIncId);
-                        if(account.SubscriptionLevel != subscription.SubscriptionLevel) {
-                            var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                            account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
-                            account.Backup.SubscriptionEnds = subscription.PeriodEnd;
-
-                            await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account, _logger);
-                        }
-                    } else {
-
-                        if(backup.SubscriptionLevel != account.SubscriptionLevel) {
-                            _logger.LogInformation("{user} subscription has changed from {prev} to {current}", user.DiscordUsername, account.Backup.SubscriptionLevel, backup.SubscriptionLevel);
-                            var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
-                            account.SubscriptionLevel = backup.SubscriptionLevel;
-                            await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account, _logger);
-                        }
-
-                        if(backup.SubscriptionEnds != account.SubscriptionEnds) {
-                            account.SubscriptionEnds = backup.SubscriptionEnds;
-                        }
+                        account.SubscriptionLevel = subscription.SubscriptionLevel;
+                        account.SubscriptionEnds = subscription.PeriodEnd;
+                        account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
+                        account.Backup.SubscriptionEnds = subscription.PeriodEnd;
                     }
+
+                    // Always enforce roles - CheckRole is idempotent and only calls Discord API when hasRole != needsRole
+                    var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                    await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, guild, dbGuild, user, account, _logger, oldLevel);
 
                     update = true;
 
