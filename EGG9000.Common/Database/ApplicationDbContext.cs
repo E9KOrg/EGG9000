@@ -146,6 +146,7 @@ namespace EGG9000.Common.Database {
 
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
+            builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);
         }
     }
 }
