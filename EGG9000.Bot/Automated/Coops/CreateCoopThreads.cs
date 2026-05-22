@@ -34,6 +34,7 @@ using static Ei.Contract.Types;
 using EGG9000.Bot.Services;
 using EGG9000.Bot.EggIncAPI;
 using MassTransit;
+using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
@@ -121,6 +122,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     _coopsBeingCreatedService.SetCoopsAreBeingCreated(true);
                 }
                 foreach(var coop in coops) {
+                    var timings = new TimingsFactory(_logger);
+                    timings.Start();
+
                     StillAlive();
                     if(coop.ContractID is null) {
                         if(CoopsTimeoutCounter.ContainsKey(coop.Name)) {
@@ -160,9 +164,12 @@ namespace EGG9000.Bot.Automated.Coops {
                             if(creator != default) {
                                 CreatorLastUsed[new CreatorInfo() { EggIncId = creator.EggIncId, ContractId = coop.ContractID, Grade = (PlayerGrade)coop.League }] = DateTimeOffset.Now;
                             }
+                            timings.Set("Coop API Call");
                         }
 
+
                         var headerChannel = await GetHeaderChannelAndWait(headerChannels, coop);
+                        timings.Set("Got Header Channel");
                         if(headerChannel == null) {
                             _logger.LogError("Unable to get header channel for {coop} in contract {contract}", coop.Name, guildContract.ContractID);
                         } else {
@@ -172,8 +179,8 @@ namespace EGG9000.Bot.Automated.Coops {
                                 continue;
                             }
                             var coopThread = await _queue.EnqueueLowAsync<IThreadChannel>(() => CreateThreadChannelAsync(coop.Name, headerChannel));
-
                             if(coopThread != null) {
+                                timings.Set("Thread created");
                                 coop.Status = CoopStatusEnum.WaitingOnAssigned;
                                 coop.ThreadID = coopThread.Id;
                                 coop.ThreadParentChannel = headerChannel.Id;
@@ -186,14 +193,21 @@ namespace EGG9000.Bot.Automated.Coops {
                                     .SetProperty(c => c.ThreadID, coop.ThreadID)
                                     .SetProperty(c => c.ThreadParentChannel, coop.ThreadParentChannel)
                                     .SetProperty(c => c.OverflowGuildId, coop.OverflowGuildId));
+                                timings.Set("Updated db");
+
                                 guildWithOverflow.LastAccessed = DateTimeOffset.Now;
                                 var dbguild = dbguilds.FirstOrDefault(x => x.Id == guildWithOverflow.Guild.Id);
                                 var overflowGuild = coop.OverflowGuildId > 0 ? _client.GetGuild(coop.OverflowGuildId) : guildWithOverflow.Guild;
 
 
+
+
                                 while(!await throttler.WaitAsync(20000, cancellationToken)) {
                                     _logger.LogInformation("Waiting on throttle");
                                 }
+
+                                timings.Set("Waited Throttle");
+
 
                                 tasks.Add(Task.Run(async () => {
                                     try {
@@ -218,6 +232,9 @@ namespace EGG9000.Bot.Automated.Coops {
                                         throttler.Release();
                                     }
                                 }, cancellationToken));
+                                var timingsReulsts = timings.Finished();
+
+                                _logger.LogInformation("Timings for creating thread for {coopName} in {guild}: {timings}", coop.Name, headerChannel.Guild.Name, string.Join(", ", timingsReulsts.Select(x => $"{x.name}: {x.time.TotalSeconds}s")));
                             } else {
                                 _logger.LogWarning("Thread NOT created for {coopName} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
                             }

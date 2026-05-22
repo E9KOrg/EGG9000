@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
@@ -12,7 +13,6 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Frozen;
 using System.IO;
-using System.Reflection;
 
 namespace EGG9000.Common.Database {
     public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext> {
@@ -22,24 +22,37 @@ namespace EGG9000.Common.Database {
                 ?? "Development";
 
             var currentDirectory = Directory.GetCurrentDirectory();
-            var siteDirectory = Path.Combine(currentDirectory, "EGG9000.Site");
-            var basePath = File.Exists(Path.Combine(currentDirectory, "appsettings.json"))
-                ? currentDirectory
-                : siteDirectory;
+            var basePath = ResolveConfigurationBasePath(currentDirectory);
 
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(basePath)
                 .AddJsonFile("appsettings.json", optional: true)
                 .AddJsonFile($"appsettings.{environment}.json", optional: true)
-                .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
                 .AddEnvironmentVariables()
                 .Build();
 
-            var connectionString = configuration.GetConnectionString("DefaultConnection")
+            var userSecretsId = "dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a";
+            var userSecretsPath = ResolveUserSecretsPath(userSecretsId);
+            var userSecretsConfigurationBuilder = new ConfigurationBuilder();
+            if(File.Exists(userSecretsPath))
+                userSecretsConfigurationBuilder.AddJsonFile(userSecretsPath, optional: true, reloadOnChange: false);
+
+            var userSecretsConfiguration = userSecretsConfigurationBuilder.Build();
+
+            var userSecretsConnectionString = userSecretsConfiguration.GetConnectionString("DefaultConnection")
+                ?? userSecretsConfiguration["ConnectionStrings:DefaultConnection"];
+
+            var configurationConnectionString = configuration.GetConnectionString("DefaultConnection")
                 ?? configuration["ConnectionStrings:DefaultConnection"];
+
+            var hasUserSecretsConnection = !string.IsNullOrWhiteSpace(userSecretsConnectionString);
+            var connectionString = hasUserSecretsConnection ? userSecretsConnectionString : configurationConnectionString;
+            var connectionSource = hasUserSecretsConnection ? "UserSecrets" : "Configuration";
 
             if(string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException($"Connection string 'DefaultConnection' was not found for environment '{environment}'.");
+
+            LogResolvedConnection(connectionString, environment, basePath, connectionSource);
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
             optionsBuilder.UseSqlServer(connectionString, options => {
@@ -49,6 +62,39 @@ namespace EGG9000.Common.Database {
             });
 
             return new ApplicationDbContext(optionsBuilder.Options);
+        }
+
+        private static void LogResolvedConnection(string connectionString, string environment, string basePath, string connectionSource) {
+            try {
+                var builder = new SqlConnectionStringBuilder(connectionString);
+                Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}', Server='{builder.DataSource}', Database='{builder.InitialCatalog}', IntegratedSecurity='{builder.IntegratedSecurity}', Encrypt='{builder.Encrypt}'.");
+            } catch(Exception ex) {
+                Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}'. Connection string parse failed ({ex.GetType().Name}).");
+            }
+        }
+
+        private static string ResolveUserSecretsPath(string userSecretsId) {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            return Path.Combine(appData, "Microsoft", "UserSecrets", userSecretsId, "secrets.json");
+        }
+
+        private static string ResolveConfigurationBasePath(string startDirectory) {
+            var directory = new DirectoryInfo(startDirectory);
+
+            while(directory is not null) {
+                var directAppSettings = Path.Combine(directory.FullName, "appsettings.json");
+                if(File.Exists(directAppSettings))
+                    return directory.FullName;
+
+                var siteDirectory = Path.Combine(directory.FullName, "EGG9000.Site");
+                var siteAppSettings = Path.Combine(siteDirectory, "appsettings.json");
+                if(File.Exists(siteAppSettings))
+                    return siteDirectory;
+
+                directory = directory.Parent;
+            }
+
+            throw new InvalidOperationException($"Could not locate 'appsettings.json' starting from '{startDirectory}'.");
         }
     }
 
