@@ -131,6 +131,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #endif
 
         services.AddSingleton<DatabaseCache>();
+        services.AddHostedService<UserCacheRefreshService>();
+        services.AddHostedService<ActiveCoopsCacheRefreshService>();
         services.AddSingleton<Words>();
         services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 
@@ -237,6 +239,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<HandleGradeChanges>();
         services.AddHostedService<RefreshNasaApod>();
         services.AddHostedService<UpdateBackups>();
+        services.AddHostedService<CleanAutomationLogs>();
 
         services.AddSingleton<CoopsBeingCreatedService>();
         services.AddSingleton<JobService>();
