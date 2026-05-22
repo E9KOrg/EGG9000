@@ -88,7 +88,6 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
                         var subscription = await ContractsAPI.GetUserSubscription(backup.EggIncId);
                         if(account.SubscriptionLevel != subscription.SubscriptionLevel) {
-                            _logger.LogInformation("{user} subscription has changed from {prev} to {current}", user.DiscordUsername, account.SubscriptionLevel, subscription.SubscriptionLevel);
                             var guild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
                             account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
                             account.Backup.SubscriptionEnds = subscription.PeriodEnd;
