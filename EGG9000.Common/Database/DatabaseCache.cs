@@ -23,26 +23,23 @@ namespace EGG9000.Common.Database {
             _logger = logger;
             var db = dbContextFactory.CreateDbContext();
             _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-            _cachedUsers = db.DBUsers.ToList();
+            _cachedUsers = db.DBUsers.AsNoTracking().ToList();
 
             RefreshActiveCoopsCache().Wait();
-            _timerActiveCoops = new Timer(async _ => await RefreshActiveCoopsCache(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
-            _timerUsers = new Timer(async _ => await RefreshUserCache(), null, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
         }
 
         private volatile List<DBUser> _cachedUsers;
         private DateTimeOffset _lastCacheUpdateUser;
-        private Timer _timerUsers;
 
         public List<DBUser> GetCachedUsers() => _cachedUsers;
         public Task<List<DBUser>> GetDbUsers() => Task.FromResult(_cachedUsers);
 
-        private async Task RefreshUserCache() {
+        public async Task RefreshUserCache() {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
                 var currentCacheTime = _lastCacheUpdateUser;
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-                var updatedUsers = await db.DBUsers.Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
+                var updatedUsers = await db.DBUsers.AsNoTracking().Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
                 _logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
                 var newList = new List<DBUser>(_cachedUsers);
                 newList.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));
@@ -57,12 +54,11 @@ namespace EGG9000.Common.Database {
         public List<Coop> ActiveCoopsWithFiveMinuteDelay() {
             return _cachedActiveCoops;
         }
-        private Timer _timerActiveCoops;
-        private async Task RefreshActiveCoopsCache() {
+        public async Task RefreshActiveCoopsCache() {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
                 _logger.LogInformation("Refreshing active coops cache");
-                var coops = await db.Coops.Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToListAsync();
+                var coops = await db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToListAsync();
                 _cachedActiveCoops = coops;
             } catch(Exception e) {
                 _logger.LogError(e, "Error refreshing active coops cache");

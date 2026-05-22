@@ -141,12 +141,12 @@ public static partial class NasaHelper {
         return $"NasaApodExplanation:Apod:{apodId}";
     }
 
-    public static async Task<CustomDiscordMessage> GetCustomMessage(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
+    public static Task<CustomDiscordMessage> GetCustomMessage(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
         var apodEmbed = apod.GetEmbedBuilder();
-        return new CustomDiscordMessage {
+        return Task.FromResult(new CustomDiscordMessage {
             Embed = apodEmbed.Build(),
             Components = apod.CreateEphemeralExplanationButton()
-        };
+        });
 
 
         /*
