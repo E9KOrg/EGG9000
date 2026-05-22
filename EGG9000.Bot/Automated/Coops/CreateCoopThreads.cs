@@ -71,6 +71,8 @@ namespace EGG9000.Bot.Automated.Coops {
             var throttler = new SemaphoreSlim(5);
             var tasks = new List<Task>();
 
+            var dbguilds = _db.CachedGuilds.ToList();
+
             while(
                 (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
                 .Count > 0) {
@@ -102,12 +104,14 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var contractIDs = coops.Select(x => x.ContractID).Distinct().ToList();
                 var guildContracts = await _db.GuildContracts.Include(gc => gc.Contract).Where(gc => guildIDs.Contains(gc.GuildID) && contractIDs.Contains(gc.ContractID)).ToListAsync(cancellationToken);
-                var dbguilds = await _db.Guilds.Where(x => guildIDs.Contains(x.Id)).ToListAsync(cancellationToken);
 
                 var guildsWithOverflow = new List<(SocketGuild Guild, List<OverflowServer> Servers, DateTimeOffset LastAccessed)>();
 
                 foreach(var guild in _client.Guilds.Where(x => coops.Any(y => y.GuildId == x.Id)).OrderBy(x => x.Id == _CPGuildId)) {
-                    guildsWithOverflow.Add((guild, await GetOverflowGuildsCounts(guild, _db), DateTimeOffset.MinValue));
+                    var dbguild = dbguilds.FirstOrDefault(x => x.Id == guild.Id);
+                    if(dbguild != null) {
+                        guildsWithOverflow.Add((guild, await GetOverflowGuildsCounts(guild, dbguild), DateTimeOffset.MinValue));
+                    }
                 }
 
                 var headerChannels = await GetOrCreateHeaderChannelsForCoops(_db, coops, dbguilds, guildContracts);
@@ -495,9 +499,7 @@ namespace EGG9000.Bot.Automated.Coops {
         //}
 
 
-        private async Task<List<OverflowServer>> GetOverflowGuildsCounts(SocketGuild guild, ApplicationDbContext db) {
-            var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
-            if(dbguild == null) { return null; }
+        private async Task<List<OverflowServer>> GetOverflowGuildsCounts(SocketGuild guild, Guild dbguild) {
             return [
                 new(){ Guild = guild },
                 .. dbguild.OverflowServers.Select(os => new OverflowServer(ServerFunction.Overflow){ Guild = _client.Guilds.First(g => g.Id == os)})
