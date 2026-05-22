@@ -62,7 +62,7 @@ namespace EGG9000.Bot.Automated.Coops {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
             var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.Now).ToListAsync(CancellationToken.None);
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
+            var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
 #if DEBUG
             //coops = [.. coops.Where(x => x.Id == Guid.Parse("eb1353a9-32ae-4c03-e379-08de4a63aaaf"))];
@@ -733,7 +733,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                                 $"Your co-op code is `{coop.Name}, but your backup shows an entered code of `{farm.CoopId}`, which is the code for {otherContractXref.Coop.Contract.Name}";
                                             await SendDMWarning(_db, discordUser, coopThread, otherCoopMessage, coop);
                                         } else {
-                                            var findGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id || g.OverflowServersJson.Contains(guild.Id.ToString()), CancellationToken.None);
+                                            var findGuild = dbGuild;
 
                                             // In the case this is 'coming from' an overflow server, and the user is not in the server, we want the mention to stick regardless
                                             discordUser ??= _client.Guilds.First(g => g.Id == findGuild.Id).GetUser(userFarmDetails.Xref.User.DiscordId);
