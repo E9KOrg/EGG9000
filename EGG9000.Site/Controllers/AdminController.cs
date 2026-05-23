@@ -28,8 +28,6 @@ using Microsoft.IdentityModel.Tokens;
 
 using Newtonsoft.Json;
 
-using NuGet.Versioning;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;

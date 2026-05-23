@@ -172,7 +172,7 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
 
-            if(guild is null || !guild.OverflowServers.Any() || guild.RolesToSync is null || !guild.RolesToSync.Contains(originalRole.Id.ToString()))
+            if(guild is null || guild.OverflowServers.Count == 0 || guild.RolesToSync is null || !guild.RolesToSync.Contains(originalRole.Id.ToString()))
                 return;
 
             var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));

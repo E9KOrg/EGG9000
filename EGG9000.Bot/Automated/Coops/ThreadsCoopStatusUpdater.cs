@@ -713,7 +713,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     userFarmDetails.Xref.OutsideCoop = true;
 
                                     // Calculate a similarity scoreing to weed out typos
-                                    var similarityScoring = FuzzySharp.Fuzz.Ratio(farm.CoopId.ToLower(), coop.Name.ToLower());
+                                    var similarityScoring = LevenshteinRatio(farm.CoopId.ToLower(), coop.Name.ToLower());
                                     if(similarityScoring >= 80) { // Almost certainly a typo
                                         var typoMessage = $"It looks like you may have typo-ed when joining your co-op <#{coop.ThreadID}>.\n\n" +
                                             $"The co-op code is `{coop.Name}`, but your backup shows an entered code of `{farm.CoopId}`.";
@@ -1740,6 +1740,26 @@ namespace EGG9000.Bot.Automated.Coops {
             }
 
             return null;
+        }
+
+        // Normalized similarity 0-100 based on Levenshtein edit distance (replaces FuzzySharp.Fuzz.Ratio).
+        private static int LevenshteinRatio(string a, string b) {
+            var maxLen = Math.Max(a.Length, b.Length);
+            if(maxLen == 0) return 100;
+            return (int)Math.Round((1.0 - (double)LevenshteinDistance(a, b) / maxLen) * 100);
+        }
+
+        private static int LevenshteinDistance(string a, string b) {
+            var d = new int[a.Length + 1, b.Length + 1];
+            for(int i = 0; i <= a.Length; i++) d[i, 0] = i;
+            for(int j = 0; j <= b.Length; j++) d[0, j] = j;
+            for(int i = 1; i <= a.Length; i++) {
+                for(int j = 1; j <= b.Length; j++) {
+                    var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                    d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+                }
+            }
+            return d[a.Length, b.Length];
         }
 
         public bool CheckForCreator(Coop coop, CoopDetails coopDetails) {
