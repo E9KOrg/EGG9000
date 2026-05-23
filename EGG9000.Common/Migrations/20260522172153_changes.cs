@@ -5,7 +5,7 @@
 namespace EGG9000.Common.Migrations
 {
     /// <inheritdoc />
-    public partial class changes : Migration
+    public partial class Changes : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

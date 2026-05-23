@@ -183,7 +183,7 @@ namespace EGG9000.Bot.Automated {
                     try {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = updatedRole.Name;
-                            x.Color = updatedRole.Color;
+                            x.Colors = updatedRole.Colors;
                             x.Permissions = updatedRole.Permissions;
 
                             /**
@@ -220,7 +220,7 @@ namespace EGG9000.Bot.Automated {
 
                     IRole overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
                     if(overflowRole is null) {
-                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Color);
+                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Colors);
                         //if(!string.IsNullOrEmpty(role.Icon)) {
                         //    await newRole.ModifyAsync(async x => x.Icon = new Image(await DownloadImage(role.GetIconUrl())));
                         //}
@@ -231,7 +231,7 @@ namespace EGG9000.Bot.Automated {
                     else if(!role.Permissions.Equals(overflowRole.Permissions)) {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = role.Name;
-                            x.Color = role.Color;
+                            x.Colors = role.Colors;
                             x.Permissions = role.Permissions;
                         });
                     }
@@ -276,16 +276,6 @@ namespace EGG9000.Bot.Automated {
 
             }
         }
-
-        /*private static async Task<MemoryStream> DownloadImage(string url) {
-            using var httpClient = new HttpClient();
-            var imageContent = await httpClient.GetByteArrayAsync(url);
-
-            var imageBuffer = new MemoryStream(imageContent) {
-                Position = 0
-            };
-            return imageBuffer;
-        }*/
 
         private async Task HandleChannelPermissionSyncs(SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             var mainCoopCategory = (await _client.GetAllCoopCategories(mainServer)).First();

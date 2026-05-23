@@ -60,7 +60,6 @@ namespace EGG9000.Common.Services {
         public readonly IConfiguration _configuration;
         public readonly IServiceProvider _provider;
         private readonly bool _ReportUpdatedClientVersion;
-        private int _LastClientVersion;
         private readonly DiscordSocketClient _discord;
         private readonly ILogger<APILink> _logger;
         private readonly APILinkOptions _settings;
