@@ -761,13 +761,15 @@
                 @foreach (var artifact in farm.Artifacts) {
                     artifactTemplate(artifact, false);
                     @if (artifact.Stones != null && artifact.Stones.Count > 0) {
-                        <td colspan="99" style="padding-left: 10px; padding-top: 0; ">
-                            <table>
-                                @foreach (var stone in artifact.Stones) {
-                                    artifactTemplate(stone, true);
-                                }
-                            </table>
-                        </td>
+                        <tr>
+                            <td colspan="99" style="padding-left: 10px; padding-top: 0; ">
+                                <table>
+                                    @foreach (var stone in artifact.Stones) {
+                                        artifactTemplate(stone, true);
+                                    }
+                                </table>
+                            </td>
+                        </tr>
                     }
                 }
             </table>
@@ -1103,7 +1105,7 @@
 <script type="text/javascript">
     var timeState = 'no';
     var ctrlReleaseHandled = false;
-    var index = @(index);
+    var index = Number("@(index)");
 
     var isMobile = (window.innerWidth < 768);
     if (isMobile) {
