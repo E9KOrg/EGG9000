@@ -1333,7 +1333,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var sleeping = x.OfflineTime.TotalMinutes > x.SiloTimeMinutes ? "💤" : "";
 
                 if(x.OfflineTime.TotalMinutes > x.SiloTimeMinutes) {
-                    sleeping = $"💤 Empty Silos {x.OfflineTime.Add(TimeSpan.FromMinutes(0 - x.SiloTimeMinutes)).Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()}";
+                    sleeping = $"💤 Empty Silos {x.OfflineTime.Add(TimeSpan.FromMinutes(0 - x.SiloTimeMinutes)).Humanize(maxUnit: TimeUnit.Hour).ShortenTime()}";
                 }
 
                 if(coopDetails.Coop.FinishedOrFailed())
@@ -1359,8 +1359,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     new(x.Projected.ToEggString(), CellAlignment.Right),
                     new($"{Math.Round(percent)}%", CellAlignment.Right),
                     new(x.BoostTokens.ToString()),
-                    new(x.OfflineTime.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
-                    new(TimeSpan.FromMinutes((double)x.SiloTimeMinutes).Humanize(2, maxUnit: Humanizer.Localisation.TimeUnit.Hour).ShortenTime()),
+                    new(x.OfflineTime.Humanize(maxUnit: TimeUnit.Hour).ShortenTime()),
+                    new(TimeSpan.FromMinutes((double)x.SiloTimeMinutes).Humanize(2, maxUnit: TimeUnit.Hour).ShortenTime()),
                     new(sleeping),
                 };
             }));
