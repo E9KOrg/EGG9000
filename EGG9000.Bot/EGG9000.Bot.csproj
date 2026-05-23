@@ -10,6 +10,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <!--<Target Name="RunBotOnHomeControl" AfterTargets="Publish">
     <Exec Command=".\runbot.bat" />

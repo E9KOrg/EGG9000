@@ -19,6 +19,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
+	<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Migrations\20200428213742_TrackEliteContracts.cs" />
