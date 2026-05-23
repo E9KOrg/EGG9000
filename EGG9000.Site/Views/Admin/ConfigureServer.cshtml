@@ -219,7 +219,7 @@
 					}
 				</td>
 				@if(role != null) {
-					<td style="color: @role.Color.ToString();">
+					<td style="color: @role.Colors.PrimaryColor.ToString();">
 						@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
 					</td>
 				} else {
@@ -352,7 +352,7 @@
 	<h3>Sync Roles to overflows</h3>
 	foreach (var role in allRoles) {
 		<div>
-			<label style="color: @(role.Color.ToString() != "#000000" ? role.Color: "")">
+			<label style="color: @(role.Colors.PrimaryColor.ToString() != "#000000" ? role.Colors.PrimaryColor : "")">
 				<input class="role custom-input" data-id="@role.Id" type="checkbox" checked="@roleIds.Any(x => x == role.Id.ToString())" />
 				@role.Name <img style="height: 1em; vertical-align: baseline;" src="@role.GetIconUrl()" />
 			</label>
