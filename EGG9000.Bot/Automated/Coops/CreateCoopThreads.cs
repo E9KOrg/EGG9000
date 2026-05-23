@@ -39,6 +39,7 @@ using EGG9000.Common.Factories;
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
+        private const double THREAD_CREATION_DELAY_MS = 6050;
 
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
         private readonly Dictionary<CreatorInfo, DateTimeOffset> CreatorLastUsed = new();
@@ -145,13 +146,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                     if(cancellationToken.IsCancellationRequested) return;
                     var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId);
-
-                    //if(guildWithOverflow.LastAccessed.AddSeconds(THREAD_CREATION_DELAY) > DateTimeOffset.Now) {
-                    //    var timeToDelay = guildWithOverflow.LastAccessed.AddSeconds(THREAD_CREATION_DELAY) - DateTimeOffset.Now;
-                    //    _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), guildWithOverflow.Guild.Name);
-                    //    await Task.Delay(timeToDelay);
-                    //}
-
 
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
@@ -343,18 +337,25 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         object __headerChannelLock = new object();
-        private Task<SocketGuildChannel> GetHeaderChannelAndWait(List<HeaderChannelsForGuild> headerChannels, Coop coop) {
+        private async Task<SocketGuildChannel> GetHeaderChannelAndWait(List<HeaderChannelsForGuild> headerChannels, Coop coop) {
             SocketGuildChannel headerChannel;
+            DateTimeOffset lastAccessed;
             lock(__headerChannelLock) {
                 var headerChannelsForGuild = headerChannels.First(x => x.GuildId == coop.GuildId);
                 var currentChannels = headerChannelsForGuild.HeaderChannels.Where(x => x.League == coop.League && x.ContractId == coop.ContractID).ToList();
                 var lastAccessedObject = headerChannelsForGuild.LastAccessed.Where(la => currentChannels.Any(x => x.ServerId == la.ServerId)).OrderBy(la => la.LastAccessed).First();
                 var serverHeaderChannel = currentChannels.First(x => x.ServerId == lastAccessedObject.ServerId);
                 headerChannel = serverHeaderChannel.HeaderChannel;
+                lastAccessed = lastAccessedObject.LastAccessed;
                 lastAccessedObject.LastAccessed = DateTimeOffset.Now;
             }
 
-            return Task.FromResult(headerChannel);
+            if(lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) > DateTimeOffset.Now) {
+                var timeToDelay = lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) - DateTimeOffset.Now;
+                _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
+                await Task.Delay(timeToDelay);
+            }
+            return headerChannel;
         }
 
         private async Task<List<HeaderChannelsForGuild>> GetOrCreateHeaderChannelsForCoops(ApplicationDbContext db, List<Coop> coops, List<Guild> guilds, List<GuildContract> guildContracts) {

@@ -213,7 +213,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =
             ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
+        options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
     });
 
 
