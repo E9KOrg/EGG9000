@@ -555,7 +555,7 @@
                     {
                         <span style="color: orange;">Habs are filled</span>
                     } else if(ihrPerHab > 0) {
-                        <span>(Full in @timeTillFull.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
+                        <span>(Full in @timeTillFull.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
                     } 
                 </div>
                 <div>
@@ -584,10 +584,10 @@
                     Current Shipping Rate: @((farmStats.CurrentShippingRate * 60).ToEggString(true))/m <!--(@((farmStats.CurrentShippingRate).ToEggString(true, 3))/s)-->
                     @if(farmStats.CurrentShippingRate < farmStats.MaxShippingRate) {
                         if(timeTillFull.timeTillShippingFull < timeTillFull.timeTillHabsFull) {
-                            <span>(Will reach max shipping before max habs, @timeTillFull.timeTillShippingFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillShippingFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
+                            <span>(Will reach max shipping before max habs, @timeTillFull.timeTillShippingFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillShippingFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
                         } else if(timeTillFull.timeTillHabsFull > TimeSpan.Zero && farmStats.InternalHatchery > 0)
                         {
-                            <span>(Will reach max habs before max shipping, @timeTillFull.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime() offline)</span>
+                            <span>(Will reach max habs before max shipping, @timeTillFull.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
                         }
                     }
                 </div>
@@ -678,34 +678,34 @@
                                 }
                                 </div>
                                 <span class="abg">+1<img src="/images/egg_truth.png" style="width: 20px;" />
-                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()</span>
+                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()</span>
                                 <span class="abg">+2<img src="/images/egg_truth.png" style="width: 20px;" />
-                                            @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                            @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                         </span>
                                 <span class="abg">+3<img src="/images/egg_truth.png" style="width: 20px;" />
-                                            @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                            @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                         </span>
 
                                 if(!maxHabs && !maxedShipping && ihrPerHab > 0) {
                                     <div>Normal Growth</div>
                                     <span class="abg">+1<img src="/images/egg_truth.png" style="width: 20px;" />
-                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                             </span>
                                      <span class="abg">+2<img src="/images/egg_truth.png" style="width: 20px;" />
-                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                             </span>
                                      <span class="abg">+3<img src="/images/egg_truth.png" style="width: 20px;" />
-                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                             </span>
                                     <div>Offline Growth</div>
                                     <span class="abg">+1<img src="/images/egg_truth.png" style="width: 20px;" />
-                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                     </span>
                                      <span class="abg">+2<img src="/images/egg_truth.png" style="width: 20px;" />
-                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                     </span>
                                      <span class="abg">+3<img src="/images/egg_truth.png" style="width: 20px;" />
-                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: Humanizer.Localisation.TimeUnit.Year).ShortenTime()
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
                                     </span>
                                  }
                                 <style>
