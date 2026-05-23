@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <UserSecretsId>a03a2b0e-9174-495f-b104-7da233418296</UserSecretsId>
@@ -16,6 +16,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9001|AnyCPU'">
     <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup>
+	<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
     <Content Remove="nlog.config" />
