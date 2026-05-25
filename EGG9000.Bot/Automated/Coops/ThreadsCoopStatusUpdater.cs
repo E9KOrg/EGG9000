@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
             var completedCoops = 0;
-            var throttler = new SemaphoreSlim(10);
+            var throttler = new SemaphoreSlim(5);
             var guildCoopGroups = coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId).OrderBy(x => rand.Next());
             foreach(var guildCoops in guildCoopGroups) {
                 if(cancellationToken.IsCancellationRequested) break;
@@ -112,9 +112,10 @@ namespace EGG9000.Bot.Automated.Coops {
                             var sw = new Stopwatch();
                             sw.Start();
 
-                            var ct = new CancellationTokenSource(TimeSpan.FromMinutes(1)).Token;
+                            using var perCoopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                            perCoopCts.CancelAfter(TimeSpan.FromMinutes(1));
 
-                            status = await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, cancellationToken).WaitAsync(ct);
+                            status = await ProcessCoop(coop.Id, guild, parentGuild, users, dbguild, perCoopCts.Token);
                             sw.Stop();
                             var completed = Interlocked.Increment(ref completedCoops);
                             //_logger.LogInformation("Finished processing {coopName}, Time: {time} ({completed} of {total})", coop.Name, sw.Elapsed.Humanize(), completed, coops.Count);
@@ -1682,7 +1683,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup.EggIncId)) {
                     foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
-                        if(user.User.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
+                        if(highestEB2.DBUser != null && user.User?.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
