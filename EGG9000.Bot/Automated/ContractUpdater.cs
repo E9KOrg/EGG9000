@@ -132,8 +132,6 @@ namespace EGG9000.Bot.Automated {
                 }
 
             }
-
-            await _db.SaveChangesAsync(CancellationToken.None);
         }
 
         public static async Task<Embed> GetContractEmbed(GuildContract guildContract, ApplicationDbContext db, SocketGuild guild, Ei.Contract.Types.PlayerGrade grade = Ei.Contract.Types.PlayerGrade.GradeUnset) {
@@ -186,6 +184,7 @@ namespace EGG9000.Bot.Automated {
                         await farmersUnion.SendMessageAsync(text: "", embed: EmbedHelpers.EmbedAlert($"The contract `{guildContract.Contract.GetE9KName(false)}` is ready to be scored."));
                     }
                     guildContract.ReadyToScore = true;
+                    await _db.SaveChangesAsync(CancellationToken.None);
                 }
 
 
