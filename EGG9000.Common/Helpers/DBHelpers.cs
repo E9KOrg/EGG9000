@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 using System;
@@ -19,6 +20,14 @@ namespace EGG9000.Common.Helpers {
                 try {
                     return (true, await db.SaveChangesAsync(cancellationToken));
                 } catch(Exception e) {
+                    // Never retry on DB timeout or connection failure - fail fast so the caller can release resources
+                    // and avoid compounding load on an already-stressed database
+                    if(e is SqlException { Number: -2 or 20 } || e.InnerException is SqlException { Number: -2 or 20 }) {
+                        if(logger is not null) {
+                            logger.LogWarning("SaveChangesAsyncRetry: SQL timeout/connection error, not retrying");
+                        }
+                        return (false, -1);
+                    }
                     //If we reached max retry count, exit
                     if(currentRetry++ > retryCount) {
                         if(logger is not null) {
