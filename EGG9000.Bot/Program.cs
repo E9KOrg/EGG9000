@@ -116,7 +116,10 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
 
         services.AddDbContextFactory<ApplicationDbContext>(options => {
-            options.UseSqlServer(connectionString, x => x.MigrationsAssembly("EGG9000.Common"));
+            options.UseSqlServer(connectionString, x => {
+                x.MigrationsAssembly("EGG9000.Common");
+                x.CommandTimeout(15);
+            });
             options.EnableSensitiveDataLogging(true);
         });
 
