@@ -100,7 +100,7 @@ namespace EGG9000.Bot.Automated {
 
 
                 if(dbNeedsUpdate) {
-                    await _db.SaveChangesAsyncRetry(2, CancellationToken.None);
+                    await _db.SaveChangesAsyncRetry(2, logger: _logger, cancellationToken: CancellationToken.None);
                     _db._cache.InvalidateCustomEggs();
                 }
 
