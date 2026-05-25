@@ -116,6 +116,11 @@ namespace EGG9000.Common.Helpers {
             try {
                 await policy.Execute(async () => await _CreateCoop(ContractID, grade, coopName, secondsRemaining, userId, allowAllGrades));
             } catch(Exception) {
+                // Coop may have been created manually before the bot processed it - check before failing
+                var existingStatus = await ContractsAPI.GetCoopStatusBot(ContractID, coopName);
+                if(existingStatus is not null && existingStatus.Success) {
+                    return true;
+                }
                 return false;
             }
 
