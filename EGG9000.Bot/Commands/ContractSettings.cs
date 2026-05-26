@@ -13,8 +13,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-using RazorEngine.Compilation.ImpromptuInterface.InvokeExt;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -312,7 +310,6 @@ namespace EGG9000.Bot.Commands {
             var builder = new ComponentBuilder().WithSelectMenu($"MCSRedoLeggacies:{index},{dbuser.DiscordId}", GetRedoLeggacyOptions(account, dbuser));
 
             if(account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
-                builder.WithContext($"Redo leggacy contracts under {account.RedoScoreThreshold} CS");
                 builder.WithButton("Change CS Threshold", $"RLThreshModal:{index},{dbuser.DiscordId}");
             }
 
