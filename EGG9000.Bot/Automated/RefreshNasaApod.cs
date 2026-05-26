@@ -41,6 +41,6 @@ namespace EGG9000.Bot.Automated;
                 _logger.LogInformation("Posted APOD {} to Guild {GuildId}", latestPost.DateString, apodDetails.Guild.Id);
             } else _logger.LogWarning("Failed to post APOD to Guild {GuildId}", apodDetails.Guild.Id);
         }
-        if(dbNeedsUpdate) await _db.SaveChangesAsyncRetry(2, cancellationToken);
+        if(dbNeedsUpdate) await _db.SaveChangesAsyncRetry(2, logger: _logger, cancellationToken: cancellationToken);
     }
 }

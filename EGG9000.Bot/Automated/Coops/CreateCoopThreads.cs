@@ -145,15 +145,16 @@ namespace EGG9000.Bot.Automated.Coops {
                         continue;
                     }
                     if(cancellationToken.IsCancellationRequested) return;
-                    var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId);
+                    var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId)
 
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
                         var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
+                        timings.Set("Setup");
                         if(!coop.AddedFromBackup) {
                             var creator = ContractsAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
-                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default);
+                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default, timings: timings);
 
                             if(creator != default) {
                                 CreatorLastUsed[new CreatorInfo() { EggIncId = creator.EggIncId, ContractId = coop.ContractID, Grade = (PlayerGrade)coop.League }] = DateTimeOffset.Now;
@@ -355,6 +356,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
                 await Task.Delay(timeToDelay);
             }
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
             return headerChannel;
         }
 

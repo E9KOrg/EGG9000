@@ -122,13 +122,16 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     //_logger.LogInformation(Configuration.GetConnectionString("DefaultConnection"));
     //_logger.LogInformation(Configuration.GetChildren().Count().ToString());
     services.AddDbContext<ApplicationDbContext>(
-        options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")),
+        options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(15)),
         contextLifetime: ServiceLifetime.Scoped,
         optionsLifetime: ServiceLifetime.Singleton);
 
 
     services.AddDbContextFactory<ApplicationDbContext>(options => {
-        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => x.MigrationsAssembly("EGG9000.Common"));
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => {
+            x.MigrationsAssembly("EGG9000.Common");
+            x.CommandTimeout(15);
+        });
         options.EnableSensitiveDataLogging(true);
     });
 
