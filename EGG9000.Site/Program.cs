@@ -5,6 +5,7 @@ using Discord.WebSocket;
 
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
 using EGG9000.Site.Data;
@@ -70,6 +71,7 @@ var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurre
 logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
+DockerSecretsHelper.Initialize(builder.Configuration);
 builder.WebHost.UseUrls("http://0.0.0.0:5013");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
@@ -205,9 +207,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
-    services.Configure<APILinkOptions>(x => x.AsyncLoadCache = true);
-    services.AddSingleton<APILink>();
-    services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
     services.AddHostedService<UserCacheRefreshService>();
