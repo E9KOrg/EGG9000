@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using EGG9000.Common.Helpers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 
 namespace EGG9000.Site.Controllers {
@@ -42,7 +43,7 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateeventimage")]
         public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] Event customEvent) {
 #if RELEASE
-            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != Common.Services.APILink.AUTHENTICATION_KEY) {
+            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) {
                 return NotFound();
             }
 #endif 
@@ -122,7 +123,7 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
 #if RELEASE
-            //if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != Common.Services.APILink.AUTHENTICATION_KEY) {
+            //if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) {
             //    return NotFound();
             //}
 #endif
