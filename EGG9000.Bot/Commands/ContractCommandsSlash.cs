@@ -1037,5 +1037,50 @@ namespace EGG9000.Bot.Commands {
             var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, true); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedSuccess($"Co-op `{coop.Name}` {PlayerGradeDetails.GetEmoji(coop.League)} created for <#{component.ChannelId}>"); });
         }
+
+        [SlashCommand(Description = "Used to remove a user from a co-op to fix a glitch.", AdminOnly = StaffOnlyLevel.FarmHand)]
+        public static async Task LeaveCoop(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
+            await command.DeferAsync();
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            if(coop == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
+                return;
+            }
+            var userid = useraccount.Split("|")[0];
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbUser is null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate DBUser entry for user"); });
+                return;
+            }
+
+            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+            var xref = await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbUser.Id && x.CoopId == coop.Id && x.EggIncId == account.Id);
+
+            if(xref == null) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find xref"); });
+                return;
+            }
+
+            var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+
+            if(status?.Participants?.Count < contract.MaxUsers) {
+                logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
+                var coopGuild = _client.Guilds.First(x => x.Id == coop.OverflowGuildId);
+                var users = await db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync();
+                var dbguild = await db.Guilds.FirstAsync(x => x.Id == coop.GuildId);
+                var parentGuild = _client.Guilds.First(x => x.Id == dbguild.Id);
+                await coopStatusUpdaterThreads.ProcessCoop(coop.Id, coopGuild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+
+                await command.Channel.SendMessageAsync($"Successfully removed <@{dbUser.DiscordId}> from co-op, they should be able to rejoin now.");
+                await command.DeleteOriginalResponseAsync();
+            } else {
+                logger.LogInformation("Did not {user} from {coop}", dbUser.DiscordUsername, coop.Name);
+                await command.ModifyOriginalResponseAsync($"Attempted to remove <@{dbUser.DiscordId}> from co-op, please check again in a few minutes.");
+            }
+        }
     }
 }

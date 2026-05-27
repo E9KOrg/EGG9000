@@ -96,6 +96,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
         services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
 
+        DockerSecretsHelper.Initialize(hostContext.Configuration);
+
         // Get connection string - supports both Docker secrets and local development
         var connectionString = DockerSecretsHelper.GetConfigOrSecret(
             hostContext.Configuration,
@@ -137,7 +139,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<UserCacheRefreshService>();
         services.AddHostedService<ActiveCoopsCacheRefreshService>();
         services.AddSingleton<Words>();
-        services.Configure<APILinkOptions>(x => x.ReportUpdatedClientVersion = true);
 
 #if RELEASE
         var release = true;
@@ -214,9 +215,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         }
 
         services.AddSingleton<DiscordHostedService>();
-        services.AddSingleton<DiscordSocketClient>(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
-        services.AddSingleton<APILink>();
-        services.AddHostedService(provider => provider.GetService<APILink>());
+        services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
 
         services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
         services.AddHostedService<LeaderboardUpdater>();
@@ -234,6 +233,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<UserCXPUpdater>();
         services.AddHostedService<NewContracts>();
+        services.AddHostedService<CreateCoopViaAPI>();
         services.AddHostedService<CreateCoopThreads>();
         services.AddHostedService<ShipReturnDM>();
         services.AddHostedService<UserSnapShots>();

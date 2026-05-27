@@ -135,7 +135,7 @@ namespace EGG9000.Common.Database.Entities {
 
     public enum CoopStatusEnum {
         ManualWaitingOnCreation = 1,
-        ManualCreated = 2,
+        WaitingOnCreation = 2,
         WaitingOnThread = 3,
         WaitingOnStarter = 10,
         WaitingOnAssigned = 11,

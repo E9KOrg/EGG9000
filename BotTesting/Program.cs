@@ -54,8 +54,6 @@ using NLog.Web;
 //        services.AddMemoryCache();
 //        services.AddSingleton<DiscordHostedService>();
 //        services.AddSingleton<DiscordSocketClient>(provider => provider.GetService<DiscordHostedService>());
-//        //services.AddSingleton<APILink>();
-//        //services.AddHostedService<APILink>(provider => provider.GetService<APILink>());
 
 //        //services.AddHostedService<CommandService>();
 //        //services.AddHostedService<UpcomingContracts>();

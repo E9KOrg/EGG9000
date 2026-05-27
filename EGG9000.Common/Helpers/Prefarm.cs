@@ -323,7 +323,7 @@ namespace EGG9000.Common.Helpers {
             return coopsBreakdown;
         }
 
-        public static async Task<List<UserPreFarm>> GetBackupsForAliens(List<Coop> coops, List<UserPreFarm> allPrefarms, List<DBCustomEgg> customEggs, Contract contract, APILink apiLink) {
+        public static async Task<List<UserPreFarm>> GetBackupsForAliens(List<Coop> coops, List<UserPreFarm> allPrefarms, List<DBCustomEgg> customEggs, Contract contract) {
             var tasks = new List<Task<CustomBackup>>();
             foreach(var coop in coops) {
                 if(coop.LastStatusUpdate != null) {

@@ -11,7 +11,7 @@
             <div>
 
                 Coop
-                @if (xref.Coop.ThreadID == 0) {
+                @if (xref.Coop.Status == CoopStatusEnum.WaitingOnCreation) {
                     <u>[Assigned, pending creation]</u>
                 } else {
                     <u>@xref.Coop.Name</u>

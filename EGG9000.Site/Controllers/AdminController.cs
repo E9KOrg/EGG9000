@@ -292,7 +292,7 @@ namespace EGG9000.Site.Controllers {
                 }).ToList(),
                 Guild = guild,
                 ContractsToScore = contractsToScore,
-                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && x.Status == CoopStatusEnum.WaitingOnThread && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now)
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now)
             });
         }
 
