@@ -145,7 +145,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         continue;
                     }
                     if(cancellationToken.IsCancellationRequested) return;
-                    var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId)
+                    var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId);
 
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
@@ -356,10 +356,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
                 await Task.Delay(timeToDelay);
             }
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/master
             return headerChannel;
         }
 
