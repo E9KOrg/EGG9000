@@ -24,7 +24,6 @@ $discordClientId = $secrets.ConnectionStrings.ClientId
 $discordToken = $secrets.ConnectionStrings.Token
 $discordSecret = $secrets.ConnectionStrings.ClientSecret
 $bugsnagKey = $secrets.ConnectionStrings.BugSnagApiKey
-$apiLinkUrl = $secrets.ConnectionStrings.APILinkURL
 $rabbitmqConn = $secrets.ConnectionStrings.RabbitMQServer
 
 
@@ -91,7 +90,6 @@ New-RemoteDockerSecret "discord_client_id" $discordClientId $RemoteHost $RemoteU
 New-RemoteDockerSecret "discord_token" $discordToken $RemoteHost $RemoteUser
 New-RemoteDockerSecret "discord_client_secret" $discordSecret $RemoteHost $RemoteUser
 New-RemoteDockerSecret "bugsnag_api_key" $bugsnagKey $RemoteHost $RemoteUser
-New-RemoteDockerSecret "api_link_url" $apiLinkUrl $RemoteHost $RemoteUser
 New-RemoteDockerSecret "rabbitmq_connection" $rabbitmqConn $RemoteHost $RemoteUser
 
 
