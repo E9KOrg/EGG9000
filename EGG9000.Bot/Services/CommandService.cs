@@ -56,7 +56,6 @@ namespace EGG9000.Bot.Services {
         private List<UserCommandFunction> _userCommandFunctions;
         private List<ComponentCommandFunction> _componentCommandFunctions;
         private List<ModalCommandFunction> _modalFunctions;
-        private readonly APILink _apilink;
         private readonly Words _words;
         private readonly Bugsnag.IClient _bugsnag;
         private readonly SemaphoreSlim _semaphoreSlim = new(50);
@@ -74,7 +73,6 @@ namespace EGG9000.Bot.Services {
         private readonly IMemoryCache _cache;
         public CommandService(IConfiguration Configuration,
                 DiscordHostedService discord,
-                APILink apilink,
                 Words words,
                 Bugsnag.IClient bugsnag,
                 ContractUpdater contractUpdater,
@@ -89,7 +87,6 @@ namespace EGG9000.Bot.Services {
                 ActiveMonitorHostedService activeMonitorHostedService
             ) {
             _discord = discord;
-            _apilink = apilink;
             _words = words;
 
             _bugsnag = bugsnag;
@@ -199,8 +196,6 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_discord.Gateway);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
                             parameters.Add(_discord);
-                        } else if(parameterInfo.ParameterType == typeof(APILink)) {
-                            parameters.Add(_apilink);
                         } else if(parameterInfo.ParameterType == typeof(Words)) {
                             parameters.Add(_words);
                         } else if(parameterInfo.ParameterType == typeof(SocketUser)) {
@@ -631,7 +626,7 @@ namespace EGG9000.Bot.Services {
             // Construct a new FauxCommand so we can hook into Registering
             var command = new FauxCommand(message, guild.Id);
 
-            await RegisterCommandsSlash._Register(command, db, _discord, _apilink, _bugsnag, eiidMatch.Value, message.Author, _logger);
+            await RegisterCommandsSlash._Register(command, db, _discord, _bugsnag, eiidMatch.Value, message.Author, _logger);
         }
 
         private async Task HandleMessageReceived(SocketMessage message) {

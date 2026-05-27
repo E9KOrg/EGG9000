@@ -1,6 +1,4 @@
 ﻿
-using ComponentAce.Compression.Libs.zlib;
-
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -554,15 +552,14 @@ namespace EGG9000.Bot.EggIncAPI {
                 //}
 
                 if(response.IsSuccessStatusCode) {
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
-                    var authMessageDecoded = Ei.AuthenticatedMessage.Parser.ParseFrom(responseString);
+                    var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                    var authMessageDecoded = AuthenticatedMessage.Parser.ParseFrom(responseString);
 
                     if(authMessageDecoded.Compressed) {
                         using var outMemoryStream = new MemoryStream();
-                        using var outZStream = new ZOutputStream(outMemoryStream);
                         using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
-                        CopyStream(inMemoryStream, outZStream);
-                        outZStream.finish();
+                        using var zlib = new ZLibStream(inMemoryStream, CompressionMode.Decompress);
+                        zlib.CopyTo(outMemoryStream);
                         return Convert.ToBase64String(outMemoryStream.ToArray());
                     } else {
                         return authMessageDecoded.Message.ToString();
@@ -617,7 +614,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 string r;
                 if(response.IsSuccessStatusCode) {
                     r = await response.Content.ReadAsStringAsync();
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
+                    var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync());
 
 
                     var backup = GetFromAuthenticatedMessage<EggIncFirstContactResponse>(responseString);
