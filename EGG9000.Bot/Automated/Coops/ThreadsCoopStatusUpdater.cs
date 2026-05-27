@@ -246,7 +246,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(!coop.SuccessfullyStarted && statusReponse.Status.Success) {
                     coop.SuccessfullyStarted = true;
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                 }
 
                 await CheckForCoopCreatorStillIn(coop, status);
@@ -310,9 +309,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var coopDetails = new CoopDetails(coop, coop.Contract, coop.League, users, customEggs, _client.Gateway, statusReponse.Status);
 
 
-                if(CheckForCreator(coop, coopDetails)) {
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
-                }
+                _ = CheckForCreator(coop, coopDetails);
 
 
                 //** Verify if people have access to the parent channel
@@ -372,8 +369,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     _db.Add(xref);
                     participant.AddXref(xref);
                 }
-                if(participantsInCoopButWithoutXref.Count > 0)
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                 foreach(var participant in participantsInCoopButWithoutXref) {
                     if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
                         _queue.EnqueueLow(() => coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account."));
@@ -482,13 +477,11 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = true;
                         _queue.EnqueueLow(() => coopThread.SendMessageAsync($"Coop {coop.Name} is now projected to finish!"));
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.Now) {
                         coop.ProjectedToFinish = false;
                         _queue.EnqueueLow(() => coopThread.SendMessageAsync($"Coop {coop.Name} is **no longer** projected to finish."));
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
 
                     if(!coop.Finished && status.Finished()) {
@@ -550,7 +543,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(unjoinedRole != null) {
                             await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                         }
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     }
                 }
 
@@ -566,8 +558,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         xref.UpdateCoopSetting();
                     }
                 }
-                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
-
                 timings.Set(5.1);
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
 
@@ -591,7 +581,6 @@ namespace EGG9000.Bot.Automated.Coops {
                                 }
                             });
                         coop.RolesAddedToThread = true;
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                     } catch(Exception) {
                         _logger.LogInformation("Failed to compile role pings for {coop}", coopName);
                     }
@@ -637,9 +626,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(xref?.Xref != null) {
                         xref.Xref.AddedToChannel = true;
                     }
-                }
-                if(usersAdded.Count > 0) {
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
                 }
 
                 //Handle waiting on assigned
