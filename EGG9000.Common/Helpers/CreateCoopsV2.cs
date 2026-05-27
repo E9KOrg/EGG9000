@@ -6,6 +6,7 @@ using EGG9000.Bot.EggIncAPI;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Factories;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -102,7 +103,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true, TimingsFactory timings = null) {
             userId ??= ContractsAPI.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -121,34 +122,28 @@ namespace EGG9000.Common.Helpers {
 
             try {
                 await policy.Execute(async () => await _CreateCoop(ContractID, grade, coopName, secondsRemaining, userId, allowAllGrades));
+                timings?.Set("Create Coop");
             } catch(Exception) {
                 return false;
             }
 
             //var response = await _CreateCoop(ContractID, League, coop, secondsRemaining);
 
-            //var s = "ChJFSTUyMjMyOTk1MTgzMDAxNjASC2EtbmV3LWdyYWRlGgZ0ZXN0MzQhAAAAAAAAAAApAAAAAAAAAAAwADmsTTYrrB0sQEIkODMxNWRhYmQtZThlNy00ZmUyLWFiYTAtZTBlMjEwOWNhZmIySABRAAAAAAAA8D9ZAAAAAAAA8D9iNQoSRUk1MjIzMjk5NTE4MzAwMTYwEC4aBDEuMjYiCDEuMjYuMC41KgNJT1MyAlVTOgJlbkAAaAByNgkAAAAAAAAAABEAAAAAAEBvQBkL16NwPQqnPyEAAAAAAAAAACmrqqqqqupWQDEAAAAAAAAAAHg1ggHBDgkAwEFHlmFcQhA1GAAgASgFKAUoBSgFKAUoBSgFKAUoBSgFKAUoBSgFKAUoBSgFKAUoBSgFMhEKDWhvbGRfdG9faGF0Y2gQDzIRCg1lcGljX2hhdGNoZXJ5EBQyHAoYZXBpY19pbnRlcm5hbF9pbmN1YmF0b3JzEBQyFgoSdmlkZW9fZG91Ymxlcl90aW1lEAEyEQoNZXBpY19jbHVja2luZxAIMhMKD2VwaWNfbXVsdGlwbGllchALMhcKE2NoZWFwZXJfY29udHJhY3RvcnMQADIPCgtidXN0X3VuaW9ucxAAMhQKEGNoZWFwZXJfcmVzZWFyY2gQCjIVChFlcGljX3NpbG9fcXVhbGl0eRAAMhEKDXNpbG9fY2FwYWNpdHkQFDIVChFpbnRfaGF0Y2hfc2hhcmluZxAAMhIKDmludF9oYXRjaF9jYWxtEBQyFQoRYWNjb3VudGluZ190cmlja3MQBzIUChBob2xkX3RvX3Jlc2VhcmNoEAAyDgoJc291bF9lZ2dzEIwBMhIKDnByZXN0aWdlX2JvbnVzEBQyEQoNZHJvbmVfcmV3YXJkcxAAMhMKD2VwaWNfZWdnX2xheWluZxAHMhsKF3RyYW5zcG9ydGF0aW9uX2xvYmJ5aXN0EAIyDgoKd2FycF9zaGlmdBAAMhIKDnByb3BoZWN5X2JvbnVzEAUyFAoQYWZ4X21pc3Npb25fdGltZRAAMhgKFGFmeF9taXNzaW9uX2NhcGFjaXR5EAA4AUEAAAAAAAAAAEgASBNIE0gTUABQAFAAUABYAGABaAFyDwoLY29tZnlfbmVzdHMQAHITCg9udXRyaXRpb25hbF9zdXAQAHIVChFiZXR0ZXJfaW5jdWJhdG9ycxAAchYKEmV4Y2l0YWJsZV9jaGlja2VucxAAchEKDWhhYl9jYXBhY2l0eTEQAHIWChJpbnRlcm5hbF9oYXRjaGVyeTEQAHIUChBwYWRkZWRfcGFja2FnaW5nEAByFgoSaGF0Y2hlcnlfZXhwYW5zaW9uEAByDwoLYmlnZ2VyX2VnZ3MQAHIWChJpbnRlcm5hbF9oYXRjaGVyeTIQAHIPCgtsZWFmc3ByaW5ncxAAchYKEnZlaGljbGVfcmVsaWFibGl0eRAAchMKD3Jvb3N0ZXJfYm9vc3RlchAAchgKFGNvb3JkaW5hdGVkX2NsdWNraW5nEAByFQoRaGF0Y2hlcnlfcmVidWlsZDEQAHIOCgp1c2RlX3ByaW1lEAByEAoMaGVuX2hvdXNlX2FjEAByDQoJc3VwZXJmZWVkEAByDAoIbWljcm9sdXgQAHIWChJjb21wYWN0X2luY3ViYXRvcnMQAHIVChFsaWdodHdlaWdodF9ib3hlcxAAchEKDWV4Y29za2VsZXRvbnMQAHIWChJpbnRlcm5hbF9oYXRjaGVyeTMQAHIVChFpbXByb3ZlZF9nZW5ldGljcxAAchYKEnRyYWZmaWNfbWFuYWdlbWVudBAAchkKFW1vdGl2YXRpb25hbF9jbHVja2luZxAAchMKD2RyaXZlcl90cmFpbmluZxAAchcKE3NoZWxsX2ZvcnRpZmljYXRpb24QAHIUChBlZ2dfbG9hZGluZ19ib3RzEAByDwoLc3VwZXJfYWxsb3kQAHIUChBldmVuX2JpZ2dlcl9lZ2dzEAByFgoSaW50ZXJuYWxfaGF0Y2hlcnk0EAByEwoPcXVhbnR1bV9zdG9yYWdlEAByGAoUZ2VuZXRpY19wdXJpZmljYXRpb24QAHIWChJpbnRlcm5hbF9oYXRjaGVyeTUQAHIRCg10aW1lX2NvbXByZXNzEAByEgoOaG92ZXJfdXBncmFkZXMQAHIUChBncmF2aXRvbl9jb2F0aW5nEAByEAoMZ3Jhdl9wbGF0aW5nEAByEwoPY2hyeXN0YWxfc2hlbGxzEAByFwoTYXV0b25vbW91c192ZWhpY2xlcxAAchIKDm5ldXJhbF9saW5raW5nEAByEwoPdGVsZXBhdGhpY193aWxsEAByGAoUZW5saWdodGVuZWRfY2hpY2tlbnMQAHIUChBkYXJrX2NvbnRhaW5tZW50EAByFwoTYXRvbWljX3B1cmlmaWNhdGlvbhAAchIKDm11bHRpX2xheWVyaW5nEAByFgoSdGltZWxpbmVfZGl2ZXJzaW9uEAByFgoSd29ybWhvbGVfZGFtcGVuaW5nEAByDQoJZWdnc2lzdG9yEAByEgoObWljcm9fY291cGxpbmcQAHIVChFuZXVyYWxfbmV0X3JlZmluZRAAchMKD21hdHRlcl9yZWNvbmZpZxAAchUKEXRpbWVsaW5lX3NwbGljaW5nEAByFAoQaHlwZXJfcG9ydGFsbGluZxAAchsKF3JlbGF0aXZpdHlfb3B0aW1pemF0aW9uEACAAQCQAQCaARA4AUIFCOgHEgBCBQjyBxIAoAEuqAH6AagBAKgBAKgBAA==";
-            //var parse1 = new MessageParser<Ei.ContractCoopStatusUpdateRequest>(() => new Ei.ContractCoopStatusUpdateRequest());
-            //var res = parse1.ParseFrom(System.Convert.FromBase64String(s));
 
 
-            var res = new Ei.ContractCoopStatusUpdateRequest {
-                ContractIdentifier = ContractID,
-                CoopIdentifier = coopName.ToLower(),
-                Eop = 1, SoulPower = 24, UserId = userId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
-                ProductionParams = new Ei.FarmProductionParams {
-                    FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
-                }
-            };
-
-            var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
-
-
-            //var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
-            //    ClientVersion = ContractsAPI.ClientVersion,
+            //var res = new Ei.ContractCoopStatusUpdateRequest {
             //    ContractIdentifier = ContractID,
-            //    CoopIdentifier = coopName.ToLower(), PlayerIdentifier = userId,
-            //}, userId);
+            //    CoopIdentifier = coopName.ToLower(),
+            //    Eop = 1, SoulPower = 24, UserId = userId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
+            //    ProductionParams = new Ei.FarmProductionParams {
+            //        FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
+            //    }
+            //};
+
+
+            //var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+
+
 
             if(kickCreator) {
                 var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
@@ -159,6 +154,7 @@ namespace EGG9000.Common.Helpers {
                     Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
                     RequestingUserId = userId
                 }, userId);
+                timings?.Set("Kick Creator");
             }
 
             return true;
