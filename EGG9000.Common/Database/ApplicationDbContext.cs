@@ -146,12 +146,14 @@ namespace EGG9000.Common.Database {
         //    //    }
 
         public readonly IMemoryCache _cache;
+#nullable enable
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMemoryCache? cache = null) : base(options) {
             _cache = cache ?? new MemoryCache(new MemoryCacheOptions());
             ChangeTracker.Tracked += OnEntityTracked;
             ChangeTracker.StateChanged += OnEntityStateChanged;
             //Console.WriteLine("ApplicationDbContext created");
         }
+#nullable disable
 
         void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
             //Console.WriteLine($"Entity tracked: {e.Entry.Entity.GetType().Name}");
