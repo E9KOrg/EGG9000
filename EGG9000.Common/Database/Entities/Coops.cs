@@ -91,6 +91,7 @@ namespace EGG9000.Common.Database.Entities {
                 _status = value;
                 var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value, new JsonSerializerSettings { ContractResolver = new CustomContractResolver() }));
 
+                byte[] compressed;
                 using(var msi = new MemoryStream(bytes))
                 using(var mso = new MemoryStream()) {
                     using(var gs = new GZipStream(mso, CompressionMode.Compress)) {
@@ -98,8 +99,14 @@ namespace EGG9000.Common.Database.Entities {
                         CopyTo(msi, gs);
                     }
 
-                    _StatusCompressed = mso.ToArray();
+                    compressed = mso.ToArray();
                 }
+
+                // Only reassign the mapped LOB column when the payload actually changed, so EF Core
+                // does not rewrite _StatusCompressed every status cycle. That blob write is the
+                // heaviest and most lock-contended write on Coops during contract launches.
+                if(_StatusCompressed is null || !_StatusCompressed.AsSpan().SequenceEqual(compressed))
+                    _StatusCompressed = compressed;
             }
         }
 
