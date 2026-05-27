@@ -10,7 +10,14 @@
         {
             <div>
 
-                Coop <u>@xref.Coop.Name</u> for contract <u>@xref.Coop.Contract.Name</u>
+                Coop
+                @if (xref.Coop.ThreadID == 0) {
+                    <u>[Assigned, pending creation]</u>
+                } else {
+                    <u>@xref.Coop.Name</u>
+
+                }
+                for contract <u>@xref.Coop.Contract.Name</u>
                 @if (Model.EggIncAccounts.Count > 1)
                 {
                     @: with account <u>@Model.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Name</u>
