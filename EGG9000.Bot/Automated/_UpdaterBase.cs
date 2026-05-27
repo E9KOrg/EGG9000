@@ -27,6 +27,7 @@ namespace EGG9000.Bot.Automated {
     }
 
     public interface IUpdaterService : IHostedService {
+        public bool Active();
         public bool Running();
         public void ResetTimer();
     }
@@ -174,9 +175,13 @@ namespace EGG9000.Bot.Automated {
 
         public abstract Task Run(object state, CancellationToken cancellationToken);
 
-        public bool Running() {
+        public bool Active() {
             return _timer is not null;
         }
+        public bool Running() {
+            return _semaphoreSlim.CurrentCount > 0;
+        }
+
         public Task StartAsync(CancellationToken cancellationToken) {
             try {
                 _cts ??= new CancellationTokenSource();

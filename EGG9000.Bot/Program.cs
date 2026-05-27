@@ -234,6 +234,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<UserCXPUpdater>();
         services.AddHostedService<NewContracts>();
+        services.AddHostedService<CreateCoopViaAPI>();
         services.AddHostedService<CreateCoopThreads>();
         services.AddHostedService<ShipReturnDM>();
         services.AddHostedService<UserSnapShots>();
