@@ -116,6 +116,12 @@ namespace EGG9000.Common.Services {
                         await item.Operation();
                     } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) {
                         _logger.LogDebug("DiscordQueue: message no longer exists (10008), skipping");
+                    } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.MissingPermissions) {
+                        var reqType = httpEx.Request?.GetType();
+                        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                        var method = reqType?.GetProperty("Method", flags)?.GetValue(httpEx.Request) as string;
+                        var endpoint = reqType?.GetProperty("Endpoint", flags)?.GetValue(httpEx.Request) as string;
+                        _logger.LogWarning("DiscordQueue: missing permissions (50013) on {method} {endpoint}", method ?? "?", endpoint ?? "unknown");
                     } catch(TimeoutException) {
                         _logger.LogWarning("DiscordQueue: operation timed out, retrying in 1s");
                         try {
