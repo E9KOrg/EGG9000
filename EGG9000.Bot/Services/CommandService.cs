@@ -50,7 +50,7 @@ namespace EGG9000.Bot.Services {
         public ulong User { get; } = user;
     }
 
-    public class CommandService : IHostedService {
+    public partial class CommandService : IHostedService {
         private readonly DiscordHostedService _discord;
         private List<SlashCommandFunction> _slashCommandFunctions;
         private List<UserCommandFunction> _userCommandFunctions;
@@ -152,6 +152,7 @@ namespace EGG9000.Bot.Services {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
             var semaphoreAcquired = false;
+            ApplicationDbContext commandDb = null;
             /*if(arg is SocketMessageComponent preDefer && !preDefer.HasResponded) {
                 try {
                     await preDefer.DeferAsync();
@@ -192,7 +193,8 @@ namespace EGG9000.Bot.Services {
                         } else if(parameterInfo.ParameterType == typeof(SocketUserCommand)) {
                             parameters.Add(arg);
                         } else if(parameterInfo.ParameterType == typeof(ApplicationDbContext)) {
-                            parameters.Add(await _dbContextFactory.CreateDbContextAsync());
+                            commandDb = await _dbContextFactory.CreateDbContextAsync();
+                            parameters.Add(commandDb);
                         } else if(parameterInfo.ParameterType == typeof(DiscordSocketClient)) {
                             parameters.Add(_discord.Gateway);
                         } else if(parameterInfo.ParameterType == typeof(DiscordHostedService)) {
@@ -258,6 +260,7 @@ namespace EGG9000.Bot.Services {
                 }
             } finally {
                 if(semaphoreAcquired) _semaphoreSlim.Release();
+                if(commandDb is not null) await commandDb.DisposeAsync();
                 sw.Stop();
                 RunCommandDuration.Observe(sw.Elapsed.TotalSeconds);
             }
@@ -632,40 +635,48 @@ namespace EGG9000.Bot.Services {
         }
 
         private async Task HandleMessageReceived(SocketMessage message) {
-            var db = await _dbContextFactory.CreateDbContextAsync();
-            var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
-            if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
-                _logger.LogInformation("Detected boost message in CP guild from {user}", message.Author.Username);
-                var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id);
-                var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
-                await MeritCommands.CreateMerit("Boosted the server!", db, _discord.Gateway, message.Author, Guid.Empty, guild: dbGuild);
-                await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
-            }
+            ApplicationDbContext db = null;
+            try {
+                var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
+                if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
+                    _logger.LogInformation("Detected boost message in CP guild from {user}", message.Author.Username);
+                    db ??= await _dbContextFactory.CreateDbContextAsync();
+                    var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id);
+                    var cpGeneralChannel = guild.TextChannels.First(x => x.Id == 656455568353132546);
+                    await MeritCommands.CreateMerit("Boosted the server!", db, _discord.Gateway, message.Author, Guid.Empty, guild: dbGuild);
+                    await cpGeneralChannel.SendMessageAsync($"{message.Author.Mention} just boosted the server!");
+                }
 
 
-            if(!message.Author.IsBot && guild != null) {
-                await HandleScreenshotRegistration(message, guild, db);
-            } else if(!message.Author.IsBot && message.Channel is SocketDMChannel) {
-                await HandleTestOCR(message, db);
-            }
+                if(!message.Author.IsBot && guild != null) {
+                    db ??= await _dbContextFactory.CreateDbContextAsync();
+                    await HandleScreenshotRegistration(message, guild, db);
+                } else if(!message.Author.IsBot && message.Channel is SocketDMChannel) {
+                    db ??= await _dbContextFactory.CreateDbContextAsync();
+                    await HandleTestOCR(message, db);
+                }
 
-            if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {
-                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id || x.DiscordChannelId == message.Channel.Id);
-                if(coop is not null) {
-                    var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
-                    foreach(var xref in xrefs.Where(x => x.User.DiscordId != message.Author.Id)) {
-                        if(xref.CoopSetting?.PingOnMessage ?? false) {
-                            var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
-                            var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
-                            if(discordUser is null) continue; //Another null check
-                            var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{(coop.ThreadID != 0 ? coop.ThreadID : coop.DiscordChannelId)}>, **{author.GetCleanName()}:** {message.Content}", db);
+                if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {
+                    db ??= await _dbContextFactory.CreateDbContextAsync();
+                    var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id || x.DiscordChannelId == message.Channel.Id);
+                    if(coop is not null) {
+                        var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
+                        foreach(var xref in xrefs.Where(x => x.User.DiscordId != message.Author.Id)) {
+                            if(xref.CoopSetting?.PingOnMessage ?? false) {
+                                var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
+                                var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
+                                if(discordUser is null) continue; //Another null check
+                                var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{(coop.ThreadID != 0 ? coop.ThreadID : coop.DiscordChannelId)}>, **{author.GetCleanName()}:** {message.Content}", db);
+                            }
                         }
                     }
                 }
+            } finally {
+                if(db is not null) await db.DisposeAsync();
             }
 
-            if(message.Content.StartsWith("/") && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
-                var commandTextMatches = new Regex(@"^\/(\w+)(?:\s+(\w+))?").Match(message.Content);
+            if(message.Content.StartsWith('/') && (message.Interaction is null || message.Interaction.Type != InteractionType.ApplicationCommand)) {
+                var commandTextMatches = CommandRegex().Match(message.Content);
                 if(commandTextMatches.Success) {
                     var foundParentCommand = "";
                     var foundCommandText = "";
@@ -893,5 +904,8 @@ namespace EGG9000.Bot.Services {
             }
             await _semaphoreSlim.WaitAsync(cancellationToken);
         }
+
+        [GeneratedRegex(@"^\/(\w+)(?:\s+(\w+))?")]
+        private static partial Regex CommandRegex();
     }
 }
