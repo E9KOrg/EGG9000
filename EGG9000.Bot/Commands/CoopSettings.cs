@@ -1,6 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using EGG9000.Bot.Automated;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -148,6 +151,45 @@ namespace EGG9000.Bot.Commands {
 
             var props = MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, db, dbuser);
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+        }
+
+        [SlashCommand(Description = "Have the bot add your EB to your nickname in this server (will auto update)")]
+        public static async Task ShowEB(FauxCommand command, ApplicationDbContext db) {
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
+                return;
+            }
+            if(dbUser.showEB) {
+                await command.RespondAsync($"The bot is already set to update your EB automatically. It will update every {LeaderboardUpdater.UpdateTime.TotalMinutes} mins when the leaderboard does.", ephemeral: true);
+                return;
+            }
+
+            var ebs = dbUser.EggIncAccounts.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).Select(x => x.Backup.EarningsBonus.ToEggString());
+            var ebString = $" ({string.Join(",", values: ebs)})";
+            var newName = ((IGuildUser)command.User).GetCleanName().Truncate(32 - ebString.Length) + ebString;
+
+            await ((SocketGuildUser)command.User).ModifyAsync(x => x.Nickname = newName);
+
+            dbUser.showEB = true;
+            await db.SaveChangesAsync();
+            await command.RespondAsync($"{command.User.Mention} will be updated with their EB. To stop this run the command /hideEB", ephemeral: true);
+        }
+
+        [SlashCommand(Description = "Remove the EB from your nickname")]
+        public static async Task HideEB(FauxCommand command, ApplicationDbContext db) {
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            if(dbUser == null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"));
+                return;
+            }
+
+            dbUser.showEB = false;
+            await db.SaveChangesAsync();
+
+            var newName = ((IGuildUser)command.User).GetCleanName();
+            await ((SocketGuildUser)command.User).ModifyAsync(x => x.Nickname = newName);
+            await command.RespondAsync($"{command.User.Mention} will no longer be updated with their EB.", ephemeral: true);
         }
     }
 }
