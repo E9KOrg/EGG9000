@@ -113,14 +113,15 @@ namespace EGG9000.Common.Helpers {
                 TimeSpan.FromSeconds(7)
               ]);
 
+            // Coop may have been created manually. Check before attempting creation, since _CreateCoop overwrites an existing coop and kicks the creator
+            var existingStatus = await ContractsAPI.GetCoopStatusBot(ContractID, coopName);
+            if(existingStatus is not null && existingStatus.Success) {
+                return true;
+            }
+
             try {
                 await policy.Execute(async () => await _CreateCoop(ContractID, grade, coopName, secondsRemaining, userId, allowAllGrades));
             } catch(Exception) {
-                // Coop may have been created manually before the bot processed it - check before failing
-                var existingStatus = await ContractsAPI.GetCoopStatusBot(ContractID, coopName);
-                if(existingStatus is not null && existingStatus.Success) {
-                    return true;
-                }
                 return false;
             }
 
