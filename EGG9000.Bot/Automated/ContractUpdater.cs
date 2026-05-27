@@ -11,7 +11,6 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -46,38 +45,24 @@ namespace EGG9000.Bot.Automated {
 
             var timings = times.Finished();
 
-#if DEBUG
-            //guildGroups = guildGroups.Where(x => x.Key == dbguilds.First(x => x.Name.Contains("ingham")).DiscordSeverId);
-            //dbGuilds = dbGuilds.Where(x => x.Id == 1113544827750076567).ToList();
-#endif
-
-            foreach(var dbguild in dbGuilds) {
+            foreach(var dbGuild in dbGuilds) {
                 if(cancellationToken.IsCancellationRequested)
                     break;
-                //foreach(var groupGuildContracts in guildGroups.OrderBy(x => new Guid())) {
-                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
+
+                var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbGuild.DiscordSeverId);
                 if(guild == null)
                     continue;
 
                 _logger.LogInformation("Running Contracts for {guild}", guild.Name);
                 var dbusers = await _db.DBUsers.AsQueryable().Where(x => x.GuildId == guild.Id).ToListAsync(CancellationToken.None);
 
-
-
-                var groupGuildContracts = guildGroups.FirstOrDefault(x => x.Key == dbguild.DiscordSeverId);
-                //var contractIds = groupGuildContracts.Select(x => x.ContractID);
-
-
-
-
-                if(groupGuildContracts is not null) {
+                if(guildGroups.FirstOrDefault(x => x.Key == dbGuild.DiscordSeverId) is { } groupGuildContracts) {
                     foreach(var guildContract in groupGuildContracts.OrderByDescending(x => x.Created)) {
                         if(cancellationToken.IsCancellationRequested)
                             break;
-                        await UpdateContractChannel(_db, guildContract, guild, dbguild);
+                        await UpdateContractChannel(_db, guildContract, guild, dbGuild);
                     }
                 }
-
 
                 var contracts = await _db.Contracts.ToListAsync(CancellationToken.None);
                 var count = 0;
@@ -99,7 +84,7 @@ namespace EGG9000.Bot.Automated {
                             if(potentialCoops.Any(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId)) {
                                 var (contractid, coopname, userids, guildid, grade, endtime) = potentialCoops.First(y => y.contractid == farm.ContractId && y.coopname == farm.CoopId);
                                 userids.Add(user.Id);
-                                userids = userids.Distinct().ToList();
+                                userids = [.. userids.Distinct()];
                             } else {
                                 potentialCoops.Add((farm.ContractId, farm.CoopId, new List<Guid> { user.Id }, user.GuildId, (uint)farm.Grade, farm.CoopSharedEndTime));
                             }
@@ -107,11 +92,9 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
+                if(!dbGuild.AddOutsideCoops) continue;
+
                 foreach(var (contractid, coopname, userids, guildid, grade, endtime) in potentialCoops.Where(x => x.userids.Count > 1)) {
-
-                    var dbGuild = await _db.Guilds.FirstOrDefaultAsync(g => g.Id == guildid, CancellationToken.None);
-                    if(!dbGuild.AddOutsideCoops) continue;
-
                     var contract = contracts.First(x => x.ID == contractid);
                     var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.GuildId == guildid && x.ContractID == contractid && EF.Functions.Like(x.Name, coopname), CancellationToken.None);
                     if(exisitingCoop is not null) {
