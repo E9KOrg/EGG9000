@@ -116,6 +116,7 @@ namespace EGG9000.Common.Helpers {
 
             // Coop may have been created manually. Check before attempting creation, since _CreateCoop overwrites an existing coop and kicks the creator
             var existingStatus = await ContractsAPI.GetCoopStatusBot(ContractID, coopName);
+            timings?.Set("Get Coop Status");
             if(existingStatus is not null && existingStatus.Success) {
                 return true;
             }
