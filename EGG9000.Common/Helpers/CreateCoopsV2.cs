@@ -131,18 +131,18 @@ namespace EGG9000.Common.Helpers {
 
 
 
-            //var res = new Ei.ContractCoopStatusUpdateRequest {
-            //    ContractIdentifier = ContractID,
-            //    CoopIdentifier = coopName.ToLower(),
-            //    Eop = 1, SoulPower = 24, UserId = userId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
-            //    ProductionParams = new Ei.FarmProductionParams {
-            //        FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
-            //    }
-            //};
+            var res = new Ei.ContractCoopStatusUpdateRequest {
+                ContractIdentifier = ContractID,
+                CoopIdentifier = coopName.ToLower(),
+                Eop = 1, SoulPower = 24, UserId = userId, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = userId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
+                ProductionParams = new Ei.FarmProductionParams {
+                    FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
+                }
+            };
 
 
-            //var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
-
+            var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+            timings?.Set("CoopStatusUpdate");
 
 
             if(kickCreator) {
