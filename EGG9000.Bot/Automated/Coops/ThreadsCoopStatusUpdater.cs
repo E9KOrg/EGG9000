@@ -96,6 +96,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 var rng = new Random();
                 var errors = 0;
                 foreach(var coop in guildCoops.OrderBy(a => rng.Next())) {
+                    while(_coopsBeingCreatedService.AreCoopsBeingCreated()) {
+                        _logger.LogInformation("Sleeping while waiting on coop creation");
+                        await Task.Delay(TimeSpan.FromMinutes(1));
+                    }
+
+
                     if(cancellationToken.IsCancellationRequested) break;
                     await WaitOnCoopsBeingCreated(cancellationToken);
 
