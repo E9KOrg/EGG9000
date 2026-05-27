@@ -29,7 +29,7 @@ namespace EGG9000.Site.Controllers {
 
             var test = !body.livemode;
             Stripe.StripeConfiguration.ApiKey = test ? "sk_test_51Huh4PFPOewxUi5tQQHemFZFQ4x5CJ7edl8MmlS4QkIr2hFXcUSlp5DGL406mlg2MiJO6utmgHBDv5vL9Kgyqp5500L5GcePwf" : "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";
-            var lineItems = new SessionService().ListLineItems(body.data.@object.id, new SessionListLineItemsOptions { Limit = 20 });
+            var lineItems = new SessionLineItemService().List(body.data.@object.id, new SessionLineItemListOptions { Limit = 20 });
             var donationType = string.Join("/", lineItems.Select(x => x.Description));
             if(!string.IsNullOrWhiteSpace(body.data.@object.client_reference_id)) {
                 var donation = new Donation {

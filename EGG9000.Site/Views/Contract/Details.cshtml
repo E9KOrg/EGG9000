@@ -1,7 +1,6 @@
 ﻿ @using static EGG9000.Common.Helpers.Prefarm
 @using Discord.WebSocket
 @using EGG9000.Bot.EggIncAPI
-@inject EGG9000.Common.Services.APILink _apiLink
 @model EGG9000.Site.Controllers.ContractController.CoopsViewModel
 @{
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
@@ -9,28 +8,18 @@
 
     DiscordSocketClient discord = ViewBag.Discord;
 
-    //var alienBackups = await GetBackupsForAliens(Model.Coops, Model.UserPreFarms, Model.GuildContract.Contract, _apiLink);
     var alienBackups = new List<UserPreFarm>();
     var currentCoops = Model.CoopsBreakdown.ExistingCoops.OrderBy(x => x.Coop.Finished).ThenByDescending(x => x.HasSpots).ThenBy(x => x.TimeRemaining).ToList();
 
-
-    //var allPreFarms = Model.PreFarms;
     var guildContract = Model.GuildContract;
     var guild = discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID);
-
-
     var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
     var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
 
     var count = currentCoops.Count;
-
     var ebrgx = new Regex(@"\(.+?\)");
-
-
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
-    //isAdmin = false;
 
-    //currentCoops.ForEach(c => c.Prefarms.ForEach(p => p.DiscordUser = guild.GetUser(p.DiscordId)));
     var activeCoops = currentCoops.Select(c => new {
         Name = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
         c.Coop.ContractID,
@@ -41,7 +30,6 @@
             NumChickens = u.NumChickens.ToEggString(),
             Rate = $"{ArgumentsHelper.NumberToString(u.Rate * 60 * 60, false)}/h",
             Projected = u.Projected.ToEggString(),
-            //Status = u.Coop,
             Status = u.DBUser is null ? "👽" : u.InCoop ? "✔️" : "❌",
             Locked = true,
             EggIncId = (isAdmin || u.DiscordUser?.Id.ToString() == discordId) ? u.EggIncId : "",

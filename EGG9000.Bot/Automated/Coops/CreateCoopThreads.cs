@@ -128,12 +128,6 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(cancellationToken.IsCancellationRequested) return;
                     var guildWithOverflow = guildsWithOverflow.First(x => x.Guild.Id == coop.GuildId);
 
-                    //if(guildWithOverflow.LastAccessed.AddSeconds(THREAD_CREATION_DELAY) > DateTimeOffset.Now) {
-                    //    var timeToDelay = guildWithOverflow.LastAccessed.AddSeconds(THREAD_CREATION_DELAY) - DateTimeOffset.Now;
-                    //    _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), guildWithOverflow.Guild.Name);
-                    //    await Task.Delay(timeToDelay);
-                    //}
-
                     try {
                         var guildContract = guildContracts.First(gc => gc.GuildID == guildWithOverflow.Guild.Id && string.Equals(gc.ContractID, coop.ContractID, StringComparison.CurrentCultureIgnoreCase));
                         var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
@@ -310,7 +304,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
                 await Task.Delay(timeToDelay);
             }
-
             return headerChannel;
         }
 

@@ -14,7 +14,6 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Helpers;
 using System;
 using EGG9000.Bot.Helpers;
-using System.Reactive.Joins;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 

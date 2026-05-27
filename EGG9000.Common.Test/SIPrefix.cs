@@ -8,17 +8,17 @@ namespace EGG9000.Common.Test {
         [TestMethod]
         public void Parse1000() {
             var prefix = SIPrefix.GetPrefix(1000);
-            Assert.AreEqual(prefix.Name, "kilo");
+            Assert.AreEqual("kilo", prefix.Name);
         }
         [TestMethod]
         public void Parse999999() {
             var prefix = SIPrefix.GetPrefix(999999);
-            Assert.AreEqual(prefix.Name, "kilo");
+            Assert.AreEqual("kilo", prefix.Name);
         }
         [TestMethod]
         public void Parse1000000() {
             var prefix = SIPrefix.GetPrefix(1000000);
-            Assert.AreEqual(prefix.Name, "mega");
+            Assert.AreEqual("mega", prefix.Name);
         }
     }
 }

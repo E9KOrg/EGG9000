@@ -1,12 +1,12 @@
 # Multi-stage build for .NET 9 worker that depends on ASP.NET shared framework
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
 # Create a non-root user for improved security (optional)
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
