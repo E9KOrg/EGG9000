@@ -8,7 +8,6 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.Services;
 using Ei;
-using Humanizer.Localisation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
