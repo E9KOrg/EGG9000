@@ -118,7 +118,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddDbContextFactory<ApplicationDbContext>(options => {
             options.UseSqlServer(connectionString, x => {
                 x.MigrationsAssembly("EGG9000.Common");
-                x.CommandTimeout(15);
+                x.CommandTimeout(30);
             });
             options.EnableSensitiveDataLogging(true);
         });
