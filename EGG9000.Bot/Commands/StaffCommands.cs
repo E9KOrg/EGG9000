@@ -432,10 +432,12 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            if(!(service as IUpdaterService).Running()) {
+
+            if((service as IUpdaterService).Running()) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"The service {serviceName} is already running."); });
                 return;
             }
+
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to run {serviceName}"); });
             try {
                 (service as IUpdaterService).ResetTimer();

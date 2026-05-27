@@ -42,25 +42,6 @@ namespace EGG9000.Bot.Automated.Coops {
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
-        private readonly Dictionary<CreatorInfo, DateTimeOffset> CreatorLastUsed = new();
-        public class CreatorInfo {
-            public string EggIncId { get; set; }
-            public string ContractId { get; set; }
-            public PlayerGrade Grade { get; set; }
-
-            public override bool Equals(object obj) {
-                if(obj is CreatorInfo other) {
-                    return EggIncId == other.EggIncId && ContractId == other.ContractId && Grade == other.Grade;
-                }
-                return false;
-            }
-
-            public override int GetHashCode() {
-                return HashCode.Combine(EggIncId, ContractId, Grade);
-            }
-        }
-
-
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             //return;
@@ -120,7 +101,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 if(coops.Count > 5) {
-                    _coopsBeingCreatedService.SetCoopsAreBeingCreated(true);
+                    _coopsBeingCreatedService.SetCoopThreadsAreBeingCreated(true);
                 }
                 foreach(var coop in coops) {
                     var timings = new TimingsFactory(_logger);
@@ -158,15 +139,6 @@ namespace EGG9000.Bot.Automated.Coops {
                         var secondsRemaining = Math.Max(guildContract.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
                         timings.Set("Setup");
-                        if(!coop.AddedFromBackup) {
-                            var creator = ContractsAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
-                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default, timings: timings);
-
-                            if(creator != default) {
-                                CreatorLastUsed[new CreatorInfo() { EggIncId = creator.EggIncId, ContractId = coop.ContractID, Grade = (PlayerGrade)coop.League }] = DateTimeOffset.Now;
-                            }
-                            timings.Set("Coop API Call");
-                        }
 
 
                         var headerChannel = await GetHeaderChannelAndWait(headerChannels, coop);
@@ -247,7 +219,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
             }
-            _coopsBeingCreatedService.SetCoopsAreBeingCreated(false);
+            _coopsBeingCreatedService.SetCoopThreadsAreBeingCreated(false);
         ExitWhile:
 
             if(tasks.Count > 0) {
@@ -263,33 +235,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
                 _logger.LogInformation("Finished created {count} co-ops", tasks.Count);
             }
-
-            await MoveCreatorsToBlankCoop();
         }
 
-        private async Task MoveCreatorsToBlankCoop() {
-            // Collect keys to remove first to avoid modifying the dictionary while iterating
-            var now = DateTimeOffset.Now;
-            var expiredCreators = CreatorLastUsed
-                .Where(kv => kv.Value.AddMinutes(2) < now)
-                .Select(kv => kv.Key)
-                .ToList();
-
-            foreach(var creator in expiredCreators) {
-                try {
-                    var blankCoopName = $"bc{DateTimeOffset.Now.ToUnixTimeSeconds()}";
-                    _logger.LogInformation("Moving creator {creator} {grade} to blank coop {coop}", creator.EggIncId, creator.Grade, blankCoopName);
-                    await CreateCoopViaApi(creator.ContractId, creator.Grade, blankCoopName, 3600, creator.EggIncId, false, kickCreator: false);
-                } catch(Exception ex) {
-                    _logger.LogError(ex, "Failed to move creator {creator} to blank coop", creator.EggIncId);
-                    continue;
-                } finally {
-                    // Remove after attempt to ensure the entry is cleaned up regardless of success/failure
-                    CreatorLastUsed.Remove(creator);
-                }
-            }
-        }
-
+        
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
                 var cts = new CancellationTokenSource();
