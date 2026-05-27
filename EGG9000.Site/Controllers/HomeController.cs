@@ -50,14 +50,13 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     public class HomeController(ILogger<HomeController> logger, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<IdentityUser> signInManager,
-        DiscordSocketClient discord, APILink apiLink, ApplicationDbContext db, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
+        DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
 
         private readonly ILogger<HomeController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<IdentityUser> _userManager = userManager;
         private readonly RoleManager<IdentityRole> _roleManager = roleManager;
         private readonly DiscordSocketClient _discord = discord;
-        private readonly APILink _apiLink = apiLink;
         private readonly IMemoryCache _cache = cache;
         private readonly SignInManager<IdentityUser> _signInManager = signInManager;
         private readonly DatabaseCache _databaseCache = databaseCache;

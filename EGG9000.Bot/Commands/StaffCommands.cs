@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
+using EGG9000.Bot.Helpers;
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Commands;
@@ -432,10 +433,12 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            if(!(service as IUpdaterService).Running()) {
+
+            if((service as IUpdaterService).Running()) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"The service {serviceName} is already running."); });
                 return;
             }
+
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to run {serviceName}"); });
             try {
                 (service as IUpdaterService).ResetTimer();
@@ -601,6 +604,36 @@ namespace EGG9000.Bot.Commands {
             for(var i = 1; i < messages.Count; i++) {
                 await command.Channel.SendMessageAsync(messages[i]);
             }
+        }
+
+        [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = StaffOnlyLevel.FarmHand)]
+        public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbuser == null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                return;
+            }
+
+            dbuser.TempDisabled = true;
+            await db.SaveChangesAsync();
+
+            await command.RespondAsync($"{user.Mention} is disabled.");
+        }
+
+        [SlashCommand(Description = "Re-enable user", AdminOnly = StaffOnlyLevel.Admin)]
+        public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbuser == null) {
+                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                return;
+            }
+
+            dbuser.TempDisabled = false;
+            await db.SaveChangesAsync();
+
+            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.Now) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
+
+            await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
     }
 }

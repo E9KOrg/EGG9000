@@ -12,8 +12,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class ContextUserCommands {
         [UserCommand(Name = "Userstatus", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client, APILink apiLink) {
-            await RegisterCommandsSlash._userstatus(command, db, _client, apiLink, command.Data.Member, true, false);
+        public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client) {
+            await UserStatusCommands._userstatus(command, db, _client, command.Data.Member, true, false);
         }
 
         [UserCommand(Name = "Contract Settings", AdminOnly = StaffOnlyLevel.FarmHand)]

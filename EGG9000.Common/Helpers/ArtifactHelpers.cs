@@ -429,12 +429,11 @@ namespace EGG9000.Common.Helpers {
             };
 
             using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("authenticationKey", Services.APILink.AUTHENTICATION_KEY);
+            client.DefaultRequestHeaders.Add("authenticationKey", DockerSecretsHelper.BotToken);
 
 #if RELEASE
             var baseUrl = "https://egg9000.com";
 #else
-            //var baseUrl = "https://localhost:44314";
             var baseUrl = "https://egg9000.dev.sglade.com";
 #endif
 

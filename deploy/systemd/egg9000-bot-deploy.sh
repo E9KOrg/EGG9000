@@ -42,7 +42,7 @@ mkdir -p "$BLUE_DIR" "$GREEN_DIR"
 rsync -a --delete --exclude '.env' --exclude '*.log' "$SRC_DIR"/ "$TARGET_DIR"/
 
 systemctl daemon-reload
-systemctl restart "$TARGET_SERVICE"
+systemctl enable --now "$TARGET_SERVICE"
 
 START_TIME="$(date +%s)"
 while true; do
@@ -69,8 +69,8 @@ if ! systemctl is-active --quiet "$TARGET_SERVICE"; then
 fi
 
 if [[ -n "$ACTIVE_SERVICE" ]]; then
-  systemctl stop "$ACTIVE_SERVICE"
-  echo "Stopped previous active service: $ACTIVE_SERVICE"
+  systemctl disable --now "$ACTIVE_SERVICE"
+  echo "Disabling previous active service: $ACTIVE_SERVICE"
 fi
 
 echo "Deployment completed. Current active service: $TARGET_SERVICE"

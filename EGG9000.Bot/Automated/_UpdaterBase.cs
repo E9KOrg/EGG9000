@@ -27,6 +27,7 @@ namespace EGG9000.Bot.Automated {
     }
 
     public interface IUpdaterService : IHostedService {
+        public bool Active();
         public bool Running();
         public void ResetTimer();
     }
@@ -55,7 +56,6 @@ namespace EGG9000.Bot.Automated {
         public IConfiguration _configuration;
         public IServiceProvider _provider;
         private UpdaterOptions<T> _options;
-        public APILink _apiLink;
 
         protected Bugsnag.IClient _bugSnag;
         protected ILogger<T> _logger;
@@ -87,7 +87,6 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation("Initiating");
             _configuration = provider.GetService<IConfiguration>();
             _client = provider.GetService<DiscordHostedService>();
-            _apiLink = provider.GetService<APILink>();
             _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
             Instance = this;
             _bugSnag = provider.GetService<Bugsnag.IClient>();
@@ -174,9 +173,13 @@ namespace EGG9000.Bot.Automated {
 
         public abstract Task Run(object state, CancellationToken cancellationToken);
 
-        public bool Running() {
+        public bool Active() {
             return _timer is not null;
         }
+        public bool Running() {
+            return _semaphoreSlim.CurrentCount > 0;
+        }
+
         public Task StartAsync(CancellationToken cancellationToken) {
             try {
                 _cts ??= new CancellationTokenSource();

@@ -55,5 +55,12 @@ namespace EGG9000.Common.Helpers
         {
             return Directory.Exists(SecretsPath);
         }
+
+        public static string BotToken { get; private set; }
+
+        public static void Initialize(IConfiguration config)
+        {
+            BotToken = GetConfigOrSecret(config, "ConnectionStrings:Token", "token");
+        }
     }
 }

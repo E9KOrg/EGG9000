@@ -22,7 +22,7 @@ namespace EGG9000.Site.Services {
             var sw = Stopwatch.StartNew();
             using var scope = factory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coopCount = await db.Coops.Where(x => x.Status == Common.Database.Entities.CoopStatusEnum.WaitingOnThread).CountAsync(cancellationToken);
+            var coopCount = await db.Coops.Where(x => x.Status == Common.Database.Entities.CoopStatusEnum.WaitingOnThread || x.Status == Common.Database.Entities.CoopStatusEnum.WaitingOnCreation).CountAsync(cancellationToken);
             if(coopCount > 20 && WaitingOnCoops == false)
                 WaitingOnCoops = true;
             else if(coopCount < 10 && WaitingOnCoops == true)
