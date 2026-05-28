@@ -37,9 +37,9 @@ using MassTransit;
 using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopViaAPI(IServiceProvider provider) : _UpdaterBase<CreateCoopViaAPI>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
+    public class CreateCoopViaAPI(IServiceProvider provider, BotLogger botLogger) : _UpdaterBase<CreateCoopViaAPI>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
-
+        private readonly BotLogger _botLogger = botLogger;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -50,6 +50,8 @@ namespace EGG9000.Bot.Automated.Coops {
             List<Coop> allCoops;
 
             var dbguilds = _db.CachedGuilds.ToList();
+
+            Dictionary<ulong, (int successes, int failures, bool changed)> guildStats = new();
 
             while(
                 (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnCreation).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
@@ -78,6 +80,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
                 if(coops.Count > 5) _coopsBeingCreatedService.SetCoopsAreBeingCreated(true);
+
 
                 await Parallel.ForEachAsync(
                     coops,
@@ -110,17 +113,36 @@ namespace EGG9000.Bot.Automated.Coops {
                             writeDb.Dispose();
                             timings.Set("Updated db");
 
-
+                            IncrementGuildStats(guildStats, coop.GuildId, true);
                             var timingsReulsts = timings.Finished();
 
                             _logger.LogInformation("Timings for creating coop via API: {timings}", string.Join(", ", timingsReulsts.Select(x => $"{x.name}: {x.time.TotalSeconds}s")));
                         } catch(Exception ex) {
-                            _logger.LogError(ex, "Error Creating Co-op Thread {coop}", coop.Name);
+                            IncrementGuildStats(guildStats, coop.GuildId, false);
+                            _logger.LogError(ex, "Error Creating Co-op via API {coop}", coop.Name);
 
                         }
                     });
+
+                foreach(var guildStat in guildStats.Where(x => x.Value.changed)) {
+                    guildStats[guildStat.Key] = (guildStat.Value.successes, guildStat.Value.failures, false);
+                    await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-ops started ({guildStat.Value.failures} failed)", guildStat.Key);
+                }
             }
             _coopsBeingCreatedService.SetCoopsAreBeingCreated(false);
+        }
+
+        private void IncrementGuildStats(Dictionary<ulong, (int successes, int failures, bool changed)> guildStats, ulong guildId, bool success) {
+            lock(guildStats) {
+                if(!guildStats.ContainsKey(guildId)) {
+                    guildStats[guildId] = (0, 0, false);
+                }
+                if(success) {
+                    guildStats[guildId] = (guildStats[guildId].successes + 1, guildStats[guildId].failures, true);
+                } else {
+                    guildStats[guildId] = (guildStats[guildId].successes, guildStats[guildId].failures + 1, true);
+                }
+            }
         }
     }
 }
