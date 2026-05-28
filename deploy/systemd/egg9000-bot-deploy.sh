@@ -28,6 +28,7 @@ elif systemctl is-active --quiet "$GREEN_SERVICE"; then
   TARGET_SERVICE="$BLUE_SERVICE"
   TARGET_DIR="$BLUE_DIR"
 else
+  echo "Warning else"
   ACTIVE="none"
   TARGET="blue"
   ACTIVE_SERVICE=""
@@ -56,6 +57,7 @@ while true; do
     echo "New service failed to become active in ${HEALTH_TIMEOUT_SEC}s: $TARGET_SERVICE" >&2
     echo "Recent logs:"
     journalctl -u "$TARGET_SERVICE" -n 100 --no-pager || true
+    systemctl disable --now "$TARGET_SERVICE"
     exit 1
   fi
   sleep 2
