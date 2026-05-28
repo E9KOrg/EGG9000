@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Services {
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
-            _jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+            _jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                       .Select(x =>
