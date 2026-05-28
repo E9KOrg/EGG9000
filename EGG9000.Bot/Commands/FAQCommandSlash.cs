@@ -1,6 +1,7 @@
-﻿using Discord.WebSocket;
+using Discord.WebSocket;
 using Discord;
-using EGG9000.Common.Commands;
+using Discord.Interactions;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Services;
 using System.Collections.Generic;
@@ -20,12 +21,7 @@ using Microsoft.Extensions.Logging;
 namespace EGG9000.Bot.Commands {
     public static class FAQCommandSlash {
 
-        [SlashCommand(Description = "Lookup brief explanations of key topics", AllowInDMs = true)]
-        public static Task FAQ(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger _logger, [SlashParam(Description = "Topic or keyword", StringMaxLength = MAX_KEYWORD_LENGTH)] string query) {
-            return _faq(command, db, _client, query, false, "", _logger);
-        }
-
-        public static async Task _faq(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, string query, bool withStaffPerms, string respondTo, ILogger _logger) {
+        public static async Task _faq(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, string query, bool withStaffPerms, string respondTo, ILogger _logger) {
             _logger.LogInformation($"Running FAQ for {query}");
             // Because this can be run in DMs, need a fallback
             var inDms = command.GuildId == null;
@@ -59,7 +55,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedError("Could not determine which server you are a part of."); });
                 return;
             }
-            
+
             if(!guildObj.FAQTopicsEnabled) {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = EmbedError("Your server does not have FAQ Topics enabled."); });
                 return;
@@ -70,7 +66,7 @@ namespace EGG9000.Bot.Commands {
             var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Any()) {
                 _logger.LogInformation($"Found FAQ Topic for {query}");
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Found, please wait..."); 
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Found, please wait...");
                 var builder = await FAQEmbedBuilder(_client, guildObj.Id, withStaffPerms, query, isEphemeral, respondToMessage, faqTopics, faqTopics.First());
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; x.Content = null; });
             } else {
@@ -78,79 +74,6 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = MakeCustomEmbed(EmbedHelpers.EmbedType.Alert, "No Results", $"Could not find any FAQ topics for the term `{query}`"); });
             }
             _logger.LogInformation($"FAQ for {query} complete");
-        }
-
-        [ComponentCommand]
-        public static async Task LoadFAQ(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService _client) {
-            var splits = data.Split(",");
-
-            var guildId = ulong.Parse(splits[0]);
-            var withStaffPerms = bool.Parse(splits[1]);
-            var isEphemeral = bool.Parse(splits[2]); 
-            var query = splits[3];
-            var targetIndex = int.Parse(splits[4]);
-            var respondTo = ulong.Parse(splits[5]);
-
-            var guildObj = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildId);
-            var socketGuild = _client.Guilds.FirstOrDefault(cg => cg.Id == guildObj.Id);
-            var runningUserDiscord = socketGuild.GetUser(component.User.Id);
-            var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
-
-            var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
-            if(faqTopics.Count > 0 && faqTopics[targetIndex] != null) {
-                var targetItem = faqTopics[targetIndex];
-                var builder = await FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, targetItem);
-                await component.UpdateAsync(x => { x.Components = builder.ComponentBuilder?.Build(); x.Embed = builder.EmbedBuilder.Build(); });
-            } else {
-                var faqCommand = await _client.GetSlashCommandStringAsync(socketGuild, "FAQ");
-                await component.RespondAsync(embed: EmbedError($"Could not find an FAQ topic at this index. Try running {faqCommand} again."), ephemeral: true);
-            }
-        }
-
-        [ComponentCommand]
-        public static async Task PostFAQ(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService _client) {
-            if(!component.HasResponded) await component.DeferAsync();
-            var splits = data.Split(",");
-
-            var guildId = ulong.Parse(splits[0]);
-            var withStaffPerms = bool.Parse(splits[1]);
-            var isEphemeral = bool.Parse(splits[2]);
-            var query = splits[3];
-            var targetIndex = int.Parse(splits[4]);
-            var respondTo = ulong.Parse(splits[5]);
-
-            if(!isEphemeral) {
-                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Cannot re-post from a non-ephemeral message.\n\nHow did you do this?"));
-                return;
-            }
-
-            var guildObj = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guildId);
-            var socketGuild = _client.Guilds.FirstOrDefault(cg => cg.Id == guildObj.Id);
-            var userRunning = db.DBUsers.FirstOrDefault(x => x.DiscordId == component.User.Id);
-            var runningUserDiscord = socketGuild.GetUser(component.User.Id);
-            var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
-            var lastPostTime = userRunning.LastFAQPosted ?? DateTimeOffset.MinValue;
-            var isOnCooldown = DateTimeOffset.UtcNow - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
-
-            if(isOnCooldown && !hasStaffPerms) {
-                await component.ModifyOriginalResponseAsync(x => x.Embed = MakeCustomEmbed(
-                        EmbedHelpers.EmbedType.Alert,
-                        "Post Cooldown",
-                        $"You are on cooldown, and will be able to post again {DiscordHelpers.TimeStamper(lastPostTime.AddMinutes(guildObj.FAQTopicCooldownMinutes), DiscordHelpers.DiscordTimestampFormat.Relative)}."
-                    ));
-                return;
-            }
-
-            var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
-            if(faqTopics.Count == 0 || faqTopics[targetIndex] == null) {
-                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."));
-                return;
-            }
-
-            var embed = (await FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, faqTopics[targetIndex], runningUserDiscord)).EmbedBuilder.Build();
-            var messageRef = respondTo != ulong.MaxValue ? new MessageReference(respondTo, failIfNotExists: false) : null;
-            await component.Channel.SendMessageAsync(embed: embed, messageReference: messageRef);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = EmbedSuccess("Posted."); x.Components = null; });
         }
 
         public static async Task<FAQBuilder> FAQEmbedBuilder(DiscordHostedService _client, ulong guildId, bool withStaffPerms, string query, bool isEphemeral, ulong? respondTo, List<FAQTopic> faqTopics, FAQTopic currentItem, IGuildUser poster = null) {
@@ -238,10 +161,96 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
+    public class FaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<FaqModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+        private readonly ILogger<FaqModule> _logger = logger;
+
+        [SlashCommand("faq", "Lookup brief explanations of key topics")]
+        [EnabledInDm(true)]
+        public Task FAQ([Summary("query", "Topic or keyword")][MaxLength(MAX_KEYWORD_LENGTH)] string query) {
+            return FAQCommandSlash._faq(Context.Interaction, Db, _client, query, false, "", _logger);
+        }
+
+        [ComponentInteraction("LoadFAQ:*", ignoreGroupNames: true)]
+        public async Task LoadFAQ(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+            var splits = data.Split(",");
+
+            var guildId = ulong.Parse(splits[0]);
+            var withStaffPerms = bool.Parse(splits[1]);
+            var isEphemeral = bool.Parse(splits[2]);
+            var query = splits[3];
+            var targetIndex = int.Parse(splits[4]);
+            var respondTo = ulong.Parse(splits[5]);
+
+            var guildObj = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == guildId);
+            var socketGuild = _client.Guilds.FirstOrDefault(cg => cg.Id == guildObj.Id);
+            var runningUserDiscord = socketGuild.GetUser(component.User.Id);
+            var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
+
+            var faqTopics = await Db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
+            if(faqTopics.Count > 0 && faqTopics[targetIndex] != null) {
+                var targetItem = faqTopics[targetIndex];
+                var builder = await FAQCommandSlash.FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, targetItem);
+                await component.UpdateAsync(x => { x.Components = builder.ComponentBuilder?.Build(); x.Embed = builder.EmbedBuilder.Build(); });
+            } else {
+                var faqCommand = await _client.GetSlashCommandStringAsync(socketGuild, "FAQ");
+                await component.RespondAsync(embed: EmbedError($"Could not find an FAQ topic at this index. Try running {faqCommand} again."), ephemeral: true);
+            }
+        }
+
+        [ComponentInteraction("PostFAQ:*", ignoreGroupNames: true)]
+        public async Task PostFAQ(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+            if(!component.HasResponded) await component.DeferAsync();
+            var splits = data.Split(",");
+
+            var guildId = ulong.Parse(splits[0]);
+            var withStaffPerms = bool.Parse(splits[1]);
+            var isEphemeral = bool.Parse(splits[2]);
+            var query = splits[3];
+            var targetIndex = int.Parse(splits[4]);
+            var respondTo = ulong.Parse(splits[5]);
+
+            if(!isEphemeral) {
+                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Cannot re-post from a non-ephemeral message.\n\nHow did you do this?"));
+                return;
+            }
+
+            var guildObj = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == guildId);
+            var socketGuild = _client.Guilds.FirstOrDefault(cg => cg.Id == guildObj.Id);
+            var userRunning = Db.DBUsers.FirstOrDefault(x => x.DiscordId == component.User.Id);
+            var runningUserDiscord = socketGuild.GetUser(component.User.Id);
+            var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
+            var lastPostTime = userRunning.LastFAQPosted ?? DateTimeOffset.MinValue;
+            var isOnCooldown = DateTimeOffset.UtcNow - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
+
+            if(isOnCooldown && !hasStaffPerms) {
+                await component.ModifyOriginalResponseAsync(x => x.Embed = MakeCustomEmbed(
+                        EmbedHelpers.EmbedType.Alert,
+                        "Post Cooldown",
+                        $"You are on cooldown, and will be able to post again {DiscordHelpers.TimeStamper(lastPostTime.AddMinutes(guildObj.FAQTopicCooldownMinutes), DiscordHelpers.DiscordTimestampFormat.Relative)}."
+                    ));
+                return;
+            }
+
+            var faqTopics = await Db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
+            if(faqTopics.Count == 0 || faqTopics[targetIndex] == null) {
+                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."));
+                return;
+            }
+
+            var embed = (await FAQCommandSlash.FAQEmbedBuilder(_client, guildId, withStaffPerms, query, isEphemeral, respondTo, faqTopics, faqTopics[targetIndex], runningUserDiscord)).EmbedBuilder.Build();
+            var messageRef = respondTo != ulong.MaxValue ? new MessageReference(respondTo, failIfNotExists: false) : null;
+            await component.Channel.SendMessageAsync(embed: embed, messageReference: messageRef);
+            await component.ModifyOriginalResponseAsync(x => { x.Embed = EmbedSuccess("Posted."); x.Components = null; });
+        }
+    }
+
     public partial class AdminModule {
         [Discord.Interactions.SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
         public Task FAQ([Discord.Interactions.Summary("query", "Topic or keyword")][Discord.Interactions.MaxLength(MAX_KEYWORD_LENGTH)] string query, [Discord.Interactions.Summary("respondto", "Which message to respond to")] string respondto = "") {
-            return FAQCommandSlash._faq(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, _client, query, true, respondto, _logger);
+            return FAQCommandSlash._faq(Context.Interaction, Db, client, query, true, respondto, _logger);
         }
     }
 }

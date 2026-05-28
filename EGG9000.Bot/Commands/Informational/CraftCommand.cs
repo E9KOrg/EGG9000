@@ -28,8 +28,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands {
-    public class CraftModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        public CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : base(dbFactory) { }
+    public class CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         [SlashCommand("craftedcount", "Show you how many times you have crafted the requested artifact.")]
         [EnabledInDm(true)]
@@ -107,7 +106,6 @@ namespace EGG9000.Bot.Commands {
                 }
                 var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.afx_id && x.Tier == childIds.Tier);
                 stringBuilder.AppendLine($"{emoji?.Emoji} {childIds.Count}");
-                //var artifact = backup.ArtifactHall.FirstOrDefault(x => x.Artifact)
             }
 
             var embed = new EmbedBuilder()
@@ -202,7 +200,6 @@ namespace EGG9000.Bot.Commands {
 
             var longestIngredientLength = ingredients.Max(i => $"T{i.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(i.Value.Tier.family)}".Length) + 3;
             stringBuilder.AppendLine($"```");
-            // Create headers with proper alignment and padding
             stringBuilder.AppendFormat("{0,-" + longestIngredientLength + "}", "Name");
             stringBuilder.AppendFormat("{0,-9}", "In Inv");
             stringBuilder.AppendFormat("{0,-8}", "Need");
@@ -210,13 +207,12 @@ namespace EGG9000.Bot.Commands {
             stringBuilder.AppendLine(new string('―', longestIngredientLength + 22));
 
             foreach(var ingredient in ingredients) {
-                // Build the formatted ingredient name
                 var formattedIngredient = $"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}";
                 stringBuilder.AppendFormat("{0,-" + longestIngredientLength + "}", formattedIngredient);
                 stringBuilder.AppendFormat("{0,-9}", ingredient.Value.Use.Format());
                 stringBuilder.AppendFormat("{0,-8}", ingredient.Value.GetNeed());
                 stringBuilder.AppendFormat("{0,-8}", ingredient.Value.Cost.Format());
-                stringBuilder.AppendLine(); // Add a new line after each ingredient
+                stringBuilder.AppendLine();
             }
             stringBuilder.AppendLine("```");
             var ingredientEmbed = new EmbedBuilder()

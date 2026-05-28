@@ -25,14 +25,9 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Bot.Commands {
     [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
     [EnabledInDm(true)]
-    public class FormulaeModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        private readonly IMemoryCache _cache;
-        private readonly ILogger<FormulaeModule> _logger;
-
-        public FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : base(dbFactory) {
-            _cache = cache;
-            _logger = logger;
-        }
+    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly IMemoryCache _cache = cache;
+        private readonly ILogger<FormulaeModule> _logger = logger;
 
         public enum MERChoice {
             [ChoiceDisplay("Current")] Current = 0,
@@ -211,33 +206,23 @@ namespace EGG9000.Bot.Commands {
                 //Get the number of crafts that have been performed for this artifact
                 var numCrafted = (double)(afHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Tier == craftType.Key.Tier && a.Artifact.Artifact == craftType.Key.Artifact)?.NumberCrafted ?? 0.0);
                 if(numCrafted == 0) continue;
-                //Calculate an assumed XP per craft
                 var assumedXpPerCraft = account.Backup.CraftingXP / numCrafted;
-                //Sum up total legendary coefficients
                 for(var i = 0; i < numCrafted; i++) {
 
-                    //Calculate "repetitive craft" scalar
                     var craftingCountCoefficient = Math.Min(1.0, (double)(i / 400.0));
                     var fixedCraftingCountCoefficient = 1.0 - craftingCountCoefficient * 0.3; //Where these numbers come from, I have no idea
 
-                    //Get the base Legendary rate for the artifact in question
                     var baseLegRate = craftType.Value[2];
 
-                    //Calculate "assumed" or simulated crafting level
                     var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
-                    //Retrieve the multiplier offset for this level (-1 due to returning "display value" vs. index)
                     var simulatedMultiplier = Root.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
 
-                    //Calculate the true rate based on simulated multiplier
                     var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);
                     var simulatedRatio = 1.0 / simulatedRate;
 
-                    //Calculate the legendary threshold based on the simulated ratio
                     var simulatedThreshold = Math.Pow(simulatedRatio, fixedCraftingCountCoefficient);
-                    //Ceiling at 0.1
                     var ceilingedThreshold = Math.Min(0.1, simulatedThreshold);
 
-                    //Add the threshold to the running sum
                     newLLCSum += ceilingedThreshold;
                 }
             }

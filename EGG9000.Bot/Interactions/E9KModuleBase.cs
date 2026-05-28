@@ -5,16 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Interactions {
-    public abstract class E9KModuleBase : InteractionModuleBase<SocketInteractionContext> {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbFactory;
+    public abstract class E9KModuleBase(IDbContextFactory<ApplicationDbContext> dbFactory) : InteractionModuleBase<SocketInteractionContext> {
         protected ApplicationDbContext Db { get; private set; }
 
-        protected E9KModuleBase(IDbContextFactory<ApplicationDbContext> dbFactory) {
-            _dbFactory = dbFactory;
-        }
-
         public override async Task BeforeExecuteAsync(ICommandInfo command) {
-            Db = await _dbFactory.CreateDbContextAsync();
+            Db = await dbFactory.CreateDbContextAsync();
         }
 
         public override async Task AfterExecuteAsync(ICommandInfo command) {

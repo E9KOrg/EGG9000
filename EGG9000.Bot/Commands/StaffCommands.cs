@@ -1,10 +1,11 @@
-﻿using Discord;
+using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.EggIncAPI;
+using EGG9000.Bot.Interactions;
 using EGG9000.Bot.Services;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -24,7 +25,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
@@ -50,39 +50,12 @@ namespace EGG9000.Bot.Commands {
             [Discord.Interactions.ChoiceDisplay("All")] All = 4,
         }
 
-        [SlashCommand(Description = "Clear ALL custom eggs from the DB, and remove Emoji.", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task ClearCustomEggs(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client) {
-            await command.DeferAsync();
-
-            var customEggs = await db.GetCustomEggsAsync();
-
-            foreach(var egg in customEggs) {
-#if DEV9002 || DEBUG
-                // DEV9K Overflow Server
-                var emojiServer = client.GetGuild(1130233910966620290);
-#else
-                // Cluckingham Overflow 4
-                var emojiServer = client.GetGuild(1147264073659064420);
-#endif
-                if(emojiServer != null) {
-                    var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
-                    await emojiServer.DeleteEmoteAsync(emote);
-                }
-
-                db.CustomEggs.Remove(egg);
-            }
-            await db.SaveChangesAsync();
-            db._cache.InvalidateCustomEggs();
-
-            await command.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await db.GetCustomEggsAsync()).Count}");
-        }
-
         private class RemoveCleanUser {
             public EggIncAccount Account { get; set; }
             public DBUser User { get; set; }
         }
 
-        internal static async Task _afs(FauxCommand command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
+        internal static async Task _afs(SocketInteraction command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discUser.Id);
 
@@ -92,31 +65,65 @@ namespace EGG9000.Bot.Commands {
                 sb.Append($"For {account.Backup?.UserName ?? "(No Name)"}: {ArtifactHelpers.GetArtifactFairnessScoreString(account.Backup.ArtifactHall)}\n");
             }
 
-            await command.RespondAsync(sb.ToString(), ephemeral: !showInChannel);
+            await command.RespondAsyncGettingMessage(sb.ToString(), ephemeral: !showInChannel);
+        }
+    }
+
+    public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordSocketClient _client = client;
+
+        [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
+        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        public async Task ClearCustomEggs() {
+            await Context.Interaction.DeferAsync();
+
+            var customEggs = await Db.GetCustomEggsAsync();
+
+            foreach(var egg in customEggs) {
+#if DEV9002 || DEBUG
+                // DEV9K Overflow Server
+                var emojiServer = _client.GetGuild(1130233910966620290);
+#else
+                // Cluckingham Overflow 4
+                var emojiServer = _client.GetGuild(1147264073659064420);
+#endif
+                if(emojiServer != null) {
+                    var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
+                    await emojiServer.DeleteEmoteAsync(emote);
+                }
+
+                Db.CustomEggs.Remove(egg);
+            }
+            await Db.SaveChangesAsync();
+            Db._cache.InvalidateCustomEggs();
+
+            await Context.Interaction.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await Db.GetCustomEggsAsync()).Count}");
         }
 
-        [SlashCommand(Description = "Log a Message", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task AS(FauxCommand command, [SlashParam] string message, [SlashParam(Required = false)] SocketChannel channel = null, [SlashParam(Required = false, Description = "Message ID to reply to")] string replyto = null) {
+        [SlashCommand("as", "Log a Message")]
+        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        public async Task AS([Summary("message")] string message, [Summary("channel")] SocketChannel channel = null, [Summary("replyto", "Message ID to reply to")] string replyto = null) {
             try {
                 if(channel == null) {
-                    if(replyto == null) await command.Channel.SendMessageAsync(message);
-                    else await command.Channel.SendMessageAsync(text: message, messageReference: new MessageReference(ulong.Parse(replyto)));
+                    if(replyto == null) await Context.Channel.SendMessageAsync(message);
+                    else await Context.Channel.SendMessageAsync(text: message, messageReference: new MessageReference(ulong.Parse(replyto)));
                 } else {
                     if(replyto == null) await ((SocketTextChannel)channel).SendMessageAsync(message);
                     else await ((SocketTextChannel)channel).SendMessageAsync(text: message, messageReference: new MessageReference(ulong.Parse(replyto)));
                 }
-                await command.RespondAsync("Sent", ephemeral: true);
+                await Context.Interaction.RespondAsyncGettingMessage("Sent", ephemeral: true);
             } catch(Exception ex) {
-                await command.RespondAsync($"There was an error running this command: {ex.Message}", ephemeral: true);
+                await Context.Interaction.RespondAsyncGettingMessage($"There was an error running this command: {ex.Message}", ephemeral: true);
             }
         }
 
-        [SlashCommand(Description = "Select X random users with Y role", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task SelectRoleUsers(FauxCommand command, DiscordSocketClient client, [SlashParam(Required = true)] int numberOfUsers,
-            [SlashParam(Required = true, Description = "Role the user(s) should have")] SocketRole role, [SlashParam(Required = false, Description = "Second role [...]")] SocketRole role2, [SlashParam(Required = false, Description = "Third role [...]")] SocketRole role3,
-            [SlashParam(Required = false, Description = "Role the user(s) should NOT have")] SocketRole antiRole, [SlashParam(Required = false, Description = "Second role [...]")] SocketRole antiRole2, [SlashParam(Required = false, Description = "Third role [...]")] SocketRole antiRole3) {
+        [SlashCommand("selectroleusers", "Select X random users with Y role")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task SelectRoleUsers([Summary("numberOfUsers")] int numberOfUsers,
+            [Summary("role", "Role the user(s) should have")] SocketRole role, [Summary("role2", "Second role [...]")] SocketRole role2 = null, [Summary("role3", "Third role [...]")] SocketRole role3 = null,
+            [Summary("antiRole", "Role the user(s) should NOT have")] SocketRole antiRole = null, [Summary("antiRole2", "Second role [...]")] SocketRole antiRole2 = null, [Summary("antiRole3", "Third role [...]")] SocketRole antiRole3 = null) {
             try {
-                var randomUsers = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId).Users
+                var randomUsers = _client.Guilds.FirstOrDefault(g => g.Id == Context.Guild?.Id).Users
                     .Where(u =>
                         u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3))
                         && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
@@ -143,69 +150,71 @@ namespace EGG9000.Bot.Commands {
                     responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"Showing all matching users"));
                 }
 
-                //Catch content that is too large, respond with file instead
-                if(tooLong) await command.RespondWithFileAsync(new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt"), text: "", embed: responseEmbedBuilder.Build());
-                else await command.RespondAsync(content: "", embed: responseEmbedBuilder.Build());
+                if(tooLong) await Context.Interaction.RespondWithFilesAsyncGettingMessage([new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt")], text: "", embed: responseEmbedBuilder.Build());
+                else await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: responseEmbedBuilder.Build());
 
             } catch(Exception ex) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse role `{role}`.\n\n**Message**\n{ex.Message}"));
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to parse role `{role}`.\n\n**Message**\n{ex.Message}"));
                 return;
             }
         }
 
-        [SlashCommand(Description = "Add a temporary prefex for a users co-op (PrefixWord11)", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
+        [SlashCommand("temporaryprefix", "Add a temporary prefex for a users co-op (PrefixWord11)")]
+        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        public async Task TemporaryPrefix([Summary("user")] SocketGuildUser user, [Summary("prefix")] string prefix, [Summary("timespan")] string timespan) {
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
             } catch(Exception ex) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse the timespan `{timespan}`, {ex.Message}"));
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to parse the timespan `{timespan}`, {ex.Message}"));
                 return;
             }
-            await command.DeferAsync();
+            await Context.Interaction.DeferAsync();
 
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
                 return;
             }
 
             dbuser.CustomCoopName = prefix;
             dbuser.ExpireCustomCoopName = expireTime;
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time.");
+            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time.");
         }
 
-        [SlashCommand(Description = "Ping everyone in a co-op with a message", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task PingEveryoneInCoop(FauxCommand command, [SlashParam] string message, ApplicationDbContext db) {
-            var coop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.ChannelId);
+        [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task PingEveryoneInCoop([Summary("message")] string message) {
+            var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
             if(coop == null) {
-                await command.RespondAsync($"Error finding co-op for this thread", ephemeral: true);
+                await Context.Interaction.RespondAsyncGettingMessage($"Error finding co-op for this thread", ephemeral: true);
                 return;
             }
 
-            await command.RespondAsync($"Pinging now", ephemeral: true);
+            await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
 
             var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
 
-            await command.Channel.SendMessageAsync($"{pings} {message}");
+            await Context.Channel.SendMessageAsync($"{pings} {message}");
         }
 
-        [SlashCommand(Description = "Fix where the server doesn't show them as joined", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task FixJoinIssue(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, ApplicationDbContext db) {
-            await command.DeferAsync(ephemeral: true);
+        [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
+            await Context.Interaction.DeferAsync(ephemeral: true);
 
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
             if(coop == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
             }
 
             var userid = useraccount.Split("|")[0];
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             if(dbUser is null) {
-                await command.RespondAsync($"ERROR: Unable to locate DBUser entry for user");
+                await Context.Interaction.RespondAsyncGettingMessage($"ERROR: Unable to locate DBUser entry for user");
                 return;
             }
 
@@ -229,44 +238,46 @@ namespace EGG9000.Bot.Commands {
                 }
             }, account.Id, true);
 
-            await command.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
+            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
         }
 
-        [SlashCommand(Description = "Disable user, user will not be assigned to co-ops until re-enabled", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task Disable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+        [SlashCommand("disable", "Disable user, user will not be assigned to co-ops until re-enabled")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task Disable([Summary("user")] SocketUser user) {
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
                 return;
             }
 
             dbuser.TempDisabled = true;
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
-            await command.RespondAsync($"{user.Mention} is disabled.");
+            await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is disabled.");
         }
 
-        [SlashCommand(Description = "Re-enable user", AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task Enable(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+        [SlashCommand("enable", "Re-enable user")]
+        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        public async Task Enable([Summary("user")] SocketUser user) {
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
                 return;
             }
 
             dbuser.TempDisabled = false;
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
             var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.UtcNow) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
 
-            await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
+            await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
     }
 
     public partial class AdminModule {
         [Discord.Interactions.SlashCommand("markclean", "Mark a potential cheater as clean")]
         public async Task MarkClean([Discord.Interactions.Autocomplete(typeof(UserAccountAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount, [Discord.Interactions.Summary("cleantype")] StaffCommands.MarkCleanOption cleantype) {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync(ephemeral: false);
             var userid = useraccount.Split("|")[0];
             if(userid is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User id could not be found from param"); });
@@ -280,9 +291,9 @@ namespace EGG9000.Bot.Commands {
             } else {
                 var identifier = string.IsNullOrEmpty(account.Name) ? account.Id : account.Name;
 #if DEV9002
-                await command.RespondAsync($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
+                await command.RespondAsyncGettingMessage($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
 #else
-                await command.RespondAsync($"User account <@{dbuser.DiscordId}> ({identifier}) marked as having clean {cleantype}.");
+                await command.RespondAsyncGettingMessage($"User account <@{dbuser.DiscordId}> ({identifier}) marked as having clean {cleantype}.");
 #endif
                 switch(cleantype) {
                     case StaffCommands.MarkCleanOption.Artifacts:
@@ -301,7 +312,7 @@ namespace EGG9000.Bot.Commands {
 
         [Discord.Interactions.SlashCommand("guildclearclean", "Remove all 'Clean' markings from all accounts of users in this guild")]
         public async Task GuildClearClean([Discord.Interactions.Summary("removewarningsent", "Remove 'Warning Sent' flags - bot will re-send detection messages")] bool removewarningsent, [Discord.Interactions.Summary("cleantype", "Clear this marking, if not provided, clear all")] StaffCommands.MarkDirtyOption cleantype = StaffCommands.MarkDirtyOption.Artifacts) {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync();
             var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
             if(dbGuild is null) {
@@ -382,12 +393,12 @@ namespace EGG9000.Bot.Commands {
 
         [Discord.Interactions.SlashCommand("afs", "Determine a user's artifact fairness score")]
         public Task AFS([Discord.Interactions.Summary("user")] SocketGuildUser user, [Discord.Interactions.Summary("showinchannel")] bool ShowInChannel = false) {
-            return StaffCommands._afs(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, user, ShowInChannel);
+            return StaffCommands._afs(Context.Interaction, Db, user, ShowInChannel);
         }
 
         [Discord.Interactions.SlashCommand("status", "Get the bot's status")]
         public async Task Status() {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             var lastComplete = await Db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
             var last24 = await Db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
             var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
@@ -400,7 +411,7 @@ namespace EGG9000.Bot.Commands {
             }};
             foreach(var log in lastComplete.OrderBy(x => x.Type)) {
                 var incompletes = await Db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
-                var service = _serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
+                var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
                 if(service == null || service is not IUpdaterService castedService) continue;
 
                 table.Add([
@@ -422,15 +433,15 @@ namespace EGG9000.Bot.Commands {
                 ]);
             }
 
-            await command.RespondAsync($"```\n{GetTable(table)}```");
+            await command.RespondAsyncGettingMessage($"```\n{GetTable(table)}```");
         }
 
         [Discord.Interactions.SlashCommand("restartservice", "Restart an automated service")]
         public async Task RestartService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync();
-            var service = _serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
-            var discordHostedService = _serviceProvider.GetService<DiscordHostedService>();
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+            var discordHostedService = serviceProvider.GetService<DiscordHostedService>();
 
             if(discordHostedService is not null && serviceName == "DiscordHostedService") {
                 try {
@@ -444,7 +455,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                     .SelectMany(t => t.GetMethods())
                     .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                     .FirstOrDefault(x => x.Name == serviceName);
@@ -454,8 +465,8 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                _jobService.StopJob(serviceName);
-                _jobService.RunJob(serviceName);
+                jobService.StopJob(serviceName);
+                jobService.RunJob(serviceName);
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted Job.{job.DeclaringType?.Name ?? job.Name}"); });
                 return;
             }
@@ -465,19 +476,19 @@ namespace EGG9000.Bot.Commands {
                 await service.StopAsync(new System.Threading.CancellationToken());
                 await service.StartAsync(new System.Threading.CancellationToken());
             } catch(Exception e) {
-                await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
+                await command.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
         [Discord.Interactions.SlashCommand("stopservice", "Stop an automated service")]
         public async Task StopService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync();
-            var service = _serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                     .SelectMany(t => t.GetMethods())
                     .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                     .FirstOrDefault(x => x.Name == serviceName);
@@ -488,7 +499,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var jobString = $"Job.{job.DeclaringType?.Name ?? job.Name}";
-                if(_jobService.StopJob(job.Name)) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {jobString}"); });
+                if(jobService.StopJob(job.Name)) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {jobString}"); });
                 else await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to stop {jobString}"); });
                 return;
             }
@@ -508,21 +519,21 @@ namespace EGG9000.Bot.Commands {
 
         [Discord.Interactions.SlashCommand("runservice", "Run automated service now")]
         public async Task RunService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync();
-            var service = _serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                           .SelectMany(t => t.GetMethods())
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
                 if(job is null) {
-                    await command.RespondAsync($"Unable to locate a service/job with the name {serviceName}");
+                    await command.RespondAsyncGettingMessage($"Unable to locate a service/job with the name {serviceName}");
                     return;
                 }
 
-                _jobService.RunJob(serviceName);
+                jobService.RunJob(serviceName);
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Ran Job.{job.DeclaringType?.Name ?? job.Name}"); });
                 return;
             }
@@ -544,12 +555,12 @@ namespace EGG9000.Bot.Commands {
 
         [Discord.Interactions.SlashCommand("startservice", "Start an automated service")]
         public async Task StartService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync();
-            var service = _serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
+            var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                           .SelectMany(t => t.GetMethods())
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
@@ -558,7 +569,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                _jobService.RunJob(serviceName);
+                jobService.RunJob(serviceName);
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Running Job.{job.DeclaringType?.Name ?? job.Name}"); });
                 return;
             }
@@ -577,7 +588,7 @@ namespace EGG9000.Bot.Commands {
 
         [Discord.Interactions.SlashCommand("dbload", "Database load, cache sizes, and process memory")]
         public async Task DbLoad() {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
 
             var sw = Stopwatch.StartNew();
@@ -615,12 +626,12 @@ namespace EGG9000.Bot.Commands {
                 new() { new("AutoLogs 24h"), new($"{autoLogs:N0}", CellAlignment.Right) },
             };
 
-            await command.RespondAsync($"```\n{GetTable(rows)}```", ephemeral: true);
+            await command.RespondAsyncGettingMessage($"```\n{GetTable(rows)}```", ephemeral: true);
         }
 
         [Discord.Interactions.SlashCommand("coopstats", "Active Co-op Stats")]
         public async Task CoopStats() {
-            var command = new FauxCommand((SocketSlashCommand)Context.Interaction);
+            var command = Context.Interaction;
             await command.DeferAsync();
             var coops = await Db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
             var stats = new StringBuilder();
@@ -642,7 +653,7 @@ namespace EGG9000.Bot.Commands {
 
             var messages = DiscordMessageSplitter.SplitMessage(stats.ToString(), "\n");
 
-            await command.RespondAsync(messages.First());
+            await command.RespondAsyncGettingMessage(messages.First());
             for(var i = 1; i < messages.Count; i++) {
                 await command.Channel.SendMessageAsync(messages[i]);
             }

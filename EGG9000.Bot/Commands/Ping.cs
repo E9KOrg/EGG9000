@@ -9,8 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
-    public class PingModule : E9KModuleBase {
-        public PingModule(IDbContextFactory<ApplicationDbContext> dbFactory) : base(dbFactory) { }
+    public class PingModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
 
         [SlashCommand("ping", "Test to see if bot is alive")]
         [EnabledInDm(true)]

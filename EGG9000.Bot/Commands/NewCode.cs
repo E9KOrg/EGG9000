@@ -10,12 +10,8 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public class NewCodeModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        private readonly DiscordSocketClient _client;
-
-        public NewCodeModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : base(dbFactory) {
-            _client = client;
-        }
+    public class NewCodeModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordSocketClient _client = client;
 
         [SlashCommand("newcoopcode", "Generate a new co-op code, a channel will be created for the co-op")]
         [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]

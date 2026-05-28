@@ -22,12 +22,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-    public class BanGroupModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        private readonly DiscordHostedService _client;
-
-        public BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : base(dbFactory) {
-            _client = client;
-        }
+    public class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
 
         [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /kick")]
         public async Task BanList() {
@@ -97,12 +93,8 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class BanModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        private readonly DiscordHostedService _client;
-
-        public BanModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : base(dbFactory) {
-            _client = client;
-        }
+    public class BanModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
 
         [SlashCommand("kick", "Kick user with dm")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]

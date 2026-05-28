@@ -16,8 +16,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public class EBHistoryModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        public EBHistoryModule(IDbContextFactory<ApplicationDbContext> dbFactory) : base(dbFactory) { }
+    public class EBHistoryModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         private class TextHistoryEntry(DateOnly entryDate, string ebString, string roleString, TextHistoryEntry lastEntry = null) {
             public DateOnly EntryDate { get; set; } = entryDate;
@@ -66,7 +65,6 @@ namespace EGG9000.Bot.Commands {
             }
             if(dbuser is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
 
-            //I hate that people are like this
             if(dbuser.DiscordId != Context.User.Id) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Stop trying to run commands on others' accounts."); });
                 return;

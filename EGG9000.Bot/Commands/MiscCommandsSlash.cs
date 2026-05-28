@@ -1,4 +1,5 @@
-﻿using Discord;
+using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
@@ -6,7 +7,7 @@ using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -26,30 +27,36 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
-    public static class MiscCommandsSlash {
+    public class MiscModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, ILogger<MiscModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordSocketClient _client = client;
+        private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
+        private readonly ContractUpdater _contractUpdater = contractUpdater;
+        private readonly ILogger<MiscModule> _logger = logger;
 
-        [SlashCommand(Description = "Start EID screenshot recognition process.", AllowInDMs = true)]
-        public static async Task StartTestProcess(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            if(command.GuildId != null) {
-                await command.RespondAsync(
+        [SlashCommand("starttestprocess", "Start EID screenshot recognition process.")]
+        [EnabledInDm(true)]
+        public async Task StartTestProcess() {
+            if(Context.Interaction.GuildId != null) {
+                await Context.Interaction.RespondAsyncGettingMessage(
                     "",
                     embed: EmbedError("This command should **only** be used in DMs.")
                 );
                 return;
             }
 
-            await command.RespondAsync(
+            await Context.Interaction.RespondAsyncGettingMessage(
                 "",
                 embed: EmbedSuccess("Please reply (a real Discord Reply - hit the Reply button) to this message with an **uncropped screenshot of your Privacy & Data tab**.")
             );
         }
 
-        [SlashCommand(Description = "Track your EB since the last time you ran this command", AllowInDMs = true)]
-        public static async Task TrackEB(FauxCommand command, ApplicationDbContext db, ILogger logger) {
-            await command.DeferAsync(ephemeral: command.IsDMInteraction ? false : true);
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        [SlashCommand("trackeb", "Track your EB since the last time you ran this command")]
+        [EnabledInDm(true)]
+        public async Task TrackEB() {
+            await Context.Interaction.DeferAsync(ephemeral: Context.Interaction.IsDMInteraction ? false : true);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
@@ -72,8 +79,8 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 if(backup.EarningsBonus == 0) {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is not responding correctly.\nPlease try again later."); });
-                    logger.LogWarning("Warning: TrackEB 0 EB detected for {username}", backup.UserName ?? id.Name ?? id.Id);
+                    await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is not responding correctly.\nPlease try again later."); });
+                    _logger.LogWarning("Warning: TrackEB 0 EB detected for {username}", backup.UserName ?? id.Name ?? id.Id);
                     return;
                 } else {
                     builder.AddField("Current EB", $"{backup.EarningsBonus.ToEggString()}\n{DiscordHelpers.TimeStamper(backupDate, DiscordHelpers.DiscordTimestampFormat.Relative)}", true);
@@ -96,19 +103,20 @@ namespace EGG9000.Bot.Commands {
             }
 
             dbUser.UpdateAccounts();
-            await db.SaveChangesAsync();
-            await command.ModifyOriginalResponseAsync(x => {
+            await Db.SaveChangesAsync();
+            await Context.Interaction.ModifyOriginalResponseAsync(x => {
                 x.Embed = builder.Build();
                 x.Content = "";
             });
         }
 
-        [SlashCommand(Description = "How many SE/PE needed for next rank up", AllowInDMs = true)]
-        public static async Task NextRank(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] bool ShowInChannel = false) {
-            await command.DeferAsync(ephemeral: !ShowInChannel);
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        [SlashCommand("nextrank", "How many SE/PE needed for next rank up")]
+        [EnabledInDm(true)]
+        public async Task NextRank([Summary("ShowInChannel")] bool ShowInChannel = false) {
+            await Context.Interaction.DeferAsync(ephemeral: !ShowInChannel);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
@@ -163,49 +171,52 @@ namespace EGG9000.Bot.Commands {
                 });
             }
 
-            await command.ModifyOriginalResponseAsync(x => {
+            await Context.Interaction.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = builder.Build();
             });
         }
 
-        [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
-            await command.DeferAsync();
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+        [SlashCommand("renamecoop", "Rename a co-op channel to mistype")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
+            await Context.Interaction.DeferAsync();
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
             if(targetCoop == null) {
-                await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
                 return;
             }
 
 
             targetCoop.Name = correctcoopname;
-            await db.SaveChangesAsync();
-            await command.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
+            await Db.SaveChangesAsync();
+            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
         }
 
-        [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
+        [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
+        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        public async Task UpdateChannel() {
+            var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop != null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
-                var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
-                var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
-                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                var parentGuild = discord.Guilds.First(x => x.Id == dbguild.Id);
-                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                var guild = _client.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
+                var users = await Db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
+                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
+                var parentGuild = _client.Guilds.First(x => x.Id == dbguild.Id);
+                await _coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
 
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;
             }
 
-            var targetGuildContract = await db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            var targetGuildContract = await Db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
             if(targetGuildContract != null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
-                var guild = discord.Guilds.First(x => x.Id == targetGuildContract.GuildID);
-                var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-                await contractUpdater.UpdateContractChannel(db, targetGuildContract, guild, dbguild, command);
+                var guild = _client.Guilds.First(x => x.Id == targetGuildContract.GuildID);
+                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
+                await _contractUpdater.UpdateContractChannel(Db, targetGuildContract, guild, dbguild, command);
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
                 return;
             }
@@ -213,31 +224,47 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
         }
 
-        [SlashCommand(Description = "Adds a temporary role for users that last a specific amount of time", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
+        [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
+        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        public async Task TempRole(
+            [Summary("role")] SocketRole role,
+            [Summary("timespan")] string timespan,
+            [Summary("reason")] string reason,
+            [Summary("user1", "User 1")] SocketGuildUser user1,
+            [Summary("user2", "User 2")] SocketGuildUser user2 = null,
+            [Summary("user3", "User 3")] SocketGuildUser user3 = null,
+            [Summary("user4", "User 4")] SocketGuildUser user4 = null,
+            [Summary("user5", "User 5")] SocketGuildUser user5 = null,
+            [Summary("user6", "User 6")] SocketGuildUser user6 = null,
+            [Summary("user7", "User 7")] SocketGuildUser user7 = null,
+            [Summary("user8", "User 8")] SocketGuildUser user8 = null,
+            [Summary("user9", "User 9")] SocketGuildUser user9 = null,
+            [Summary("user10", "User 10")] SocketGuildUser user10 = null
+            ) {
+            var users = EGG9000.Bot.Interactions.UserParams.CoalesceGuildUsers(user1, user2, user3, user4, user5, user6, user7, user8, user9, user10);
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
             } catch(Exception ex) {
-                await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
+                await Context.Interaction.RespondAsyncGettingMessage($"Unable to parse the timespan `{timespan}`, {ex.Message}");
                 return;
             }
 
-            var maxRolePosition = ((SocketGuildUser) command.User).Roles.Max(role => role.Position);
+            var maxRolePosition = ((SocketGuildUser)Context.User).Roles.Max(role => role.Position);
             if(role.Position >= maxRolePosition) {
-                await command.RespondAsync("You cannot assign roles higher or equal than your own");
+                await Context.Interaction.RespondAsyncGettingMessage("You cannot assign roles higher or equal than your own");
                 return;
             }
 
-            await command.DeferAsync();
+            await Context.Interaction.DeferAsync();
             var userids = users.Select(x => x.Id);
-            var existingTempRoles = await db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.UtcNow && userids.Contains(x.UserId)).ToListAsync();
-            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+            var existingTempRoles = await Db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.UtcNow && userids.Contains(x.UserId)).ToListAsync();
+            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
             foreach(var user in users) {
                 var tempRole = existingTempRoles.FirstOrDefault(x => x.RoleId == role.Id && user.Id == x.UserId);
                 if(tempRole == null) {
                     tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.UtcNow, UserId = user.Id, GuildId = guild.Id };
-                    db.Add(tempRole);
+                    Db.Add(tempRole);
                     await user.AddRoleAsync(role);
                 }
 
@@ -245,13 +272,14 @@ namespace EGG9000.Bot.Commands {
                 tempRole.Expires = expireTime;
             }
 
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
+            await Context.Interaction.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
-        [ComponentCommand]
-        public static async Task WhatIsRSC(SocketMessageComponent component) {
+        [ComponentInteraction("WhatIsRSC", ignoreGroupNames: true)]
+        public async Task WhatIsRSC() {
+            var component = (SocketMessageComponent)Context.Interaction;
             var rscText = "The Contract Eggspert role is awarded to the top 10 highest scoring players of each scored contract, as well as the top-performers in Grades C, B, and A. The role will be removed after 7 days, and serves only to recognize eggceptional performance.\n\n" +
                 "Score is determined by comparing a player's `Total Eggs Delivered` to the 50 closest players in EB (25 above, 25 below). The number (score) next to a name denotes how many times greater than average the user's total was. I.e., a score of 1 is average, a score of 2 is double the average, etc.\n\n" +
                 "Contracts are scored manually by Palace staff once all Palace coops have finished, and the contract has expired. You can read more about scoring, and Running Score, in this announcement: https://discord.com/channels/656455567858073601/698270110279925770/939264092445745163";
@@ -260,43 +288,43 @@ namespace EGG9000.Bot.Commands {
             await component.RespondAsync(text: "", embed: rscEmbed, ephemeral: true);
         }
 
-        [SlashCommand(Description = "Get help from staff, please give details")]
-        public static async Task CallStaff(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] string details, [SlashParam(Description = "If private then only staff will see your message")] bool keepPrivate = false) {
-            await command.DeferAsync(ephemeral: keepPrivate);
-            var guildFind = db.Guilds.First(x => x.Id == command.GuildId || x.OverflowServersJson.IndexOf(command.GuildId.ToString()) > -1);
+        [SlashCommand("callstaff", "Get help from staff, please give details")]
+        public async Task CallStaff([Summary("details")] string details, [Summary("keepPrivate", "If private then only staff will see your message")] bool keepPrivate = false) {
+            await Context.Interaction.DeferAsync(ephemeral: keepPrivate);
+            var guildFind = Db.Guilds.First(x => x.Id == Context.Interaction.GuildId || x.OverflowServersJson.IndexOf(Context.Interaction.GuildId.ToString()) > -1);
 
             if(guildFind is null) {
-                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, guild not found.");
+                await Context.Interaction.ModifyOriginalResponseAsync("Callstaff cannot be sent, guild not found.");
                 return;
             } else if(!guildFind.HasChannel(GuildChannelType.CallStaffChannel)) {
-                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
+                await Context.Interaction.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel is not set.");
                 return;
             }
 
             var socketGuild = _client.Guilds.First(x => x.Id == guildFind.Id);
 
             if(socketGuild is null) {
-                await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
+                await Context.Interaction.ModifyOriginalResponseAsync("Callstaff cannot be sent, SocketGuild could not be found via mapping.");
                 return;
             }
 
             var staffRole = socketGuild.Roles.FirstOrDefault(x => x.Id == guildFind.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole).Id);
             var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
             var infoText = $"Staff has been called ({details})";
-            var message = $"{command.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{command.Channel.Id}> with the details: {details}";
+            var message = $"{Context.User.Mention}{(keepPrivate ? " **privately** " : " ")}called for staff in <#{Context.Channel.Id}> with the details: {details}";
 
             if(keepPrivate) {
-                var channelForThreads = await ChannelHelper.GetTextChannel(db, _client, guildFind, socketGuild, GuildChannelType.PrivateCallStaff);
+                var channelForThreads = await ChannelHelper.GetTextChannel(Db, _client, guildFind, socketGuild, GuildChannelType.PrivateCallStaff);
                 if(channelForThreads is not null) {
-                    var thread = await channelForThreads.CreateThreadAsync(name: $"{command.User.GlobalName ?? command.User.Username} [callstaff]", type: ThreadType.PrivateThread, invitable: false);
+                    var thread = await channelForThreads.CreateThreadAsync(name: $"{Context.User.GlobalName ?? Context.User.Username} [callstaff]", type: ThreadType.PrivateThread, invitable: false);
                     var messageToPing = await thread.SendMessageAsync(".");
                     await messageToPing.ModifyAsync(x => x.Content = staffTag);
                     await messageToPing.DeleteAsync();
-                    await thread.SendMessageAsync(text: $"{command.User.Mention}", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
+                    await thread.SendMessageAsync(text: $"{Context.User.Mention}", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
 
                     var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message + " " + thread.Mention });
 
-                    await command.ModifyOriginalResponseAsync($"{infoText}, they should respond in {thread.Mention}");
+                    await Context.Interaction.ModifyOriginalResponseAsync($"{infoText}, they should respond in {thread.Mention}");
 
                     return;
                 }
@@ -306,15 +334,15 @@ namespace EGG9000.Bot.Commands {
                 var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message });
 
                 if(response is null) {
-                    await command.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
+                    await Context.Interaction.ModifyOriginalResponseAsync("Callstaff cannot be sent, CallStaffChannel could not be found.");
                     return;
                 }
 
-                await command.ModifyOriginalResponseAsync(infoText);
+                await Context.Interaction.ModifyOriginalResponseAsync(infoText);
 
                 if(keepPrivate) {
-                    var dmResult = await BoolSendDm(command.User, infoText, db);
-                    if(dmResult != DMResult.Success) await command.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                    var dmResult = await BoolSendDm(Context.User, infoText, Db);
+                    if(dmResult != DMResult.Success) await Context.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
                 }
             }
         }
@@ -332,7 +360,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             await Context.Interaction.DeferAsync();
-            var guild = _gateway.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
+            var guild = gateway.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
             var dbuser = await Db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
             dbuser.CustomCoopName = customName;
             dbuser.ExpireCustomCoopName = expireTime;

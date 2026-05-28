@@ -1,29 +1,30 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
-
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
-    public class ShipReturnDMSettings {
-        [ComponentCommand]
-        public static async Task SRDMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
+    public class ShipReturnDmModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+
+        [ComponentInteraction("SRDMenu:*", ignoreGroupNames: true)]
+        public async Task SRDMenu(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var props = await MainMenuAsync(dbuser, db, configuration);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var props = MainMenu(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        public static async Task<MessageProperties> MainMenuAsync(DBUser user, ApplicationDbContext db, IConfiguration configuration, Color color = default) {
+        public static MessageProperties MainMenu(DBUser user, Color color = default) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()
@@ -55,65 +56,67 @@ namespace EGG9000.Bot.Commands {
             builder.WithButton("↵ Contract Settings", $"MCSAccounts:{user.DiscordId}", ButtonStyle.Secondary);
 
             props.Components = builder.Build();
-
-            if(user.DMOnShipReturn) {
-                var dbEggs = await db.GetCustomEggsAsync();
-                var siteBaseUrl = configuration["Site:BaseUrl"] ?? "https://egg9000.com";
-                var (previewEmbed, _) = ShipReturnDmBuilder.Build(ShipReturnDmBuilder.SampleModel(user.DiscordId, dbEggs, siteBaseUrl));
-                props.Embeds = new[] { eBuilder.Build(), previewEmbed };
-            } else {
-                props.Embed = eBuilder.Build();
-            }
+            props.Embed = eBuilder.Build();
 
             return props;
         }
 
-        [ComponentCommand]
-        public static async Task SRDEnable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
+        [ComponentInteraction("SRDEnable:*", ignoreGroupNames: true)]
+        public async Task SRDEnable(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = true;
-            await db.SaveChangesAsync();
-            var props = await MainMenuAsync(dbuser, db, configuration);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
+            await Db.SaveChangesAsync();
+            var props = MainMenu(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        [ComponentCommand]
-        public static async Task SRDDisable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
+        [ComponentInteraction("SRDDisable:*", ignoreGroupNames: true)]
+        public async Task SRDDisable(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = false;
-            await db.SaveChangesAsync();
-            var props = await MainMenuAsync(dbuser, db, configuration);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
+            await Db.SaveChangesAsync();
+            var props = MainMenu(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        [ComponentCommand]
-        public static async Task SRDSecondDM(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
+        [ComponentInteraction("SRDSecondDM:*", ignoreGroupNames: true)]
+        public async Task SRDSecondDM(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.ShipReturnDMAfterFuel = !dbuser.ShipReturnDMAfterFuel;
-            await db.SaveChangesAsync();
-            var props = await MainMenuAsync(dbuser, db, configuration);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
+            await Db.SaveChangesAsync();
+            var props = MainMenu(dbuser);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        [ComponentCommand]
-        public static async Task SRDSetFueledTime(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        [ComponentInteraction("SRDSetFueledTime:*", ignoreGroupNames: true)]
+        public async Task SRDSetFueledTime(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var modal = GetModal("Set Time For Full Ship", $"SRDFueledTime:{data}", "Number of Minutes", (dbuser.ShipReturnMinutes > 0 ? dbuser.ShipReturnMinutes : 1).ToString(), "mins");
             await component.RespondWithModalAsync(modal);
         }
 
-        [Modal]
-        public static async Task SRDFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
+        [ModalInteraction("SRDFueledTime:*", ignoreGroupNames: true)]
+        public async Task SRDFueledTime(string data) {
+            var modal = (SocketModal)Context.Interaction;
+
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
             var isNum = int.TryParse(minsText, out var mins);
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
 
             if(!isNum || mins < 0) {
                 var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
@@ -121,29 +124,33 @@ namespace EGG9000.Bot.Commands {
                 await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 dbuser.ShipReturnMinutes = mins;
-                await db.SaveChangesAsync();
-                var props = await MainMenuAsync(dbuser, db, configuration);
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
+                await Db.SaveChangesAsync();
+                var props = MainMenu(dbuser);
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
             }
         }
 
-        [ComponentCommand]
-        public static async Task SRDSetNotFueledTime(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        [ComponentInteraction("SRDSetNotFueledTime:*", ignoreGroupNames: true)]
+        public async Task SRDSetNotFueledTime(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
             var modal = GetModal("Set Time For Ship Needs Fueling", $"SRDNotFueledTime:{data}", "Number of Minutes", (dbuser.ShipReturnStillFuelingMinutes > 0 ? dbuser.ShipReturnStillFuelingMinutes : 10).ToString(), "mins");
             await component.RespondWithModalAsync(modal);
         }
 
-        [Modal]
-        public static async Task SRDNotFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
+        [ModalInteraction("SRDNotFueledTime:*", ignoreGroupNames: true)]
+        public async Task SRDNotFueledTime(string data) {
+            var modal = (SocketModal)Context.Interaction;
+
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
             var isNum = int.TryParse(minsText, out var mins);
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
 
             if(!isNum || mins < 0) {
                 var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
@@ -155,9 +162,9 @@ namespace EGG9000.Bot.Commands {
                 await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
             } else {
                 dbuser.ShipReturnStillFuelingMinutes = mins;
-                await db.SaveChangesAsync();
-                var props = await MainMenuAsync(dbuser, db, configuration);
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
+                await Db.SaveChangesAsync();
+                var props = MainMenu(dbuser);
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
             }
         }
 

@@ -1,9 +1,10 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -22,12 +23,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class UserStatusCommands {
 
-        [SlashCommand(Description = "Get your status", AllowInDMs = true)]
-        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client) {
-            return _userstatus(command, db, _client, command.User);
-        }
-
-        public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
+        public static async Task _userstatus(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -84,7 +80,7 @@ namespace EGG9000.Bot.Commands {
                 _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), guildUser, dbuser, _client, null, []);
             }
 
-            await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
+            await command.RespondAsyncGettingMessage("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
 
         static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, bool admin) {
@@ -197,11 +193,22 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
+    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+
+        [SlashCommand("userstatus", "Get your status")]
+        [EnabledInDm(true)]
+        public Task UserStatus() {
+            var command = Context.Interaction;
+            return UserStatusCommands._userstatus(command, Db, _client, Context.User);
+        }
+    }
+
     public partial class AdminModule {
         [Discord.Interactions.SlashCommand("userstatus", "Get a users status")]
         public Task UserStatus([Discord.Interactions.Summary("user")] SocketUser user, [Discord.Interactions.Summary("showinchannel")] bool showinchannel = false,
             [Discord.Interactions.Summary("pullfreshbackup", "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false) {
-            return UserStatusCommands._userstatus(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, _client, user, true, showinchannel, pullfreshbackup);
+            return UserStatusCommands._userstatus(Context.Interaction, Db, client, user, true, showinchannel, pullfreshbackup);
         }
     }
 }

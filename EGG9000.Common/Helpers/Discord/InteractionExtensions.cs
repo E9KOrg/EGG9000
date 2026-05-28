@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Interactions {
     public static class InteractionExtensions {
-        public static async Task<IUserMessage> RespondAsyncGettingMessage(this SocketInteraction i, string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
+        public static async Task<IUserMessage> RespondAsyncGettingMessage(this SocketInteraction i, string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
             if(i.HasResponded)
                 return await i.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
-            await i.RespondAsync(content, embeds, isTTS, ephemeral, allowedMentions, components, embed, options);
+            await i.RespondAsync(content, embeds, isTTS, ephemeral, allowedMentions, components, embed, options, poll);
             return await i.GetOriginalResponseAsync();
         }
 
@@ -28,6 +28,7 @@ namespace EGG9000.Bot.Interactions {
             await i.RespondAsyncGettingMessage("", embed: EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing this, there's been an error."), options: options);
 
         public static async Task DeleteResponseFix(this SocketInteraction i) {
+            if(i is null) return;
             var response = await i.GetOriginalResponseAsync();
             if(response is null) return;
             await response.DeleteAsync();

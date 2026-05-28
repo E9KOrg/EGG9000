@@ -10,14 +10,9 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
-    public class NasaModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        private readonly DiscordHostedService _client;
-        private readonly ILogger<NasaModule> _logger;
-
-        public NasaModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<NasaModule> logger) : base(dbFactory) {
-            _client = client;
-            _logger = logger;
-        }
+    public class NasaModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<NasaModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+        private readonly ILogger<NasaModule> _logger = logger;
 
         [ComponentInteraction("APODExplanation:*", ignoreGroupNames: true)]
         public async Task APODExplanation(string data) {
@@ -40,7 +35,7 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
             }
-            await new FauxCommand((SocketSlashCommand)Context.Interaction).TrySendLatestNasaAPODAdHoc(latestApod, _client, Db, _logger);
+            await Context.Interaction.TrySendLatestNasaAPODAdHoc(latestApod, _client, Db, _logger);
         }
     }
 }

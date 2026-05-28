@@ -16,7 +16,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public static class MeritCommands {
-        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid? adminid, FauxCommand command = null, Guild guild = null) {
+        public static async Task CreateMerit(string reason, ApplicationDbContext db, DiscordSocketClient _client, SocketUser target, Guid? adminid, SocketInteraction command = null, Guild guild = null) {
 
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
@@ -51,12 +51,8 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class MeritModule : EGG9000.Bot.Interactions.E9KModuleBase {
-        private readonly DiscordSocketClient _client;
-
-        public MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : base(dbFactory) {
-            _client = client;
-        }
+    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordSocketClient _client = client;
 
         [SlashCommand("addmerit", "Add merit to user(s)")]
         [DefaultMemberPermissions(Discord.GuildPermission.ModerateMembers)]

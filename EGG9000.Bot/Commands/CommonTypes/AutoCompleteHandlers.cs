@@ -3,7 +3,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Services;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -35,7 +34,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         }
 
         #region UserAutoCompletes
-        public class UserAccountAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory, DatabaseCache cache) : AutocompleteHandler, IAutoCompleteHandler {
+        public class UserAccountAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory, DatabaseCache cache) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
             private readonly DatabaseCache _cache = cache;
 
@@ -62,11 +61,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return results;
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, [.. results]);
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var guilds = await ResolveGuilds(services);
@@ -75,7 +69,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class UserAccountChannelSpecificAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler, IAutoCompleteHandler {
+        public class UserAccountChannelSpecificAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
 
             private async Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
@@ -112,11 +106,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return results;
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, [.. results]);
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -124,7 +113,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class PersonalUserAccountAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory, DatabaseCache cache) : AutocompleteHandler, IAutoCompleteHandler {
+        public class PersonalUserAccountAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory, DatabaseCache cache) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
             private readonly DatabaseCache _cache = cache;
 
@@ -155,11 +144,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return results;
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, [.. results]);
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var guilds = await ResolveGuilds(services);
@@ -173,7 +157,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         /*
          *  Clone of ContractAutoComplete with no limitation on who can select Ultra coops
          */
-        public class StaffContractAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler, IAutoCompleteHandler {
+        public class StaffContractAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
 
             private async Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
@@ -184,11 +168,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToList();
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, results.ToArray());
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -196,7 +175,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class CreateCoopContractAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : AutocompleteHandler, IAutoCompleteHandler {
+        public class CreateCoopContractAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
             private readonly DiscordSocketClient _discord = client;
 
@@ -222,11 +201,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return contractObjs.Select(c => new AutocompleteResult(c.Name, c.ID)).ToList();
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, results.ToArray());
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -236,7 +210,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         #endregion
 
         #region CoopAutoCompletes
-        public class MoveGradeAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler, IAutoCompleteHandler {
+        public class MoveGradeAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
 
             private async Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
@@ -255,11 +229,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     .ToList();
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(results);
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -267,7 +236,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class GradeAutoComplete() : AutocompleteHandler, IAutoCompleteHandler {
+        public class GradeAutoComplete() : AutocompleteHandler {
             private Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var result = Enumerable.Range(1, 5).Reverse().ToList()
                     .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x))
@@ -275,11 +244,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return Task.FromResult(result);
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(results);
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -287,7 +251,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class RemoveFromCoopAutoComplete(IDbContextFactory<ApplicationDbContext> dbContextFactory) : AutocompleteHandler, IAutoCompleteHandler {
+        public class RemoveFromCoopAutoComplete(IDbContextFactory<ApplicationDbContext> dbContextFactory) : AutocompleteHandler {
 
             private async Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 await using var db = await dbContextFactory.CreateDbContextAsync();
@@ -299,11 +263,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return users.DistinctBy(x => x.EggIncId).Take(25).Select(x => new AutocompleteResult(x.DiscordUsername + " - " + (x.User?.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)"), x.UserId.ToString())).ToList();
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, results.ToArray());
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -311,7 +270,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class MoveToCoopCoopNameAutoComplete(DatabaseCache dbCache) : AutocompleteHandler, IAutoCompleteHandler {
+        public class MoveToCoopCoopNameAutoComplete(DatabaseCache dbCache) : AutocompleteHandler {
             private readonly DatabaseCache _dbCache = dbCache;
 
             private Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
@@ -327,11 +286,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
 
                 return Task.FromResult(coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToList());
-            }
-
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, results.ToArray());
             }
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
@@ -352,7 +306,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
         #region ServicesAutoCompletes
         private static List<AutocompleteResult> _allServicesAndJobs = null;
-        public class ServiceNameAutoComplete(IServiceProvider serviceProvider) : AutocompleteHandler, IAutoCompleteHandler {
+        public class ServiceNameAutoComplete(IServiceProvider serviceProvider) : AutocompleteHandler {
             private readonly IServiceProvider _serviceProvider = serviceProvider;
 
             private Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
@@ -384,11 +338,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 return Task.FromResult(results.OrderBy(x => x.Name).ToList());
             }
 
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var results = await ComputeResults(arg, guilds);
-                await arg.RespondAsync(null, [.. results]);
-            }
-
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 var results = await ComputeResults(arg, null);
@@ -398,7 +347,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         #endregion
 
         #region AFXAutoCompletes
-        public class ArtifactNameAutoComplete() : AutocompleteHandler, IAutoCompleteHandler {
+        public class ArtifactNameAutoComplete() : AutocompleteHandler {
             private readonly EiAfxDataRoot _eiAfxData = EggIncArtifacts.GetEiAfxData();
 
             private Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
@@ -407,13 +356,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     artifactFamilies = artifactFamilies.Where(x => x.name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
                 }
                 return Task.FromResult(artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).Take(25).ToList());
-            }
-
-            public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                try {
-                    var results = await ComputeResults(arg, guilds);
-                    await arg.RespondAsync(null, results.ToArray());
-                } catch(TimeoutException) { }
             }
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
