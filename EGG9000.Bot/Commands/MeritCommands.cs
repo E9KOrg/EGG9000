@@ -1,4 +1,5 @@
-﻿using Discord.WebSocket;
+﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
@@ -7,6 +8,7 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -91,19 +93,14 @@ namespace EGG9000.Bot.Commands {
             try {
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
 
-
                 var merits = await db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
                     await command.RespondAsync($"There are no merits for {targetUser.Mention}");
                     return;
                 }
 
-                var i = 1;
-                var meritDesc = string.Join("\n", merits.Select(x => {
-                    return $"{i++}: {x.Reason}";
-                }));
-
-                await command.RespondAsync($"Merit info for {targetUser.Mention}\n{meritDesc}");
+                var (embed, components) = BuildMeritPage(merits, 0, command.User.Id, targetUser.Id, targetUser.Mention);
+                await command.RespondAsync(embed: embed, components: components);
             } catch(Exception e) {
                 await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
@@ -121,17 +118,89 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                var i = 1;
-                var meritDesc = string.Join("\n", merits.Select(x => {
-                    return $"{i++}: {x.Reason}";
-                }));
-
-                await command.RespondAsync($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
+                var (embed, components) = BuildMeritPage(merits, 0, socketUser.Id, socketUser.Id, socketUser.Mention);
+                await command.RespondAsync(embed: embed, components: components, ephemeral: true);
             } catch(Exception e) {
                 await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
         }
 
+        [ComponentCommand]
+        public static async Task LoadMerits(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var parts = data.Split(",");
+            if(parts.Length < 3) return;
+            var invokerDiscordId = ulong.Parse(parts[0]);
+            var targetDiscordId = ulong.Parse(parts[1]);
+            var page = int.Parse(parts[2]);
+
+            if(component.User.Id != invokerDiscordId) {
+                await component.RespondAsync("These merits aren't yours to page through.", ephemeral: true);
+                return;
+            }
+
+            var targetUser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetDiscordId);
+            if(targetUser is null) {
+                await component.RespondAsync("Could not find user.", ephemeral: true);
+                return;
+            }
+
+            var merits = await db.Merit.AsQueryable().Where(x => x.UserId == targetUser.Id).OrderBy(x => x.When).ToListAsync();
+            if(merits.Count == 0) {
+                await component.RespondAsync("There are no merits to display.", ephemeral: true);
+                return;
+            }
+            var targetMention = $"<@{targetDiscordId}>";
+            var (embed, messageComponents) = BuildMeritPage(merits, page, invokerDiscordId, targetDiscordId, targetMention);
+
+            await component.UpdateAsync(x => {
+                x.Content = "";
+                x.Embed = embed;
+                x.Components = messageComponents;
+            });
+        }
+
+        private static (Embed embed, MessageComponent? components) BuildMeritPage(
+            List<Merit> merits, int page, ulong invokerDiscordId, ulong targetDiscordId, string targetMention) {
+
+            var pages = new List<(int start, int end)>();
+            var currentStart = 0;
+            while(currentStart < merits.Count) {
+                var charCount = 0;
+                var count = 0;
+                var end = currentStart;
+                while(end < merits.Count) {
+                    var line = $"{end + 1}. {merits[end].Reason}\n";
+                    if(count > 0 && (charCount + line.Length > 1000 || count >= 10)) break;
+                    charCount += line.Length;
+                    count++;
+                    end++;
+                }
+                pages.Add((currentStart, end));
+                currentStart = end;
+            }
+
+            page = Math.Clamp(page, 0, pages.Count - 1);
+
+            var (start, pageEnd) = pages[page];
+            var desc = string.Join("\n", merits[start..pageEnd].Select((m, i) => $"{start + i + 1}. {m.Reason}"));
+
+            var embedBuilder = new EmbedBuilder()
+                .WithTitle("Merit History")
+                .WithDescription($"{targetMention}\n\n{desc}")
+                .WithColor(Color.Gold);
+            if(pages.Count > 1)
+                embedBuilder.WithFooter($"Page {page + 1} of {pages.Count}");
+
+            MessageComponent? messageComponents = null;
+            if(pages.Count > 1) {
+                var cb = new ComponentBuilder()
+                    .WithButton("< Prev", $"LoadMerits:{invokerDiscordId},{targetDiscordId},{Math.Max(0, page - 1)}", ButtonStyle.Secondary, disabled: page == 0)
+                    .WithButton("Next >", $"LoadMerits:{invokerDiscordId},{targetDiscordId},{Math.Min(pages.Count - 1, page + 1)}", ButtonStyle.Secondary, disabled: page == pages.Count - 1);
+                messageComponents = cb.Build();
+            }
+
+            return (embedBuilder.Build(), messageComponents);
+        }
     }
 }
 
