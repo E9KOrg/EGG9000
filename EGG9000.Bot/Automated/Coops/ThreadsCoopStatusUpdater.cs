@@ -257,7 +257,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 await CheckForCoopCreatorStillIn(coop, status);
 
 
-                if(coop.League != (uint)status.Grade) {
+                if(coop.League != (uint)status.Grade && status.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset) {
                     _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
                     coop.League = (uint)status.Grade;
                 }

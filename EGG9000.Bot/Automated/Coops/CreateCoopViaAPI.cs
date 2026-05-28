@@ -37,11 +37,8 @@ using MassTransit;
 using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopViaAPI(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopViaAPI>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
-        //private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
-
+    public class CreateCoopViaAPI(IServiceProvider provider) : _UpdaterBase<CreateCoopViaAPI>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
-
 
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
@@ -119,7 +116,6 @@ namespace EGG9000.Bot.Automated.Coops {
                             _logger.LogInformation("Timings for creating coop via API: {timings}", string.Join(", ", timingsReulsts.Select(x => $"{x.name}: {x.time.TotalSeconds}s")));
                         } catch(Exception ex) {
                             _logger.LogError(ex, "Error Creating Co-op Thread {coop}", coop.Name);
-                            //guildWithOverflow.LastAccessed = DateTimeOffset.Now;
 
                         }
                     });
