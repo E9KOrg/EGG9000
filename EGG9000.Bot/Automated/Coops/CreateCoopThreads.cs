@@ -37,8 +37,9 @@ using MassTransit;
 using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
+    public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater, BotLogger botLogger) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
         private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
+        private BotLogger _botLogger = botLogger;
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
@@ -55,6 +56,8 @@ namespace EGG9000.Bot.Automated.Coops {
             var tasks = new List<Task>();
 
             var dbguilds = _db.CachedGuilds.ToList();
+
+            Dictionary<ulong, (int successes, int failures, bool changed)> guildStats = new();
 
             while(
                 (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
@@ -199,10 +202,14 @@ namespace EGG9000.Bot.Automated.Coops {
                                         throttler.Release();
                                     }
                                 }, cancellationToken));
+
+                                IncrementGuildStats(guildStats, coop.GuildId, true);
                                 var timingsReulsts = timings.Finished();
 
                                 _logger.LogInformation("Timings for creating thread for {coopName} in {guild}: {timings}", coop.Name, headerChannel.Guild.Name, string.Join(", ", timingsReulsts.Select(x => $"{x.name}: {x.time.TotalSeconds}s")));
                             } else {
+
+                                IncrementGuildStats(guildStats, coop.GuildId, false);
                                 _logger.LogWarning("Thread NOT created for {coopName} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
                             }
                         }
@@ -212,6 +219,12 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     }
                 }
+
+                foreach(var guildStat in guildStats.Where(x => x.Value.changed)) {
+                    guildStats[guildStat.Key] = (guildStat.Value.successes, guildStat.Value.failures, false);
+                    await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-op threads created ({guildStat.Value.failures} failed)", guildStat.Key);
+                }
+
             }
             _coopsBeingCreatedService.SetCoopThreadsAreBeingCreated(false);
         ExitWhile:
@@ -231,7 +244,20 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        
+
+        private void IncrementGuildStats(Dictionary<ulong, (int successes, int failures, bool changed)> guildStats, ulong guildId, bool success) {
+            lock(guildStats) {
+                if(!guildStats.ContainsKey(guildId)) {
+                    guildStats[guildId] = (0, 0, false);
+                }
+                if(success) {
+                    guildStats[guildId] = (guildStats[guildId].successes + 1, guildStats[guildId].failures, true);
+                } else {
+                    guildStats[guildId] = (guildStats[guildId].successes, guildStats[guildId].failures + 1, true);
+                }
+            }
+        }
+
         private async Task<IThreadChannel> CreateThreadChannelAsync(string threadName, SocketGuildChannel parentChannel) {
             try {
                 var cts = new CancellationTokenSource();

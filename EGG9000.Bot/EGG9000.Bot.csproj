@@ -76,15 +76,12 @@
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
     <PackageReference Include="NLog" Version="6.1.3" />
     <PackageReference Include="NLog.Extensions.Logging" Version="6.1.3" />
-    <PackageReference Include="NLog.Targets.GraylogHttp" Version="2.0.1" />
-    <PackageReference Include="NLog.Targets.Syslog" Version="7.0.0" />
+    <!--<PackageReference Include="NLog.Targets.GraylogHttp" Version="2.0.1" />-->
+    <PackageReference Include="NLog.Targets.Network" Version="6.0.4" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="[1.10.0]" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="[1.10.0]" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="[1.10.0]" />
-    <!--<PackageReference Include="NLog.Targets.OpenTelemetryProtocol" Version="1.0.5" />-->
-    <!--<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.9.0" />-->
-    <!--<PackageReference Include="OpenTelemetry" Version="1.9.0" />-->
     <PackageReference Include="NLog.Web.AspNetCore" Version="6.1.3" />
     <PackageReference Include="Polly" Version="8.6.6" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />

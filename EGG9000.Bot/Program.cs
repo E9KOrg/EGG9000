@@ -44,7 +44,11 @@ try
     var botActive = tempConfig.GetValue("BOT_ACTIVE", true);
     botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
 
+#if DEBUG 
+    botColor = "debug";
+#endif
     NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}_{botColor}");
+    logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + $"{NLog.GlobalDiagnosticsContext.Get("CustomMachineName")}");
 
     logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
     logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
@@ -95,6 +99,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DiscordQueueService>();
         services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
         services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
+        services.AddSingleton<BotLogger>();
 
         DockerSecretsHelper.Initialize(hostContext.Configuration);
 
