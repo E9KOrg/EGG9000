@@ -57,6 +57,7 @@ while true; do
     echo "New service failed to become active in ${HEALTH_TIMEOUT_SEC}s: $TARGET_SERVICE" >&2
     echo "Recent logs:"
     journalctl -u "$TARGET_SERVICE" -n 100 --no-pager || true
+    echo "Disabling $TARGET_SERVICE"
     systemctl disable --now "$TARGET_SERVICE"
     exit 1
   fi
@@ -67,6 +68,8 @@ sleep "$STABILIZE_SEC"
 if ! systemctl is-active --quiet "$TARGET_SERVICE"; then
   echo "New service became unhealthy during stabilization: $TARGET_SERVICE" >&2
   journalctl -u "$TARGET_SERVICE" -n 100 --no-pager || true
+  echo "Disabling $TARGET_SERVICE"
+  systemctl disable --now "$TARGET_SERVICE"
   exit 1
 fi
 
