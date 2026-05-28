@@ -19,7 +19,7 @@ namespace EGG9000.Bot.Commands {
 
         [UserCommand(Name = "Contract Settings", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task ContractSettings(SocketUserCommand command, ApplicationDbContext db) {
-            await ContractSettingsCommands.ContractSettings(command, db, (command.Data.Member as SocketGuildUser));
+            await ContractSettingsCommands.SetUserSettings(command, db, (command.Data.Member as SocketGuildUser));
         }
 
         [UserCommand(Name = "Rockets Tracker", AdminOnly = StaffOnlyLevel.FarmHand)]

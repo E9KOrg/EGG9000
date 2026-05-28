@@ -25,11 +25,6 @@ namespace EGG9000.Bot.Commands {
             return _faq(command, db, _client, query, false, "", _logger);
         }
 
-        [SlashCommand(Description = "Lookup brief explanations of key topics/templates", AllowInDMs = true, AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task FAQ(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger _logger, [SlashParam(Description = "Topic or keyword", StringMaxLength = MAX_KEYWORD_LENGTH)] string query, [SlashParam(Description = "Which message to respond to", Required = false)] string respondto = "") {
-            return _faq(command, db, _client, query, true, respondto, _logger);
-        }
-
         public static async Task _faq(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, string query, bool withStaffPerms, string respondTo, ILogger _logger) {
             _logger.LogInformation($"Running FAQ for {query}");
             // Because this can be run in DMs, need a fallback
@@ -240,6 +235,13 @@ namespace EGG9000.Bot.Commands {
                     $"LoadFAQ:{guildId},{withStaffPerms},{isEphemeral},{query},{targetIndex},{respondTo ?? ulong.MaxValue}"
                 );
             }
+        }
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
+        public Task FAQ([Discord.Interactions.Summary("query", "Topic or keyword")][Discord.Interactions.MaxLength(MAX_KEYWORD_LENGTH)] string query, [Discord.Interactions.Summary("respondto", "Which message to respond to")] string respondto = "") {
+            return FAQCommandSlash._faq(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, _client, query, true, respondto, _logger);
         }
     }
 }

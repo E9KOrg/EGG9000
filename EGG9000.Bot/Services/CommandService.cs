@@ -113,14 +113,14 @@ namespace EGG9000.Bot.Services {
 
         private async Task _discord_SlashCommandExecuted(SocketSlashCommand arg) {
             try {
-                var command = _slashCommandFunctions.First(x => x.Name == arg.Data.Name);
-
-
+                var command = _slashCommandFunctions.FirstOrDefault(x => x.Name == arg.Data.Name);
+                if(command is null) return;
                 if(command.SubFunctions != null) {
-                    command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
+                    var sub = command.SubFunctions.FirstOrDefault(x => x.Name == arg.Data.Options.First().Name);
+                    if(sub is null) return;
+                    command = sub;
                 }
                 _ = Task.Run(() => RunCommand(command, arg));
-
             } catch(Exception e) {
                 _bugsnag.Notify(e);
                 await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
@@ -129,7 +129,7 @@ namespace EGG9000.Bot.Services {
 
         private async Task _discord_UserCommandExecuted(SocketUserCommand arg) {
             try {
-                var command = _userCommandFunctions.First(x => x.Name == arg.Data.Name || x.Details.Name == arg.Data.Name);
+                var command = _userCommandFunctions.FirstOrDefault(x => x.Name == arg.Data.Name || x.Details.Name == arg.Data.Name);
                 if(command == null) return;
                 _ = Task.Run(() => RunCommand(command, arg));
             } catch(Exception e) {
@@ -385,6 +385,18 @@ namespace EGG9000.Bot.Services {
                     var discordCommands = await guild.BulkOverwriteApplicationCommandAsync([.. guildCommandProperties]);
                     _discordCommands.AddRange(discordCommands.Select(x => (x, guild.Id)));
                 }
+                // Bridge (temporary): load InteractionService modules and register them to each guild,
+                // merged on top of the legacy commands (deleteMissing:false keeps the legacy ones).
+                // Global registration is intentionally NOT done during the bridge: InteractionService's
+                // deleteMissing:false re-serializes the legacy-created global commands to preserve them,
+                // and that round-trip produces a payload Discord rejects (error 50035 BASE_TYPE_MIN_LENGTH).
+                // Guild-scoped registration avoids that round-trip and propagates instantly. Global is
+                // restored at teardown when InteractionService owns the entire command set.
+                var interactions = _provider.GetRequiredService<Discord.Interactions.InteractionService>();
+                await interactions.AddModulesAsync(System.Reflection.Assembly.GetExecutingAssembly(), _provider);
+                foreach(var guild in _discord.Guilds) {
+                    await interactions.RegisterCommandsToGuildAsync(guild.Id, deleteMissing: false);
+                }
             } catch(Exception exception) {
                 _bugsnag.Notify(exception);
 
@@ -396,7 +408,8 @@ namespace EGG9000.Bot.Services {
 
 
         private Task _discord_ModalSubmitted(SocketModal arg) {
-            var command = _modalFunctions.First(x => x.Name == arg.Data.CustomId.ToLower().Split(":")[0]);
+            var command = _modalFunctions.FirstOrDefault(x => x.Name == arg.Data.CustomId.ToLower().Split(":")[0]);
+            if(command is null) return Task.CompletedTask;
 
             _ = Task.Run(() => RunCommand(command, arg));
 
@@ -404,10 +417,12 @@ namespace EGG9000.Bot.Services {
         }
 
         private Task _discord_AutocompleteExecuted(SocketAutocompleteInteraction arg) {
-            var command = _slashCommandFunctions.First(x => x.Name == arg.Data.CommandName);
+            var command = _slashCommandFunctions.FirstOrDefault(x => x.Name == arg.Data.CommandName);
+            if(command is null) return Task.CompletedTask;
 
             if(command.SubFunctions != null) {
-                command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
+                command = command.SubFunctions.FirstOrDefault(x => x.Name == arg.Data.Options.First().Name);
+                if(command is null) return Task.CompletedTask;
             }
 
             // Server-side backstop: Discord already hides staff commands from non-staff, so this only
@@ -454,8 +469,8 @@ namespace EGG9000.Bot.Services {
         private async Task _discord_SelectMenuExecuted(SocketMessageComponent arg) {
             var start = Stopwatch.GetTimestamp();
             try {
-                var command = _componentCommandFunctions.First(x => x.Name == arg.Data.CustomId.Split(":")[0].ToLower());
-
+                var command = _componentCommandFunctions.FirstOrDefault(x => x.Name == arg.Data.CustomId.Split(":")[0].ToLower());
+                if(command is null) return;
 
                 _ = Task.Run(() => RunCommand(command, arg));
 

@@ -90,11 +90,6 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Removed registered EggInc ID from a user's account", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task RemoveID(FauxCommand command, ApplicationDbContext db, [SlashParam] string eggincid, [SlashParam] SocketUser targetUser) {
-            return _RemoveID(command, db, eggincid, targetUser.Id);
-        }
-
         public static async Task _RemoveID(FauxCommand command, ApplicationDbContext db, string eggincid, ulong userid) {
             await command.DeferAsync();
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == userid);
@@ -120,10 +115,6 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Accept the rules of this discord server")]
         public static async Task Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client) {
             await _Accept(command, db, _client, command.User);
-        }
-        [SlashCommand(Description = "Accept the rules of this discord server", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketGuildUser targetUser) {
-            await _Accept(command, db, _client, targetUser);
         }
         public static async Task _Accept(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IUser targetUser) {
             await command.DeferAsync();
@@ -189,10 +180,6 @@ namespace EGG9000.Bot.Commands {
         public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
             await _UpdateID(command, db, eggincid, await command.Channel.GetUserAsync(command.User.Id) as SocketGuildUser, accountnumber);
         }
-        [SlashCommand(Description = "EggIncID someones ID", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task UpdateID(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "EggIncID starting with EI")] string eggincid, [SlashParam] SocketGuildUser targetUser, [SlashParam(Description = "Account Number (if you have more than one)", Required = false)] int accountnumber = 0) {
-            await _UpdateID(command, db, eggincid, targetUser, accountnumber);
-        }
         public static async Task _UpdateID(FauxCommand command, ApplicationDbContext db, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             await command.DeferAsync(ephemeral: true);
             if(targetUser is null) {
@@ -250,10 +237,6 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = updatedEmbeds; });
         }
 
-        [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
-            return _Register(command, db, _client, bugsnag, eggincid, user, logger);
-        }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
         public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             return _Register(command, db, _client, bugsnag, eggincid, command.User, logger);
@@ -449,33 +432,49 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Removes any unpinned messages from the channel", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task Clean(FauxCommand command, DiscordHostedService _client) {
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("removeid", "Removed registered EggInc ID from a user's account")]
+        public Task RemoveID([Discord.Interactions.Summary("eggincid")] string eggincid, [Discord.Interactions.Summary("targetuser")] SocketUser targetUser) {
+            return RegisterCommandsSlash._RemoveID((SocketSlashCommand)Context.Interaction, Db, eggincid, targetUser.Id);
+        }
+
+        [Discord.Interactions.SlashCommand("accept", "Accept the rules of this discord server")]
+        public async Task Accept([Discord.Interactions.Summary("targetuser")] SocketGuildUser targetUser) {
+            await RegisterCommandsSlash._Accept((SocketSlashCommand)Context.Interaction, Db, _client, targetUser);
+        }
+
+        [Discord.Interactions.SlashCommand("updateid", "EggIncID someones ID")]
+        public async Task UpdateID([Discord.Interactions.Summary("eggincid", "EggIncID starting with EI")] string eggincid, [Discord.Interactions.Summary("targetuser")] SocketGuildUser targetUser, [Discord.Interactions.Summary("accountnumber", "Account Number (if you have more than one)")] int accountnumber = 0) {
+            await RegisterCommandsSlash._UpdateID((SocketSlashCommand)Context.Interaction, Db, eggincid, targetUser, accountnumber);
+        }
+
+        [Discord.Interactions.SlashCommand("register", "Register your EggInc account with the bot")]
+        public Task Register([Discord.Interactions.Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [Discord.Interactions.Summary("user")] SocketGuildUser user) {
+            return RegisterCommandsSlash._Register((SocketSlashCommand)Context.Interaction, Db, _client, _bugsnag, eggincid, user, _logger);
+        }
+
+        [Discord.Interactions.SlashCommand("clean", "Removes any unpinned messages from the channel")]
+        public async Task Clean() {
+            FauxCommand command = (SocketSlashCommand)Context.Interaction;
             await command.RespondAsync("Cleaning...");
             var channel = (SocketTextChannel)command.Channel;
             if(channel.Name.ToLower().Contains("welcome")) {
-                await _cleanWelcome(command, _client);
+                var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
+                await guild.PruneUsersAsync(10);
+
+                var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
+                var welcomeMessages = await welcomeChannel.GetMessagesAsync(500).FlattenAsync();
+                await welcomeChannel.DeleteMessagesBatchAsync(welcomeMessages);
+
+                await command.DeleteResponseFix();
             } else {
-                await _cleanUnpinned(command);
+                var messages = await command.Channel.GetMessagesAsync(500).FlattenAsync();
+                messages = messages.Where(x => !x.IsPinned);
+                await channel.DeleteMessagesBatchAsync(messages);
+                await command.DeleteResponseFix();
             }
-        }
-
-        private static async Task _cleanWelcome(FauxCommand command, DiscordHostedService _client) {
-            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
-            await guild.PruneUsersAsync(10);
-
-            var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
-            var messages = await welcomeChannel.GetMessagesAsync(500).FlattenAsync();
-            await welcomeChannel.DeleteMessagesBatchAsync(messages);
-
-            await command.DeleteResponseFix();
-        }
-
-        private static async Task _cleanUnpinned(FauxCommand command) {
-            var messages = await command.Channel.GetMessagesAsync(500).FlattenAsync();
-            messages = messages.Where(x => !x.IsPinned);
-            await ((SocketTextChannel)command.Channel).DeleteMessagesBatchAsync(messages);
-            await command.DeleteResponseFix();
         }
     }
 }

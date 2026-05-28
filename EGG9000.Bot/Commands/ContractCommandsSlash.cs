@@ -34,25 +34,6 @@ using Exception = System.Exception;
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
 
-        [SlashCommand(Description = "Fix a user getting full co-op error", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount) {
-            await command.DeferAsync();
-            var userid = useraccount.Split("|")[0];
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
-            if(dbuser is null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op."); });
-                return;
-            }
-
-            var coop = await db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
-            if(coop == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel."); });
-                return;
-            }
-
-            await _fixFullCoopError(command, db, _client, coopStatusUpdaterThreads, logger, dbuser, coop);
-        }
-
         [SlashCommand(Description = "Fix for getting full co-op error")]
         public static async Task FixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger) {
             await command.DeferAsync();
@@ -70,7 +51,7 @@ namespace EGG9000.Bot.Commands {
             await _fixFullCoopError(command, db, _client, coopStatusUpdaterThreads, logger, dbuser, coop);
         }
 
-        private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
+        internal static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
             var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status is null) { //Safeguarding
@@ -1054,6 +1035,27 @@ namespace EGG9000.Bot.Commands {
                 logger.LogInformation("Did not {user} from {coop}", dbUser.DiscordUsername, coop.Name);
                 await command.ModifyOriginalResponseAsync($"Attempted to remove <@{dbUser.DiscordId}> from co-op, please check again in a few minutes.");
             }
+        }
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("fixfullcooperror", "Fix a user getting full co-op error")]
+        public async Task FixFullCoopError([Discord.Interactions.Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount) {
+            await Context.Interaction.DeferAsync();
+            var userid = useraccount.Split("|")[0];
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbuser is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op."); });
+                return;
+            }
+
+            var coop = await Db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            if(coop == null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel."); });
+                return;
+            }
+
+            await ContractCommandsSlash._fixFullCoopError(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, _client, _coopStatusUpdaterThreads, _logger, dbuser, coop);
         }
     }
 }

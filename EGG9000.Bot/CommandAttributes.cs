@@ -1,4 +1,4 @@
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 
 using EGG9000.Common.Database.Entities;
 

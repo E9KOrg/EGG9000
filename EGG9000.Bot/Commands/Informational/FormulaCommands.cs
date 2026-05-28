@@ -1,7 +1,8 @@
-﻿using Discord;
-using EGG9000.Common.EggIncAPI;
+using Discord;
+using Discord.Interactions;
+using EGG9000.Bot.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -22,23 +23,34 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Bot.Commands {
-    public static class ForumlaCommands {
+    [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
+    [EnabledInDm(true)]
+    public class FormulaeModule : EGG9000.Bot.Interactions.E9KModuleBase {
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<FormulaeModule> _logger;
+
+        public FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : base(dbFactory) {
+            _cache = cache;
+            _logger = logger;
+        }
+
         public enum MERChoice {
-            [Discord.Interactions.ChoiceDisplay("Current")] Current = 0,
-            [Discord.Interactions.ChoiceDisplay("30")] Thirty = 30,
-            [Discord.Interactions.ChoiceDisplay("40")] Forty = 40,
-            [Discord.Interactions.ChoiceDisplay("50")] Fifty = 50
+            [ChoiceDisplay("Current")] Current = 0,
+            //[ChoiceDisplay("20")] Twenty = 20,
+            [ChoiceDisplay("30")] Thirty = 30,
+            [ChoiceDisplay("40")] Forty = 40,
+            [ChoiceDisplay("50")] Fifty = 50
         };
 
-        [SlashCommand(Description = "Calculate your Mystical Egg Ratio (MER)", ParentCommand = "formulae", AllowInDMs = true)]
-        public static async Task Mer(FauxCommand command, ApplicationDbContext db, [SlashParam(Required = false)] MERChoice MERValue = MERChoice.Current) {
-            await command.RespondAsync("Getting account backups...");
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        [SlashCommand("mer", "Calculate your Mystical Egg Ratio (MER)")]
+        public async Task Mer([Summary("MERValue")] MERChoice MERValue = MERChoice.Current) {
+            await Context.Interaction.RespondAsyncGettingMessage("Getting account backups...");
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             } else if(!dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to retrieve your backup. Please try again later."); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to retrieve your backup. Please try again later."); });
                 return;
             }
 
@@ -51,7 +63,7 @@ namespace EGG9000.Bot.Commands {
                 embeds.Add(embed);
             }
 
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embeds.ToArray(); });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
         private static Embed MERCalculate(EggIncAccount account, int MERValue) {
@@ -111,15 +123,15 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Calculate your Legendary Luck Coefficient (LLC)", ParentCommand = "formulae", AllowInDMs = true)]
-        public static async Task Llc(FauxCommand command, ApplicationDbContext db, IMemoryCache _cache, ILogger _logger) {
-            await command.DeferAsync();
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        [SlashCommand("llc", "Calculate your Legendary Luck Coefficient (LLC)")]
+        public async Task Llc() {
+            await Context.Interaction.DeferAsync();
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             } else if(!dbUser.EggIncAccounts.Any(x => x.Backup is not null)) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to retrieve your backup. Please try again later."); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to retrieve your backup. Please try again later."); });
                 return;
             }
 
@@ -131,8 +143,8 @@ namespace EGG9000.Bot.Commands {
                 embed = newBuilder.Build();
                 embeds.Add(embed);
             }
-            
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embeds.ToArray(); });
+
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
         public static (int, int) GetCompledShipsOfDuration(EggIncAccount account, DurationType duration) {
@@ -159,9 +171,8 @@ namespace EGG9000.Bot.Commands {
             return (resultLastType, resultSecondToLastType);
         }
 
-        [ComponentCommand]
         private static async Task<Embed> LLCCalculate(EggIncAccount account, string userName, IMemoryCache _cache, ILogger _logger) {
-            var backup = await EggIncApi.FirstContact(account.Id);
+            var backup = await ContractsAPI.FirstContact(account.Id);
 
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is null || account?.Backup?.ArtifactHall is null) {
                 return EmbedError($"Unable to retrieve backup, please try again later.");
@@ -257,9 +268,9 @@ namespace EGG9000.Bot.Commands {
                 .Build();
         }
 
-        [SlashCommand(Description = "Calculate the EB% based on SE and PE inputs", ParentCommand = "formulae", AllowInDMs = true)]
-        public static async Task Eb(FauxCommand command, [SlashParam(Description = "SE")] string SE, [SlashParam(Description = "PE", PositiveOnly = true)] int PE) {
-            await command.RespondAsync("Calculating...");
+        [SlashCommand("eb", "Calculate the EB% based on SE and PE inputs")]
+        public async Task Eb([Summary("SE", "SE")] string SE, [Summary("PE", "PE")] [MinValue(0)] int PE) {
+            await Context.Interaction.RespondAsyncGettingMessage("Calculating...");
 
             double seValue;
             var parserDict = new Dictionary<string, double>() {
@@ -276,12 +287,12 @@ namespace EGG9000.Bot.Commands {
             if(parserDict.TryGetValue(SE.Last().ToString(), out var mult)) {
                 seValue = double.Parse(SE.TrimEnd(SE.Last())) * mult;
             } else {
-                await command.RespondAsync(content: "", embed: EmbedError($"Invalid SE value: must end with {string.Join(", ", parserDict.Keys.ToList())}."));
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Invalid SE value: must end with {string.Join(", ", parserDict.Keys.ToList())}."));
                 return;
             }
 
             if(PE <= 0 || PE > 1000) {
-                await command.RespondAsync(content: "", embed: EmbedError("Invalid PE value: must be a positive integer less than 1000."));
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError("Invalid PE value: must be a positive integer less than 1000."));
                 return;
             }
 
@@ -289,7 +300,7 @@ namespace EGG9000.Bot.Commands {
             var resultPercentage = result * 100;
             var bonus = Math.Round(Math.Pow((1.05 + 0.01 * 5), PE) * (1.5) * 100, 2);
 
-            await command.ModifyOriginalResponseAsync($"{SIPrefix.GetPrefixFromEB(resultPercentage).RankWithSubRank} (<:Soul_Egg_SE:724341890794913964>`{SE}` and <:Egg_of_Prophecy_PE:669981330477547580>`{PE}`)\nEarning Bonus %: `{resultPercentage.ToEggString(true, 2)}%`\nEarning multiplier: `{result.ToEggString(true, 2)}`\nBonus per soul egg: `{bonus:n}%`");
+            await Context.Interaction.ModifyOriginalResponseAsync($"{SIPrefix.GetPrefixFromEB(resultPercentage).RankWithSubRank} (<:Soul_Egg_SE:724341890794913964>`{SE}` and <:Egg_of_Prophecy_PE:669981330477547580>`{PE}`)\nEarning Bonus %: `{resultPercentage.ToEggString(true, 2)}%`\nEarning multiplier: `{result.ToEggString(true, 2)}`\nBonus per soul egg: `{bonus:n}%`");
         }
     }
 }

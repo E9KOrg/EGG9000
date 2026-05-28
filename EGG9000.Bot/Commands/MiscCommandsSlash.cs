@@ -250,27 +250,6 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
 
-        [SlashCommand(Description = "Adds a temporary name to be used for co-op naming", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
-        public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
-            DateTimeOffset expireTime;
-            try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
-            } catch(Exception ex) {
-                await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
-                return;
-            }
-
-            await command.DeferAsync();
-            var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
-            var dbuser = await db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
-            dbuser.CustomCoopName = customName;
-            dbuser.ExpireCustomCoopName = expireTime;
-
-            await db.SaveChangesAsync();
-
-            await command.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
-        }
-
         [ComponentCommand]
         public static async Task WhatIsRSC(SocketMessageComponent component) {
             var rscText = "The Contract Eggspert role is awarded to the top 10 highest scoring players of each scored contract, as well as the top-performers in Grades C, B, and A. The role will be removed after 7 days, and serves only to recognize eggceptional performance.\n\n" +
@@ -338,6 +317,29 @@ namespace EGG9000.Bot.Commands {
                     if(dmResult != DMResult.Success) await command.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
                 }
             }
+        }
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("tempcustomcoopname", "Adds a temporary name to be used for co-op naming")]
+        public async Task TempCustomCoopName([Discord.Interactions.Summary("customname")] string customName, [Discord.Interactions.Summary("timespan")] string timespan, [Discord.Interactions.Summary("user")] SocketGuildUser user) {
+            DateTimeOffset expireTime;
+            try {
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
+            } catch(Exception ex) {
+                await Context.Interaction.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
+                return;
+            }
+
+            await Context.Interaction.DeferAsync();
+            var guild = _gateway.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
+            var dbuser = await Db.DBUsers.FirstAsync(x => x.DiscordId == user.Id);
+            dbuser.CustomCoopName = customName;
+            dbuser.ExpireCustomCoopName = expireTime;
+
+            await Db.SaveChangesAsync();
+
+            await Context.Interaction.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
         }
     }
 }

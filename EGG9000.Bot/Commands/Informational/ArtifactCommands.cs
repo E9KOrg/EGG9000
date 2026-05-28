@@ -21,20 +21,6 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands.Informational {
     public static class ArtifactCommands {
 
-        [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(Required = false)] bool showinchannel = false) {
-            await command.DeferAsync(ephemeral: !showinchannel);
-            var userid = useraccount.Split("|")[0];
-            DBUser dbuser = null;
-            try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
-            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
-            EggIncAccount account = null;
-            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
-            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
-
-            await _viewInventory(command, db, dbuser, account, showinchannel);
-        }
-
         [SlashCommand(Description = "View your inventory", AllowInDMs = true)]
         public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
             await command.DeferAsync();
@@ -303,5 +289,21 @@ namespace EGG9000.Bot.Commands.Informational {
             await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(sets[selected], selected));
         }
 
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("viewinventory", "View a user's inventory")]
+        public async Task ViewInventory([Discord.Interactions.Autocomplete(typeof(UserAccountAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount, [Discord.Interactions.Summary("showinchannel")] bool showinchannel = false) {
+            await Context.Interaction.DeferAsync(ephemeral: !showinchannel);
+            var userid = useraccount.Split("|")[0];
+            DBUser dbuser = null;
+            try { dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(dbuser is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+            EggIncAccount account = null;
+            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(account is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
+
+            await ArtifactCommands._viewInventory(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, dbuser, account, showinchannel);
+        }
     }
 }

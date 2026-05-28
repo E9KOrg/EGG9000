@@ -1,8 +1,9 @@
-﻿using Discord;
+using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.EggIncAPI;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
@@ -10,7 +11,6 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData;
 using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.JsonData.EiAfxData;
-using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -28,43 +28,47 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands {
-    public static class CraftCommand {
-        [SlashCommand(Description = "Show you how many times you have crafted the requested artifact.", AllowInDMs = true)]
-        public static async Task CraftedCount(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db) {
+    public class CraftModule : EGG9000.Bot.Interactions.E9KModuleBase {
+        public CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : base(dbFactory) { }
+
+        [SlashCommand("craftedcount", "Show you how many times you have crafted the requested artifact.")]
+        [EnabledInDm(true)]
+        public async Task CraftedCount([Autocomplete(typeof(ArtifactNameAutoComplete))][Summary("artifact")] string artifact) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 
             if(requestedArtifact is null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
                 return;
             }
 
-            await command.DeferAsync();
+            await Context.Interaction.DeferAsync();
 
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             if(dbUser.EggIncAccounts.Count == 1) {
-                await command.RespondAsync(
-                    embed: await CraftedCountEmbedBuilder(dbUser.EggIncAccounts.First(), requestedArtifact, db),
+                await Context.Interaction.RespondAsyncGettingMessage(
+                    embed: await CraftedCountEmbedBuilder(dbUser.EggIncAccounts.First(), requestedArtifact),
                     content: null
                 );
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in dbUser.EggIncAccounts) {
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftedCountAccountButton:{account.Id}|{artifact}|{command.User.Id}");
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftedCountAccountButton:{account.Id}|{artifact}|{Context.User.Id}");
                 }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account to check craft counts for."; x.Embed = null; x.Components = builder.Build(); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account to check craft counts for."; x.Embed = null; x.Components = builder.Build(); });
             }
 
             dbUser.UpdateAccounts();
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
 
-        [ComponentCommand]
-        public static async Task CraftedCountAccountButton(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        [ComponentInteraction("CraftedCountAccountButton:*", ignoreGroupNames: true)]
+        public async Task CraftedCountAccountButton(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
 
             var dataObjs = data.Split("|");
             var originalUserId = ulong.Parse(dataObjs[2]);
@@ -74,23 +78,23 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var user = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(user is null) return;
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[1]);
 
-            var embed = await CraftedCountEmbedBuilder(account, requestedArtifact, db);
+            var embed = await CraftedCountEmbedBuilder(account, requestedArtifact);
             await component.UpdateAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
         }
 
-        private static async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact, ApplicationDbContext db) {
+        private static async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact) {
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
             if(backup == null) {
                 return null;
             }
 
-            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), backup);
+            backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, backup);
 
             var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
 
@@ -103,6 +107,7 @@ namespace EGG9000.Bot.Commands {
                 }
                 var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.afx_id && x.Tier == childIds.Tier);
                 stringBuilder.AppendLine($"{emoji?.Emoji} {childIds.Count}");
+                //var artifact = backup.ArtifactHall.FirstOrDefault(x => x.Artifact)
             }
 
             var embed = new EmbedBuilder()
@@ -118,42 +123,44 @@ namespace EGG9000.Bot.Commands {
             return embed;
         }
 
-        [SlashCommand(Description = "Show you required artifacts to craft the requested artifact.", AllowInDMs = true)]
-        public static async Task Craft(FauxCommand command, [SlashParam(Description = "Quantity")] int quantity, [SlashParam] TierInput quality, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db) {
+        [SlashCommand("craft", "Show you required artifacts to craft the requested artifact.")]
+        [EnabledInDm(true)]
+        public async Task Craft([Summary("quantity", "Quantity")] int quantity, [Summary("quality")] TierInput quality, [Autocomplete(typeof(ArtifactNameAutoComplete))][Summary("artifact")] string artifact) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 
             if(requestedArtifact is null) {
-                await command.RespondAsync(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
                 return;
             }
 
-            await command.DeferAsync();
+            await Context.Interaction.DeferAsync();
 
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             if(dbUser.EggIncAccounts.Count == 1) {
-                await command.RespondAsync(
+                await Context.Interaction.RespondAsyncGettingMessage(
                     content: "",
-                    embeds: (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact, db)).ToArray()
+                    embeds: (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact)).ToArray()
                 );
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in dbUser.EggIncAccounts) {
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{(int)quality}|{quantity}|{artifact}|{command.User.Id}");
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"CraftAccountButton:{account.Id}|{(int)quality}|{quantity}|{artifact}|{Context.User.Id}");
                 }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Embed = null; x.Components = builder.Build(); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to craft with."; x.Embed = null; x.Components = builder.Build(); });
             }
 
             dbUser.UpdateAccounts();
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
 
-        [ComponentCommand]
-        public static async Task CraftAccountButton(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        [ComponentInteraction("CraftAccountButton:*", ignoreGroupNames: true)]
+        public async Task CraftAccountButton(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
 
             var dataObjs = data.Split("|");
             var originalUserId = ulong.Parse(dataObjs[4]);
@@ -163,18 +170,18 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var user = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var user = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(user is null) return;
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var quality = (TierInput)int.Parse(dataObjs[1]);
             var quantity = int.Parse(dataObjs[2]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[3]);
 
-            var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact, db);
+            var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact);
             await component.UpdateAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        private static async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact, ApplicationDbContext db) {
+        private static async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
             var embeds = new List<Embed>();
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
@@ -182,7 +189,7 @@ namespace EGG9000.Bot.Commands {
                 return null;
             }
 
-            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), backup);
+            backup = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, backup);
             stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
             stringBuilder.AppendLine();
 
@@ -225,7 +232,7 @@ namespace EGG9000.Bot.Commands {
             stringBuilder.Append($"Total Cost: <:Golden_Egg_GE:692439755798872075> **{basket.GetTotalCost().ToString("#,0", new CultureInfo("en-US"))}**");
             stringBuilder.AppendLine();
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
-            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "*You have enough <:Golden_Egg_GE:692439755798872075>!*" : "*You do not have enough <:Golden_Egg_GE:692439755798872075>!*");
+            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "_You have enough <:Golden_Egg_GE:692439755798872075>!_" : "_You do not have enough <:Golden_Egg_GE:692439755798872075>!_");
 
             var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
             var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);

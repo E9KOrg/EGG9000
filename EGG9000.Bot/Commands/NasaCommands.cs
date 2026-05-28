@@ -1,36 +1,46 @@
-﻿using Discord.WebSocket;
-using EGG9000.Common.Commands;
+using Discord.Interactions;
+using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
-    public static class NasaCommands {
-        [ComponentCommand]
-        public static async Task APODExplanation(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+    public class NasaModule : EGG9000.Bot.Interactions.E9KModuleBase {
+        private readonly DiscordHostedService _client;
+        private readonly ILogger<NasaModule> _logger;
+
+        public NasaModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<NasaModule> logger) : base(dbFactory) {
+            _client = client;
+            _logger = logger;
+        }
+
+        [ComponentInteraction("APODExplanation:*", ignoreGroupNames: true)]
+        public async Task APODExplanation(string data) {
             var apodId = System.Guid.Parse(data);
-            var explanation = await NasaHelper.GetExplanationOrEmpty(apodId, db);
+            var explanation = await NasaHelper.GetExplanationOrEmpty(apodId, Db);
             if (string.IsNullOrEmpty(explanation)) {
                 var failureEmbed = EmbedHelpers.EmbedWarning("No explanation found for this APOD.");
-                await component.RespondAsync("", embed: failureEmbed, ephemeral: true);
+                await Context.Interaction.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
             }
             var explainEmbed = EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Success, "APOD Explanation", explanation);
-            await component.RespondAsync("", embed: explainEmbed, ephemeral: true);
+            await Context.Interaction.RespondAsync("", embed: explainEmbed, ephemeral: true);
         }
 
-        [SlashCommand(Description = "View NASA's latest Astronomy Picture of the Day (APOD)")]
-        public static async Task APOD(FauxCommand command, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
-            var latestApod = await NasaHelper.GetLatestApod(db);
+        [SlashCommand("apod", "View NASA's latest Astronomy Picture of the Day (APOD)")]
+        public async Task APOD() {
+            var latestApod = await NasaHelper.GetLatestApod(Db);
             if (latestApod is null) {
                 var failureEmbed = EmbedHelpers.EmbedWarning("No APOD found in the database.");
-                await command.RespondAsync("", embed: failureEmbed, ephemeral: true);
+                await Context.Interaction.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
             }
-            await command.TrySendLatestNasaAPODAdHoc(latestApod, client, db, logger);
+            await new FauxCommand((SocketSlashCommand)Context.Interaction).TrySendLatestNasaAPODAdHoc(latestApod, _client, Db, _logger);
         }
     }
 }

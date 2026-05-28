@@ -30,18 +30,8 @@ namespace EGG9000.Bot.Commands {
             return new EmbedBuilder().WithTitle(title).WithDescription(userText + description);
         }
 
-        public static readonly TimeSpan TimeZoneOffset = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow);
-        private static readonly DateTimeOffset StaticToday = DateTimeOffset.UtcNow;
-        public static readonly List<(int bg, long time)> BoardingGroupTimes = [
-            (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).ToUnixTimeSeconds()),
-            (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(8).ToUnixTimeSeconds()),
-            (3, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(16).ToUnixTimeSeconds()),
-            (4, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(24).ToUnixTimeSeconds())
-        ];
-
-        #region AdminBypass
-        [SlashCommand(Description = "Set another user's settings", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task ContractSettings(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketUser user) {
+        // Shared by the "Contract Settings" user-context command and the /a setusersettings subcommand (AdminModule).
+        public static async Task SetUserSettings(FauxCommand command, ApplicationDbContext db, SocketUser user) {
             await command.DeferAsync(ephemeral: !System.Diagnostics.Debugger.IsAttached);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -50,7 +40,15 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = "Select which account you would like to manage"; x.Components = GetAccountButtons(dbuser, "MCSMenu"); });
             }
         }
-        #endregion
+
+        public static readonly TimeSpan TimeZoneOffset = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow);
+        private static readonly DateTimeOffset StaticToday = DateTimeOffset.UtcNow;
+        public static readonly List<(int bg, long time)> BoardingGroupTimes = [
+            (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).ToUnixTimeSeconds()),
+            (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(8).ToUnixTimeSeconds()),
+            (3, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(16).ToUnixTimeSeconds()),
+            (4, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(24).ToUnixTimeSeconds())
+        ];
 
         #region MainMenu
         [SlashCommand(Description = "My Contract Settings", AllowInDMs = true)]
@@ -806,5 +804,13 @@ namespace EGG9000.Bot.Commands {
             }
         }
         #endregion
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("contractsettings", "Set another user's settings")]
+        public async Task ContractSettings([Discord.Interactions.Summary("user")] SocketUser user) {
+            await Context.Interaction.DeferAsync(ephemeral: !System.Diagnostics.Debugger.IsAttached);
+            await ContractSettingsCommands.SetUserSettings(new FauxCommand((SocketSlashCommand)Context.Interaction), Db, user);
+        }
     }
 }
