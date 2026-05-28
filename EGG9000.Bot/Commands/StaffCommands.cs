@@ -352,7 +352,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                     .SelectMany(t => t.GetMethods())
                     .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                     .FirstOrDefault(x => x.Name == serviceName);
@@ -384,7 +384,7 @@ namespace EGG9000.Bot.Commands {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                     .SelectMany(t => t.GetMethods())
                     .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                     .FirstOrDefault(x => x.Name == serviceName);
@@ -419,7 +419,7 @@ namespace EGG9000.Bot.Commands {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                           .SelectMany(t => t.GetMethods())
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
@@ -454,7 +454,7 @@ namespace EGG9000.Bot.Commands {
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
 
             if(service == null) {
-                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetExportedTypes())
+                var job = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                           .SelectMany(t => t.GetMethods())
                           .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                           .FirstOrDefault(x => x.Name == serviceName);
