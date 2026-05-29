@@ -43,29 +43,59 @@ namespace EGG9000.Common.Helpers.AfxSets {
     }
 
     public static class AfxSetsRender {
-        // Returns one base64 JPEG (no data: header) per page, or null on error.
-        public static async Task<List<string>> AfxSetsB64(EggIncAccount account) {
+        private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+
+        // Returns one base64 JPEG (no data: header) per page. On failure pages is null and error
+        // holds a short human-readable reason (also logged).
+        public static async Task<(List<string> pages, string error)> AfxSetsB64(EggIncAccount account) {
             var posted = new AfxSetsAPIObject { EID = account.Id, Config = new AfxSetsCreatorConfig(100) };
 
-            using var client = new HttpClient();
+            // E9K_SITE_BASEURL overrides the target site (e.g. https://localhost:44314 when testing
+            // against a locally-run Site through Visual Studio).
+            var baseUrl = Environment.GetEnvironmentVariable("E9K_SITE_BASEURL");
+            if(string.IsNullOrWhiteSpace(baseUrl)) {
+#if RELEASE
+                baseUrl = "https://egg9000.com";
+#else
+                baseUrl = "https://egg9000.dev.sglade.com";
+#endif
+            }
+            baseUrl = baseUrl.TrimEnd('/');
+
+            // A locally-run Site uses a self-signed dev cert; accept it only when targeting localhost.
+            HttpClientHandler handler = null;
+            if(baseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) || baseUrl.Contains("127.0.0.1")) {
+                handler = new HttpClientHandler {
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+            }
+            using var client = handler is null ? new HttpClient() : new HttpClient(handler);
             client.DefaultRequestHeaders.Add("authenticationKey", DockerSecretsHelper.BotToken);
 
-#if RELEASE
-            var baseUrl = "https://egg9000.com";
-#else
-            var baseUrl = "https://egg9000.dev.sglade.com";
-#endif
             var apiUrl = $"{baseUrl}/api/generateafxsetsb64";
             var content = new StringContent(JsonSerializer.Serialize(posted), Encoding.UTF8, "application/json");
 
+            _logger.Info($"AfxSetsB64: POST {apiUrl} for EID {account.Id}");
+
             try {
                 var response = await client.PostAsync(apiUrl, content);
-                if(!response.IsSuccessStatusCode) return null;
                 var json = await response.Content.ReadAsStringAsync();
+                if(!response.IsSuccessStatusCode) {
+                    var body = json.Length > 500 ? json[..500] : json;
+                    var err = $"HTTP {(int)response.StatusCode} {response.StatusCode} from {apiUrl}\n{body}";
+                    _logger.Warn($"AfxSetsB64: {err}");
+                    return (null, err);
+                }
                 var parsed = JsonSerializer.Deserialize<AfxSetsB64Response>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return parsed?.Pages;
-            } catch(Exception) {
-                return null;
+                if(parsed?.Pages is null || parsed.Pages.Count == 0) {
+                    _logger.Warn("AfxSetsB64: response parsed but contained no pages.");
+                    return (null, $"Site returned no pages from {apiUrl}");
+                }
+                _logger.Info($"AfxSetsB64: got {parsed.Pages.Count} page(s) from {apiUrl}");
+                return (parsed.Pages, null);
+            } catch(Exception e) {
+                _logger.Error(e, $"AfxSetsB64: request to {apiUrl} threw");
+                return (null, $"{e.GetType().Name}: {e.Message} (target {apiUrl})");
             }
         }
     }
