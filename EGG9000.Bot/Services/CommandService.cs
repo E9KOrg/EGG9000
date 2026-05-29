@@ -162,6 +162,11 @@ namespace EGG9000.Bot.Services {
             try {
                 semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(semaphoreAcquired) {
+                    // "Missing Option (Refresh)" picked from a cache-backed autocomplete: repop the
+                    // cache (rate-limited) and reply ephemerally instead of running the command.
+                    if(await TryHandleCacheRefresh(command, arg))
+                        return;
+
                     var parameters = new List<object>();
                     foreach(var parameterInfo in command.Parameters) {
                         if(parameterInfo.GetCustomAttributes<SlashParamAttribute>().Any()) {
@@ -219,6 +224,8 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_cache);
                         } else if(parameterInfo.ParameterType == typeof(CoopStatsCache)) {
                             parameters.Add(_provider.GetService<CoopStatsCache>());
+                        } else if(parameterInfo.ParameterType == typeof(CoopAssignmentLookup)) {
+                            parameters.Add(_provider.GetService<CoopAssignmentLookup>());
                         } else {
                             throw new ArgumentException($"Parameter `{parameterInfo.Name}` is of type `{parameterInfo.ParameterType}`, which has not been implemented to be passed to commands.");
                         }
@@ -445,6 +452,32 @@ namespace EGG9000.Bot.Services {
         }
 
 
+
+        // Detects the "Missing Option (Refresh)" sentinel on a cache-backed autocomplete param.
+        // If present, repopulates that cache (rate-limited per cache) and replies ephemerally.
+        // Returns true when handled, so the caller skips running the command.
+        private async Task<bool> TryHandleCacheRefresh(CommandFunctionBase command, IDiscordInteraction arg) {
+            foreach(var parameterInfo in command.Parameters) {
+                var slashParam = parameterInfo.GetCustomAttributes<SlashParamAttribute>().FirstOrDefault();
+                if(slashParam?.AutocompleteHandler is null)
+                    continue;
+                if(GetParam(parameterInfo, arg) is not string value || value != AutoCompleteRefresh.Sentinel)
+                    continue;
+
+                if(ActivatorUtilities.CreateInstance(_provider, slashParam.AutocompleteHandler) is IRefreshableAutoComplete refreshable) {
+                    if(AutoCompleteRefresh.TryMarkRefresh(refreshable.CacheName)) {
+                        await refreshable.RefreshAsync();
+                        await arg.RespondAsync(text: "", embed: EmbedSuccess($"Refreshed the `{refreshable.CacheName}` cache. Re-open the option to see the new choices."), ephemeral: true);
+                    } else {
+                        await arg.RespondAsync(text: "", embed: EmbedWarning($"That cache was refreshed recently - try again in {AutoCompleteRefresh.SecondsUntilAllowed(refreshable.CacheName)}s."), ephemeral: true);
+                    }
+                } else {
+                    await arg.RespondAsync(text: "", embed: EmbedWarning("That option can't be refreshed."), ephemeral: true);
+                }
+                return true;
+            }
+            return false;
+        }
 
         private static object GetParam(ParameterInfo parameterInfo, IDiscordInteraction arg) {
             if(arg is FauxCommand) {
