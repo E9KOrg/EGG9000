@@ -151,9 +151,9 @@ namespace EGG9000.Bot.Commands {
             if(account.AfxSetsImageHash == hash && account.AfxSetsImageUrls is { Count: > 0 }) {
                 urls = account.AfxSetsImageUrls;
             } else {
-                var pages = await AfxSetsRender.AfxSetsB64(account);
+                var (pages, renderError) = await AfxSetsRender.AfxSetsB64(account);
                 if(pages is null || pages.Count == 0) {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Artifact set images could not be generated."); });
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Artifact set images could not be generated.\n```{renderError}```"); });
                     return;
                 }
                 var files = pages.Select((b, i) => new FileAttachment(new MemoryStream(Convert.FromBase64String(b)), $"afxset_page_{(i + 1):D2}.jpeg")).ToList();
@@ -167,6 +167,9 @@ namespace EGG9000.Bot.Commands {
 
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
+                // Drop the uploaded page attachments now that we have their CDN URLs; the embed
+                // references those URLs directly so the loose image files don't clutter the message.
+                x.Attachments = new List<FileAttachment>();
                 x.Embeds = new[] { AfxSetsImageEmbed(dbUser, account, urls, 0), AfxSetsDetailEmbed(null) };
                 x.Components = AfxSetsComponents(dbUser, accountIndex, sets, urls.Count, 0);
             });
@@ -198,7 +201,14 @@ namespace EGG9000.Bot.Commands {
             var emoji = GetAfxSetString(set);
             var links = set.Select(a => {
                 var artifactLink = $"[{a.Artifact}]({AfxExplorerLink.Url(a, false)})";
-                var stoneLinks = string.Concat((a.Stones ?? new()).Select(s => $" + [{s.Artifact}]({AfxExplorerLink.Url(s, true)})"));
+                // Collapse duplicate stones into "Name x N".
+                var stoneLinks = string.Concat((a.Stones ?? new())
+                    .GroupBy(s => (s.Id, s.Tier))
+                    .Select(g => {
+                        var s = g.First();
+                        var label = g.Count() > 1 ? $"{s.Artifact} x {g.Count()}" : s.Artifact;
+                        return $" + [{label}]({AfxExplorerLink.Url(s, true)})";
+                    }));
                 return artifactLink + stoneLinks;
             });
             return new EmbedBuilder()

@@ -8,7 +8,8 @@ namespace EGG9000.Common.Helpers.AfxSets {
         public static string Url(EggIncArtifactInstance instance, bool isStone) {
             var enumName = ((ArtifactNames)instance.Id).ToString();
             var slug = Regex.Replace(enumName, "(?<=.)([A-Z])", "-$1").ToLowerInvariant();
-            var tier = isStone ? instance.Tier + 2 : instance.Tier;
+            // Stone Tier is 0-based (0..3); the explorer uses 1..4. Artifact Tier is already 1-based.
+            var tier = isStone ? instance.Tier + 1 : instance.Tier;
             return $"{Base}{slug}-{tier}/";
         }
     }

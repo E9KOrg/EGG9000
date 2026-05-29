@@ -44,10 +44,10 @@ namespace EGG9000.Common.Test {
                 "https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/tachyon-deflector-4/",
                 AfxExplorerLink.Url(deflector, isStone: false));
 
-            // Id 1 = TachyonStone, tier 0 -> +2 -> tachyon-stone-2
-            var stone = new EggIncArtifactInstance { Id = 1, Tier = 0, Rarity = 0, Stones = new() };
+            // Id 1 = TachyonStone, Tier is 0-based; T4 stone has Tier 3 -> +1 -> tachyon-stone-4
+            var stone = new EggIncArtifactInstance { Id = 1, Tier = 3, Rarity = 0, Stones = new() };
             Assert.AreEqual(
-                "https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/tachyon-stone-2/",
+                "https://wasmegg-carpet.netlify.app/artifact-explorer/#/artifact/tachyon-stone-4/",
                 AfxExplorerLink.Url(stone, isStone: true));
         }
     }
