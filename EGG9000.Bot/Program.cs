@@ -145,6 +145,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<UserCacheRefreshService>();
         services.AddHostedService<ActiveCoopsCacheRefreshService>();
         services.AddSingleton<CoopStatsCache>();
+        services.AddSingleton<CoopAssignmentLookup>();
+        services.AddHostedService<CoopAssignmentLookupRefreshService>();
         services.AddSingleton<Words>();
 
 #if RELEASE
