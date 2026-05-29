@@ -128,6 +128,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 x.CommandTimeout(30);
             });
             options.EnableSensitiveDataLogging(true);
+            options.AddInterceptors(new QueryCountingInterceptor());
         });
 
 #if !DEBUG
@@ -143,6 +144,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DatabaseCache>();
         services.AddHostedService<UserCacheRefreshService>();
         services.AddHostedService<ActiveCoopsCacheRefreshService>();
+        services.AddSingleton<CoopStatsCache>();
         services.AddSingleton<Words>();
 
 #if RELEASE
@@ -227,6 +229,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<ArtifactCheaters>();
         services.AddHostedService<StaffCoopsMessage>();
+        services.AddHostedService<CoopStatsRefreshService>();
         services.AddHostedService<EventUpdater>();
 
         services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));

@@ -25,6 +25,7 @@ namespace EGG9000.Common.Database.Entities {
 
         //public ulong? DemeritLogChannel { get; set; }
 
+        [GuildConfig("Co-op Name Prefix", "Text", GuildConfigKind.String, Description = "Prefix for auto-generated co-op names")]
         public string CoopNamePrefix { get; set; }
 
         public string StaffCoopsMessageDetails { get; set; }
@@ -41,10 +42,14 @@ namespace EGG9000.Common.Database.Entities {
         //public ulong? GameEventsChannel { get; set; }
         //public ulong? FaqChannel { get; set; }
         //public ulong? FailedCategory { get; set; }
+        [GuildConfig("Co-op Categories", "Lists", GuildConfigKind.CsvCategories, Description = "Categories new co-op channels are created under")]
         public string CoopCategories { get; set; }
+        [GuildConfig("Finished Categories", "Lists", GuildConfigKind.CsvCategories, Description = "Categories finished co-op channels move to")]
         public string FinishedCategories { get; set; }
 
+	    [GuildConfig("Minimum Running Score", "Numbers", GuildConfigKind.Float, Description = "Running-score threshold for slacker detection")]
 	    public float MinimumRunningScore { get; set; }
+        [GuildConfig("Add Outside Co-ops", "Toggles", GuildConfigKind.Bool, Description = "Add outside co-ops discovered from backups")]
         public bool AddOutsideCoops { get; set; } = true;
 
         public string _coopSettingsJson { get; set; }
@@ -92,7 +97,9 @@ namespace EGG9000.Common.Database.Entities {
         //        _faqTopicsJson = JsonConvert.SerializeObject(value);
         //    }
         //}
+        [GuildConfig("FAQ Topics Enabled", "Toggles", GuildConfigKind.Bool, Description = "Enable the FAQ topics feature")]
         public bool FAQTopicsEnabled { get; set; }
+        [GuildConfig("FAQ Topic Cooldown (min)", "Numbers", GuildConfigKind.Int, Description = "Minutes between FAQ posts in a channel")]
         public int FAQTopicCooldownMinutes { get; set; }
 
         public string _channelDetailsJson { get; set; }
@@ -127,11 +134,17 @@ namespace EGG9000.Common.Database.Entities {
             var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
             return setting != null && !setting.Enabled && setting.Locked;
         }
+        [GuildConfig("Roles to Sync", "Lists", GuildConfigKind.CsvRoles, Description = "Roles synced to overflow servers")]
         public string RolesToSync { get; set; }
+        [GuildConfig("Disable Boarding Groups", "Toggles", GuildConfigKind.Bool, Description = "Disable boarding-group staggering")]
         public bool DisableBG { get; set; }
+        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let in-game guild members team up")]
         public bool AllowGuilds { get; set; }
+        [GuildConfig("Group Roles", "Lists", GuildConfigKind.CsvRoles, Description = "Boarding-group roles")]
         public string GroupRoles { get; set; }
+        [GuildConfig("Public Score Grid", "Toggles", GuildConfigKind.Bool, Description = "Let everyone view the score grid")]
         public bool PublicScoreGrid { get; set; }
+        [GuildConfig("Remove Find Coop Spot", "Toggles", GuildConfigKind.Bool, Description = "Hide Find Coop Spot buttons")]
         public bool RemoveFindCoopSpot { get; set; }
     }
 
@@ -158,7 +171,9 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Get notified when someone adds/removes a Tachyon Deflector")]
         PingOnTachyonChange = 6,
         [Description("Get notified when your co-op will complete as soon as everyone checks in")]
-        PingOnCompleteOnCheckIn = 7
+        PingOnCompleteOnCheckIn = 7,
+        [Description("Show a live co-op stats embed inside each contract channel")]
+        ShowContractStatsEmbeds = 8
     }
 
     [NotMapped]
@@ -269,5 +284,7 @@ namespace EGG9000.Common.Database.Entities {
         NasaApod = 46,
         [Description("/TC/Optional: Bot Log, gives status updates when the bot detects new contract and launches boarding groups")]
         BotLog = 47,
+        [Description("/TC/Optional: Where server-wide co-op stats will be posted and kept updated")]
+        CoopStatsChannel = 48,
     }
 }

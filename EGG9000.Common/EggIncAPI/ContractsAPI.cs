@@ -110,7 +110,7 @@ namespace EGG9000.Bot.EggIncAPI {
                         throw new Exception($"Missing Info for {typeof(T2).Name}");
                 }
 
-                var response = await client.PostAsync(url, bac);
+                var response = await PostCounted(client,url, bac);
 
                 if(response.IsSuccessStatusCode) {
                     var r = await response.Content.ReadAsStringAsync();
@@ -132,7 +132,7 @@ namespace EGG9000.Bot.EggIncAPI {
             client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
             client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
 
-            var response = await client.PostAsync($"ei_srv/subscription_status/{UserId}", null);
+            var response = await PostCounted(client,$"ei_srv/subscription_status/{UserId}", null);
 
             if(response.IsSuccessStatusCode) {
                 var r = await response.Content.ReadAsStringAsync();
@@ -142,6 +142,16 @@ namespace EGG9000.Bot.EggIncAPI {
             } else {
                 return default;
             }
+        }
+
+        // Wraps HttpClient.PostAsync so every outbound Egg Inc API call is counted for runtime reporting.
+        private static Task<HttpResponseMessage> PostCounted(HttpClient client, string url, HttpContent content) {
+            EGG9000.Common.Services.RuntimeMetrics.AddApiCalls();
+            return client.PostAsync(url, content);
+        }
+        private static Task<HttpResponseMessage> PostCounted(HttpClient client, string url, HttpContent content, CancellationToken ct) {
+            EGG9000.Common.Services.RuntimeMetrics.AddApiCalls();
+            return client.PostAsync(url, content, ct);
         }
 
         public static async Task<TResponse> Post<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
@@ -246,7 +256,7 @@ namespace EGG9000.Bot.EggIncAPI {
 
 
 
-                var response = await client.PostAsync(url, bac);
+                var response = await PostCounted(client,url, bac);
 
                 if(response.IsSuccessStatusCode) {
                     var r = await response.Content.ReadAsStringAsync();
@@ -307,7 +317,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
                 client.DefaultRequestHeaders.Add("accept-language", "en-US,en;q=0.9");
                 client.DefaultRequestHeaders.Add("accept", "*/*");
-                var response = await client.PostAsync("ei/coop_status", bac, cancellationToken);
+                var response = await PostCounted(client,"ei/coop_status", bac, cancellationToken);
 
                 if(response.IsSuccessStatusCode) {
                     var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
@@ -352,7 +362,7 @@ namespace EGG9000.Bot.EggIncAPI {
                 client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
                 client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
                 client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-                var response = await client.PostAsync("ei/coop_status_bot", bac, cancellationToken);
+                var response = await PostCounted(client,"ei/coop_status_bot", bac, cancellationToken);
 
                 if(response.IsSuccessStatusCode) {
                     var responseString = Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
@@ -484,10 +494,10 @@ namespace EGG9000.Bot.EggIncAPI {
                 HttpResponseMessage response;
 
                 //try {
-                response = await client.PostAsync("ei/first_contact_secure", bac);
+                response = await PostCounted(client,"ei/first_contact_secure", bac);
                 //} catch(Exception) {
                 //await Task.Delay(500);
-                //response = await client.PostAsync("ei/first_contact", bac);
+                //response = await PostCounted(client,"ei/first_contact", bac);
                 //}
 
 
@@ -545,10 +555,10 @@ namespace EGG9000.Bot.EggIncAPI {
                 HttpResponseMessage response;
 
                 //try {
-                response = await client.PostAsync("ei/first_contact_secure", bac);
+                response = await PostCounted(client,"ei/first_contact_secure", bac);
                 //} catch(Exception) {
                 //    await Task.Delay(500);
-                //    response = await client.PostAsync("ei/first_contact", bac);
+                //    response = await PostCounted(client,"ei/first_contact", bac);
                 //}
 
                 if(response.IsSuccessStatusCode) {
@@ -605,10 +615,10 @@ namespace EGG9000.Bot.EggIncAPI {
                 HttpResponseMessage response;
 
                 //try {
-                response = await client.PostAsync("ei/first_contact_secure", bac);
+                response = await PostCounted(client,"ei/first_contact_secure", bac);
                 //} catch(Exception) {
                 //    await Task.Delay(500);
-                //    response = await client.PostAsync("ei/first_contact", bac);
+                //    response = await PostCounted(client,"ei/first_contact", bac);
                 //}
 
                 string r;
@@ -658,10 +668,10 @@ namespace EGG9000.Bot.EggIncAPI {
                 HttpResponseMessage response;
 
                 //try {
-                response = await client.PostAsync("ei/bot_first_contact", bac);
+                response = await PostCounted(client,"ei/bot_first_contact", bac);
                 //} catch(Exception) {
                 //    await Task.Delay(500);
-                //    response = await client.PostAsync("ei/first_contact", bac);
+                //    response = await PostCounted(client,"ei/first_contact", bac);
                 //}
 
                 string r;

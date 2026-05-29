@@ -2,11 +2,12 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
-# Create a non-root user for improved security (optional)
-RUN useradd --create-home appuser && chown -R appuser:appuser /app
-USER appuser
+# Use the image's built-in non-root 'app' user (uid 1654, home /home/app).
+# VS Container Tools mounts user secrets to /home/app/.microsoft/usersecrets, so the
+# runtime user must be 'app' for AddUserSecrets<Program> to resolve them.
+USER app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
@@ -14,10 +15,6 @@ COPY ["EGG9000.Common/EGG9000.Common.csproj", "EGG9000.Common/"]
 RUN dotnet restore "./EGG9000.Bot/EGG9000.Bot.csproj"
 COPY . .
 WORKDIR "/src/EGG9000.Bot"
-RUN dotnet build "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
