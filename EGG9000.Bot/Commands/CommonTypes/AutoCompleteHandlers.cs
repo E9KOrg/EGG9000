@@ -21,20 +21,10 @@ using static Ei.Contract.Types;
 namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
 
-        // The synthetic "force a cache refresh" choice appended to cache-backed autocompletes.
-        private static AutocompleteResult RefreshOption() => new(AutoCompleteRefresh.Label, AutoCompleteRefresh.Sentinel);
-
-        // Caps real results at 24 and appends the refresh option, keeping under Discord's 25 limit.
-        private static AutocompleteResult[] WithRefresh(IEnumerable<AutocompleteResult> results) =>
-            [.. results.Take(24), RefreshOption()];
-
         #region UserAutoCompletes
-        public class UserAccountAutoComplete(ApplicationDbContext db, DatabaseCache cache) : IAutoCompleteHandler, IRefreshableAutoComplete {
+        public class UserAccountAutoComplete(ApplicationDbContext db, DatabaseCache cache) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
             private readonly DatabaseCache _cache = cache;
-
-            public string CacheName => "users";
-            public Task RefreshAsync() => _cache.RefreshUserCache();
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
@@ -56,7 +46,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     var name = account.Account.Backup?.UserName;
                     results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} ({account.Account.Backup?.EarningsBonus.ToEggString() ?? "?"})", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                 }
-                await arg.RespondAsync(null, WithRefresh(results));
+                await arg.RespondAsync(null, [.. results]);
             }
         }
 
@@ -98,12 +88,9 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class PersonalUserAccountAutoComplete(ApplicationDbContext db, DatabaseCache cache) : IAutoCompleteHandler, IRefreshableAutoComplete {
+        public class PersonalUserAccountAutoComplete(ApplicationDbContext db, DatabaseCache cache) : IAutoCompleteHandler {
             private readonly ApplicationDbContext _db = db;
             private readonly DatabaseCache _cache = cache;
-
-            public string CacheName => "users";
-            public Task RefreshAsync() => _cache.RefreshUserCache();
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
@@ -125,7 +112,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     }
                 }
 
-                await arg.RespondAsync(null, WithRefresh(results));
+                await arg.RespondAsync(null, [..results]);
             }
         }
         #endregion
@@ -218,11 +205,8 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             }
         }
 
-        public class MoveToCoopCoopNameAutoComplete(DatabaseCache dbCache) : IAutoCompleteHandler, IRefreshableAutoComplete {
+        public class MoveToCoopCoopNameAutoComplete(DatabaseCache dbCache) : IAutoCompleteHandler {
             private readonly DatabaseCache _dbCache = dbCache;
-
-            public string CacheName => "active-coops";
-            public Task RefreshAsync() => _dbCache.RefreshActiveCoopsCache();
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
@@ -236,7 +220,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                     .Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
                     .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
 
-                await arg.RespondAsync(null, WithRefresh(coops.DistinctBy(x => x.Id).Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString()))));
+                await arg.RespondAsync(null, coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToArray());
             }
 
             public class CoopMin {

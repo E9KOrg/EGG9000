@@ -394,10 +394,6 @@ namespace EGG9000.Common.Database.Entities {
         public bool DoTwoToThreeContracts { get; set; } = false;
         [Key(39)]
         public bool DoUnfinishedCollegtibles { get; set; } = false;
-        [Key(40)]
-        public string AfxSetsImageHash { get; set; } = "";
-        [Key(41)]
-        public List<string> AfxSetsImageUrls { get; set; } = new();
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)

@@ -230,12 +230,7 @@ namespace EGG9000.Bot.Automated {
                 var findSpotButton = new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build();
 #else
                 var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
-                var coopButtonEligible = guildContract.Contract.GoodUntil > DateTimeOffset.Now && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS);
-                var findSpotButton = coopButtonEligible
-                    ? (bgsLaunched
-                        ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build()
-                        : new ComponentBuilder().WithButton("Find my Coop", customId: $"FindMyCoop").Build())
-                    : null;
+                var findSpotButton = (bgsLaunched && guildContract.Contract.GoodUntil > DateTimeOffset.Now && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS)) ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build() : null;
 #endif
 
                 existingMessages = [.. existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt)];

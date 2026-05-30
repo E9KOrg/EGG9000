@@ -61,7 +61,7 @@ namespace EGG9000.Bot.Automated.Coops {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CreatorID != Coop.TestSeedCreatorId && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.Now).ToListAsync(CancellationToken.None);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.Now).ToListAsync(CancellationToken.None);
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
 #if DEBUG
@@ -545,8 +545,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                         userStatus.Xref.JoinedCoop = true;
-                        // Joined - drop from the "find my coop" lookup (they're in the thread now).
-                        _provider.GetService<CoopAssignmentLookup>()?.Remove(userStatus.Xref.UserId, coop.ContractID);
                         var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                         if(unjoinedRole != null) {
                             await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
