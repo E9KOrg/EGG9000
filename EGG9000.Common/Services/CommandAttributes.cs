@@ -78,42 +78,4 @@ namespace EGG9000.Common.Commands {
     public interface IAutoCompleteHandler {
         public Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds);
     }
-
-    /// <summary>
-    /// Implemented by autocomplete handlers that serve options from a cache. Lets the
-    /// "Missing Option (Refresh)" choice (value <see cref="AutoCompleteRefresh.Sentinel"/>)
-    /// force a repopulation of the backing cache, rate-limited centrally.
-    /// </summary>
-    public interface IRefreshableAutoComplete {
-        /// <summary>Stable name of the backing cache; used as the rate-limit key.</summary>
-        string CacheName { get; }
-        Task RefreshAsync();
-    }
-
-    /// <summary>Shared sentinel + per-cache rate limit for the autocomplete "force refresh" option.</summary>
-    public static class AutoCompleteRefresh {
-        public const string Sentinel = "__cache_refresh__";
-        public const string Label = "Missing Option (Refresh)";
-        public static readonly TimeSpan MinInterval = TimeSpan.FromSeconds(30);
-
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTimeOffset> _last = new();
-
-        /// <summary>Records a refresh and returns true if allowed; false if one happened within <see cref="MinInterval"/>.</summary>
-        public static bool TryMarkRefresh(string cacheName) {
-            var now = DateTimeOffset.Now;
-            var prev = _last.TryGetValue(cacheName, out var t) ? t : DateTimeOffset.MinValue;
-            if(now - prev < MinInterval)
-                return false;
-            _last[cacheName] = now;
-            return true;
-        }
-
-        /// <summary>Seconds until the next refresh is allowed for this cache (0 if allowed now).</summary>
-        public static int SecondsUntilAllowed(string cacheName) {
-            if(!_last.TryGetValue(cacheName, out var t))
-                return 0;
-            var remaining = MinInterval - (DateTimeOffset.Now - t);
-            return remaining > TimeSpan.Zero ? (int)Math.Ceiling(remaining.TotalSeconds) : 0;
-        }
-    }
 }

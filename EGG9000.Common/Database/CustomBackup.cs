@@ -377,17 +377,27 @@ namespace EGG9000.Common.Database {
             }).ToList();
 
             /* Setup for artifact sets */
-            var afxSetsProjected = backup.ArtifactsDb.SavedArtifactSets.Select(s =>
-                s.Slots.Select(sl => {
-                    var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == sl.ItemId);
-                    if(x is null) return null;
+            var afxSetsItemIds = backup.ArtifactsDb.SavedArtifactSets.Select(s => {
+                return s.Slots.Select(sl => sl.ItemId).ToList();
+            }).ToList();
+
+            List<List<EggIncArtifactInstance>> afxSetsList = new();
+            foreach(var afxSetItems in afxSetsItemIds) {
+                var afxInstances = new List<EggIncArtifactInstance>();
+                foreach(var id in afxSetItems) {
+                    var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == id);
+                    if(x is null) continue;
+
                     var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                    if(artifact is null) return null;
+                    if(artifact is null) continue;
+
                     artifact.Stones = x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null).ToList();
-                    return artifact;
-                })
-            );
-            ArtifactSets = EGG9000.Common.Helpers.AfxSets.AfxSetsBuilder.BuildSetsPreservingEmpty(afxSetsProjected);
+
+                    afxInstances.Add(artifact);
+                }
+                if(afxInstances.Count == afxSetItems.Count) afxSetsList.Add(afxInstances);
+            }
+            ArtifactSets = afxSetsList;
 
             ArtifactHall.AddRange(backup.ArtifactsDb.ArtifactStatus.Where(a =>
                 !backup.ArtifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&
