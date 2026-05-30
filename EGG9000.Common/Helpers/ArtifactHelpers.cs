@@ -98,7 +98,7 @@ namespace EGG9000.Common.Helpers {
                 var jsonResponse = await response.Content.ReadAsStringAsync();
                 var shipDataArray = JsonConvert.DeserializeObject<MennoAPIData[]>(jsonResponse);
 
-                _logger.LogInformation("Menno Ship Coefficients were refreshed at {refreshTime}, and will be invalidated again at {invalidationTime}", DateTimeOffset.Now.Humanize(), DateTimeOffset.Now.AddHours(6).Humanize());
+                _logger.LogInformation("Menno Ship Coefficients were refreshed at {refreshTime}, and will be invalidated again at {invalidationTime}", DateTimeOffset.UtcNow.Humanize(), DateTimeOffset.UtcNow.AddHours(6).Humanize());
 
                 return shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
                     .SelectMany(shipGrouping => shipGrouping.GroupBy(sg => sg.Ship)

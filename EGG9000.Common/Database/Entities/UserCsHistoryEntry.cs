@@ -16,7 +16,7 @@ namespace EGG9000.Common.Database.Entities {
             CoopIdentifier = coopIdentifier;
             Cxp = cxp;
             EggIncId = eggIncId;
-            Created = DateTimeOffset.Now; 
+            Created = DateTimeOffset.UtcNow; 
         }
 
         public override bool Equals(object obj) {

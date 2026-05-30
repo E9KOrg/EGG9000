@@ -215,7 +215,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     } catch(Exception ex) {
                         _logger.LogError(ex, "Error Creating Co-op Thread {coop} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
-                        //guildWithOverflow.LastAccessed = DateTimeOffset.Now;
+                        //guildWithOverflow.LastAccessed = DateTimeOffset.UtcNow;
 
                     }
                 }

@@ -36,7 +36,7 @@ namespace EGG9000.Common.Contracts {
 
             FilterAccounts(accounts, excluded, x => !x.User.TempDisabled, "User disabled");
 
-            FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.Now, "On break");
+            FilterAccounts(accounts, excluded, x => x.Account.OnBreakUntil < DateTimeOffset.UtcNow, "On break");
 
             //If the contract is Subscription only, filter further
             FilterAccounts(accounts, excluded, x => !contract.Details.CcOnly || x.Account.HasActiveSubscription(), "Doesn't have subscription");

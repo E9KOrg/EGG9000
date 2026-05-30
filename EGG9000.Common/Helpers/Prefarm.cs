@@ -215,7 +215,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static CoopsBreakdown GetBreakdown(List<Coop> coops, List<UserWithBackup> usersWithBackups, GuildContract guildContract, List<DBCustomEgg> customEggs, DiscordSocketClient discord, uint league) {
-            coops = coops.Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6)).ToList();
+            coops = coops.Where(x => x.Created > DateTimeOffset.UtcNow.AddMonths(-6)).ToList();
 
             var coopsBreakdown = new CoopsBreakdown {
                 ExistingCoops = coops.Select(c => new CoopDetails(c, guildContract.Contract, league, usersWithBackups, customEggs, discord, c.LastStatusUpdate)).ToList()
@@ -590,7 +590,7 @@ namespace EGG9000.Common.Helpers {
 
             var siloTimeMinutes = user.Backup != null && farm != null ? (Research.GetTotalSiloCapacity(user.Backup) * farm.SilosOwned) : 0;
             var contractLength = contract.Details.LengthSeconds;
-            var TimeSinceUpdate = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)farm.LastStepTime);
+            var TimeSinceUpdate = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds((long)farm.LastStepTime);
             if(TimeSinceUpdate.TotalMinutes > siloTimeMinutes) {
                 TimeSinceUpdate = TimeSpan.FromMinutes(siloTimeMinutes);
             }
@@ -600,7 +600,7 @@ namespace EGG9000.Common.Helpers {
 
             var started = DateTimeOffset.FromUnixTimeSeconds(farm.TimeAccepted);
             var ends = started.AddSeconds(contractLength);
-            timeleft = (ends - DateTimeOffset.Now);
+            timeleft = (ends - DateTimeOffset.UtcNow);
             prefarm.Started = started;
 
             if(!farm.CoopAllowed)
@@ -610,11 +610,11 @@ namespace EGG9000.Common.Helpers {
 
             if(!string.IsNullOrEmpty(farm.CoopId)) {
                 var coopEnds = DateTimeOffset.FromUnixTimeSeconds(farm.CoopSharedEndTime);
-                if(coopEnds > DateTimeOffset.Now) {
-                    var contractLeft = (coopEnds - DateTimeOffset.Now).TotalSeconds;
+                if(coopEnds > DateTimeOffset.UtcNow) {
+                    var contractLeft = (coopEnds - DateTimeOffset.UtcNow).TotalSeconds;
                     projected = ratePerSec * contractLeft + farm.EggsPaidFor + ratePerSec * TimeSinceUpdate.TotalSeconds;
                 } else {
-                    var sleepTime = Math.Max(TimeSinceUpdate.TotalSeconds - (ends - DateTimeOffset.Now).TotalSeconds, 0);
+                    var sleepTime = Math.Max(TimeSinceUpdate.TotalSeconds - (ends - DateTimeOffset.UtcNow).TotalSeconds, 0);
                     projected = farm.EggsPaidFor + ratePerSec * sleepTime;
                 }
             }

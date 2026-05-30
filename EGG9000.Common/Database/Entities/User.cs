@@ -24,7 +24,7 @@ namespace EGG9000.Common.Database.Entities {
         public static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
 
         public Guid Id { get; set; }
-        public DateTimeOffset LastModified { get; set; } = DateTimeOffset.Now;
+        public DateTimeOffset LastModified { get; set; } = DateTimeOffset.UtcNow;
         public ulong DiscordId { get; set; }
         public string DiscordUsername { get; set; }
         public string _eggIncIds { get; set; }
@@ -299,7 +299,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public void UpdateUserBreak() {
-            var accountsWithExpire = EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.Now).ToList();
+            var accountsWithExpire = EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.UtcNow).ToList();
 
             if(accountsWithExpire.Count == 0) {
                 NextBreakExpire = null;
@@ -404,7 +404,7 @@ namespace EGG9000.Common.Database.Entities {
         public void SetBreak(DateTimeOffset until, DBUser dbuser) {
             OnBreakUntil = until;
             SentBreakWarning = false;
-            BreakSetTime = until == default ? DateTimeOffset.MaxValue : DateTimeOffset.Now;
+            BreakSetTime = until == default ? DateTimeOffset.MaxValue : DateTimeOffset.UtcNow;
             BreakCoopWarningSent = false;
             dbuser.UpdateUserBreak();
         }

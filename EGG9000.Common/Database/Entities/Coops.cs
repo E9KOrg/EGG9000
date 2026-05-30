@@ -129,7 +129,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool FinishedOrFailedOrExpired() {
-            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.Now || Status == CoopStatusEnum.CompletedAllCheckIn;
+            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.UtcNow || Status == CoopStatusEnum.CompletedAllCheckIn;
         }
     }
 

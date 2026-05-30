@@ -37,7 +37,7 @@ namespace EGG9000.Bot.Automated {
             timings.Set("recentContracts");
             _logger.LogInformation("Getting Xrefs for Leaderboard");
             try {
-                var threeWeeksAgo = DateTimeOffset.Now.AddDays(-21);
+                var threeWeeksAgo = DateTimeOffset.UtcNow.AddDays(-21);
 
                 var recentxrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.JoinedCoop && x.CreatedOn >= threeWeeksAgo).Select(x => new SimpleXref {
                     UserId = x.UserId, ContractID = x.Coop.ContractID, EggIncId = x.EggIncId, Joined = x.JoinedCoop
@@ -128,7 +128,7 @@ namespace EGG9000.Bot.Automated {
                             !ua.Account.BreakCoopWarningSent
                             && ua.Backup.Farms != null
                             && ua.Account.OnBreakUntil != default
-                            && ua.Account.OnBreakUntil > DateTimeOffset.Now
+                            && ua.Account.OnBreakUntil > DateTimeOffset.UtcNow
                             && ua.Backup.Farms.Any(f => f.FarmType == Ei.FarmType.Contract && f.Started > ua.Account.BreakSetTime)
                         ).ToList().Select(u => new BreakCooper() {
                             User = u,
@@ -291,7 +291,7 @@ namespace EGG9000.Bot.Automated {
             var baselink = $"https://discord.com/channels/{guild.Id}/{channel.Id}/";
             var embedBuilder = new EmbedBuilder()
                 .WithTitle("Leaderboard Shortcuts")
-                .WithTimestamp(DateTimeOffset.Now)
+                .WithTimestamp(DateTimeOffset.UtcNow)
                 .WithFooter($"Updates Every {UpdateInterval.TotalMinutes} Minutes - Last Updated")
             ;
 

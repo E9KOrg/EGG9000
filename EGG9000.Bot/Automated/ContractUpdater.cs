@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Automated {
 
             var dbGuilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             times.Set("dbguilds");
-            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync(CancellationToken.None);
+            var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.UtcNow.AddDays(-14)).Select(x => new { x.Name }).ToListAsync(CancellationToken.None);
             times.Set("coops");
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
 
@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Automated {
                         var farms = account.Backup.Farms.Where(x =>
                             x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset &&
                             !coops.Any(c => c.Name.Equals(x.CoopId, StringComparison.OrdinalIgnoreCase)) &&
-                            !string.IsNullOrWhiteSpace(x.CoopId) && x.TimeAccepted > DateTimeOffset.Now.AddDays(-7).ToUnixTimeSeconds()
+                            !string.IsNullOrWhiteSpace(x.CoopId) && x.TimeAccepted > DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeSeconds()
                         );
 
                         foreach(var farm in farms) {
@@ -103,7 +103,7 @@ namespace EGG9000.Bot.Automated {
                     }
                     _logger.LogInformation("Adding co-op {coopname} from backups", coopname);
                     var coop = new Coop {
-                        ContractID = contractid, Created = DateTimeOffset.Now, GuildId = guildid, Name = coopname,
+                        ContractID = contractid, Created = DateTimeOffset.UtcNow, GuildId = guildid, Name = coopname,
                         MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnThread, League = grade,
                         CoopEnds = DateTimeOffset.FromUnixTimeSeconds(endtime),
                         AddedFromBackup = true,
@@ -159,7 +159,7 @@ namespace EGG9000.Bot.Automated {
                     guildContract.Contract.MaxUsers > 1 
                     && guildContract.GuildID == 656455567858073601 
                     && !guildContract.ReadyToScore 
-                    && guildContract.Created < DateTimeOffset.Now - guildContract.Contract.ContractTime - TimeSpan.FromDays(3)
+                    && guildContract.Created < DateTimeOffset.UtcNow - guildContract.Contract.ContractTime - TimeSpan.FromDays(3)
                     && guildContract.Contract.Details.GradeSpecs.All(x => x.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds)) {
                     var farmersUnion = guild.GetTextChannel(777303939442802710); //#farmers-union
                     farmersUnion ??= await _client.GetChannelAsync(777303939442802710) as SocketTextChannel;
@@ -171,7 +171,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-                if(guildContract.Contract.GoodUntil.AddSeconds(guildContract.Contract.Details.LengthSeconds).AddDays(1) < DateTimeOffset.Now) {
+                if(guildContract.Contract.GoodUntil.AddSeconds(guildContract.Contract.Details.LengthSeconds).AddDays(1) < DateTimeOffset.UtcNow) {
                     if(channel != null) {
                         await channel.DeleteAsync();
                     }
@@ -179,7 +179,7 @@ namespace EGG9000.Bot.Automated {
                     await dbGuild.DeleteCoopThreadHeadersAsync(_client.Gateway, guildContract.Contract, _logger);
                     guildContract.DeletedChannel = true;
 
-                    //if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.Now.AddMonths(-3) && !guildContract.HasScores) {
+                    //if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.UtcNow.AddMonths(-3) && !guildContract.HasScores) {
                     //}
 
                     await _db.SaveChangesAsync();
@@ -229,8 +229,8 @@ namespace EGG9000.Bot.Automated {
 #if DEV9002
                 var findSpotButton = new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build();
 #else
-                var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.Now > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
-                var findSpotButton = (bgsLaunched && guildContract.Contract.GoodUntil > DateTimeOffset.Now && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS)) ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build() : null;
+                var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.UtcNow > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
+                var findSpotButton = (bgsLaunched && guildContract.Contract.GoodUntil > DateTimeOffset.UtcNow && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS)) ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build() : null;
 #endif
 
                 existingMessages = [.. existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt)];
@@ -275,7 +275,7 @@ namespace EGG9000.Bot.Automated {
             if(guildContract.CcOnly) {
                 var subCategory = await _client.GetCategoryAsync(GuildChannelType.SubscriptionContractCategory, guild);
             }
-            emoji += DateTimeOffset.Now >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : ( guildContract.CcOnly ? "💰" : "✅");     
+            emoji += DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : ( guildContract.CcOnly ? "💰" : "✅");     
 
             channelName = emoji + channelName;
 

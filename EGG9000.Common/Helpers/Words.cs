@@ -48,7 +48,7 @@ namespace EGG9000.Bot {
 
         public string GetCoopName(List<UserByAccount> prefarms, SocketGuild discordguild, Guild dbguild) {
             var customNames = prefarms.Where(x => !string.IsNullOrEmpty(x.User?.CustomCoopName)).GroupBy(x => x.User.Id).ToList();
-            var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.Now);
+            var customNamesExpired = customNames.Where(x => x.First().User.ExpireCustomCoopName.HasValue && x.First().User.ExpireCustomCoopName.Value < DateTimeOffset.UtcNow);
             foreach(var customName in customNamesExpired) {
                 customName.First().User.ExpireCustomCoopName = null;
                 customName.First().User.CustomCoopName = null;

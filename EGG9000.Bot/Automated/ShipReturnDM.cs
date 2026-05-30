@@ -22,14 +22,14 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbEggs = await _db.GetCustomEggsAsync();
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync(CancellationToken.None);
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
             foreach(var user in users) {
                 var discordUser = _client.GetUser(user.DiscordId);
                 if(discordUser == null) {
                     continue;
                 }
 
-                foreach(var shipDm in user.ShipDMs.Where(x => x.DMTime <= DateTimeOffset.Now.AddSeconds(30) && !x.Sent)) {
+                foreach(var shipDm in user.ShipDMs.Where(x => x.DMTime <= DateTimeOffset.UtcNow.AddSeconds(30) && !x.Sent)) {
                     try {
                         var message = "";
                         var backup = user.EggIncAccounts.First(x => shipDm.EggIncID == null || x.Id == shipDm.EggIncID).Backup;
@@ -43,15 +43,15 @@ namespace EGG9000.Bot.Automated {
                         var needsFuel = NeedsFuel(backup);
                         var nextShipDue = DateTimeOffset.FromUnixTimeSeconds(mission.ReturnTime);//.AddMinutes(needsFuel ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes);
                         var nextShipName = MissionHelpers.GetProperShipName(mission.Ship);
-                        var minutesUntilShipReturns = (DateTimeOffset.Now - nextShipDue).Humanize(2);
+                        var minutesUntilShipReturns = (DateTimeOffset.UtcNow - nextShipDue).Humanize(2);
 
-                        var lastBackupTime = (DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize(2).ShortenTime();
+                        var lastBackupTime = (DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(backup.LastBackupTime)).Humanize(2).ShortenTime();
 
-                        if(needsFuel && nextShipDue > DateTimeOffset.Now) {
+                        if(needsFuel && nextShipDue > DateTimeOffset.UtcNow) {
                             message = $"Your {nextShipName} returns in {minutesUntilShipReturns} and your current ship needs fueling. Last backup {lastBackupTime}.";
-                        } else if(needsFuel && nextShipDue <= DateTimeOffset.Now) {
+                        } else if(needsFuel && nextShipDue <= DateTimeOffset.UtcNow) {
                             message = $"Your {nextShipName} has returned and your current ship needs fueling. Last backup {lastBackupTime}.";
-                        } else if(!needsFuel && nextShipDue > DateTimeOffset.Now) {
+                        } else if(!needsFuel && nextShipDue > DateTimeOffset.UtcNow) {
                             message = $"Your {nextShipName} returns in {minutesUntilShipReturns} and your current ship is ready.";
                         } else {
                             message = $"Your {nextShipName} has returned and your current ship is ready.";
@@ -85,15 +85,15 @@ namespace EGG9000.Bot.Automated {
                         
 
                         var shipReturnTime = DateTimeOffset.FromUnixTimeSeconds(shipDm.ShipReturnTime);
-                        if(shipReturnTime > DateTimeOffset.Now.AddMinutes(-5)) {
-                            if(shipReturnTime > DateTimeOffset.Now) {
+                        if(shipReturnTime > DateTimeOffset.UtcNow.AddMinutes(-5)) {
+                            if(shipReturnTime > DateTimeOffset.UtcNow) {
                                 _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
                             } else {
-                                _logger.LogInformation("Sending late ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                                _logger.LogInformation("Sending late ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
                             }
                             await Task.Delay(500, cancellationToken);
                         } else {
-                            _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                            _logger.LogWarning("Too late to send ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
                         }
 
                         var capturedUser = discordUser;
@@ -150,7 +150,7 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.Now).ToList();
+                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow).ToList();
                     var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
 
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {
@@ -161,9 +161,9 @@ namespace EGG9000.Bot.Automated {
             }
             await _db.SaveChangesAsync();
 
-            var earliestNextTime = dbusers.Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue is not null && x.NextShipReturnDMDue > DateTimeOffset.Now).OrderBy(x => x.NextShipReturnDMDue).FirstOrDefault();
+            var earliestNextTime = dbusers.Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue is not null && x.NextShipReturnDMDue > DateTimeOffset.UtcNow).OrderBy(x => x.NextShipReturnDMDue).FirstOrDefault();
             if(earliestNextTime is not null) {
-                var timeToNext = (earliestNextTime.NextShipReturnDMDue.Value - DateTimeOffset.Now);
+                var timeToNext = (earliestNextTime.NextShipReturnDMDue.Value - DateTimeOffset.UtcNow);
                 if(timeToNext > TimeSpan.Zero && timeToNext < TimeSpan.FromMinutes(5)) {
                     return timeToNext;
                 }

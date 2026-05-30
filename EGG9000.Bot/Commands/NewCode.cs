@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Commands {
 
             var guild = client.Guilds.FirstOrDefault(g => g.Id == command.GuildId);
 
-            var coop = new Coop { Name = code, Created = DateTimeOffset.Now, GuildId = guild.Id };
+            var coop = new Coop { Name = code, Created = DateTimeOffset.UtcNow, GuildId = guild.Id };
             db.Coops.Add(coop);
             await db.SaveChangesAsync();
 

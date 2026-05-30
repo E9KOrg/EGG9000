@@ -125,7 +125,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var contracts = await _db.Contracts.Where(x => x.MaxUsers >  1 && x.GoodUntil > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.ID, x.Name }).ToListAsync();
+                var contracts = await _db.Contracts.Where(x => x.MaxUsers >  1 && x.GoodUntil > DateTimeOffset.UtcNow.AddDays(-14)).Select(x => new { x.ID, x.Name }).ToListAsync();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
                 await arg.RespondAsync(null, contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID)).ToArray());
@@ -144,12 +144,12 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 var dbUser = _db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
                 var hasSubscriptionAccounts = dbUser?.EggIncAccounts.Where(x => x.HasActiveSubscription()).Any() ?? false;
 
-                var contracts = _db.Contracts.Where(x => x.MaxUsers > 1 && (hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.Now) : (x.GoodUntil > DateTimeOffset.Now && !x.cc_only))).ToList();
+                var contracts = _db.Contracts.Where(x => x.MaxUsers > 1 && (hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.UtcNow) : (x.GoodUntil > DateTimeOffset.UtcNow && !x.cc_only))).ToList();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg)).ToList(); //Filter by name
                 if(guild is not null && !guild.DisableBG && !isStaff) {
                     //Limit contracts to those that have had longer than 16 hours to launch (i.e. all three boarding groups)
-                    contracts = contracts.Where(x => (DateTimeOffset.Now - x.Created).TotalHours > 17).ToList();
+                    contracts = contracts.Where(x => (DateTimeOffset.UtcNow - x.Created).TotalHours > 17).ToList();
                 }
 
                 var contractObjs = contracts.Select(x => new { x.ID, x.Name }).ToList();

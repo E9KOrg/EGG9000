@@ -22,7 +22,7 @@ namespace EGG9000.Common.Database.Entities {
         public ExpiringShell(Ei.ShellObjectSpec e) {
             Identifier = e.Identifier;
             Name = e.Name;
-            Expires = DateTimeOffset.Now.AddSeconds(e.SecondsRemaining);
+            Expires = DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining);
             Price = e.Price;
             AssetType = e.AssetType;
             Json = JsonConvert.SerializeObject(e);
