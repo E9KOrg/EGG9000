@@ -121,16 +121,14 @@ app.Run();
 
 void ConfigureServices(IServiceCollection services, IConfiguration Configuration) {
     services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
-    //_logger.LogInformation(Configuration.GetConnectionString("DefaultConnection"));
-    //_logger.LogInformation(Configuration.GetChildren().Count().ToString());
     services.AddDbContext<ApplicationDbContext>(
-        options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
+        options => options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
         contextLifetime: ServiceLifetime.Scoped,
         optionsLifetime: ServiceLifetime.Singleton);
 
 
     services.AddDbContextFactory<ApplicationDbContext>(options => {
-        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => {
+        options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), x => {
             x.MigrationsAssembly("EGG9000.Common");
             x.CommandTimeout(30);
         });

@@ -42,11 +42,11 @@ namespace EGG9000.Bot.Services {
         private async Task Main(CancellationToken cancellationToken) {
             while(!cancellationToken.IsCancellationRequested) {
                 try {
-                    var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.Now && !x.Running).OrderBy(x => x.NextRun);
+                    var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.UtcNow && !x.Running).OrderBy(x => x.NextRun);
                     foreach(var job in jobs) {
                         job.NextRun = GetNextRun(job.Details.Cron);
                         _logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
-                            job.DeclaringType.Name, job.Name, $"{DateTimeOffset.Now:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
+                            job.DeclaringType.Name, job.Name, $"{DateTimeOffset.UtcNow:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
                         
                         _ = Task.Run(async () => {
                             job.Running = true;
@@ -63,7 +63,7 @@ namespace EGG9000.Bot.Services {
                 }
                 var nextJob = _jobs.OrderBy(x => x.NextRun).FirstOrDefault();
                 if(nextJob != null) {
-                    var delay = (nextJob.NextRun - DateTimeOffset.Now) + TimeSpan.FromMilliseconds(10);
+                    var delay = (nextJob.NextRun - DateTimeOffset.UtcNow) + TimeSpan.FromMilliseconds(10);
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
@@ -80,13 +80,13 @@ namespace EGG9000.Bot.Services {
 
         public void RunJob(string jobName) {
             var job = _jobs.FirstOrDefault(x => x.Name == jobName);
-            job.NextRun = DateTimeOffset.Now;
+            job.NextRun = DateTimeOffset.UtcNow;
         }
 
         public bool StopJob(string jobName) {
             var job = _jobs.FirstOrDefault(x => x.Name == jobName);
             if(job is null) return false;
-            job.NextRun = DateTimeOffset.Now.AddYears(1);
+            job.NextRun = DateTimeOffset.UtcNow.AddYears(1);
             return true;
         }
         public void StarJob(string jobName) {
@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Services {
         }
 
         private static DateTimeOffset GetNextRun(string cron) {
-            return CronExpression.Parse(cron, CronFormat.IncludeSeconds).GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
+            return CronExpression.Parse(cron, CronFormat.IncludeSeconds).GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
         }
 
         private class Job {

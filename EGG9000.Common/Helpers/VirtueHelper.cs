@@ -90,7 +90,7 @@ namespace EGG9000.Common.Helpers {
 
             if(seconds >= TimeSpan.FromDays(365).TotalSeconds) return TimeSpan.MaxValue;
 
-            return lastBackupTime.AddSeconds(seconds) - DateTimeOffset.Now;
+            return lastBackupTime.AddSeconds(seconds) - DateTimeOffset.UtcNow;
         }
 
         public static (TimeSpan timeTillHabsFull, TimeSpan timeTillShippingFull) GetTimeTillFull(double eggsPerSecond, DateTimeOffset lastBackupTime, double currentChickens, double maxChickens, double maxShipping, double totalihr) {
@@ -104,7 +104,7 @@ namespace EGG9000.Common.Helpers {
             var shippingCapcityLeft = maxShipping - eggsPerSecond;
             var capacityGrowthRate = ratePerChicken * totalihr;
 
-            var secondsSinceBackup = (DateTimeOffset.Now - lastBackupTime).TotalSeconds;
+            var secondsSinceBackup = (DateTimeOffset.UtcNow - lastBackupTime).TotalSeconds;
 
             var timeTillShippingFull = capacityGrowthRate == 0 ? TimeSpan.MaxValue : TimeSpan.FromSeconds(Math.Max(0,shippingCapcityLeft / capacityGrowthRate - secondsSinceBackup));
             var timeTillHabsFull = totalihr == 0 ? TimeSpan.MaxValue : TimeSpan.FromSeconds(Math.Max(0,(maxChickens - currentChickens) / totalihr - secondsSinceBackup));
@@ -153,8 +153,8 @@ namespace EGG9000.Common.Helpers {
                 seconds = thresholdLeftAfterCap / (cappedDeliver + eggsPerSecond) + secondsTillCap;
             }
 
-            if(seconds < (DateTimeOffset.Now - lastBackupTime).TotalSeconds) return TimeSpan.Zero;
-            return lastBackupTime.AddSeconds(seconds) - DateTimeOffset.Now;
+            if(seconds < (DateTimeOffset.UtcNow - lastBackupTime).TotalSeconds) return TimeSpan.Zero;
+            return lastBackupTime.AddSeconds(seconds) - DateTimeOffset.UtcNow;
         }
     }
 

@@ -1,9 +1,10 @@
 ﻿using EGG9000.Common.Database.Entities;
 
+using Npgsql;
+
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
@@ -55,10 +56,10 @@ namespace EGG9000.Common.Database {
             LogResolvedConnection(connectionString, environment, basePath, connectionSource);
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            optionsBuilder.UseSqlServer(connectionString, options => {
+            optionsBuilder.UseNpgsql(connectionString, options => {
                 options.MigrationsAssembly("EGG9000.Common");
                 options.EnableRetryOnFailure();
-                options.CommandTimeout(120);
+                options.CommandTimeout(30);
             });
 
             return new ApplicationDbContext(optionsBuilder.Options);
@@ -66,8 +67,8 @@ namespace EGG9000.Common.Database {
 
         private static void LogResolvedConnection(string connectionString, string environment, string basePath, string connectionSource) {
             try {
-                var builder = new SqlConnectionStringBuilder(connectionString);
-                Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}', Server='{builder.DataSource}', Database='{builder.InitialCatalog}', IntegratedSecurity='{builder.IntegratedSecurity}', Encrypt='{builder.Encrypt}'.");
+                var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}', Host='{builder.Host}', Database='{builder.Database}', SslMode='{builder.SslMode}'.");
             } catch(Exception ex) {
                 Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}'. Connection string parse failed ({ex.GetType().Name}).");
             }
@@ -158,13 +159,13 @@ namespace EGG9000.Common.Database {
         void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
             //Console.WriteLine($"Entity tracked: {e.Entry.Entity.GetType().Name}");
             if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
-                entity.LastModified = DateTimeOffset.Now;
+                entity.LastModified = DateTimeOffset.UtcNow;
         }
 
         void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
             //Console.WriteLine($"Entity state changed: {e.Entry.Entity.GetType().Name} from {e.OldState} to {e.NewState}");
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
-                entity.LastModified = DateTimeOffset.Now;
+                entity.LastModified = DateTimeOffset.UtcNow;
         }
 
 
@@ -183,7 +184,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<Merit>().HasOne(x => x.AdminUser).WithMany(x => x.MeritsGiven).IsRequired(false).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
 
             builder.Entity<NasaApod>().HasKey(x => x.ID);
-            builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("CONVERT(varchar(10), GETUTCDATE(), 23)");
+            builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD')");
 
             //builder.Entity<IdentityRole>().HasData(
             //    new IdentityRole { Id = "c1dd39e4-dbe5-48a4-b0c6-897c5b3db799", Name = "LesserGuildAdmin", NormalizedName = "GUILDLESSERADMIN" },

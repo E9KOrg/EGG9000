@@ -275,7 +275,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
             try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
             } catch(Exception ex) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse the timespan `{timespan}`, {ex.Message}"));
                 return;
@@ -298,7 +298,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Get the bot's status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task Status(FauxCommand command, ApplicationDbContext db, IServiceProvider serviceProvider) {
             var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
-            var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
+            var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
             var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
             var table = new List<List<FixedWidthCell>> {new() {
                 new("Name"),
@@ -318,12 +318,12 @@ namespace EGG9000.Bot.Commands {
                         averages.Any(x => x.Type == log.Type) ?
                         TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime()
                         : ""),
-                    new((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
+                    new((DateTimeOffset.UtcNow - log.EndTime.Value).Humanize().ShortenTime()),
                     new(incompletes.Count.ToString()),
                     new(
                         castedService.Running() ?
                             (incompletes.Any(x => !x.Skipped) ?
-                            $"Current run {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
+                            $"Current run {(DateTimeOffset.UtcNow - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
                             : "Started"
                             )
                         : "Stopped"
@@ -580,10 +580,10 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task CoopStats(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();
-            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now).ToListAsync();
+            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
             var stats = new StringBuilder();
             stats.AppendLine($"**Coop Threads Last Updated**");
-            var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.Now - x.LastUpdateToChannel.Value).TotalHours));
+            var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.UtcNow - x.LastUpdateToChannel.Value).TotalHours));
 
             foreach(var group in coopGroups) {
                 stats.AppendLine($"<{group.Key}h: {group.Count()}");
@@ -631,7 +631,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.TempDisabled = false;
             await db.SaveChangesAsync();
 
-            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.Now) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
+            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.UtcNow) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
 
             await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }

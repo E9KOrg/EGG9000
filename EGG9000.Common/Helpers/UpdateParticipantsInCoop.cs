@@ -30,7 +30,7 @@
 //                            }
 //                        }
 
-//                        xref = new UserCoopXref { CoopId = coop.Id, UserId = user.Id, CreatedOn = DateTimeOffset.Now, AddedToChannel = true, EggIncId = p.UserId };
+//                        xref = new UserCoopXref { CoopId = coop.Id, UserId = user.Id, CreatedOn = DateTimeOffset.UtcNow, AddedToChannel = true, EggIncId = p.UserId };
 //                        _db.UserCoopXrefs.Add(xref);
 //                        Console.WriteLine("Adding user xref");
 

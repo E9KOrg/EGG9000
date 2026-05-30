@@ -95,7 +95,7 @@ namespace EGG9000.Common.Helpers {
 
         public TimeSpan FarmExpires {
             get {
-                return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long?)ArchivedFarm?.TimeAccepted ?? DateTimeOffset.Now.ToUnixTimeSeconds());
+                return DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long?)ArchivedFarm?.TimeAccepted ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             }
         }
 
@@ -148,16 +148,16 @@ namespace EGG9000.Common.Helpers {
                 var offlineTime = TimeSpan.Zero;   
                 if(CoopStatus?.FarmInfo is not null && Farm is not null) {
                     var farmInfoTime = 0 - CoopStatus.FarmInfo.Timestamp;
-                    var farmTime = DateTimeOffset.Now.ToUnixTimeSeconds() - Farm.LastStepTime;
+                    var farmTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - Farm.LastStepTime;
                     offlineTime =  TimeSpan.FromSeconds(Math.Min(farmInfoTime, farmTime));
                 } else if(CoopStatus?.FarmInfo is not null) {
                     offlineTime = TimeSpan.FromSeconds(0 - CoopStatus.FarmInfo.Timestamp);
                 } else if(Farm is not null) {
-                    offlineTime = DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);
+                    offlineTime = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds((long)Farm.LastStepTime);
                 }
 
-                if(DateTimeOffset.Now > FarmingEnds) {
-                    offlineTime -= FarmingEnds - DateTimeOffset.Now;
+                if(DateTimeOffset.UtcNow > FarmingEnds) {
+                    offlineTime -= FarmingEnds - DateTimeOffset.UtcNow;
                 }
 
                 if(CoopStatus is not null && CoopStatus.Finalized) {
@@ -185,15 +185,15 @@ namespace EGG9000.Common.Helpers {
             get {
                 if(_farmingEnds is null) {
                     if(CoopStatus is not null)
-                        _farmingEnds = DateTimeOffset.Now.AddSeconds(CoopStatus.TimeLeftSeconds);
+                        _farmingEnds = DateTimeOffset.UtcNow.AddSeconds(CoopStatus.TimeLeftSeconds);
                     else if(Farm is not null && Farm.CoopSharedEndTime > 0)
                         _farmingEnds = DateTimeOffset.FromUnixTimeSeconds(Farm.CoopSharedEndTime);
                     else if(Farm is not null)
                         _farmingEnds = Contract.MaxUsers > 1 ?
-                            DateTimeOffset.Now.AddSeconds(Contract.length_seconds) :
+                            DateTimeOffset.UtcNow.AddSeconds(Contract.length_seconds) :
                             DateTimeOffset.FromUnixTimeSeconds((Farm.TimeAccepted + (long)Contract.length_seconds));
                     else
-                        _farmingEnds = DateTimeOffset.Now;
+                        _farmingEnds = DateTimeOffset.UtcNow;
                 }
                 return _farmingEnds.Value;
             }
@@ -203,14 +203,14 @@ namespace EGG9000.Common.Helpers {
         public double Projected {
             get {
                 if(_projected is null) {
-                    if(FarmingEnds > DateTimeOffset.Now) {
+                    if(FarmingEnds > DateTimeOffset.UtcNow) {
                         var siloTimeHours = SiloTimeMinutes / 60;
                         var percentToCount = Math.Min(siloTimeHours / 12, 1);
 
-                        var contractLeft = (FarmingEnds - DateTimeOffset.Now).TotalSeconds;
+                        var contractLeft = (FarmingEnds - DateTimeOffset.UtcNow).TotalSeconds;
                         _projected = percentToCount * Rate * contractLeft + EggsShipped + Rate * OfflineWithSiloTime.TotalSeconds;
                     } else {
-                        var sleepTime = Math.Max(OfflineWithSiloTime.TotalSeconds - (FarmingEnds - DateTimeOffset.Now).TotalSeconds, 0);
+                        var sleepTime = Math.Max(OfflineWithSiloTime.TotalSeconds - (FarmingEnds - DateTimeOffset.UtcNow).TotalSeconds, 0);
                         _projected = EggsShipped + Rate * sleepTime;
                     }
 
@@ -251,14 +251,14 @@ namespace EGG9000.Common.Helpers {
         public TimeSpan TimeLeft {
             get {
                 if(CoopStatus is not null) return TimeSpan.FromSeconds(CoopStatus.TimeLeftSeconds);
-                if(Farm is not null) return (DateTimeOffset.FromUnixTimeSeconds(Farm.TimeAccepted) + Contract.ContractTime) - DateTimeOffset.Now;
+                if(Farm is not null) return (DateTimeOffset.FromUnixTimeSeconds(Farm.TimeAccepted) + Contract.ContractTime) - DateTimeOffset.UtcNow;
                 return TimeSpan.Zero;
             }
         }
 
         public double EarningsBonus {
             get {
-                if((FarmingEnds < DateTimeOffset.Now || Backup is null) && CoopStatus is not null) {
+                if((FarmingEnds < DateTimeOffset.UtcNow || Backup is null) && CoopStatus is not null) {
                     return Math.Pow(10, CoopStatus.SoulPower) * 100;
                 }
 

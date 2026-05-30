@@ -135,7 +135,7 @@ namespace EGG9000.Bot.Commands {
             var runningUserDiscord = socketGuild.GetUser(component.User.Id);
             var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
             var lastPostTime = userRunning.LastFAQPosted ?? DateTimeOffset.MinValue;
-            var isOnCooldown = DateTimeOffset.Now - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
+            var isOnCooldown = DateTimeOffset.UtcNow - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
 
             if(isOnCooldown && !hasStaffPerms) {
                 await component.ModifyOriginalResponseAsync(x => x.Embed = MakeCustomEmbed(

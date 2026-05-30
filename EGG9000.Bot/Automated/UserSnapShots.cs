@@ -17,11 +17,11 @@ namespace EGG9000.Bot.Automated {
             var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date, cancellationToken);
 
 
-            var eggDayDate = new DateTimeOffset(DateTimeOffset.Now.Year, 07, 14, 10, 55, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.Now));
+            var eggDayDate = new DateTimeOffset(DateTimeOffset.UtcNow.Year, 07, 14, 10, 55, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
 
-            var eggDay1 = DateTimeOffset.Now.Date == eggDayDate.Date;
-            var eggDay = DateTimeOffset.Now > eggDayDate && DateTimeOffset.Now < eggDayDate.AddDays(1).AddMinutes(30);
-            var eggDay2 = DateTimeOffset.Now.Date == eggDayDate.AddDays(1).Date;
+            var eggDay1 = DateTimeOffset.UtcNow.Date == eggDayDate.Date;
+            var eggDay = DateTimeOffset.UtcNow > eggDayDate && DateTimeOffset.UtcNow < eggDayDate.AddDays(1).AddMinutes(30);
+            var eggDay2 = DateTimeOffset.UtcNow.Date == eggDayDate.AddDays(1).Date;
 
 
             if(!hasSnapshots) {

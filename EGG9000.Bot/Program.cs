@@ -123,7 +123,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
 
         services.AddDbContextFactory<ApplicationDbContext>(options => {
-            options.UseSqlServer(connectionString, x => {
+            options.UseNpgsql(connectionString, x => {
                 x.MigrationsAssembly("EGG9000.Common");
                 x.CommandTimeout(30);
             });

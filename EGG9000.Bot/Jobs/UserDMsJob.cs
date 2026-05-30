@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Jobs {
         [Job("0 */30 * * * *")]
         public async Task WarningBreakExpiring() {
             _logger.LogInformation("Running WarningBreakExpiring");
-            var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1) && x.DiscordId > 0 & x.DiscordId > 0 && x.GuildId > 0).ToList();
+            var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.UtcNow.AddDays(1) && x.DiscordId > 0 & x.DiscordId > 0 && x.GuildId > 0).ToList();
             foreach(var user in users) {
                 foreach(var account in user.EggIncAccounts) {
                     var discorduser = _discord.GetUser(user.DiscordId);
@@ -29,7 +29,7 @@ namespace EGG9000.Bot.Jobs {
                         continue;
                     }
 
-                    if(!account.SentBreakWarning && account.OnBreakUntil < DateTimeOffset.Now.AddDays(1) && account.OnBreakUntil > DateTimeOffset.Now.AddDays(-1)) {
+                    if(!account.SentBreakWarning && account.OnBreakUntil < DateTimeOffset.UtcNow.AddDays(1) && account.OnBreakUntil > DateTimeOffset.UtcNow.AddDays(-1)) {
                         _logger.LogInformation("Sending warning to {user}", user.DiscordUsername);
 
                         var mcs = (await _discord.GetGlobalApplicationCommandsAsync()).FirstOrDefault(c => c.Type == Discord.ApplicationCommandType.Slash && c.Name == "mycontractsettings");

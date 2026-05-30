@@ -58,11 +58,11 @@ namespace EGG9000.Common.Helpers {
             }
 
             var secondsRemaining = Math.Max(contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
-            var coopEnds = DateTimeOffset.Now.AddSeconds(secondsRemaining);
+            var coopEnds = DateTimeOffset.UtcNow.AddSeconds(secondsRemaining);
 
             var coop = new Coop {
                 ContractID = contract.ID,
-                Created = DateTimeOffset.Now,
+                Created = DateTimeOffset.UtcNow,
                 GuildId = guild.Id,
                 Name = words.GetCoopName(accounts, guild, dbGuild),
                 MaxUsers = contract.MaxUsers,
@@ -79,7 +79,7 @@ namespace EGG9000.Common.Helpers {
             foreach(var user in accounts) {
                 db.UserCoopXrefs.Add(new UserCoopXref {
                     AddedToChannel = false,
-                    CreatedOn = DateTimeOffset.Now,
+                    CreatedOn = DateTimeOffset.UtcNow,
                     CoopId = coop.Id,
                     JoinedCoop = false,
                     WaitingOnStarter = false,
@@ -92,8 +92,8 @@ namespace EGG9000.Common.Helpers {
 
             //var coopLength = Math.Max(guildContract.Contract.Details.LengthSeconds, 131072);
 
-            //if(guildContract.Contract.GoodUntil < DateTimeOffset.Now) {
-            //    coopLength -= Math.Abs((DateTimeOffset.Now - guildContract.Contract.GoodUntil).TotalSeconds);
+            //if(guildContract.Contract.GoodUntil < DateTimeOffset.UtcNow) {
+            //    coopLength -= Math.Abs((DateTimeOffset.UtcNow - guildContract.Contract.GoodUntil).TotalSeconds);
             //}
 
 
@@ -195,7 +195,7 @@ namespace EGG9000.Common.Helpers {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,
-                CreatedOn = DateTimeOffset.Now,
+                CreatedOn = DateTimeOffset.UtcNow,
                 JoinedCoop = false,
                 Starter = false,
                 UserId = dbUserId,

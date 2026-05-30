@@ -295,7 +295,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     Rinfo = GetInfo(EIID ?? UserId),
                     UserId = EIID ?? UserId,
                     ClientVersion = ClientVersion,
-                    ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    ClientTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 };
                 var base64 = GetEncodedMessage(model);
                 var bac = await GetBAC(base64);
@@ -345,7 +345,7 @@ namespace EGG9000.Bot.EggIncAPI {
                     Rinfo = GetInfo(EIID),
                     UserId = EIID,
                     ClientVersion = ClientVersion,
-                    ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    ClientTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 };
                 var base64 = GetEncodedMessage(model); ;
                 var bac = await GetBAC(base64);

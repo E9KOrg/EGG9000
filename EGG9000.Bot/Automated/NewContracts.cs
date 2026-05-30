@@ -150,7 +150,7 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogInformation("Contract {contractid} added", contract.ID);
                     } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
                         if(contract.Created < DateTime.Now.AddMonths(-3)) {
-                            contract.Created = DateTimeOffset.Now;
+                            contract.Created = DateTimeOffset.UtcNow;
                             var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
                             _db.RemoveRange(guildContracts);
                         }
@@ -207,7 +207,7 @@ namespace EGG9000.Bot.Automated {
                         NumberOfCoops = 1,
                         DiscordChannelId = contractChannel.Id,
                         League = 0,
-                        Created = DateTimeOffset.Now,
+                        Created = DateTimeOffset.UtcNow,
                         BoardingGroup = 1,
                         CcOnly = contract.cc_only
                     };
@@ -251,7 +251,7 @@ namespace EGG9000.Bot.Automated {
                 } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4 && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
                     var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
                     var nextLaunch = contractDate - contractDate.TimeOfDay + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
-                    var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
+                    var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Pacific Standard Time");
                     if(nextLaunch < currentTime) {
                         guildContract.BoardingGroup++;
                         await _db.SaveChangesAsync();
@@ -277,7 +277,7 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation("Starting co-ops for {guild} for BG{BG} for Contract {contract}", guild.Name, skipbg + 1, contract.Name);
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
-            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
             var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
@@ -308,17 +308,17 @@ namespace EGG9000.Bot.Automated {
         }
 
         private void CheckUpdateInterval(List<Contract> existingContracts) {
-            var dayOfWeek = DateTimeOffset.Now.DayOfWeek;
+            var dayOfWeek = DateTimeOffset.UtcNow.DayOfWeek;
             TimeSpan newUpdateInterval;
             switch(dayOfWeek) {
                 case DayOfWeek.Monday:
                 case DayOfWeek.Wednesday:
                 case DayOfWeek.Friday:
-                    var startOfPeriodicUpdates = DateTimeOffset.Now.Date.AddHours(10).AddMinutes(40);
-                    var startOfQuickUpdates = DateTimeOffset.Now.Date.AddHours(10).AddMinutes(54);
-                    if(DateTimeOffset.Now > startOfPeriodicUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.Now.Date)) {
+                    var startOfPeriodicUpdates = DateTimeOffset.UtcNow.Date.AddHours(10).AddMinutes(40);
+                    var startOfQuickUpdates = DateTimeOffset.UtcNow.Date.AddHours(10).AddMinutes(54);
+                    if(DateTimeOffset.UtcNow > startOfPeriodicUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.UtcNow.Date)) {
                         newUpdateInterval = TimeSpan.FromMinutes(1);
-                    } else if(DateTimeOffset.Now > startOfQuickUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.Now.Date)) {
+                    } else if(DateTimeOffset.UtcNow > startOfQuickUpdates && !existingContracts.Any(x => x.Created.Date == DateTimeOffset.UtcNow.Date)) {
                         newUpdateInterval = TimeSpan.FromSeconds(15);
                     } else {
                         newUpdateInterval = TimeSpan.FromMinutes(5);
