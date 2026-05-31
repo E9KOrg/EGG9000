@@ -29,6 +29,14 @@ npm-debug.log
 # Visual Studio
 .vs
 .vscode
+artifacts/
+.gitignore
+**/bin/
+**/obj/
+*.suo
+*.user
+*.userprefs
+*.sln.iml
 
 # Rider
 .idea
