@@ -39,6 +39,7 @@
     <UserSecretsId>DEV9001</UserSecretsId>
     <LangVersion>preview</LangVersion>
     <DebugType>embedded</DebugType>
+	<ContainerDevelopmentMode>Fast</ContainerDevelopmentMode>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="version.txt" />
