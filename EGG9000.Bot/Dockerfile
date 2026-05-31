@@ -1,10 +1,8 @@
-# Multi-stage build for .NET 9 worker that depends on ASP.NET shared framework
+# Multi-stage build for .NET 10 worker
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
-# Create a non-root user for improved security (optional)
-RUN useradd --create-home appuser && chown -R appuser:appuser /app
-USER appuser
+USER app
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -13,6 +11,8 @@ COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
 COPY ["EGG9000.Common/EGG9000.Common.csproj", "EGG9000.Common/"]
 RUN dotnet restore "./EGG9000.Bot/EGG9000.Bot.csproj"
 COPY . .
+RUN printf 'Docker build\nunknown\nDocker\n0' > /src/EGG9000.Bot/version.txt
+ENV DOCKER_BUILD=true
 WORKDIR "/src/EGG9000.Bot"
 RUN dotnet build "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
