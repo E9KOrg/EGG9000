@@ -181,7 +181,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
-            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
 
             if(needsUpdate)
                 ContractUpdater.ResetTimeStatic();
