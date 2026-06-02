@@ -3,7 +3,7 @@ using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -444,7 +444,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckOudatedGameRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var gameOutdatedRole = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild);
             if(gameOutdatedRole != null) {
-                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < ContractsAPI.ClientVersion);
+                var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < EggIncApi.ClientVersion);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == gameOutdatedRole.Id);
 
                 if(!hasRole && needsRole) {

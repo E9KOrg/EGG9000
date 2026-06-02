@@ -2,7 +2,7 @@
 using Discord.WebSocket;
 
 using EGG9000.Bot;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -37,12 +37,12 @@ namespace EGG9000.Common.Helpers {
 
             string creatorId = null;
 
-            if(ContractsAPI.CoopCreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
-                creatorId = ContractsAPI.CoopCreatorIds.First(x => x.Grade == grade).EggIncId;
+            if(EggIncApi.CoopCreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
+                creatorId = EggIncApi.CoopCreatorIds.First(x => x.Grade == grade).EggIncId;
             } else {
 
                 foreach(var account in accounts.OrderByDescending(a => a?.Account?.LastGrade)) {
-                    var r = await ContractsAPI.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
+                    var r = await EggIncApi.Post<Ei.ContractPlayerInfo, Ei.BasicRequestInfo>(new Ei.BasicRequestInfo(), account.Account.Id);
                     if(r?.Grade == grade) {
                         creatorId = account.Account.Id;
                         break;
@@ -104,7 +104,7 @@ namespace EGG9000.Common.Helpers {
 
 
         public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true, TimingsFactory timings = null) {
-            userId ??= ContractsAPI.UserId;
+            userId ??= EggIncApi.UserId;
             var policy = Policy
               .Handle<Exception>()
               .WaitAndRetry(
@@ -115,7 +115,7 @@ namespace EGG9000.Common.Helpers {
               ]);
 
             // Coop may have been created manually. Check before attempting creation, since _CreateCoop overwrites an existing coop and kicks the creator
-            var existingStatus = await ContractsAPI.GetCoopStatusBot(ContractID, coopName);
+            var existingStatus = await EggIncApi.GetCoopStatusBot(ContractID, coopName);
             timings?.Set("Get Coop Status");
             if(existingStatus is not null && existingStatus.ResponseStatus == Ei.ContractCoopStatusResponse.Types.ResponseStatus.NoError) {
                 return true;
@@ -142,13 +142,13 @@ namespace EGG9000.Common.Helpers {
             };
 
 
-            var response = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+            var response = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
             timings?.Set("CoopStatusUpdate");
 
 
             if(kickCreator) {
-                var r = await ContractsAPI.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
-                    ClientVersion = ContractsAPI.ClientVersion,
+                var r = await EggIncApi.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+                    ClientVersion = EggIncApi.ClientVersion,
                     ContractIdentifier = ContractID,
                     CoopIdentifier = coopName.ToLower(),
                     PlayerIdentifier = userId,
@@ -163,7 +163,7 @@ namespace EGG9000.Common.Helpers {
         private static async Task<Ei.CreateCoopResponse> _CreateCoop(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userid, bool allowAllGrades) {
             var userName = userid;
 
-            if(ContractsAPI.CoopCreatorIds.Any(x => x.EggIncId == userid)) {
+            if(EggIncApi.CoopCreatorIds.Any(x => x.EggIncId == userid)) {
                 userName = $"E9K-{grade}";
             }
 
@@ -174,14 +174,14 @@ namespace EGG9000.Common.Helpers {
                 UserId = userid,
                 UserName = userName,
                 Platform = Ei.Platform.Droid,
-                ClientVersion = ContractsAPI.ClientVersion,
+                ClientVersion = EggIncApi.ClientVersion,
                 SoulPower = 4624103542699216300,
                 Eop = 4632655904192331776,
                 Grade = grade,
                 AllowAllGrades = allowAllGrades,
             };
 
-            var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
+            var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request, userid);
 
             if(response is null || response.Success == false) {
                 throw new Exception($"Unable to create co-op for {coopName}: {response?.Message ?? "Null response"}");

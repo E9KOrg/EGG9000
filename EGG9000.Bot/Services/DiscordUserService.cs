@@ -4,7 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Bot;
 using EGG9000.Bot.Commands;
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -177,7 +177,7 @@ namespace EGG9000.Common.Services {
                     return;
                 }
                 dbuser.EggIncAccounts.ForEach(async account => {
-                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    var rawBackup = await EggIncApi.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) return;
                     var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
                     account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;

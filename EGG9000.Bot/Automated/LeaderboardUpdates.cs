@@ -156,7 +156,7 @@ namespace EGG9000.Bot.Automated {
                             breakCooper.User.User.UpdateAccounts();
                         }
 
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
                     //Handle users with suspiciously high Mystical Egg Ratios
@@ -182,7 +182,7 @@ namespace EGG9000.Bot.Automated {
                             merCheater.Account.MERWarningSent = true;
                             merCheater.User.UpdateAccounts();
                         }
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
                     //Handle promotions

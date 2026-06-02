@@ -32,7 +32,7 @@ using MassTransit.Internals;
 using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
 using EGG9000.Bot.Services;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using MassTransit;
 using EGG9000.Common.Factories;
 
@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             var dbguilds = _db.CachedGuilds.ToList();
 
-            Dictionary<ulong, (int successes, int failures, bool changed)> guildStats = new();
+            Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = new();
 
             while(
                 (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnCreation).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
@@ -98,7 +98,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var secondsRemaining = Math.Max(coop.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
                             timings.Set("Setup");
-                            var creator = ContractsAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
+                            var creator = EggIncApi.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
                             await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default, timings: timings);
 
                             timings.Set("Coop API Call");
@@ -113,12 +113,12 @@ namespace EGG9000.Bot.Automated.Coops {
                             writeDb.Dispose();
                             timings.Set("Updated db");
 
-                            IncrementGuildStats(guildStats, coop.GuildId, true);
+                            IncrementGuildStats(guildStats, coop.GuildId, coop.ContractID, coop.Group, true);
                             var timingsReulsts = timings.Finished();
 
                             _logger.LogInformation("Timings for creating coop via API: {timings}", string.Join(", ", timingsReulsts.Select(x => $"{x.name}: {x.time.TotalSeconds}s")));
                         } catch(Exception ex) {
-                            IncrementGuildStats(guildStats, coop.GuildId, false);
+                            IncrementGuildStats(guildStats, coop.GuildId, coop.ContractID, coop.Group, false);
                             _logger.LogError(ex, "Error Creating Co-op via API {coop}", coop.Name);
 
                         }
@@ -126,21 +126,23 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 foreach(var guildStat in guildStats.Where(x => x.Value.changed)) {
                     guildStats[guildStat.Key] = (guildStat.Value.successes, guildStat.Value.failures, false);
-                    await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-ops started ({guildStat.Value.failures} failed)", guildStat.Key);
+                    //await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-ops started ({guildStat.Value.failures} failed)", guildStat.Key);
+                    await _botLogger.UpdateBoardingGroup((int)guildStat.Key.bggroup, guildStat.Key.contractid, guildStat.Key.guildid, null, startedCount: guildStat.Value.successes, null);
                 }
             }
             _coopsBeingCreatedService.SetCoopsAreBeingCreated(false);
         }
 
-        private void IncrementGuildStats(Dictionary<ulong, (int successes, int failures, bool changed)> guildStats, ulong guildId, bool success) {
+        private void IncrementGuildStats(Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats, ulong guildId, string contractId, ulong bgGroup, bool success) {
             lock(guildStats) {
-                if(!guildStats.ContainsKey(guildId)) {
-                    guildStats[guildId] = (0, 0, false);
+                var key = (guildId, contractId, bgGroup);
+                if(!guildStats.ContainsKey(key)) {
+                    guildStats[key] = (0, 0, false);
                 }
                 if(success) {
-                    guildStats[guildId] = (guildStats[guildId].successes + 1, guildStats[guildId].failures, true);
+                    guildStats[key] = (guildStats[key].successes + 1, guildStats[key].failures, true);
                 } else {
-                    guildStats[guildId] = (guildStats[guildId].successes, guildStats[guildId].failures + 1, true);
+                    guildStats[key] = (guildStats[key].successes, guildStats[key].failures + 1, true);
                 }
             }
         }
