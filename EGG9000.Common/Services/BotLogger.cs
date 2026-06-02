@@ -16,8 +16,8 @@ namespace EGG9000.Common.Services {
     public class BotLogger {
         private readonly DiscordSocketClient _discord;
         private readonly ApplicationDbContext _db;
-        private readonly Bugsnag.Client _bugsnag;
-        public BotLogger(DiscordSocketClient discord, ApplicationDbContext db, Bugsnag.Client bugsnag) {
+        private readonly Bugsnag.IClient _bugsnag;
+        public BotLogger(DiscordSocketClient discord, ApplicationDbContext db, Bugsnag.IClient bugsnag) {
             _discord = discord;
             _db = db;
             _bugsnag = bugsnag;
