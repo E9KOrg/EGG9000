@@ -182,9 +182,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.ReleaseStage = "production";
             });
 
-            services.AddSingleton<BotLogger>();
-
-
             var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
@@ -219,8 +216,11 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         } else {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
             services.AddBugsnag();
+            services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
             services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
         }
+
+        services.AddSingleton<BotLogger>();
 
         services.AddSingleton<DiscordHostedService>();
         services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
