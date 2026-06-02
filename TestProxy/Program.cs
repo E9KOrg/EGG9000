@@ -96,9 +96,12 @@ namespace TestProxy {
         }
 
         public static string GetHash(byte[] byteArray) {
+            var phrase = Environment.GetEnvironmentVariable("EGG_INC_API_SALT");
+            if(string.IsNullOrEmpty(phrase))
+                throw new InvalidOperationException("Set the EGG_INC_API_SALT environment variable before running TestProxy.");
             SHA256 sha256Hash = SHA256.Create();
             var _magic = 0x3b9af419;
-            var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(sha256Hash.ComputeHash(Encoding.ASCII.GetBytes("THE SECRETS OF THE UNIVERSE WILL BE UNLOCKED"))));
+            var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(sha256Hash.ComputeHash(Encoding.ASCII.GetBytes(phrase))));
             byteArray[_magic % byteArray.Length] = 0x1b;
             return ByteArrayToString(sha256Hash.ComputeHash(byteArray.Concat(_salt).ToArray()));
         }

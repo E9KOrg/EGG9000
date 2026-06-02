@@ -1,7 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
@@ -47,7 +47,7 @@ namespace EGG9000.Bot.Commands {
 
             if(pullFreshBackup) {
                 foreach(var account in dbuser.EggIncAccounts) {
-                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    var rawBackup = await EggIncApi.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
@@ -110,7 +110,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var backup = await ContractsAPI.GetBackupAsync(account.Id);
+                var backup = await EggIncApi.GetBackupAsync(account.Id);
                 if(backup == null)
                     continue;
 
@@ -153,8 +153,8 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "None" : account.Guild, true);
                 }
 
-                if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
-                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {ContractsAPI.ClientVersion} ⚠️");
+                if(backup.ClientVersion < EggIncApi.ClientVersion && backup.ClientVersion > 0) {
+                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {EggIncApi.ClientVersion} ⚠️");
                 }
 
                 if(index + 1 == accounts.Count()) {
