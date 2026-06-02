@@ -10,7 +10,7 @@ namespace EGG9000.Common.EggIncAPI {
     /// </summary>
     public static class EggIncApiSecrets {
         /// <summary>The passphrase, or null/empty when not configured.</summary>
-        public static string Salt => DockerSecretsHelper.ApiSalt;
+        public static string Salt => SecretsHelper.ApiSalt;
 
         /// <summary>True when a salt is configured and request signing is possible.</summary>
         public static bool IsSaltAvailable => !string.IsNullOrEmpty(Salt);

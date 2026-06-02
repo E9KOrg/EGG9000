@@ -101,10 +101,10 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
         services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
 
-        DockerSecretsHelper.Initialize(hostContext.Configuration);
+        SecretsHelper.Initialize(hostContext.Configuration);
 
         // Get connection string - supports both Docker secrets and local development
-        var connectionString = DockerSecretsHelper.GetConfigOrSecret(
+        var connectionString = SecretsHelper.GetConfigOrSecret(
             hostContext.Configuration,
             "ConnectionStrings:DefaultConnection",
             "db_connection_string");
@@ -120,7 +120,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         }
 
         logger.Log(NLog.LogLevel.Info, "Using connection string from: " + 
-            (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
+            (SecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
 
         services.AddDbContextFactory<ApplicationDbContext>(options => {
             options.UseSqlServer(connectionString, x => {
