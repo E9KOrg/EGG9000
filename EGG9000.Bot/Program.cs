@@ -100,7 +100,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DiscordQueueService>();
         services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
         services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
-        services.AddSingleton<BotLogger>();
 
         DockerSecretsHelper.Initialize(hostContext.Configuration);
 
@@ -182,6 +181,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
                 options.ReleaseStage = "production";
             });
+
+            services.AddSingleton<BotLogger>();
+
 
             var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
