@@ -8,7 +8,7 @@ namespace EGG9000.Common.Helpers
     /// Helper to read secrets from Docker Secrets (/run/secrets/) or fall back to configuration.
     /// Supports both development (user secrets) and production (Docker secrets) workflows.
     /// </summary>
-    public static class DockerSecretsHelper
+    public static class SecretsHelper
     {
         private const string SecretsPath = "/run/secrets";
 
