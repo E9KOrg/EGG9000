@@ -329,8 +329,8 @@ namespace EGG9000.Common.Database {
                 allContractList.AddRange(backup.Contracts.Contracts);
                 var matchingContracts = allContractList.Where(f =>
                     f?.MaxFarmSizeReached > 0
-                    && f.Contract.Egg == Ei.Egg.CustomEgg
-                    && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
+                    && f.Contract?.Egg == Ei.Egg.CustomEgg
+                    && f.Contract?.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
                 ).ToList();
 
                 if(!matchingContracts.Any()) continue;
@@ -423,7 +423,7 @@ namespace EGG9000.Common.Database {
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
-            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
+            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract?.Identifier == farm.ContractId)
                 ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.Contract?.Identifier == farm.ContractId);
 
             var customFarm = new CustomFarm {

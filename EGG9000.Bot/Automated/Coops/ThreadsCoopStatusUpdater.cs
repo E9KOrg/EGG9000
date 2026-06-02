@@ -504,7 +504,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         coop.CoopCompleted = DateTimeOffset.UtcNow;
                         coop.Finished = true;
 
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                         await HandleUnjoins(usersNotJoined, users, dbGuild, coop, _db, coopThread);
                     }
 
@@ -513,7 +513,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         coop.Status = CoopStatusEnum.CompletedAllCheckIn;
                         coop.ThreadArchived = true;
                         _queue.EnqueueLow(() => coopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay));
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
                 }
 
@@ -674,16 +674,16 @@ namespace EGG9000.Bot.Automated.Coops {
                             if(discordUser != null && !coop.Finished && coop.Status != CoopStatusEnum.Failed && coop.CoopEnds > DateTimeOffset.Now) {
                                 if(!userFarmDetails.Xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
                                     userFarmDetails.Xref.JoinWarning24TillFinish = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                     await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
                                 } else if(!userFarmDetails.Xref.JoinWarning24h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
                                     userFarmDetails.Xref.JoinWarning24h = true;
                                     userFarmDetails.Xref.JoinWarning12h = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                     await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 24h since added to co-op", coop);
                                 } else if(!userFarmDetails.Xref.JoinWarning12h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
                                     userFarmDetails.Xref.JoinWarning12h = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                     await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 12h since added to co-op", coop);
                                 }
 
@@ -700,7 +700,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 if(farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
                                     _queue.EnqueueLow(() => coopThread.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op."));
                                     userFarmDetails.Xref.OutsideCoop = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                 } else if(farm.CoopId.Length > 0 && farm.FarmType == Ei.FarmType.Contract) {
                                     // This should always happen so that no matter what, we're only sending one message
                                     userFarmDetails.Xref.OutsideCoop = true;
@@ -739,7 +739,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     }
 
                                     // And we always want to save the DB
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                 }
                             }
                         } catch(Exception e) {
@@ -890,7 +890,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     coop.Status = CoopStatusEnum.Failed;
                     finalChannelUpdate = true;
                     coop.ThreadArchived = true;
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
 
                     await HandleUnjoins(usersNotJoined, users, dbGuild, coop, _db, coopThread);
                 }
@@ -1142,7 +1142,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 coop.LastUpdateToChannel = DateTimeOffset.Now;
-                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
 
 
                 var times = timings.Finished();
@@ -1525,7 +1525,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 Details = JsonConvert.SerializeObject(new { FarmTimestemp = user.CoopStatus?.FarmInfo?.Timestamp, Silos = siloTimeHours })
                             };
                             _db.Demerit.Add(demerit);
-                            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                             var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.DBUser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
                             var demeritText = $"Demerit added to {user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
                             if(count >= 3) {
@@ -1560,7 +1560,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(userFarmDetail.Xref.CreatedOn > DateTimeOffset.Now.AddHours(-18)) {
                     _db.Remove(userFarmDetail.Xref);
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removed {userFarmDetail.DiscordUser?.GetCleanName() ?? user.DiscordUsername} without a demerit since they were added less than 18 hours before the co-op finished."));
                     continue;
                 }
@@ -1643,7 +1643,7 @@ namespace EGG9000.Bot.Automated.Coops {
             if(existingDemerit || xref.JoinedCoop) {
                 _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removing {discordUser?.Mention ?? user.DiscordUsername} due to: {reason}"));
                 _db.Remove(xref);
-                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
             } else {
                 _db.Remove(xref);
                 if(user.IsFreshEgg()) {
@@ -1657,7 +1657,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         Reason = reason
                     };
                     _db.Demerit.Add(demerit);
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     var count = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
                     var demeritText = $"Demerit added to {discordUser?.Mention ?? user.DiscordUsername} for the reason: {demerit.Reason} ({count} demerits)";
                     _queue.EnqueueLow(() => coopChannel.SendMessageAsync(demeritText));
@@ -1678,7 +1678,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         if(highestEB2.DBUser != null && user.User?.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
-                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                         await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Highest EB ({highestEB2.DiscordUser?.GetCleanName()} at {highestEB2.Backup.EarningsBonus.ToEggString()}) has joined", coop);
                     }
                 }
@@ -1692,7 +1692,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 foreach(var user in anybodyWithPingSetting) {
                     user.Xref.CoopSetting.PingOnCompleteOnCheckIn = false;
                     user.Xref.UpdateCoopSetting();
-                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Your co-op will complete once everyone checks in.", coop);
                 }
             }
