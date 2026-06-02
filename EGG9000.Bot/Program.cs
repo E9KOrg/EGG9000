@@ -100,12 +100,11 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DiscordQueueService>();
         services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
         services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
-        services.AddSingleton<BotLogger>();
 
-        DockerSecretsHelper.Initialize(hostContext.Configuration);
+        SecretsHelper.Initialize(hostContext.Configuration);
 
         // Get connection string - supports both Docker secrets and local development
-        var connectionString = DockerSecretsHelper.GetConfigOrSecret(
+        var connectionString = SecretsHelper.GetConfigOrSecret(
             hostContext.Configuration,
             "ConnectionStrings:DefaultConnection",
             "db_connection_string");
@@ -121,7 +120,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         }
 
         logger.Log(NLog.LogLevel.Info, "Using connection string from: " + 
-            (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
+            (SecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
 
         services.AddDbContextFactory<ApplicationDbContext>(options => {
             options.UseNpgsql(connectionString, x => {
@@ -153,7 +152,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #endif
 
 #if DEBUG
-
+        services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
 
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
         if(serviceCustomize is not null && !release) {
@@ -182,6 +181,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
                 options.ReleaseStage = "production";
             });
+
+            services.AddSingleton<BotLogger>();
+
 
             var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,

@@ -64,7 +64,7 @@ namespace EGG9000.Common.Helpers {
 
         private static async Task<Image> GenerateEventImageAsync(Event customEvent) {
             using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("authenticationKey", DockerSecretsHelper.BotToken);
+            client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
 
 #if RELEASE
             var baseUrl = "https://egg9000.com";
