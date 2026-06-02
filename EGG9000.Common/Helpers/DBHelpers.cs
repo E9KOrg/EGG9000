@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using Npgsql;
@@ -20,6 +21,7 @@ namespace EGG9000.Common.Helpers {
                 var currentRetry = 0;
                 while(true) {
                     try {
+                        db.Database.SetCommandTimeout(TimeSpan.FromMinutes(1));
                         return (true, await db.SaveChangesAsync(cancellationToken));
                     } catch(Exception e) {
                         // Fail fast so the caller can release resources

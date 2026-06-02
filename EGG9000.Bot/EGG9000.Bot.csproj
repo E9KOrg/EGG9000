@@ -39,6 +39,7 @@
     <UserSecretsId>DEV9001</UserSecretsId>
     <LangVersion>preview</LangVersion>
     <DebugType>embedded</DebugType>
+	<ContainerDevelopmentMode>Fast</ContainerDevelopmentMode>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="version.txt" />
@@ -103,7 +104,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" />
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(DOCKER_BUILD)' != 'true'">
+    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
   </Target>
 </Project>

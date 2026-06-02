@@ -1,6 +1,6 @@
 ﻿using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -330,7 +330,7 @@ namespace EGG9000.Common.Helpers {
                     foreach(var c in coop.LastStatusUpdate.Contributors) {
                         var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == c.UserId);
                         if(prefarm == null) {
-                            tasks.Add(ContractsAPI.GetBackupAsync(c.UserId));
+                            tasks.Add(EggIncApi.GetBackupAsync(c.UserId));
                         }
                     }
                 }

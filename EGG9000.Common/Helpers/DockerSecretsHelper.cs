@@ -58,9 +58,17 @@ namespace EGG9000.Common.Helpers
 
         public static string BotToken { get; private set; }
 
+        /// <summary>
+        /// Egg Inc API authentication passphrase. Loaded from the Docker secret
+        /// <c>egg_inc_api_salt</c> or the <c>ConnectionStrings:ApiSalt</c> configuration key.
+        /// Null/empty when not configured - authenticated Egg Inc endpoints then degrade gracefully.
+        /// </summary>
+        public static string ApiSalt { get; private set; }
+
         public static void Initialize(IConfiguration config)
         {
             BotToken = GetConfigOrSecret(config, "ConnectionStrings:Token", "token");
+            ApiSalt = GetConfigOrSecret(config, "ConnectionStrings:ApiSalt", "egg_inc_api_salt");
         }
     }
 }

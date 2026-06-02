@@ -48,6 +48,7 @@ try
     botColor = "debug";
 #endif
     NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}_{botColor}");
+    NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
     logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + $"{NLog.GlobalDiagnosticsContext.Get("CustomMachineName")}");
 
     logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);

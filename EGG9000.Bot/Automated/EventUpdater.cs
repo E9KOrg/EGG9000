@@ -2,7 +2,7 @@
 using Discord.Rest;
 using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Automated {
 
             await CheckShells(_db);
 
-            var response = await ContractsAPI.GetPeriodicalsAsync();
+            var response = await EggIncApi.GetPeriodicalsAsync();
             var responseDateTime = DateTimeOffset.UtcNow;
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.UtcNow.AddDays(-1)).ToListAsync(CancellationToken.None);
 
@@ -421,7 +421,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task CheckShells(ApplicationDbContext db) {
-            var config = await ContractsAPI.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, ContractsAPI.UserId, true);
+            var config = await EggIncApi.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, EggIncApi.UserId, true);
 
             if(config is null) return; // This randomly failed while I was working
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();

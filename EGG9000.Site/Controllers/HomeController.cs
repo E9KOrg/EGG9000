@@ -2,7 +2,7 @@
 using Discord.Rest;
 using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -88,50 +88,6 @@ namespace EGG9000.Site.Controllers {
             else return StatusCode(503);
         }
 
-        private static async Task<Ei.SaveBackupResponse> SubmitBackup(Ei.Backup backup) {
-            var handler = new HttpClientHandler() { AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
-            using(var client = new HttpClient(handler)) {
-                client.BaseAddress = new Uri("https://www.auxbrain.com/");
-
-                var ms1 = new MemoryStream();
-                backup.WriteTo(ms1);
-                //Serializer.Serialize<FirstContactRequestProto>(ms1, new FirstContactRequestProto { UserId = UserId, P2 = 0, P3 = 2 });
-                ms1.Position = 0;
-                var messageData = ms1.ToArray();
-                var authMessage = new Ei.AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = ContractsAPI.GetHash(messageData) };
-
-                var base64 = ContractsAPI.GetEncodedMessage(authMessage);
-
-                var bac = await ContractsAPI.GetBAC(base64);
-                client.DefaultRequestHeaders.Add("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)");
-                client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip");
-                client.DefaultRequestHeaders.Add("Connection", "Keep-Alive");
-
-                HttpResponseMessage response;
-
-                //try {
-                response = await client.PostAsync("ei/save_backup_secure ", bac);
-                //} catch(Exception) {
-                //    await Task.Delay(500);
-                //    response = await client.PostAsync("ei/first_contact", bac);
-                //}
-
-                string r;
-                if(response.IsSuccessStatusCode) {
-                    r = await response.Content.ReadAsStringAsync();
-                    var responseString = System.Convert.FromBase64String(await response.Content.ReadAsStringAsync());
-
-
-                    var backupR = ContractsAPI.GetFromAuthenticatedMessage<Ei.SaveBackupResponse>(responseString);
-
-
-                    //backup.Success = true;
-                    return backupR;
-                }
-            }
-            return null;
-        }
-
         public async Task<IActionResult> GetMessage() {
             var message = await _discord.Guilds.First(x => x.Id == 656455567858073601).GetTextChannel(933047117621100605).GetMessageAsync(933395126749896804);
             return Json(message, new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.IgnoreCycles });
@@ -147,9 +103,9 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
-            //var rawBackup = await ContractsAPI.FirstContact(ei);
+            //var rawBackup = await EggIncApi.FirstContact(ei);
             //var backup = new CustomBackup(rawBackup.Backup);
-            var backup = await ContractsAPI.GetBackupAsync(ei);
+            var backup = await EggIncApi.GetBackupAsync(ei);
             return new ObjectResult(backup);
         }
 
@@ -157,7 +113,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
-            var backup = await ContractsAPI.GetBackupAsync(ei);
+            var backup = await EggIncApi.GetBackupAsync(ei);
             return new ObjectResult(backup);
         }
 
@@ -165,7 +121,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
-            var backup = await ContractsAPI.FirstContact(ei);
+            var backup = await EggIncApi.FirstContact(ei);
             return new ObjectResult(backup);
         }
 
@@ -173,7 +129,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> CustomBackupOut(string ei) {
-            var rawBackup = await ContractsAPI.FirstContact(ei);
+            var rawBackup = await EggIncApi.FirstContact(ei);
             var customBackup = new CustomBackup(rawBackup.Backup);
             return Json(customBackup);
         }
@@ -215,49 +171,9 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
-
-
-        //public async Task<IActionResult> CheckSize() {
-        //    var user = await _db.Users.AsQueryable().FirstAsync(x => x.DiscordId == 248865520756064257);
-        //    var response = await ContractsAPI.FirstContactRaw(user.EggIncIds.First().Id);
-
-        //    Console.WriteLine(response.Response.Error);
-        //    var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response.Response.Backup));
-        //    var jsonZip = JsonHelper.Zip(jsonBytes);
-
-        //    JsonHelper.CleanBackup(response.Response.Backup);
-
-        //    var jsonBytes2 = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response.Response.Backup, new JsonSerializerSettings { ContractResolver = new IgnoreHasResolver() }));
-        //    var jsonZip2 = JsonHelper.Zip(jsonBytes2);
-        //    var rawZip = JsonHelper.Zip(response.Raw);
-
-        //    var ms = new MemoryStream();
-        //    response.Response.Backup.WriteTo(ms);
-        //    ms.Position = 0;
-        //    var RawSize2 = ms.ToArray();
-        //    var rawZip2 = JsonHelper.Zip(RawSize2);
-        //    return Json(new {
-        //        JsonSize = jsonBytes.Length,
-        //        JsonZip = jsonZip.Length,
-        //        RawSize = response.Raw.Length,
-        //        Rawip = rawZip.Length,
-        //        JsonSize2 = jsonBytes2.Length,
-        //        JsonZip2 = jsonZip2.Length,
-        //        RawSize2 = RawSize2.Length,
-        //        rawZip2 = rawZip2.Length
-        //    })
-        //    ;
-        //}
-
-
-
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddAdminRole() {
-            //var dbuser = await _db.Users.First(x => x.DiscordId == "");
             var user = await _userManager.FindByIdAsync(_db.UserLogins.First(x => x.ProviderKey == "689298717081468973").UserId);
-            //var user = await _userManager.FindByIdAsync(_db.First(x => x.ema).UserId);
-            //await _userManager.AddToRoleAsync(user, "GuildAdmin");
-            //await _roleManager.CreateAsync(new IdentityRole("GuildLesserAdmin"));
             return Content("Success");
         }
 
@@ -845,7 +761,7 @@ namespace EGG9000.Site.Controllers {
             var user = new DBUser {
                 UserCoopXrefs = new List<UserCoopXref>()
             };
-            var backup = await ContractsAPI.GetBackupAsync(id);
+            var backup = await EggIncApi.GetBackupAsync(id);
             user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } };
             user.DiscordUsername = backup.UserName;
             //return Json(response);
@@ -871,7 +787,7 @@ namespace EGG9000.Site.Controllers {
             };
 
 
-            model.CoopStatus = await ContractsAPI.GetCoopStatus(ContractId, CoopId.ToLower(), EIID: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
+            model.CoopStatus = await EggIncApi.GetCoopStatus(ContractId, CoopId.ToLower(), EIID: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
 
             if(model.CoopStatus == null && model.DbCoop?.LastStatusUpdate != null) {
                 model.CoopStatus = model.DbCoop.LastStatusUpdate;
@@ -912,7 +828,7 @@ namespace EGG9000.Site.Controllers {
             }));
 
             if(model.Contract.Details == null) {
-                var firstContact = await ContractsAPI.FirstContact(model.UserInfos.Where(x => x.Backup != null).First().Backup.EggIncId);
+                var firstContact = await EggIncApi.FirstContact(model.UserInfos.Where(x => x.Backup != null).First().Backup.EggIncId);
                 var contract = firstContact.Backup.Contracts.Archive.First(c => c.Contract.Identifier == ContractId);
                 model.Contract._response = JsonConvert.SerializeObject(contract.Contract);
                 await _db.SaveChangesAsync();
@@ -1029,7 +945,7 @@ namespace EGG9000.Site.Controllers {
         //    //var coopBase = "testingblah";
         //    //var last = 0;
         //    //for (var i = 131072; i > 10000; i--) {
-        //    //    var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(new Ei.CreateCoopRequest {
+        //    //    var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(new Ei.CreateCoopRequest {
         //    //        ClientVersion = 30,
         //    //        ContractIdentifier = "mday-brunch",
         //    //        CoopIdentifier = coopBase + i,
@@ -1040,7 +956,7 @@ namespace EGG9000.Site.Controllers {
         //    //        UserId = "G:1008118781",
         //    //        UserName = "Kendrome"
         //    //    });
-        //    //    var r2 = await ContractsAPI.GetCoopStatus("mday-brunch", coopBase + i);
+        //    //    var r2 = await EggIncApi.GetCoopStatus("mday-brunch", coopBase + i);
         //    //    if(r2.SecondsRemaining < 100) {
         //    //        Debug.WriteLine(i);
         //    //        last = i;
@@ -1068,8 +984,8 @@ namespace EGG9000.Site.Controllers {
         //    //var o = $"<{BitConverter.ToString(ms1.ToArray()).Replace("-", " ")}>";
         //    //return Json(o);
 
-        //    //var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request);
-        //    //var r2 = await ContractsAPI.GetCoopStatus("mday-brunch", coop);
+        //    //var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request);
+        //    //var r2 = await EggIncApi.GetCoopStatus("mday-brunch", coop);
         //    //return Json(r2);
 
         //    //var responseString = System.Convert.FromBase64String("CgttZGF5LWJydW5jaBINdGVzdHRlc3RoYWhnYRkAAPm8OjjQQCIMRzoxMDA4MTE4NzgxKghLZW5kcm9tZTABOBpB203o1W7KEBIAA==");
@@ -1080,7 +996,7 @@ namespace EGG9000.Site.Controllers {
 
         //    //var res = Ei.ContractCoopStatusUpdateRequest.Parser.ParseFrom(ms);
 
-        //    //var response = await ContractsAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+        //    //var response = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
         //    //    ClientVersion = 25,
         //    //    ContractIdentifier = "terraform-heavy",
         //    //    CoopIdentifier = "flockblush54",
@@ -1105,9 +1021,9 @@ namespace EGG9000.Site.Controllers {
         //    //    request.UserId = "G:1008118781";
         //    //    request.UserName = "Kendrome";
 
-        //    //var response = await ContractsAPI.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request);
+        //    //var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request);
 
-        //    //var r = await ContractsAPI.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
+        //    //var r = await EggIncApi.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
         //    //    ClientVersion = 25,
         //    //    ContractIdentifier = coop.ContractID,
         //    //    CoopIdentifier = coop.Name,
