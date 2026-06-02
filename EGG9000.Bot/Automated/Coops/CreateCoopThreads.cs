@@ -32,7 +32,7 @@ using MassTransit.Internals;
 using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
 using EGG9000.Bot.Services;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using MassTransit;
 using EGG9000.Common.Factories;
 

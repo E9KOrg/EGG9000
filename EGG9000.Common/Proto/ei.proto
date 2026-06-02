@@ -659,7 +659,7 @@ message ContractPlayerInfo {
         optional double total_cxp = 4;
         optional double cxp_last_reward_given = 5;
     }
-    
+
     optional string aggregation_notes = 16;
 }
 
