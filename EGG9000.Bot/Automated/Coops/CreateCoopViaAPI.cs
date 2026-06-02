@@ -32,7 +32,7 @@ using MassTransit.Internals;
 using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
 using EGG9000.Bot.Services;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using MassTransit;
 using EGG9000.Common.Factories;
 
@@ -98,7 +98,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var secondsRemaining = Math.Max(coop.Contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
 
                             timings.Set("Setup");
-                            var creator = ContractsAPI.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
+                            var creator = EggIncApi.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
                             await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default, timings: timings);
 
                             timings.Set("Coop API Call");

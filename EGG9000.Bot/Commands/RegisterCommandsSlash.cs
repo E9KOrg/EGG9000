@@ -5,7 +5,7 @@ using Discord.Net;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
@@ -64,7 +64,7 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
-                var response = await ContractsAPI.GetBackupAsync(dbUser.EggIncAccounts.First().Id);
+                var response = await EggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id);
                 var earningsBonus = response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
@@ -199,7 +199,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
                 return;
             }
-            var response = await ContractsAPI.FirstContact(eggincid);
+            var response = await EggIncApi.FirstContact(eggincid);
             var backup = new CustomBackup(response.Backup);
             if(backup == null || backup.Farms == null || backup.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
@@ -238,7 +238,7 @@ namespace EGG9000.Bot.Commands {
             else user.EggIncAccounts = [newAccount];
 
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await ContractsAPI.FirstContact(account.Id))?.Backup, account?.Backup ?? null);
+                var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, account?.Backup ?? null);
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -294,7 +294,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var firstContactResponse = await ContractsAPI.FirstContact(eggincid);
+            var firstContactResponse = await EggIncApi.FirstContact(eggincid);
             var backup = new CustomBackup(firstContactResponse.Backup);
             if(backup?.Farms == null || backup.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
@@ -302,7 +302,7 @@ namespace EGG9000.Bot.Commands {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    backup = await ContractsAPI.GetBackupAsync(eggincid);
+                    backup = await EggIncApi.GetBackupAsync(eggincid);
                 }
             }
 

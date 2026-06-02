@@ -1,5 +1,5 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
-            var contractsResponse = await ContractsAPI.GetPeriodicalsAsync();
+            var contractsResponse = await EggIncApi.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
                 _logger.LogWarning("⚠️ERROR: Invalid Contract Response");

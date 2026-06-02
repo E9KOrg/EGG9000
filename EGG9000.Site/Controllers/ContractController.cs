@@ -1,6 +1,6 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Bot;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -37,7 +37,7 @@ namespace EGG9000.Site.Controllers {
 
         [Produces("application/json")]
         public async Task<IActionResult> CoopStatusJson(string coopid, string contractid) {
-            var status = await ContractsAPI.GetCoopStatus(contractid, coopid);
+            var status = await EggIncApi.GetCoopStatus(contractid, coopid);
             return new ObjectResult(status);
         }
 
