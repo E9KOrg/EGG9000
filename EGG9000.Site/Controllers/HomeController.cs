@@ -216,49 +216,9 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
-
-
-        //public async Task<IActionResult> CheckSize() {
-        //    var user = await _db.Users.AsQueryable().FirstAsync(x => x.DiscordId == 248865520756064257);
-        //    var response = await ContractsAPI.FirstContactRaw(user.EggIncIds.First().Id);
-
-        //    Console.WriteLine(response.Response.Error);
-        //    var jsonBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response.Response.Backup));
-        //    var jsonZip = JsonHelper.Zip(jsonBytes);
-
-        //    JsonHelper.CleanBackup(response.Response.Backup);
-
-        //    var jsonBytes2 = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(response.Response.Backup, new JsonSerializerSettings { ContractResolver = new IgnoreHasResolver() }));
-        //    var jsonZip2 = JsonHelper.Zip(jsonBytes2);
-        //    var rawZip = JsonHelper.Zip(response.Raw);
-
-        //    var ms = new MemoryStream();
-        //    response.Response.Backup.WriteTo(ms);
-        //    ms.Position = 0;
-        //    var RawSize2 = ms.ToArray();
-        //    var rawZip2 = JsonHelper.Zip(RawSize2);
-        //    return Json(new {
-        //        JsonSize = jsonBytes.Length,
-        //        JsonZip = jsonZip.Length,
-        //        RawSize = response.Raw.Length,
-        //        Rawip = rawZip.Length,
-        //        JsonSize2 = jsonBytes2.Length,
-        //        JsonZip2 = jsonZip2.Length,
-        //        RawSize2 = RawSize2.Length,
-        //        rawZip2 = rawZip2.Length
-        //    })
-        //    ;
-        //}
-
-
-
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddAdminRole() {
-            //var dbuser = await _db.Users.First(x => x.DiscordId == "");
             var user = await _userManager.FindByIdAsync(_db.UserLogins.First(x => x.ProviderKey == "689298717081468973").UserId);
-            //var user = await _userManager.FindByIdAsync(_db.First(x => x.ema).UserId);
-            //await _userManager.AddToRoleAsync(user, "GuildAdmin");
-            //await _roleManager.CreateAsync(new IdentityRole("GuildLesserAdmin"));
             return Content("Success");
         }
 
