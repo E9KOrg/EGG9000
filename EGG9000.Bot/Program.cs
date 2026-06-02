@@ -153,7 +153,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #endif
 
 #if DEBUG
-
+        services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
 
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
         if(serviceCustomize is not null && !release) {
