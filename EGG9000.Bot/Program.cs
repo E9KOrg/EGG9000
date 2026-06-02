@@ -164,7 +164,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         if(release) {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
             
-            var bugsnagKey = DockerSecretsHelper.GetConfigOrSecret(
+            var bugsnagKey = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:BugSnagApiKey",
                 "bugsnag_api_key");
@@ -185,7 +185,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<BotLogger>();
 
 
-            var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
+            var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
                 "rabbitmq_connection");
