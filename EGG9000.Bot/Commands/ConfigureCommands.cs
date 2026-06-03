@@ -27,8 +27,6 @@ namespace EGG9000.Bot.Commands {
     /// Native channel/role select components; modals only for numbers/text.
     /// </summary>
     public static class ConfigureCommands {
-        // ---- structure helpers (no hardcoded field lists) ----
-
         private static string EnumDesc(GuildChannelType v) =>
             typeof(GuildChannelType).GetField(v.ToString())?.GetCustomAttribute<DescriptionAttribute>()?.Description ?? v.ToString();
         private static string EnumDesc(GuildCoopSetting v) =>
@@ -71,8 +69,6 @@ namespace EGG9000.Bot.Commands {
             list.Add(cur);
             g.CoopSettings = list;
         }
-
-        // ---- root / nav ----
 
         private static readonly (string Key, string Label)[] Sections = [
             ("overview", "Overview"), ("channels", "Channels"), ("roles", "Roles"),
@@ -221,8 +217,6 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        // ---- slash entry ----
-
         [SlashCommand(Description = "Configure this server (same as the website)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
         public static async Task Configure(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync(ephemeral: true);
@@ -234,8 +228,6 @@ namespace EGG9000.Bot.Commands {
             var (embed, components) = BuildView("overview", g);
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
-
-        // ---- navigation ----
 
         [ComponentCommand]
         public static async Task CfgNav(SocketMessageComponent component, ApplicationDbContext db) {
@@ -276,8 +268,6 @@ namespace EGG9000.Bot.Commands {
             var (embed, components) = BuildView("lists", g, component.Data.Values.FirstOrDefault());
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
-
-        // ---- setters ----
 
         [ComponentCommand]
         public static async Task CfgSetChannel(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
@@ -378,8 +368,6 @@ namespace EGG9000.Bot.Commands {
             var (embed, components) = BuildView("lists", g, data);
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
-
-        // ---- modal edit for numbers / text ----
 
         [ComponentCommand]
         public static async Task CfgEdit(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
