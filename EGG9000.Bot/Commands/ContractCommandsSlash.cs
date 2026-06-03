@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -681,7 +682,7 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
+        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, CoopAssignmentLookup lookup, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
             await command.DeferAsync();
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
@@ -700,6 +701,7 @@ namespace EGG9000.Bot.Commands {
 
             db.Remove(xref);
             await db.SaveChangesAsync();
+            lookup.Remove(xref.UserId, targetCoop.ContractID);
 
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op");
 
@@ -882,6 +884,56 @@ namespace EGG9000.Bot.Commands {
                 builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"FindCoopSpotForAccount:{dbUser.EggIncAccounts.IndexOf(account)}", emote: emote);
             }
             await component.ModifyOriginalResponseAsync(x => { x.Embed = null; x.Content = $"Select an account: "; x.Components = builder.Build(); });
+        }
+
+        [ComponentCommand]
+        public static async Task FindMyCoop(SocketMessageComponent component, ApplicationDbContext db, CoopAssignmentLookup lookup) {
+            await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
+
+            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            if(dbUser is null || dbUser.GuildId != component.GuildId) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find your record - are you registered correctly?"); });
+                return;
+            }
+
+            var guildContract = await db.GuildContracts.Include(gc => gc.Contract)
+                .FirstOrDefaultAsync(c => c.GuildID == component.GuildId && c.DiscordChannelId == component.ChannelId);
+            if(guildContract is null) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This command must be used in a contract channel."); });
+                return;
+            }
+
+            // Fast path: prebuilt lookup. On a miss, fall back to the DB so a missed
+            // cache prune is never wrong, only slightly slower. Both paths are scoped to
+            // assigned-but-not-yet-joined coops (joined users are already in the thread).
+            var found = lookup.Get(dbUser.Id, guildContract.ContractID)
+                ?? (await db.UserCoopXrefs
+                    .Where(x => x.UserId == dbUser.Id
+                             && !x.JoinedCoop
+                             && x.Coop.ContractID == guildContract.ContractID
+                             && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
+                             && x.Coop.CoopEnds > DateTimeOffset.Now && !x.Coop.PseudoExpired)
+                    .Select(x => new AssignedCoop(x.Coop.Id, x.Coop.ThreadID, x.Coop.DiscordChannelId, x.Coop.Name, x.Coop.ContractID))
+                    .ToListAsync())
+                    .GroupBy(c => c.CoopId).Select(g => g.First()).ToList();
+
+            if(found.Count == 0) {
+                await component.ModifyOriginalResponseAsync(x => {
+                    x.Content = "";
+                    x.Embed = EmbedWarning($"You do not have an unjoined co-op for **{guildContract.Contract.Name}**. Either you've already joined yours, or co-ops are still being formed - once boarding groups launch this button becomes \"Find Coop Spot\" so you can grab an open seat.");
+                });
+                return;
+            }
+
+            var sb = new StringBuilder();
+            foreach(var coop in found) {
+                var channelId = coop.ThreadId != 0 ? coop.ThreadId : coop.DiscordChannelId;
+                sb.AppendLine($"Thread: <#{channelId}>");
+                sb.AppendLine($"Co-op code: `{coop.ContractId}` / `{coop.Name}`");
+                sb.AppendLine();
+            }
+
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess(sb.ToString().TrimEnd()); });
         }
 
         [ComponentCommand]
