@@ -16,11 +16,11 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.EggIncAPI {
 
-    public partial class EggIncApi {
+    public static partial class EggIncApi {
         public const string BaseAddressNew = "https://www.auxbrain.com/";
         public const string UserId = "EI6145601714651136";
 
-        public static readonly List<(string EggIncId, Ei.Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
+        public static readonly List<(string EggIncId, Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
 
         public static uint ClientVersion { get; set; } = 71;
         public const string AppVersion = "1.35.3";
@@ -143,12 +143,22 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
+        // Wraps HttpClient.PostAsync so every outbound Egg Inc API call is counted for runtime reporting.
+        private static Task<HttpResponseMessage> PostCounted(this HttpClient client, string url, HttpContent content) {
+            Services.RuntimeMetrics.AddApiCalls();
+            return client.PostAsync(url, content);
+        }
+        private static Task<HttpResponseMessage> PostCounted(this HttpClient client, string url, HttpContent content, CancellationToken ct) {
+            Services.RuntimeMetrics.AddApiCalls();
+            return client.PostAsync(url, content, ct);
+        }
+
         // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
         // base64-decode the body. Returns null on a non-success status. body may be null.
         private static async Task<byte[]> PostRaw(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
             using var client = NewClient(http2);
             ApplyHeaders(client, profile);
-            var response = await client.PostAsync(path, body, cancellationToken);
+            var response = await client.PostCounted(path, body, cancellationToken);
             if(!response.IsSuccessStatusCode) {
                 return null;
             }
@@ -184,7 +194,7 @@ namespace EGG9000.Common.EggIncAPI {
                 var bac = await GetBAC(BuildPayload(data, UserId, descriptor));
                 using var client = NewClient();
                 ApplyHeaders(client, descriptor.Headers);
-                var response = await client.PostAsync(descriptor.Path, bac);
+                var response = await client.PostCounted(descriptor.Path, bac);
                 return response.IsSuccessStatusCode;
             } catch(Exception) {
                 return false;

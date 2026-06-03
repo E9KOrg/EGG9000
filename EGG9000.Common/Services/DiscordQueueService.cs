@@ -29,6 +29,8 @@ namespace EGG9000.Common.Services {
 
         public int HighDepth => _high.Reader.Count;
         public int LowDepth => _low.Reader.Count;
+        public int HighWorkers => _highWorkers.Count;
+        public int LowWorkers => _lowWorkers.Count;
 
         public DiscordQueueService(IOptionsMonitor<DiscordQueueOptions> optsMon, ILogger<DiscordQueueService> logger, IClient bugsnag) {
             _optsMon = optsMon;
@@ -114,6 +116,7 @@ namespace EGG9000.Common.Services {
                 await foreach(var item in channel.Reader.ReadAllAsync(ct)) {
                     try {
                         await item.Operation();
+                        RuntimeMetrics.AddDiscordOps();
                     } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) {
                         _logger.LogDebug("DiscordQueue: message no longer exists (10008), skipping");
                     } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.MissingPermissions) {
