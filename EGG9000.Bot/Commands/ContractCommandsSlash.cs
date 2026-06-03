@@ -236,7 +236,7 @@ namespace EGG9000.Bot.Commands {
 
                 //Fetch a new backup so they don't lose access to this channel when role update happens
                 var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
 
                 if((uint)customBackup.Grade != newgrade) {
                     await command.ModifyOriginalResponseAsync(x => {
