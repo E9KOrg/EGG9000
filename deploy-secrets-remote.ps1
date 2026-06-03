@@ -25,6 +25,7 @@ $discordToken = $secrets.ConnectionStrings.Token
 $discordSecret = $secrets.ConnectionStrings.ClientSecret
 $bugsnagKey = $secrets.ConnectionStrings.BugSnagApiKey
 $rabbitmqConn = $secrets.ConnectionStrings.RabbitMQServer
+$apiSalt = $secrets.ConnectionStrings.ApiSalt
 
 
 # Function to create secret on remote Linux host
@@ -91,6 +92,11 @@ New-RemoteDockerSecret "discord_token" $discordToken $RemoteHost $RemoteUser
 New-RemoteDockerSecret "discord_client_secret" $discordSecret $RemoteHost $RemoteUser
 New-RemoteDockerSecret "bugsnag_api_key" $bugsnagKey $RemoteHost $RemoteUser
 New-RemoteDockerSecret "rabbitmq_connection" $rabbitmqConn $RemoteHost $RemoteUser
+if (-not [string]::IsNullOrEmpty($apiSalt)) {
+    New-RemoteDockerSecret "egg_inc_api_salt" $apiSalt $RemoteHost $RemoteUser
+} else {
+    Write-Host "! Skipping egg_inc_api_salt (ConnectionStrings.ApiSalt not set in secrets.json)" -ForegroundColor Yellow
+}
 
 
 Write-Host "`n✓ All secrets deployed!" -ForegroundColor Green

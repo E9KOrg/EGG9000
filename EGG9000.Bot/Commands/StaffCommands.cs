@@ -2,7 +2,7 @@
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
@@ -515,16 +515,16 @@ namespace EGG9000.Bot.Commands {
 
             var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
 
-            var joinResponse = await ContractsAPI.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+            var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
 
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 UserId = account.Id,
-                ClientVersion = ContractsAPI.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
+                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
             }, account.Id);
 
 
-            var updateResponse = await ContractsAPI.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
+            var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
@@ -784,71 +784,6 @@ namespace EGG9000.Bot.Commands {
                 // already gone - acknowledge so the interaction does not error
                 try { await component.DeferAsync(); } catch { }
             }
-        }
-
-        [SlashCommand(Description = "One-look bot/DB/deploy/load status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task BotStatus(FauxCommand command, ApplicationDbContext db, IServiceProvider serviceProvider, CoopStatsCache stats) {
-            await command.DeferAsync(ephemeral: true);
-
-#if DEBUG
-            var buildConfig = "Debug";
-#elif DEV9001
-            var buildConfig = "DEV9001";
-#elif DEV9002
-            var buildConfig = "DEV9002";
-#elif RELEASE
-            var buildConfig = "Release";
-#else
-            var buildConfig = "Unknown";
-#endif
-
-            var botActive = Environment.GetEnvironmentVariable("BOT_ACTIVE") ?? "(unset)";
-            var botColor = Environment.GetEnvironmentVariable("BOT_COLOR") ?? "(unset)";
-            var proc = Process.GetCurrentProcess();
-            var uptime = (DateTime.Now - proc.StartTime).Humanize();
-
-            var updaters = serviceProvider.GetServices<IHostedService>().OfType<IUpdaterService>().ToList();
-            var runningServices = updaters.Count(x => x.Running());
-
-            var sw = Stopwatch.StartNew();
-            await db.Database.ExecuteSqlRawAsync("SELECT 1");
-            var pingMs = sw.ElapsedMilliseconds;
-
-            var trackerEntries = db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-
-            var workingMb = proc.WorkingSet64 / 1_048_576.0;
-            var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
-            var cacheCount = db._cache is MemoryCache mc ? mc.Count : -1;
-
-            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.Now - t).Humanize().ShortenTime() : "never";
-            var server = command.GuildId.HasValue ? stats.GetServerStats(command.GuildId.Value) : null;
-
-            var rows = new List<List<FixedWidthCell>> {
-                new() { new("Bot Active"), new(botActive, CellAlignment.Right) },
-                new() { new("Bot Color"), new(botColor, CellAlignment.Right) },
-                new() { new("Build"), new(buildConfig, CellAlignment.Right) },
-                new() { new("Uptime"), new(uptime, CellAlignment.Right) },
-                null,
-                new() { new("Services Up"), new($"{runningServices}/{updaters.Count}", CellAlignment.Right) },
-                null,
-                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
-                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
-                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
-                null,
-                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
-                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
-                new() { new("Stats Age"), new(statsAge, CellAlignment.Right) },
-                null,
-                new() { new("Active Contracts"), new($"{server?.ActiveContracts ?? 0}", CellAlignment.Right) },
-                new() { new("Active Coops"), new($"{server?.ActiveCoops ?? 0}", CellAlignment.Right) },
-                new() { new("Pending Threads"), new($"{server?.PendingThreads ?? 0}", CellAlignment.Right) },
-                new() { new("Players In Coops"), new($"{server?.UsersAssigned ?? 0}", CellAlignment.Right) },
-            };
-
-            await command.RespondAsync($"```\n{GetTable(rows)}```", ephemeral: true);
         }
 
         [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]

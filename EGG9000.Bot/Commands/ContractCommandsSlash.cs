@@ -2,7 +2,7 @@ using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -19,7 +19,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -71,7 +70,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static async Task _fixFullCoopError(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
-            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
+            var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status is null) { //Safeguarding
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is unresponsive, please try again in a minute or two."); });
@@ -104,11 +103,11 @@ namespace EGG9000.Bot.Commands {
             await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(TimeSpan.FromSeconds(2));
-            status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
+            status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status?.Participants?.Count == contract.MaxUsers) {
                 logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
-                var res3 = await ContractsAPI.Send(new Ei.KickPlayerCoopRequest {
+                var res3 = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
                     ClientVersion = 24,
                     ContractIdentifier = coop.ContractID,
                     CoopIdentifier = coop.Name,
@@ -116,7 +115,7 @@ namespace EGG9000.Bot.Commands {
                 }, coop.CreatorID);
 
                 await Task.Delay(TimeSpan.FromSeconds(2));
-                status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+                status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
             }
 
 
@@ -151,8 +150,8 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
+            var response = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                ClientVersion = EggIncApi.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = true,
@@ -236,7 +235,7 @@ namespace EGG9000.Bot.Commands {
                 var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
 
                 //Fetch a new backup so they don't lose access to this channel when role update happens
-                var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                var rawBackup = await EggIncApi.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
 
                 if((uint)customBackup.Grade != newgrade) {
@@ -418,8 +417,8 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await ContractsAPI.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = ContractsAPI.ClientVersion,
+            var response = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                ClientVersion = EggIncApi.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = false,
@@ -484,7 +483,7 @@ namespace EGG9000.Bot.Commands {
 
             var contractChannel = (await _client.GetChannelAsync(guildContract.DiscordChannelId) as SocketTextChannel);
 
-            var status = await ContractsAPI.GetCoopStatusBot(guildContract.ContractID, coopname.ToLower());
+            var status = await EggIncApi.GetCoopStatusBot(guildContract.ContractID, coopname.ToLower());
             if(status != null && status.Success) {
                 var coop = new Coop {
                     ContractID = guildContract.ContractID,
@@ -536,7 +535,7 @@ namespace EGG9000.Bot.Commands {
         //            break;
         //    }
 
-        //    var status = await ContractsAPI.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
+        //    var status = await EggIncApi.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
         //    if(status != null && status.Success) {
 
         //        var coop = new Coop {
@@ -682,7 +681,7 @@ namespace EGG9000.Bot.Commands {
 
 
         [SlashCommand(Description = "Remove user from co-op (only works if the bot doesn't see them as joined)", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, CoopAssignmentLookup lookup, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
+        public static async Task RemoveFromCoop(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(RemoveFromCoopAutoComplete))] string useraccount) {
             await command.DeferAsync();
             var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
             if(targetCoop == null) {
@@ -701,7 +700,6 @@ namespace EGG9000.Bot.Commands {
 
             db.Remove(xref);
             await db.SaveChangesAsync();
-            lookup.Remove(xref.UserId, targetCoop.ContractID);
 
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op");
 
@@ -887,56 +885,6 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task FindMyCoop(SocketMessageComponent component, ApplicationDbContext db, CoopAssignmentLookup lookup) {
-            await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
-
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
-            if(dbUser is null || dbUser.GuildId != component.GuildId) {
-                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find your record - are you registered correctly?"); });
-                return;
-            }
-
-            var guildContract = await db.GuildContracts.Include(gc => gc.Contract)
-                .FirstOrDefaultAsync(c => c.GuildID == component.GuildId && c.DiscordChannelId == component.ChannelId);
-            if(guildContract is null) {
-                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This command must be used in a contract channel."); });
-                return;
-            }
-
-            // Fast path: prebuilt lookup. On a miss, fall back to the DB so a missed
-            // cache prune is never wrong, only slightly slower. Both paths are scoped to
-            // assigned-but-not-yet-joined coops (joined users are already in the thread).
-            var found = lookup.Get(dbUser.Id, guildContract.ContractID)
-                ?? (await db.UserCoopXrefs
-                    .Where(x => x.UserId == dbUser.Id
-                             && !x.JoinedCoop
-                             && x.Coop.ContractID == guildContract.ContractID
-                             && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
-                             && x.Coop.CoopEnds > DateTimeOffset.Now && !x.Coop.PseudoExpired)
-                    .Select(x => new AssignedCoop(x.Coop.Id, x.Coop.ThreadID, x.Coop.DiscordChannelId, x.Coop.Name, x.Coop.ContractID))
-                    .ToListAsync())
-                    .GroupBy(c => c.CoopId).Select(g => g.First()).ToList();
-
-            if(found.Count == 0) {
-                await component.ModifyOriginalResponseAsync(x => {
-                    x.Content = "";
-                    x.Embed = EmbedWarning($"You do not have an unjoined co-op for **{guildContract.Contract.Name}**. Either you've already joined yours, or co-ops are still being formed - once boarding groups launch this button becomes \"Find Coop Spot\" so you can grab an open seat.");
-                });
-                return;
-            }
-
-            var sb = new StringBuilder();
-            foreach(var coop in found) {
-                var channelId = coop.ThreadId != 0 ? coop.ThreadId : coop.DiscordChannelId;
-                sb.AppendLine($"Thread: <#{channelId}>");
-                sb.AppendLine($"Co-op code: `{coop.ContractId}` / `{coop.Name}`");
-                sb.AppendLine();
-            }
-
-            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess(sb.ToString().TrimEnd()); });
-        }
-
-        [ComponentCommand]
         public static async Task FindCoopSpotForAccount(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
             if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coops are being filtered. This may take a few seconds."); x.Components = null; });
@@ -969,7 +917,7 @@ namespace EGG9000.Bot.Commands {
                     var customEggs = await db.GetCustomEggsAsync();
                     var coop = newCoopResponse.FoundCoop;
                     var users = coop.UserCoopsXrefs.Select(c => c.User).ToList().SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-                    var statusReponse = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+                    var statusReponse = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
                     if(statusReponse is null || !statusReponse.Success || statusReponse.Contributors is null) {
                         statusReponse = coop.LastStatusUpdate; //Fallback to last known status
                     }
@@ -1117,7 +1065,7 @@ namespace EGG9000.Bot.Commands {
             await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(TimeSpan.FromSeconds(2));
-            var status = await ContractsAPI.GetCoopStatus(coop.ContractID, coop.Name);
+            var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status?.Participants?.Count < contract.MaxUsers) {
                 logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);

@@ -1,6 +1,6 @@
 ﻿using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Automated {
         public async Task UpdateUser(DBUser user, List<Guild> guilds) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
-                var firstContact = await ContractsAPI.FirstContact(account.Id);
+                var firstContact = await EggIncApi.FirstContact(account.Id);
                 var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
 
                 if(dbGuild is null)
@@ -87,7 +87,7 @@ namespace EGG9000.Bot.Automated {
 
                     if(firstContact.Backup.SubInfo is null) {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
-                        var subscription = await ContractsAPI.GetUserSubscription(backup.EggIncId);
+                        var subscription = await EggIncApi.GetUserSubscription(backup.EggIncId);
                         account.SubscriptionLevel = subscription.SubscriptionLevel;
                         account.SubscriptionEnds = subscription.PeriodEnd;
                         account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;

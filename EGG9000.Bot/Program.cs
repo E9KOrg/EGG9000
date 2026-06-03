@@ -48,6 +48,7 @@ try
     botColor = "debug";
 #endif
     NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}_{botColor}");
+    NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
     logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + $"{NLog.GlobalDiagnosticsContext.Get("CustomMachineName")}");
 
     logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
@@ -99,12 +100,11 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DiscordQueueService>();
         services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
         services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
-        services.AddSingleton<BotLogger>();
 
-        DockerSecretsHelper.Initialize(hostContext.Configuration);
+        SecretsHelper.Initialize(hostContext.Configuration);
 
         // Get connection string - supports both Docker secrets and local development
-        var connectionString = DockerSecretsHelper.GetConfigOrSecret(
+        var connectionString = SecretsHelper.GetConfigOrSecret(
             hostContext.Configuration,
             "ConnectionStrings:DefaultConnection",
             "db_connection_string");
@@ -120,7 +120,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         }
 
         logger.Log(NLog.LogLevel.Info, "Using connection string from: " + 
-            (DockerSecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
+            (SecretsHelper.IsDockerSecretsAvailable() ? "Docker Secrets" : "Configuration/User Secrets"));
 
         services.AddDbContextFactory<ApplicationDbContext>(options => {
             options.UseSqlServer(connectionString, x => {
@@ -144,9 +144,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DatabaseCache>();
         services.AddHostedService<UserCacheRefreshService>();
         services.AddHostedService<ActiveCoopsCacheRefreshService>();
-        services.AddSingleton<CoopStatsCache>();
-        services.AddSingleton<CoopAssignmentLookup>();
-        services.AddHostedService<CoopAssignmentLookupRefreshService>();
         services.AddSingleton<Words>();
 
 #if RELEASE
@@ -156,7 +153,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 #endif
 
 #if DEBUG
-
+        services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
 
         var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
         if(serviceCustomize is not null && !release) {
@@ -168,7 +165,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         if(release) {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
             
-            var bugsnagKey = DockerSecretsHelper.GetConfigOrSecret(
+            var bugsnagKey = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:BugSnagApiKey",
                 "bugsnag_api_key");
@@ -186,7 +183,10 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.ReleaseStage = "production";
             });
 
-            var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
+            services.AddSingleton<BotLogger>();
+
+
+            var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
                 "rabbitmq_connection");
@@ -239,7 +239,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<ArtifactCheaters>();
         services.AddHostedService<StaffCoopsMessage>();
-        services.AddHostedService<CoopStatsRefreshService>();
         services.AddHostedService<EventUpdater>();
 
         services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));

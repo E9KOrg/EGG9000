@@ -8,7 +8,7 @@ namespace EGG9000.Common.Helpers
     /// Helper to read secrets from Docker Secrets (/run/secrets/) or fall back to configuration.
     /// Supports both development (user secrets) and production (Docker secrets) workflows.
     /// </summary>
-    public static class DockerSecretsHelper
+    public static class SecretsHelper
     {
         private const string SecretsPath = "/run/secrets";
 
@@ -58,9 +58,17 @@ namespace EGG9000.Common.Helpers
 
         public static string BotToken { get; private set; }
 
+        /// <summary>
+        /// Egg Inc API authentication passphrase. Loaded from the Docker secret
+        /// <c>egg_inc_api_salt</c> or the <c>ConnectionStrings:ApiSalt</c> configuration key.
+        /// Null/empty when not configured - authenticated Egg Inc endpoints then degrade gracefully.
+        /// </summary>
+        public static string ApiSalt { get; private set; }
+
         public static void Initialize(IConfiguration config)
         {
             BotToken = GetConfigOrSecret(config, "ConnectionStrings:Token", "token");
+            ApiSalt = GetConfigOrSecret(config, "ConnectionStrings:ApiSalt", "egg_inc_api_salt");
         }
     }
 }
