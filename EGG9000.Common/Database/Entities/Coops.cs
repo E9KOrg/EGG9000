@@ -17,6 +17,11 @@ namespace EGG9000.Common.Database.Entities {
     [Index(nameof(ThreadID), nameof(Created))]
     [Index(nameof(ThreadID))]
     public class Coop {
+        // CreatorID sentinel for DEV-seeded fake coops (TestSuiteCommands). Automated
+        // services (thread creation, API coop creation, status polling) exclude these
+        // so synthetic data never triggers real Egg Inc API calls or Discord threads.
+        public const string TestSeedCreatorId = "TESTSEED";
+
         public Guid Id { get; set; }
         public string ContractID { get; set; }
         public string Name { get; set; }
