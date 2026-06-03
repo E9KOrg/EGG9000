@@ -1,6 +1,6 @@
 ﻿using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -134,7 +134,7 @@ namespace EGG9000.Site.Controllers {
             var update = false;
 
             foreach(var account in user.EggIncAccounts) {
-                var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                var rawBackup = await EggIncApi.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
 
                 Console.WriteLine($"Getting backups for {account.Name}");
@@ -145,7 +145,7 @@ namespace EGG9000.Site.Controllers {
 
                 var scores = _cache.GetOrCreate($"{account.Id}-MyContracts", entry => {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-                    return ContractsAPI.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id).GetAwaiter().GetResult();
+                    return EggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id).GetAwaiter().GetResult();
                 });
 
                 scoring.Add((account.Id, scores));
@@ -181,7 +181,7 @@ namespace EGG9000.Site.Controllers {
 
             //Get fresh backups
             foreach(var account in user.EggIncAccounts) {
-                var backup = await ContractsAPI.GetBackupAsync(account.Id);
+                var backup = await EggIncApi.GetBackupAsync(account.Id);
                 if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
                     account.Backup = backup;
                 }

@@ -121,5 +121,15 @@ namespace EGG9000.Bot.Common.Helpers {
 
             return null;
         }
+        public static async Task<SocketTextChannel> GetTextChannel(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType) {
+            var discordGuild = _client.GetGuild(dbGuild.Id);
+            var channel = DetermineChannelType(dbGuild, discordGuild, channelType);
+
+            if(channel is not null && channel.GetType() == typeof(SocketTextChannel)) {
+                return (SocketTextChannel)channel;
+            }
+
+            return null;
+        }
     }
 }
