@@ -177,7 +177,7 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
-        public static async Task<ContractsArchive> get_contracts_archive(string UserId) {
+        public static async Task<ContractsArchive> GetContractsArchive(string UserId) {
             try {
                 var request = GetInfo(UserId);
                 var body = await GetBAC(GetEncodedMessage(request));

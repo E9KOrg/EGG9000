@@ -104,8 +104,6 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
-            //var rawBackup = await EggIncApi.FirstContact(ei);
-            //var backup = new CustomBackup(rawBackup.Backup);
             var backup = await EggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
             return new ObjectResult(backup);
         }
