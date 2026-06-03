@@ -4,6 +4,7 @@ using EGG9000.Common.JsonData.EiStatics;
 using Google.Protobuf.Collections;
 using MessagePack;
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using static Ei.ArtifactSpec.Types;
@@ -219,7 +220,7 @@ namespace EGG9000.Common.Database {
 
         public CustomBackup() { }
 
-        public CustomBackup(Ei.Backup backup, CustomBackup lastBackup = null) {
+        public CustomBackup(Ei.Backup backup, FrozenSet<Ei.Contract> contracts, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
                 EmptyBackup = true;
                 return;
@@ -267,15 +268,15 @@ namespace EGG9000.Common.Database {
 
             CraftingXP = backup.Artifacts.CraftingXp;
 
+            ArchivedFarms = new List<CustomArchivedFarms>();
+            AddContracts(backup.Contracts.Contracts, contracts);
+            AddContracts(backup.Contracts.Archive, contracts);
+
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty)) {
                 AddFarm(farm, backup);
             }
 
-            //CompleteContracts = new List<string>();
-            ArchivedFarms = new List<CustomArchivedFarms>();
-            AddContracts(backup.Contracts.Contracts);
-            AddContracts(backup.Contracts.Archive);
 
 
             SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(m => new SpaceMission {
@@ -329,8 +330,8 @@ namespace EGG9000.Common.Database {
                 allContractList.AddRange(backup.Contracts.Contracts);
                 var matchingContracts = allContractList.Where(f =>
                     f?.MaxFarmSizeReached > 0
-                    && f.Contract?.Egg == Ei.Egg.CustomEgg
-                    && f.Contract?.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
+                    && f.Contract.Egg == Ei.Egg.CustomEgg
+                    && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
                 ).ToList();
 
                 if(!matchingContracts.Any()) continue;
@@ -423,8 +424,8 @@ namespace EGG9000.Common.Database {
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
-            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract?.Identifier == farm.ContractId)
-                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.Contract?.Identifier == farm.ContractId);
+            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
+                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
 
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
@@ -533,10 +534,14 @@ namespace EGG9000.Common.Database {
             } else return 0;
         }
 
-        private void AddContracts(RepeatedField<Ei.LocalContract> contracts) {
-            foreach(var contract in contracts) {
-                if(contract.Contract is null) continue; // Rare case of corrupted bytes
-                ArchivedFarms.Add(new CustomArchivedFarms(contract));
+        private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
+            foreach(var localContract in contracts) {
+                var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
+                if(contract == null) {
+                    Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
+                }
+                localContract.Contract = contract ?? allContracts.First();
+                ArchivedFarms.Add(new CustomArchivedFarms(localContract));
             }
         }
 

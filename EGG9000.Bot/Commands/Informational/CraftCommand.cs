@@ -48,7 +48,7 @@ namespace EGG9000.Bot.Commands {
 
             if(dbUser.EggIncAccounts.Count == 1) {
                 await command.RespondAsync(
-                    embed: await CraftedCountEmbedBuilder(dbUser.EggIncAccounts.First(), requestedArtifact),
+                    embed: await CraftedCountEmbedBuilder(dbUser.EggIncAccounts.First(), requestedArtifact, db),
                     content: null
                 );
             } else {
@@ -79,18 +79,18 @@ namespace EGG9000.Bot.Commands {
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[1]);
 
-            var embed = await CraftedCountEmbedBuilder(account, requestedArtifact);
+            var embed = await CraftedCountEmbedBuilder(account, requestedArtifact, db);
             await component.UpdateAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
         }
 
-        private static async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact) {
+        private static async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact, ApplicationDbContext db) {
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
             if(backup == null) {
                 return null;
             }
 
-            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, backup);
+            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), backup);
 
             var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
 
@@ -139,7 +139,7 @@ namespace EGG9000.Bot.Commands {
             if(dbUser.EggIncAccounts.Count == 1) {
                 await command.RespondAsync(
                     content: "",
-                    embeds: (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact)).ToArray()
+                    embeds: (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact, db)).ToArray()
                 );
             } else {
                 var builder = new ComponentBuilder();
@@ -171,11 +171,11 @@ namespace EGG9000.Bot.Commands {
             var quantity = int.Parse(dataObjs[2]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[3]);
 
-            var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact);
+            var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact, db);
             await component.UpdateAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        private static async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact) {
+        private static async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact, ApplicationDbContext db) {
             var embeds = new List<Embed>();
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
@@ -183,7 +183,7 @@ namespace EGG9000.Bot.Commands {
                 return null;
             }
 
-            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, backup);
+            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), backup);
             stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
             stringBuilder.AppendLine();
 
