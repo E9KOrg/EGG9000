@@ -68,10 +68,11 @@ using System.Threading.Tasks;
 
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
 logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
-DockerSecretsHelper.Initialize(builder.Configuration);
+SecretsHelper.Initialize(builder.Configuration);
 builder.WebHost.UseUrls("http://0.0.0.0:5013");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();

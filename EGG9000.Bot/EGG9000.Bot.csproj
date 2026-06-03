@@ -39,10 +39,7 @@
     <UserSecretsId>DEV9001</UserSecretsId>
     <LangVersion>preview</LangVersion>
     <DebugType>embedded</DebugType>
-    <!-- Force VS container Fast mode for this config: build on host + volume-mount into the
-         base-stage container, skipping the in-container publish on every F5. VS only auto-selects
-         Fast for Debug; custom configs default to Regular. Ignored by docker build / publish. -->
-    <ContainerDevelopmentMode>Fast</ContainerDevelopmentMode>
+	<ContainerDevelopmentMode>Fast</ContainerDevelopmentMode>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="version.txt" />
@@ -107,11 +104,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <!-- Stamp version.txt from git when a repo is present (host build). In Docker the .git dir
-         is excluded from the build context, so skip git there and fall back to a placeholder so
-         the embedded resource still exists. -->
-    <Exec Condition="Exists('$(ProjectDir)../.git')" Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" />
-    <WriteLinesToFile Condition="!Exists('$(ProjectDir)version.txt')" File="$(ProjectDir)version.txt" Lines="unknown" Overwrite="true" />
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(DOCKER_BUILD)' != 'true'">
+    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
   </Target>
 </Project>

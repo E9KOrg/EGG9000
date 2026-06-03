@@ -1,5 +1,5 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
@@ -43,7 +43,7 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
-            var contractsResponse = await ContractsAPI.GetPeriodicalsAsync();
+            var contractsResponse = await EggIncApi.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
                 _logger.LogWarning("⚠️ERROR: Invalid Contract Response");
@@ -181,7 +181,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
-            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None);
+            await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
 
             if(needsUpdate)
                 ContractUpdater.ResetTimeStatic();
@@ -241,10 +241,10 @@ namespace EGG9000.Bot.Automated {
                     _db.GuildContracts.Add(guildContract);
                     await _db.SaveChangesAsync();
 
-                    await _botLogger.Log($"New Contract **{contract.Name}** detected, please wait while the bot\n1) Assigns co-ops\n2) Starts co-ops\n3) Create threads for co-ops", dbguild);
+                    //await _botLogger.Log($"New Contract **{contract.Name}** detected, please wait while the bot\n1) Assigns co-ops\n2) Starts co-ops\n3) Create threads for co-ops", dbguild);
 
                     if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
-                        _ = OrganizeAndLaunch(contract, guild, 0);
+                        _ = OrganizeAndLaunch(contract, guild, 0, dbguild);
                     }
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
@@ -255,7 +255,7 @@ namespace EGG9000.Bot.Automated {
                     if(nextLaunch < currentTime) {
                         guildContract.BoardingGroup++;
                         await _db.SaveChangesAsync();
-                        if(!_debug) _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1);
+                        if(!_debug) _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1, dbguild);
                     }
                 }
             }
@@ -270,7 +270,8 @@ namespace EGG9000.Bot.Automated {
             await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild, dbguild);
         }
 
-        private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg) {
+        private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg, Guild dbguild) {
+            await _botLogger.AddBoardingGroup(skipbg + 1, contract, dbguild);
 
             if(_debug) return;
             _coopsBeingCreatedService.SetCoopsAreBeingCreated(true);
@@ -279,7 +280,6 @@ namespace EGG9000.Bot.Automated {
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guild.Id);
             var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
 
             var bgGroups = coopGroups.Where(x => x.bg == (skipbg + 1).ToString());
@@ -304,7 +304,8 @@ namespace EGG9000.Bot.Automated {
                 await _db.SaveChangesAsync();
             }
 
-            await _botLogger.Log($"**{contract.Name}** BG{skipbg + 1} co-ops have been assigned (coops assigned: {successfullyAssignedCoops}{(failedCoops == 0 ? "" : $", failed: {failedCoops}")}), working on starting co-ops", dbguild);
+            await _botLogger.UpdateBoardingGroup(skipbg + 1, contract.ID, dbguild.Id, successfullyAssignedCoops, null, null);
+            //await _botLogger.Log($"**{contract.Name}** BG{skipbg + 1} co-ops have been assigned (coops assigned: {successfullyAssignedCoops}{(failedCoops == 0 ? "" : $", failed: {failedCoops}")}), working on starting co-ops", dbguild);
         }
 
         private void CheckUpdateInterval(List<Contract> existingContracts) {
