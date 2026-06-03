@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Bot.Helpers.FixedWidthTable;
@@ -535,46 +536,254 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
         }
 
-        [SlashCommand(Description = "Database load, cache sizes, and process memory", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
-        public static async Task DbLoad(FauxCommand command, ApplicationDbContext db) {
-            await command.DeferAsync(ephemeral: true);
+        // Live /a sysload sessions, keyed by the message. Tracks the section currently
+        // shown (so a refresh re-renders that section) and the cancellation source for
+        // the auto-refresh loop (Stop button / deleted message / 30s cap).
+        private sealed class SysLoadSession {
+            public CancellationTokenSource Cts;
+            public string Section = "overview";
+        }
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, SysLoadSession> _sysLoad = new();
 
+        private static string FormatUptime(TimeSpan u) =>
+            u.TotalDays >= 1 ? $"{(int)u.TotalDays}d {u.Hours}h {u.Minutes}m"
+            : u.TotalHours >= 1 ? $"{u.Hours}h {u.Minutes}m"
+            : u.TotalMinutes >= 1 ? $"{u.Minutes}m {u.Seconds}s"
+            : $"{u.Seconds}s";
+
+        // 1.0 at/below good, 0.0 at/above bad, linear between (good < bad).
+        private static double HealthRange(double v, double good, double bad) =>
+            v <= good ? 1 : v >= bad ? 0 : 1 - (v - good) / (bad - good);
+
+        // Green (healthy) -> yellow -> red (unhealthy) for a 0..1 health score.
+        private static Color HealthColor(double h) {
+            h = Math.Clamp(h, 0, 1);
+            int r, g;
+            if(h >= 0.5) { r = (int)Math.Round((1 - h) * 2 * 220); g = 200; }
+            else { r = 220; g = (int)Math.Round(h * 2 * 200); }
+            return new Color(Math.Clamp(r, 0, 255), Math.Clamp(g, 0, 255), 0);
+        }
+
+        private static string HealthDot(double h) => h >= 0.8 ? "\U0001F7E2" : h >= 0.5 ? "\U0001F7E1" : "\U0001F534";
+        private static int HealthPct(double h) => (int)Math.Round(Math.Clamp(h, 0, 1) * 100);
+
+        private sealed record SysLoadSnapshot(
+            long Ping, double WorkingMb, double GcHeapMb, int Threads, double CpuMin, int CacheCount,
+            int Tracked, int Pending, int ActiveCoops, int DbUsers, int Contracts, int Events, int AutoLogs,
+            long ApiCalls, long ApiFails, long DbQueries, long Commands, long CmdFails, long DiscordOps,
+            int Latency, int Guilds, int QHigh, int QLow, int QHighW, int QLowW,
+            double RuntimeHealth, double DiscordHealth, double ProcessHealth, double DbHealth,
+            long StartedUnix, long NowUnix) {
+            public double Worst => Math.Min(Math.Min(RuntimeHealth, DiscordHealth), Math.Min(ProcessHealth, DbHealth));
+        }
+
+        private static async Task<SysLoadSnapshot> GatherSysLoad(ApplicationDbContext db, DiscordSocketClient client, IDiscordQueue queue) {
             var sw = Stopwatch.StartNew();
             await db.Database.ExecuteSqlRawAsync("SELECT 1");
             var pingMs = sw.ElapsedMilliseconds;
 
-            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            var proc = Process.GetCurrentProcess();
             var workingMb = proc.WorkingSet64 / 1_048_576.0;
             var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
-
             var cacheCount = db._cache is MemoryCache mc ? mc.Count : -1;
+            var pending = db.ChangeTracker.Entries().Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
+            var tracked = db.ChangeTracker.Entries().Count();
 
-            var trackerEntries = db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-
-            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);
+            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.Now);
             var dbUsers = await db.DBUsers.CountAsync();
             var contracts = await db.Contracts.CountAsync();
             var events = await db.Events.CountAsync();
-            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1));
+            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.Now.AddDays(-1));
 
-            var rows = new List<List<FixedWidthCell>> {
-                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
-                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
-                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
-                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
-                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
-                null,
-                new() { new("DBUsers"), new($"{dbUsers:N0}", CellAlignment.Right) },
-                new() { new("Active Coops"), new($"{activeCoops:N0}", CellAlignment.Right) },
-                new() { new("Contracts"), new($"{contracts:N0}", CellAlignment.Right) },
-                new() { new("Events"), new($"{events:N0}", CellAlignment.Right) },
-                new() { new("AutoLogs 24h"), new($"{autoLogs:N0}", CellAlignment.Right) },
+            var latency = client?.Latency ?? -1;
+            var guilds = client?.Guilds?.Count ?? 0;
+            var qHigh = queue?.HighDepth ?? 0;
+            var qLow = queue?.LowDepth ?? 0;
+            var backlog = qHigh + qLow;
+
+            var apiCalls = RuntimeMetrics.ApiCalls;
+            var apiFails = RuntimeMetrics.ApiFailures;
+            var commands = RuntimeMetrics.Commands;
+            var cmdFails = RuntimeMetrics.CommandFailures;
+
+            var runtimeHealth = Math.Min(apiCalls == 0 ? 1 : 1 - (double)apiFails / apiCalls, commands == 0 ? 1 : 1 - (double)cmdFails / commands);
+            var discordHealth = Math.Min(latency < 0 ? 1 : HealthRange(latency, 150, 1000), HealthRange(backlog, 25, 500));
+            var processHealth = Math.Min(HealthRange(workingMb, 750, 4000), HealthRange(gcHeapMb, 500, 3000));
+            var dbHealth = Math.Min(HealthRange(pingMs, 50, 500), HealthRange(pending, 25, 250));
+
+            return new SysLoadSnapshot(pingMs, workingMb, gcHeapMb, proc.Threads.Count, proc.TotalProcessorTime.TotalMinutes, cacheCount,
+                tracked, pending, activeCoops, dbUsers, contracts, events, autoLogs,
+                apiCalls, apiFails, RuntimeMetrics.DbQueries, commands, cmdFails, RuntimeMetrics.DiscordOps,
+                latency, guilds, qHigh, qLow, queue?.HighWorkers ?? 0, queue?.LowWorkers ?? 0,
+                runtimeHealth, discordHealth, processHealth, dbHealth,
+                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.Now.ToUnixTimeSeconds());
+        }
+
+        private static string SysLoadContent(SysLoadSnapshot s) =>
+            $"-# Counters since <t:{s.StartedUnix}:R> · updated <t:{s.NowUnix}:R>";
+
+        private static Embed SysLoadSection(string section, SysLoadSnapshot s) {
+            string Metric(long total, double perMin) => $"`{total:N0}` total\n`{perMin:F1}`/min";
+
+            return section switch {
+                "runtime" => new EmbedBuilder()
+                    .WithAuthor($"Runtime Usage  —  {HealthPct(s.RuntimeHealth)}% healthy")
+                    .WithColor(HealthColor(s.RuntimeHealth))
+                    .AddField("Egg Inc API", Metric(s.ApiCalls, RuntimeMetrics.PerMinute(s.ApiCalls)) + (s.ApiFails > 0 ? $"\n`{s.ApiFails:N0}` failed" : ""), inline: true)
+                    .AddField("DB Queries", Metric(s.DbQueries, RuntimeMetrics.PerMinute(s.DbQueries)), inline: true)
+                    .AddField("Commands", Metric(s.Commands, RuntimeMetrics.PerMinute(s.Commands)) + (s.CmdFails > 0 ? $"\n`{s.CmdFails:N0}` failed" : ""), inline: true)
+                    .AddField("Discord Ops", Metric(s.DiscordOps, RuntimeMetrics.PerMinute(s.DiscordOps)), inline: true)
+                    .Build(),
+                "discord" => new EmbedBuilder()
+                    .WithAuthor($"Discord  —  {HealthPct(s.DiscordHealth)}% healthy")
+                    .WithColor(HealthColor(s.DiscordHealth))
+                    .AddField("Gateway", $"`{s.Latency}` ms", inline: true)
+                    .AddField("Guilds", $"`{s.Guilds}`", inline: true)
+                    .AddField("Send Queue", $"H `{s.QHigh}` / `{s.QHighW}`w\nL `{s.QLow}` / `{s.QLowW}`w", inline: true)
+                    .Build(),
+                "process" => new EmbedBuilder()
+                    .WithAuthor($"Process  —  {HealthPct(s.ProcessHealth)}% healthy")
+                    .WithColor(HealthColor(s.ProcessHealth))
+                    .AddField("Uptime", $"`{FormatUptime(RuntimeMetrics.Uptime)}`", inline: true)
+                    .AddField("Working Set", $"`{s.WorkingMb:F1}` MB", inline: true)
+                    .AddField("GC Heap", $"`{s.GcHeapMb:F1}` MB", inline: true)
+                    .AddField("GC 0/1/2", $"`{GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)}`", inline: true)
+                    .AddField("Threads", $"`{s.Threads}`", inline: true)
+                    .AddField("CPU Time", $"`{s.CpuMin:F1}` min", inline: true)
+                    .Build(),
+                "database" => new EmbedBuilder()
+                    .WithAuthor($"Database  —  {HealthPct(s.DbHealth)}% healthy")
+                    .WithColor(HealthColor(s.DbHealth))
+                    .AddField("DB Ping", $"`{s.Ping}` ms", inline: true)
+                    .AddField("Tracked", $"`{s.Tracked}`", inline: true)
+                    .AddField("Pending", $"`{s.Pending}`", inline: true)
+                    .AddField("Mem Cache", s.CacheCount >= 0 ? $"`{s.CacheCount}`" : "`n/a`", inline: true)
+                    .AddField("DBUsers", $"`{s.DbUsers:N0}`", inline: true)
+                    .AddField("Active Coops", $"`{s.ActiveCoops:N0}`", inline: true)
+                    .AddField("Contracts", $"`{s.Contracts:N0}`", inline: true)
+                    .AddField("Events", $"`{s.Events:N0}`", inline: true)
+                    .AddField("AutoLogs 24h", $"`{s.AutoLogs:N0}`", inline: true)
+                    .Build(),
+                _ => new EmbedBuilder()
+                    .WithAuthor($"System Load  —  {HealthPct(s.Worst)}% healthy")
+                    .WithColor(HealthColor(s.Worst))
+                    .WithDescription("Pick a section below for details.")
+                    .AddField($"{HealthDot(s.RuntimeHealth)} Runtime", $"{HealthPct(s.RuntimeHealth)}%\n`{RuntimeMetrics.PerMinute(s.ApiCalls):F1}` API/min", inline: true)
+                    .AddField($"{HealthDot(s.DiscordHealth)} Discord", $"{HealthPct(s.DiscordHealth)}%\n`{s.Latency}` ms, `{s.QHigh + s.QLow}` queued", inline: true)
+                    .AddField($"{HealthDot(s.ProcessHealth)} Process", $"{HealthPct(s.ProcessHealth)}%\n`{s.WorkingMb:F0}` MB", inline: true)
+                    .AddField($"{HealthDot(s.DbHealth)} Database", $"{HealthPct(s.DbHealth)}%\n`{s.Ping}` ms ping", inline: true)
+                    .Build()
             };
+        }
 
-            await command.RespondAsync($"```\n{GetTable(rows)}```", ephemeral: true);
+        private static bool IsEphemeral(IMessage m) => m?.Flags?.HasFlag(MessageFlags.Ephemeral) ?? false;
+
+        private static MessageComponent SysLoadComponents(string section, bool autoRefreshing, bool ephemeral) {
+            var menu = new SelectMenuBuilder()
+                .WithCustomId("SysLoadNav")
+                .WithPlaceholder("View section...")
+                .AddOption("Overview", "overview", isDefault: section == "overview")
+                .AddOption("Runtime Usage", "runtime", isDefault: section == "runtime")
+                .AddOption("Discord", "discord", isDefault: section == "discord")
+                .AddOption("Process", "process", isDefault: section == "process")
+                .AddOption("Database", "database", isDefault: section == "database");
+            var cb = new ComponentBuilder().WithSelectMenu(menu);
+            // While auto-refreshing: Stop. Otherwise: a manual Refresh (carries the
+            // current section so it can re-render it). Dismiss only for in-channel
+            // (non-ephemeral) messages, since ephemeral ones can be dismissed natively.
+            if(autoRefreshing)
+                cb.WithButton("Stop refreshing", customId: "SysLoadStop", style: ButtonStyle.Secondary, row: 1);
+            else
+                cb.WithButton("Refresh", customId: $"SysLoadRefresh:{section}", style: ButtonStyle.Primary, row: 1);
+            if(!ephemeral)
+                cb.WithButton("Dismiss", customId: "SysLoadDismiss", style: ButtonStyle.Danger, row: 1);
+            return cb.Build();
+        }
+
+        [SlashCommand(Description = "System load: runtime, Discord, DB, process (health-colored)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        public static async Task SysLoad(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider,
+            [SlashParam(Required = false, Description = "Auto-refresh every N seconds (1-30, stops after 30s total)")] int refreshseconds = 0,
+            [SlashParam(Required = false, Description = "Post visibly in the channel instead of only to you")] bool showinchannel = false) {
+
+            await command.DeferAsync(ephemeral: !showinchannel);
+
+            var queue = serviceProvider.GetService<IDiscordQueue>();
+            var snap = await GatherSysLoad(db, client, queue);
+            var refreshing = refreshseconds > 0;
+            var interval = Math.Clamp(refreshseconds, 1, 30);
+
+            var message = await command.RespondAsyncGettingMessage(content: SysLoadContent(snap), embed: SysLoadSection("overview", snap),
+                ephemeral: !showinchannel, components: SysLoadComponents("overview", refreshing, !showinchannel));
+            if(!refreshing || message is null)
+                return;
+
+            var cts = new CancellationTokenSource();
+            var session = new SysLoadSession { Cts = cts, Section = "overview" };
+            _sysLoad[message.Id] = session;
+            var factory = serviceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+
+            // Re-render the currently-shown section until Stop, deletion, or 30s cap.
+            _ = Task.Run(async () => {
+                var deadline = DateTimeOffset.Now.AddSeconds(30);
+                try {
+                    while(!cts.IsCancellationRequested && DateTimeOffset.Now < deadline) {
+                        await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
+                        if(cts.IsCancellationRequested)
+                            break;
+                        using var tickDb = await factory.CreateDbContextAsync();
+                        var fresh = await GatherSysLoad(tickDb, client, queue);
+                        var sec = session.Section;
+                        await command.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(fresh); x.Embed = SysLoadSection(sec, fresh); x.Components = SysLoadComponents(sec, true, !showinchannel); });
+                    }
+                } catch(OperationCanceledException) {
+                } catch(Exception) {
+                    // message gone / edit failed - stop quietly
+                } finally {
+                    _sysLoad.TryRemove(message.Id, out _);
+                    // Auto-refresh ended: swap Stop -> manual Refresh (+ Dismiss if in-channel).
+                    try { await command.ModifyOriginalResponseAsync(x => x.Components = SysLoadComponents(session.Section, false, !showinchannel)); } catch { }
+                }
+            }, cts.Token);
+        }
+
+        [ComponentCommand]
+        public static async Task SysLoadNav(SocketMessageComponent component, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider) {
+            await component.DeferAsync();
+            var section = component.Data.Values.FirstOrDefault() ?? "overview";
+            var refreshing = _sysLoad.TryGetValue(component.Message.Id, out var session);
+            if(refreshing)
+                session.Section = section;
+
+            var snap = await GatherSysLoad(db, client, serviceProvider.GetService<IDiscordQueue>());
+            await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
+        }
+
+        [ComponentCommand]
+        public static async Task SysLoadRefresh(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider) {
+            await component.DeferAsync();
+            var section = string.IsNullOrEmpty(data) ? "overview" : data;
+            var refreshing = _sysLoad.ContainsKey(component.Message.Id);
+            var snap = await GatherSysLoad(db, client, serviceProvider.GetService<IDiscordQueue>());
+            await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
+        }
+
+        [ComponentCommand]
+        public static async Task SysLoadStop(SocketMessageComponent component) {
+            await component.DeferAsync();
+            if(_sysLoad.TryGetValue(component.Message.Id, out var session))
+                session.Cts.Cancel();
+        }
+
+        [ComponentCommand]
+        public static async Task SysLoadDismiss(SocketMessageComponent component) {
+            if(_sysLoad.TryGetValue(component.Message.Id, out var session))
+                session.Cts.Cancel();
+            try {
+                await component.Message.DeleteAsync();
+            } catch {
+                // already gone - acknowledge so the interaction does not error
+                try { await component.DeferAsync(); } catch { }
+            }
         }
 
         [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]

@@ -6,6 +6,8 @@ namespace EGG9000.Common.Services {
     public interface IDiscordQueue {
         int HighDepth { get; }
         int LowDepth { get; }
+        int HighWorkers { get; }
+        int LowWorkers { get; }
         void EnqueueHigh(Func<Task> operation);
         void EnqueueLow(Func<Task> operation);
         Task<T> EnqueueHighAsync<T>(Func<Task<T>> operation, CancellationToken ct = default);

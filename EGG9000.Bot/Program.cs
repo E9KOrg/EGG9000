@@ -128,6 +128,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 x.CommandTimeout(30);
             });
             options.EnableSensitiveDataLogging(true);
+            options.AddInterceptors(new QueryCountingInterceptor());
         });
 
 #if !DEBUG
@@ -164,7 +165,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         if(release) {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
             
-            var bugsnagKey = DockerSecretsHelper.GetConfigOrSecret(
+            var bugsnagKey = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:BugSnagApiKey",
                 "bugsnag_api_key");
@@ -185,7 +186,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             services.AddSingleton<BotLogger>();
 
 
-            var rabbitmqConn = DockerSecretsHelper.GetConfigOrSecret(
+            var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
                 "rabbitmq_connection");
@@ -219,6 +220,14 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         } else {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
             services.AddBugsnag();
+            // DiscordQueueService (and other singleton background services) require a singleton
+            // Bugsnag.IClient, which is only registered in the RELEASE branch. Register a suppressed
+            // client in Debug so local CLI runs resolve. ReleaseStage is excluded from NotifyReleaseStages
+            // so nothing is actually reported.
+            services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("00000000000000000000000000000000") {
+                ReleaseStage = "development",
+                NotifyReleaseStages = new[] { "production" }
+            }));
             services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
         }
 
