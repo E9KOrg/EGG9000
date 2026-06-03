@@ -8,6 +8,7 @@ using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -176,10 +177,25 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
-        public static async Task<CustomBackup> GetBackupAsync(string EggIncId) {
+        public static async Task<ContractsArchive> GetContractsArchive(string UserId) {
+            try {
+                var request = GetInfo(UserId);
+                var body = await GetBAC(GetEncodedMessage(request));
+                var responseBytes = await PostRaw("ei_ctx/get_contracts_archive", body, HeaderProfile.Android);
+                if(responseBytes == null) {
+                    return null;
+                }
+                 return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
+            } catch(Exception e) {
+                return null;
+            }
+        }
+
+
+        public static async Task<CustomBackup> GetBackupAsync(string EggIncId, FrozenSet<Ei.Contract> cachedContracts) {
             var firstContact = await FirstContact(EggIncId);
             if(firstContact.Success) {
-                return new CustomBackup(firstContact.Backup, null);
+                return new CustomBackup(firstContact.Backup, cachedContracts, null);
             } else {
                 return null;
             }

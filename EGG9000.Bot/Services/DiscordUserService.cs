@@ -179,7 +179,7 @@ namespace EGG9000.Common.Services {
                 dbuser.EggIncAccounts.ForEach(async account => {
                     var rawBackup = await EggIncApi.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) return;
-                    var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                    var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
                     account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;
                 });
                 if(dbuser.GuildId == 0 && await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id)) {
