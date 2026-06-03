@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     _logger.LogTrace($"Updating {user.DiscordUsername}");
                     try {
-                        await UpdateUser(user, guilds);
+                        await UpdateUser(user, guilds, _db);
                     } catch(Exception ex) {
                         _logger.LogError(ex, $"Error updating user {user.DiscordUsername} {user.Id}");
                     } finally {
@@ -67,7 +67,7 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
 
-        public async Task UpdateUser(DBUser user, List<Guild> guilds) {
+        public async Task UpdateUser(DBUser user, List<Guild> guilds, ApplicationDbContext db) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
                 var firstContact = await EggIncApi.FirstContact(account.Id);
@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Automated {
                 if(dbGuild is null)
                     continue;
                 var oldLevel = account.SubscriptionLevel;
-                var backup = new CustomBackup(firstContact.Backup);
+                var backup = new CustomBackup(firstContact.Backup, await db.CachedEiContractsAsync());
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {

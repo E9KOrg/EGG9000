@@ -4,7 +4,7 @@ WORKDIR /app
 
 USER app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
@@ -14,10 +14,6 @@ COPY . .
 RUN printf 'Docker build\nunknown\nDocker\n0' > /src/EGG9000.Bot/version.txt
 ENV DOCKER_BUILD=true
 WORKDIR "/src/EGG9000.Bot"
-RUN dotnet build "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final

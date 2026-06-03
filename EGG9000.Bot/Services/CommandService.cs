@@ -148,6 +148,7 @@ namespace EGG9000.Bot.Services {
         private async Task RunCommand(CommandFunctionBase command, IDiscordInteraction arg) {
             var sw = Stopwatch.StartNew();
             RunCommandTotal.Inc();
+            RuntimeMetrics.AddCommands();
             var semaphoreAcquired = false;
             ApplicationDbContext commandDb = null;
             /*if(arg is SocketMessageComponent preDefer && !preDefer.HasResponded) {
@@ -230,6 +231,7 @@ namespace EGG9000.Bot.Services {
                 }
             } catch(UserNotInServerException unfe) {
                 RunCommandFailures.Inc();
+                RuntimeMetrics.AddCommandFailures();
                 if(arg.HasResponded)
                     await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError($"Could not convert the id `{unfe.User}` to a `SocketGlobalUser` instance.\nUser (<@{unfe.User}>) may not be in the server anymore."); });
                 else
@@ -237,12 +239,14 @@ namespace EGG9000.Bot.Services {
             } catch(InvalidOperationException e) {
                 _bugsnag.Notify(e);
                 RunCommandFailures.Inc();
+                RuntimeMetrics.AddCommandFailures();
                 if(arg.HasResponded)
                     await arg.ModifyOriginalResponseAsync(msg => { msg.Content = ""; msg.Embed = EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"); });
                 else
                     await arg.RespondAsync(text: "", embed: EmbedError("One or more parameters for your command were passed as plain-text instead of selectable options, and could not be parsed"));
             } catch(Exception e) {
                 RunCommandFailures.Inc();
+                RuntimeMetrics.AddCommandFailures();
                 try {
                     _bugsnag.Notify(e);
                     if(arg.HasResponded) {

@@ -64,7 +64,7 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await db.SaveChangesAsync();
 
-                var response = await EggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id);
+                var response = await EggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id, await db.CachedEiContractsAsync());
                 var earningsBonus = response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
@@ -200,7 +200,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             var response = await EggIncApi.FirstContact(eggincid);
-            var backup = new CustomBackup(response.Backup);
+            var backup = new CustomBackup(response.Backup, await db.CachedEiContractsAsync());
             if(backup == null || backup.Farms == null || backup.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
                 return;
@@ -238,7 +238,7 @@ namespace EGG9000.Bot.Commands {
             else user.EggIncAccounts = [newAccount];
 
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, account?.Backup ?? null);
+                var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -295,14 +295,14 @@ namespace EGG9000.Bot.Commands {
             }
 
             var firstContactResponse = await EggIncApi.FirstContact(eggincid);
-            var backup = new CustomBackup(firstContactResponse.Backup);
+            var backup = new CustomBackup(firstContactResponse.Backup, await db.CachedEiContractsAsync());
             if(backup?.Farms == null || backup.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
                 if(eggincid.StartsWith("E1")) {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    backup = await EggIncApi.GetBackupAsync(eggincid);
+                    backup = await EggIncApi.GetBackupAsync(eggincid, await db.CachedEiContractsAsync());
                 }
             }
 

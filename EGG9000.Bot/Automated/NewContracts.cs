@@ -176,6 +176,7 @@ namespace EGG9000.Bot.Automated {
 
                     contract._response = JsonConvert.SerializeObject(contractResponse);
                     await _db.SaveChangesAsync(CancellationToken.None);
+                    _db.ExpireCachedEiContracts();
 
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }

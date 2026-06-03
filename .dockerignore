@@ -13,6 +13,12 @@
 .sass-cache
 _sass
 
+# Build output and VCS (huge context bloat if not excluded)
+**/bin
+**/obj
+.git
+.gitignore
+
 # Logs
 logs
 *.log

@@ -66,7 +66,7 @@ namespace EGG9000.Bot.Commands {
 
         public static async Task _viewInventory(FauxCommand command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
             //Pull and save a fresh backup
-            var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, account.Backup ?? null);
+            var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
             account.Backup.ArtifactHall = backup.ArtifactHall;
             user.UpdateAccounts();
             await db.SaveChangesAsync();
