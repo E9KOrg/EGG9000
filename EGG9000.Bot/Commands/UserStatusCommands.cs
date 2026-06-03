@@ -52,7 +52,7 @@ namespace EGG9000.Bot.Commands {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
                     }
-                    var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                    var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
                     if(customBackup?.Farms is not null) {
                         account.Backup = customBackup;
                     }
@@ -110,7 +110,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var backup = await EggIncApi.GetBackupAsync(account.Id);
+                var backup = await EggIncApi.GetBackupAsync(account.Id, await db.CachedEiContractsAsync());
                 if(backup == null)
                     continue;
 
