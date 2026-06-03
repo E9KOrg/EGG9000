@@ -13,6 +13,8 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Frozen;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
     public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext> {
@@ -136,6 +138,24 @@ namespace EGG9000.Common.Database {
                 });
             }
         }
+
+        public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
+            return await _cache.GetOrCreateAsync<FrozenSet<Ei.Contract>>("DbContext-EiContracts", async entry => {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                var dbcontracts = await Contracts.ToListAsync();
+                var eiContracts = await EggIncAPI.EggIncApi.get_contracts_archive(EggIncAPI.EggIncApi.UserId);
+
+                var contracts = eiContracts.Archive.Select(x => x.Contract).ToList();
+                contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details));
+                return contracts.ToFrozenSet();
+            });
+
+        }
+
+        public void ExpireCachedEiContracts() {
+            _cache.Remove("DbContext-EiContracts");
+        }
+
 
         //    private IConfiguration _configuration;
         //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {

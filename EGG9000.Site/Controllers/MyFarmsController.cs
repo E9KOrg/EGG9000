@@ -135,7 +135,7 @@ namespace EGG9000.Site.Controllers {
 
             foreach(var account in user.EggIncAccounts) {
                 var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                var customBackup = new CustomBackup(rawBackup.Backup, await _db.CachedEiContractsAsync(), account?.Backup ?? null);
 
                 Console.WriteLine($"Getting backups for {account.Name}");
                 if(customBackup?.Farms is not null) {
@@ -181,7 +181,7 @@ namespace EGG9000.Site.Controllers {
 
             //Get fresh backups
             foreach(var account in user.EggIncAccounts) {
-                var backup = await EggIncApi.GetBackupAsync(account.Id);
+                var backup = await EggIncApi.GetBackupAsync(account.Id, await _db.CachedEiContractsAsync());
                 if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
                     account.Backup = backup;
                 }

@@ -104,9 +104,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
-            //var rawBackup = await EggIncApi.FirstContact(ei);
-            //var backup = new CustomBackup(rawBackup.Backup);
-            var backup = await EggIncApi.GetBackupAsync(ei);
+            var backup = await EggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
             return new ObjectResult(backup);
         }
 
@@ -114,7 +112,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
-            var backup = await EggIncApi.GetBackupAsync(ei);
+            var backup = await EggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
             return new ObjectResult(backup);
         }
 
@@ -131,7 +129,7 @@ namespace EGG9000.Site.Controllers {
         [Produces("application/json")]
         public async Task<IActionResult> CustomBackupOut(string ei) {
             var rawBackup = await EggIncApi.FirstContact(ei);
-            var customBackup = new CustomBackup(rawBackup.Backup);
+            var customBackup = new CustomBackup(rawBackup.Backup, await _db.CachedEiContractsAsync());
             return Json(customBackup);
         }
 
@@ -762,7 +760,7 @@ namespace EGG9000.Site.Controllers {
             var user = new DBUser {
                 UserCoopXrefs = new List<UserCoopXref>()
             };
-            var backup = await EggIncApi.GetBackupAsync(id);
+            var backup = await EggIncApi.GetBackupAsync(id, await _db.CachedEiContractsAsync());
             user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } };
             user.DiscordUsername = backup.UserName;
             //return Json(response);

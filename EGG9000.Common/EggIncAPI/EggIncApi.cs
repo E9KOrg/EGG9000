@@ -231,6 +231,8 @@ namespace EGG9000.Common.EggIncAPI {
                 using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
                 using var zlib = new ZLibStream(inMemoryStream, CompressionMode.Decompress);
                 zlib.CopyTo(outMemoryStream);
+                var arr = outMemoryStream.ToArray();
+                var base64 = Encoding.UTF8.GetString(arr);
                 message.MergeFrom(outMemoryStream.ToArray());
             } else {
                 message.MergeFrom(authMessageDecoded.Message);
