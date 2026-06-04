@@ -18,7 +18,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public static class ArtifactCommands {
 
         [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             // Fresh pull, update only the sets.
-            var fresh = new CustomBackup((await ContractsAPI.FirstContact(account.Id)).Backup, account.Backup ?? null);
+            var fresh = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
             if(account.Backup is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Backup came back empty from the Egg, Inc. API."); }); return; }
             account.Backup.ArtifactSets = fresh.ArtifactSets;
             dbUser.UpdateAccounts();
