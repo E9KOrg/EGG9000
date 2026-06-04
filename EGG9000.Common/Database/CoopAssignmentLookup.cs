@@ -36,7 +36,7 @@ namespace EGG9000.Common.Database {
 
         /// <summary>Assigned, not-yet-joined coops for this user+contract, or null on miss (caller falls back to DB).</summary>
         public List<AssignedCoop> Get(Guid userId, string contractId) =>
-            _map.TryGetValue((userId, contractId), out var list) ? list : null;
+            _map.TryGetValue((userId, contractId), out var list) ? [.. list] : null;
 
         public void Remove(Guid userId, string contractId) =>
             _map.TryRemove((userId, contractId), out _);
@@ -57,7 +57,7 @@ namespace EGG9000.Common.Database {
         public async Task RefreshAsync() {
             try {
                 var now = DateTimeOffset.Now;
-                var db = await _dbContextFactory.CreateDbContextAsync();
+                await using var db = await _dbContextFactory.CreateDbContextAsync();
 
                 var rows = await db.UserCoopXrefs
                     .Where(x => !x.JoinedCoop

@@ -30,7 +30,8 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             await _statsCache.RefreshAsync();
 
-            var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            using var scope = _provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guilds = await db.Guilds.ToListAsync(CancellationToken.None);
             // Two independent opt-ins: a configured CoopStatsChannel enables the
             // server-wide embed; the ShowContractStatsEmbeds toggle (default off) enables
