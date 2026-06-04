@@ -2709,3 +2709,10 @@ enum LeaderboardScope {
     ALL_TIME = 0;
     CURRENT_SEASON = 1;
 }
+
+message GetContractPlayerInfoRequest {
+    optional BasicRequestInfo rinfo = 1;
+    optional string unknown = 2; //a4349af74a349f5d3b903e442a1ce2a6221ff3e3723a8666be117650e2033cce
+    optional uint32 client_version = 3; //71
+    optional string ei_user_id = 6;
+}
