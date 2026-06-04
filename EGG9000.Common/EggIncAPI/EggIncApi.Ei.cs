@@ -197,16 +197,11 @@ namespace EGG9000.Common.EggIncAPI {
             try {
                 var info = GetInfo(UserId);
 
-                //using(var sha256 = System.Security.Cryptography.SHA256.Create()) {
-                //    var hashBytes = sha256.ComputeHash(GetEncodedMessage(info));
-                //    var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                //}
-                var hash = GetHash(Encoding.UTF8.GetBytes(GetEncodedMessage(info)));
-                //var hash = GetHash(Encoding.UTF8.GetBytes(UserId));
-                var request = new GetContractPlayerInfoRequest {
-                     Rinfo = info, EiUserId = UserId, Unknown = "a4349af74a349f5d3b903e442a1ce2a6221ff3e3723a8666be117650e2033cce", ClientVersion = 71
-                };
-                var body = await GetBAC(GetEncodedMessage(request));
+
+                var messageData = info.ToByteArray();
+                var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                var body = await GetBAC(GetEncodedMessage(authMessage));
+
                 var responseBytes = await PostRaw("ei_ctx/get_contract_player_info", body, HeaderProfile.Android);
                 if(responseBytes == null) {
                     return null;
