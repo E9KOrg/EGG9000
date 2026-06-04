@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {
-    public class BotLogger(DiscordSocketClient discord, ApplicationDbContext db, IServiceProvider provider, Bugsnag.IClient bugsnag) {
+    public class BotLogger(DiscordSocketClient discord, IServiceProvider provider, Bugsnag.IClient bugsnag) {
         private readonly DiscordSocketClient _discord = discord;
-        private readonly ApplicationDbContext _db = db;
         private readonly IServiceProvider _provider = provider;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
 
@@ -35,12 +35,15 @@ namespace EGG9000.Common.Services {
             public int CoopCount { get; set; }
             public int StartedCount { get; set; }
             public int ThreadCreatedCount { get; set; }
+            public SemaphoreSlim Gate { get; } = new(1, 1);
         }
 
-        public List<BoardingGroupStatus> BoardingGroupStatuses { get; set; } = [];
+        private readonly ConcurrentDictionary<(int Num, string ContractId, ulong GuildId), BoardingGroupStatus> _boardingGroups = new();
 
         public async Task Log(string message, ulong guildId) {
-            var guild = _db.CachedGuilds.FirstOrDefault(g => g.Id == guildId);
+            using var scope = _provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var guild = db.CachedGuilds.FirstOrDefault(g => g.Id == guildId);
             if(guild is null) return;
             _ = await ChannelHelper.DetermineAndSend(_discord, guild, GuildChannelType.BotLog, new() { Text = message });
         }
@@ -81,7 +84,7 @@ namespace EGG9000.Common.Services {
                 };
 
                 status.Message = await channel.SendMessageAsync(embed: GenerateBoardingGroupEmbed(status));
-                BoardingGroupStatuses.Add(status);
+                _boardingGroups[(bgnum, contract.ID, guild.Id)] = status;
             } catch(Exception ex) {
                 _bugsnag.Notify(ex);
             }
@@ -94,9 +97,11 @@ namespace EGG9000.Common.Services {
             => RefreshAndRender(bgnum, contractid, guildId, markAssigned: true);
 
         private async Task RefreshAndRender(int bgnum, string contractid, ulong guildId, bool markAssigned) {
+            var key = (bgnum, contractid, guildId);
+            if(!_boardingGroups.TryGetValue(key, out var status) || status.Message is null) return;
+
+            await status.Gate.WaitAsync();
             try {
-                var status = BoardingGroupStatuses.FirstOrDefault(s => s.Num == bgnum && s.ContractId == contractid && s.GuildId == guildId);
-                if(status?.Message is null) return;
                 if(markAssigned) status.Assigning = false;
 
                 using var scope = _provider.CreateScope();
@@ -117,10 +122,12 @@ namespace EGG9000.Common.Services {
 
                 if(!status.Assigning && status.CoopCount > 0
                     && status.StartedCount >= status.CoopCount && status.ThreadCreatedCount >= status.CoopCount) {
-                    BoardingGroupStatuses.Remove(status);
+                    _boardingGroups.TryRemove(key, out _);
                 }
             } catch(Exception ex) {
                 _bugsnag.Notify(ex);
+            } finally {
+                status.Gate.Release();
             }
         }
 
