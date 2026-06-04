@@ -23,8 +23,8 @@ namespace EGG9000.Common.EggIncAPI {
         public static readonly List<(string EggIncId, Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
 
         public static uint ClientVersion { get; set; } = 71;
-        public const string AppVersion = "1.35.3";
-        public const string AppBuild = "1.35.3.1";
+        public const string AppVersion = "1.35.5";
+        public const string AppBuild = "1.35.5.1";
 
         private const string AndroidUserAgent = "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)";
         private const string IosUserAgent = "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0";
