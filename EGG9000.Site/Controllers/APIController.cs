@@ -124,7 +124,7 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
 #if RELEASE
-             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) return NotFound();
+             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
 #endif
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
             if(user == null) {
@@ -136,6 +136,8 @@ namespace EGG9000.Site.Controllers {
             }
 
             var config = userObject.Config;
+            if(config is null) return BadRequest(new { message = "Config was null." });
+            if(!config.IsValid(out var configError)) return BadRequest(new { message = configError });
             var rows = config.Rows;
             var columns = config.Columns;
 
@@ -235,7 +237,7 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateafxsetsb64")]
         public async Task<IActionResult> GenerateAfxSetsB64([FromHeader] string authenticationKey, [FromBody] AfxSetsAPIObject userObject) {
 #if RELEASE
-             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) return NotFound();
+             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
 #endif
             if(userObject is null || string.IsNullOrWhiteSpace(userObject.EID) || userObject.Config is null) return BadRequest(new { message = "Invalid request body." });
 
@@ -248,9 +250,7 @@ namespace EGG9000.Site.Controllers {
             if(sets is null || sets.Count == 0) return BadRequest(new { message = "No artifact sets." });
 
             var config = userObject.Config;
-            if(config.SetsPerPage <= 0 || config.SlotsPerRow <= 0 || config.AFSize <= 0 || config.Padding < 0 || config.LabelWidth < 0 || config.TextFontSize <= 0) {
-                return BadRequest(new { message = "Invalid render config." });
-            }
+            if(!config.IsValid(out var configError)) return BadRequest(new { message = configError });
 
             var fontFilePath = GetWWWRelativePath(["Always Together.otf"]);
             if(fontFilePath == null) return BadRequest(new { message = "`Always Together.otf` could not be found." });

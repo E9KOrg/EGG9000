@@ -171,9 +171,7 @@ namespace EGG9000.Bot.Automated {
                             File = image,
                             SendFile = true,
                         });
-                        var baseUrl = sendResponse.Embeds.First().Image.ToString();
-                        var formatIndex = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
-                        var imageUrl = formatIndex is int index && index != -1 ? baseUrl[..(index + "&format".Length)] : baseUrl;
+                        var imageUrl = ArtifactCommands.TrimImageUrl(sendResponse.Embeds.First().Image.ToString());
 
                         await sendResponse.ModifyAsync(x => {
                             x.Content = message;
