@@ -124,9 +124,7 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
 #if RELEASE
-            //if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) {
-            //    return NotFound();
-            //}
+             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) return NotFound();
 #endif
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
             if(user == null) {
@@ -175,7 +173,7 @@ namespace EGG9000.Site.Controllers {
                     $"{afName}_{afTier}.png"
                 ]);
                 if(afImagePath == null) continue;
-                var afImage = Image.Load(afImagePath);
+                using var afImage = Image.Load(afImagePath);
 
                 afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
 
@@ -210,7 +208,7 @@ namespace EGG9000.Site.Controllers {
                     textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
                 }
 
-                var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
+                using var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
                 backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
 
                 baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
@@ -236,6 +234,11 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateafxsetsb64")]
         public async Task<IActionResult> GenerateAfxSetsB64([FromHeader] string authenticationKey, [FromBody] AfxSetsAPIObject userObject) {
+#if RELEASE
+             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) return NotFound();
+#endif
+            if(userObject is null || string.IsNullOrWhiteSpace(userObject.EID) || userObject.Config is null) return BadRequest(new { message = "Invalid request body." });
+
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
             if(user == null) return BadRequest(new { message = $"User with EID {userObject.EID} was not found." });
             var account = user.EggIncAccounts.FirstOrDefault(a => a.Id == userObject.EID);
@@ -245,6 +248,10 @@ namespace EGG9000.Site.Controllers {
             if(sets is null || sets.Count == 0) return BadRequest(new { message = "No artifact sets." });
 
             var config = userObject.Config;
+            if(config.SetsPerPage <= 0 || config.SlotsPerRow <= 0 || config.AFSize <= 0 || config.Padding < 0 || config.LabelWidth < 0 || config.TextFontSize <= 0) {
+                return BadRequest(new { message = "Invalid render config." });
+            }
+
             var fontFilePath = GetWWWRelativePath(["Always Together.otf"]);
             if(fontFilePath == null) return BadRequest(new { message = "`Always Together.otf` could not be found." });
             var font = new FontCollection().Add(fontFilePath).CreateFont(config.TextFontSize, FontStyle.Bold);
@@ -256,7 +263,7 @@ namespace EGG9000.Site.Controllers {
 
                 var width = config.LabelWidth + (config.SlotsPerRow * config.AFSize) + (config.Padding * (config.SlotsPerRow + 1));
                 var height = (rowCount * config.AFSize) + (config.Padding * (rowCount + 1));
-                var pageImage = new Image<Rgba32>(width, height);
+                using var pageImage = new Image<Rgba32>(width, height);
                 pageImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
 
                 for(var r = 0; r < rowCount; r++) {
@@ -276,7 +283,7 @@ namespace EGG9000.Site.Controllers {
                         var inst = set[c];
                         var cellX = config.LabelWidth + config.Padding * (c + 1) + c * config.AFSize;
 
-                        var isFrag = inst.Artifact.ToString().ToUpper().Contains("FRAGMENT");
+                        var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
                         var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
                         var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
 
@@ -290,10 +297,10 @@ namespace EGG9000.Site.Controllers {
 
                         var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
                         if(afImagePath == null) continue;
-                        var afImage = Image.Load(afImagePath);
+                        using var afImage = Image.Load(afImagePath);
                         afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
 
-                        var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
+                        using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
                         background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
                         pageImage.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
 
@@ -302,7 +309,7 @@ namespace EGG9000.Site.Controllers {
                             var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                             var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
                             if(stonePath == null) continue;
-                            var stoneImage = Image.Load(stonePath);
+                            using var stoneImage = Image.Load(stonePath);
                             stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
                             pageImage.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
                             stoneIndex++;
