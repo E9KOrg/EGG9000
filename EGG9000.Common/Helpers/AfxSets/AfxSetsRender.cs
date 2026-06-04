@@ -9,7 +9,10 @@ using EGG9000.Common.Helpers;
 
 namespace EGG9000.Common.Helpers.AfxSets {
     // Sizing + layout config shared between the bot (sender) and site (renderer).
-    public class AfxSetsCreatorConfig {
+    public class AfxSetsCreatorConfig : IRenderConfig {
+        // Shared default so the bot's set-selection dropdown pages the same way the renderer does.
+        public const int DefaultSetsPerPage = 5;
+
         public int AFSize { get; set; }
         public int Padding { get; set; }
         public int StoneSize { get; set; }
@@ -28,8 +31,21 @@ namespace EGG9000.Common.Helpers.AfxSets {
             AFCornerRadius = afSize / 4;
             LabelWidth = (int)(afSize * 1.1);
             TextFontSize = afSize / 4;
-            SetsPerPage = 5;
+            SetsPerPage = DefaultSetsPerPage;
             SlotsPerRow = 4;
+        }
+
+        public bool IsValid(out string error) {
+            if(AFSize <= 0) { error = "AFSize must be > 0."; return false; }
+            if(Padding < 0) { error = "Padding must be >= 0."; return false; }
+            if(StoneSize <= 0) { error = "StoneSize must be > 0."; return false; }
+            if(AFCornerRadius < 0) { error = "AFCornerRadius must be >= 0."; return false; }
+            if(LabelWidth < 0) { error = "LabelWidth must be >= 0."; return false; }
+            if(TextFontSize <= 0) { error = "TextFontSize must be > 0."; return false; }
+            if(SetsPerPage <= 0) { error = "SetsPerPage must be > 0."; return false; }
+            if(SlotsPerRow <= 0) { error = "SlotsPerRow must be > 0."; return false; }
+            error = null;
+            return true;
         }
     }
 
@@ -63,8 +79,11 @@ namespace EGG9000.Common.Helpers.AfxSets {
             baseUrl = baseUrl.TrimEnd('/');
 
             // A locally-run Site uses a self-signed dev cert; accept it only when targeting localhost.
+            // Match on the parsed host (not a substring) so e.g. https://localhost.evil.com can't disable TLS.
             HttpClientHandler handler = null;
-            if(baseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) || baseUrl.Contains("127.0.0.1")) {
+            var isLocalHost = Uri.TryCreate(baseUrl, UriKind.Absolute, out var parsedBase)
+                && (parsedBase.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || parsedBase.Host == "127.0.0.1");
+            if(isLocalHost) {
                 handler = new HttpClientHandler {
                     ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 };

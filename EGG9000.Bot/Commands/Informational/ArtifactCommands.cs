@@ -68,7 +68,8 @@ namespace EGG9000.Bot.Commands.Informational {
         public static async Task _viewInventory(FauxCommand command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
             //Pull and save a fresh backup
             var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
-            account.Backup.ArtifactHall = backup.ArtifactHall;
+            if(account.Backup is null) account.Backup = backup;
+            else account.Backup.ArtifactHall = backup.ArtifactHall;
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
@@ -89,9 +90,7 @@ namespace EGG9000.Bot.Commands.Informational {
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
             await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
             var response = command.GetOriginalResponseAsync().Result; // Get the response to edit it
-            var baseUrl = response.Embeds.First().Image.ToString();
-            var formatIndex = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
-            var imageUrl = formatIndex is int index && index != -1 ? baseUrl[..(index + "&format".Length)] : baseUrl;
+            var imageUrl = TrimImageUrl(response.Embeds.First().Image.ToString());
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = _inventoryEmbed(user, account, imageUrl);
@@ -133,10 +132,11 @@ namespace EGG9000.Bot.Commands.Informational {
                 return;
             }
 
-            // Fresh pull, update only the sets.
+            // Fresh pull, update only the sets. Use the fresh backup as the initial one if the
+            // account had none yet (new/failed registration) rather than bailing on usable data.
             var fresh = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
-            if(account.Backup is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Backup came back empty from the Egg, Inc. API."); }); return; }
-            account.Backup.ArtifactSets = fresh.ArtifactSets;
+            if(account.Backup is null) account.Backup = fresh;
+            else account.Backup.ArtifactSets = fresh.ArtifactSets;
             dbUser.UpdateAccounts();
             await db.SaveChangesAsync();
 
@@ -158,7 +158,7 @@ namespace EGG9000.Bot.Commands.Informational {
                 }
                 var files = pages.Select((b, i) => new FileAttachment(new MemoryStream(Convert.FromBase64String(b)), $"afxset_page_{(i + 1):D2}.jpeg")).ToList();
                 var resp = await command.RespondWithFilesAsyncGettingMessage(files, text: "Uploading artifact sets...");
-                urls = resp.Attachments.OrderBy(a => a.Filename).Select(a => TrimImageUrl(a.Url)).ToList();
+                urls = [.. resp.Attachments.OrderBy(a => a.Filename).Select(a => TrimImageUrl(a.Url))];
                 account.AfxSetsImageHash = hash;
                 account.AfxSetsImageUrls = urls;
                 dbUser.UpdateAccounts();
@@ -175,9 +175,9 @@ namespace EGG9000.Bot.Commands.Informational {
             });
         }
 
-        private static string TrimImageUrl(string baseUrl) {
+        public static string TrimImageUrl(string baseUrl) {
             var i = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
-            return i != -1 ? baseUrl[..(i + "&format".Length)] : baseUrl;
+            return i != -1 ? baseUrl[..i] : baseUrl;
         }
 
         private static Embed AfxSetsImageEmbed(DBUser user, EggIncAccount account, List<string> urls, int page) {
@@ -220,7 +220,7 @@ namespace EGG9000.Bot.Commands.Informational {
 
         private static MessageComponent AfxSetsComponents(DBUser user, int accountIndex, List<List<EggIncArtifactInstance>> sets, int pageCount, int page) {
             var cb = new ComponentBuilder();
-            var perPage = 5;
+            var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
             var pageStart = page * perPage;
 
             var menu = new SelectMenuBuilder().WithCustomId($"AfxSetsSelect:{user.DiscordId},{accountIndex},{page}").WithPlaceholder("Select a set to view details");
