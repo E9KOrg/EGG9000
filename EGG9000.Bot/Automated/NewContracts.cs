@@ -1,7 +1,6 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -15,7 +14,6 @@ using Newtonsoft.Json;
 using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -217,12 +215,12 @@ namespace EGG9000.Bot.Automated {
                     //Start gathering users list
                     if(contract.cc_only) {
                         var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
-                        pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()
+                        pingableUsers = [.. pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()
                             && a.PingForNCUltra
                             && a.Backup != null
                             && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)
                             && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
-                        )).ToList();
+                        ))];
 
                         //Start forming the message
                         var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTime.Now;
