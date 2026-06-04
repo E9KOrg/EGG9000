@@ -1,7 +1,6 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -15,7 +14,6 @@ using Newtonsoft.Json;
 using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -217,12 +215,12 @@ namespace EGG9000.Bot.Automated {
                     //Start gathering users list
                     if(contract.cc_only) {
                         var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
-                        pingableUsers = pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()
+                        pingableUsers = [.. pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()
                             && a.PingForNCUltra
                             && a.Backup != null
                             && !a.Backup.Farms.Any(f => f.ContractId == contract.ID && f.Completed)
                             && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
-                        )).ToList();
+                        ))];
 
                         //Start forming the message
                         var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTime.Now;
@@ -249,14 +247,18 @@ namespace EGG9000.Bot.Automated {
                     }
                     _ = UpdateChannel(guild, dbguild, guildContract);
                     ChangeUpdateInterval(TimeSpan.FromMinutes(5));
-                } else if(!dbguild.DisableBG && guildContract.BoardingGroup < 4 && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
+                } else if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
                     var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
-                    var nextLaunch = contractDate - contractDate.TimeOfDay + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
-                    var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
-                    if(nextLaunch < currentTime) {
-                        guildContract.BoardingGroup++;
-                        await _db.SaveChangesAsync();
-                        if(!_debug) _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1, dbguild);
+                    // Only Ultra contracts launched on a Friday get a 4th boarding group (they share the launch slot with normal contracts); everything else caps at BG3
+                    var maxBoardingGroup = (contract.cc_only && contractDate.DayOfWeek == DayOfWeek.Friday) ? 4 : 3;
+                    if(guildContract.BoardingGroup < maxBoardingGroup) {
+                        var nextLaunch = contractDate - contractDate.TimeOfDay + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
+                        var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.Now, "Pacific Standard Time");
+                        if(nextLaunch < currentTime) {
+                            guildContract.BoardingGroup++;
+                            await _db.SaveChangesAsync();
+                            if(!_debug) _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1, dbguild);
+                        }
                     }
                 }
             }
@@ -284,7 +286,6 @@ namespace EGG9000.Bot.Automated {
             var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
 
             var bgGroups = coopGroups.Where(x => x.bg == (skipbg + 1).ToString());
-            int successfullyAssignedCoops = 0, failedCoops = 0;
 
             foreach(var group in bgGroups) {
                 _logger.LogInformation("{guild} BG{bg}, Grade {grade}, Count {count} for Contract {contract}", guild.Name, group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2), contract.Name);
@@ -293,10 +294,7 @@ namespace EGG9000.Bot.Automated {
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
                         await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild, (uint)skipbg + 1, contract.cc_only);
-                        successfullyAssignedCoops++;
                     } catch(Exception e) {
-                        failedCoops++;
-                        var frame = (new StackTrace(e, true)).GetFrame(0);
                         _logger.LogError(e, "⚠️ERROR staring co-op");
                         _bugSnag.Notify(e);
                     }
@@ -305,8 +303,7 @@ namespace EGG9000.Bot.Automated {
                 await _db.SaveChangesAsync();
             }
 
-            await _botLogger.UpdateBoardingGroup(skipbg + 1, contract.ID, dbguild.Id, successfullyAssignedCoops, null, null);
-            //await _botLogger.Log($"**{contract.Name}** BG{skipbg + 1} co-ops have been assigned (coops assigned: {successfullyAssignedCoops}{(failedCoops == 0 ? "" : $", failed: {failedCoops}")}), working on starting co-ops", dbguild);
+            await _botLogger.MarkAssigned(skipbg + 1, contract.ID, dbguild.Id);
         }
 
         private void CheckUpdateInterval(List<Contract> existingContracts) {
