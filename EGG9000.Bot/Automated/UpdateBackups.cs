@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Frozen;
 
 namespace EGG9000.Bot.Automated {
     public class UpdateBackups(IServiceProvider provider) : _UpdaterBase<UpdateBackups>(TimeSpan.FromMinutes(1), delayedStart: TimeSpan.FromMinutes(0), provider) {
@@ -28,11 +29,12 @@ namespace EGG9000.Bot.Automated {
             var times = new TimingsFactory(_logger).Start();
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var cachedContracts = await _db.CachedEiContractsAsync();
 
             var guilds = await _db.Guilds.ToListAsync();
             var guildIDs = guilds.Select(x => x.Id).ToHashSet();
 
-            var usersToCheck = await _db.DBUsers.Where(x => guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(45).ToListAsync();
+            var usersToCheck = await _db.DBUsers.Where(x => guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(75).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
             _logger.LogInformation($"Longest backup check ago: {(DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2)}");
 
@@ -40,7 +42,7 @@ namespace EGG9000.Bot.Automated {
             times.Set("Fetched DB Users");
 
 
-            var throttler = new SemaphoreSlim(6);
+            var throttler = new SemaphoreSlim(8);
 
             var tasks = new List<Task>();
 
@@ -49,7 +51,7 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     _logger.LogTrace($"Updating {user.DiscordUsername}");
                     try {
-                        await UpdateUser(user, guilds, _db);
+                        await UpdateUser(user, guilds, cachedContracts);
                     } catch(Exception ex) {
                         _logger.LogError(ex, $"Error updating user {user.DiscordUsername} {user.Id}");
                     } finally {
@@ -67,7 +69,7 @@ namespace EGG9000.Bot.Automated {
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
 
-        public async Task UpdateUser(DBUser user, List<Guild> guilds, ApplicationDbContext db) {
+        public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
                 var firstContact = await EggIncApi.FirstContact(account.Id);
@@ -76,7 +78,7 @@ namespace EGG9000.Bot.Automated {
                 if(dbGuild is null)
                     continue;
                 var oldLevel = account.SubscriptionLevel;
-                var backup = new CustomBackup(firstContact.Backup, await db.CachedEiContractsAsync());
+                var backup = new CustomBackup(firstContact.Backup, cachedContracts);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {

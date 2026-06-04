@@ -372,7 +372,7 @@ namespace EGG9000.Common.Helpers {
             return orderedList.Where(a => !a.Skip).Select(a => a.AF).ToList();
         }
 
-        public class InventoryCreatorConfig {
+        public class InventoryCreatorConfig : IRenderConfig {
             public int AFSize { get; set; } = 0;
             public int Padding { get; set; } = 0;
             public int StoneSize { get; set; } = 0;
@@ -404,6 +404,19 @@ namespace EGG9000.Common.Helpers {
 
                 TotalWidth = (Columns * AFSize) + (Padding * (Columns + 1));
                 TotalHeight = (Rows * AFSize) + (Padding * (Rows + 1));
+            }
+
+            public bool IsValid(out string error) {
+                if(AFSize <= 0) { error = "AFSize must be > 0."; return false; }
+                if(Padding < 0) { error = "Padding must be >= 0."; return false; }
+                if(StoneSize <= 0) { error = "StoneSize must be > 0."; return false; }
+                if(AFCornerRadius < 0) { error = "AFCornerRadius must be >= 0."; return false; }
+                if(TextHeight <= 0) { error = "TextHeight must be > 0."; return false; }
+                if(TextFontSize <= 0) { error = "TextFontSize must be > 0."; return false; }
+                if(Rows <= 0 || Columns <= 0) { error = "Rows and Columns must be > 0."; return false; }
+                if(TotalWidth <= 0 || TotalHeight <= 0) { error = "TotalWidth and TotalHeight must be > 0."; return false; }
+                error = null;
+                return true;
             }
         }
 
