@@ -171,7 +171,9 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Get notified when someone adds/removes a Tachyon Deflector")]
         PingOnTachyonChange = 6,
         [Description("Get notified when your co-op will complete as soon as everyone checks in")]
-        PingOnCompleteOnCheckIn = 7
+        PingOnCompleteOnCheckIn = 7,
+        [Description("Show a live co-op stats embed inside each contract channel")]
+        ShowContractStatsEmbeds = 8
     }
 
     [NotMapped]
@@ -282,5 +284,7 @@ namespace EGG9000.Common.Database.Entities {
         NasaApod = 46,
         [Description("/TC/Optional: Bot Log, gives status updates when the bot detects new contract and launches boarding groups")]
         BotLog = 47,
+        [Description("/TC/Optional: Where server-wide co-op stats will be posted and kept updated")]
+        CoopStatsChannel = 48,
     }
 }
