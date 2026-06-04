@@ -43,7 +43,7 @@ namespace EGG9000.Site.Controllers {
         [Route("api/generateeventimage")]
         public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] Event customEvent) {
 #if RELEASE
-            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != DockerSecretsHelper.BotToken) {
+            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) {
                 return NotFound();
             }
 #endif 

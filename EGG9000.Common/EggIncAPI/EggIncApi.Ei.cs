@@ -11,6 +11,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -185,7 +186,32 @@ namespace EGG9000.Common.EggIncAPI {
                 if(responseBytes == null) {
                     return null;
                 }
-                 return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
+                return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
+            } catch(Exception e) {
+                return null;
+            }
+        }
+
+
+        public static async Task<ContractPlayerInfo> GetContractPlayerInfo(string UserId) {
+            try {
+                var info = GetInfo(UserId);
+
+                //using(var sha256 = System.Security.Cryptography.SHA256.Create()) {
+                //    var hashBytes = sha256.ComputeHash(GetEncodedMessage(info));
+                //    var hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                //}
+                var hash = GetHash(Encoding.UTF8.GetBytes(GetEncodedMessage(info)));
+                //var hash = GetHash(Encoding.UTF8.GetBytes(UserId));
+                var request = new GetContractPlayerInfoRequest {
+                     Rinfo = info, EiUserId = UserId, Unknown = "a4349af74a349f5d3b903e442a1ce2a6221ff3e3723a8666be117650e2033cce", ClientVersion = 71
+                };
+                var body = await GetBAC(GetEncodedMessage(request));
+                var responseBytes = await PostRaw("ei_ctx/get_contract_player_info", body, HeaderProfile.Android);
+                if(responseBytes == null) {
+                    return null;
+                }
+                return GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes);
             } catch(Exception e) {
                 return null;
             }
