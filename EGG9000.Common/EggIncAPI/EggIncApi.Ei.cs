@@ -11,6 +11,7 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -185,7 +186,27 @@ namespace EGG9000.Common.EggIncAPI {
                 if(responseBytes == null) {
                     return null;
                 }
-                 return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
+                return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
+            } catch(Exception e) {
+                return null;
+            }
+        }
+
+
+        public static async Task<ContractPlayerInfo> GetContractPlayerInfo(string UserId) {
+            try {
+                var info = GetInfo(UserId);
+
+
+                var messageData = info.ToByteArray();
+                var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                var body = await GetBAC(GetEncodedMessage(authMessage));
+
+                var responseBytes = await PostRaw("ei_ctx/get_contract_player_info", body, HeaderProfile.Android);
+                if(responseBytes == null) {
+                    return null;
+                }
+                return GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes);
             } catch(Exception e) {
                 return null;
             }

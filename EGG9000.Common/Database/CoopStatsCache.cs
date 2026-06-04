@@ -57,7 +57,7 @@ namespace EGG9000.Common.Database {
         public async Task RefreshAsync() {
             try {
                 var now = DateTimeOffset.Now;
-                var db = await _dbContextFactory.CreateDbContextAsync();
+                await using var db = await _dbContextFactory.CreateDbContextAsync();
 
                 var guildContracts = await db.GuildContracts.Include(g => g.Contract)
                     .Where(g => !g.DeletedChannel && g.Contract.GoodUntil > now)
