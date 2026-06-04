@@ -378,27 +378,17 @@ namespace EGG9000.Common.Database {
             }).ToList();
 
             /* Setup for artifact sets */
-            var afxSetsItemIds = backup.ArtifactsDb.SavedArtifactSets.Select(s => {
-                return s.Slots.Select(sl => sl.ItemId).ToList();
-            }).ToList();
-
-            List<List<EggIncArtifactInstance>> afxSetsList = new();
-            foreach(var afxSetItems in afxSetsItemIds) {
-                var afxInstances = new List<EggIncArtifactInstance>();
-                foreach(var id in afxSetItems) {
-                    var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == id);
-                    if(x is null) continue;
-
+            var afxSetsProjected = backup.ArtifactsDb.SavedArtifactSets.Select(s =>
+                s.Slots.Select(sl => {
+                    var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == sl.ItemId);
+                    if(x is null) return null;
                     var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                    if(artifact is null) continue;
-
+                    if(artifact is null) return null;
                     artifact.Stones = x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null).ToList();
-
-                    afxInstances.Add(artifact);
-                }
-                if(afxInstances.Count == afxSetItems.Count) afxSetsList.Add(afxInstances);
-            }
-            ArtifactSets = afxSetsList;
+                    return artifact;
+                })
+            );
+            ArtifactSets = EGG9000.Common.Helpers.AfxSets.AfxSetsBuilder.BuildSetsPreservingEmpty(afxSetsProjected);
 
             ArtifactHall.AddRange(backup.ArtifactsDb.ArtifactStatus.Where(a =>
                 !backup.ArtifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&
@@ -536,11 +526,19 @@ namespace EGG9000.Common.Database {
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
             foreach(var localContract in contracts) {
-                var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
-                if(contract == null) {
-                    Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
+                if(localContract.Contract is null) {
+                    var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
+                    
+                    if(contract == null) {
+                        if(!localContract.HasCoopIdentifier || localContract.ContractIdentifier.Contains("\u0005")) {
+                            contract = allContracts.First();
+                        } else {
+                            Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
+                            throw new Exception($"Missing contract: {localContract.ContractIdentifier}");
+                        }
+                    }
+                    localContract.Contract = contract;
                 }
-                localContract.Contract = contract ?? allContracts.First();
                 ArchivedFarms.Add(new CustomArchivedFarms(localContract));
             }
         }
