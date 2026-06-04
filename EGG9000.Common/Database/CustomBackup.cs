@@ -536,11 +536,19 @@ namespace EGG9000.Common.Database {
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
             foreach(var localContract in contracts) {
-                var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
-                if(contract == null) {
-                    Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
+                if(localContract.Contract is null) {
+                    var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
+                    
+                    if(contract == null) {
+                        if(!localContract.HasCoopIdentifier || localContract.ContractIdentifier.Contains("\u0005")) {
+                            contract = allContracts.First();
+                        } else {
+                            Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
+                            throw new Exception($"Missing contract: {localContract.ContractIdentifier}");
+                        }
+                    }
+                    localContract.Contract = contract;
                 }
-                localContract.Contract = contract ?? allContracts.First();
                 ArchivedFarms.Add(new CustomArchivedFarms(localContract));
             }
         }
