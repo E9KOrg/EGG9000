@@ -1,4 +1,5 @@
 ﻿using Discord;
+using EGG9000.Bot.Commands.Informational;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -166,17 +167,15 @@ namespace EGG9000.Bot.Automated {
                         var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
                         var sendResponse = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() {
                             Text = message,
-                            Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier),
+                            Embed = ArtifactCommands._inventoryEmbed(user, outlier),
                             File = image,
                             SendFile = true,
                         });
-                        var baseUrl = sendResponse.Embeds.First().Image.ToString();
-                        var formatIndex = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
-                        var imageUrl = formatIndex is int index && index != -1 ? baseUrl[..(index + "&format".Length)] : baseUrl;
+                        var imageUrl = ArtifactCommands.TrimImageUrl(sendResponse.Embeds.First().Image.ToString());
 
                         await sendResponse.ModifyAsync(x => {
                             x.Content = message;
-                            x.Embed = Commands.ArtifactCommands._inventoryEmbed(user, outlier, imageUrl);
+                            x.Embed = ArtifactCommands._inventoryEmbed(user, outlier, imageUrl);
                         });
                     }
 

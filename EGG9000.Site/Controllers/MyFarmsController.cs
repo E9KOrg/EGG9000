@@ -30,6 +30,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Event = EGG9000.Common.Database.Entities.Event;
+using System.Collections.Frozen;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -89,8 +90,8 @@ namespace EGG9000.Site.Controllers {
 
             times.Set("User prep");
 
-
-            var getBackupsTask = GetBackups(user, scoring);
+            var cachedContracts = await _db.CachedEiContractsAsync();
+            var getBackupsTask = GetBackups(user, scoring, cachedContracts);
 
             var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
 
@@ -127,15 +128,15 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(String.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts));
         }
 
-        private async Task<bool> GetBackups(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
+        private async Task<bool> GetBackups(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring, FrozenSet<Ei.Contract> cachedContracts) {
             var update = false;
 
             foreach(var account in user.EggIncAccounts) {
                 var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, await _db.CachedEiContractsAsync(), account?.Backup ?? null);
+                var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
 
                 Console.WriteLine($"Getting backups for {account.Name}");
                 if(customBackup?.Farms is not null) {
@@ -170,7 +171,8 @@ namespace EGG9000.Site.Controllers {
             Guild DBGuild,
             Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,
             List<DBCustomEgg> CustomEggs,
-            bool IsSelf
+            bool IsSelf,
+            FrozenSet<Ei.Contract> CachedContracts
         );
 
         public async Task<IActionResult> EarningsBoostCalculator() {
