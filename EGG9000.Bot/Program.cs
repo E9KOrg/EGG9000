@@ -267,7 +267,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<CommandService>();
         services.AddHostedService<DiscordUserService>();
-
+        services.AddHostedService<UserGrades>();
 
         //services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
         //services.AddHostedService<PrometheusMetricServerHostedService>();
