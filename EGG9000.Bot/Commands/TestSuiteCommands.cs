@@ -15,7 +15,6 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
@@ -101,7 +100,7 @@ namespace EGG9000.Bot.Commands {
             await command.DeferAsync(ephemeral: true);
 
             var guildId = command.GuildId ?? 0;
-            var seeded = await db.Coops.Where(c => c.GuildId == guildId && c.Name.StartsWith(SeedPrefix)).ToListAsync();
+            var seeded = await db.Coops.IgnoreQueryFilters().Where(c => c.GuildId == guildId && c.Name.StartsWith(SeedPrefix)).ToListAsync();
             var seededIds = seeded.Select(c => c.Id).ToList();
             var xrefs = await db.UserCoopXrefs.Where(x => seededIds.Contains(x.CoopId)).ToListAsync();
 
@@ -181,7 +180,8 @@ namespace EGG9000.Bot.Commands {
                 UserId = dbUser.Id,
                 CoopId = coop.Id,
                 EggIncId = eggIncId,
-                JoinedCoop = true,
+                // Intentionally false so that "Find my Coop" doesn't filter this out as already-joined
+                JoinedCoop = false,
                 CreatedOn = DateTimeOffset.Now,
                 Joined = DateTimeOffset.Now,
             });
