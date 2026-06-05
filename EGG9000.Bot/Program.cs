@@ -186,12 +186,8 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.ReleaseStage = "production";
             });
 
-<<<<<<< HEAD
-=======
             services.AddSingleton<BotLogger>();
 
-
->>>>>>> upstream/master
             var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:RabbitMQServer",
