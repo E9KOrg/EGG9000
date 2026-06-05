@@ -5,6 +5,7 @@ using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.AfxSets;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -17,7 +18,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public static class ArtifactCommands {
 
         [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
@@ -67,7 +68,8 @@ namespace EGG9000.Bot.Commands {
         public static async Task _viewInventory(FauxCommand command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
             //Pull and save a fresh backup
             var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
-            account.Backup.ArtifactHall = backup.ArtifactHall;
+            if(account.Backup is null) account.Backup = backup;
+            else account.Backup.ArtifactHall = backup.ArtifactHall;
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
@@ -88,9 +90,7 @@ namespace EGG9000.Bot.Commands {
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
             await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
             var response = command.GetOriginalResponseAsync().Result; // Get the response to edit it
-            var baseUrl = response.Embeds.First().Image.ToString();
-            var formatIndex = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
-            var imageUrl = formatIndex is int index && index != -1 ? baseUrl[..(index + "&format".Length)] : baseUrl;
+            var imageUrl = TrimImageUrl(response.Embeds.First().Image.ToString());
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = _inventoryEmbed(user, account, imageUrl);
@@ -112,37 +112,16 @@ namespace EGG9000.Bot.Commands {
             return builder.Build();
         }
 
-        private class AfxSetBuilder {
-            public ComponentBuilder ComponentBuilder { get; set; }
-            public EmbedBuilder EmbedBuilder { get; set; }
-            public AfxSetBuilder() { }
-        }
-
-        public static Color RandomColor() {
-            var random = new Random();
-
-            // Generate random values for red, green, and blue components.
-            var red = (byte)random.Next(256);
-            var green = (byte)random.Next(256);
-            var blue = (byte)random.Next(256);
-
-            // Create and return the Discord.Color.
-            return new Color(red, green, blue);
-        }
-
         [SlashCommand(Description = "Show off your saved Artifact Sets")]
-        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount, [SlashParam(Description = "Set # to statically display", Required = false, PositiveOnly = true)] int index = 0) {
+        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
             await command.DeferAsync();
-            var lockSet = true;
-            if(index == 0) {
-                index = 1;
-                lockSet = false;
-            }
+
             var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
             }
+
             EggIncAccount account = null;
             var accountIndex = 0;
             try {
@@ -153,81 +132,154 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var afxSets = account.Backup?.ArtifactSets;
-            if(afxSets is null || afxSets.Count == 0) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Backup is empty, or no Artifact Sets were found for this account"); });
+            // Fresh pull, update only the sets. Use the fresh backup as the initial one if the
+            // account had none yet (new/failed registration) rather than bailing on usable data.
+            var fresh = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
+            if(account.Backup is null) account.Backup = fresh;
+            else account.Backup.ArtifactSets = fresh.ArtifactSets;
+            dbUser.UpdateAccounts();
+            await db.SaveChangesAsync();
+
+            var sets = account.Backup.ArtifactSets;
+            if(sets is null || sets.Count == 0) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No Artifact Sets were found for this account."); });
                 return;
             }
 
-            if(index < 1 || (index != 1 && index > afxSets.Count)) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Set number `{index}` larger than maximum set number `{afxSets.Count}`."); });
-                return;
+            var hash = AfxSetsHash.Compute(sets);
+            List<string> urls;
+            if(account.AfxSetsImageHash == hash && account.AfxSetsImageUrls is { Count: > 0 }) {
+                urls = account.AfxSetsImageUrls;
+            } else {
+                var (pages, renderError) = await AfxSetsRender.AfxSetsB64(account);
+                if(pages is null || pages.Count == 0) {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Artifact set images could not be generated.\n```{renderError}```"); });
+                    return;
+                }
+                var files = pages.Select((b, i) => new FileAttachment(new MemoryStream(Convert.FromBase64String(b)), $"afxset_page_{(i + 1):D2}.jpeg")).ToList();
+                var resp = await command.RespondWithFilesAsyncGettingMessage(files, text: "Uploading artifact sets...");
+                urls = [.. resp.Attachments.OrderBy(a => a.Filename).Select(a => TrimImageUrl(a.Url))];
+                account.AfxSetsImageHash = hash;
+                account.AfxSetsImageUrls = urls;
+                dbUser.UpdateAccounts();
+                await db.SaveChangesAsync();
             }
 
-            var builder = AFXSetEmbedBuilder(dbUser, accountIndex, afxSets, afxSets[index - 1]);
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
-                x.Components = lockSet ? null : builder.ComponentBuilder?.Build();
-                x.Embed = builder.EmbedBuilder.Build();
+                // Drop the uploaded page attachments now that we have their CDN URLs; the embed
+                // references those URLs directly so the loose image files don't clutter the message.
+                x.Attachments = new List<FileAttachment>();
+                x.Embeds = new[] { AfxSetsImageEmbed(dbUser, account, urls, 0), AfxSetsDetailEmbed(null) };
+                x.Components = AfxSetsComponents(dbUser, accountIndex, sets, urls.Count, 0);
+            });
+        }
+
+        public static string TrimImageUrl(string baseUrl) {
+            var i = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
+            return i != -1 ? baseUrl[..i] : baseUrl;
+        }
+
+        private static Embed AfxSetsImageEmbed(DBUser user, EggIncAccount account, List<string> urls, int page) {
+            var name = account.Backup?.UserName ?? "(No Name)";
+            var eb = account.Backup?.EarningsBonus.ToEggString() ?? "No EB";
+            return new EmbedBuilder()
+                .WithColor(Color.Blue)
+                .WithAuthor(new EmbedAuthorBuilder().WithName("EGG9000").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp"))
+                .WithDescription($"Artifact Sets of <@{user.DiscordId}> - `{name} ({eb})`")
+                .WithTitle("Link to full resolution image")
+                .WithUrl(urls[page])
+                .WithImageUrl(urls[page])
+                .WithFooter(new EmbedFooterBuilder().WithText($"Page {page + 1}/{urls.Count}"))
+                .Build();
+        }
+
+        private static Embed AfxSetsDetailEmbed(List<EggIncArtifactInstance> set, int globalIndex = -1) {
+            if(set is null) {
+                return new EmbedBuilder().WithColor(Color.DarkGrey).WithDescription("Select a set from the dropdown to view its artifacts and explorer links.").Build();
+            }
+            var emoji = GetAfxSetString(set);
+            var links = set.Select(a => {
+                var artifactLink = $"[{a.Artifact}]({AfxExplorerLink.Url(a, false)})";
+                // Collapse duplicate stones into "Name x N".
+                var stoneLinks = string.Concat((a.Stones ?? [])
+                    .GroupBy(s => (s.Id, s.Tier))
+                    .Select(g => {
+                        var s = g.First();
+                        var label = g.Count() > 1 ? $"{s.Artifact} x {g.Count()}" : s.Artifact;
+                        return $" + [{label}]({AfxExplorerLink.Url(s, true)})";
+                    }));
+                return artifactLink + stoneLinks;
+            });
+            return new EmbedBuilder()
+                .WithColor(Color.Gold)
+                .WithAuthor(new EmbedAuthorBuilder().WithName($"Set {globalIndex + 1}").WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp"))
+                .WithDescription($"{emoji}\n\n**Explorer Links:**\n{string.Join("\n", links)}")
+                .Build();
+        }
+
+        private static MessageComponent AfxSetsComponents(DBUser user, int accountIndex, List<List<EggIncArtifactInstance>> sets, int pageCount, int page) {
+            var cb = new ComponentBuilder();
+            var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
+            var pageStart = page * perPage;
+
+            var menu = new SelectMenuBuilder().WithCustomId($"AfxSetsSelect:{user.DiscordId},{accountIndex},{page}").WithPlaceholder("Select a set to view details");
+            var added = 0;
+            for(var i = pageStart; i < pageStart + perPage && i < sets.Count; i++) {
+                if(sets[i].Count == 0) continue; // empty sets are not selectable
+                menu.AddOption($"Set {i + 1}", i.ToString());
+                added++;
+            }
+            if(added > 0) cb.WithSelectMenu(menu);
+
+            cb.WithButton("◀", $"AfxSetsPage:{user.DiscordId},{accountIndex},{page - 1}", ButtonStyle.Secondary, disabled: page <= 0);
+            cb.WithButton("▶", $"AfxSetsPage:{user.DiscordId},{accountIndex},{page + 1}", ButtonStyle.Secondary, disabled: page >= pageCount - 1);
+            return cb.Build();
+        }
+
+        [ComponentCommand]
+        public static async Task AfxSetsPage(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var parts = data.Split(",");
+            if(parts.Length < 3) return;
+            var discordId = ulong.Parse(parts[0]);
+            var accountIndex = int.Parse(parts[1]);
+            var page = int.Parse(parts[2]);
+
+            var user = db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
+            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
+            var account = user.EggIncAccounts[accountIndex];
+            var sets = account.Backup?.ArtifactSets;
+            var urls = account.AfxSetsImageUrls;
+            if(sets is null || urls is null || page < 0 || page >= urls.Count) return;
+
+            await component.UpdateAsync(x => {
+                x.Content = "";
+                x.Embeds = new[] { AfxSetsImageEmbed(user, account, urls, page), AfxSetsDetailEmbed(null) };
+                x.Components = AfxSetsComponents(user, accountIndex, sets, urls.Count, page);
             });
         }
 
         [ComponentCommand]
-        public static async Task LoadAFXSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-
-            var dataItems = data.Split(",");
-            var discordId = ulong.Parse(dataItems[0] ?? "-1");
-            var accountIndex = int.Parse(dataItems[1] ?? "-1");
-            var currentSetIndex = int.Parse(dataItems[2] ?? "-1");
-
-            if(discordId < 0 || accountIndex < 0 || currentSetIndex < 0) return;
+        public static async Task AfxSetsSelect(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var parts = data.Split(",");
+            if(parts.Length < 3) return;
+            var discordId = ulong.Parse(parts[0]);
+            var accountIndex = int.Parse(parts[1]);
+            var page = int.Parse(parts[2]);
+            var selected = int.Parse(component.Data.Values.First());
 
             var user = db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
             if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
-
             var account = user.EggIncAccounts[accountIndex];
-            var afxSets = account.Backup?.ArtifactSets;
-            if(afxSets is null) return;
+            var sets = account.Backup?.ArtifactSets;
+            var urls = account.AfxSetsImageUrls;
+            if(sets is null || urls is null || selected < 0 || selected >= sets.Count || page < 0 || page >= urls.Count) return;
 
-            var builder = AFXSetEmbedBuilder(user, accountIndex, afxSets, afxSets[currentSetIndex]);
             await component.UpdateAsync(x => {
                 x.Content = "";
-                x.Components = builder.ComponentBuilder?.Build();
-                x.Embed = builder.EmbedBuilder.Build();
+                x.Embeds = new[] { AfxSetsImageEmbed(user, account, urls, page), AfxSetsDetailEmbed(sets[selected], selected) };
+                x.Components = AfxSetsComponents(user, accountIndex, sets, urls.Count, page);
             });
-        }
-
-        private static AfxSetBuilder AFXSetEmbedBuilder(DBUser user, int accountIndex, List<List<EggIncArtifactInstance>> afxSets, List<EggIncArtifactInstance> currentSet) {
-            var builder = new AfxSetBuilder() {
-                ComponentBuilder = null
-            };
-
-            var componentBuilder = new ComponentBuilder();
-            var buttonCount = 0;
-
-            var currentSetIndex = afxSets.IndexOf(currentSet);
-
-            var account = user.EggIncAccounts[accountIndex];
-            var accText = user.EggIncAccounts.Count > 1 ? $"For account: {account.Backup?.UserName ?? "[No Name]"} ({account.Backup?.EarningsBonus.ToEggString() ?? "No EB"})" : "";
-
-            var embedBuilder = new EmbedBuilder().WithAuthor(
-                new EmbedAuthorBuilder()
-                    .WithName($"Set {currentSetIndex + 1}")
-                    .WithIconUrl("https://cdn.discordapp.com/emojis/877681508607987772.webp")
-                ).WithColor(RandomColor())
-                .WithDescription(GetAfxSetString(currentSet));
-            if(accText != "") embedBuilder.WithFooter(new EmbedFooterBuilder().WithText(accText));
-
-            if(currentSetIndex > 0 && afxSets.Count > 1 && afxSets[currentSetIndex - 1] is not null) {
-                componentBuilder.WithButton($"← Set {currentSetIndex}", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex - 1}"); buttonCount++;
-            }
-            if(currentSetIndex < afxSets.Count - 1 && afxSets[currentSetIndex + 1] is not null) {
-                componentBuilder.WithButton($"Set {currentSetIndex + 2} →", $"LoadAFXSet:{user.DiscordId},{accountIndex},{currentSetIndex + 1}"); buttonCount++;
-            }
-            if(buttonCount > 0) builder.ComponentBuilder = componentBuilder;
-
-            builder.EmbedBuilder = embedBuilder;
-            return builder;
         }
 
     }

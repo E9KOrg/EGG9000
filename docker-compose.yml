@@ -20,8 +20,8 @@ services:
       BOT_COLOR: blue
       # App will read from /run/secrets/ via DockerSecretsHelper
     volumes:
-      # Mount host user-secrets store (DEV9002 config maps UserSecretsId to "DEV9001") read-only
-      # so AddUserSecrets<Program> resolves it inside the container (runs as built-in 'app' user)
+      # If you are not on Windows, adjust the path to your user secrets store accordingly
+      # (If you get "no default credentials found" errors, check this)
       - ${APPDATA}/Microsoft/UserSecrets/DEV9001:/home/app/.microsoft/usersecrets/DEV9001:ro
     networks:
       - egg9000_network
@@ -43,6 +43,8 @@ services:
       BOT_ACTIVE: "false"
       BOT_COLOR: green
     volumes:
+      # If you are not on Windows, adjust the path to your user secrets store accordingly
+      # (If you get "no default credentials found" errors, check this)
       - ${APPDATA}/Microsoft/UserSecrets/DEV9001:/home/app/.microsoft/usersecrets/DEV9001:ro
     networks:
       - egg9000_network

@@ -144,7 +144,11 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<DatabaseCache>();
         services.AddHostedService<UserCacheRefreshService>();
         services.AddHostedService<ActiveCoopsCacheRefreshService>();
+        services.AddSingleton<CoopStatsCache>();
+        services.AddSingleton<CoopAssignmentLookup>();
+        services.AddHostedService<CoopAssignmentLookupRefreshService>();
         services.AddSingleton<Words>();
+        services.AddSingleton<BotLogger>();
 
 #if RELEASE
         var release = true;
@@ -182,9 +186,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
                 options.ReleaseStage = "production";
             });
-
-            services.AddSingleton<BotLogger>();
-
 
             var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
@@ -239,6 +240,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<ArtifactCheaters>();
         services.AddHostedService<StaffCoopsMessage>();
+        services.AddHostedService<CoopStatsRefreshService>();
         services.AddHostedService<EventUpdater>();
 
         services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
