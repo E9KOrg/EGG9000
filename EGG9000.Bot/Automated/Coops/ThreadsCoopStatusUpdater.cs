@@ -70,11 +70,11 @@ namespace EGG9000.Bot.Automated.Coops {
             //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
             //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
             //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "unitedsmalls1")];
+            coops = [.. coops.Where(x => x.Name == "MurotMural5")];
             //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
             //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
             //coops = [.. coops.Where(x => x.OverflowGuildId == 798897541717688390)];
-            coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
+            //coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
 #endif
 
 
@@ -665,7 +665,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             }
 
                             if(userFarmDetails.Account is not null || userFarmDetails.Backup is not null) {
-                                var grade = userFarmDetails.Account?.GetGrade() ?? userFarmDetails.Backup.Grade;
+                                var grade = userFarmDetails.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
                                 if((uint)grade != coop.League && !(coop.Contract.cc_only || coop.AnyLeague)) {
                                     mention += $" (Wrong {grade})";
                                 }

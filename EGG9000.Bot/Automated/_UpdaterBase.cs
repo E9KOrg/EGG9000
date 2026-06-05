@@ -177,7 +177,7 @@ namespace EGG9000.Bot.Automated {
             return _timer is not null;
         }
         public bool Running() {
-            return _semaphoreSlim.CurrentCount > 0;
+            return _semaphoreSlim.CurrentCount == 0;
         }
 
         public Task StartAsync(CancellationToken cancellationToken) {

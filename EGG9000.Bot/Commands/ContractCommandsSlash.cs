@@ -239,10 +239,10 @@ namespace EGG9000.Bot.Commands {
                 var rawBackup = await EggIncApi.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
 
-                if((uint)customBackup.Grade != newgrade) {
+                if((uint)account.LastGrade != newgrade) {
                     await command.ModifyOriginalResponseAsync(x => {
                         x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
-                        $"({PlayerGradeDetails.GetEmoji(customBackup.Grade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji(newgrade)}).\nTry forcing a new backup?");
+                        $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji(newgrade)}).\nTry forcing a new backup?");
                     });
                     return;
                 }
