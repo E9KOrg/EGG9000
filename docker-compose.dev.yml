@@ -1,0 +1,80 @@
+# docker-compose.dev.yml
+# Explicit dev stack. Single instance of each service, no blue/green.
+# Usage: docker-compose -f docker-compose.dev.yml up
+# Requires: ${APPDATA}/Microsoft/UserSecrets/{id}/secrets.json populated with credentials.
+
+services:
+  bot:
+    image: kendrome/egg9000bot:latest
+    build:
+      context: .
+      dockerfile: EGG9000.Bot/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+    restart: on-failure
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Development
+      BOT_ACTIVE: "true"
+      BOT_COLOR: blue
+      ConnectionStrings__RabbitMQServer: rabbitmq|e9k|devpassword
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+    networks:
+      - egg9000_dev_network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  site:
+    image: kendrome/egg9000site:latest
+    build:
+      context: .
+      dockerfile: EGG9000.Site/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Debug
+    restart: on-failure
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "5013"
+      ConnectionStrings__RabbitMQServer: rabbitmq|e9k|devpassword
+      Docker__Host: npipe://./pipe/docker_engine
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - //./pipe/docker_engine://./pipe/docker_engine
+    ports:
+      - "5013:5013"
+    networks:
+      - egg9000_dev_network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5013/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: e9k
+      RABBITMQ_DEFAULT_PASS: devpassword
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - egg9000_dev_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  egg9000_dev_network:
+    driver: bridge

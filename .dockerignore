@@ -1,75 +1,53 @@
-.bash_history
-.cache
-.cargo
-.composer
-.hsperfdata
-.idea
-.npm
-.nuget
-.pytest_cache
-.Rhistory
-.Rproj.user
-.rproj.data
-.sass-cache
-_sass
+# Build output - the main culprit for large contexts
+**/bin/
+**/obj/
 
-# Build output and VCS (huge context bloat if not excluded)
-**/bin
-**/obj
-.git
+# Publish artifacts
+artifacts/
+
+# Git
+.git/
 .gitignore
 
-# Logs
-logs
-*.log
-
-# Docker
+# Docker files (not needed inside image)
 Dockerfile*
 docker-compose*
 .dockerignore
 
-# Node
-node_modules
-npm-debug.log
-
-# Visual Studio
-.vs
-.vscode
-artifacts/
-.gitignore
-**/bin/
-**/obj/
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
 *.suo
 *.user
 *.userprefs
 *.sln.iml
 
-# Rider
-.idea
-*.sln.iml
+# Logs
+logs/
+*.log
 
-# misc
+# Node
+node_modules/
+npm-debug.log
+
+# OS
 .DS_Store
+.bash_history
+
+# Secrets / certs (never send to Docker daemon)
 *.pem
 *.pfx
 *.pub
+secrets.json
+
+# Misc generated
 *.cache
 *.out
-*.dll
-*.exe
-*.so
-*.dylib
-*.a
-*.o
-*.target.xml
-*.svcmap
-*.pdb
-*_i.c
-*_p.c
-*_h.c
-*.ilk
-*.log
 *.lock.json
-*.suo
-*.user
-*.userprefs
+*.pdb
+*.ilk
+_sass/
+.sass-cache/
+.nuget/
+.npm/
