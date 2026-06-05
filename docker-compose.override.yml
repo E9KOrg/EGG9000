@@ -1,0 +1,34 @@
+# docker-compose.override.yml
+# Auto-loaded by docker-compose and Visual Studio Container Orchestration.
+# Sets development environment and mounts user secrets for local development.
+# DO NOT commit secrets or real credentials here.
+
+services:
+  bot_blue:
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Development
+      BOT_ACTIVE: "true"
+      BOT_COLOR: blue
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+
+  bot_green:
+    restart: "no"
+
+  site_blue:
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "5013"
+      Docker__Host: npipe://./pipe/docker_engine
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+
+  rabbitmq:
+    environment:
+      RABBITMQ_DEFAULT_USER: e9k
+      RABBITMQ_DEFAULT_PASS: devpassword
+    ports:
+      - "5672:5672"
+      - "15672:15672"

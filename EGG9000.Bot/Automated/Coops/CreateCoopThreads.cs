@@ -223,7 +223,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 foreach(var guildStat in guildStats.Where(x => x.Value.changed)) {
                     guildStats[guildStat.Key] = (guildStat.Value.successes, guildStat.Value.failures, false);
                     //await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-op threads created ({guildStat.Value.failures} failed)", guildStat.Key);
-                    await _botLogger.UpdateBoardingGroup((int)guildStat.Key.bggroup, guildStat.Key.contractid, guildStat.Key.guildid, null, null, threadCreatedCount: guildStat.Value.successes);
+                    await _botLogger.RefreshBoardingGroup((int)guildStat.Key.bggroup, guildStat.Key.contractid, guildStat.Key.guildid);
                 }
 
             }

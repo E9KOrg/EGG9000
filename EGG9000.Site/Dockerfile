@@ -1,4 +1,4 @@
-# Multi-stage build for ASP.NET Core 9 web application
+# Multi-stage build for ASP.NET Core 10 web application
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 EXPOSE 8080
@@ -8,9 +8,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN useradd --create-home appuser && chown -R appuser:appuser /app
-USER appuser
+USER app
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release

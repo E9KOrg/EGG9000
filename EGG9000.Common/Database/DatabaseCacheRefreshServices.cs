@@ -16,4 +16,9 @@ namespace EGG9000.Common.Database {
         : PeriodicBackgroundService(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5), logger) {
         protected override Task DoWorkAsync(CancellationToken cancellationToken) => cache.RefreshActiveCoopsCache();
     }
+
+    public class CoopAssignmentLookupRefreshService(CoopAssignmentLookup lookup, ILogger<CoopAssignmentLookupRefreshService> logger)
+        : PeriodicBackgroundService(TimeSpan.FromMinutes(3), TimeSpan.Zero, logger) {
+        protected override Task DoWorkAsync(CancellationToken cancellationToken) => lookup.RefreshAsync();
+    }
 }
