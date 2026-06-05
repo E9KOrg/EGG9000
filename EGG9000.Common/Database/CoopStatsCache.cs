@@ -66,6 +66,7 @@ namespace EGG9000.Common.Database {
                 var contractIds = guildContracts.Select(g => g.ContractID).Distinct().ToList();
 
                 var coops = await db.Coops
+                    .IgnoreQueryFilters()
                     .Where(c => contractIds.Contains(c.ContractID) && c.Created > now.AddDays(-30))
                     .Select(c => new CoopRow {
                         GuildId = c.GuildId,
