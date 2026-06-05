@@ -217,6 +217,11 @@ namespace EGG9000.Common.Database {
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);
             builder.Entity<GuildContract>().HasIndex(x => x.DiscordChannelId);
+
+            // DEV test-harness coops are excluded from every Coop query by default so they can never
+            // trigger real thread/API creation or status polling. The harness opts back in where it
+            // needs to see them (stats/assignment refresh, cleanup) via IgnoreQueryFilters().
+            builder.Entity<Coop>().HasQueryFilter(c => c.CreatorID != Coop.TestSeedCreatorId);
         }
     }
 }

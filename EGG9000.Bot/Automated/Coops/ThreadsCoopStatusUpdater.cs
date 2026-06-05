@@ -545,6 +545,8 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                         userStatus.Xref.JoinedCoop = true;
+                        // Joined - drop from the "find my coop" lookup (they're in the thread now).
+                        _provider.GetService<CoopAssignmentLookup>()?.Remove(userStatus.Xref.UserId, coop.ContractID);
                         var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                         if(unjoinedRole != null) {
                             await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
