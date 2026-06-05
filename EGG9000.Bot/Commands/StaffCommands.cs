@@ -401,7 +401,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            if(!(service as IUpdaterService).Running()) {
+            if(!(service as IUpdaterService).Running() && !(service as IUpdaterService).Active()) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"The service {serviceName} is already stopped."); });
                 return;
             }
