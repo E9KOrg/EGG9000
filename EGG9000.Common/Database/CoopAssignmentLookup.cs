@@ -60,6 +60,7 @@ namespace EGG9000.Common.Database {
                 await using var db = await _dbContextFactory.CreateDbContextAsync();
 
                 var rows = await db.UserCoopXrefs
+                    .IgnoreQueryFilters()
                     .Where(x => !x.JoinedCoop
                              && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
                              && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired)

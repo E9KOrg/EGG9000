@@ -202,7 +202,7 @@ namespace EGG9000.Bot.Commands.Informational {
             var links = set.Select(a => {
                 var artifactLink = $"[{a.Artifact}]({AfxExplorerLink.Url(a, false)})";
                 // Collapse duplicate stones into "Name x N".
-                var stoneLinks = string.Concat((a.Stones ?? new())
+                var stoneLinks = string.Concat((a.Stones ?? [])
                     .GroupBy(s => (s.Id, s.Tier))
                     .Select(g => {
                         var s = g.First();
