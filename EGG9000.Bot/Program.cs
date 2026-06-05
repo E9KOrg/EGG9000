@@ -148,6 +148,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddSingleton<CoopAssignmentLookup>();
         services.AddHostedService<CoopAssignmentLookupRefreshService>();
         services.AddSingleton<Words>();
+        services.AddSingleton<BotLogger>();
 
 #if RELEASE
         var release = true;
@@ -185,8 +186,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
                 options.ReleaseStage = "production";
             });
-
-            services.AddSingleton<BotLogger>();
 
             var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
