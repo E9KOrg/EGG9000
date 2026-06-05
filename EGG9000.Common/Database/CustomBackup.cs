@@ -83,8 +83,8 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
-        [Key(27)]
-        public PlayerGrade Grade { get; set; }
+        //[Key(27)]
+        //public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
@@ -244,8 +244,8 @@ namespace EGG9000.Common.Database {
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
-            Grade = backup.Contracts.LastCpi?.Grade ?? PlayerGrade.GradeUnset;
-            GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
+            //Grade = backup.Contracts.LastCpi?.Grade ?? PlayerGrade.GradeUnset;
+            //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
             TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;
