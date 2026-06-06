@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Reflection;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(UserId), nameof(JoinedCoop))]
@@ -95,12 +94,9 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public List<SleepTracking> SleepTracking {
             get {
-                if(_sleepTracking != null)
-                    return _sleepTracking;
-                if(_sleepTrackingByte == null) {
-                    _sleepTracking = new List<SleepTracking>();
-                    return _sleepTracking;
-                }
+                if(_sleepTracking != null) return _sleepTracking;
+                if(_sleepTrackingByte == null) return _sleepTracking = [];
+
                 var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
                 _sleepTracking = MessagePackSerializer.Deserialize<List<SleepTracking>>(_sleepTrackingByte, lz4Options);
                 return _sleepTracking;
@@ -185,7 +181,7 @@ namespace EGG9000.Common.Database.Entities {
     }
 
     [MessagePackObject]
-    public class CoopSetting {
+    public class CoopSetting() {
         [Key(0)]
         public bool PingOnFull { get; set; }
         [Key(1)]
@@ -205,25 +201,12 @@ namespace EGG9000.Common.Database.Entities {
 
         [IgnoreMember]
         public bool this[string propertyName] {
-            get {
-                Type myType = typeof(CoopSetting);
-                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
-                return (bool)myPropInfo.GetValue(this);
-            }
-            set {
-                Type myType = typeof(CoopSetting);
-                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
-                myPropInfo.SetValue(this, value);
-            }
+            get => (bool)typeof(CoopSetting).GetProperty(propertyName).GetValue(this);
+            set => typeof(CoopSetting).GetProperty(propertyName).SetValue(this, value);
         }
 
-        public CoopSetting() {
-
-        }
-
-        public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) {
-            if(user.CoopSetting is null)
-                user.CoopSetting = new CoopSetting();
+        public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) : this() {
+            user.CoopSetting ??= new CoopSetting();
 
             PingOnFull = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFull) || user.CoopSetting.PingOnFull || xref.PingOnFull;
             PingOnHighestEB = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnHighestEB) || user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
@@ -234,8 +217,7 @@ namespace EGG9000.Common.Database.Entities {
             PingOnTachyonChange = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnTachyonChange) || user.CoopSetting.PingOnTachyonChange;
             PingOnCompleteOnCheckIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCompleteOnCheckIn) || user.CoopSetting.PingOnCompleteOnCheckIn;
 
-            var disableOverrides = Enum.GetValues(typeof(GuildCoopSetting))
-                .Cast<GuildCoopSetting>()
+            var disableOverrides = Enum.GetValues<GuildCoopSetting>()
                 .ToDictionary(setting => setting, userGuild.IsLockedAndDisabled);
 
             if(disableOverrides[GuildCoopSetting.PingOnFull]) PingOnFull = false;

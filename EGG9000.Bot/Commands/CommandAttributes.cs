@@ -1,14 +1,11 @@
 ﻿using Discord.WebSocket;
-
 using EGG9000.Common.Database.Entities;
-
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace EGG9000.Common.Commands {
-
+namespace EGG9000.Bot.Commands {
     public enum StaffOnlyLevel {
         None = 0,
         ChickenTender = 1,
@@ -18,26 +15,26 @@ namespace EGG9000.Common.Commands {
     };
 
     [AttributeUsage(AttributeTargets.Method)]
-    public class UserCommandAttribute : System.Attribute {
+    public class UserCommandAttribute : Attribute {
         public string Name = "";
         public StaffOnlyLevel AdminOnly;
     }
     [AttributeUsage(AttributeTargets.Method)]
-    public class SlashCommandAttribute : System.Attribute {
+    public class SlashCommandAttribute : Attribute {
         public string Description = "";
         public StaffOnlyLevel AdminOnly = StaffOnlyLevel.None;
         public string ParentCommand { get; set; } = "";
         public bool AllowInDMs;
     }
     [AttributeUsage(AttributeTargets.Method)]
-    public class ComponentCommandAttribute : System.Attribute {
+    public class ComponentCommandAttribute : Attribute {
     }
     [AttributeUsage(AttributeTargets.Method)]
-    public class ModalAttribute : System.Attribute {
+    public class ModalAttribute : Attribute {
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
-    public class SlashParamAttribute : System.Attribute {
+    public class SlashParamAttribute : Attribute {
         public string Description = "";
         public bool Required = true;
         public Type AutocompleteHandler;
@@ -46,7 +43,7 @@ namespace EGG9000.Common.Commands {
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
-    public class ComponentDataAttribute : System.Attribute {
+    public class ComponentDataAttribute : Attribute {
     }
 
     public class SlashCommandFunction : CommandFunctionBase {
@@ -63,19 +60,13 @@ namespace EGG9000.Common.Commands {
         public ModalAttribute Details { get; set; }
     }
 
-
     public class CommandFunctionBase {
         public MethodInfo MethodInfo { get; set; }
         public ParameterInfo[] Parameters { get; set; }
         public string Name { get; set; }
     }
 
-
-    public class ButtonObject {
-
-    }
-
     public interface IAutoCompleteHandler {
-        public Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds);
+        Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds);
     }
 }

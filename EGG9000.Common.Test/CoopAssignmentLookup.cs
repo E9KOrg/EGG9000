@@ -17,8 +17,8 @@ namespace EGG9000.Common.Test {
         [TestMethod]
         public void Build_GroupsMultipleCoopsUnderOneUserContractKey() {
             var rows = new List<CoopAssignmentRow> {
-                new(UserA, Coop1, "c1", 100, 0, "alpha"),
-                new(UserA, Coop2, "c1", 200, 0, "beta"),
+                new(UserA, Coop1, "c1", 100, "alpha"),
+                new(UserA, Coop2, "c1", 200, "beta"),
             };
 
             var map = CoopAssignmentLookup.Build(rows);
@@ -30,8 +30,8 @@ namespace EGG9000.Common.Test {
         [TestMethod]
         public void Build_DeduplicatesSameCoopId() {
             var rows = new List<CoopAssignmentRow> {
-                new(UserA, Coop1, "c1", 100, 0, "alpha"),
-                new(UserA, Coop1, "c1", 100, 0, "alpha"),
+                new(UserA, Coop1, "c1", 100, "alpha"),
+                new(UserA, Coop1, "c1", 100, "alpha"),
             };
 
             var map = CoopAssignmentLookup.Build(rows);
@@ -42,9 +42,9 @@ namespace EGG9000.Common.Test {
         [TestMethod]
         public void Build_SeparatesByUserAndContract() {
             var rows = new List<CoopAssignmentRow> {
-                new(UserA, Coop1, "c1", 100, 0, "alpha"),
-                new(UserB, Coop1, "c1", 100, 0, "alpha"),
-                new(UserA, Coop2, "c2", 200, 0, "beta"),
+                new(UserA, Coop1, "c1", 100, "alpha"),
+                new(UserB, Coop1, "c1", 100, "alpha"),
+                new(UserA, Coop2, "c2", 200, "beta"),
             };
 
             var map = CoopAssignmentLookup.Build(rows);
@@ -57,13 +57,12 @@ namespace EGG9000.Common.Test {
 
         [TestMethod]
         public void Build_PreservesCoopFields() {
-            var rows = new List<CoopAssignmentRow> { new(UserA, Coop1, "c1", 555, 777, "gamma") };
+            var rows = new List<CoopAssignmentRow> { new(UserA, Coop1, "c1", 555, "gamma") };
 
             var coop = CoopAssignmentLookup.Build(rows)[(UserA, "c1")].Single();
 
             Assert.AreEqual(Coop1, coop.CoopId);
             Assert.AreEqual(555ul, coop.ThreadId);
-            Assert.AreEqual(777ul, coop.DiscordChannelId);
             Assert.AreEqual("gamma", coop.Name);
             Assert.AreEqual("c1", coop.ContractId);
         }

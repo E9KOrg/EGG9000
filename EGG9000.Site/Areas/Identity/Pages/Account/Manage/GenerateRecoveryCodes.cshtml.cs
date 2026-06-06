@@ -3,22 +3,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public class GenerateRecoveryCodesModel : PageModel
+    public class GenerateRecoveryCodesModel(
+        UserManager<IdentityUser> userManager,
+        ILogger<GenerateRecoveryCodesModel> logger) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<GenerateRecoveryCodesModel> _logger;
-
-        public GenerateRecoveryCodesModel(
-            UserManager<IdentityUser> userManager,
-            ILogger<GenerateRecoveryCodesModel> logger)
-        {
-            _userManager = userManager;
-            _logger = logger;
-        }
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly ILogger<GenerateRecoveryCodesModel> _logger = logger;
 
         [TempData]
         public string[] RecoveryCodes { get; set; }
@@ -60,7 +53,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             }
 
             var recoveryCodes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-            RecoveryCodes = recoveryCodes.ToArray();
+            RecoveryCodes = [.. recoveryCodes];
 
             _logger.LogInformation("User with ID '{UserId}' has generated new 2FA recovery codes.", userId);
             StatusMessage = "You have generated new recovery codes.";

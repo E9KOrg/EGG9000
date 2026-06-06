@@ -1,6 +1,5 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.JsonData.EiAfxConfig;
 using Ei;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
@@ -21,9 +20,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Ei.MissionInfo.Types;
-using System.Text.Json;
 using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
+using EGG9000.Common.JsonData;
 
 namespace EGG9000.Common.Helpers {
 
@@ -72,7 +70,7 @@ namespace EGG9000.Common.Helpers {
 
         public static uint GetCraftingLevel(double CraftingXP) {
             uint currentLevel = 1;
-            var xpThresholds = Root.Get().craftingLevelXpThresholds;
+            var xpThresholds = EIAfxConfigRoot.Get().craftingLevelXpThresholds;
             for(var i = xpThresholds.Count - 1; i >= 0; i--) {
                 if(CraftingXP >= xpThresholds[i]) {
                     currentLevel = (uint)i + 1;
@@ -100,7 +98,7 @@ namespace EGG9000.Common.Helpers {
 
                 _logger.LogInformation("Menno Ship Coefficients were refreshed at {refreshTime}, and will be invalidated again at {invalidationTime}", DateTimeOffset.Now.Humanize(), DateTimeOffset.Now.AddHours(6).Humanize());
 
-                return shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
+                return [.. shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
                     .SelectMany(shipGrouping => shipGrouping.GroupBy(sg => sg.Ship)
                         .Select(durationGrouping => (
                             ship: durationGrouping.First().Ship,
@@ -111,7 +109,7 @@ namespace EGG9000.Common.Helpers {
                                 .ToList()
                         )
                     )
-                ).ToList();
+                )];
             } catch(HttpRequestException ex) {
                 _logger.LogError("Failed to load Menno Ship Coefficients from API: {exception}", ex);
                 return null;
@@ -360,7 +358,7 @@ namespace EGG9000.Common.Helpers {
                 AF = a, Skip = false
             }).ToList();
             var rarityGroupedAfs = orderedList.GroupBy(a => a.AF.Artifact.Rarity).ToList();
-            orderedList = new List<InventoryArtifactCount>();
+            orderedList = [];
             foreach(var rarityGrouping in rarityGroupedAfs) {
                 orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.AF.Artifact.Artifact.Replace(" Fragment", "")) + (g.AF.Artifact.Artifact.Contains("Fragment") ? -0.05 : 0) + 0.05 * g.AF.Artifact.Tier + 0.01 * g.AF.Artifact.Stones.Count).ToList());
             }
@@ -369,7 +367,7 @@ namespace EGG9000.Common.Helpers {
                 foreach(var other in others) other.Skip = true;
                 acount.AF.Count += others.Count;
             }
-            return orderedList.Where(a => !a.Skip).Select(a => a.AF).ToList();
+            return [.. orderedList.Where(a => !a.Skip).Select(a => a.AF)];
         }
 
         public class InventoryCreatorConfig : IRenderConfig {

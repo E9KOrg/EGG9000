@@ -1,7 +1,6 @@
-﻿using EGG9000.Bot;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.JsonData.EiStatics;
+using EGG9000.Common.JsonData;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -45,7 +44,7 @@ namespace EGG9000.Common.Helpers {
                         emoji = customEgg is not null ? customEgg.Emoji : "<:Edible_Egg:712424206276755516>"
                     };
                 } else {
-                    return Root.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
+                    return EIStaticsRoot.Get().eggIncEggs.FirstOrDefault(x => x.id == id);
                 }
             } catch(Exception) {
                 return null;
@@ -62,7 +61,7 @@ namespace EGG9000.Common.Helpers {
 
         public static EggIncBoost FromId(string id) {
             try {
-                return Root.Get().eggIncBoosts.FirstOrDefault(x => x.id == id);
+                return EIStaticsRoot.Get().eggIncBoosts.FirstOrDefault(x => x.id == id);
             } catch(Exception) {
                 return null;
             }
@@ -78,7 +77,7 @@ namespace EGG9000.Common.Helpers {
                 case Ei.RewardType.Gold:
                     return $"<:Egg_Golden:692439755798872075>  {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.EpicResearchItem:
-                    var researchItem = (JsonData.EIEpicResearch.EiEpicResearch.Get().epicResearchItems.AsQueryable().FirstOrDefault(x => x.id == goal.RewardSubType.ToLower()));
+                    var researchItem = (EIEpicResearch.Get().epicResearchItems.AsQueryable().FirstOrDefault(x => x.id == goal.RewardSubType.ToLower()));
                     var goldenEggRefund = (int)(researchItem?.Costs?.Last() * goal?.RewardAmount);
                     var goldenEggRefundString = $" (<:Golden_Egg_GE:692439755798872075> {(goldenEggRefund >= 1000 ? (goldenEggRefund / 1000).ToString() + 'K' : goldenEggRefund)})";
                     return $"{researchItem?.title ?? ToStartCase(goal.RewardSubType)} +{goal.RewardAmount}{(goldenEggRefund == default ? "" : goldenEggRefundString)}";

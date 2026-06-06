@@ -1,12 +1,10 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,7 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordExtensions;
 using Contract = EGG9000.Common.Database.Entities.Contract;
@@ -71,24 +69,22 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 // If any eggs had their modifiers or icons changed
-                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !ce.Equals(e)));
-                if(updatedCustomEggs.Any()) {
-                    foreach(var updatedEgg in updatedCustomEggs) {
-                        var existingEgg = _db.CustomEggs.FirstOrDefault(dbe => dbe.Identifier == updatedEgg.Identifier);
-                        if(existingEgg is null) continue;
-                        var emote = existingEgg.GuildEmote;
-                        if(existingEgg.Icon.URL != updatedEgg.Icon.Url) {
-                            emote = await _client.CreateCustomEggEmoji(updatedEgg, emote);
-                            if(emote != null) existingEgg.GuildEmote = emote;
-                        }
-                        existingEgg.Modifiers = updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
-                        existingEgg.Icon = new(updatedEgg.Icon);
-                        dbNeedsUpdate = true;
+                var updatedEggs = customEggs
+                    .Select(ce => (incoming: ce, existing: dbCustomEggs.FirstOrDefault(e => e.Identifier.Equals(ce.Identifier))))
+                    .Where(p => p.existing != null && !p.incoming.Equals(p.existing));
+
+                foreach(var (incoming, existing) in updatedEggs) {
+                    if(existing.Icon.URL != incoming.Icon.Url) {
+                        var emote = await _client.CreateCustomEggEmoji(incoming, existing.GuildEmote);
+                        if(emote != null) existing.GuildEmote = emote;
                     }
+                    existing.Modifiers = [.. incoming.Buffs.Select(b => new DBCustomEggModifier(b))];
+                    existing.Icon = new(incoming.Icon);
+                    dbNeedsUpdate = true;
                 }
 
                 // If any eggs were previously "un-released" (didn't have a GuildContract in the db)
-                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.ToLower() == "customegg").ToListAsync(cancellationToken))
+                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.Equals("customegg", StringComparison.CurrentCultureIgnoreCase)).ToListAsync(cancellationToken))
                     .Select(x => x.Details.CustomEggId.ToLower()).Distinct();
                 var newlyReleasedEggs = dbCustomEggs.Where(de => !de.Released && dbContractEggs.Contains(de.Identifier.ToLower()));
                 if(newlyReleasedEggs.Any()) {
@@ -106,13 +102,13 @@ namespace EGG9000.Bot.Automated {
 
                 CheckUpdateInterval(existingContracts);
 
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
+
                 foreach(var contractResponse in contracts) {
                     if(contractResponse.GradeSpecs.Any(x => x.Goals.All(y => y.TargetAmount == 0))) {
                         continue;
                     }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
-                    var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
-
 
                     var json = JsonConvert.SerializeObject(contractResponse);
 

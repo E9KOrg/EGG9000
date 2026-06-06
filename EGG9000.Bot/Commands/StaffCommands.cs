@@ -1,19 +1,14 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Services;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Humanizer;
 using MassTransit;
-using MassTransit.SagaStateMachine;
-
-using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,9 +21,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordHostedService;
 
@@ -111,11 +106,6 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await db.GetCustomEggsAsync()).Count}");
         }
 
-        private class RemoveCleanUser {
-            public EggIncAccount Account { get; set; }
-            public DBUser User { get; set; }
-        }
-
         [SlashCommand(Description = "Remove all 'Clean' markings from all accounts of users in this guild", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task GuildClearClean(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Remove 'Warning Sent' flags - bot will re-send detection messages")] bool removewarningsent, [SlashParam(Required = false, Description = "Clear this marking, if not provided, clear all")] MarkDirtyOption cleantype) {
             await command.DeferAsync();
@@ -130,7 +120,7 @@ namespace EGG9000.Bot.Commands {
             var updatedCount = 0;
             switch(cleantype) {
                 case MarkDirtyOption.Artifacts:
-                    accounts = accounts.Where(a => a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent)).ToList();
+                    accounts = [.. accounts.Where(a => a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent))];
                     foreach(var account in accounts) {
                         account.AFSWarningSent = false;
                         account.AFSMarkedClean = false;
@@ -138,7 +128,7 @@ namespace EGG9000.Bot.Commands {
                     }
                     break;
                 case MarkDirtyOption.CraftingXP:
-                    accounts = accounts.Where(a => a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent)).ToList();
+                    accounts = [.. accounts.Where(a => a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent))];
                     foreach(var account in accounts) {
                         account.CraftingWarningSent = false;
                         account.CraftingMarkedClean = false;
@@ -146,7 +136,7 @@ namespace EGG9000.Bot.Commands {
                     }
                     break;
                 case MarkDirtyOption.MER:
-                    accounts = accounts.Where(a => a.MERMarkedClean || (removewarningsent && a.MERWarningSent)).ToList();
+                    accounts = [.. accounts.Where(a => a.MERMarkedClean || (removewarningsent && a.MERWarningSent))];
                     foreach(var account in accounts) {
                         account.MERWarningSent = false;
                         account.MERMarkedClean = false;
@@ -154,19 +144,19 @@ namespace EGG9000.Bot.Commands {
                     }
                     break;
                 case MarkDirtyOption.TimeCheats:
-                    accounts = accounts.Where(a => a.TimeCheatsMarkedClean).ToList();
+                    accounts = [.. accounts.Where(a => a.TimeCheatsMarkedClean)];
                     foreach(var account in accounts) {
                         account.TimeCheatsMarkedClean = false;
                         updatedCount++;
                     }
                     break;
                 case MarkDirtyOption.All:
-                    accounts = accounts.Where(a =>
+                    accounts = [.. accounts.Where(a =>
                         a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent) ||
                         a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent) ||
                         a.MERMarkedClean || (removewarningsent && a.MERWarningSent) ||
                         a.TimeCheatsMarkedClean
-                    ).ToList();
+                    )];
                     foreach(var account in accounts) {
                         account.AFSWarningSent = false;
                         account.AFSMarkedClean = false;
@@ -241,7 +231,7 @@ namespace EGG9000.Bot.Commands {
                         && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
                     )
                     .OrderBy(u => new Random().Next()).ToList();
-                if(numberOfUsers != 0) randomUsers = randomUsers.Take(numberOfUsers).ToList();
+                if(numberOfUsers != 0) randomUsers = [.. randomUsers.Take(numberOfUsers)];
 
                 var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have this filter of role(s)_\n";
 
@@ -301,6 +291,11 @@ namespace EGG9000.Bot.Commands {
             var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
             var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
             var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
+            // Preload logs newer than the oldest per-type completion in one query; the per-type `StartTime > log.EndTime` filter is applied in-memory below.
+            var oldestCompletion = lastComplete.Min(x => x.EndTime);
+            var recentLogsByType = (await db.AutomationLogs.Where(x => x.StartTime > oldestCompletion).ToListAsync())
+                .GroupBy(x => x.Type)
+                .ToDictionary(g => g.Key, g => g.ToList());
             var table = new List<List<FixedWidthCell>> {new() {
                 new("Name"),
                 new("Avg"),
@@ -309,7 +304,9 @@ namespace EGG9000.Bot.Commands {
                 new("Status")
             }};
             foreach(var log in lastComplete.OrderBy(x => x.Type)) {
-                var incompletes = await db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
+                var incompletes = recentLogsByType.TryGetValue(log.Type, out var typeLogs)
+                    ? typeLogs.Where(x => x.StartTime > log.EndTime).ToList()
+                    : [];
                 var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
                 if(service == null || service is not IUpdaterService castedService) continue;
 
@@ -371,8 +368,8 @@ namespace EGG9000.Bot.Commands {
 
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to restart {serviceName}"); });
             try {
-                await service.StopAsync(new System.Threading.CancellationToken());
-                await service.StartAsync(new System.Threading.CancellationToken());
+                await service.StopAsync(new CancellationToken());
+                await service.StartAsync(new CancellationToken());
             } catch(Exception e) {
                 await command.RespondAsync(content: "", embed: EmbedExceptionFrame(e));
             }
@@ -407,7 +404,7 @@ namespace EGG9000.Bot.Commands {
             }
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to stop {serviceName}"); });
             try {
-                await service.StopAsync(new System.Threading.CancellationToken());
+                await service.StopAsync(new CancellationToken());
             } catch(Exception e) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(e); });
             }
@@ -474,7 +471,7 @@ namespace EGG9000.Bot.Commands {
             }
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress($"Attempting to start {serviceName}"); });
             try {
-                await service.StartAsync(new System.Threading.CancellationToken());
+                await service.StartAsync(new CancellationToken());
             } catch(Exception e) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(e); });
             }
@@ -483,7 +480,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Ping everyone in a co-op with a message", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task PingEveryoneInCoop(FauxCommand command, [SlashParam] string message, ApplicationDbContext db) {
-            var coop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == command.ChannelId);
+            var coop = await db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().FirstOrDefaultAsync(x => x.ThreadID == command.ChannelId);
             if(coop == null) {
                 await command.RespondAsync($"Error finding co-op for this thread", ephemeral: true);
                 return;
@@ -500,7 +497,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task FixJoinIssue(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount, ApplicationDbContext db) {
             await command.DeferAsync(ephemeral: true);
 
-            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var coop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(coop == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
                 return;
@@ -854,7 +851,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task CoopStats(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();
-            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now).ToListAsync();
+            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && x.CoopEnds > DateTimeOffset.Now).ToListAsync();
             var stats = new StringBuilder();
             stats.AppendLine($"**Coop Threads Last Updated**");
             var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.Now - x.LastUpdateToChannel.Value).TotalHours));

@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace EGG9000.Common.Extensions {
     public static class IEnumerableExtentions {
         //https://stackoverflow.com/a/1287572
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random rng) {
-            T[] elements = source.ToArray();
+            T[] elements = [.. source];
             for(int i = elements.Length - 1; i >= 0; i--) {
                 // Swap element "i" with a random earlier element it (or itself)
                 // ... except we don't really need to swap it fully, as we can

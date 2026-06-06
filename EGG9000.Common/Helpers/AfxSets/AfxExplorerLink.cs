@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using EGG9000.Common.Helpers;
 
 namespace EGG9000.Common.Helpers.AfxSets {
     public static class AfxExplorerLink {

@@ -1,5 +1,3 @@
-using EGG9000.Common.Database.Entities;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -10,9 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
-    public sealed record AssignedCoop(Guid CoopId, ulong ThreadId, ulong DiscordChannelId, string Name, string ContractId);
+    public sealed record AssignedCoop(Guid CoopId, ulong ThreadId, string Name, string ContractId);
 
-    public readonly record struct CoopAssignmentRow(Guid UserId, Guid CoopId, string ContractId, ulong ThreadId, ulong DiscordChannelId, string Name);
+    public readonly record struct CoopAssignmentRow(Guid UserId, Guid CoopId, string ContractId, ulong ThreadId, string Name);
 
     /// <summary>
     /// Fast user -> assigned-but-not-yet-joined coop lookup, so the "Find my Coop" button
@@ -21,15 +19,9 @@ namespace EGG9000.Common.Database {
     /// A miss is not authoritative - the caller should fall back to a DB query - so a missed
     /// prune only costs one extra query, never a wrong answer.
     /// </summary>
-    public class CoopAssignmentLookup {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<CoopAssignmentLookup> _logger;
-
-        public CoopAssignmentLookup(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<CoopAssignmentLookup> logger) {
-            _dbContextFactory = dbContextFactory;
-            _logger = logger;
-        }
-
+    public class CoopAssignmentLookup(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<CoopAssignmentLookup> logger) {
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory = dbContextFactory;
+        private readonly ILogger<CoopAssignmentLookup> _logger = logger;
         private volatile ConcurrentDictionary<(Guid UserId, string ContractId), List<AssignedCoop>> _map = new();
 
         public DateTimeOffset? LastRefresh { get; private set; }
@@ -45,11 +37,10 @@ namespace EGG9000.Common.Database {
         public static ConcurrentDictionary<(Guid UserId, string ContractId), List<AssignedCoop>> Build(IEnumerable<CoopAssignmentRow> rows) {
             var map = new ConcurrentDictionary<(Guid, string), List<AssignedCoop>>();
             foreach(var group in rows.GroupBy(r => (r.UserId, r.ContractId))) {
-                map[group.Key] = group
+                map[group.Key] = [.. group
                     .GroupBy(r => r.CoopId)
                     .Select(c => c.First())
-                    .Select(c => new AssignedCoop(c.CoopId, c.ThreadId, c.DiscordChannelId, c.Name, c.ContractId))
-                    .ToList();
+                    .Select(c => new AssignedCoop(c.CoopId, c.ThreadId, c.Name, c.ContractId))];
             }
             return map;
         }
@@ -64,7 +55,7 @@ namespace EGG9000.Common.Database {
                     .Where(x => !x.JoinedCoop
                              && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
                              && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired)
-                    .Select(x => new CoopAssignmentRow(x.UserId, x.Coop.Id, x.Coop.ContractID, x.Coop.ThreadID, x.Coop.DiscordChannelId, x.Coop.Name))
+                    .Select(x => new CoopAssignmentRow(x.UserId, x.Coop.Id, x.Coop.ContractID, x.Coop.ThreadID, x.Coop.Name))
                     .ToListAsync();
 
                 _map = Build(rows);

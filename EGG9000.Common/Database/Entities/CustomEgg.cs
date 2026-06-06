@@ -21,7 +21,7 @@ namespace EGG9000.Common.Database.Entities {
             Description = customEgg.Description;
             Value = customEgg.Value;
             Icon = new(customEgg.Icon);
-            Modifiers = customEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
+            Modifiers = [.. customEgg.Buffs.Select(b => new DBCustomEggModifier(b))];
             GuildEmote = emoji;
             Released = false;
         }

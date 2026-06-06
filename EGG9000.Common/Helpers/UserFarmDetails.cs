@@ -1,5 +1,4 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using System;
@@ -88,15 +87,9 @@ namespace EGG9000.Common.Helpers {
         }
 
         public void AddXref(UserCoopXref xref) {
-            if(this.Xref is not null)
+            if(Xref is not null)
                 throw new Exception("UserCoopXref already exists, unable to change it");
-            this.Xref = xref;
-        }
-
-        public TimeSpan FarmExpires {
-            get {
-                return DateTimeOffset.Now - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long?)ArchivedFarm?.TimeAccepted ?? DateTimeOffset.Now.ToUnixTimeSeconds());
-            }
+            Xref = xref;
         }
 
         public bool Elite {

@@ -1,24 +1,19 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
-
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public class ChasingCommand {
         [SlashCommand(Description = "Show you players ahead and behind you.", AllowInDMs = true)]
         public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord) {
@@ -84,10 +79,11 @@ namespace EGG9000.Bot.Commands {
                 DBUser = x
             }).ToListAsync();
             
+            var socketGuild = discord.GetGuild(guildId);
             var accounts = rawUsers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new Prefarm.LeaderboardUser {
                 User = x.DBUser,
                 Backup = y.Backup,
-                DiscordUser = discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
+                DiscordUser = socketGuild?.GetUser(x.DiscordId),
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0

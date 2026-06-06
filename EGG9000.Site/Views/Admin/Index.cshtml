@@ -131,6 +131,10 @@
 	}
 </div>
 <div>
+	<div class="btn-group" role="group" style="margin-top: 20px;" id="scopeToggle">
+		<button type="button" class="btn btn-outline-primary active" data-scope="global">Global</button>
+		<button type="button" class="btn btn-outline-primary" data-scope="server">@Model.Guild.Name</button>
+	</div>
 	<div id="chart"></div>
 
 </div>
@@ -145,14 +149,20 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 @section Scripts {
 <script>
+	var SERVER_NAME = @Json.Serialize(Model.Guild.Name);
+	var COOPS_GLOBAL = "Co-ops (Global)";
+	var COOPS_SERVER = "Co-ops (" + SERVER_NAME + ")";
+	var USERS_GLOBAL = "Active Users (Global)";
+	var USERS_SERVER = "Active Users (" + SERVER_NAME + ")";
+
 	$.ajax({
         url: "/admin/getgraphs",
         success: function (data) {
-            CreateChart(data.days, data.days2);
+            CreateChart(data);
         }
     });
 
-	function CreateChart(days, days2) {
+	function CreateChart(data) {
 		var options = {
 			chart: {
 				type: 'area',
@@ -165,16 +175,24 @@
 				enabled: false
 			},
 			series: [{
-				name: "Number of Co-ops",
-				data: days// @Html.Raw(JsonConvert.SerializeObject(days))
+				name: COOPS_GLOBAL,
+				data: data.days
 				}, {
-				name: "Number of Active Users",
-				data: days2//@Html.Raw(JsonConvert.SerializeObject(days2))
+				name: COOPS_SERVER,
+				data: data.guildDays
+				}, {
+				name: USERS_GLOBAL,
+				data: data.days2
+				}, {
+				name: USERS_SERVER,
+				data: data.guildDays2
 				}],
 			yaxis: [{
+				seriesName: [COOPS_GLOBAL, COOPS_SERVER],
 				opposite: true,
 				title: { text: "Number of Co-ops" }
 			}, {
+				seriesName: [USERS_GLOBAL, USERS_SERVER],
 				title: { text: "Number of Active Users" }
 			}],
 			xaxis: {
@@ -185,9 +203,6 @@
 					format: 'dd MMM yyyy'
 				}
 			},
-			dataLabels: {
-				enabled: false
-			},
 			stroke: {
 				width: 2
 			}
@@ -195,7 +210,40 @@
 
 		var chart = new ApexCharts(document.querySelector("#chart"), options);
 
-		chart.render();
+		chart.render().then(function () {
+			applyScope(chart, currentScope());
+		});
+
+		document.querySelectorAll('#scopeToggle button[data-scope]').forEach(function (el) {
+			el.addEventListener('click', function () {
+				document.querySelectorAll('#scopeToggle button[data-scope]').forEach(function (b) {
+					b.classList.remove('active');
+				});
+				el.classList.add('active');
+				applyScope(chart, currentScope());
+			});
+		});
+	}
+
+	function applyScope(chart, scope) {
+		var showServer = scope === "server";
+		toggleSeries(chart, COOPS_GLOBAL, !showServer);
+		toggleSeries(chart, USERS_GLOBAL, !showServer);
+		toggleSeries(chart, COOPS_SERVER, showServer);
+		toggleSeries(chart, USERS_SERVER, showServer);
+	}
+
+	function currentScope() {
+		var active = document.querySelector('#scopeToggle button[data-scope].active');
+		return active ? active.getAttribute('data-scope') : "global";
+	}
+
+	function toggleSeries(chart, name, show) {
+		if (show) {
+			chart.showSeries(name);
+		} else {
+			chart.hideSeries(name);
+		}
 	}
 </script>
 

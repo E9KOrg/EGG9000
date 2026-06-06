@@ -1,10 +1,8 @@
 ﻿using Discord.WebSocket;
-
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 
 using Humanizer;
@@ -13,8 +11,6 @@ using Microsoft.EntityFrameworkCore;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -144,7 +140,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             await command.DeferAsync();
             List<UserCoopXref> xref;
-            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == command.Channel.Id);
 
             if(targetCoop == null) {
                 await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("This command can only be used in a co-op channel"));

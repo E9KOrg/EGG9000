@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 
 namespace EGG9000.Common.Helpers.AfxSets {
     // Sizing + layout config shared between the bot (sender) and site (renderer).
@@ -55,7 +54,7 @@ namespace EGG9000.Common.Helpers.AfxSets {
     }
 
     public class AfxSetsB64Response {
-        public List<string> Pages { get; set; } = new();
+        public List<string> Pages { get; set; } = [];
     }
 
     public static class AfxSetsRender {

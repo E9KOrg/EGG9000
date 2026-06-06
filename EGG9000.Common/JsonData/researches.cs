@@ -1,8 +1,6 @@
 ﻿using CsvHelper;
-
-using EGG9000.Bot;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers;
 using Newtonsoft.Json;
 
 using System;
@@ -11,21 +9,14 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.JsonData {
 
     public class EiResearch {
         private static List<EiResearchItem> _Instance { get; set; }
 
-
-
         public static List<EiResearchItem> GetData() {
-            if(_Instance != null) {
-                return _Instance;
-            }
+            if(_Instance != null) return _Instance;
 
             var assembly = Assembly.GetExecutingAssembly();
 
@@ -69,7 +60,7 @@ namespace EGG9000.Common.JsonData {
                         if(int.TryParse(record.Tier, out int tier)) {
                             var researchItem = _Instance.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
                             if(researchItem != null) {
-                                if(researchItem.EoVPrices == null) researchItem.EoVPrices = new List<double>();
+                                if(researchItem.EoVPrices == null) researchItem.EoVPrices = [];
                                 // Ensure the list is large enough
                                 while(researchItem.EoVPrices.Count < int.Parse(record.Level)) {
                                     researchItem.EoVPrices.Add(0);
@@ -135,7 +126,7 @@ namespace EGG9000.Common.JsonData {
 
         [JsonProperty("prices")]
         public List<double> Prices { get; set; }
-        [Newtonsoft.Json.JsonIgnore]
+        [JsonIgnore]
         public List<double> EoVPrices { get; set; }
 
     }

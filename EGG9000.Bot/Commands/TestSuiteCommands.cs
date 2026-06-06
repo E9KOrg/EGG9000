@@ -3,7 +3,6 @@ using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -17,7 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {

@@ -1,7 +1,5 @@
 ﻿using Cronos;
 
-using Discord;
-
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -280,9 +278,8 @@ namespace EGG9000.Bot.Automated {
                 var lastAlive = DateTimeOffset.Now - _this._lastAlive;
                 _this._logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - _this.LastStarted).Humanize(), _this._lastAlive.Humanize());
                 if(lastAlive > TimeSpan.FromMinutes(5) && (_this._lastMessageSent == null || (DateTime.Now - _this._lastMessageSent).Value.TotalHours > 1)) {
-                    await _this._client.SendDMToKendrome($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted.ToShortTimeString()}, last completed {_this.LastCompleted.ToShortTimeString()}, last alive {_this._lastAlive.DateTime.ToShortTimeString()}.");
+                    await _this._client.SendDMToKendrome($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted:t}, last completed {_this.LastCompleted:t}, last alive {_this._lastAlive.DateTime:t}.");
                     _this._lastMessageSent = DateTime.Now;
-
                 }
             }
 

@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Contracts {
-    public static class PlayerGradeDetails {
+    public static partial class PlayerGradeDetails {
         public static string GetEmoji(uint league) {
             return GetEmoji((Ei.Contract.Types.PlayerGrade)league);
         }
@@ -27,29 +27,22 @@ namespace EGG9000.Common.Contracts {
             };
         }
 
-        public static string GetImage(uint league) {
-            return GetImage((Ei.Contract.Types.PlayerGrade)league);
-        }
-        public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
-            var emoji = GetEmoji(grade);
-            var rgx = new Regex(@":(\d+)>");
-            var id = rgx.Match(emoji).Groups[1];
-            return $"https://cdn.discordapp.com/emojis/{id}.png?v=1";
-        }
-        public static string GetNameFromLeague(uint league) {
-            return GetNameFromLeague((int)league);
-        }
+        public static string GetImage(uint league) =>
+            GetImage((Ei.Contract.Types.PlayerGrade)league);
 
-        public static string GetAutoCompleteSuggestion(Ei.Contract.Types.PlayerGrade grade) {
-            return GetText(grade) + " - " + GetNameFromLeague((int)grade);
-        }
+        public static string GetImage(Ei.Contract.Types.PlayerGrade grade) =>
+            $"https://cdn.discordapp.com/emojis/{EmojiRegex().Match(GetEmoji(grade)).Groups[1]}.png?v=1";
 
-        public static string GetNameFromLeague(int league) {
-            return GetText((Ei.Contract.Types.PlayerGrade)league);
-        }
+        public static string GetNameFromLeague(uint league) =>
+            GetNameFromLeague((int)league);
 
-        public static Ei.Contract.Types.PlayerGrade GetGradeFromLeague(uint league) {
-            return (Ei.Contract.Types.PlayerGrade)league;
-        }
+        public static string GetNameFromLeague(int league) =>
+            GetText((Ei.Contract.Types.PlayerGrade)league);
+
+        public static Ei.Contract.Types.PlayerGrade GetGradeFromLeague(uint league) =>
+            (Ei.Contract.Types.PlayerGrade)league;
+
+        [GeneratedRegex(@":(\d+)>")]
+        private static partial Regex EmojiRegex();
     }
 }

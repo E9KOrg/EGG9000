@@ -1,30 +1,21 @@
 ﻿using Discord.Interactions;
 using EGG9000.Common.Extensions;
-using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.JsonData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace EGG9000.Common.Helpers {
-    public class RequiredIngredient {
-        public Tier Tier { get; set; }
-        public uint Use { get; set; }
-        public uint Need { get; set; }
-        
-        public uint ShadowNeed { get; set; }
-        
-        public uint TimesCrafted { get; set; }
-        
-        public uint Cost { get; set; }
+    public class RequiredIngredient(Tier tier, uint use, uint need, uint shadowNeed, uint timesCrafted) {
+        public Tier Tier { get; set; } = tier;
+        public uint Use { get; set; } = use;
+        public uint Need { get; set; } = need;
 
-        public RequiredIngredient(Tier tier, uint use, uint need, uint shadowNeed, uint timesCrafted) {
-            Tier = tier;
-            Use = use;
-            Need = need;
-            ShadowNeed = shadowNeed;
-            TimesCrafted = timesCrafted;
-            Cost = 0;
-        }
+        public uint ShadowNeed { get; set; } = shadowNeed;
+
+        public uint TimesCrafted { get; set; } = timesCrafted;
+
+        public uint Cost { get; set; } = 0;
 
         public string GetNeed() {
             if(Tier.tier_number == 1) {
@@ -39,14 +30,9 @@ namespace EGG9000.Common.Helpers {
         }
     }
 
-    public class Crafter {
-        private readonly EiAfxDataRoot _data;
-        private readonly IList<ArtifactCount> _artifactHall;
-
-        public Crafter(IList<ArtifactCount> artifactHall) {
-            _data = EggIncArtifacts.GetEiAfxData();
-            _artifactHall = artifactHall;
-        }
+    public class Crafter(IList<ArtifactCount> artifactHall) {
+        private readonly EiAfxDataRoot _data = EggIncArtifacts.GetEiAfxData();
+        private readonly IList<ArtifactCount> _artifactHall = artifactHall;
 
         public Basket GetCraft(int howMany, int tierNumber, string artifactFamilyId) {
             var artifactFamily = _data.artifact_families.First(af => af.id == artifactFamilyId);
@@ -116,13 +102,9 @@ namespace EGG9000.Common.Helpers {
         }
     }
 
-    public class Basket {
-        private readonly Dictionary<string, RequiredIngredient> _ingredients;
-        private uint _totalCost;
-        public Basket(uint cost) {
-            _ingredients = new Dictionary<string, RequiredIngredient>();
-            _totalCost = cost;
-        }
+    public class Basket(uint cost) {
+        private readonly Dictionary<string, RequiredIngredient> _ingredients = [];
+        private uint _totalCost = cost;
 
         public void AddIngredient(Tier tier, int use, int need, uint timesCrafted, int shadowNeed = 0) {
             if(_ingredients.TryGetValue(tier.id, out var value)) {

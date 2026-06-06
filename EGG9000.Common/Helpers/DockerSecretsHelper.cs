@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using System;
 using System.IO;
 
 namespace EGG9000.Common.Helpers

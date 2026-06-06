@@ -1,27 +1,23 @@
 ﻿
 using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot;
 using EGG9000.Bot.Commands;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
-using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static System.Collections.Specialized.BitVector32;
 
-namespace EGG9000.Common.Services {
+namespace EGG9000.Bot.Services {
 
     public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) : IHostedService {
 
@@ -56,7 +52,7 @@ namespace EGG9000.Common.Services {
 
         private async Task HandleThreadDeleted(SocketThreadChannel arg) {
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id);
             if(coop is not null && coop.ThreadID != 0) {
                 _logger.LogInformation($"Marking thread archived due to thread deletion for {coop.Name}");
                 coop.ThreadArchived = true;
@@ -76,13 +72,10 @@ namespace EGG9000.Common.Services {
                     await db.SaveChangesAsync();
                     return;
                 }
-                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id);
                 if(coop is not null && coop.ThreadID != 0) {
                     _logger.LogInformation($"Marking thread archived due to channel deletion for {coop.Name}");
                     coop.ThreadArchived = true;
-                    await db.SaveChangesAsync();
-                } else if(coop is not null && coop.DiscordChannelId != 0) {
-                    coop.DeletedChannel = true;
                     await db.SaveChangesAsync();
                 }
             } catch(Exception e) {
@@ -133,24 +126,25 @@ namespace EGG9000.Common.Services {
                     var overflowServers = _discord.Guilds.Where(x => dbguild.OverflowServers.Contains(x.Id));
                     const ulong overflowRoleID = 775547850134257675;
 
-                    bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
-                        inAllOverFlows = overflowServers.All(o => o.Users.Any(u => u.Id == user.Id) || o.Id == user.Guild.Id);
+                    var mainUser = mainServer.GetUser(user.Id);
+                    bool inMainWithRole = mainUser is not null && mainUser.Roles.Any(r => r.Id == overflowRoleID),
+                        inAllOverFlows = overflowServers.All(o => o.GetUser(user.Id) is not null || o.Id == user.Guild.Id);
                     if(inMainWithRole && inAllOverFlows) {
-                        _logger.LogInformation("Removing overflow role for {user}, they joined all overflows", mainServer.Users.First(u => u.Id == user.Id).GetName());
-                        await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
+                        _logger.LogInformation("Removing overflow role for {user}, they joined all overflows", mainUser.GetName());
+                        await mainUser.RemoveRoleAsync(overflowRoleID);
                     }
 
                     //Handle assigned co-ops
                     try {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
                         foreach(var xref in xrefs) {
-                            var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
+                            var coopChannel = (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID);
                             if(coopChannel is null) continue;
                             await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                             xref.AddedToChannel = true;
                             await coopChannel.SendMessageAsync($"Here is your co-op {user.Mention}! The co-op name to join is {xref.Coop.Name}");
                         }
-                        if(xrefs.Any()) {
+                        if(xrefs.Count != 0) {
                             await db.SaveChangesAsync();
                         }
                     } catch(Exception e) {

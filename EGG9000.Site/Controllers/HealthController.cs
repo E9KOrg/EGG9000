@@ -1,19 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 
 namespace EGG9000.Site.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class HealthController : ControllerBase
+    public class HealthController(ILogger<HealthController> logger) : ControllerBase
     {
-        private readonly ILogger<HealthController> _logger;
-
-        public HealthController(ILogger<HealthController> logger)
-        {
-            _logger = logger;
-        }
+        private readonly ILogger<HealthController> _logger = logger;
 
         [HttpGet]
         public IActionResult Get()

@@ -1,20 +1,15 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Ei;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -130,9 +125,9 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogWarning("Event {identifier} has no MessageIds; skipping update/repost logic.", currentEvent.Identifier);
                     }
                 }
-                await _db.SaveChangesAsync(CancellationToken.None);
                 StillAlive();
             }
+            await _db.SaveChangesAsync(CancellationToken.None);
 
             if(newCount == 0 && significantChangeCount == 0 && timeChangeCount == 0 && endedEvents.Count == 0) {
                 _logger.LogDebug("EventUpdater finished: no new events, no changes, no ended events ({unchanged} existing events unchanged).", unchangedCount);
@@ -426,7 +421,7 @@ namespace EGG9000.Bot.Automated {
             if(config is null) return; // This randomly failed while I was working
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
 
-            var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.Now.AddHours(-1));
+            var expiringShells = await db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.Now.AddHours(-1)).ToListAsync();
 
 
             var shellsToUpdate = new List<ExpiringShell>();

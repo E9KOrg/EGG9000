@@ -28,12 +28,15 @@ namespace EGG9000.Bot.Automated {
 
                 var adminUserIds = adminUsers.Select(x => x.Id);
                 var sevenDaysAgo = DateTimeOffset.Now.AddDays(-7);
-                var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).AsQueryable().Where(x => (x.ThreadID != 0 && !x.ThreadArchived) && x.CoopEnds > sevenDaysAgo && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId))).ToListAsync(CancellationToken.None);
+                // Only ThreadID + member ids are needed, so project them instead of materializing each coop's GZip status blob.
+                var coops = await _db.Coops.Where(x => (x.ThreadID != 0 && !x.ThreadArchived) && x.CoopEnds > sevenDaysAgo && x.UserCoopsXrefs.Any(y => adminUserIds.Contains(y.UserId)))
+                    .Select(x => new { x.ThreadID, UserIds = x.UserCoopsXrefs.Select(y => y.UserId).ToList() })
+                    .ToListAsync(CancellationToken.None);
 
 
                 var adminsWithChannels = adminUsers.OrderBy(x => x.DiscordUsername).Select(u => new {
                     Admin = u,
-                    Channels = coops.Where(c => c.UserCoopsXrefs.Any(xref => u.Id == xref.UserId)).Select(c => $"<#{c.ThreadID}>")
+                    Channels = coops.Where(c => c.UserIds.Contains(u.Id)).Select(c => $"<#{c.ThreadID}>")
                 });
 
                 var channel = guild.GetTextChannel(guildInfo.ChannelID);

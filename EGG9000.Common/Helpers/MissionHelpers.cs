@@ -1,6 +1,5 @@
 ﻿using EGG9000.Common.Database;
-using EGG9000.Common.JsonData.EiAfxConfig;
-
+using EGG9000.Common.JsonData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,13 +9,13 @@ namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
         public static readonly Dictionary<Spaceship, uint> MaxShipLevels 
-            = Root.Get().missionParameters.ToDictionary(
+            = EIAfxConfigRoot.Get().missionParameters.ToDictionary(
                 mp => mp.shipEnum, 
                 mp => (uint)mp.levelMissionRequirements.Count
             );
 
         public static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities
-            = Root.Get().missionParameters.ToDictionary(
+            = EIAfxConfigRoot.Get().missionParameters.ToDictionary(
                 mp => mp.shipEnum,
                 mp => mp.durations.ToDictionary(
                     dur => dur.durationTypeEnum,
@@ -27,7 +26,7 @@ namespace EGG9000.Common.Helpers {
             );
 
         private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes
-            = Root.Get().missionParameters.ToDictionary(
+            = EIAfxConfigRoot.Get().missionParameters.ToDictionary(
                 mp => mp.shipEnum,
                 mp => mp.durations.ToDictionary(
                     dur => dur.durationTypeEnum,
@@ -36,7 +35,7 @@ namespace EGG9000.Common.Helpers {
             );
 
         private static readonly Dictionary<Spaceship, List<int>> LevelRequirements
-            = Root.Get().missionParameters.ToDictionary(
+            = EIAfxConfigRoot.Get().missionParameters.ToDictionary(
                 mp => mp.shipEnum,
                 mp => mp.levelMissionRequirements
             );
@@ -149,7 +148,7 @@ namespace EGG9000.Common.Helpers {
 
             var points = backup.ShipsSent.Where(x => x.ship == ship).ToList().Sum(s => s.count * ((int)s.type < 3 ? (1 + ((int)s.type * .4)) : 0));
 
-            var levelMissionRequirements = Root.Get().missionParameters.First(x => x.shipEnum == ship).levelMissionRequirements;
+            var levelMissionRequirements = EIAfxConfigRoot.Get().missionParameters.First(x => x.shipEnum == ship).levelMissionRequirements;
 
             for(var i = levelMissionRequirements.Count; i > 0; i--) {
                 var sum = levelMissionRequirements.Take(i).Sum();

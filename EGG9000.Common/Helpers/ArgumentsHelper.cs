@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace EGG9000.Bot {
+namespace EGG9000.Common.Helpers {
     public static class ArgumentsHelper {
 
         public static readonly List<KeyValuePair<int, string>> bignums = [
@@ -51,10 +50,6 @@ namespace EGG9000.Bot {
         }
 
         public static string ToEggStringD(this double number, int numberOfDigits) {
-            return NumberToStringD(number, numberOfDigits);
-        }
-
-        public static string ToEggStringD(this ulong number, int numberOfDigits) {
             return NumberToStringD(number, numberOfDigits);
         }
 
@@ -124,22 +119,6 @@ namespace EGG9000.Bot {
                 places++;
             }
             return places + (number / 10);
-        }
-
-        public static BigInteger NumberFromString(string arg) {
-            var size = arg[arg.Length - 1];
-            var numberPortion = arg.Substring(0, arg.Length - 1);
-
-            if(BigInteger.TryParse(numberPortion, out var number)) {
-                return size switch {
-                    'B' => number * BigInteger.Pow(10, 9),
-                    'T' => number * BigInteger.Pow(10, 12),
-                    'q' => number * BigInteger.Pow(10, 15),
-                    _ => throw new UnableToParseNumberExecption(),
-                };
-            } else {
-                throw new UnableToParseNumberExecption();
-            }
         }
 
         public static double NumberFromStringDouble(string arg) {

@@ -1,8 +1,7 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Extensions;
-using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.JsonData;
 
-using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using Newtonsoft.Json;
 using System;
@@ -27,7 +26,7 @@ namespace EGG9000.Common.Helpers {
                     return;
                 }
                 if(x.Stones == null)
-                    x.Stones = new List<EggIncArtifactInstance>();
+                    x.Stones = [];
                 double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue) ? 0 : 1;
                 farmMultiple += x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Sum(s => s.Value);
                 if(x.Boost == boostType) {
@@ -35,7 +34,7 @@ namespace EGG9000.Common.Helpers {
                 }
 
                 foreach(var stone in x.Stones.Where(x => x.Boost == boostType)) {
-                    rate *= GetEnlightenmentRate(stone, farmMultiple); //stone.Value * (x.Boost == EggIncBoostTypeEnum.EnlightenmentEggValue ? 1 : farmMutiple);
+                    rate *= GetEnlightenmentRate(stone, farmMultiple);
                 }
             });
 
@@ -274,7 +273,7 @@ namespace EGG9000.Common.Helpers {
             return response;
         }
 
-        public static List<EggIncArtifact> GetArtifactsDB = new List<EggIncArtifact> {
+        public static List<EggIncArtifact> GetArtifactsDB = [
             new EggIncArtifact {
                 Name = ArtifactNames.AurelianBrooch, Boost = EggIncBoostTypeEnum.DroneRewards, //done
                 L0R0 = 1.1f,
@@ -506,7 +505,7 @@ namespace EGG9000.Common.Helpers {
             new EggIncArtifact { Name = ArtifactNames.TerraStoneFragment },
             new EggIncArtifact { Name = ArtifactNames.LifeStoneFragment },
             new EggIncArtifact { Name = ArtifactNames.ClarityStoneFragment },
-        };
+        ];
     }
 
     public enum ArtifactNames {
@@ -678,7 +677,7 @@ namespace EGG9000.Common.Helpers {
                 hash = hash * 23 + Value.GetHashCode();
                 hash = hash * 23 + Additive.GetHashCode();
                 hash = hash * 23 + Id.GetHashCode();
-                foreach(var stone in Stones ?? new List<EggIncArtifactInstance>()) {
+                foreach(var stone in Stones ?? []) {
                     hash = hash * 23 + stone.GetHashCode();
                 }
 

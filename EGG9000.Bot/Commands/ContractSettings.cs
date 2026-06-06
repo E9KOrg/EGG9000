@@ -1,7 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -10,7 +8,6 @@ using EGG9000.Common.Services;
 using Humanizer;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 using System;
@@ -23,8 +20,6 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public class ContractSettingsCommands {
-        private static readonly MemoryCache _cache = new(new MemoryCacheOptions());
-
         private static EmbedBuilder MenuEmbedTemplate(string title, string description, EggIncAccount account, DBUser dbuser) {
             var userText = dbuser.EggIncAccounts.Count > 1 ? $"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}\n\n" : "";
             return new EmbedBuilder().WithTitle(title).WithDescription(userText + description);
@@ -686,7 +681,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
 
-            reg.AutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
+            reg.AutoRegisterRewards = [.. component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x))];
             if(reg.AutoRegisterRewards.Any(x => x == Ei.RewardType.UnknownReward)) {
                 reg.AutoRegisterRewards = [];
             }
@@ -747,7 +742,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
 
-            reg.LeggacyAutoRegisterRewards = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
+            reg.LeggacyAutoRegisterRewards = [.. component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x))];
             if(reg.LeggacyAutoRegisterRewards.Any(x => x == Ei.RewardType.UnknownReward)) {
                 reg.LeggacyAutoRegisterRewards = [];
             }

@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Server.IISIntegration;
-
-using SixLabors.Fonts;
+﻿using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
@@ -9,16 +7,15 @@ using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 
 namespace EGG9000.Common.Helpers {
     public class EIIDScreenShots {
-        static double MinRedPercent = 0.30;
-        static double MinWhitePercent = 0.50;
+        private static readonly double MinRedPercent = 0.30;
+        private static readonly double MinWhitePercent = 0.50;
 
         public static Image<Rgba32> CropScreenShot(Image image) {
-            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+            var rgbaImage = image.CloneAs<Rgba32>();
 
             var rows = new ImageRowStats[image.Height];
             for(var y = 0; y < image.Height; y++) {
@@ -84,42 +81,12 @@ namespace EGG9000.Common.Helpers {
             return rgbaImage;
         }
 
-        public static byte ContrastCurve(byte b) {
-            return (byte)Math.Clamp(b * 3 - 256 * 2, 0, 255);
-        }
-
-        public static void WriteText(Image<Rgba32> image, String text, Color color) {
-            FontCollection collection = new();
-            FontFamily family = collection.Add("Fonts/always together.otf");
-            Font font = family.CreateFont(24, FontStyle.Italic);
-
-
-            var options = new TextOptions(font) {
-                Dpi = 72,
-                KerningMode = KerningMode.Standard
-            };
-
-            var rect = TextMeasurer.MeasureBounds(text, options);
-
-            image.Mutate(x => x
-            .Resize(new ResizeOptions {
-                Mode = ResizeMode.BoxPad,
-                Position = AnchorPositionMode.Bottom,
-                PadColor = new Rgba32(255, 255, 255),
-                Size = new Size(image.Width, (int)(image.Height * 1.2)),
-            })
-            .DrawText(
-                text,
-                font,
-                color,
-                new PointF((image.Width - rect.Width) / 2,
-                        5)));
-        }
+        public static byte ContrastCurve(byte b) => (byte)Math.Clamp(b * 3 - 256 * 2, 0, 255);
 
         public static void WriteText2(Image<Rgba32> image, String text, Color color, int left, int top) {
             FontCollection collection = new();
-            SystemFonts.TryGet("Arial", out FontFamily family);
-            Font font = family.CreateFont(10, FontStyle.Regular);
+            SystemFonts.TryGet("Arial", out var family);
+            var font = family.CreateFont(10, FontStyle.Regular);
 
 
             var options = new TextOptions(font) {
@@ -129,12 +96,12 @@ namespace EGG9000.Common.Helpers {
 
             var rect = TextMeasurer.MeasureBounds(text, options);
 
-            image.Mutate(x => x
-            .DrawText(
+            image.Mutate(x => x.DrawText(
                 text,
                 font,
                 color,
-                new PointF(left, top)));
+                new PointF(left, top)
+            ));
         }
 
         public struct ImageRowStats {
@@ -207,7 +174,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static List<(Image<Rgba32>, char)> generatedImages = null;
-        private static Object thisLock = new Object();
+        private static readonly Lock thisLock = new();
 
 
         public static string ReadText(Image<Rgba32> image) {
@@ -225,63 +192,6 @@ namespace EGG9000.Common.Helpers {
             }
             return outtext;
         }
-
-        public static Image<Rgba32> SampleLetters(Image<Rgba32> image) {
-            lock(thisLock) {
-                if(generatedImages == null || generatedImages.Count == 0)
-                    GenerateImages();
-            }
-
-            var charPositions = FindCharPositions(image);
-            var characters = new List<Image<Rgba32>>();
-            foreach(var r in charPositions.Skip(1)) {
-
-                var retImage = new Image<Rgba32>(generatedImages.Sum(x => x.Item1.Width), generatedImages[0].Item1.Height * 2 + 20, new Rgba32(255, 255, 255));
-
-                var currentX = 0;
-
-                var maxC = 0.0;
-                var maxCx1 = 0;
-                var maxCx2 = 0;
-                foreach(var image2 in generatedImages) {
-                    var clone = image.Clone();
-                    clone.Mutate(x => x.Crop(r));
-                    clone.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Pad, Size = new Size(0, image2.Item1.Height) }));
-
-                    var c = CompareImages(clone, image2.Item1, true);
-
-                    if(c > maxC) {
-                        maxC = c;
-                        maxCx1 = currentX; maxCx2 = currentX + image2.Item1.Width;
-                    }
-
-                    retImage.Mutate(x =>
-                        x.DrawImage(clone, new Point(currentX, 0), 1)
-                        .DrawImage(image2.Item1, new Point(currentX, image2.Item1.Height), 1)
-                        .FillPolygon(new Rgba32(255, 255, 255),
-                            new PointF(currentX, generatedImages[0].Item1.Height * 2 + 5),
-                            new PointF(currentX + image2.Item1.Width, generatedImages[0].Item1.Height * 2 + 5),
-                            new PointF(currentX + image2.Item1.Width, generatedImages[0].Item1.Height * 2 + 20),
-                            new PointF(currentX, generatedImages[0].Item1.Height * 2 + 20))
-                    );
-
-                    WriteText2(retImage, Math.Round(c, 3).ToString().Replace("0.", "."), new Rgba32(0, 0, 127), currentX, generatedImages[0].Item1.Height * 2 + 5);
-
-
-                    currentX += image2.Item1.Width;
-                }
-
-                retImage.Mutate(x => x.FillPolygon(new Rgba32(0, 255, 0),
-                    new PointF(maxCx1, generatedImages[0].Item1.Height * 2 + 15),
-                    new PointF(maxCx2, generatedImages[0].Item1.Height * 2 + 15),
-                    new PointF(maxCx2, generatedImages[0].Item1.Height * 2 + 20),
-                    new PointF(maxCx1, generatedImages[0].Item1.Height * 2 + 20)
-                    ));
-                return retImage;
-            }
-            return null;
-        }
-
 
         public static char FindMatch(Image<Rgba32> image, bool showDebug = false) {
 
@@ -331,12 +241,12 @@ namespace EGG9000.Common.Helpers {
                 chars.Add((i % 10).ToString()[0]);
             }
 
-            var eiid = "EI" + new String(chars.ToArray());
+            var eiid = "EI" + new String([.. chars]);
 
-            generatedImages = new List<(Image<Rgba32>, char)>();
+            generatedImages = [];
             FontCollection collection = new();
-            FontFamily family = collection.Add("Fonts/always together.otf");
-            Font font = family.CreateFont((float)(100), FontStyle.Italic);
+            var family = collection.Add("Fonts/always together.otf");
+            var font = family.CreateFont(100, FontStyle.Italic);
             var options = new TextOptions(font) {
                 Dpi = 72,
                 KerningMode = KerningMode.Auto
@@ -355,8 +265,6 @@ namespace EGG9000.Common.Helpers {
                         generatedImages.Add((image, r));
                     }
                 }
-
-
             }
         }
 

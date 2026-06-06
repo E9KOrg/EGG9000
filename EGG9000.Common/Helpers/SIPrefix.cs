@@ -1,10 +1,9 @@
 ﻿using EGG9000.Common.Database;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public class SIPrefix {
 
         public static IList<RankInfo> GetNextRankInfo(CustomBackup backup, bool withSubRank) {
@@ -86,7 +85,7 @@ namespace EGG9000.Bot.Helpers {
         /// </summary>
         /// <returns></returns>
         public static List<string> GetAllFarmerRoles() {
-            return new List<string> {
+            return [
                     "Farmer I",
                     "Farmer II",
                     "Farmer III",
@@ -123,7 +122,7 @@ namespace EGG9000.Bot.Helpers {
                     "Vendafarmer I",
                     "Vendafarmer II",
                     "Vendafarmer III"
-                };
+                ];
         }
     }
 }

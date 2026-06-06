@@ -31,6 +31,12 @@ namespace EGG9000.Bot.Automated {
                     return;
 
                 var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
+                var existingSnapshotKeys = (await _db.UserSnapShots.AsNoTracking()
+                    .Where(x => x.Date == DateTime.Now.Date)
+                    .Select(x => new { x.UserId, x.EggIncID })
+                    .ToListAsync(cancellationToken))
+                    .Select(x => (x.UserId, x.EggIncID))
+                    .ToHashSet();
                 var snapshots = 0;
                 foreach(var user in users) {
                     await WaitOnCoopsBeingCreated(cancellationToken);
@@ -38,13 +44,8 @@ namespace EGG9000.Bot.Automated {
                     try {
                         foreach(var account in user.EggIncAccounts) {
                             var backup = account.Backup;
-                            var lastSnapshot = await _db.UserSnapShots.AsQueryable().FirstOrDefaultAsync(x => 
-                                x.UserId == user.Id &&
-                                x.Date == DateTime.Now.Date && 
-                                x.EggIncID == account.Id,
-                                cancellationToken
-                            );
-                            if(lastSnapshot == null) {
+                            if(!existingSnapshotKeys.Contains((user.Id, account.Id))) {
+                                existingSnapshotKeys.Add((user.Id, account.Id));
                                 _db.UserSnapShots.Add(new UserSnapShot {
                                     Date = DateTime.Now.Date,
                                     UserId = user.Id,

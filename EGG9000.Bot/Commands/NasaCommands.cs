@@ -1,11 +1,9 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {

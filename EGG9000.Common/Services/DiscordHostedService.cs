@@ -1,8 +1,6 @@
 ﻿using Bugsnag;
 
 using Discord;
-using Discord.Net.Rest;
-using Discord.Net.WebSockets;
 using Discord.Rest;
 using Discord.WebSocket;
 
@@ -23,7 +21,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -41,11 +38,9 @@ namespace EGG9000.Common.Services {
         private readonly DiscordSocketClient _gateway;
         private readonly DiscordRestClient _rest;
 
-
         private static readonly DiscordSocketConfig config = new() {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages |
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent,
-
         };
         private static readonly List<DiscordSemaphore> _serverSemaphores = [];
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
@@ -72,7 +67,10 @@ namespace EGG9000.Common.Services {
 
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) {
 #if DEBUG
-            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+#pragma warning disable SYSLIB0014 // ServicePointManager obsolete (no-op for HttpClient now); kept as debug self-signed cert bypass.
+            // Fully qualified so a "remove unused using" pass can't strip System.Net and break the DEBUG build.
+            System.Net.ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+#pragma warning restore SYSLIB0014
 #endif
 
             _configuration = Configuration;
@@ -131,7 +129,6 @@ namespace EGG9000.Common.Services {
             return;
         }
 
-
         private Task DiscordHostedService_Ready() {
             IsReady = true;
             _gateway.SetGameAsync("").Wait();
@@ -177,19 +174,10 @@ namespace EGG9000.Common.Services {
         public async Task<List<SocketCategoryChannel>> GetAllCoopCategories(SocketGuild guild) {
             var dbguild = await GetDbGuild(guild);
             if(guild.Id == dbguild.Id) {
-                return dbguild.CoopCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null).ToList();
+                return [.. dbguild.CoopCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null)];
             } else {
-                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed")).OrderBy(x => x.Position);
-                return categories.Where(x => x is not null).ToList();
-            }
-        }
-        public async Task<List<SocketCategoryChannel>> GetAllFinishedCategories(SocketGuild guild) {
-            var dbguild = await GetDbGuild(guild);
-            if(guild.Id == dbguild.Id) {
-                return dbguild.FinishedCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null).ToList();
-            } else {
-                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
-                return categories.Where(x => x is not null).ToList();
+                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => (x.Name.Contains("coops", StringComparison.CurrentCultureIgnoreCase) || x.Name.Contains("co-ops", StringComparison.CurrentCultureIgnoreCase)) && !x.Name.Contains("finished", StringComparison.CurrentCultureIgnoreCase) && !x.Name.Contains("failed", StringComparison.CurrentCultureIgnoreCase)).OrderBy(x => x.Position);
+                return [.. categories.Where(x => x is not null)];
             }
         }
 
@@ -248,7 +236,6 @@ namespace EGG9000.Common.Services {
     }
 
 
-
     public class DiscordSemaphore(SocketGuild guild, SemaphoreSlim semaphore) {
         public readonly SocketGuild Guild = guild;
         public readonly SemaphoreSlim Semaphore = semaphore;
@@ -268,7 +255,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
-            return guild.Channels.Where(c =>
+            return [.. guild.Channels.Where(c =>
                 (c.GetChannelType() == ChannelType.Category ||
                 c.GetChannelType() == ChannelType.Text ||
                 c.GetChannelType() == ChannelType.Voice ||
@@ -283,7 +270,7 @@ namespace EGG9000.Common.Services {
                         (c as SocketTextChannel)?.Category == category
                     )
                 )
-            ).Select(c => c as IChannel).ToList();
+            ).Select(c => c as IChannel)];
         }
 
         public static int GetInUseChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
@@ -291,10 +278,10 @@ namespace EGG9000.Common.Services {
         }
 
         public static List<SocketThreadChannel> GetInUseThreads(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
-            return guild.ThreadChannels.Where(t =>
+            return [.. guild.ThreadChannels.Where(t =>
                 !t.IsArchived &&
                 (t.ParentChannel == parentChannel || parentChannel == null)
-            ).ToList();
+            )];
         }
 
         public static int GetInUseThreadCount(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
@@ -368,7 +355,7 @@ namespace EGG9000.Common.Services {
             ];
 
             foreach(var sg in guilds) {
-                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName(), StringComparison.CurrentCultureIgnoreCase) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
 
                 // Safety measure - there should never be more than 5 channels in the same guild,
                 // so if this happens, the pattern matching failed.
@@ -384,7 +371,7 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        private readonly static MemoryCache commandCache = new(new MemoryCacheOptions());
+        private static readonly MemoryCache commandCache = new(new MemoryCacheOptions());
 
         private static string GetCommandCacheKey(this SocketGuild guild) { return $"CommandCache{guild.Id}"; }
 
@@ -430,9 +417,8 @@ namespace EGG9000.Common.Services {
             }
         }
 
-#pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-        public static async Task<Emote> CreateCustomEggEmoji(this DiscordHostedService _client, Ei.CustomEgg newEgg, Emote? emoteToReplace) {
-#pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
+#nullable enable
+        public static async Task<Emote?> CreateCustomEggEmoji(this DiscordHostedService _client, Ei.CustomEgg newEgg, object? emoteToReplace) {
             var emojiName = newEgg.GetEmojiName();
             var existingEmotes = await _client.Gateway.GetApplicationEmotesAsync();
             // Download the image from aux
@@ -473,16 +459,17 @@ namespace EGG9000.Common.Services {
             // Upload the image as a GuildEmote
             var newAppEmote = await _client.Gateway.CreateApplicationEmoteAsync(emojiName, discordImage);
 
-            if(emoteToReplace != null && newAppEmote != null) {
-                var appEmote = await _client.Gateway.GetApplicationEmoteAsync(emoteToReplace.Id);
+            if(emoteToReplace is Emote oldEmote && newAppEmote != null) {
+                var appEmote = await _client.Gateway.GetApplicationEmoteAsync(oldEmote.Id);
                 if(appEmote is not null) {
-                    await _client.Gateway.DeleteApplicationEmoteAsync(emoteToReplace.Id, options: new RequestOptions() {
+                    await _client.Gateway.DeleteApplicationEmoteAsync(oldEmote.Id, options: new RequestOptions() {
                         RetryMode = RetryMode.RetryRatelimit | RetryMode.RetryTimeouts
                     });
                 }
             }
 
-            return newAppEmote ?? emoteToReplace ?? null;
+            return newAppEmote ?? (emoteToReplace as Emote) ?? null;
         }
+#nullable disable
     }
 }
