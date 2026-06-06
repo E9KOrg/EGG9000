@@ -64,6 +64,8 @@ namespace EGG9000.Bot.Commands {
             var guild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             foreach(var coopSettingEnum in Enum.GetValues<GuildCoopSetting>()) {
+                if(typeof(CoopSetting).GetProperty(coopSettingEnum.ToString()) is null)
+                    continue;
                 var fi = coopSettingEnum.GetType().GetField(coopSettingEnum.ToString());
                 var description = (fi.GetCustomAttributes(typeof(DescriptionAttribute), false) is DescriptionAttribute[] attributes && attributes.Any()) ? attributes.First().Description : coopSettingEnum.ToString();
                 var option = new {

@@ -38,13 +38,13 @@ namespace EGG9000.Bot.Automated {
             // the per-contract embed inside each contract channel.
             var optedIn = guilds
                 .Where(g => g.HasChannel(GuildChannelType.CoopStatsChannel)
-                         || g.GetCoopSetting(GuildCoopSetting.ShowContractStatsEmbeds).Enabled)
+                         || g.ShowContractStatsEmbeds)
                 .ToList();
             if(optedIn.Count == 0)
                 return;
 
             var contractEmbedGuildIds = optedIn
-                .Where(g => g.GetCoopSetting(GuildCoopSetting.ShowContractStatsEmbeds).Enabled)
+                .Where(g => g.ShowContractStatsEmbeds)
                 .Select(g => g.Id).ToList();
             var guildContracts = await db.GuildContracts.Include(gc => gc.Contract)
                 .Where(gc => !gc.DeletedChannel && contractEmbedGuildIds.Contains(gc.GuildID))
@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Automated {
                     await MaintainEmbed(statsChannel, BuildServerEmbed(server));
                 }
 
-                if(!guild.GetCoopSetting(GuildCoopSetting.ShowContractStatsEmbeds).Enabled)
+                if(!guild.ShowContractStatsEmbeds)
                     continue;
 
                 foreach(var gc in guildContracts.Where(gc => gc.GuildID == guild.Id)) {
