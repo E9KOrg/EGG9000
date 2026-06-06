@@ -1,8 +1,4 @@
-﻿using EGG9000.Common.Helpers;
-
-using Ei;
-
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
@@ -11,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
-namespace EGG9000.Common.JsonData.EiStatics {
+namespace EGG9000.Common.JsonData {
 
     public class EggIncEgg {
         public int id { get; set; }
@@ -88,11 +84,11 @@ namespace EGG9000.Common.JsonData.EiStatics {
         HoldToHatch
     }
 
-    public class Root {
+    public class EIStaticsRoot {
         public List<EggIncBoost> eggIncBoosts { get; set; }
         public List<EggIncEgg> eggIncEggs { get; set; }
-        private static Root Instance = null;
-        public static Root Get() {
+        private static EIStaticsRoot Instance = null;
+        public static EIStaticsRoot Get() {
             if(Instance != null) {
                 return Instance;
             }
@@ -104,7 +100,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
             using var stream = assembly.GetManifestResourceStream(resourceName);
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<Root>(json);
+            Instance = JsonConvert.DeserializeObject<EIStaticsRoot>(json);
             return Instance;
         }
     }

@@ -1,8 +1,6 @@
 ﻿using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiAfxData;
 
 using Ei;
-using Humanizer;
 using Newtonsoft.Json;
 
 using System;
@@ -13,8 +11,7 @@ using System.Reflection;
 
 using static Ei.MissionInfo.Types;
 
-namespace EGG9000.Common.JsonData.EiAfxConfig {
-
+namespace EGG9000.Common.JsonData {
 
     public class ArtifactParameter {
         public Spec spec { get; set; }
@@ -38,11 +35,8 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public double levelQualityBump { get; set; }
 
         public DurationType durationTypeEnum {
-            get {
-                if(Enum.TryParse<DurationType>(durationType, ignoreCase: true, out var parsedEnum)) return parsedEnum;
-
-                return DurationType.Tutorial;
-            }
+            get => Enum.TryParse<DurationType>(durationType, ignoreCase: true, out var parsedEnum)
+                ? parsedEnum : DurationType.Tutorial;
         }
     }
 
@@ -68,7 +62,7 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public double rarityMult { get; set; }
     }
 
-    public class Root {
+    public class EIAfxConfigRoot {
         public List<MissionParameter> missionParameters { get; set; }
         public List<ArtifactParameter> artifactParameters { get; set; }
         public List<CraftingLevelInfo> craftingLevelInfos { get; set; }
@@ -76,24 +70,21 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public Dictionary<int, double> craftingLevelMultipliers { get; set; }
         public List<long> craftingLevelXpThresholds { get; set; }
 
-        private static Root Instance = null;
-        public static Root Get() {
-            if(Instance != null) {
-                return Instance;
-            }
+        private static EIAfxConfigRoot EIAfxConfigInstance = null;
+        public static EIAfxConfigRoot Get() {
+            if(EIAfxConfigInstance != null) return EIAfxConfigInstance;
 
             var assembly = Assembly.GetExecutingAssembly();
-
             var resourceName = assembly.GetManifestResourceNames()
                 .Single(str => str.EndsWith("eiafx-config.json"));
 
             using var stream = assembly.GetManifestResourceStream(resourceName);
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<Root>(json);
+            EIAfxConfigInstance = JsonConvert.DeserializeObject<EIAfxConfigRoot>(json);
 
             // Compile the crafting coefficients from artifactParameters
-            Instance.baseCraftingCoefficients = Instance.artifactParameters
+            EIAfxConfigInstance.baseCraftingCoefficients = EIAfxConfigInstance.artifactParameters
                 .GroupBy(config => new { config.spec.name, config.spec.level })
                 .Where(artifactLevelGrouping => artifactLevelGrouping.Count() > 1) // Weed out stones and ingredients, artifact levels with no rarity
                 .ToDictionary(
@@ -128,17 +119,17 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
                     }
                 );
 
-            Instance.craftingLevelMultipliers = Instance.craftingLevelInfos.ToDictionary(info => Instance.craftingLevelInfos.IndexOf(info), info => info.rarityMult);
+            EIAfxConfigInstance.craftingLevelMultipliers = EIAfxConfigInstance.craftingLevelInfos.ToDictionary(info => EIAfxConfigInstance.craftingLevelInfos.IndexOf(info), info => info.rarityMult);
 
             long runningSum = 0;
-            Instance.craftingLevelXpThresholds = Instance.craftingLevelInfos
+            EIAfxConfigInstance.craftingLevelXpThresholds = [.. EIAfxConfigInstance.craftingLevelInfos
                 .Select(level => {
                     runningSum += level.xpRequired;
                     return runningSum;
                 })
-                .Prepend(0).Take(30).ToList();
+                .Prepend(0).Take(30)];
 
-            return Instance;
+            return EIAfxConfigInstance;
         }
     }
 

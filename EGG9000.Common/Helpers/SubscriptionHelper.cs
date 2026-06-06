@@ -1,8 +1,6 @@
 using Discord.WebSocket;
-
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.Helpers.Discord;
 using Ei;
 
 using Microsoft.Extensions.Logging;

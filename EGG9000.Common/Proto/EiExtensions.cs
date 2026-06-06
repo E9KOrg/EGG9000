@@ -1,4 +1,4 @@
-﻿using EGG9000.Bot;
+﻿using EGG9000.Common.Helpers;
 using Humanizer;
 using System;
 using System.Collections.Generic;
@@ -52,21 +52,6 @@ namespace Ei {
 
                 public TimeSpan LastActive { get; set; }
                 public string RateString { get { return ArgumentsHelper.NumberToString(ContributionRate * 60 * 60, false, -1) + "/h"; } }
-
-                public double AmountWithOffline(double siloTimeMinutes, TimeSpan lastActive) {
-                    if(TimeLeftSeconds < 0) {
-                        var awayTime = Math.Min(lastActive.TotalSeconds, siloTimeMinutes * 60);
-                        return ContributionAmount + ContributionRate * (awayTime + TimeLeftSeconds);
-                    }
-                    return ContributionAmount + ContributionRate * Math.Min(lastActive.TotalSeconds, siloTimeMinutes * 60);
-                }
-
-                public double AmountWithOfflineIgnoreSilo() {
-                    if(TimeLeftSeconds < 0) {
-                        return ContributionAmount;
-                    }
-                    return ContributionAmount + ContributionRate * LastActive.TotalSeconds;
-                }
 
                 public double Projected {
                     get {

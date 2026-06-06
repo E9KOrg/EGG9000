@@ -9,24 +9,17 @@ namespace EGG9000.Common.Database.Entities {
     public class Guild {
         public ulong Id { get; set; }
         public string Name { get; set; }
-        public string ActiveElites { get; set; }
-        public string InactiveElites { get; set; }
-        public string ActiveStandards { get; set; }
-        public string InactiveStandards { get; set; }
 
         public ulong DiscordSeverId { get; set; }
         public string OverflowServersJson { get; set; }
         [NotMapped]
-        public ReadOnlyCollection<ulong> OverflowServers {
-            get {
-                return JsonConvert.DeserializeObject<ReadOnlyCollection<ulong>>(OverflowServersJson ?? "[]");
-            }
-        }
+        public ReadOnlyCollection<ulong> OverflowServers => JsonConvert.DeserializeObject<ReadOnlyCollection<ulong>>(OverflowServersJson ?? "[]");
 
         [GuildConfig("Co-op Name Prefix", "Text", GuildConfigKind.String, Description = "Prefix for auto-generated co-op names")]
         public string CoopNamePrefix { get; set; }
 
         public string StaffCoopsMessageDetails { get; set; }
+
 
         public string LeaderboardImage { get; set; }
         [GuildConfig("Co-op Categories", "Lists", GuildConfigKind.CsvCategories, Description = "Categories new co-op channels are created under")]
@@ -44,10 +37,7 @@ namespace EGG9000.Common.Database.Entities {
         private List<ServerCoopSetting> _coopSettings { get; set; }
         [NotMapped]
         public List<ServerCoopSetting> CoopSettings {
-            get {
-                _coopSettings ??= JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
-                return _coopSettings;
-            }
+            get => _coopSettings ??= JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
             set {
                 value.RemoveAll(x => !x.Enabled && !x.Locked);
                 _coopSettings = value;
@@ -60,19 +50,13 @@ namespace EGG9000.Common.Database.Entities {
         private List<EventCustomization> _eventCustomizations { get; set; }
         [NotMapped]
         public List<EventCustomization> EventCustomizations {
-            get {
-                _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
-                return _eventCustomizations;
-            }
+            get => _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
             set {
                 _eventCustomizations = value;
                 _eventCustomizationsJson = JsonConvert.SerializeObject(value);
             }
         }
 
-        public string _faqTopicsJson { get; set; }
-        [NotMapped]
-        private List<FAQTopic> _faqTopics { get; set; }
         [GuildConfig("FAQ Topics Enabled", "Toggles", GuildConfigKind.Bool, Description = "Enable the FAQ topics feature")]
         public bool FAQTopicsEnabled { get; set; }
         [GuildConfig("FAQ Topic Cooldown (min)", "Numbers", GuildConfigKind.Int, Description = "Minutes between FAQ posts in a channel")]
@@ -83,10 +67,7 @@ namespace EGG9000.Common.Database.Entities {
         private List<ChannelDetail> _channelDetails { get; set; }
         [NotMapped]
         public List<ChannelDetail> ChannelDetails {
-            get {
-                _channelDetails ??= JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
-                return _channelDetails;
-            }
+            get => _channelDetails ??= JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
             set {
                 value.RemoveAll(x => x.Id == 0);
                 _channelDetails = value;

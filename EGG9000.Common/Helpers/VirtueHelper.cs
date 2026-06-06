@@ -1,10 +1,6 @@
 ﻿using EGG9000.Common.Database;
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class VirtueHelper {
@@ -13,9 +9,8 @@ namespace EGG9000.Common.Helpers {
         1.5e15, 4e15, 10e15,25e15,50e15,100e15
         };
 
-        public static VirtueEggStats EggStats(CustomBackup backup, Ei.Egg egg) {
-            return EggStats(backup.VirtueEggsDelivered[(int)egg - 50]);
-        }
+        public static VirtueEggStats EggStats(CustomBackup backup, Ei.Egg egg) =>
+            EggStats(backup.VirtueEggsDelivered[(int)egg - 50]);
 
         public static VirtueEggStats EggStats(double eggsShipped) {
             for(var j = thresholds.Length - 1; j >= 0; j--) {
@@ -78,11 +73,8 @@ namespace EGG9000.Common.Helpers {
         public static (TimeSpan timeTillHabsFull, TimeSpan timeTillShippingFull) GetTimeTillFull(double eggsPerSecond, DateTimeOffset lastBackupTime, double currentChickens, double maxChickens, double maxShipping, double totalihr) {
             if(totalihr == 0)
                 return (TimeSpan.MaxValue, TimeSpan.MaxValue);
+
             var ratePerChicken = eggsPerSecond / currentChickens;
-            var rateAtMaxChickens = ratePerChicken * maxChickens;
-
-
-
             var shippingCapcityLeft = maxShipping - eggsPerSecond;
             var capacityGrowthRate = ratePerChicken * totalihr;
 

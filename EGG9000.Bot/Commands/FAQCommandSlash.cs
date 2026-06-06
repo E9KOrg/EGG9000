@@ -1,21 +1,19 @@
-﻿using Discord.WebSocket;
-using Discord;
-using EGG9000.Common.Commands;
+﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.FAQHelper;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using EGG9000.Common.Database.Entities;
-using Microsoft.EntityFrameworkCore;
-using EGG9000.Common.Helpers.Discord;
-using EGG9000.Common.Helpers;
-using System;
-using EGG9000.Bot.Helpers;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.FAQHelper;
 
 namespace EGG9000.Bot.Commands {
     public static class FAQCommandSlash {
@@ -72,9 +70,8 @@ namespace EGG9000.Bot.Commands {
             var runningUserDiscord = socketGuild.GetUser(userRunning.DiscordId);
             var hasStaffPerms = runningUserDiscord.GuildPermissions.Has(GuildPermission.ModerateMembers);
 
-            var faqTopics = await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
-            if(faqTopics.Any()) {
-                _logger.LogInformation($"Found FAQ Topic for {query}");
+            if((await db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query)) is List<FAQTopic> faqTopics and not { Count: 0 }) {
+                _logger.LogInformation("Found FAQ Topic for {query}", query);
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Found, please wait..."); 
                 var builder = await FAQEmbedBuilder(_client, guildObj.Id, withStaffPerms, query, isEphemeral, respondToMessage, faqTopics, faqTopics.First());
                 await command.ModifyOriginalResponseAsync(x => { x.Embed = builder.EmbedBuilder.Build(); x.Components = builder.ComponentBuilder?.Build() ?? null; x.Content = null; });

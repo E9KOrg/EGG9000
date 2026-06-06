@@ -2,16 +2,13 @@
 using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
@@ -22,8 +19,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
+using EGG9000.Common.Helpers.Discord;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public static class DiscordHelpersExt {
         public static string GetName(this IGuildUser user) {
             return string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
@@ -137,17 +135,17 @@ namespace EGG9000.Bot.Helpers {
                     dbUser.showEB = false;
                 }
 
-                var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
-                var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+                var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.Contains("registered", StringComparison.CurrentCultureIgnoreCase));
+                var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.Contains("registered", StringComparison.CurrentCultureIgnoreCase));
                 if(registeredRole == null && guildRegisteredRole is not null) {
                     await discordUser.AddRoleAsync(guildRegisteredRole);
                 }
 
-                var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+                var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.Contains("FARMER", StringComparison.CurrentCultureIgnoreCase));
 
                 var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser);
 
-                await CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
+                await CheckSiloResearch(guild, discordUser, [.. dbUser.EggIncAccounts.Select(y => y.Backup)]);
                 await CheckHatchlingRole(guild, discordUser, dbUser);
                 await CheckFreshEggsRole(guild, discordUser, dbUser);
                 await CheckBG(_client, guild, discordUser, dbUser);
@@ -172,7 +170,7 @@ namespace EGG9000.Bot.Helpers {
                     logger?.LogInformation("Role change for {user} in guild {guild} from {oldrole} to {newrole}, Positions {oldpos} {newpos}", discordUser.GetName(), guild.Name, existingRole?.Name ?? "None", role?.Name ?? "None", existingRole?.Position, role?.Position);
                 }
 
-                if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) { //} && eb > dbUser.MaxEBForUser) {
+                if(role != null && existingRole != null && existingRole.Name != role.Name && role.Position > existingRole.Position) {
                     var messages = new List<string> {
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! How do you like your eggs in the morning?",
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%, {discordUser.Mention}! You should see your eggspression right now, lol",
@@ -282,9 +280,10 @@ namespace EGG9000.Bot.Helpers {
                     var index = random.Next(messages.Count);
 
                     //Attempt to find the "separate channel for rankup messages" channel, if it's been set
-                    var response = await ChannelHelper.DetermineAndSend(_client.Gateway, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.AltRankup, new() { Text = messages[index] });
+                    var rankupGuild = db.Guilds.FirstOrDefault(g => g.Id == guild.Id);
+                    var response = await ChannelHelper.DetermineAndSend(_client.Gateway, rankupGuild, GuildChannelType.AltRankup, new() { Text = messages[index] });
                     //If it can't be found, use 'General' instead
-                    if(response == null) await ChannelHelper.DetermineAndSend(_client.Gateway, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = messages[index] });
+                    if(response == null) await ChannelHelper.DetermineAndSend(_client.Gateway, rankupGuild, GuildChannelType.General, new() { Text = messages[index] });
                 }
 
                 return role;
@@ -399,7 +398,7 @@ namespace EGG9000.Bot.Helpers {
             }
 
             if(extraRoles.Count > 0) {
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived).ToListAsync();
 
                 //Handle the case where users rank up, and need to still see existing coops
                 var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
@@ -422,9 +421,9 @@ namespace EGG9000.Bot.Helpers {
         }
 
         private static async Task CheckHatchlingRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
-            if(Guild.Roles.Any(x => x.Name.ToLower().Contains("hatchling"))) {
+            if(Guild.Roles.Any(x => x.Name.Contains("hatchling", StringComparison.CurrentCultureIgnoreCase))) {
                 var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-21);
-                var hatchlingRole = Guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("hatchling"));
+                var hatchlingRole = Guild.Roles.FirstOrDefault(x => x.Name.Contains("hatchling", StringComparison.CurrentCultureIgnoreCase));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == hatchlingRole.Id);
 
                 if(!hasRole && needsRole) {
@@ -612,7 +611,7 @@ namespace EGG9000.Bot.Helpers {
         }
 
         private static async Task<SocketRole> SetRole(SocketGuild guild, IGuildUser DiscordUser, double EarningsBonus, DBUser dbUser) {
-            var currentRole = DiscordUser.RoleIds.Select(y => guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+            var currentRole = DiscordUser.RoleIds.Select(y => guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.Contains("FARMER", StringComparison.CurrentCultureIgnoreCase));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);
             var newRoleName = prefix.Rank;

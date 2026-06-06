@@ -1,4 +1,4 @@
-using EGG9000.Bot;
+using EGG9000.Common.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 

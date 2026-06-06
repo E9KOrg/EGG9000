@@ -1,22 +1,16 @@
 using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
 using Microsoft.EntityFrameworkCore;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
@@ -90,7 +84,7 @@ namespace EGG9000.Bot.Commands {
                 _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), guildUser, dbuser, _client, null, []);
             }
 
-            await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
+            await command.RespondAsync("", embeds: [.. builders.Select(builder => builder.Build())], ephemeral: !showInChannel);
         }
 
         static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, bool admin) {
@@ -174,14 +168,14 @@ namespace EGG9000.Bot.Commands {
                     infoSeparatorAdded = true;
                 }
 
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived).ToListAsync();
                 var xrefsShortened = false;
                 if(xrefs.Count > 4) {
-                    xrefs = xrefs.OrderByDescending(x => x.CreatedOn).Take(4).ToList();
+                    xrefs = [.. xrefs.OrderByDescending(x => x.CreatedOn).Take(4)];
                     xrefsShortened = true;
                 }
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{(x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId)}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     AddInfoSeparatorIfNeeded();
                     lastBuilder.AddField($"Coops {(xrefsShortened ? "(Shortened List)" : "")}", coopsString);

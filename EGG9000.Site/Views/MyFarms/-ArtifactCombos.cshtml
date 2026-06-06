@@ -1,8 +1,9 @@
 ﻿@using Discord.WebSocket;
-@using EGG9000.Common.JsonData.EiStatics
+@using static EGG9000.Common.Helpers.EggIncStatics;
+@using EGG9000.Common.JsonData
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
-@using static EGG9000.Common.Coops.ArtifactCombos;
+@using static EGG9000.Common.Helpers.ArtifactCombos;
 @inject DiscordSocketClient DiscordClient
 @model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
 
@@ -149,14 +150,14 @@
                 var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, Model.CustomEggs, DiscordClient, coop.LastStatusUpdate);
                 var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
 
-                var bestWithoutTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, Model.CustomEggs, null));
+                var bestWithoutTachyon = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, Model.CustomEggs, null));
                 var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
-                var bestWithTachyon = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, Model.CustomEggs, null));
+                var bestWithTachyon = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, Model.CustomEggs, null));
                 var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
 
-                var bestWithoutTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, Model.CustomEggs, null));
+                var bestWithoutTachyonS = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, Model.CustomEggs, null));
                 var withoutTachyonS = GetChangedRate(farm, bestWithoutTachyonS, coop, coopDetails);
-                var bestWithTachyonS = Sort(farm.Artifacts, EGG9000.Common.Coops.ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, Model.CustomEggs, null));
+                var bestWithTachyonS = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, Model.CustomEggs, null));
                 var withTachyonS = GetChangedRate(farm, bestWithTachyonS, coop, coopDetails);
 
                 <div class="card">
@@ -251,10 +252,6 @@
         </div>
 
     }
-    // } catch (Exception ex) {
-    //     <div class="alert alert-danger" role="alert">
-    //         @ex.Message
-    //     </div>
 }
 
 <style>

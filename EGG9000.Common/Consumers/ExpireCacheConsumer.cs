@@ -1,15 +1,13 @@
 ﻿using MassTransit;
 
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using System.Reflection;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Consumers {
-    public class ExpireCacheConsumer(IHostApplicationLifetime applicationLifetime, ILogger<ExpireCacheConsumer> logger, IMemoryCache cache) : IConsumer<ExpireCacheMessage> {
-        private readonly IHostApplicationLifetime _applicationLifetime = applicationLifetime;
+    public class ExpireCacheConsumer(ILogger<ExpireCacheConsumer> logger, IMemoryCache cache) : IConsumer<ExpireCacheMessage> {
         private readonly ILogger<ExpireCacheConsumer> _logger = logger;
         private readonly IMemoryCache _cache = cache;
 

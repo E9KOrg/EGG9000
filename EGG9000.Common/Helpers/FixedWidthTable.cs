@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public class FixedWidthTable {
         public static List<string> GetTableListFormatted(List<List<FixedWidthCell>> contents) {
             var table = GetTable(contents);
@@ -15,12 +14,12 @@ namespace EGG9000.Bot.Helpers {
 
             //Find max column widths
             var columnWidths = new Dictionary<int, int>();
-            foreach((var row, int rowIndex) in contents.Select((item, i) => (item, i))) {
+            foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)
                     continue;
-                foreach((var cell, int columnIndex) in row.Select((item, i) => (item, i))) {
+                foreach((var cell, var columnIndex) in row.Select((item, i) => (item, i))) {
                     var content = cell.Content?.Replace("**", "");
-                    if(columnWidths.ContainsKey(columnIndex) && columnWidths[columnIndex] < (cell.OverrideWidth ?? (content ?? "").Length)) {
+                    if(columnWidths.TryGetValue(columnIndex, out var columnValue) && columnValue < (cell.OverrideWidth ?? (content ?? "").Length)) {
                         columnWidths[columnIndex] = cell.OverrideWidth ?? content.Length;
                     } else if(!columnWidths.ContainsKey(columnIndex)) {
                         columnWidths.Add(columnIndex, cell.OverrideWidth ?? content.Length);
@@ -28,10 +27,10 @@ namespace EGG9000.Bot.Helpers {
                 }
             }
 
-            foreach((var row, int rowIndex) in contents.Select((item, i) => (item, i))) {
+            foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)
                     continue;
-                foreach((var cell, int columnIndex) in row.Select((item, i) => (item, i))) {
+                foreach((var cell, var columnIndex) in row.Select((item, i) => (item, i))) {
                     var padding = columnWidths[columnIndex];
                     if(cell.ReducePadding)
                         padding--;
@@ -46,9 +45,9 @@ namespace EGG9000.Bot.Helpers {
                             sb.Append((cell.Content ?? "").PadBoth(padding));
                             break;
                     }
-                    sb.Append(" ");
+                    sb.Append(' ');
                 }
-                sb.Append("\n");
+                sb.Append('\n');
             }
 
             return sb.ToString();

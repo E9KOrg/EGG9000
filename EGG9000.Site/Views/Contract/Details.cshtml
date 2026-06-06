@@ -42,8 +42,8 @@
         Percent = (c.CoopParticipants.Sum(x => x.Projected) / targetAmount).ToString("P0"),
         CoopId = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Id : Guid.Empty,
         HoursToFinish = c.TimeRemaining.TotalHours,
-        DiscordChannelId = (c.Coop.ThreadID != 0 ? c.Coop.ThreadID.ToString() : c.Coop.DiscordChannelId.ToString()),
-        DeletedChannel = (c.Coop.ThreadID != 0 ? c.Coop.ThreadArchived : c.Coop.DeletedChannel),
+        DiscordChannelId = c.Coop.ThreadID.ToString(),
+        DeletedChannel = c.Coop.ThreadArchived,
         OverflowGuildId = c.Coop.OverflowGuildId.ToString()
     });
 
@@ -301,112 +301,6 @@
                 </div>
             </div>
         </div>
-
-
-
-        @{
-        //                                                            <div class="col-sm">
-        //                                                                @if(!isSolo) {
-        //            if(isAdmin) {
-        //                                                                    <button class="btn-success btn btn-sm" ng-click="CurrentCoopCount = CurrentCoopCount + 1; EmptyCoops.push({ Users: [], MaxSize: @Model.GuildContract.Contract.Details.MaxCoopSize, Count: CurrentCoopCount})">+ Empty Co-op</button>
-        //        }
-        //                                                                <label>
-        //                                                                    <input type="checkbox" ng-model="ShowAll" />
-        //                                                                    Show All Users
-        //                                                                </label>
-        //        }
-        //                                                                <div class="card" ng-repeat="coop in EmptyCoops">
-        //                                                                    <h5 class="card-header">
-        //                                                                        @if(!isSolo) {
-        //                                                                        <div>Co-op {{coop.Count}}</div>
-        //                                                                        <span>{{MinimumTime(coop.Users)}}</span>
-        //                                                                        <button ng-if="IsAdmin" ng-click="Start(coop, EmptyCoops)" class="btn btn-primary btn-sm">Start Co-op</button>
-        //                }
-        //                                                                    </h5>
-        //                                                                    <div class="card-body">
-        //                                                                        <table class="table table-striped">
-        //                                                                            @{ PotentialHeader(); }
-        //                                                                            <tbody class="sortablers" ui-sortable="sortableOptions" ng-model="coop.Users" dnd-list="coop.Users">
-        //                                                                                <tr class="notsortable" ng-if="coop.Users.length == 0"><td style="height: 10px; background-color: white;" colspan="99"></td></tr>
-        //                                                                                <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }" dnd-draggable="user" dnd-moved="coop.Users.splice($index,1)" dnd-effect-allowed="move">
-        //                                                                                    @{ PotentialRowDetails(); }
-        //                                                                                </tr>
-        //                                                                                <tr class="dndPlaceholder"><td colspan="99"></td></tr>
-        //                                                                            </tbody>
-        //                                                                            @{ PotentialFooter(); }
-        //                                                                        </table>
-        //                                                                    </div>
-        //                                                                </div>
-
-        //                                                                <div ng-if="ShowPotential">
-        //                                                                    @if(isSolo) {
-        //                                                                        <h2>Solo</h2>
-        //                                                                        @: Sort By: <label><input checked type="radio" ng-model="SortSolo" value="Name" />Username</label> <label><input type="radio" ng-model="SortSolo" value="EBValue" />EB</label>
-        //            } else {
-        //                                                                    <h2>Potential Co-ops</h2>
-        //            }
-
-        //                                                                    <div class="card" ng-repeat="coop in PotentialCoops" ng-class="{ CurrentCoop: coop.CurrentCoop}">
-        //                                                                        <div style="position: relative; top: -20px;" id="{{coop.Count}}"></div>
-        //                                                                        <h5 class="card-header">
-        //                                                                            @if(!isSolo) {
-        //                                                                            <div>Co-op {{coop.Count}}</div>
-        //                                                                            <span>{{MinimumTime(coop.Users)}}</span>
-        //                                                                            <button ng-if="IsAdmin" ng-click="Start(coop, PotentialCoops)" class="btn btn-primary btn-sm">Start Co-op</button>
-        //                    }
-        //                                                                        </h5>
-        //                                                                        <div class="card-body">
-        //                                                                            <table class="table table-striped">
-        //                                                                                @{ PotentialHeader(); }
-        //                                                                                <tbody dnd-list="coop.Users">
-        //                                                                                    <tr class="notsortable" ng-if="coop.Users.length == 0"><td style="height: 10px; background-color: white;" colspan="99"></td></tr>
-        //                                                                                    @if(isSolo) {
-        //                                                                                    <tr ng-repeat="user in coop.Users | orderBy:SortSolo">
-        //                                                                                        @{ PotentialRowDetails(); }
-        //                                                                                    </tr>
-
-        //                            } else {
-        //                                                                                    <tr ng-repeat="user in coop.Users" dnd-draggable="user" dnd-moved="coop.Users.splice($index,1)" dnd-effect-allowed="move" dnd-disable-if="!IsAdmin">
-        //                                                                                        @{ PotentialRowDetails(); }
-        //                                                                                    </tr>
-        //                            }
-        //                                                                                    <tr class="dndPlaceholder"><td colspan="99"></td></tr>
-        //                                                                                </tbody>
-        //                                                                                @{ PotentialFooter(); }
-        //                                                                            </table>
-        //                                                                        </div>
-        //                                                                    </div>
-        //                                                                </div>
-        //                                                            </div>
-        //                                                            <div class="col-sm" ng-show="ShowAll">
-        //                                                                Sort By: <label><input type="radio" ng-model="SortAll" value="EBValue" />EB</label> <label><input type="radio" ng-model="SortAll" value="TimeLeft" />Time Left</label>
-        //                                                                <span ng-show="ExpiredFarms.length > 0"><a href="#ExpiredFarms">Jump to Expired Farms ({{ExpiredFarms.length}})</a></span>
-        //                                                                <div>
-        //                                                                    <table class="table table-striped">
-        //                                                                        @{ PotentialHeader(); }
-        //                                                                        <tbody dnd-list="UsersByEB">
-        //                                                                            <tr ng-repeat="user in UsersByEB" dnd-draggable="user" dnd-moved="UsersByEB.splice($index,1)" dnd-effect-allowed="move" dnd-disable-if="!IsAdmin">
-        //                                                                                @{PotentialRowDetails(); }
-        //                                                                            </tr>
-        //                                                                            <tr class="dndPlaceholder"><td colspan="99"></td></tr>
-        //                                                                        </tbody>
-        //                                                                    </table>
-        //                                                                </div>
-
-        //                                                                <div ng-show="ExpiredFarms.length > 0" id="ExpiredFarms">
-        //                                                                    <h4>Expired Farms</h4>
-        //                                                                    <table class="table table-striped">
-        //                                                                        @{ PotentialHeader(); }
-        //                                                                        <tbody dnd-list="UsersByEB">
-        //                                                                            <tr ng-repeat="user in ExpiredFarms" dnd-draggable="user" dnd-moved="ExpiredFarms.splice($index,1)" dnd-effect-allowed="move" dnd-disable-if="!IsAdmin">
-        //                                                                                @{PotentialRowDetails(); }
-        //                                                                            </tr>
-        //                                                                            <tr class="dndPlaceholder"><td colspan="99"></td></tr>
-        //                                                                        </tbody>
-        //                                                                    </table>
-        //                                                                </div>
-        //                                                            </div>
-        }
     </div>
 
 </div>
@@ -418,57 +312,9 @@
 </style>
 }
 
-@{
-    //void PotentialRowDetails() {
-    //<td>
-    //                                                                                                        @if(isSolo) {
-    //                                                                                                        <div style="position: relative; top: -20px;" id="{{user.EggIncId}}"></div>
-    //        }
-    //                                                                                                        {{user.Name}}
-    //</td>
-    //<td align="right">{{user.NumChickens}}</td>
-    //<td align="right">{{user.Rate}}</td>
-    //<td align="right">{{user.ProjectedPercent | percentage:0}}</td>
-    //<td align="right">{{user.EB}}</td>
-    //<td align="right">{{user.SiloTime}}</td>
-    //<td>{{user.Status}} {{user.Sleep}}</td>
-    //}
-
-    //void PotentialHeader() {
-    //<thead>
-    //                                                                                                        <tr>
-    //                                                                                                            <th>Name</th>
-    //                                                                                                            <th align="right">🐔</th>
-    //                                                                                                            <th align="right">Rate</th>
-    //                                                                                                            <th align="right">📈</th>
-    //                                                                                                            <th align="right">EB</th>
-    //                                                                                                            <th align="right"></th>
-    //                                                                                                            @if(isSolo) {
-    //                                                                                                            <th>Rate Needed</th>
-    //            } else {
-    //                                                                                                            <th>Status</th>
-    //            }
-    //                                                                                                        </tr>
-    //</thead>
-    //}
-    //void PotentialFooter() {
-    //<tfoot>
-    //                                                                                                        <tr>
-    //                                                                                                            <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
-    //                                                                                                            <td></td>
-    //                                                                                                            <td align="right">{{coop.Rate}}</td>
-    //                                                                                                            <td align="right">{{PercentSum(coop.Users) | percentage:0}}</td>
-    //                                                                                                            <td></td>
-    //                                                                                                            <td></td>
-    //                                                                                                            <td></td>
-    //                                                                                                        </tr>
-    //</tfoot>
-    //}
-}
 @section Scripts {
     <script src="~/lib/angular-drag-and-drop-lists.min.js"></script>
     <script>
-        //angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages', 'ui.sortable'])
 
         angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages', 'dndLists'])
             .config( [
@@ -476,8 +322,6 @@
                 function( $compileProvider )
                 {   
                     $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|discord):/);
-                    //$compileProvider.urlSanitizationWhitelist(/^\s*(https?|discord):/)
-                    // Angular before v1.2 uses $compileProvider.urlSanitizationWhitelist(...)
                 }
             ])
             .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
@@ -531,7 +375,6 @@
                                 }
                                 console.log(response);
                                 RemoveUser(item);
-                                //alert(response.data.userName + " moved to " + response.data.coopName);
                             }
                         }, function Error(response) {
                             alert("Error");
@@ -555,11 +398,9 @@
                                 return;
                             }
                             console.log(response);
-                            //alert("Co-op " + response.data + " Created");
                             $scope.ActiveCoops.unshift(coop);
                             coop.Name = response.data.coopName;
                             coop.Stats = "Just Created";
-                            //$.each(coop.Users, function () { this.Locked = true; });
                             $.each(coopList, function (i) {
                                 console.log(coopList[i].Count, coop.Count);
                                 if (coopList[i].Count == coop.Count) {
@@ -610,25 +451,7 @@
                         });
                     });
 
-                    //$.each($scope.PotentialCoops, function (i) {
-                    //    $.each($scope.PotentialCoops[i].Users, function (coopUserIndex, coopUser) {
-                    //        if (user.EggIncId == coopUser.EggIncId) {
-                    //            $scope.PotentialCoops[i].Users.splice(coopUserIndex, 1);
-                    //            console.log("Removed " + user.Name);
-                    //        }
-                    //    });
-                    //});
                     $scope.UsersByEB = _.sortBy(GetUsersByEB(), [$scope.SortAll]);
-                //    $.each($scope.UsersByEB, function (coopUserIndex, coopUser) {
-                //        if (!coopUser) {
-                //            console.log(coopUser)
-                //            return;
-                //        }
-                //        if (user.EggIncId == coopUser.EggIncId) {
-                //            $scope.UsersByEB.splice(coopUserIndex, 1);
-                //            console.log("Removed " + user.Name);
-                //        }
-                //    });
                 }
 
                 $scope.UsersByEB = GetUsersByEB();

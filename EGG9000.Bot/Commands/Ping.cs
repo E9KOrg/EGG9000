@@ -1,9 +1,8 @@
-﻿using EGG9000.Common.Commands;
-using EGG9000.Common.Services;
+﻿using EGG9000.Common.Services;
+using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public class PingCommands {

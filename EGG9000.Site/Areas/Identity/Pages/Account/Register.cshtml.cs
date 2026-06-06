@@ -8,31 +8,22 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class RegisterModel : PageModel
+    public class RegisterModel(
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        ILogger<RegisterModel> logger,
+        IEmailSender emailSender) : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<RegisterModel> _logger;
-        private readonly IEmailSender _emailSender;
-
-        public RegisterModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _logger = logger;
-            _emailSender = emailSender;
-        }
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly ILogger<RegisterModel> _logger = logger;
+        private readonly IEmailSender _emailSender = emailSender;
 
         [BindProperty]
         public InputModel Input { get; set; }
@@ -70,7 +61,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            ExternalLogins = [.. (await _signInManager.GetExternalAuthenticationSchemesAsync())];
             if (ModelState.IsValid)
             {
                 var user = new IdentityUser { UserName = Input.Email, Email = Input.Email };

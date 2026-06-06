@@ -1,5 +1,4 @@
-﻿using EGG9000.Bot.Helpers;
-using EGG9000.Common.Helpers;
+﻿using EGG9000.Common.Helpers;
 
 using Ei;
 
@@ -43,12 +42,12 @@ namespace EGG9000.Common.Database.Entities {
         public bool SkipNoArtifacts { get; set; }
         public bool SkipNoPiggyDouble { get; set; }
         [NotMapped]
-        public List<Ei.RewardType> PingForRewards {
+        public List<RewardType> PingForRewards {
             get {
                 if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
-                    return new List<Ei.RewardType> { Ei.RewardType.UnknownReward };
+                    return [Ei.RewardType.UnknownReward];
                 }
-                var rewards = new List<Ei.RewardType>();
+                var rewards = new List<RewardType>();
                 if(SkipNoPE)
                     rewards.Add(Ei.RewardType.EggsOfProphecy);
                 if(SkipNoArtifacts) {
@@ -148,12 +147,12 @@ namespace EGG9000.Common.Database.Entities {
                         try {
                             _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
                         } catch(MessagePackSerializationException) {
-                            _accounts = new List<EggIncAccount>();
+                            _accounts = [];
                             return _accounts;
                         }
                         bool needsUpdate = false;
                         if(_accounts is null) {
-                            _accounts = new List<EggIncAccount>();
+                            _accounts = [];
                             needsUpdate = true;
                         }
 
@@ -187,7 +186,7 @@ namespace EGG9000.Common.Database.Entities {
                     }
                     return _accounts;
                 } catch(MessagePackSerializationException) {
-                    return new List<EggIncAccount>();
+                    return [];
                 } catch(Exception) { throw; }
             }
             set {
@@ -208,7 +207,9 @@ namespace EGG9000.Common.Database.Entities {
             var changed = compressedAccounts != _contractRegistrationByte;
             _contractRegistrationByte = compressedAccounts;
             Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
-            EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
+            // Every registered account's EID (== Backup.EggIncId when a backup exists), including accounts not yet backed up,
+            // so EIDs is the authoritative searchable list for registration/lookup.
+            EIDs = string.Join(",", _accounts.Where(a => !string.IsNullOrEmpty(a.Id)).Select(a => a.Id).ToList());
             return changed;
         }
 
@@ -221,25 +222,6 @@ namespace EGG9000.Common.Database.Entities {
 
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
-        public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            return EggIncAccounts.Any(x => x.Id == proto.UserId);
-        }
-
-
-        public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            var eggIncIds = EggIncAccounts;
-            var nameId = eggIncIds.First(x => x.Id == proto.UserId);
-
-            var update = false;
-            if(string.IsNullOrEmpty(nameId.Id)) {
-                nameId.Id = proto.UserId;
-                update = true;
-            }
-            if(update) {
-                UpdateAccounts();//Force JSON Update
-            }
-        }
-
         public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
             switch(dmResult) {
                 case DiscordHelpersExt.DMResult.Success:
@@ -250,12 +232,6 @@ namespace EGG9000.Common.Database.Entities {
                     break;
             }
             return false;
-        }
-
-        public void AddName(string Name, CustomBackup backup, string Id = null) {
-            var eggIncIds = EggIncAccounts;
-            eggIncIds.Add(new EggIncAccount { Id = Id, Backup = backup });
-            UpdateAccounts();//Force JSON Update
         }
 
         public void RemoveID(string id) {
@@ -397,7 +373,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(40)]
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
-        public List<string> AfxSetsImageUrls { get; set; } = new();
+        public List<string> AfxSetsImageUrls { get; set; } = [];
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)

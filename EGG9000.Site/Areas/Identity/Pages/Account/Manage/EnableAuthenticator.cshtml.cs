@@ -3,29 +3,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public class EnableAuthenticatorModel : PageModel
+    public class EnableAuthenticatorModel(
+        UserManager<IdentityUser> userManager,
+        ILogger<EnableAuthenticatorModel> logger,
+        UrlEncoder urlEncoder) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<EnableAuthenticatorModel> _logger;
-        private readonly UrlEncoder _urlEncoder;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly ILogger<EnableAuthenticatorModel> _logger = logger;
+        private readonly UrlEncoder _urlEncoder = urlEncoder;
 
         private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
-
-        public EnableAuthenticatorModel(
-            UserManager<IdentityUser> userManager,
-            ILogger<EnableAuthenticatorModel> logger,
-            UrlEncoder urlEncoder)
-        {
-            _userManager = userManager;
-            _logger = logger;
-            _urlEncoder = urlEncoder;
-        }
 
         public string SharedKey { get; set; }
 
@@ -98,7 +90,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             if (await _userManager.CountRecoveryCodesAsync(user) == 0)
             {
                 var recoveryCodes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-                RecoveryCodes = recoveryCodes.ToArray();
+                RecoveryCodes = [.. recoveryCodes];
                 return RedirectToPage("./ShowRecoveryCodes");
             }
             else

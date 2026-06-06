@@ -1,18 +1,13 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiStatics;
-using EGG9000.Common.Migrations;
-
-using Microsoft.Extensions.Logging;
-
+using EGG9000.Common.JsonData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static EGG9000.Common.Coops.ArtifactCombos;
+using static EGG9000.Common.Helpers.ArtifactCombos;
 
-namespace EGG9000.Common.Coops {
+namespace EGG9000.Common.Helpers {
     public class ArtifactCombos {
         public static List<EggIncArtifactInstance> FindBestCombo(CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon, bool allowChangingStones, List<DBCustomEgg> customEggs, Microsoft.Extensions.Logging.ILogger logger) {
             if(!allowChangingStones) {
@@ -51,10 +46,8 @@ namespace EGG9000.Common.Coops {
                     }
                     toProcess.Add(maxSlot);
                 }
-                
-                if(toProcess.All(x => x is null)) {
-                    return new List<EggIncArtifactInstance>();
-                }
+
+                if(toProcess.All(x => x is null)) return [];
 
                 foreach(var artifactCount in toProcess.GroupBy(x => new {x.Artifact.Rarity, x.Artifact.Tier, x.Artifact }).Select(x => x.First())) {
                     var slots = artifactCount.Slots;
@@ -96,9 +89,7 @@ namespace EGG9000.Common.Coops {
             var newCombos = new List<List<EggIncArtifactInstance>>();
             foreach(var stoneCombo in stonesCombos) {
                 foreach(var stone in possibleStones) {
-                    newCombos.Add(new List<EggIncArtifactInstance>(stoneCombo) {
-                        stone
-                    });
+                    newCombos.Add([.. stoneCombo, stone]);
                 }
             }
             return newCombos;
@@ -107,7 +98,7 @@ namespace EGG9000.Common.Coops {
         private static List<EggIncArtifactInstance> Process(IEnumerable<ArtifactInstanceStats> available, CustomBackup backup, CustomFarm farm, Coop coop, List<DBCustomEgg> customEggs, bool withTachyon) {
             var farmWithoutArtifacts = new CustomFarm {
                 CommonResearch = farm.CommonResearch,
-                Habs = farm.Habs, TrainLength = farm.TrainLength, NumChickens = farm.NumChickens, EggType = farm.EggType, Artifacts = new List<EggIncArtifactInstance>(), Vehicles = farm.Vehicles
+                Habs = farm.Habs, TrainLength = farm.TrainLength, NumChickens = farm.NumChickens, EggType = farm.EggType, Artifacts = [], Vehicles = farm.Vehicles
             };
             var statsWithoutArtifacts = farmWithoutArtifacts.WithStats(backup, coop, customEggs, (farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1, coop.Contract);
 
@@ -124,13 +115,6 @@ namespace EGG9000.Common.Coops {
             if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.HabCapacity)) {
                 keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.HabCapacity));
             }
-            //if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && withTachyon) {
-            //    keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates));
-            //} else if(withTachyon) {
-            //    var tachyon = available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates).MaxBy(x => x.Artifact.Value);
-            //    if(tachyon is not null)
-            //        keepArtifacts.Add(tachyon.Artifact);
-            //}
 
             var artifacts = available
                 .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
@@ -147,7 +131,7 @@ namespace EGG9000.Common.Coops {
                     if(artifacts[i].Artifact.Id == artifacts[j].Artifact.Id)
                         continue;
                     if(keepArtifacts.Count == 2) {
-                        var set = new ArtifactSet(new List<ArtifactInstanceStats> { new ArtifactInstanceStats(keepArtifacts[0]), new ArtifactInstanceStats(keepArtifacts[1]), artifacts[i], artifacts[j] }, statsWithoutArtifacts);
+                        var set = new ArtifactSet([new ArtifactInstanceStats(keepArtifacts[0]), new ArtifactInstanceStats(keepArtifacts[1]), artifacts[i], artifacts[j]], statsWithoutArtifacts);
                         if(CheckSet(set, withTachyon)) 
                             sets.Add(set);
                         continue;
@@ -157,7 +141,7 @@ namespace EGG9000.Common.Coops {
                             artifacts[j].Artifact.Id == artifacts[k].Artifact.Id)
                             continue;
                         if(keepArtifacts.Count == 1) {
-                            var set = new ArtifactSet(new List<ArtifactInstanceStats> { new ArtifactInstanceStats(keepArtifacts[0]), artifacts[i], artifacts[j], artifacts[k] }, statsWithoutArtifacts);
+                            var set = new ArtifactSet([new ArtifactInstanceStats(keepArtifacts[0]), artifacts[i], artifacts[j], artifacts[k]], statsWithoutArtifacts);
                             if(CheckSet(set, withTachyon)) 
                                 sets.Add(set);
                             continue;
@@ -168,7 +152,7 @@ namespace EGG9000.Common.Coops {
                                 artifacts[k].Artifact.Id == artifacts[l].Artifact.Id
                                 )
                                 continue;
-                            var set = new ArtifactSet(new List<ArtifactInstanceStats> { artifacts[i], artifacts[j], artifacts[k], artifacts[l] }, statsWithoutArtifacts);
+                            var set = new ArtifactSet([artifacts[i], artifacts[j], artifacts[k], artifacts[l]], statsWithoutArtifacts);
                             if(CheckSet(set, withTachyon)) 
                                 sets.Add(set);
                         }
@@ -237,18 +221,10 @@ namespace EGG9000.Common.Coops {
             }
         }
 
-        public class ArtifactInstanceStats {
-            public EggIncArtifactInstance Artifact { get; set; }
-            public double Shipping { get; set; }
-            public double EggLaying { get; set; }
-            //public string ShippingPlusEgg { get; set; }
-
-            public ArtifactInstanceStats(EggIncArtifactInstance instance) {
-                Artifact = instance;
-                Shipping = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.EggShippingRate, new List<EggIncArtifactInstance> { instance }, false);
-                EggLaying = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.EggLayingRate, new List<EggIncArtifactInstance> { instance }, false);
-                //ShippingPlusEgg = $"{Shipping}{EggLaying}";
-            }
+        public class ArtifactInstanceStats(EggIncArtifactInstance instance) {
+            public EggIncArtifactInstance Artifact { get; set; } = instance;
+            public double Shipping { get; set; } = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.EggShippingRate, [instance], false);
+            public double EggLaying { get; set; } = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.EggLayingRate, [instance], false);
         }
     }
 
@@ -260,12 +236,12 @@ namespace EGG9000.Common.Coops {
         public ScoredSet(ArtifactSet set, int score) { 
             Set = set;
             Score = score;
-            ArtiList = new List<EggIncArtifactInstance> {
+            ArtiList = [
                 Set.Artifacts[0].Artifact,
                 Set.Artifacts[1].Artifact,
                 Set.Artifacts[2].Artifact,
                 Set.Artifacts[3].Artifact
-            };
+            ];
         }
     }
 }

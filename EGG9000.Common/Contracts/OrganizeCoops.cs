@@ -1,5 +1,4 @@
-﻿using Discord;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
@@ -20,11 +19,14 @@ namespace EGG9000.Common.Contracts {
             }
 
             //Start compiling a list of all eligible accounts
+            var latestHistoryByEggId = userCsHistoryEntries
+                .GroupBy(x => x.EggIncId)
+                .ToDictionary(g => g.Key, g => g.MaxBy(x => x.Created));
             var accounts = users
             .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
                 Account = a,
                 User = u,
-                UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
+                UserCsHistoryEntry = latestHistoryByEggId.GetValueOrDefault(a.Id),
                 //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
                 Group = a.GetGroup(contract.Details.CcOnly),
                 RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
@@ -83,10 +85,10 @@ namespace EGG9000.Common.Contracts {
 
             // Run CheckOnPreviousComplete last so that all other filters are applied to `accounts` first
             // This fixes some issues with  RedoLeggacyOption.YesOtherAccountMatch
-            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(dbGuild, x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
+            FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(dbGuild, x, contract, [.. accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id)]), "Previously completed");
 
             
-            foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+            foreach(var grade in Enum.GetValues<Ei.Contract.Types.PlayerGrade>()) {
                 if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
                     continue;
                 var includeBg = new List<int>();
@@ -128,11 +130,11 @@ namespace EGG9000.Common.Contracts {
                 if(contract.Details.CcOnly) {
                     var coops = groups.Where(x => x.PotentialCoops is not null).SelectMany(x => x.PotentialCoops.Select(y => new { BG = x.BoardingGroup, Coop = y })).ToList();
 
-                    groups = coops.GroupBy(x => new { x.BG, x.Coop.Grade }).Select(x => new PotentialCoopGroup {
+                    groups = [.. coops.GroupBy(x => new { x.BG, x.Coop.Grade }).Select(x => new PotentialCoopGroup {
                         BoardingGroup = x.Key.BG,
                         Grade = x.Key.Grade,
-                        PotentialCoops = x.Select(y => y.Coop).ToList()
-                    }).ToList();
+                        PotentialCoops = [.. x.Select(y => y.Coop)]
+                    })];
                     break;
                 }
             }

@@ -1,14 +1,9 @@
 ﻿using EGG9000.Bot.Services;
-
 using Microsoft.Extensions.Logging;
-
-
-using System;
-using System.Threading.Tasks;
-using System.Net.Http;
 using Polly;
-
-
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 #if RELEASE
 namespace EGG9000.Bot.Jobs {

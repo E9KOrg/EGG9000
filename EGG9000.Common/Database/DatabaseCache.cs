@@ -8,8 +8,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
@@ -22,16 +20,35 @@ namespace EGG9000.Common.Database {
             _logger = logger;
             var db = dbContextFactory.CreateDbContext();
             _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-            _cachedUsers = db.DBUsers.AsNoTracking().ToList();
+            _users = BuildUserSnapshot([.. db.DBUsers.AsNoTracking()]);
 
             RefreshActiveCoopsCache().Wait();
         }
 
-        private volatile List<DBUser> _cachedUsers;
+        // Immutable snapshot swapped atomically on refresh so guild/DiscordId lookups stay consistent with the flat list.
+        private sealed class UserSnapshot {
+            public required List<DBUser> All { get; init; }
+            public required ILookup<ulong, DBUser> ByGuild { get; init; }
+            public required Dictionary<ulong, DBUser> ByDiscordId { get; init; }
+        }
+
+        private static UserSnapshot BuildUserSnapshot(List<DBUser> users) => new() {
+            All = users,
+            ByGuild = users.ToLookup(u => u.GuildId),
+            ByDiscordId = users.GroupBy(u => u.DiscordId).ToDictionary(g => g.Key, g => g.First())
+        };
+
+        private volatile UserSnapshot _users;
         private DateTimeOffset _lastCacheUpdateUser;
 
-        public List<DBUser> GetCachedUsers() => _cachedUsers;
-        public Task<List<DBUser>> GetDbUsers() => Task.FromResult(_cachedUsers);
+        public List<DBUser> GetCachedUsers() => _users.All;
+        public Task<List<DBUser>> GetDbUsers() => Task.FromResult(_users.All);
+
+        // Only this guild's users (DBUser.GuildId == the Discord server id). Empty sequence if none cached.
+        public IEnumerable<DBUser> GetUsersForGuild(ulong guildId) => _users.ByGuild[guildId];
+
+        // The single cached user with this Discord id, or null.
+        public DBUser GetUserByDiscordId(ulong discordId) => _users.ByDiscordId.GetValueOrDefault(discordId);
 
         public async Task RefreshUserCache() {
             try {
@@ -40,10 +57,10 @@ namespace EGG9000.Common.Database {
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
                 var updatedUsers = await db.DBUsers.AsNoTracking().Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
                 _logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
-                var newList = new List<DBUser>(_cachedUsers);
+                var newList = new List<DBUser>(_users.All);
                 newList.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));
                 newList.AddRange(updatedUsers);
-                _cachedUsers = newList;
+                _users = BuildUserSnapshot(newList);
             } catch(Exception e) {
                 _logger.LogError(e, "Error refreshing user cache");
             }
@@ -57,7 +74,7 @@ namespace EGG9000.Common.Database {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
                 _logger.LogInformation("Refreshing active coops cache");
-                var coops = await db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToListAsync();
+                var coops = await db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.ThreadArchived).ToListAsync();
                 _cachedActiveCoops = coops;
             } catch(Exception e) {
                 _logger.LogError(e, "Error refreshing active coops cache");

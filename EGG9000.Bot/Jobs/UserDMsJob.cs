@@ -1,9 +1,8 @@
 ﻿using Discord.WebSocket;
-
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
-
+using EGG9000.Common.Helpers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 
@@ -21,18 +20,18 @@ namespace EGG9000.Bot.Jobs {
         [Job("0 */30 * * * *")]
         public async Task WarningBreakExpiring() {
             _logger.LogInformation("Running WarningBreakExpiring");
-            var users = _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1) && x.DiscordId > 0 & x.DiscordId > 0 && x.GuildId > 0).ToList();
+            var users = await _db.DBUsers.Where(x => x.NextBreakExpire != null && x.NextBreakExpire < DateTimeOffset.Now.AddDays(1) && x.DiscordId > 0 & x.DiscordId > 0 && x.GuildId > 0).ToListAsync();
+            // The /mycontractsettings command is constant; fetch it once instead of per warned account.
+            var mcs = (await _discord.GetGlobalApplicationCommandsAsync()).FirstOrDefault(c => c.Type == Discord.ApplicationCommandType.Slash && c.Name == "mycontractsettings");
             foreach(var user in users) {
+                var discorduser = _discord.GetUser(user.DiscordId);
+                if(discorduser is null) {
+                    continue;
+                }
                 foreach(var account in user.EggIncAccounts) {
-                    var discorduser = _discord.GetUser(user.DiscordId);
-                    if(discorduser is null) {
-                        continue;
-                    }
-
                     if(!account.SentBreakWarning && account.OnBreakUntil < DateTimeOffset.Now.AddDays(1) && account.OnBreakUntil > DateTimeOffset.Now.AddDays(-1)) {
                         _logger.LogInformation("Sending warning to {user}", user.DiscordUsername);
 
-                        var mcs = (await _discord.GetGlobalApplicationCommandsAsync()).FirstOrDefault(c => c.Type == Discord.ApplicationCommandType.Slash && c.Name == "mycontractsettings");
                         var message = $"Your break for {account.Backup?.UserName ?? "(No Name)"} is expiring {DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.Relative)}." +
                             $"\n\nPlease use the {(mcs is not null ? $"</mycontractsettings:{mcs?.Id ?? 0}>" : "`/mycontractsettings`")} command to extend your break if you need more time, otherwise you will be assigned co-ops after " +
                             $"{DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}. (If this time is after a contract release but before the last BG, you would be assigned during a later BG)";

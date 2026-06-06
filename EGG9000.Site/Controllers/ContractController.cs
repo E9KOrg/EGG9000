@@ -1,7 +1,5 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot;
 using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -10,7 +8,6 @@ using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -40,7 +37,6 @@ namespace EGG9000.Site.Controllers {
             var status = await EggIncApi.GetCoopStatus(contractid, coopid);
             return new ObjectResult(status);
         }
-
 
 
         private async Task<((List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded), Contract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
@@ -82,7 +78,7 @@ namespace EGG9000.Site.Controllers {
             }
 
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
-            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).ToListAsync();
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.Now.AddDays(-60)).AsSplitQuery().ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
             var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, guild, count);
 
@@ -187,11 +183,10 @@ namespace EGG9000.Site.Controllers {
                 await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
 
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId);
-
-
                 var coopsBreakdown = await GetBreakdown(_db, guildContract, _discord, League);
 
                 ViewBag.Discord = _discord;
+
 
                 return View(new CoopsViewModel {
                     GuildContract = guildContract,
@@ -242,7 +237,7 @@ namespace EGG9000.Site.Controllers {
             var discordUser = guild.Users.First(x => x.Id == dbuser.DiscordId);
             var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
 
-            var channel = targetCoop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID) : (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
+            var channel = (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
             var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, _db, discordUser, dbuser, channel, null);
 
@@ -305,7 +300,7 @@ namespace EGG9000.Site.Controllers {
             var contracts = await _db.Contracts.OrderByDescending(x => x.Created).Take(10).ToListAsync();
             times.Set("Get Contracts");
             var contractIDs = contracts.Select(x => x.ID).ToArray();
-            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => contractIDs.Contains(x.ContractID) && x.Status == CoopStatusEnum.Completed && x.GuildId == guildid).ToListAsync();
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => contractIDs.Contains(x.ContractID) && x.Status == CoopStatusEnum.Completed && x.GuildId == guildid).AsSplitQuery().ToListAsync();
             times.Set("Get Coops");
             var userids = coops.SelectMany(x => x.UserCoopsXrefs).Select(x => x.UserId).Distinct().ToArray();
             var users = await _db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
@@ -325,10 +320,10 @@ namespace EGG9000.Site.Controllers {
             times.Set("Download Guild Users");
             var scoreGridItems = coops.SelectMany(coop => {
                 var contract = contracts.First(x => x.ID == coop.ContractID);
-                var details = new CoopDetails(coop, contract, coop.League, coop.UserCoopsXrefs.SelectMany(xref => {
+                var details = new CoopDetails(coop, contract, coop.League, [.. coop.UserCoopsXrefs.SelectMany(xref => {
                     var user = users.First(u => u.Id == xref.UserId);
                     return user.EggIncAccounts.Select(acc => new UserWithBackup { Account = acc, Backup = acc.Backup, User = xref.User });
-                }).ToList(), customEggs, _discord, coop.LastStatusUpdate);
+                })], customEggs, _discord, coop.LastStatusUpdate);
 
                 return details.CoopParticipants.Where(p => p.DBUser is not null && p.DBUser.GuildId == guildid).Select(p => {
                     var role = groupRoles.Length > 0 ? dbguild.GroupRoles.Split(",").FirstOrDefault(gr => guild.GetUser(p.DBUser.DiscordId)?.Roles.Any(r => r.Id.ToString() == gr) ?? false) : "";

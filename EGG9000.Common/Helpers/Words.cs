@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Bot {
+namespace EGG9000.Common.Helpers {
     public class Words
     {
         private readonly Random _rnd;
@@ -53,7 +53,7 @@ namespace EGG9000.Bot {
                 customName.First().User.ExpireCustomCoopName = null;
                 customName.First().User.CustomCoopName = null;
             }
-            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName)).ToList();
+            customNames = [.. customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName))];
 
             if(customNames.Count > 1) {
                 return string.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
@@ -77,7 +77,7 @@ namespace EGG9000.Bot {
 
         private List<String> WordList {
             get {
-                return new List<String> {
+                return [
     "acorn",
     "acre",
     "acts",
@@ -1324,7 +1324,7 @@ namespace EGG9000.Bot {
     "zippy",
     "zone",
     "zoom"
-                };
+                ];
             }
         }
     }

@@ -3,21 +3,14 @@ using Microsoft.Extensions.Logging;
 
 using Prometheus;
 
-using RabbitMQ.Client;
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Services {
-    internal sealed class PrometheusMetricServerHostedService : IHostedService {
-        private readonly IMetricServer _metricServer;
-        private readonly ILogger<PrometheusMetricServerHostedService> _logger;
-        public PrometheusMetricServerHostedService(IMetricServer metricServer, ILogger<PrometheusMetricServerHostedService> logger) {
-            _logger = logger;
-
-            _metricServer = metricServer;
-        }
+    internal sealed class PrometheusMetricServerHostedService(IMetricServer metricServer, ILogger<PrometheusMetricServerHostedService> logger) : IHostedService {
+        private readonly IMetricServer _metricServer = metricServer;
+        private readonly ILogger<PrometheusMetricServerHostedService> _logger = logger;
 
         public Task StartAsync(CancellationToken cancellationToken) {
             try {

@@ -1,11 +1,9 @@
 ﻿using Discord;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiAfxConfig;
+using EGG9000.Common.JsonData;
 using EGG9000.Common.Services;
 using Ei;
 using Microsoft.EntityFrameworkCore;
@@ -13,15 +11,13 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.MissionInfo.Types;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public static class ForumlaCommands {
         public enum MERChoice {
             [Discord.Interactions.ChoiceDisplay("Current")] Current = 0,
@@ -78,13 +74,6 @@ namespace EGG9000.Bot.Commands {
                 .WithName("Mystical Egg Ratio")
                 .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp"))
                 .Build();
-        }
-
-        private class ShipData(string type, string duration, int level, double legendaryDropRate) {
-            public string Type { get; set; } = type;
-            public string Duration { get; set; } = duration;
-            public int Level { get; set; } = level;
-            public double LegendaryDropRate { get; set; } = legendaryDropRate;
         }
 
         private class ShipsSent {
@@ -168,7 +157,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var shipCoefficientTable = await GetShipDataTable(_cache, _logger);
-            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
+            var baseCraftingCoefficients = EIAfxConfigRoot.Get().baseCraftingCoefficients;
 
             //Catch the case where the cache is invalidated, and the API returns an error
             if(shipCoefficientTable is null) {
@@ -215,7 +204,7 @@ namespace EGG9000.Bot.Commands {
                     //Calculate "assumed" or simulated crafting level
                     var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
                     //Retrieve the multiplier offset for this level (-1 due to returning "display value" vs. index)
-                    var simulatedMultiplier = Root.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
+                    var simulatedMultiplier = EIAfxConfigRoot.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
 
                     //Calculate the true rate based on simulated multiplier
                     var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);

@@ -1,9 +1,9 @@
 ﻿using Discord;
 using EGG9000.Bot.Commands.Informational;
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -26,75 +26,12 @@ namespace EGG9000.Bot.Automated {
             await RunFairnessScores(sendMessages: true, returnScoreSet: false, cancellationToken);
         }
 
-        public async Task RunCraftingLevelCheck(CancellationToken cancellationToken, bool sendMessages = true, bool returnLevelSet = false) {
-            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var dbguilds = await _db.Guilds.AsQueryable().ToListAsync();
-            var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync();
-            var xpSet = new Dictionary<EggIncAccount, double>();
-
-            foreach(var user in dbusers) {
-                foreach(var account in user.EggIncAccounts.ToList()) {
-                    if(cancellationToken.IsCancellationRequested) return;
-                    if(account is null || account.Backup is null || account.Backup.CraftingXP == 0) continue;
-                    xpSet.Add(account, account.Backup.CraftingXP);
-                }
-            }
-
-            const double zScoreCutoff = 1.0;
-
-            var sumXp = xpSet.Values.Sum();
-            var averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
-
-            xpSet = xpSet.Where(x => x.Value > averageXp).ToDictionary(pair => pair.Key, pair => pair.Value);
-            sumXp = xpSet.Values.Sum();
-            averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
-
-            var sumSquaredDeviations = xpSet.Values.Sum(score => Math.Pow(score - averageXp, 2));
-            var standardDeviation = Math.Sqrt(sumSquaredDeviations / xpSet.Count);
-
-            var upperThreshold = averageXp + (zScoreCutoff * standardDeviation);
-            var upperOutliers = xpSet
-                .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
-                .Where(pair => !pair.Key.CraftingWarningSent)
-                .Where(pair => !pair.Key.CraftingMarkedClean)
-                .Where(pair => (pair.Value - averageXp) / standardDeviation > zScoreCutoff)
-                .Select(pair => pair.Key)
-                .ToList();
-
-            if(sendMessages) {
-                foreach(var outlier in upperOutliers) {
-                    if(cancellationToken.IsCancellationRequested) return;
-                    await WaitOnCoopsBeingCreated(cancellationToken);
-
-                    DBUser user;
-                    if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
-                    else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
-                    var outlierScore = xpSet[outlier];
-
-                    var dbGuild = dbguilds.FirstOrDefault(x => x.Id == user.GuildId);
-                    if(dbGuild is null) continue;
-
-                    var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
-#if DEV9002
-                    var message = $"User `<@{user.DiscordId}>` may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
-#else
-                    var message = $"User <@{user.DiscordId}> may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
-#endif
-
-                    var response = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() { Text = message });
-
-                    outlier.CraftingWarningSent = true;
-                    user.UpdateAccounts();
-                }
-                await _db.SaveChangesAsync();
-            }
-        }
-
         public async Task<Dictionary<EggIncAccount, double>> RunFairnessScores(bool sendMessages, bool returnScoreSet, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
             var dbusers = await _db.DBUsers.AsQueryable().Where(u => !u.TempDisabled).ToListAsync(CancellationToken.None);
             var scoreSet = new Dictionary<EggIncAccount, double>();
+            var accountOwner = new Dictionary<EggIncAccount, DBUser>();
 
             foreach(var user in dbusers) {
                 if(cancellationToken.IsCancellationRequested) return [];
@@ -102,6 +39,7 @@ namespace EGG9000.Bot.Automated {
                     var score = (double)ArtifactHelpers.GetArtifactFairnessScore(account.Backup?.ArtifactHall ?? null);
                     if(account is null || score is 0) continue;
                     scoreSet.Add(account, score);
+                    accountOwner[account] = user;
                 }
             }
 
@@ -119,7 +57,7 @@ namespace EGG9000.Bot.Automated {
             // Calculate the Z-score for each account and find upper outliers
             var upperThreshold = averageScore + (zScoreCutoff * standardDeviation);
             var upperOutliers = scoreSet
-                .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))
+                .Where(pair => dbguilds.Any(g => g.Id == accountOwner[pair.Key].GuildId))
                 .Where(pair => !pair.Key.AFSMarkedClean)
                 .Where(pair => !pair.Key.AFSWarningSent)
                 .Where(pair => (pair.Value - averageScore) / standardDeviation > zScoreCutoff)
@@ -129,9 +67,7 @@ namespace EGG9000.Bot.Automated {
             if(sendMessages) {
                 foreach(var outlier in upperOutliers) {
                     if(cancellationToken.IsCancellationRequested) return [];
-                    DBUser user;
-                    if(string.IsNullOrEmpty(outlier.Name)) user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Id == outlier.Id));
-                    else user = dbusers.FirstOrDefault(u => u.EggIncAccounts.Any(a => a.Name == outlier.Name));
+                    var user = accountOwner[outlier];
                     var outlierScore = scoreSet[outlier];
 
                     var clientGuild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);

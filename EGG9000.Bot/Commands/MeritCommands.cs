@@ -1,16 +1,13 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
@@ -159,7 +156,7 @@ namespace EGG9000.Bot.Commands {
             });
         }
 
-        private static (Embed embed, MessageComponent? components) BuildMeritPage(
+        private static (Embed embed, MessageComponent components) BuildMeritPage(
             List<Merit> merits, int page, ulong invokerDiscordId, ulong targetDiscordId, string targetMention) {
 
             var pages = new List<(int start, int end)>();
@@ -191,7 +188,7 @@ namespace EGG9000.Bot.Commands {
             if(pages.Count > 1)
                 embedBuilder.WithFooter($"Page {page + 1} of {pages.Count}");
 
-            MessageComponent? messageComponents = null;
+            MessageComponent messageComponents = null;
             if(pages.Count > 1) {
                 var cb = new ComponentBuilder()
                     .WithButton("< Prev", $"LoadMerits:{invokerDiscordId},{targetDiscordId},{Math.Max(0, page - 1)}", ButtonStyle.Secondary, disabled: page == 0)

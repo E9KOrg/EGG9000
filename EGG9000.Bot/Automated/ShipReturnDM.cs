@@ -1,11 +1,10 @@
-﻿using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Ei;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -13,8 +12,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Database.Entities.DBUser;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM(IServiceProvider provider) : _UpdaterBase<ShipReturnDM>(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
@@ -150,12 +149,12 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.Now).ToList();
+                    user.ShipDMs = [.. currentShipDMs.Where(x => x.DMTime > DateTimeOffset.Now)];
                     var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
 
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {
-                        var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == user.Id);
-                        dbuser.NextShipReturnDMDue = NextShipReturnDMDue;
+                        // `user` is already tracked by _db (materialized from it by the caller); set directly instead of re-querying per user.
+                        user.NextShipReturnDMDue = NextShipReturnDMDue;
                     }
                 } catch(Exception) {}
             }

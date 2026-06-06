@@ -1,26 +1,18 @@
-﻿using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.Migrations;
-
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
-using Nito.AsyncEx;
-
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Frozen;
 
 namespace EGG9000.Bot.Automated {
     public class UpdateBackups(IServiceProvider provider) : _UpdaterBase<UpdateBackups>(TimeSpan.FromMinutes(1), delayedStart: TimeSpan.FromMinutes(0), provider) {

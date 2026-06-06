@@ -11,7 +11,6 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,7 +20,7 @@ namespace EGG9000.Common.EggIncAPI {
 
         public static async Task<PeriodicalsResponse> GetPeriodicalsAsync() {
             return await Post<PeriodicalsResponse, GetPeriodicalsRequest>(new GetPeriodicalsRequest {
-                UserId = "EI5482515761594368",
+                UserId = UserId,
                 PiggyFull = false,
                 PiggyFoundFull = false,
                 SecondsFullRealtime = 2339576.17448521,
@@ -29,7 +28,7 @@ namespace EGG9000.Common.EggIncAPI {
                 SoulEggs = 570149167.28294,
                 CurrentClientVersion = ClientVersion,
                 Debug = false,
-            }, "EI4765194876354560", true);
+            }, UserId, true);
         }
 
         public static async Task<ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, string EIID = null, List<UserCoopXref> xrefs = null, ILogger _logger = null, CancellationToken cancellationToken = default) {
@@ -60,13 +59,12 @@ namespace EGG9000.Common.EggIncAPI {
         }
 
         public static async Task<ContractCoopStatusResponse> GetCoopStatusBot(string ContractName, string CoopName, List<UserCoopXref> xrefs = null, ILogger _logger = null, CancellationToken cancellationToken = default) {
-            var EIID = "EI6291940968235008";
             try {
                 var model = new ContractCoopStatusRequest {
                     ContractIdentifier = ContractName,
                     CoopIdentifier = CoopName.ToLower(),
-                    Rinfo = GetInfo(EIID),
-                    UserId = EIID,
+                    Rinfo = GetInfo(UserId),
+                    UserId = UserId,
                     ClientVersion = ClientVersion,
                     ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
                 };
@@ -187,16 +185,14 @@ namespace EGG9000.Common.EggIncAPI {
                     return null;
                 }
                 return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
-            } catch(Exception e) {
+            } catch(Exception) {
                 return null;
             }
         }
 
-
         public static async Task<ContractPlayerInfo> GetContractPlayerInfo(string UserId) {
             try {
                 var info = GetInfo(UserId);
-
 
                 var messageData = info.ToByteArray();
                 var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
@@ -207,7 +203,7 @@ namespace EGG9000.Common.EggIncAPI {
                     return null;
                 }
                 return GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes);
-            } catch(Exception e) {
+            } catch(Exception) {
                 return null;
             }
         }

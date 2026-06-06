@@ -7,13 +7,12 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Common.Helpers.ChannelHelper;
+using static EGG9000.Common.Helpers.Discord.ChannelHelper;
 using static EGG9000.Common.Database.Entities.NasaApod;
 
 namespace EGG9000.Common.Helpers;
@@ -113,10 +112,6 @@ public static partial class NasaHelper {
         return $"NasaApodCache:Guild:{guild.Id}";
     }
 
-    private static string GetApodImageBytesKey(this NasaApod apod) {
-        return $"NasaApodImageBytes:Apod:{apod.ID}";
-    }
-
     public static async Task<string> GetExplanationOrEmpty(Guid postGuid, ApplicationDbContext db) {
         if (!db._cache.TryGetValue(postGuid.GetApodExplanationKey(), out string explanation)) {
             var apod = await db.NasaApods.FirstOrDefaultAsync(a => a.ID == postGuid);
@@ -137,30 +132,6 @@ public static partial class NasaHelper {
             Embed = apodEmbed.Build(),
             Components = apod.CreateEphemeralExplanationButton()
         });
-
-
-        /*
-        if(TryExtractYouTubeId(apod.BestUrl) is string videoId) {
-            var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"https://img.youtube.com/vi/{videoId}/maxresdefault.jpg");
-            return new CustomDiscordMessage {
-                Embed = apodEmbed.Build(),
-                Components = apod.CreateEphemeralExplanationButton()
-            };
-
-        } else {
-            var attachment = await apod.GetFileAttachmentOrNull(db, logger);
-            if(attachment is not FileAttachment fileAttachment) {
-                logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
-                return null;
-            }
-            var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"attachment://{fileAttachment.FileName}");
-            return new CustomDiscordMessage {
-                Embed = apodEmbed.Build(),
-                File = fileAttachment,
-                SendFile = true,
-                Components = apod.CreateEphemeralExplanationButton()
-            };
-        }*/
     }
 
     public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
@@ -254,5 +225,4 @@ public static partial class NasaHelper {
         var id = TryExtractYouTubeId(url);
         return string.IsNullOrEmpty(id) ? url : $"https://www.youtube.com/watch?v={id}";
     }
-
 }

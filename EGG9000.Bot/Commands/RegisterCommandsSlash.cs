@@ -1,33 +1,21 @@
 using Bugsnag;
-
 using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
-using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
-
 using MassTransit.Initializers;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
     public static class RegisterCommandsSlash {
@@ -268,8 +256,7 @@ namespace EGG9000.Bot.Commands {
             var welcomeChannel = await _client.GetChannelAsync(GuildChannelType.Welcome, guild);
 
             try {
-                var bannedUsers = db.DBUsers.Where(x => x.Banned).ToList().SelectMany(u => u.EggIncAccounts).ToList();
-                if(bannedUsers.Any(e => e.Id.ToUpper() == eggincid)) {
+                if(await db.DBUsers.AnyAsync(x => x.Banned && x.EIDs.Contains(eggincid))) {
                     var bannedUserThread = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.BannedUserThread);
                     if(bannedUserThread is not null) {
                         var thread = guild.GetThreadChannel(bannedUserThread.Id);
@@ -288,8 +275,7 @@ namespace EGG9000.Bot.Commands {
                 logger.LogError(ex, "Error checking banned users");
             }
 
-            var existingUsers = await db.DBUsers.ToListAsync();
-            if(existingUsers.Any(u => u.EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
+            if(await db.DBUsers.AnyAsync(u => u.EIDs.Contains(eggincid))) {
                 await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
                 return;
             }
@@ -356,7 +342,7 @@ namespace EGG9000.Bot.Commands {
 
             var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
 
-            var registeredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+            var registeredRole = guild.Roles.FirstOrDefault(x => x.Name.Contains("registered", StringComparison.CurrentCultureIgnoreCase));
             if(registeredRole is not null && !socketGuildUser.RoleIds.Any(x => x == registeredRole.Id)) {
                 await socketGuildUser.AddRoleAsync(registeredRole);
             }
@@ -441,7 +427,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task Clean(FauxCommand command, DiscordHostedService _client) {
             await command.RespondAsync("Cleaning...");
             var channel = (SocketTextChannel)command.Channel;
-            if(channel.Name.ToLower().Contains("welcome")) {
+            if(channel.Name.Contains("welcome", StringComparison.CurrentCultureIgnoreCase)) {
                 await _cleanWelcome(command, _client);
             } else {
                 await _cleanUnpinned(command);

@@ -2,12 +2,9 @@ using Bugsnag.AspNet.Core;
 
 using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
-using EGG9000.Common.Services;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
 
@@ -21,9 +18,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-
-
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,15 +28,12 @@ using NLog;
 using NLog.Web;
 
 using System;
-using System.Diagnostics;
-using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
 
 
-
-var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
+var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
 logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
@@ -72,8 +63,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
-
-
 app.MapControllerRoute(name: "invite",
         pattern: "invite",
         defaults: new { controller = "Home", action = "Invite" });
@@ -117,9 +106,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     });
 
     services
-                .ConfigureApplicationCookie((options) => ConfigureAuthorizationCookie(options, "egg9000Cookie"))
-                .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
-
+        .ConfigureApplicationCookie((options) => ConfigureAuthorizationCookie(options, "egg9000Cookie"))
+        .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
 
     services.AddAuthentication(options => {
     }).AddDiscord(options => {

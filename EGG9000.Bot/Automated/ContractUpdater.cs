@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -22,12 +21,6 @@ using static EGG9000.Common.Helpers.Prefarm;
 namespace EGG9000.Bot.Automated {
     public class ContractUpdater(IServiceProvider provider) : _UpdaterBase<ContractUpdater>(_updateInterval, TimeSpan.FromMinutes(10), provider) {
         public static readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(90);
-        public readonly List<UserX> _users = [];
-
-        public class UserX {
-            public SocketGuildUser SocketGuildUser { get; set; }
-            public Guid DBUserId { get; set; }
-        }
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var times = new TimingsFactory(_logger);
@@ -41,6 +34,8 @@ namespace EGG9000.Bot.Automated {
             times.Set("dbguilds");
             var coops = await _db.Coops.Where(x => x.Created > DateTimeOffset.Now.AddDays(-14)).Select(x => new { x.Name }).ToListAsync(CancellationToken.None);
             times.Set("coops");
+            var contracts = await _db.Contracts.ToListAsync(CancellationToken.None);
+            times.Set("contracts");
             var guildGroups = guildContracts.GroupBy(x => x.GuildID);
 
             var timings = times.Finished();
@@ -64,7 +59,6 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                var contracts = await _db.Contracts.ToListAsync(CancellationToken.None);
                 var count = 0;
                 var potentialCoops = new List<(string contractid, string coopname, List<Guid> userids, ulong guildid, uint grade, long endtime)>();
                 foreach(var user in dbusers) {
@@ -110,10 +104,11 @@ namespace EGG9000.Bot.Automated {
                     };
                     coops.Add(new { Name = coop.Name });
                     _db.Add(coop);
-                    await _db.SaveChangesAsync(CancellationToken.None);
                     count++;
                 }
 
+                if(count > 0)
+                    await _db.SaveChangesAsync(CancellationToken.None);
             }
         }
 
@@ -255,12 +250,6 @@ namespace EGG9000.Bot.Automated {
                 _bugSnag.Notify(e);
             }
 
-        }
-
-        public static string GetLinkToMessage(IMessage message, IGuild guild, ITextChannel channel, string text) {
-            if(message == null)
-                return "";
-            return $"[{text}](https://discord.com/channels/{guild.Id}/{channel.Id}/{message.Id})\n";
         }
 
         public static string Truncate(string value, int maxLength) {

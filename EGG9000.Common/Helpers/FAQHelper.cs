@@ -28,15 +28,18 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<List<FAQTopic>> QueryFAQTopicsAsync(this ApplicationDbContext db, Guild guild, bool withStaffPerms, string keyword) {
+            if(!db._cache.TryGetValue("FAQPalaceGuild", out Guild palaceGuild)) {
 #if DEV9002
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
+                palaceGuild = await db.Guilds.AsNoTracking().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
 #else
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
+                palaceGuild = await db.Guilds.AsNoTracking().FirstAsync(x => x.DiscordSeverId == 656455567858073601);
 #endif
+                db._cache.Set("FAQPalaceGuild", palaceGuild, TimeSpan.FromHours(6));
+            }
             var faqTopics = await db.GetFAQTopicsAsync(palaceGuild) ?? [];
-            faqTopics = faqTopics.Where(                f => f.PalaceFAQAppliesToGuild(guild) &&
+            faqTopics = [.. faqTopics.Where(f => f.PalaceFAQAppliesToGuild(guild) &&
                 (!f.StaffOnly || withStaffPerms)
-            ).ToList();
+            )];
             if(guild.Id != palaceGuild.Id) {
                 var guildSpecificTopics = (await db.GetFAQTopicsAsync(guild)).Where(t => !t.StaffOnly || withStaffPerms);
                 faqTopics.AddRange(guildSpecificTopics);
@@ -44,7 +47,7 @@ namespace EGG9000.Common.Helpers {
             var filteredTopics = faqTopics.Where(f =>
                 keyword == "" ||
                 (f.Keywords?.Contains(keyword) ?? false) ||
-                (f.Keywords?.Any(k => k.ToLowerInvariant().Contains(keyword)) ?? false)
+                (f.Keywords?.Any(k => k.Contains(keyword, StringComparison.InvariantCultureIgnoreCase)) ?? false)
             ).ToList();
             filteredTopics ??= [];
 

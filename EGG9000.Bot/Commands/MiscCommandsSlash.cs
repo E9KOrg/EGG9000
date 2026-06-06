@@ -1,28 +1,21 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
-
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
@@ -172,7 +165,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Rename a co-op channel to mistype", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task RenameCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] string correctcoopname) {
             await command.DeferAsync();
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(targetCoop == null) {
                 await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
                 return;
@@ -187,14 +180,14 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Trigger an update for a co-op or contract channel", AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task UpdateChannel(FauxCommand command, ApplicationDbContext db, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, DiscordSocketClient discord, ContractUpdater contractUpdater) {
             await command.DeferAsync(ephemeral: true);
-            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(targetCoop != null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
                 var guild = discord.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
                 var users = await db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
                 var dbguild = await db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
                 var parentGuild = discord.Guilds.First(x => x.Id == dbguild.Id);
-                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, [.. users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x }))], dbguild, default);
 
                 await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
                 return;

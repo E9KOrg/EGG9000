@@ -1,12 +1,11 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,7 +15,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated {
@@ -56,39 +55,24 @@ namespace EGG9000.Bot.Automated {
 
 
                 var userQuery = _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled);
-
-#if DEBUG
-#endif
-
-
                 var dbusers = await userQuery.ToListAsync(CancellationToken.None);
                 timings.Set("dbusers");
-                if(cancellationToken.IsCancellationRequested)
-                    return;
-
-
-
+                if(cancellationToken.IsCancellationRequested) return;
 
                 _logger.LogInformation("Getting User Backups for Leaderboard");
 
-                var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser {
-                    User = x,
-                    Backup = y.Backup
-                })).Where(x => x.Backup is not null).ToList();
-
+                var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser(x, y))).Where(x => x.Backup is not null).ToList();
+                var xrefsByUser = recentxrefs.ToLookup(x => x.UserId);
                 foreach(var lUser in lUsers) {
-                    if(cancellationToken.IsCancellationRequested)
-                        return;
+                    if(cancellationToken.IsCancellationRequested || lUser.Backup == null) return;
 
-                    if(lUser.Backup == null)
-                        return;
-
-                    var recentUserXrefs = recentxrefs.Where(x => x.UserId == lUser.User.Id).ToList();
-                    lUser.Last1 = recentUserXrefs.Any(x => x.ContractID == recentContracts[0].ID);
-                    lUser.Last2 = recentUserXrefs.Any(x => x.ContractID == recentContracts[1].ID);
-                    lUser.Last3 = recentUserXrefs.Any(x => x.ContractID == recentContracts[2].ID);
-                    lUser.Last4 = recentUserXrefs.Any(x => x.ContractID == recentContracts[3].ID);
-                    lUser.Last5 = recentUserXrefs.Any(x => x.ContractID == recentContracts[4].ID);
+                    var recentUserXrefs = xrefsByUser[lUser.User.Id].ToList();
+                    var contractIds = recentUserXrefs.Select(x => x.ContractID).ToHashSet();
+                    lUser.Last1 = contractIds.Contains(recentContracts[0].ID);
+                    lUser.Last2 = contractIds.Contains(recentContracts[1].ID);
+                    lUser.Last3 = contractIds.Contains(recentContracts[2].ID);
+                    lUser.Last4 = contractIds.Contains(recentContracts[3].ID);
+                    lUser.Last5 = contractIds.Contains(recentContracts[4].ID);
                     lUser.RecentXrefs = recentUserXrefs;
                 }
                 timings.Set("Process Users");
@@ -110,7 +94,7 @@ namespace EGG9000.Bot.Automated {
 
                     List<SocketGuild> overflowGuilds = null;
                     if(dbguild.OverflowServers.Count > 0) {
-                        overflowGuilds = dbguild.OverflowServers.Select(x => _client.Guilds.First(y => y.Id == x)).ToList();
+                        overflowGuilds = [.. dbguild.OverflowServers.Select(x => _client.Guilds.First(y => y.Id == x))];
                     }
 
 
@@ -130,7 +114,13 @@ namespace EGG9000.Bot.Automated {
                         ).ToList().Select(u => new BreakCooper() {
                             User = u,
                             Farm = u.Backup.Farms.First(f => f.FarmType == Ei.FarmType.Contract && f.Started > u.Account.BreakSetTime)
-                        });
+                        }).ToList();
+
+                        // Preload the coops referenced by break-coopers in one query (same predicate as the per-row lookup), then match in-memory.
+                        var breakCoopNamesLower = joinedCoopOnBreak.Select(bc => bc.Farm.CoopId.ToLower()).Distinct().ToList();
+                        var breakCoops = breakCoopNamesLower.Count > 0
+                            ? await _db.Coops.Where(c => breakCoopNamesLower.Contains(c.Name.ToLower()) && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId)).ToListAsync(CancellationToken.None)
+                            : [];
 
                         foreach(var breakCooper in joinedCoopOnBreak) {
                             await WaitOnCoopsBeingCreated(cancellationToken);
@@ -138,7 +128,7 @@ namespace EGG9000.Bot.Automated {
                                 continue;
                             }
 
-                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), CancellationToken.None);
+                            var dbCoop = breakCoops.FirstOrDefault(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower());
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
                             var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
@@ -166,8 +156,7 @@ namespace EGG9000.Bot.Automated {
                         ua.Backup != null && ua.Backup.MER / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
                         );
                         foreach(var merCheater in merCheaters) {
-                            if(cancellationToken.IsCancellationRequested)
-                                break;
+                            if(cancellationToken.IsCancellationRequested) break;
 
                             var mer = merCheater.Backup.MER;;
                             var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
@@ -203,7 +192,7 @@ namespace EGG9000.Bot.Automated {
                             try {
                                 var capturedUser = discordUser;
                                 _logger.LogInformation("Updating {user} to {newname}", discordUser.Nickname, discordUser.GetCleanName());
-                                await _queue.EnqueueLowAsync<bool>(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
+                                await _queue.EnqueueLowAsync(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
                             } catch(Exception) {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
@@ -218,8 +207,6 @@ namespace EGG9000.Bot.Automated {
                 _bugSnag.Notify(e);
                 _logger.LogError(e, "**************ERROR in LeaderboardUpdater**********");
             }
-
-
         }
 
         private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<Contract> recentContracts, ApplicationDbContext _db) {
@@ -227,7 +214,7 @@ namespace EGG9000.Bot.Automated {
             if(channel == null)
                 return;
 
-            lUsers = lUsers.Where(x => x.Backup != null).ToList();
+            lUsers = [.. lUsers.Where(x => x.Backup != null)];
             var activeUsers = lUsers.Where(x => x.Account.Active && x.DiscordUser != null).ToList();
 
             var dbguild = _db.Guilds.FirstOrDefault(x => x.Id == guild.Id);
@@ -248,7 +235,7 @@ namespace EGG9000.Bot.Automated {
 
             var msgs = (await channel.GetMessagesAsync().FlattenAsync()).ToList();
 
-            msgs = msgs.OrderBy(x => x.CreatedAt).Where(x => x.Author.Id == 514257192803893272).ToList();
+            msgs = [.. msgs.OrderBy(x => x.CreatedAt).Where(x => x.Author.Id == 514257192803893272)];
 
             table1.Add("@@@EMBED");
 
@@ -299,7 +286,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public static List<string> GetTables(List<LeaderboardUser> users, string name) {
-            users = users.OrderByDescending(x => x.Backup.EarningsBonus).Where(x => x.DiscordUser != null).ToList();
+            users = [.. users.OrderByDescending(x => x.Backup.EarningsBonus).Where(x => x.DiscordUser != null)];
             return GetTable(name, users);
         }
 

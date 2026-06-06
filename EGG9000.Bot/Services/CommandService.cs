@@ -1,14 +1,10 @@
 ﻿
 using Discord;
-using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Commands;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
-using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
@@ -36,7 +32,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -396,7 +391,7 @@ namespace EGG9000.Bot.Services {
 
             if(!_cache.TryGetValue("dbguilds", out List<Guild> dbguilds)) {
                 var db = _dbContextFactory.CreateDbContext();
-                dbguilds = db.Guilds.ToList();
+                dbguilds = [.. db.Guilds];
                 _cache.Set("dbguilds", dbguilds, TimeSpan.FromHours(1));
             }
 
@@ -407,7 +402,7 @@ namespace EGG9000.Bot.Services {
                     await (Task)handler.GetMethod("Run").Invoke(autocompleteClass, [arg, dbguilds]);
                     _logger.LogDebug("Autocomplete {Handler} completed in {Ms}ms", handler.Name, acSw.ElapsedMilliseconds);
                 } catch(Exception ex) {
-                    var inner = ex is System.Reflection.TargetInvocationException ? ex.InnerException : ex;
+                    var inner = ex is TargetInvocationException ? ex.InnerException : ex;
                     _logger.LogWarning("Autocomplete {Handler} failed after {Ms}ms: {Message}", handler.Name, acSw.ElapsedMilliseconds, inner?.Message);
                     if(inner is not TimeoutException)
                         _bugsnag.Notify(inner ?? ex);
@@ -656,7 +651,7 @@ namespace EGG9000.Bot.Services {
 
                 if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {
                     db ??= await _dbContextFactory.CreateDbContextAsync();
-                    var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id || x.DiscordChannelId == message.Channel.Id);
+                    var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id);
                     if(coop is not null) {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
                         foreach(var xref in xrefs.Where(x => x.User.DiscordId != message.Author.Id)) {
@@ -664,7 +659,7 @@ namespace EGG9000.Bot.Services {
                                 var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
                                 var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
                                 if(discordUser is null) continue; //Another null check
-                                var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{(coop.ThreadID != 0 ? coop.ThreadID : coop.DiscordChannelId)}>, **{author.GetCleanName()}:** {message.Content}", db);
+                                var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{coop.ThreadID}>, **{author.GetCleanName()}:** {message.Content}", db);
                             }
                         }
                     }
@@ -866,23 +861,20 @@ namespace EGG9000.Bot.Services {
             var t = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0);
-            _userCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
+            _userCommandFunctions = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(UserCommandAttribute), false).Length > 0)
-                      .Select(x => new UserCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<UserCommandAttribute>(), Parameters = x.GetParameters() })
-                      .ToList();
+                      .Select(x => new UserCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<UserCommandAttribute>(), Parameters = x.GetParameters() })];
 
-            _componentCommandFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
+            _componentCommandFunctions = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                 .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(ComponentCommandAttribute), false).Length > 0)
-                      .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })
-                      .ToList();
+                      .Select(x => new ComponentCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ComponentCommandAttribute>(), Parameters = x.GetParameters() })];
 
-            _modalFunctions = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
+            _modalFunctions = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                 .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(ModalAttribute), false).Length > 0)
-                      .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })
-                      .ToList();
+                      .Select(x => new ModalCommandFunction { Name = x.Name.ToLower(), MethodInfo = x, Details = x.GetCustomAttribute<ModalAttribute>(), Parameters = x.GetParameters() })];
 
             CreateCommands().ConfigureAwait(false);
             return Task.CompletedTask;

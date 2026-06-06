@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -9,9 +8,19 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Common.Helpers {
-    public class ChannelHelper {
-        public static object DetermineChannelType(Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType) {
+namespace EGG9000.Common.Helpers.Discord {
+    public static class ChannelHelper {
+#nullable enable
+        public static async Task<ISocketMessageChannel?> DetermineChannelTypeAsync(this DiscordHostedService _client, Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType) {
+            //Null checks
+            if(dbGuild is null || discordGuild is null) return null;
+            var channelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == channelType);
+            if(channelDetails is null) return null;
+
+            return (await _client.GetChannelAsync(channelDetails.Id) as ISocketMessageChannel) ?? null;
+        }
+
+        public static ISocketMessageChannel? DetermineChannelType(Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType) {
 
             //Null checks
             if(dbGuild is null || discordGuild is null) return null;
@@ -28,6 +37,7 @@ namespace EGG9000.Bot.Common.Helpers {
 
             return null;
         }
+#nullable disable
 
         public class CustomDiscordMessage() {
             public string Text { get; set; } = null;

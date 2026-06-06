@@ -1,8 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
 using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
     [PrimaryKey(nameof(ID), nameof(Level), nameof(UserId))]

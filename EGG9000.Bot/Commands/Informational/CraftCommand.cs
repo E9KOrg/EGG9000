@@ -1,33 +1,25 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData;
-using EGG9000.Common.JsonData.EiAfxConfig;
-using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.Services;
-
 using Microsoft.EntityFrameworkCore;
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.ArtifactSpec.Types;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public static class CraftCommand {
         [SlashCommand(Description = "Show you how many times you have crafted the requested artifact.", AllowInDMs = true)]
         public static async Task CraftedCount(FauxCommand command, [SlashParam(AutocompleteHandler = typeof(ArtifactNameAutoComplete))] string artifact, ApplicationDbContext db) {
@@ -138,7 +130,7 @@ namespace EGG9000.Bot.Commands {
             if(dbUser.EggIncAccounts.Count == 1) {
                 await command.RespondAsync(
                     content: "",
-                    embeds: (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact, db)).ToArray()
+                    embeds: [.. (await CraftStringBuilder(dbUser.EggIncAccounts.First(), quantity, quality, requestedArtifact, db))]
                 );
             } else {
                 var builder = new ComponentBuilder();
@@ -227,7 +219,7 @@ namespace EGG9000.Bot.Commands {
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
             stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "_You have enough <:Golden_Egg_GE:692439755798872075>!_" : "_You do not have enough <:Golden_Egg_GE:692439755798872075>!_");
 
-            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
+            var baseCraftingCoefficients = EIAfxConfigRoot.Get().baseCraftingCoefficients;
             var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
                 var secondStringBuilder = new StringBuilder();
@@ -297,7 +289,7 @@ namespace EGG9000.Bot.Commands {
 
         private static Dictionary<Rarity, List<double>> GetCraftPercentages(uint numCrafted, uint craftingLevel, List<double> baseRates) {
             var numCraftedScalar = Math.Min(1.0, (double)(numCrafted / 400.0));
-            var craftingScalar = Root.Get().craftingLevelMultipliers[(int)craftingLevel - 1];
+            var craftingScalar = EIAfxConfigRoot.Get().craftingLevelMultipliers[(int)craftingLevel - 1];
 
             var baseRareRate = baseRates[0];
             var baseEpicRate = baseRates[1];

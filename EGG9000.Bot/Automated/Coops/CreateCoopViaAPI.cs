@@ -1,44 +1,24 @@
-﻿using Discord;
-using Discord.Net;
-using Discord.WebSocket;
-
-using EGG9000.Common.Contracts;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
+using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Factories;
 using EGG9000.Common.Services;
-using static EGG9000.Common.Helpers.CreateCoopsV2;
-
-using Humanizer;
-
 using MassTransit.Initializers;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
-using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using static EGG9000.Common.Helpers.Prefarm;
-using System.Collections.Concurrent;
-using MassTransit.Internals;
-using Microsoft.Extensions.Caching.Memory;
+using static EGG9000.Common.Helpers.CreateCoopsV2;
 using static Ei.Contract.Types;
-using EGG9000.Bot.Services;
-using EGG9000.Common.EggIncAPI;
-using MassTransit;
-using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopViaAPI(IServiceProvider provider, BotLogger botLogger) : _UpdaterBase<CreateCoopViaAPI>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
-        private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
+        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
         private readonly BotLogger _botLogger = botLogger;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
@@ -51,7 +31,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             var dbguilds = _db.CachedGuilds.ToList();
 
-            Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = new();
+            Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = [];
 
             while(
                 (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnCreation).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
