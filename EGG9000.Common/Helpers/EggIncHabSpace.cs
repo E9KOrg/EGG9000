@@ -11,8 +11,6 @@ namespace EGG9000.Common.Helpers {
             public double baseHabSpace { get; set; }
         }
 
-        private static List<Hab> _habs { get; set; }
-
         public static double GetBaseHabSpace(CustomFarm farm) {
             double baseSpace = 0;
             if(farm?.Habs == null)
@@ -27,7 +25,7 @@ namespace EGG9000.Common.Helpers {
             return baseSpace;
         }
 
-        public static List<Hab> Habs = new List<Hab> {
+        public static readonly List<Hab> Habs = [
           new Hab{
             id = 0,
             name = "Coop",
@@ -142,6 +140,6 @@ namespace EGG9000.Common.Helpers {
             iconPath = "egginc/ei_hab_icon_chicken_universe.png",
             baseHabSpace = 6e8,
           },
-        };
+        ];
     }
 }

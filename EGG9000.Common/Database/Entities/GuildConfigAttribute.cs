@@ -21,17 +21,11 @@ namespace EGG9000.Common.Database.Entities {
     /// are already structure-driven via GuildChannelType / GuildCoopSetting.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property)]
-    public sealed class GuildConfigAttribute : Attribute {
-        public string Label { get; }
-        public string Category { get; }
-        public GuildConfigKind Kind { get; }
+    public sealed class GuildConfigAttribute(string label, string category, GuildConfigKind kind) : Attribute {
+        public string Label { get; } = label;
+        public string Category { get; } = category;
+        public GuildConfigKind Kind { get; } = kind;
         public string Description { get; init; }
-
-        public GuildConfigAttribute(string label, string category, GuildConfigKind kind) {
-            Label = label;
-            Category = category;
-            Kind = kind;
-        }
     }
 
     public sealed record GuildConfigField(PropertyInfo Property, GuildConfigAttribute Meta) {
@@ -43,12 +37,11 @@ namespace EGG9000.Common.Database.Entities {
 
     public static class GuildConfigReflection {
         // Reflected once; PropertyInfo set is stable for the process lifetime.
-        private static readonly List<GuildConfigField> _fields = typeof(Guild)
+        private static readonly List<GuildConfigField> _fields = [.. typeof(Guild)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(p => (p, attr: p.GetCustomAttribute<GuildConfigAttribute>()))
             .Where(x => x.attr is not null)
-            .Select(x => new GuildConfigField(x.p, x.attr))
-            .ToList();
+            .Select(x => new GuildConfigField(x.p, x.attr))];
 
         public static IReadOnlyList<GuildConfigField> Fields => _fields;
 

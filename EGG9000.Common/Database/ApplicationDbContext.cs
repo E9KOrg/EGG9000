@@ -131,7 +131,7 @@ namespace EGG9000.Common.Database {
 
         public FrozenSet<Guild> CachedGuilds {
             get {
-                return _cache.GetOrCreate<FrozenSet<Guild>>("DbContext-Guilds", entry => {
+                return _cache.GetOrCreate("DbContext-Guilds", entry => {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                     return Guilds.ToFrozenSet();
                 });
@@ -139,7 +139,7 @@ namespace EGG9000.Common.Database {
         }
 
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
-            return await _cache.GetOrCreateAsync<FrozenSet<Ei.Contract>>("DbContext-EiContracts", async entry => {
+            return await _cache.GetOrCreateAsync("DbContext-EiContracts", async entry => {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                 var dbcontracts = await Contracts.ToListAsync();
                 var eiContracts = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
@@ -154,7 +154,6 @@ namespace EGG9000.Common.Database {
         public void ExpireCachedEiContracts() {
             _cache.Remove("DbContext-EiContracts");
         }
-
 
         public readonly IMemoryCache _cache;
 #nullable enable

@@ -209,7 +209,7 @@ namespace EGG9000.Common.Services {
 
                 
 
-                return new FauxApplicationCommandData { Name = commandText, Options = new List<FauxSocketSlashCommandDataOption>() };
+                return new FauxApplicationCommandData { Name = commandText, Options = [] };
             }
         }
 
@@ -236,7 +236,7 @@ namespace EGG9000.Common.Services {
                 Name = option.Name;
                 Type = option.Type;
                 Value = option.Value;
-                Options = option.Options?.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList() ?? new List<FauxSocketSlashCommandDataOption>();
+                Options = option.Options?.Select(x => new FauxSocketSlashCommandDataOption(x)).ToList() ?? [];
             }
         }
 

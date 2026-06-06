@@ -24,7 +24,7 @@ namespace EGG9000.Common.Database.Entities {
         public List<UserRegister> UserRegisters {
             get {
                 if(_userRegs is null)
-                    _userRegisters = new List<UserRegister>();
+                    _userRegisters = [];
                 else
                     _userRegisters = MessagePackSerializer.Deserialize<List<UserRegister>>(_userRegs, lz4Options);
                 return _userRegisters;
