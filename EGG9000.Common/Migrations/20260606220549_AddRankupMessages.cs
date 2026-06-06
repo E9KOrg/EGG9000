@@ -1,9 +1,15 @@
+using EGG9000.Common.Database;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace EGG9000.Common.Migrations
 {
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260606220549_AddRankupMessages")]
     public partial class AddRankupMessages : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
