@@ -5,21 +5,14 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public class ResetAuthenticatorModel : PageModel
+    public class ResetAuthenticatorModel(
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        ILogger<ResetAuthenticatorModel> logger) : PageModel
     {
-        UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        ILogger<ResetAuthenticatorModel> _logger;
-
-        public ResetAuthenticatorModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            ILogger<ResetAuthenticatorModel> logger)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _logger = logger;
-        }
+        UserManager<IdentityUser> _userManager = userManager;
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        ILogger<ResetAuthenticatorModel> _logger = logger;
 
         [TempData]
         public string StatusMessage { get; set; }

@@ -9,3 +9,4 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Stlyistic choice")]
 [assembly: SuppressMessage("Style", "IDE0025:Use block body for property", Justification = "Stlyistic choice")]
 [assembly: SuppressMessage("Style", "IDE0022:Use block body for method", Justification = "Stlyistic choice")]
+[assembly: SuppressMessage("Style", "IDE0027:Use block body for accessor", Justification = "Stlyistic choice")]

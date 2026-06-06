@@ -51,8 +51,7 @@ namespace EGG9000.Common.Database.Entities {
         public List<ulong> SubscribedGuildIds {
             get {
                 if(string.IsNullOrEmpty(_subscribedGuildIds)) return [];
-                return _subscribedGuildIds.Split(",").ToList()
-                    .Select(ulong.Parse).ToList();
+                return [.. _subscribedGuildIds.Split(",").ToList().Select(ulong.Parse)];
             }
             set {
                 _subscribedGuildIds = string.Join(",", value);

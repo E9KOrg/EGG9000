@@ -22,7 +22,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool HasScores { get; set; }
 
         public string OutsideCoops { get; set; }
-        public UInt32 League { get; set; }
+        public uint League { get; set; }
         public int BoardingGroup { get; set; }
         public bool CcOnly { get; set; }
         public bool ReadyToScore { get; set; }
