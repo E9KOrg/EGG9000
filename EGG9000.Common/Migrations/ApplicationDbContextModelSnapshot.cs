@@ -17,7 +17,7 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "9.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -764,9 +764,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("RolesToSync")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("ShowContractStatsEmbeds")
-                        .HasColumnType("bit");
-
                     b.Property<string>("StaffCoopsMessageDetails")
                         .HasColumnType("nvarchar(max)");
 
@@ -840,8 +837,6 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("ContractID", "GuildID", "League");
-
-                    b.HasIndex("DiscordChannelId");
 
                     b.ToTable("GuildContracts");
                 });

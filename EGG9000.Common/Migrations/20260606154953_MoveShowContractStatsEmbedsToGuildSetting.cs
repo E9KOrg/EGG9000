@@ -4,26 +4,36 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace EGG9000.Common.Migrations
 {
-    /// <inheritdoc />
     public partial class MoveShowContractStatsEmbedsToGuildSetting : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "ShowContractStatsEmbeds",
-                table: "Guilds",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.Sql("""
+                IF NOT EXISTS (
+                    SELECT 1 FROM sys.columns
+                    WHERE name = 'ShowContractStatsEmbeds'
+                      AND object_id = OBJECT_ID('[Guilds]')
+                )
+                BEGIN
+                    ALTER TABLE [Guilds] ADD [ShowContractStatsEmbeds] bit NOT NULL
+                        CONSTRAINT [DF_Guilds_ShowContractStatsEmbeds] DEFAULT 0;
+                END
+                """);
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ShowContractStatsEmbeds",
-                table: "Guilds");
+            migrationBuilder.Sql("""
+                IF EXISTS (
+                    SELECT 1 FROM sys.columns
+                    WHERE name = 'ShowContractStatsEmbeds'
+                      AND object_id = OBJECT_ID('[Guilds]')
+                )
+                BEGIN
+                    ALTER TABLE [Guilds] DROP CONSTRAINT [DF_Guilds_ShowContractStatsEmbeds];
+                    ALTER TABLE [Guilds] DROP COLUMN [ShowContractStatsEmbeds];
+                END
+                """);
         }
     }
 }
