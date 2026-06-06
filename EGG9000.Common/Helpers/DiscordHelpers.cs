@@ -184,10 +184,6 @@ namespace EGG9000.Bot.Helpers {
                         $"Congrats on the new rank of {role.Name} with an EB of {EarningsBonus}%. {discordUser.Mention} Remember that next <:Egg_of_Prophecy_PE:669981330477547580>increases your EB even more than the last one. Go get it!"
                     };
 
-                    //if(eb > dbUser.MaxEBForUser) {
-                    //    dbUser.MaxEBForUser = eb;
-                    //}
-
                     switch(role.Name.Split(" ").First()) {
                         case "Farmer":
                             messages.AddRange([
@@ -517,10 +513,6 @@ namespace EGG9000.Bot.Helpers {
                 var hasUnjoined = DiscordUser.RoleIds.Any(x => x == unjoinedRole.Id);
                 var needsUnjoined = luser.RecentXrefs.Count == 0 || luser.RecentXrefs.All(x => !x.Joined);
 
-                //if(!hasUnjoined && needsUnjoined) {
-                //    await DiscordUser.AddRoleAsync(unjoinedRole);
-                //    GetLogger<DiscordHelpers>().LogInformation("Adding unjoined Role for {user}", DiscordUser.GetName());
-                //}
                 if(hasUnjoined && !needsUnjoined) {
                     await DiscordUser.RemoveRoleAsync(unjoinedRole);
                     GetLogger<DiscordHelpers>().LogInformation("Removing outdated unjoined Role for {user}", DiscordUser.GetName());

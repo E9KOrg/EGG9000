@@ -79,7 +79,6 @@ namespace EGG9000.Bot.Automated {
             _nextRunFromCron = _options.DelayStart.HasValue ?
                 DateTimeOffset.Now + _options.DelayStart.Value :
                 cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
-            //_firstRunDue = _nextRunFromCron;
         }
 
         private void _initiate(IServiceProvider provider) {
@@ -95,7 +94,6 @@ namespace EGG9000.Bot.Automated {
             _ = ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 
             initialStart = true;
-            //_updaterInitiated = DateTimeOffset.Now;
             _lastAlive = DateTimeOffset.Now;
             _options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>().CurrentValue;
 
@@ -282,17 +280,9 @@ namespace EGG9000.Bot.Automated {
                 var lastAlive = DateTimeOffset.Now - _this._lastAlive;
                 _this._logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - _this.LastStarted).Humanize(), _this._lastAlive.Humanize());
                 if(lastAlive > TimeSpan.FromMinutes(5) && (_this._lastMessageSent == null || (DateTime.Now - _this._lastMessageSent).Value.TotalHours > 1)) {
-                    //var success = await _this.AttemptCancel();
                     await _this._client.SendDMToKendrome($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted.ToShortTimeString()}, last completed {_this.LastCompleted.ToShortTimeString()}, last alive {_this._lastAlive.DateTime.ToShortTimeString()}.");
-                    //if(success) {
-                    //    await dmChannel.SendMessageAsync($"Watchdog for {this.GetType().Name}, last started {LastStarted.ToShortTimeString()}, last completed {LastCompleted.ToShortTimeString()}. Restart Succeeded.", options: new RequestOptions { CancelToken = _cts.Token });
-                    //    return;
-                    //}
-                    //_this._semaphoreSlim.Release();
-                    //_this.Restarted = true;
                     _this._lastMessageSent = DateTime.Now;
 
-                    //_this._timer.Change(TimeSpan.Zero, _this.UpdateInterval);
                 }
             }
 
