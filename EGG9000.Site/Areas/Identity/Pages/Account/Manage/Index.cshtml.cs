@@ -9,20 +9,14 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public partial class IndexModel : PageModel {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly ApplicationDbContext _db;
-
-        public IndexModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
-            ApplicationDbContext db
-            ) {
-            _userManager = userManager;
-            _signInManager = signInManager;
-            _db = db;
-        }
+    public partial class IndexModel(
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager,
+        ApplicationDbContext db
+            ) : PageModel {
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly ApplicationDbContext _db = db;
 
         [BindProperty]
         public string Username { get; set; }
