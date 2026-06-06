@@ -240,8 +240,6 @@ namespace EGG9000.Bot.Automated {
                     _db.GuildContracts.Add(guildContract);
                     await _db.SaveChangesAsync();
 
-                    //await _botLogger.Log($"New Contract **{contract.Name}** detected, please wait while the bot\n1) Assigns co-ops\n2) Starts co-ops\n3) Create threads for co-ops", dbguild);
-
                     if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
                         _ = OrganizeAndLaunch(contract, guild, 0, dbguild);
                     }

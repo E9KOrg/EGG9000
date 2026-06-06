@@ -35,19 +35,15 @@ namespace EGG9000.Common.Helpers {
             }
             public CustomBackup Backup { get; set; }
             public DateTimeOffset? lastSeen { get; set; }
-            //public int RecentContracts { get; set; }
-            //public int ActiveContracts { get; set; }
             public int TotalContracts { get; set; }
             public bool Last1 { get; set; }
             public bool Last2 { get; set; }
             public bool Last3 { get; set; }
             public bool Last4 { get; set; }
             public bool Last5 { get; set; }
-            //public string Role { get; set; }
             public SocketGuildUser DiscordUser { get; set; }
             public bool Elite { get { return Backup.EarningsBonus > 10000000000000; } }
             public DateTimeOffset Started { get; set; }
-            //public bool Active { get; set; }
             public List<SimpleXref> RecentXrefs { get; set; }
             public double TotalCS { get; set; }
             public double SeasonCS { get; set; }
@@ -57,7 +53,6 @@ namespace EGG9000.Common.Helpers {
         }
 
         public class SimpleXref {
-            //public bool LastThreeWeeks { get; set; }
             public Guid UserId { get; set; }
             public string ContractID { get; set; }
             public string EggIncId { get; set; }
@@ -112,7 +107,6 @@ namespace EGG9000.Common.Helpers {
             }
 
             return DiscordHelpers.TimeStamper(double.IsNaN(remainingSeconds) ? TimeSpan.MaxValue : TimeSpan.FromSeconds(remainingSeconds), DiscordHelpers.DiscordTimestampFormat.Relative);
-            //return TimeSpan.FromSeconds(remainingSeconds).Humanize(precision: 2).ShortenTime();
         }
 
         public static TimeSpan GetTimeRemainingValue(double targetAmount, double currentRate, double currentAmount) {
@@ -141,7 +135,6 @@ namespace EGG9000.Common.Helpers {
             public List<UserFarmDetails> AlreadyInCoop { get; set; }
             public List<UserFarmDetails> Completed { get; set; }
             public List<UserFarmDetails> ExpiredFarms { get; set; }
-            //public List<CoopParticipant> AllPreFarms { get; set; }
         }
 
         public class CoopDetails {
@@ -294,7 +287,6 @@ namespace EGG9000.Common.Helpers {
 
 
             foreach(var u in notInCoopAbove5Percent) {
-                //List<UserFarmDetails> smallestCoop;
                 var smallestCoop = potentialCoops.Where(x => x.Count < numPerCoop).OrderBy(x => x.Sum(y => y.Projected)).First();
                 smallestCoop.Add(u);
             }
@@ -319,7 +311,6 @@ namespace EGG9000.Common.Helpers {
             }
 
             coopsBreakdown.PotentialCoops = [.. coopsBreakdown.PotentialCoops.OrderByDescending(x => x.PercentProjected)];
-            //coopsBreakdown.AllPreFarms = coopParticipants;
             return coopsBreakdown;
         }
 
@@ -383,7 +374,6 @@ namespace EGG9000.Common.Helpers {
 
             prefarms.ForEach(prefarm => {
                 if(!string.IsNullOrWhiteSpace(prefarm.Coop) && prefarm.Coop.ToLower() != coop.Name.ToLower() && !prefarm.CancelledFarm && !prefarm.Coop.StartsWith("✔️") && !prefarm.Coop.StartsWith("❌") && !prefarm.Coop.Contains("Different")) {
-                    //x.Coop += " (Different Coop)";
                 } else {
                     ContributionInfo contribution = null;
                     if(coop.LastStatusUpdate is not null) {
@@ -432,7 +422,6 @@ namespace EGG9000.Common.Helpers {
                     var backup = !string.IsNullOrEmpty(participant.Uuid)
                         ? backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)))
                         : null;
-                    //UserWithBackup backup = null;
                     if(backup is not null) {
                         var thisXref = coop?.UserCoopsXrefs.FirstOrDefault(x => x.UserId == backup.User.Id && x.EggIncId == backup.Backup.EggIncId);
                         // UUID matched a backup but the exact account's xref wasn't found (e.g. multi-account user, stale backup) - fall back to EggIncId
@@ -582,8 +571,6 @@ namespace EGG9000.Common.Helpers {
 
             var goal = contract.Details.GetGoals(user.Elite ? 0 : 1).Last().TargetAmount;
 
-            //var farmDetails = user.Backup.GetFarmDetails(farm);
-
             prefarm.CancelledFarm = prefarm.CancelledFarm || farm.NumChickens == 0;
             var ratePerSec = farmStats.CurrentShippingRate;// user.Backup.get Research.GetEggShippedRatePerSec(farm, user.Backup.Game.EpicResearch.ToList());
 
@@ -630,7 +617,6 @@ namespace EGG9000.Common.Helpers {
             prefarm.TimeSinceUpdate = TimeSinceUpdate;
             prefarm.TimeLeft = timeleft;
             prefarm.OfflineEggs = ratePerSec * TimeSinceUpdate.TotalSeconds;
-            //prefarm.ProjectedPercent = (prefarm.Projected / goal) * 100;
 
 
             var current = farm.EggsPaidFor;

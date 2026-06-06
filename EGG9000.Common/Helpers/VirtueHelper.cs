@@ -15,24 +15,6 @@ namespace EGG9000.Common.Helpers {
 
         public static VirtueEggStats EggStats(CustomBackup backup, Ei.Egg egg) {
             return EggStats(backup.VirtueEggsDelivered[(int)egg - 50]);
-            //for(var j = thresholds.Length - 1; j >= 0; j--) {
-            //    if(backup.VirtueEggsDelivered[(int)egg - 50] >= thresholds[j]) {
-            //        if(j < thresholds.Length - 1) {
-            //            var progress = backup.VirtueEggsDelivered[(int)egg - 50] / thresholds[j + 1];
-            //            return new VirtueEggStats {
-            //                Egg = egg, Delivered = backup.VirtueEggsDelivered[(int)egg - 50], Level = j, Progress = progress, NextThreshold = thresholds[j + 1]
-            //            };
-            //        } else {
-            //            var level = CurrentLevel(backup.VirtueEggsDelivered[(int)egg - 50]);
-            //            var nextThreshold = GetThresholdForLevel(level + 1);
-            //            var progress = backup.VirtueEggsDelivered[(int)egg - 50] / nextThreshold;
-            //            return new VirtueEggStats {
-            //                Egg = egg, Delivered = backup.VirtueEggsDelivered[(int)egg - 50], Level = level, Progress = progress, NextThreshold = nextThreshold
-            //            };
-            //        }
-            //    }
-            //}
-            //throw new Exception("Error finding next threshold");
         }
 
         public static VirtueEggStats EggStats(double eggsShipped) {
@@ -141,7 +123,6 @@ namespace EGG9000.Common.Helpers {
 
             double seconds;
             if(amountAtCap >= thresholdLeft) {
-                //seconds = (2 * thresholdLeft) / (2 * eggsPerSecond + cappedDeliver);
                 var a = cappedDeliver / secondsTillCap;
                 var b = 2 * eggsPerSecond;
                 var c = -2 * thresholdLeft;

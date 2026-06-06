@@ -7,7 +7,6 @@ using System.Reflection;
 
 namespace EGG9000.Common.JsonData.EiAfxData {
 
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
     public record ArtifactFamily(
  string id,
  int afx_id,
