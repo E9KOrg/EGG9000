@@ -63,11 +63,9 @@ namespace EGG9000.Common.Database.Entities {
 
         
         public CoopStatusEnum Status { get; set; }
-        //public int UnableToFind { get; set; }
         public bool PseudoExpired { get; set; } = false;
 
         public Contract Contract { get; set; }
-        //public List<CoopStatus> CoopStatuses { get; set; }
         public List<UserCoopXref> UserCoopsXrefs { get; set; }
 
         public byte[] _StatusCompressed { get; set; }
@@ -85,7 +83,6 @@ namespace EGG9000.Common.Database.Entities {
                 using(var msi = new MemoryStream(_StatusCompressed))
                 using(var mso = new MemoryStream()) {
                     using(var gs = new GZipStream(msi, CompressionMode.Decompress)) {
-                        //gs.CopyTo(mso);
                         CopyTo(gs, mso);
                     }
 
@@ -101,7 +98,6 @@ namespace EGG9000.Common.Database.Entities {
                 using(var msi = new MemoryStream(bytes))
                 using(var mso = new MemoryStream()) {
                     using(var gs = new GZipStream(mso, CompressionMode.Compress)) {
-                        //msi.CopyTo(gs);
                         CopyTo(msi, gs);
                     }
 

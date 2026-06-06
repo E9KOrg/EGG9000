@@ -16,7 +16,6 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.JsonData.EiAfxConfig {
 
 
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
     public class ArtifactParameter {
         public Spec spec { get; set; }
         public double baseQuality { get; set; }

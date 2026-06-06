@@ -41,14 +41,10 @@ namespace EGG9000.Common.Services {
         private readonly DiscordSocketClient _gateway;
         private readonly DiscordRestClient _rest;
 
-        //private static readonly WebProxy proxy = new WebProxy("http://localhost", 8888);
-
 
         private static readonly DiscordSocketConfig config = new() {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages |
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent,
-            //WebSocketProvider = DefaultWebSocketProvider.Create(proxy),
-            //RestClientProvider = DefaultRestClientProvider.Create(true, proxy)
 
         };
         private static readonly List<DiscordSemaphore> _serverSemaphores = [];
@@ -134,17 +130,6 @@ namespace EGG9000.Common.Services {
 
             return;
         }
-
-        //public Task StartAsync(CancellationToken cancellationToken) {
-        //    return Task.CompletedTask;
-        //}
-
-        //public async Task StopAsync(CancellationToken cancellationToken) {
-        //    _logger.LogInformation("Stopping Discord Client");
-        //    await this.StopAsync();
-        //    while(this.ConnectionState != ConnectionState.Disconnected) { }
-        //    _logger.LogInformation("Discord Client Stopped");
-        //}
 
 
         private Task DiscordHostedService_Ready() {

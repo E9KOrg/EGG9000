@@ -113,16 +113,6 @@ public static partial class NasaHelper {
         return $"NasaApodCache:Guild:{guild.Id}";
     }
 
-    //private static async Task<FileAttachment?> GetFileAttachmentOrNull(this NasaApod apod, ApplicationDbContext db, ILogger logger) {
-    //    if (!db._cache.TryGetValue(apod.GetApodImageBytesKey(), out byte[] imageBytes)) {
-    //        var b64String = await apod.GetNasaPictureAsB64OrEmpty(logger);
-    //        if(string.IsNullOrEmpty(b64String)) return null;
-    //        imageBytes = Convert.FromBase64String(b64String);
-    //        db._cache.Set(apod.GetApodImageBytesKey(), imageBytes, TimeSpan.FromDays(7));
-    //    }
-    //    return new FileAttachment(new MemoryStream(imageBytes), "APOD.jpeg", "Astronomy Picture of the Day");
-    //}
-
     private static string GetApodImageBytesKey(this NasaApod apod) {
         return $"NasaApodImageBytes:Apod:{apod.ID}";
     }
@@ -265,16 +255,4 @@ public static partial class NasaHelper {
         return string.IsNullOrEmpty(id) ? url : $"https://www.youtube.com/watch?v={id}";
     }
 
-    //private static async Task<string> GetNasaPictureAsB64OrEmpty(this NasaApod apod, ILogger logger) {
-    //    try {
-    //        var response = await _sharedClient.GetAsync(apod.BestUrl);
-    //        if(response.IsSuccessStatusCode) {
-    //            var imageBytes = await response.Content.ReadAsByteArrayAsync();
-    //            return Convert.ToBase64String(imageBytes);
-    //        } else return string.Empty;
-    //    } catch (Exception e) {
-    //        logger.LogWarning("Failed to download NASA APOD image from URL: {url}\n{stack}", apod.BestUrl, e.StackTrace);
-    //        return string.Empty;
-    //    }
-    //}
 }
