@@ -1,6 +1,7 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,18 +33,12 @@ namespace EGG9000.Bot.Automated {
                             var response = await EggIncApi.GetContractPlayerInfo(account.Id);
                             if(response == null) {
                                 _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}");
-                            } else if(response.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && response.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {response.Grade}");
-                                account.LastGrade = response.Grade;
-                                user.UpdateAccounts();
-
+                            } else if(GradeSync.ApplyGradeChange(user, account, response.Grade, setPromotionTime: false, guardUnset: true, _logger)) {
                                 using var writeScope = _provider.CreateScope();
                                 var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                                 await writeDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
                                     .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
                                 writeDb.Dispose();
-                            } else {
-                                _logger.LogTrace($"No grade change for user {user.DiscordUsername} {account.Name} grade: {response.Grade}");
                             }
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");
