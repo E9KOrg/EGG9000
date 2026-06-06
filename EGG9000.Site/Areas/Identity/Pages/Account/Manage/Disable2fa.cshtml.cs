@@ -6,18 +6,12 @@ using System;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public class Disable2faModel : PageModel
+    public class Disable2faModel(
+        UserManager<IdentityUser> userManager,
+        ILogger<Disable2faModel> logger) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly ILogger<Disable2faModel> _logger;
-
-        public Disable2faModel(
-            UserManager<IdentityUser> userManager,
-            ILogger<Disable2faModel> logger)
-        {
-            _userManager = userManager;
-            _logger = logger;
-        }
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly ILogger<Disable2faModel> _logger = logger;
 
         [TempData]
         public string StatusMessage { get; set; }

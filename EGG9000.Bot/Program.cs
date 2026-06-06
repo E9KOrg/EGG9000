@@ -164,7 +164,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             var method = serviceCustomize.GetMethod("ConfigureServices");
             method.Invoke(null, [hostContext, services]);
         }
-
 #else
         if(release) {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
@@ -227,7 +226,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             // so nothing is actually reported.
             services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("00000000000000000000000000000000") {
                 ReleaseStage = "development",
-                NotifyReleaseStages = new[] { "production" }
+                NotifyReleaseStages = ["production"],
             }));
             services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
         }
@@ -280,20 +279,5 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
     }
     finally {
         LogManager.Shutdown();
-    }
-}
-
-internal class PassiveHostedService : IHostedService {
-    readonly ILogger<PassiveHostedService> _logger;
-    public PassiveHostedService(ILogger<PassiveHostedService> logger) => _logger = logger;
-
-    public Task StartAsync(CancellationToken cancellationToken) {
-        _logger.LogInformation("PassiveHostedService started. Instance is passive and will not process messages.");
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken) {
-        _logger.LogInformation("PassiveHostedService stopping.");
-        return Task.CompletedTask;
     }
 }

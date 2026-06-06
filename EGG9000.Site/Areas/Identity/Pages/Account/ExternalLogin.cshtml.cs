@@ -15,22 +15,15 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class ExternalLoginModel : PageModel {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly IEmailSender _emailSender;
-        private readonly ILogger<ExternalLoginModel> _logger;
-
-        public ExternalLoginModel(
-            SignInManager<IdentityUser> signInManager,
-            UserManager<IdentityUser> userManager,
-            ILogger<ExternalLoginModel> logger,
-            IEmailSender emailSender) {
-            _signInManager = signInManager;
-            _userManager = userManager;
-            _logger = logger;
-            _emailSender = emailSender;
-        }
+    public class ExternalLoginModel(
+        SignInManager<IdentityUser> signInManager,
+        UserManager<IdentityUser> userManager,
+        ILogger<ExternalLoginModel> logger,
+        IEmailSender emailSender) : PageModel {
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly IEmailSender _emailSender = emailSender;
+        private readonly ILogger<ExternalLoginModel> _logger = logger;
 
         [BindProperty]
         public InputModel Input { get; set; }
@@ -74,7 +67,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
             }
 
             // Sign in the user with this external login provider if the user already has a login.
-            Microsoft.AspNetCore.Identity.SignInResult result = null;
+            Microsoft.AspNetCore.Identity.SignInResult result;
             try {
                 result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
             } catch(Data.CustomClaimsPrincipleFactory.DiscordAccountNotFoundException) {
