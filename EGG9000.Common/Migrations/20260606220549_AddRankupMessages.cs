@@ -1,85 +1,57 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace EGG9000.Common.Migrations
 {
-    /// <inheritdoc />
     public partial class AddRankupMessages : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "HighestAnnouncedOom",
-                table: "Users",
-                type: "int",
-                nullable: false,
-                defaultValue: -1);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "RankupExclusivePool",
-                table: "Guilds",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "RankupMessagesEnabled",
-                table: "Guilds",
-                type: "bit",
-                nullable: false,
-                defaultValue: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "_rankupDisabledGroupsCsv",
-                table: "Guilds",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.CreateTable(
-                name: "RankupMessages",
-                columns: table => new
-                {
-                    InternalId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    GuildId = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
-                    GuildName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    GroupBaseOom = table.Column<int>(type: "int", nullable: false),
-                    Text = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Weight = table.Column<int>(type: "int", nullable: false),
-                    PalaceOnly = table.Column<bool>(type: "bit", nullable: false),
-                    _subscribedGuildIds = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedByIdString = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreatedById = table.Column<decimal>(type: "decimal(20,0)", nullable: false),
-                    CreatedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RankupMessages", x => x.InternalId);
-                });
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('[Users]', 'HighestAnnouncedOom') IS NULL
+                    ALTER TABLE [Users] ADD [HighestAnnouncedOom] int NOT NULL DEFAULT -1;
+                """);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('[Guilds]', 'RankupMessagesEnabled') IS NULL
+                    ALTER TABLE [Guilds] ADD [RankupMessagesEnabled] bit NOT NULL DEFAULT 1;
+                """);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('[Guilds]', 'RankupExclusivePool') IS NULL
+                    ALTER TABLE [Guilds] ADD [RankupExclusivePool] bit NOT NULL DEFAULT 0;
+                """);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('[Guilds]', '_rankupDisabledGroupsCsv') IS NULL
+                    ALTER TABLE [Guilds] ADD [_rankupDisabledGroupsCsv] nvarchar(max) NULL;
+                """);
+            migrationBuilder.Sql("""
+                IF OBJECT_ID('[RankupMessages]', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE [RankupMessages] (
+                        [InternalId] nvarchar(450) NOT NULL,
+                        [GuildId] decimal(20,0) NOT NULL,
+                        [GuildName] nvarchar(max) NULL,
+                        [GroupBaseOom] int NOT NULL,
+                        [Text] nvarchar(max) NULL,
+                        [Weight] int NOT NULL,
+                        [PalaceOnly] bit NOT NULL,
+                        [_subscribedGuildIds] nvarchar(max) NULL,
+                        [CreatedByIdString] nvarchar(max) NULL,
+                        [CreatedById] decimal(20,0) NOT NULL,
+                        [CreatedBy] nvarchar(max) NULL,
+                        CONSTRAINT [PK_RankupMessages] PRIMARY KEY ([InternalId])
+                    );
+                END
+                """);
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "RankupMessages");
-
-            migrationBuilder.DropColumn(
-                name: "HighestAnnouncedOom",
-                table: "Users");
-
-            migrationBuilder.DropColumn(
-                name: "RankupExclusivePool",
-                table: "Guilds");
-
-            migrationBuilder.DropColumn(
-                name: "RankupMessagesEnabled",
-                table: "Guilds");
-
-            migrationBuilder.DropColumn(
-                name: "_rankupDisabledGroupsCsv",
-                table: "Guilds");
+            migrationBuilder.Sql("IF OBJECT_ID('[RankupMessages]', 'U') IS NOT NULL DROP TABLE [RankupMessages];");
+            migrationBuilder.Sql("IF COL_LENGTH('[Users]', 'HighestAnnouncedOom') IS NOT NULL ALTER TABLE [Users] DROP COLUMN [HighestAnnouncedOom];");
+            migrationBuilder.Sql("IF COL_LENGTH('[Guilds]', 'RankupMessagesEnabled') IS NOT NULL ALTER TABLE [Guilds] DROP COLUMN [RankupMessagesEnabled];");
+            migrationBuilder.Sql("IF COL_LENGTH('[Guilds]', 'RankupExclusivePool') IS NOT NULL ALTER TABLE [Guilds] DROP COLUMN [RankupExclusivePool];");
+            migrationBuilder.Sql("IF COL_LENGTH('[Guilds]', '_rankupDisabledGroupsCsv') IS NOT NULL ALTER TABLE [Guilds] DROP COLUMN [_rankupDisabledGroupsCsv];");
         }
     }
 }
