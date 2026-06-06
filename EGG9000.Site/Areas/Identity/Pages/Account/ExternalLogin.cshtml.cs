@@ -81,7 +81,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
                 return RedirectToPage("./ErrorAccountNotFound");
             }
 
-            //return new JsonResult(info.Principal.Claims.Select(x => new { x.Type, x.Value }), new JsonSerializerOptions { });
             if (result.Succeeded) {
                 if (info.Principal.Identity.Name != info.Principal.FindFirstValue(ClaimTypes.Name)) {
                     var user = await _userManager.GetUserAsync(User);
@@ -96,18 +95,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
             } else {
 
                 Input = new InputModel { Email = info.Principal.FindFirstValue(ClaimTypes.Name) };
-                //return new JsonResult(Input, new JsonSerializerOptions { });
                 return await OnPostConfirmationAsync(returnUrl);
-                // If the user does not have an account, then ask the user to create an account.
-                //
-                //ReturnUrl = returnUrl;
-                //LoginProvider = info.LoginProvider;
-                //if (info.Principal.HasClaim(c => c.Type == ClaimTypes.Email)) {
-                //    Input = new InputModel {
-                //        Email = info.Principal.FindFirstValue(ClaimTypes.Email)
-                //    };
-                //}
-                //return Page();
             }
         }
 

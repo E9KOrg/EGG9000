@@ -26,7 +26,6 @@ namespace EGG9000.Bot.Common.Helpers {
             var channel = discordGuild.GetTextChannel(channelDetails.Id);
             if(channel is not null) return channel;
 
-            //Null
             return null;
         }
 

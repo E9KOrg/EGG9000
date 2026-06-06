@@ -85,11 +85,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static byte ContrastCurve(byte b) {
-            //Try without contrast first
-            //return b;
             return (byte)Math.Clamp(b * 3 - 256 * 2, 0, 255);
-            //return (byte)(b < 180 ? 0 : b);
-            //return Math.Clamp((byte)(b < 200 ? b / 5 : b), (byte)0, (byte)255);
         }
 
         public static void WriteText(Image<Rgba32> image, String text, Color color) {
@@ -134,12 +130,6 @@ namespace EGG9000.Common.Helpers {
             var rect = TextMeasurer.MeasureBounds(text, options);
 
             image.Mutate(x => x
-            //.Resize(new ResizeOptions {
-            //    Mode = ResizeMode.BoxPad,
-            //    Position = AnchorPositionMode.Bottom,
-            //    PadColor = new Rgba32(255, 255, 255),
-            //    Size = new Size(image.Width, (int)(image.Height * 1.2)),
-            //})
             .DrawText(
                 text,
                 font,
@@ -227,12 +217,10 @@ namespace EGG9000.Common.Helpers {
             }
 
             var charPositions = FindCharPositions(image);
-            //var characters = new List<Image<Rgba32>>();
             var outtext = "";
             foreach(var r in charPositions) {
                 var clone = image.Clone();
                 clone.Mutate(x => x.Crop(r));
-                //characters.Add(clone);
                 outtext += FindMatch(clone);
             }
             return outtext;
@@ -261,7 +249,6 @@ namespace EGG9000.Common.Helpers {
                     clone.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Pad, Size = new Size(0, image2.Item1.Height) }));
 
                     var c = CompareImages(clone, image2.Item1, true);
-                    //Console.WriteLine($"{Math.Round(c, 3).ToString().Replace("0.",".")} {image2.Item2}");
 
                     if(c > maxC) {
                         maxC = c;
@@ -308,8 +295,6 @@ namespace EGG9000.Common.Helpers {
         public static double CompareImages(Image<Rgba32> image1, Image<Rgba32> image2, bool showDebug = false) {
             var i1c = image1.Clone();
             if(!showDebug) i1c.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Pad, Size = new Size(0, image2.Height) }));
-            //var i2c = image2.Clone();
-            //i2c.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Pad, Size = new Size(i1c.Width, 0) }));
 
             double matches = 0;
 
@@ -335,7 +320,6 @@ namespace EGG9000.Common.Helpers {
                     }
                 }
             }
-            //matches *= 1 - (Math.Abs((double)image1.Width / image1.Height - (double)image2.Width / image2.Height));
 
             return (double)matches / ((width * height));
         }

@@ -55,7 +55,6 @@ namespace EGG9000.Common.Services {
             if(_fake)
                 return null;
 
-            //public async Task RespondAsync(string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null) {
             if(_socketCommandBase is not null && _socketCommandBase.HasResponded)
                 return await _socketCommandBase.ModifyOriginalResponseAsync(x => { x.Content = content; x.Embeds = embeds; x.AllowedMentions = allowedMentions; x.Components = components; x.Embed = embed; });
             else if(_socketCommandBase is not null) {

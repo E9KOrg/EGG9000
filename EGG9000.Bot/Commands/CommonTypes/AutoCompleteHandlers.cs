@@ -192,7 +192,6 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
         }
 
         public class RemoveFromCoopAutoComplete(IDbContextFactory<ApplicationDbContext> dbContextFactory) : IAutoCompleteHandler {
-            //private readonly ApplicationDbContext _db = db;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
                 var db = await dbContextFactory.CreateDbContextAsync();
