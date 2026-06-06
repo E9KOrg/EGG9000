@@ -261,6 +261,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
         services.AddHostedService<RefreshNasaApod>();
         services.AddHostedService<UpdateBackups>();
         services.AddHostedService<CleanAutomationLogs>();
+        services.AddHostedService<RankupMessageSeeder>();
 
         services.AddSingleton<CoopsBeingCreatedService>();
         services.AddSingleton<JobService>();

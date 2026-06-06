@@ -1,9 +1,4 @@
-﻿using Newtonsoft.Json;
-
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
+﻿using System.Collections.Generic;
 
 namespace EGG9000.Common.JsonData.EiAfxData {
 
@@ -84,26 +79,9 @@ namespace EGG9000.Common.JsonData.EiAfxData {
     public class EiAfxDataRoot {
         public IReadOnlyList<ArtifactFamily> artifact_families;
 
-        private static EiAfxDataRoot _instance = null;
-        public static EiAfxDataRoot Instance {
-            get {
-                if(_instance != null)
-                    return _instance;
-
-
-                var assembly = Assembly.GetExecutingAssembly();
-
-                string resourceName = assembly.GetManifestResourceNames()
-                    .Single(str => str.EndsWith("eiafx-data.json"));
-
-                using(Stream stream = assembly.GetManifestResourceStream(resourceName))
-                using(StreamReader reader = new StreamReader(stream)) {
-                    string json = reader.ReadToEnd();
-                    _instance = JsonConvert.DeserializeObject<EiAfxDataRoot>(json);
-                }
-                return _instance;
-            }
-        }
+        private static readonly EmbeddedResource<EiAfxDataRoot> _res =
+            EmbeddedResource.Json<EiAfxDataRoot>("eiafx-data.json");
+        public static EiAfxDataRoot Get() => _res.Value;
 
 
 
