@@ -54,10 +54,23 @@ namespace EGG9000.Common.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("IF OBJECT_ID('[RankupMessages]', 'U') IS NOT NULL DROP TABLE [RankupMessages];");
-            migrationBuilder.Sql("IF COL_LENGTH('[Users]', 'HighestAnnouncedOom') IS NOT NULL ALTER TABLE [Users] DROP COLUMN [HighestAnnouncedOom];");
-            migrationBuilder.Sql("IF COL_LENGTH('[Guilds]', 'RankupMessagesEnabled') IS NOT NULL ALTER TABLE [Guilds] DROP COLUMN [RankupMessagesEnabled];");
-            migrationBuilder.Sql("IF COL_LENGTH('[Guilds]', 'RankupExclusivePool') IS NOT NULL ALTER TABLE [Guilds] DROP COLUMN [RankupExclusivePool];");
-            migrationBuilder.Sql("IF COL_LENGTH('[Guilds]', '_rankupDisabledGroupsCsv') IS NOT NULL ALTER TABLE [Guilds] DROP COLUMN [_rankupDisabledGroupsCsv];");
+            DropColumnWithDefault(migrationBuilder, "Users", "HighestAnnouncedOom");
+            DropColumnWithDefault(migrationBuilder, "Guilds", "RankupMessagesEnabled");
+            DropColumnWithDefault(migrationBuilder, "Guilds", "RankupExclusivePool");
+            DropColumnWithDefault(migrationBuilder, "Guilds", "_rankupDisabledGroupsCsv");
+        }
+
+        private static void DropColumnWithDefault(MigrationBuilder migrationBuilder, string table, string column)
+        {
+            migrationBuilder.Sql($"""
+                DECLARE @cn sysname;
+                SELECT @cn = dc.name
+                FROM sys.default_constraints dc
+                JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+                WHERE dc.parent_object_id = OBJECT_ID('[{table}]') AND c.name = '{column}';
+                IF @cn IS NOT NULL EXEC('ALTER TABLE [{table}] DROP CONSTRAINT [' + @cn + ']');
+                IF COL_LENGTH('[{table}]', '{column}') IS NOT NULL ALTER TABLE [{table}] DROP COLUMN [{column}];
+                """);
         }
     }
 }
