@@ -644,27 +644,35 @@ namespace EGG9000.Bot.Automated.Coops {
 
                             userList.Add(mention);
 
-                            if(discordUser != null && !coop.Finished && coop.Status != CoopStatusEnum.Failed && coop.CoopEnds > DateTimeOffset.Now) {
-                                if(!userFarmDetails.Xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
-                                    userFarmDetails.Xref.JoinWarning24TillFinish = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                                    await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
-                                } else if(!userFarmDetails.Xref.JoinWarning24h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
-                                    userFarmDetails.Xref.JoinWarning24h = true;
-                                    userFarmDetails.Xref.JoinWarning12h = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                                    await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 24h since added to co-op", coop);
-                                } else if(!userFarmDetails.Xref.JoinWarning12h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
-                                    userFarmDetails.Xref.JoinWarning12h = true;
-                                    await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                                    await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 12h since added to co-op", coop);
+                            if(!coop.Finished && coop.Status != CoopStatusEnum.Failed && coop.CoopEnds > DateTimeOffset.Now) {
+                                if(discordUser != null) {
+                                    if(!userFarmDetails.Xref.JoinWarning24TillFinish && timeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-1)) {
+                                        userFarmDetails.Xref.JoinWarning24TillFinish = true;
+                                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                                        await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(timeRemaining.TotalHours)} hours", coop);
+                                    } else if(!userFarmDetails.Xref.JoinWarning24h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-24)) {
+                                        userFarmDetails.Xref.JoinWarning24h = true;
+                                        userFarmDetails.Xref.JoinWarning12h = true;
+                                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                                        await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 24h since added to co-op", coop);
+                                    } else if(!userFarmDetails.Xref.JoinWarning12h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-12)) {
+                                        userFarmDetails.Xref.JoinWarning12h = true;
+                                        await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                                        await SendDMWarning(_db, discordUser, coopThread, $"reminder to join - 12h since added to co-op", coop);
+                                    }
                                 }
 
 
+                                // Removal runs even when discordUser is null. A user who left the server while
+                                // assigned but not joined can never join, so once past the kick window we still
+                                // need to drop their xref to free the spot for /findcoopforuser.
                                 var hoursToKick = coop.Contract.cc_only ? 24 : 18;
-                                if(userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-hoursToKick)) {
-                                    var accountName = userFarmDetails.DBUser.EggIncAccounts.Count > 1 ? $" ({userFarmDetails.DBUser.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault().Backup?.UserName})" : "";
-                                    await AddDemeritAndRemoveFromCoop($"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled.", user, _db, userFarmDetails.Xref, discordUser, coopThread, dbGuild, coop, false);
+                                if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.Now.AddHours(-hoursToKick)) {
+                                    var accountName = user.EggIncAccounts.Count > 1 ? $" ({user.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault()?.Backup?.UserName})" : "";
+                                    var kickReason = discordUser != null
+                                        ? $"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled."
+                                        : $"Left the server without joining {coop.Contract.Name} within {hoursToKick} hours{accountName}, removed from the co-op to free the space.";
+                                    await AddDemeritAndRemoveFromCoop(kickReason, user, _db, userFarmDetails.Xref, discordUser, coopThread, dbGuild, coop, false);
                                 }
                             }
 
@@ -1573,7 +1581,7 @@ namespace EGG9000.Bot.Automated.Coops {
             } else {
                 _db.Remove(xref);
                 if(user.IsFreshEgg()) {
-                    _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{discordUser.Mention ?? user.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. {reason} "));
+                    _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. {reason} "));
                 } else {
                     var demerit = new Demerit {
                         When = DateTimeOffset.Now,
