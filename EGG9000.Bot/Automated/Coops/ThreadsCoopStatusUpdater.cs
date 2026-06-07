@@ -60,8 +60,18 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var users = (await _db.DBUsers.Where(x => x.GuildId > 0).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
             var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.Now).ToListAsync(CancellationToken.None);
+
+            // Users who leave their server have GuildId reset to 0, which would drop them from the
+            // GuildId > 0 set below even while they are still in an active coop. Without their backup
+            // the only handle on their coop-status entry is participant.UserId, which Egg Inc only
+            // populates for the account that requested the status. GetStatus rotates that requester
+            // randomly each cycle, so their xref match (and the 👽 emoji) flips on and off. Keep any
+            // user still referenced by an active coop's xrefs so name/EB matching stays stable.
+            var coopIds = coops.Select(x => x.Id).ToList();
+            var activeCoopUserIds = await _db.UserCoopXrefs.Where(x => coopIds.Contains(x.CoopId)).Select(x => x.UserId).Distinct().ToListAsync(CancellationToken.None);
+
+            var users = (await _db.DBUsers.Where(x => x.GuildId > 0 || activeCoopUserIds.Contains(x.Id)).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
 #if DEBUG
