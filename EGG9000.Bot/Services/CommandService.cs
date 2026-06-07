@@ -216,6 +216,8 @@ namespace EGG9000.Bot.Services {
                             parameters.Add(_provider.GetRequiredService<CoopStatsCache>());
                         } else if(parameterInfo.ParameterType == typeof(CoopAssignmentLookup)) {
                             parameters.Add(_provider.GetRequiredService<CoopAssignmentLookup>());
+                        } else if(parameterInfo.ParameterType == typeof(IConfiguration)) {
+                            parameters.Add(_provider.GetRequiredService<IConfiguration>());
                         } else {
                             throw new ArgumentException($"Parameter `{parameterInfo.Name}` is of type `{parameterInfo.ParameterType}`, which has not been implemented to be passed to commands.");
                         }
