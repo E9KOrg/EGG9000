@@ -1,9 +1,14 @@
+using EGG9000.Common.Database;
+
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace EGG9000.Common.Migrations
 {
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260525000000_AddIndexGuildContractDiscordChannelId")]
     public partial class AddIndexGuildContractDiscordChannelId : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
