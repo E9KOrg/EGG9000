@@ -137,8 +137,6 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            //return stringBuilder.ToString();
-
             var rows = GetTableListFormatted(table);
 
             var builder = new EmbedBuilder {

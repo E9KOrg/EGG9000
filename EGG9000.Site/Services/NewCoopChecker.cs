@@ -18,7 +18,7 @@ namespace EGG9000.Site.Services {
         : PeriodicBackgroundService(TimeSpan.FromSeconds(30), TimeSpan.Zero, logger) {
         public static bool WaitingOnCoops = false;
 
-        protected override async Task DoWorkAsync(CancellationToken cancellationToken) {
+        protected async override Task DoWorkAsync(CancellationToken cancellationToken) {
             var sw = Stopwatch.StartNew();
             using var scope = factory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

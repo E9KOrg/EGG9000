@@ -52,8 +52,6 @@ namespace EGG9000.Common.Helpers {
                 if(string.IsNullOrEmpty(creatorId)) {
                     var account = accounts.OrderByDescending(x => x.Account.Backup.LastBackupTime).First();
                     creatorId = account.Account.Id;
-                    //GetLogger<CreateCoopsV2>().LogCritical("Unable to find a user in the grade {grade} to be able to create co-op with the users {users}", grade, String.Join(",", accounts.Select(x => x.User.DiscordUsername)));
-                    //throw new Exception($"Unable to a find user in the grade {grade}");
                 }
             }
 
@@ -90,12 +88,6 @@ namespace EGG9000.Common.Helpers {
                 });
             }
 
-            //var coopLength = Math.Max(guildContract.Contract.Details.LengthSeconds, 131072);
-
-            //if(guildContract.Contract.GoodUntil < DateTimeOffset.Now) {
-            //    coopLength -= Math.Abs((DateTimeOffset.Now - guildContract.Contract.GoodUntil).TotalSeconds);
-            //}
-
 
             await db.SaveChangesAsync();
             return coop;
@@ -127,8 +119,6 @@ namespace EGG9000.Common.Helpers {
             } catch(Exception) {
                 return false;
             }
-
-            //var response = await _CreateCoop(ContractID, League, coop, secondsRemaining);
 
 
 

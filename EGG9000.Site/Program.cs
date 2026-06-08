@@ -23,7 +23,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
 
-//using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -40,31 +39,6 @@ using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
 
-
-//namespace EGG9000.Site {
-//    public class Program {
-//        public static void Main(string[] args) {
-//#if DEBUG
-//            Console.WriteLine(Process.GetCurrentProcess().Id.ToString());
-//#endif
-
-//            CreateHostBuilder(args)
-//                .UseDefaultServiceProvider(options => options.ValidateScopes = false)
-//                .Build().Run();
-//        }
-
-//        public static IHostBuilder CreateHostBuilder(string[] args) {
-//            return Host.CreateDefaultBuilder(args)
-//            .ConfigureLogging(logging => {
-//                logging.ClearProviders();
-//                logging.AddConsole();
-//            })
-//                .ConfigureWebHostDefaults(webBuilder => {
-//                    webBuilder.UseStartup<Startup>().UseUrls("http://0.0.0.0:5013");
-//                });
-//        }
-//    }
-//}
 
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
@@ -99,11 +73,6 @@ app.UseAuthorization();
 
 app.MapStaticAssets();
 
-//app.MapControllerRoute(
-//    name: "default",
-//    pattern: "{controller=Home}/{action=Index}/{id?}")
-//    .WithStaticAssets();
-
 
 app.MapControllerRoute(name: "invite",
         pattern: "invite",
@@ -122,8 +91,6 @@ app.Run();
 
 void ConfigureServices(IServiceCollection services, IConfiguration Configuration) {
     services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
-    //_logger.LogInformation(Configuration.GetConnectionString("DefaultConnection"));
-    //_logger.LogInformation(Configuration.GetChildren().Count().ToString());
     services.AddDbContext<ApplicationDbContext>(
         options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
         contextLifetime: ServiceLifetime.Scoped,
@@ -149,24 +116,10 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ExpireTimeSpan = TimeSpan.FromDays(15);
     });
 
-    //services.ConfigureApplicationCookie(options => {
-    //    options.LoginPath = $"/Identity/Account/Login";
-    //    options.LogoutPath = $"/Identity/Account/Logout";
-    //    options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
-    //    options.SlidingExpiration = true;
-    //    options.ExpireTimeSpan = TimeSpan.FromDays(15);
-    //    options.se
-    //});
-
-    //services.ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
-
     services
                 .ConfigureApplicationCookie((options) => ConfigureAuthorizationCookie(options, "egg9000Cookie"))
                 .ConfigureExternalCookie((options) => ConfigureAuthorizationCookie(options, "egg9000CookieExternal"));
 
-
-    //_logger.LogInformation(Configuration.GetConnectionString("ClientId"));
-    //_logger.LogInformation(Configuration.GetConnectionString("ClientSecret"));
 
     services.AddAuthentication(options => {
     }).AddDiscord(options => {
@@ -261,6 +214,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
     services.AddMassTransit(x => {
         x.AddConsumer<ExpireCacheConsumer>();
+        // Per-instance temporary queue so a version update fans out to every running process
+        // instead of being load-balanced across a shared queue.
+        x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
         var host = Configuration.GetConnectionString("RabbitMQServer");
         if(string.IsNullOrEmpty(host)) {
             x.UsingInMemory((context, cfg) => {

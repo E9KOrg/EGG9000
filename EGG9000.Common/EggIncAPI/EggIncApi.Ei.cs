@@ -19,17 +19,53 @@ namespace EGG9000.Common.EggIncAPI {
 
     public partial class EggIncApi {
 
-        public static async Task<PeriodicalsResponse> GetPeriodicalsAsync() {
-            return await Post<PeriodicalsResponse, GetPeriodicalsRequest>(new GetPeriodicalsRequest {
-                UserId = "EI5482515761594368",
+        private const string PeriodicalsReferenceUserId = "EI5482515761594368";
+        private const string PeriodicalsPostUserId = "EI4765194876354560";
+
+        private static GetPeriodicalsRequest BuildPeriodicalsRequest(string userId, uint clientVersion) {
+            return new GetPeriodicalsRequest {
+                UserId = userId,
                 PiggyFull = false,
                 PiggyFoundFull = false,
                 SecondsFullRealtime = 2339576.17448521,
                 SecondsFullGametime = 391564.659540082,
                 SoulEggs = 570149167.28294,
-                CurrentClientVersion = ClientVersion,
+                CurrentClientVersion = clientVersion,
                 Debug = false,
-            }, "EI4765194876354560", true);
+            };
+        }
+
+        public static async Task<PeriodicalsResponse> GetPeriodicalsAsync(string userId = PeriodicalsReferenceUserId) {
+            return await Post<PeriodicalsResponse, GetPeriodicalsRequest>(BuildPeriodicalsRequest(userId, ClientVersion), PeriodicalsPostUserId, true);
+        }
+
+        public static bool IsValidPeriodicalsResponse(PeriodicalsResponse resp) {
+            return (resp?.Contracts?.Contracts?.Count ?? 0) > 0;
+        }
+
+        // Validates a candidate version triple by issuing a periodicals call built entirely from the
+        // candidate values, without mutating the live globals. Returns true only on a decodable
+        // response carrying at least one contract. Any failure (rejection, empty, network) returns false.
+        public static async Task<bool> ValidateVersionsAsync(uint clientVersion, string appVersion, string appBuild, string userId = PeriodicalsReferenceUserId) {
+            try {
+                var request = BuildPeriodicalsRequest(userId, clientVersion);
+                request.Rinfo = new BasicRequestInfo {
+                    ClientVersion = clientVersion,
+                    Version = appVersion,
+                    Build = appBuild,
+                    Platform = "IOS",
+                    Country = "US",
+                    Language = "en",
+                    Debug = false
+                };
+                var body = await GetBAC(Convert.ToBase64String(request.ToByteArray()));
+                var responseBytes = await PostRaw("ei/get_periodicals", body, HeaderProfile.Ios);
+                if(responseBytes is null)
+                    return false;
+                return IsValidPeriodicalsResponse(GetFromAuthenticatedMessage<PeriodicalsResponse>(responseBytes));
+            } catch {
+                return false;
+            }
         }
 
         public static async Task<ContractCoopStatusResponse> GetCoopStatus(string ContractName, string CoopName, string EIID = null, List<UserCoopXref> xrefs = null, ILogger _logger = null, CancellationToken cancellationToken = default) {
@@ -176,6 +212,12 @@ namespace EGG9000.Common.EggIncAPI {
             } catch(Exception e) {
                 return new EggIncFirstContactResponse { Success = false, Error = "Bot Exception: " + e.Message };
             }
+        }
+
+        public static async Task<ContractsInfoResponse> GetContractsInfoAsync(string userId, params string[] contractIdentifiers) {
+            var request = new ContractsInfoRequest { ClientVersion = ClientVersion };
+            request.ContractIdentifiers.AddRange(contractIdentifiers);
+            return await Post<ContractsInfoResponse, ContractsInfoRequest>(request, userId);
         }
 
         public static async Task<ContractsArchive> GetContractsArchive(string UserId) {
