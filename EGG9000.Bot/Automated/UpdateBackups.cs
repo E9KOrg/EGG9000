@@ -46,13 +46,14 @@ namespace EGG9000.Bot.Automated {
             var throttler = new SemaphoreSlim(8);
 
             var tasks = new List<Task>();
+            var discoveredContractDefs = new System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract>();
 
             foreach(var user in usersToCheck) {
                 await throttler.WaitAsync(cancellationToken);
                 tasks.Add(Task.Run(async () => {
                     _logger.LogTrace($"Updating {user.DiscordUsername}");
                     try {
-                        await UpdateUser(user, guilds, cachedContracts);
+                        await UpdateUser(user, guilds, cachedContracts, discoveredContractDefs);
                     } catch(Exception ex) {
                         _logger.LogError(ex, $"Error updating user {user.DiscordUsername} {user.Id}");
                     } finally {
@@ -65,12 +66,16 @@ namespace EGG9000.Bot.Automated {
             times.Set("Updated Backups");
             await _db.SaveChangesAsync(cancellationToken);
 
+            var registered = await _db.RegisterMissingContractsAsync(discoveredContractDefs.Values, cancellationToken);
+            if(registered > 0)
+                _logger.LogInformation("Self-healed {count} contract(s) missing from the DB from player backups", registered);
+
             await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db);
             var finished = times.Finished();
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
 
-        public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts) {
+        public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
                 var firstContact = await EggIncApi.FirstContact(account.Id);
@@ -78,6 +83,14 @@ namespace EGG9000.Bot.Automated {
 
                 if(dbGuild is null)
                     continue;
+
+                if(firstContact?.Backup?.Contracts is not null) {
+                    foreach(var lc in firstContact.Backup.Contracts.Contracts.Concat(firstContact.Backup.Contracts.Archive)) {
+                        if(lc.Contract is not null && !string.IsNullOrEmpty(lc.Contract.Identifier))
+                            discoveredContractDefs.TryAdd(lc.Contract.Identifier, lc.Contract);
+                    }
+                }
+
                 var oldLevel = account.SubscriptionLevel;
                 var backup = new CustomBackup(firstContact.Backup, cachedContracts);
 

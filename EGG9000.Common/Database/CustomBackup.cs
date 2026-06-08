@@ -1,4 +1,4 @@
-﻿using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using Google.Protobuf.Collections;
@@ -265,8 +265,12 @@ namespace EGG9000.Common.Database {
             CraftingXP = backup.Artifacts.CraftingXp;
 
             ArchivedFarms = new List<CustomArchivedFarms>();
-            AddContracts(backup.Contracts.Contracts, contracts);
-            AddContracts(backup.Contracts.Archive, contracts);
+            var embeddedContractDefs = backup.Contracts.Contracts.Concat(backup.Contracts.Archive)
+                .Where(x => x.Contract is not null)
+                .GroupBy(x => x.Contract.Identifier)
+                .ToDictionary(g => g.Key, g => g.First().Contract);
+            AddContracts(backup.Contracts.Contracts, contracts, embeddedContractDefs);
+            AddContracts(backup.Contracts.Archive, contracts, embeddedContractDefs);
 
             Farms = new List<CustomFarm>();
             foreach(var farm in backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty)) {
@@ -515,18 +519,19 @@ namespace EGG9000.Common.Database {
             } else return 0;
         }
 
-        private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
+        private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts, Dictionary<string, Ei.Contract> embeddedContractDefs) {
             foreach(var localContract in contracts) {
                 if(localContract.Contract is null) {
-                    var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
-                    
-                    if(contract == null) {
-                        if(!localContract.HasCoopIdentifier || localContract.ContractIdentifier.Contains("\u0005")) {
-                            contract = allContracts.First();
-                        } else {
-                            Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
-                            throw new Exception($"Missing contract: {localContract.ContractIdentifier}");
-                        }
+                    var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier)
+                        ?? (embeddedContractDefs.TryGetValue(localContract.ContractIdentifier, out var harvested) ? harvested : null);
+
+                    if(contract is null) {
+                        // Definition is not in our cache/DB and the backup itself does not carry it
+                        // (e.g. a freshly released contract the reference account has not joined).
+                        // Skip this entry instead of crashing the whole backup or attaching an
+                        // unrelated contract's data via allContracts.First().
+                        Console.WriteLine($"Missing contract definition, skipping: {localContract.ContractIdentifier}");
+                        continue;
                     }
                     localContract.Contract = contract;
                 }
