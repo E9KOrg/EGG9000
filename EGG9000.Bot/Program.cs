@@ -204,6 +204,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 x.AddConsumer<ShutdownConsumer>();
                 x.AddConsumer<ExpireCacheConsumer>();
                 x.AddConsumer<RestartConsumer>();
+                // Per-instance temporary queue so a version update fans out to every running process
+                // instead of being load-balanced across a shared queue.
+                x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
                 if(string.IsNullOrEmpty(rabbitmqConn)) {
                     logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
                     x.UsingInMemory((context, cfg) => {
