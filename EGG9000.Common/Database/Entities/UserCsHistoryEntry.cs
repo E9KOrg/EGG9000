@@ -4,20 +4,12 @@ using System;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(ContractIdentifier))]
-    public class UserCsHistoryEntry {
-        public string ContractIdentifier { get; set; }
-        public string CoopIdentifier { get; set; }
-        public string EggIncId { get; set; }
-        public double Cxp { get; set; }
-        public DateTimeOffset Created { get; set; }
-
-        public UserCsHistoryEntry(string contractIdentifier, string coopIdentifier, double cxp, string eggIncId) {
-            ContractIdentifier = contractIdentifier;
-            CoopIdentifier = coopIdentifier;
-            Cxp = cxp;
-            EggIncId = eggIncId;
-            Created = DateTimeOffset.Now; 
-        }
+    public class UserCsHistoryEntry(string contractIdentifier, string coopIdentifier, double cxp, string eggIncId) {
+        public string ContractIdentifier { get; set; } = contractIdentifier;
+        public string CoopIdentifier { get; set; } = coopIdentifier;
+        public string EggIncId { get; set; } = eggIncId;
+        public double Cxp { get; set; } = cxp;
+        public DateTimeOffset Created { get; set; } = DateTimeOffset.Now;
 
         public override bool Equals(object obj) {
             if(obj is Ei.Contract contract) {

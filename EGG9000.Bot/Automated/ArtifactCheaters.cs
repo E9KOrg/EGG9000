@@ -24,7 +24,6 @@ namespace EGG9000.Bot.Automated {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             await RunFairnessScores(sendMessages: true, returnScoreSet: false, cancellationToken);
-            //await RunCraftingLevelCheck(cancellationToken, true, false);
         }
 
         public async Task RunCraftingLevelCheck(CancellationToken cancellationToken, bool sendMessages = true, bool returnLevelSet = false) {
@@ -41,23 +40,18 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
-            //Change this to actually relate how far above the average someone has to be to get flagged
             const double zScoreCutoff = 1.0;
 
-            // Calculate the average score
             var sumXp = xpSet.Values.Sum();
             var averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
 
-            //Look at the top 50%
             xpSet = xpSet.Where(x => x.Value > averageXp).ToDictionary(pair => pair.Key, pair => pair.Value);
             sumXp = xpSet.Values.Sum();
             averageXp = sumXp / xpSet.Where(s => s.Value > 0).Count();
 
-            // Calculate the standard deviation for Z-score calculation
             var sumSquaredDeviations = xpSet.Values.Sum(score => Math.Pow(score - averageXp, 2));
             var standardDeviation = Math.Sqrt(sumSquaredDeviations / xpSet.Count);
 
-            // Calculate the Z-score for each account and find upper outliers
             var upperThreshold = averageXp + (zScoreCutoff * standardDeviation);
             var upperOutliers = xpSet
                 .Where(pair => dbguilds.Any(g => g.Id == dbusers.FirstOrDefault(d => d.EggIncAccounts.Any(a => a.Name == pair.Key.Name)).GuildId))

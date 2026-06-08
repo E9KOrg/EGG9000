@@ -30,12 +30,6 @@ namespace EGG9000.Common.Database.Entities {
         }
     }
 
-    public class EventField
-    {
-        public string Name { get; set; }
-        public string Value { get; set; }
-    }
-
     public class EventCustomizationSettings
     {
         public List<EventNotification> Notifications { get; set; }

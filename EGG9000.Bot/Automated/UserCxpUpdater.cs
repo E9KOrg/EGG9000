@@ -40,7 +40,6 @@ namespace EGG9000.Bot.Automated {
             var random = new Random();
             var userIDs = users.SelectMany(x => x.EggIncAccounts.Select(y => y.Id)).OrderBy(x => random.Next()).ToList();
             _logger.LogInformation("Getting scores");
-            //var existingScores = await _db.UserCsHistoryEntries.Where(x => userIDs.Contains(x.EggIncId)).ToListAsync();
             var existingScores = await _db.UserCsHistoryEntries.ToListAsync(CancellationToken.None);
             _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {

@@ -5,18 +5,12 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public class SetPasswordModel : PageModel
+    public class SetPasswordModel(
+        UserManager<IdentityUser> userManager,
+        SignInManager<IdentityUser> signInManager) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
-
-        public SetPasswordModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager)
-        {
-            _userManager = userManager;
-            _signInManager = signInManager;
-        }
+        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
 
         [BindProperty]
         public InputModel Input { get; set; }

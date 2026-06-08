@@ -12,15 +12,15 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {
-    public class DiscordQueueService : IDiscordQueue, IHostedService {
+    public class DiscordQueueService(IOptionsMonitor<DiscordQueueOptions> optsMon, ILogger<DiscordQueueService> logger, IClient bugsnag) : IDiscordQueue, IHostedService {
         private record QueueItem(Func<Task> Operation);
 
         private readonly Channel<QueueItem> _high = Channel.CreateUnbounded<QueueItem>(new() { SingleReader = false });
         private readonly Channel<QueueItem> _low = Channel.CreateUnbounded<QueueItem>(new() { SingleReader = false });
 
-        private readonly IOptionsMonitor<DiscordQueueOptions> _optsMon;
-        private readonly ILogger<DiscordQueueService> _logger;
-        private readonly IClient _bugsnag;
+        private readonly IOptionsMonitor<DiscordQueueOptions> _optsMon = optsMon;
+        private readonly ILogger<DiscordQueueService> _logger = logger;
+        private readonly IClient _bugsnag = bugsnag;
 
         private readonly List<(Task Task, CancellationTokenSource Cts)> _highWorkers = [];
         private readonly List<(Task Task, CancellationTokenSource Cts)> _lowWorkers = [];
@@ -31,12 +31,6 @@ namespace EGG9000.Common.Services {
         public int LowDepth => _low.Reader.Count;
         public int HighWorkers => _highWorkers.Count;
         public int LowWorkers => _lowWorkers.Count;
-
-        public DiscordQueueService(IOptionsMonitor<DiscordQueueOptions> optsMon, ILogger<DiscordQueueService> logger, IClient bugsnag) {
-            _optsMon = optsMon;
-            _logger = logger;
-            _bugsnag = bugsnag;
-        }
 
         public async Task StartAsync(CancellationToken cancellationToken) {
             _serviceCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

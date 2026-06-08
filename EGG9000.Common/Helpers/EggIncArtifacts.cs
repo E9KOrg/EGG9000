@@ -2,7 +2,6 @@
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData.EiAfxData;
 
-//using EGG9000.Common.JsonData.EiAfxData;
 using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using Newtonsoft.Json;
@@ -55,12 +54,10 @@ namespace EGG9000.Common.Helpers {
 
         public static double GetShippingMultiple(CustomFarm farm) {
             return GetMultiple(EggIncBoostTypeEnum.EggShippingRate, farm);
-            //return (artifacts.Where(x => x.Boost == EggIncBoostTypeEnum.EggShippingRate).Sum(x => (double?)x.Value - 1) ?? 0) + 1;
         }
 
         public static double GetEggValueMutiple(CustomFarm farm) {
             return GetMultiple(EggIncBoostTypeEnum.EggValue, farm);
-            //return (artifacts.Where(x => x.Boost == EggIncBoostTypeEnum.EggValue).Sum(x => (double?)x.Value - 1) ?? 0) + 1;
         }
 
         private static EiAfxDataRoot _eiAfxDataRoot;
@@ -196,7 +193,6 @@ namespace EGG9000.Common.Helpers {
             }
 
             return val;
-            //return (artifacts.Where(x => x.Boost == EggIncBoostTypeEnum.MaxRunningChickenBonus).Sum(x => (double?)x.Value) ?? 0);
         }
 
 
@@ -639,7 +635,6 @@ namespace EGG9000.Common.Helpers {
 
         [Key(3)] public bool Additive { get; set; }
 
-        //public Ei.ArtifactSpec Spec { get; set; }
         [Key(4)] public List<EggIncArtifactInstance> Stones { get; set; }
         [Key(5)] public byte Tier { get; set; }
         [Key(6)] public byte Rarity { get; set; }
@@ -693,7 +688,6 @@ namespace EGG9000.Common.Helpers {
     }
 
     public class EggIncArtifact {
-        //public string Artifact { get; set; }
         public ArtifactNames Name { get; set; }
         public EggIncBoostTypeEnum Boost { get; set; }
         public float L0R0 { get; set; }

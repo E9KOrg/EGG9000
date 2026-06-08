@@ -12,7 +12,7 @@ namespace EGG9000.Common.Helpers {
             return Color.FromArgb((int)a, (int)r, (int)g, (int)b);
         }
 
-        public static String HexConverter(System.Drawing.Color c) {
+        public static String HexConverter(Color c) {
             return "#" + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2");
         }
     }

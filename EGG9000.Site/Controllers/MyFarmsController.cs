@@ -57,7 +57,6 @@ namespace EGG9000.Site.Controllers {
                 var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
                 var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
                 user.UserCoopXrefs = xrefs;
-                //var user = await _db.DBUsers.Include(x => x.UserCoopXrefs.Where(y => y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop)).ThenInclude(y => y.Coop).ThenInclude(x => x.Contract).AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
                 _logger.LogInformation($"Time: {sw.ElapsedMilliseconds}");
                 return View("Temporary", user);
             }
@@ -85,7 +84,6 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
-            //var rawBackups = new List<Ei.Backup>();
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
 
             times.Set("User prep");
@@ -111,8 +109,6 @@ namespace EGG9000.Site.Controllers {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
                 return _db.CustomEggs.ToList();
             });
-
-            //var dbCustomEggs = await _db.GetCustomEggsAsync();
 
             times.Set("Pre backups");
             var update = await getBackupsTask;
@@ -181,7 +177,6 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            //Get fresh backups
             foreach(var account in user.EggIncAccounts) {
                 var backup = await EggIncApi.GetBackupAsync(account.Id, await _db.CachedEiContractsAsync());
                 if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
@@ -191,7 +186,6 @@ namespace EGG9000.Site.Controllers {
 
             var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
-            //user.Backups.ForEach(b => b.Contracts.Contracts.ToList().ForEach(c => c.Contract.Name = contracts.FirstOrDefault(x => x.ID == c.Contract.Identifier)?.Name));
 
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.Now).FirstOrDefaultAsync();
 

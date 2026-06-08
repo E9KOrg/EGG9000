@@ -58,9 +58,6 @@ namespace EGG9000.Bot.Automated {
                 var userQuery = _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled);
 
 #if DEBUG
-                //userQuery = userQuery.Where(x => x.DiscordId == 760856957011230760);
-                //dbusers = dbusers.Where(x => x.GuildId == 770469712064151593).ToList();
-                //dbguilds = dbguilds.Where(x => x.Id == 770469712064151593).ToList();
 #endif
 
 
@@ -232,7 +229,6 @@ namespace EGG9000.Bot.Automated {
 
             lUsers = lUsers.Where(x => x.Backup != null).ToList();
             var activeUsers = lUsers.Where(x => x.Account.Active && x.DiscordUser != null).ToList();
-            //var inactiveUsers = lUsers.Where(x => !x.Account.Active && x.DiscordUser != null).ToList();
 
             var dbguild = _db.Guilds.FirstOrDefault(x => x.Id == guild.Id);
             if(dbguild == null) {
@@ -282,7 +278,6 @@ namespace EGG9000.Bot.Automated {
                 } else {
                     var capturedMsg = (RestUserMessage)msgs[i];
                     _queue.EnqueueLow(() => capturedMsg.ModifyAsync(msg => { msg.Content = "\u17B5"; msg.Embed = null; }));
-                    //await ((RestUserMessage)msgs[i]).DeleteAsync();
                 }
             }
         }

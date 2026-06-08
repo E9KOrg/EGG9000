@@ -52,9 +52,6 @@ namespace EGG9000.Site.Controllers {
 
             var channelId = test ? 777303939442802710 : (ulong)656455568353132546;
             var channel = guild.TextChannels.First(x => x.Id == channelId);
-
-
-            //channel.SendMessageAsync($"A {(body.livemode ? "" : "**TEST** ")}{body.data.@object.amount_total / 100:C0}USD {donationType} has been donated by {(discordUser == null ? "anonymous" : discordUser.Mention)}! **Thank you!**").ConfigureAwait(false);
             _ = channel.SendMessageAsync($"{(discordUser == null ? "Anonymous" : discordUser.Mention)} donated {body.data.@object.amount_total / 100:C0} USD to a {donationType}. Thank you for your support! {(body.livemode ? "" : "**TEST MODE** ")}");
 
             return Content("");
