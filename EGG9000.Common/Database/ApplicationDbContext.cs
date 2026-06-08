@@ -155,9 +155,9 @@ namespace EGG9000.Common.Database {
             _cache.Remove("DbContext-EiContracts");
         }
 
-        // Registers contract definitions discovered in player backups that the periodicals feed never
-        // delivered to us (e.g. solo/single-player contracts), so they exist in the DB and resolve in
-        // CachedEiContractsAsync for everyone instead of crashing CustomBackup construction.
+        // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
+        // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
+        // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
         public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, System.Threading.CancellationToken ct = default) {
             var defs = contractDefs
                 .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
