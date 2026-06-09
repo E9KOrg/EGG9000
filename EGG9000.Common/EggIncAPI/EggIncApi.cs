@@ -22,9 +22,17 @@ namespace EGG9000.Common.EggIncAPI {
 
         public static readonly List<(string EggIncId, Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
 
-        public static uint ClientVersion { get; set; } = 71;
-        public const string AppVersion = "1.35.5";
-        public const string AppBuild = "1.35.5.1";
+        public static uint ClientVersion { get; set; } = 72;
+        public static string AppVersion { get; set; } = "1.35.6";
+        public static string AppBuild { get; set; } = "1.35.6.3";
+
+        // Single mutation point for the Egg Inc API version triple. Updated at runtime by the
+        // /a setversions staff command and the UpdateApiVersions broadcast; not persisted across restarts.
+        public static void SetVersions(uint clientVersion, string appVersion, string appBuild) {
+            ClientVersion = clientVersion;
+            AppVersion = appVersion;
+            AppBuild = appBuild;
+        }
 
         private const string AndroidUserAgent = "Dalvik/2.1.0 (Linux; U; Android 9; SM-G960U1 Build/PPR1.180610.011)";
         private const string IosUserAgent = "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0";
@@ -76,6 +84,7 @@ namespace EGG9000.Common.EggIncAPI {
             // Post endpoints (iOS headers, Rinfo carried in the payload)
             [typeof(JoinCoopRequest)] = new("ei/join_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(GetPeriodicalsRequest)] = new("ei/get_periodicals", HeaderProfile.Ios, RinfoMode.WithoutUser, false, true),
+            [typeof(ContractsInfoRequest)] = new("ei_ctx/get_contracts_info", HeaderProfile.Ios, RinfoMode.WithUser, true, true),
             [typeof(CreateCoopRequest)] = new("ei/create_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(UpdateCoopPermissionsRequest)] = new("ei/update_coop_permissions", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(ContractCoopStatusUpdateRequest)] = new("ei/update_coop_status", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
