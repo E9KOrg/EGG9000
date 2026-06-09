@@ -202,6 +202,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
     services.AddMassTransit(x => {
         x.AddConsumer<ExpireCacheConsumer>();
+        // Per-instance temporary queue so a version update fans out to every running process
+        // instead of being load-balanced across a shared queue.
+        x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
         var host = Configuration.GetConnectionString("RabbitMQServer");
         if(string.IsNullOrEmpty(host)) {
             x.UsingInMemory((context, cfg) => {
