@@ -23,25 +23,12 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
-        //public ulong? DemeritLogChannel { get; set; }
-
         [GuildConfig("Co-op Name Prefix", "Text", GuildConfigKind.String, Description = "Prefix for auto-generated co-op names")]
         public string CoopNamePrefix { get; set; }
 
         public string StaffCoopsMessageDetails { get; set; }
 
-        //public ulong? ChannelWarningMessageForUser { get; set; }
-
         public string LeaderboardImage { get; set; }
-        //public ulong? EliteCategory { get; set; }
-        //public ulong? StandardCategory { get; set; }
-        //public ulong? WelcomeChannel { get; set; }
-        //public ulong? GeneralChannel { get; set; }
-        //public ulong? RulesChannel { get; set; }
-        //public ulong? LeaderboardChannel { get; set; }
-        //public ulong? GameEventsChannel { get; set; }
-        //public ulong? FaqChannel { get; set; }
-        //public ulong? FailedCategory { get; set; }
         [GuildConfig("Co-op Categories", "Lists", GuildConfigKind.CsvCategories, Description = "Categories new co-op channels are created under")]
         public string CoopCategories { get; set; }
         [GuildConfig("Finished Categories", "Lists", GuildConfigKind.CsvCategories, Description = "Categories finished co-op channels move to")]
@@ -86,17 +73,6 @@ namespace EGG9000.Common.Database.Entities {
         public string _faqTopicsJson { get; set; }
         [NotMapped]
         private List<FAQTopic> _faqTopics { get; set; }
-        //[NotMapped]
-        //public List<FAQTopic> FAQTopics {
-        //    get {
-        //        _faqTopics ??= JsonConvert.DeserializeObject<List<FAQTopic>>(_faqTopicsJson ?? "[]");
-        //        return _faqTopics;
-        //    }
-        //    set {
-        //        _faqTopics = value;
-        //        _faqTopicsJson = JsonConvert.SerializeObject(value);
-        //    }
-        //}
         [GuildConfig("FAQ Topics Enabled", "Toggles", GuildConfigKind.Bool, Description = "Enable the FAQ topics feature")]
         public bool FAQTopicsEnabled { get; set; }
         [GuildConfig("FAQ Topic Cooldown (min)", "Numbers", GuildConfigKind.Int, Description = "Minutes between FAQ posts in a channel")]

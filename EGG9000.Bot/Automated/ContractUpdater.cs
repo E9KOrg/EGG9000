@@ -179,9 +179,6 @@ namespace EGG9000.Bot.Automated {
                     await dbGuild.DeleteCoopThreadHeadersAsync(_client.Gateway, guildContract.Contract, _logger);
                     guildContract.DeletedChannel = true;
 
-                    //if(guildContract.Contract.MaxUsers > 1 && guildContract.GuildID == 656455567858073601 && guildContract.Created > DateTimeOffset.UtcNow.AddMonths(-3) && !guildContract.HasScores) {
-                    //}
-
                     await _db.SaveChangesAsync();
                     return;
                 }

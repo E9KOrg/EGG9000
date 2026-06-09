@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Services {
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
-            _jobs = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
+            _jobs = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                       .Select(x =>
@@ -32,8 +32,7 @@ namespace EGG9000.Bot.Services {
                             Parameters = x.GetParameters(), 
                             DeclaringType = x.DeclaringType, 
                             NextRun = GetNextRun(x.GetCustomAttribute<JobAttribute>().Cron)
-                        })
-                      .ToList();
+                        })];
 
             _ = Main(cancellationToken);
             return Task.CompletedTask;
@@ -89,11 +88,6 @@ namespace EGG9000.Bot.Services {
             job.NextRun = DateTimeOffset.UtcNow.AddYears(1);
             return true;
         }
-        public void StarJob(string jobName) {
-            var job = _jobs.FirstOrDefault(x => x.Name == jobName);
-            job.NextRun = GetNextRun(job.MethodInfo.GetCustomAttribute<JobAttribute>().Cron);
-        }
-
         public Task StopAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Stopping JobService");
             return Task.CompletedTask;

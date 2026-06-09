@@ -103,7 +103,6 @@ namespace EGG9000.Bot.Commands {
                 }
                 var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.afx_id && x.Tier == childIds.Tier);
                 stringBuilder.AppendLine($"{emoji?.Emoji} {childIds.Count}");
-                //var artifact = backup.ArtifactHall.FirstOrDefault(x => x.Artifact)
             }
 
             var embed = new EmbedBuilder()

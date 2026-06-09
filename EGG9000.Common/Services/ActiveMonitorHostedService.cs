@@ -37,7 +37,7 @@ namespace EGG9000.Common.Services
     /// </summary>
     public class ActiveMonitorHostedService : BackgroundService
     {
-        private readonly IDbContextFactory<EGG9000.Common.Database.ApplicationDbContext> _dbFactory;
+        private readonly IDbContextFactory<Database.ApplicationDbContext> _dbFactory;
         private readonly ILogger<ActiveMonitorHostedService> _logger;
         private readonly IHostApplicationLifetime _lifetime;
         private readonly IConfiguration _configuration;
@@ -47,7 +47,7 @@ namespace EGG9000.Common.Services
         public bool Ready { get; set; } = false;
 
         public ActiveMonitorHostedService(
-            IDbContextFactory<EGG9000.Common.Database.ApplicationDbContext> dbFactory,
+            IDbContextFactory<Database.ApplicationDbContext> dbFactory,
             IConfiguration configuration,
             IHostApplicationLifetime lifetime,
             ILogger<ActiveMonitorHostedService> logger,
@@ -64,7 +64,7 @@ namespace EGG9000.Common.Services
             _pollInterval = TimeSpan.FromSeconds(opts.PollIntervalSeconds);
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("ActiveMonitorHostedService starting. Service: {service}, Color: {color}", _serviceType, _instanceColor);
 

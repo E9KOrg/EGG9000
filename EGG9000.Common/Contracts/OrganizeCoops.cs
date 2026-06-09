@@ -293,13 +293,6 @@ namespace EGG9000.Common.Contracts {
                 }
             }
 
-            //foreach(var ebGroup in ebGroups.OrderByDescending(x => x.Key)) {
-            //    foreach(var user in ebGroup.Shuffle(rng)) {
-            //        var coop = coops.OrderBy(x => x.Users.Count).ThenBy(x => x.Users.Sum(u => u.Account.Backup.EarningsBonus)).First();
-            //        coop.Users.Add(user);
-            //    }
-            //}
-
             if(!dontMergeDown && BoardingGroup > 1 && coops.Any(x => (contract.MaxCoopSize - x.Users.Count) > Math.Max(1, contract.MaxCoopSize / 2))) {
                 coops = [];
                 includeBG.Add(BoardingGroup);

@@ -34,7 +34,7 @@ namespace EGG9000.Site.Controllers {
             var imageDur = _env.WebRootPath;
             // If there are additional path segments, combine them with the root path
             if(relativePathJoins != null && relativePathJoins.Count > 0) {
-                imageDur = System.IO.Path.Combine(imageDur, System.IO.Path.Combine(relativePathJoins.ToArray()));
+                imageDur = System.IO.Path.Combine(imageDur, System.IO.Path.Combine([.. relativePathJoins]));
             }
             // Return the final path
             return System.IO.File.Exists(imageDur) ? imageDur : null;
@@ -153,7 +153,7 @@ namespace EGG9000.Site.Controllers {
 
             var index = 0;
             foreach(var groupedAf in orderedList) {
-                var isFrag = groupedAf.Artifact.Artifact.ToString().ToUpper().Contains("FRAGMENT");
+                var isFrag = groupedAf.Artifact.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
                 var afName = groupedAf.Artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
                 var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? groupedAf.Artifact.Tier + 1 : groupedAf.Artifact.Tier);
                 var afCount = groupedAf.Count;
@@ -305,7 +305,7 @@ namespace EGG9000.Site.Controllers {
                         pageImage.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
 
                         var stoneIndex = 1;
-                        foreach(var stone in inst.Stones ?? new()) {
+                        foreach(var stone in inst.Stones ?? []) {
                             var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                             var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
                             if(stonePath == null) continue;

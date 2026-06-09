@@ -944,6 +944,16 @@ namespace EGG9000.Common.Migrations
                 name: "IX_Users_LastModified",
                 table: "Users",
                 column: "LastModified");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Guilds_DiscordSeverId",
+                table: "Guilds",
+                column: "DiscordSeverId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GuildContracts_DiscordChannelId",
+                table: "GuildContracts",
+                column: "DiscordChannelId");
         }
 
         /// <inheritdoc />
