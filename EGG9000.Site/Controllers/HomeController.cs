@@ -143,7 +143,6 @@ namespace EGG9000.Site.Controllers {
 
             var rnd = new Random();
             foreach(var guildGroup in coops.GroupBy(x => x.OverflowGuildId > 0 ? x.OverflowGuildId : x.GuildId)) {
-                //var guild = await _discord.Rest.GetGuildAsync(guildGroup.Key);
                 var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildGroup.Key);
 
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
@@ -231,8 +230,6 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
-            //var inactiveUsers = JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveElites ?? "[]");
-            //inactiveUsers.AddRange(JsonConvert.DeserializeObject<List<GuildUser>>(dbguild.InactiveStandards ?? "[]"));
             var allUsers = await _databaseCache.GetDbUsers();
             var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -242,22 +239,8 @@ namespace EGG9000.Site.Controllers {
                 x._CustomBackups,
                 x._eggIncIds,
                 x.Registered,
-                //                    Contracts = x.UserCoopXrefs.Select(y => y.Coop.ContractID),
                 DBUser = x
             });
-            //rawusers = rawusers.Where(x => !inactiveUsers.Any(y => y.DatabaseId == x.Id)).ToList();
-            //var users = rawusers.Select(x => new DBUser {
-            //    DiscordId = x.DiscordId,
-            //    DiscordUsername = x.DiscordUsername,
-            //    GuildId = x.GuildId,
-            //    Id = x.Id,
-            //    _CustomBackups = x._CustomBackups,
-            //    _eggIncIds = x._eggIncIds,
-            //    CreateOn = x.CreateOn, 
-            //});
-
-            //var clack = users.FirstOrDefault(x => x.DiscordId == 760260503124967426);
-            //var users = await _db.Users.AsQueryable().Where(x => ).ToListAsync();
 
             var accounts = rawusers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new LeaderboardUser {
                 User = x.DBUser,
@@ -396,15 +379,6 @@ namespace EGG9000.Site.Controllers {
             return View(leaderboard);
         }
 
-        //[Authorize]
-        //[OutputCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
-        //public async Task<IActionResult> EggDay() {
-        //    var loginuser = (await _userManager.GetUserAsync(User));
-        //    var logins = await _userManager.GetLoginsAsync(loginuser);
-        //    var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
-
-        //}
-
         [Authorize]
         public async Task<IActionResult> EggDayLeaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] string year = "", [FromQuery] ulong guildid = 0, [FromQuery] int prefix = 0) {
 
@@ -461,7 +435,6 @@ namespace EGG9000.Site.Controllers {
 
                 List<UserSnapShot> postEggDaySnapshots;
                 if(DateTimeOffset.Now.Date > eggDayDate && DateTimeOffset.Now.Date < eggDayDate.AddDays(1)) {
-                    //postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date > eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
                     postEggDaySnapshots = accounts.Where(x => preEggDaySnapshots.Any(y => y.EggIncID == x.Account.Id)).Select(x => new UserSnapShot { EarningsBonus = x.Account.Backup.EarningsBonus, EggIncID = x.Account.Id, EggsOfProphecy = x.Account.Backup.EggsOfProphecy, Prestiges = x.Account.Backup.NumPrestiges, SoulEggs = x.Account.Backup.SoulEggs, UserId = x.User.Id, Date = DateTime.Now }).ToList();
                 } else {
                     var eggDayDateEnd = eggDayDate.AddDays(1).Date;
@@ -523,24 +496,6 @@ namespace EGG9000.Site.Controllers {
 
             return View(results.ToList());
 
-            //if(oldest) {
-            //    return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
-            //} else {
-            //    switch(sortby) {
-            //        case "se":
-            //            leaderboard = leaderboard.OrderByDescending(x => x.Backup.SoulEggs).ToList();
-            //            break;
-            //        case "pe":
-            //            leaderboard = leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy).ToList();
-            //            break;
-            //        case "start":
-            //            var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-            //            leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
-            //            leaderboard = leaderboard.OrderBy(x => x.Started).ToList();
-            //            break;
-            //    }
-            //    return View(leaderboard);
-            //}
         }
 
         public class EggDayResults {
@@ -762,7 +717,6 @@ namespace EGG9000.Site.Controllers {
             var backup = await EggIncApi.GetBackupAsync(id, await _db.CachedEiContractsAsync());
             user.EggIncAccounts = new List<EggIncAccount> { new EggIncAccount { Backup = backup } };
             user.DiscordUsername = backup.UserName;
-            //return Json(response);
             return View("ViewUser", user);
         }
 
@@ -938,106 +892,10 @@ namespace EGG9000.Site.Controllers {
             return View();
         }
 
-        //public async Task<IActionResult> Test() {
-        //    var coop = "cooptesting" + DateTime.Now.ToString("yyyyMMddhhmmss");
-        //    //var coopBase = "testingblah";
-        //    //var last = 0;
-        //    //for (var i = 131072; i > 10000; i--) {
-        //    //    var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(new Ei.CreateCoopRequest {
-        //    //        ClientVersion = 30,
-        //    //        ContractIdentifier = "mday-brunch",
-        //    //        CoopIdentifier = coopBase + i,
-        //    //        League = 0,
-        //    //        Platform = Aux.Platform.Ios,
-        //    //        SecondsRemaining = i,// 28800 * 4.6,
-        //    //        SoulPower = 24.24559831915049,
-        //    //        UserId = "G:1008118781",
-        //    //        UserName = "Kendrome"
-        //    //    });
-        //    //    var r2 = await EggIncApi.GetCoopStatus("mday-brunch", coopBase + i);
-        //    //    if(r2.SecondsRemaining < 100) {
-        //    //        Debug.WriteLine(i);
-        //    //        last = i;
-        //    //        break;
-
-        //    //    }
-        //    //}
-
-        //    //var request = new Ei.CreateCoopRequest {
-        //    //    ClientVersion = 30,
-        //    //    ContractIdentifier = "mday-brunch",
-        //    //    CoopIdentifier = coop,
-        //    //    League = 0,
-        //    //    Platform = Aux.Platform.Ios,
-        //    //    SecondsRemaining = 131071,// 28800 * 4.6,
-        //    //    SoulPower = 24.24559831915049,
-        //    //    UserId = "G:1008118781",
-        //    //    UserName = "Kendrome"
-        //    //};
-        //    //var ms1 = new MemoryStream();
-        //    //var outCodedStream = new CodedOutputStream(ms1);
-        //    //request.WriteTo(ms1);
-        //    //ms1.Position = 0;
-
-        //    //var o = $"<{BitConverter.ToString(ms1.ToArray()).Replace("-", " ")}>";
-        //    //return Json(o);
-
-        //    //var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request);
-        //    //var r2 = await EggIncApi.GetCoopStatus("mday-brunch", coop);
-        //    //return Json(r2);
-
-        //    //var responseString = System.Convert.FromBase64String("CgttZGF5LWJydW5jaBINdGVzdHRlc3RoYWhnYRkAAPm8OjjQQCIMRzoxMDA4MTE4NzgxKghLZW5kcm9tZTABOBpB203o1W7KEBIAA==");
-
-        //    //var ms = new MemoryStream();
-        //    //ms.Write(responseString);
-        //    //ms.Position = 0;
-
-        //    //var res = Ei.ContractCoopStatusUpdateRequest.Parser.ParseFrom(ms);
-
-        //    //var response = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
-        //    //    ClientVersion = 25,
-        //    //    ContractIdentifier = "terraform-heavy",
-        //    //    CoopIdentifier = "flockblush54",
-        //    //    League = 0,
-        //    //    Platform = Aux.Platform.Ios,
-        //    //    SoulPower = 5,
-        //    //    UserId = "G:1008118781",
-        //    //    UserName = "kendrome"
-        //    //});
-
-        //    //var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == "all-or-nothing" && x.GuildID == 656455567858073601 && x.Elite);
-        //    //var coop = await _db.Coops.FirstAsync(x => x.Id == Guid.Parse("C4B67152-B18A-4B3C-1679-08D8000F87C2"));
-
-        //    //var request = new Ei.CreateCoopRequest();
-        //    //request.ClientVersion = 25;
-        //    //    request.ContractIdentifier = guildContract.ContractID;
-        //    //    request.CoopIdentifier = coop.Name.ToLower();
-        //    //    request.League = (uint)(guildContract.Elite ? 0 : 1);
-        //    //    request.Platform = Aux.Platform.Ios;
-        //    //    request.SecondsRemaining = guildContract.Contract.Details.LengthSeconds;
-        //    //    request.SoulPower = guildContract.Elite ? 24.24559831915049 : 8.75;
-        //    //    request.UserId = "G:1008118781";
-        //    //    request.UserName = "Kendrome";
-
-        //    //var response = await EggIncApi.Post<Ei.CreateCoopResponse, Ei.CreateCoopRequest>(request);
-
-        //    //var r = await EggIncApi.Send<Ei.LeaveCoopRequest>(new Ei.LeaveCoopRequest {
-        //    //    ClientVersion = 25,
-        //    //    ContractIdentifier = coop.ContractID,
-        //    //    CoopIdentifier = coop.Name,
-        //    //    PlayerIdentifier = "G:1008118781"
-        //    //});
-        //}
-
         public async Task<IActionResult> Test1() {
             var userStatuses = await _db.UserCoopStatuses.AsQueryable().Where(x => x.CoopId == Guid.Parse("9C515840-2651-4FB2-CAB5-08D7FD8FF968")).OrderByDescending(x => x.CreatedOn).ToListAsync();
             return Json(userStatuses);
         }
-
-        //public async Task<IActionResult> Test2() {
-        //    var userStatuses = await _db.Coops.Where(x => x.Id == Guid.Parse("9C515840-2651-4FB2-CAB5-08D7FD8FF968")) .Select(x => x.user )
-        //    return Json(userStatuses);
-        //}
 
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

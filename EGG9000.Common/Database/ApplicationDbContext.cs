@@ -106,7 +106,6 @@ namespace EGG9000.Common.Database {
         public DbSet<Guild> Guilds { get; set; }
         public DbSet<Contract> Contracts { get; set; }
         public DbSet<Coop> Coops { get; set; }
-        //public DbSet<CoopStatus> CoopStatuses { get; set; }
         public DbSet<DBUser> DBUsers { get; set; }
         public DbSet<UserCoopXref> UserCoopXrefs { get; set; }
         public DbSet<UserCoopStatus> UserCoopStatuses { get; set; }
@@ -133,7 +132,7 @@ namespace EGG9000.Common.Database {
 
         public FrozenSet<Guild> CachedGuilds {
             get {
-                return _cache.GetOrCreate<FrozenSet<Guild>>("DbContext-Guilds", entry => {
+                return _cache.GetOrCreate("DbContext-Guilds", entry => {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                     return Guilds.ToFrozenSet();
                 });
@@ -141,7 +140,7 @@ namespace EGG9000.Common.Database {
         }
 
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
-            return await _cache.GetOrCreateAsync<FrozenSet<Ei.Contract>>("DbContext-EiContracts", async entry => {
+            return await _cache.GetOrCreateAsync("DbContext-EiContracts", async entry => {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                 var dbcontracts = await Contracts.ToListAsync();
                 var eiContracts = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
@@ -157,14 +156,46 @@ namespace EGG9000.Common.Database {
             _cache.Remove("DbContext-EiContracts");
         }
 
+        // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
+        // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
+        // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
+        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, System.Threading.CancellationToken ct = default) {
+            var defs = contractDefs
+                .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
+                .GroupBy(c => c.Identifier)
+                .Select(g => g.First())
+                .ToList();
+            if(defs.Count == 0) return 0;
 
-        //    private IConfiguration _configuration;
-        //    public ApplicationDbContext(DbContextOptions options, IConfiguration configuration) : base(options) {
-        //        connstring
-        //            }
-        //    //    public ApplicationDbContext() : base(GetOptions())
-        //    //    {
-        //    //    }
+            var existingIds = (await Contracts.Select(c => c.ID).ToListAsync(ct)).ToHashSet();
+            var missing = defs.Where(d => !existingIds.Contains(d.Identifier)).ToList();
+            if(missing.Count == 0) return 0;
+
+            foreach(var def in missing) {
+                Contracts.Add(new Contract {
+                    ID = def.Identifier,
+                    Created = DateTime.Now,
+                    Description = def.Description,
+                    Name = def.Name,
+                    goals = Newtonsoft.Json.JsonConvert.SerializeObject(def.Goals),
+                    GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)def.ExpirationTime),
+                    MaxUsers = (int)def.MaxCoopSize,
+                    coop_allowed = def.CoopAllowed,
+                    max_boosts = (int)def.MaxBoosts,
+                    max_soul_eggs = def.MaxSoulEggs,
+                    min_client_version = (int)def.MinClientVersion,
+                    debug = def.Debug,
+                    length_seconds = def.LengthSeconds,
+                    egg = def.Egg.ToString(),
+                    cc_only = def.CcOnly,
+                    _response = Newtonsoft.Json.JsonConvert.SerializeObject(def)
+                });
+            }
+
+            await SaveChangesAsync(ct);
+            ExpireCachedEiContracts();
+            return missing.Count;
+        }
 
         public readonly IMemoryCache _cache;
 #nullable enable
@@ -172,18 +203,15 @@ namespace EGG9000.Common.Database {
             _cache = cache ?? new MemoryCache(new MemoryCacheOptions());
             ChangeTracker.Tracked += OnEntityTracked;
             ChangeTracker.StateChanged += OnEntityStateChanged;
-            //Console.WriteLine("ApplicationDbContext created");
         }
 #nullable disable
 
         void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
-            //Console.WriteLine($"Entity tracked: {e.Entry.Entity.GetType().Name}");
             if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
         }
 
         void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
-            //Console.WriteLine($"Entity state changed: {e.Entry.Entity.GetType().Name} from {e.OldState} to {e.NewState}");
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
         }
@@ -205,13 +233,6 @@ namespace EGG9000.Common.Database {
 
             builder.Entity<NasaApod>().HasKey(x => x.ID);
             builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD')");
-
-            //builder.Entity<IdentityRole>().HasData(
-            //    new IdentityRole { Id = "c1dd39e4-dbe5-48a4-b0c6-897c5b3db799", Name = "LesserGuildAdmin", NormalizedName = "GUILDLESSERADMIN" },
-            //    new IdentityRole { Id = "d5cfa96d-1cde-49bb-87a4-95c8e2923b46", Name = "GuildAdmin", NormalizedName = "GUILDADMIN" },
-            //    new IdentityRole { Id = "ef4c281d-0ec5-4e70-b027-181e8eed8c54", Name = "Admin", NormalizedName = "ADMIN" }
-            //);
-            //builder.Entity<User>().Property(x => x.LastBackup).HasField("_LastBackup");
 
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });

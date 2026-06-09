@@ -10,8 +10,6 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Automated {
     public class RemoveTempRoles(IServiceProvider provider) : _UpdaterBase<RemoveTempRoles>(_updateInterval, TimeSpan.Zero, provider) {
         public static readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(5);
-        //private readonly ApplicationDbContext _db = context;
-        //private readonly IServiceProvider _provider = provider;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();

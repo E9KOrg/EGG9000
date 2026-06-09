@@ -45,13 +45,15 @@ namespace EGG9000.Bot.Automated {
             var throttler = new SemaphoreSlim(8);
 
             var tasks = new List<Task>();
+            var discoveredContractDefs = new System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract>();
+            var knownContractIds = cachedContracts.Select(c => c.Identifier).ToHashSet();
 
             foreach(var user in usersToCheck) {
                 await throttler.WaitAsync(cancellationToken);
                 tasks.Add(Task.Run(async () => {
                     _logger.LogTrace($"Updating {user.DiscordUsername}");
                     try {
-                        await UpdateUser(user, guilds, cachedContracts);
+                        await UpdateUser(user, guilds, cachedContracts, knownContractIds, discoveredContractDefs);
                     } catch(Exception ex) {
                         _logger.LogError(ex, $"Error updating user {user.DiscordUsername} {user.Id}");
                     } finally {
@@ -64,12 +66,55 @@ namespace EGG9000.Bot.Automated {
             times.Set("Updated Backups");
             await _db.SaveChangesAsync(cancellationToken);
 
+            var registered = await _db.RegisterMissingContractsAsync(discoveredContractDefs.Values, cancellationToken);
+            if(registered > 0)
+                _logger.LogInformation("Self-healed {count} contract(s) missing from the DB from player backups", registered);
+
             await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db);
             var finished = times.Finished();
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
 
-        public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts) {
+        // Contract identifiers the server has explicitly reported as not-found, so we stop re-fetching
+        // them every cycle. Lives for the process lifetime; only populated from authoritative not_found
+        // responses (never from transient network failures).
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _notFoundContractIds = new();
+
+        // Some contracts (e.g. single-player ones) are never delivered to our reference account through
+        // get_periodicals, so NewContracts never absorbs them. For every contract a player references
+        // (active or archived) that we have no definition for, fetch it by identifier and stage it for
+        // registration. This is the same id set CustomBackup.AddContracts would otherwise skip.
+        private static async Task DiscoverUnknownContracts(string eggIncId, Ei.Backup backup, HashSet<string> knownContractIds, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
+            if(backup?.Contracts is null)
+                return;
+
+            var missing = backup.Contracts.Contracts.Concat(backup.Contracts.Archive)
+                .Where(x => x is not null)
+                .Select(x => x.ContractIdentifier)
+                .Where(id => !string.IsNullOrEmpty(id)
+                    && !knownContractIds.Contains(id)
+                    && !discoveredContractDefs.ContainsKey(id)
+                    && !_notFoundContractIds.ContainsKey(id))
+                .Distinct()
+                .ToArray();
+
+            if(missing.Length == 0)
+                return;
+
+            foreach(var chunk in missing.Chunk(50)) {
+                var info = await EggIncApi.GetContractsInfoAsync(eggIncId, chunk);
+                if(info is null)
+                    continue;
+                foreach(var def in info.Contracts) {
+                    if(!string.IsNullOrEmpty(def.Identifier))
+                        discoveredContractDefs.TryAdd(def.Identifier, def);
+                }
+                foreach(var notFound in info.NotFound)
+                    _notFoundContractIds.TryAdd(notFound, 0);
+            }
+        }
+
+        public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts, HashSet<string> knownContractIds, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
                 var firstContact = await EggIncApi.FirstContact(account.Id);
@@ -77,6 +122,9 @@ namespace EGG9000.Bot.Automated {
 
                 if(dbGuild is null)
                     continue;
+
+                await DiscoverUnknownContracts(account.Id, firstContact?.Backup, knownContractIds, discoveredContractDefs);
+
                 var oldLevel = account.SubscriptionLevel;
                 var backup = new CustomBackup(firstContact.Backup, cachedContracts);
 

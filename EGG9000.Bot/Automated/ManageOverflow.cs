@@ -66,7 +66,6 @@ namespace EGG9000.Bot.Automated {
                 _client.Gateway.RoleUpdated += _client_RoleUpdated;
 
 #if DEBUG
-                //continue;
 #pragma warning disable CS0162 // Unreachable code detected
                 _ = 1;
 #pragma warning restore CS0162 // Unreachable code detected
@@ -179,7 +178,6 @@ namespace EGG9000.Bot.Automated {
             foreach(var overflowServer in overflowServers) {
                 var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == originalRole.Name);
                 if(overflowRole != null) {
-                    //await overflowRole.ModifyAsync(async x => {
                     try {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = updatedRole.Name;
@@ -189,12 +187,8 @@ namespace EGG9000.Bot.Automated {
                             /**
                              * Can't sync role icons as the overflows aren't boosted
                              */
-                            //if(updatedRole.Icon != originalRole.Icon) {
-                            //    x.Icon = new Image(await DownloadImage(updatedRole.GetIconUrl()));
-                            //}
                         }, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit});
                     } catch(Exception) {
-                        //Can be fairly safely ignored, will resync next run
                     }
                 }
                 StillAlive();
@@ -206,8 +200,6 @@ namespace EGG9000.Bot.Automated {
                 return;
             var roleids = guild.RolesToSync.Split(",");
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
-
-            //var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync.ToList(), overflowServers);
 
 
             foreach(var overflowServer in overflowServers) {
@@ -221,12 +213,7 @@ namespace EGG9000.Bot.Automated {
                     IRole overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
                     if(overflowRole is null) {
                         overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Colors);
-                        //if(!string.IsNullOrEmpty(role.Icon)) {
-                        //    await newRole.ModifyAsync(async x => x.Icon = new Image(await DownloadImage(role.GetIconUrl())));
-                        //}
                     }/* else if(overflowRole.Icon is null && role.Icon is not null) {
-                        //var image = new Image(await DownloadImage(role.GetIconUrl()));
-                        //await overflowRole.ModifyAsync(x => x.Icon = image);
                     }*/
                     else if(!role.Permissions.Equals(overflowRole.Permissions)) {
                         await overflowRole.ModifyAsync(x => {
@@ -237,11 +224,9 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                //Sync user roles
                 for(var i = 0; i < overflowServer.Users.Count; i++) {
                     StillAlive();
                     var overflowUser = overflowServer.Users.ElementAt(i);
-                    //foreach(var overflowUser in overflowServer.Users) {
                     if(cancellationToken.IsCancellationRequested) {
                         break;
                     }

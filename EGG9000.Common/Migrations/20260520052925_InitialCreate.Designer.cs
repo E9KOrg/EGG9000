@@ -782,6 +782,8 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DiscordSeverId");
+
                     b.ToTable("Guilds");
                 });
 
@@ -836,6 +838,8 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("ContractID", "GuildID", "League");
+
+                    b.HasIndex("DiscordChannelId");
 
                     b.ToTable("GuildContracts");
                 });

@@ -1,4 +1,4 @@
-﻿using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using Google.Protobuf.Collections;
@@ -83,8 +83,8 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
-        [Key(27)]
-        public PlayerGrade Grade { get; set; }
+        //[Key(27)]
+        //public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
@@ -203,7 +203,6 @@ namespace EGG9000.Common.Database {
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            //Farms.Where(x => x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList();
             Farms?.Where(x => !x.isVirtueEgg).ToList().ForEach(f => f.Artifacts?.ForEach(a => artifacts.FirstOrDefault(x => x.Artifact.Equals(a)).Count--));
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
@@ -229,7 +228,6 @@ namespace EGG9000.Common.Database {
             CurrentMultiplier = backup.Game.CurrentMultiplier;
             EggIncId = backup.GetID();
             UserName = string.IsNullOrEmpty(backup.UserName) ? lastBackup?.UserName ?? "" : backup.UserName;
-            //EarningsBonus = backup.Game.EarningsBonus;
             LastBackupTime = (long)backup.Settings.LastBackupTime;
             PermitLevel = (ushort)backup.Game.PermitLevel;
             SoulEggs = backup.Game.SoulEggsTotal;
@@ -244,15 +242,13 @@ namespace EGG9000.Common.Database {
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
-            Grade = backup.Contracts.LastCpi?.Grade ?? PlayerGrade.GradeUnset;
-            GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
+            //Grade = backup.Contracts.LastCpi?.Grade ?? PlayerGrade.GradeUnset;
+            //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
             TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;
             SeasonCS = backup.Contracts.LastCpi?.SeasonCxp ?? -1;
 
-
-            //EoV = backup.Virtue?.EovEarned.FirstOrDefault() ?? 0;
 
             VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? Array.Empty<double>();
             Resets = backup.Virtue?.Resets ?? 0;
@@ -325,12 +321,11 @@ namespace EGG9000.Common.Database {
             }
 
             CustomEggMaxFarmSizeReached = [];
+            var allContractList = backup.Contracts.Archive.Concat(backup.Contracts.Contracts).ToList();
             foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
-                var allContractList = backup.Contracts.Archive;
-                allContractList.AddRange(backup.Contracts.Contracts);
                 var matchingContracts = allContractList.Where(f =>
                     f?.MaxFarmSizeReached > 0
-                    && f.Contract.Egg == Ei.Egg.CustomEgg
+                    && f.Contract?.Egg == Ei.Egg.CustomEgg
                     && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
                 ).ToList();
 
@@ -414,8 +409,8 @@ namespace EGG9000.Common.Database {
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
-            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
-                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
+            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.ContractIdentifier == farm.ContractId)
+                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.ContractIdentifier == farm.ContractId);
 
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
@@ -424,7 +419,7 @@ namespace EGG9000.Common.Database {
                 League = contract?.League,
                 CoopId = contract?.CoopIdentifier,
                 Cancelled = contract?.Cancelled ?? false,
-                Completed = contract != null ? contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count : false,
+                Completed = contract?.Contract != null && contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count,
                 NumChickens = farm.NumChickens,
                 CommonResearch = farm.CommonResearch.Select(x => new CustomResearch(x)).ToList(),
                 EggType = farm.EggType,
@@ -432,7 +427,7 @@ namespace EGG9000.Common.Database {
                 TrainLength = farm.TrainLength.ToList(),
                 SilosOwned = farm.SilosOwned,
                 TimeAccepted = (long)(contract?.TimeAccepted ?? 0),
-                CoopAllowed = contract?.Contract.CoopAllowed ?? false,
+                CoopAllowed = contract?.Contract?.CoopAllowed ?? false,
                 CoopSharedEndTime = (long)(contract?.CoopSharedEndTime ?? 0),
                 BoostTokensReceived = (ushort)farm.BoostTokensReceived,
                 BoostTokensGiven = (ushort)farm.BoostTokensGiven,
@@ -444,7 +439,6 @@ namespace EGG9000.Common.Database {
                 TimeCheatsDetected = (ushort)farm.TimeCheatsDetected,
                 Habs = farm.Habs.Select(x => (ushort)x).ToList(),
                 LastStepTime = (float)farm.LastStepTime,
-                //ReportedUUIDs = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.UserId).Select(y => y.Uuid)).ToList(), //  contract?.ReportedUuids.ToList(),
                 Grade = contract?.Grade ?? PlayerGrade.GradeUnset,
                 EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
                 ContributionFinalized = contract?.CoopContributionFinalized ?? false,
@@ -482,8 +476,6 @@ namespace EGG9000.Common.Database {
                         return artifact;
                     }).Where(x => x != null));
 
-                    //customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null)
-                    //    .SelectMany(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId)?.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y))));
                     customFarm.Artifacts = customFarm.Artifacts.Where(x => x != null).ToList();
                 } else {
                     var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? new List<Ei.ActiveArtifactSlot>() : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
@@ -497,8 +489,6 @@ namespace EGG9000.Common.Database {
                         return artifact;
                     }).Where(x => x != null));
 
-                    //customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null)
-                    //    .SelectMany(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId)?.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y))));
                     customFarm.Artifacts = customFarm.Artifacts.Where(x => x != null).ToList();
                 }
             }
@@ -528,14 +518,12 @@ namespace EGG9000.Common.Database {
             foreach(var localContract in contracts) {
                 if(localContract.Contract is null) {
                     var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
-                    
-                    if(contract == null) {
-                        if(!localContract.HasCoopIdentifier || localContract.ContractIdentifier.Contains("\u0005")) {
-                            contract = allContracts.First();
-                        } else {
-                            Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
-                            throw new Exception($"Missing contract: {localContract.ContractIdentifier}");
-                        }
+                    if(contract is null) {
+                        // Definition is not in our cache/DB (e.g. a contract never offered to the
+                        // reference account, absorbed lazily via get_contracts_info). Skip this entry
+                        // instead of crashing the whole backup or attaching an unrelated contract.
+                        Console.WriteLine($"Missing contract definition, skipping: {localContract.ContractIdentifier}");
+                        continue;
                     }
                     localContract.Contract = contract;
                 }

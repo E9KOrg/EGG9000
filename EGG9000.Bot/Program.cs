@@ -164,7 +164,6 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
             var method = serviceCustomize.GetMethod("ConfigureServices");
             method.Invoke(null, [hostContext, services]);
         }
-
 #else
         if(release) {
             logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
@@ -205,6 +204,9 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 x.AddConsumer<ShutdownConsumer>();
                 x.AddConsumer<ExpireCacheConsumer>();
                 x.AddConsumer<RestartConsumer>();
+                // Per-instance temporary queue so a version update fans out to every running process
+                // instead of being load-balanced across a shared queue.
+                x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
                 if(string.IsNullOrEmpty(rabbitmqConn)) {
                     logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
                     x.UsingInMemory((context, cfg) => {
@@ -271,7 +273,7 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
 
         services.AddHostedService<CommandService>();
         services.AddHostedService<DiscordUserService>();
-
+        services.AddHostedService<UserGrades>();
 
         //services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
         //services.AddHostedService<PrometheusMetricServerHostedService>();
@@ -282,20 +284,5 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
     }
     finally {
         LogManager.Shutdown();
-    }
-}
-
-internal class PassiveHostedService : IHostedService {
-    readonly ILogger<PassiveHostedService> _logger;
-    public PassiveHostedService(ILogger<PassiveHostedService> logger) => _logger = logger;
-
-    public Task StartAsync(CancellationToken cancellationToken) {
-        _logger.LogInformation("PassiveHostedService started. Instance is passive and will not process messages.");
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken) {
-        _logger.LogInformation("PassiveHostedService stopping.");
-        return Task.CompletedTask;
     }
 }

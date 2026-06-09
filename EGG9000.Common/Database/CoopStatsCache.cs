@@ -21,15 +21,9 @@ namespace EGG9000.Common.Database {
     /// Refreshed by CoopStatsRefreshService on a timer; reads are lock free against an
     /// atomically swapped snapshot.
     /// </summary>
-    public class CoopStatsCache {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<CoopStatsCache> _logger;
-
-        public CoopStatsCache(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<CoopStatsCache> logger) {
-            _dbContextFactory = dbContextFactory;
-            _logger = logger;
-        }
-
+    public class CoopStatsCache(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<CoopStatsCache> logger) {
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory = dbContextFactory;
+        private readonly ILogger<CoopStatsCache> _logger = logger;
         private volatile IReadOnlyDictionary<(ulong GuildId, string ContractId), ContractStats> _contractStats
             = new Dictionary<(ulong, string), ContractStats>();
         private volatile IReadOnlyDictionary<ulong, ServerStats> _serverStats
@@ -108,7 +102,7 @@ namespace EGG9000.Common.Database {
                 foreach(var group in coops.GroupBy(c => (c.GuildId, c.ContractID))) {
                     var active = group.Where(c => IsActive(c, now)).ToList();
                     var usersAssigned = group
-                        .SelectMany(c => usersByCoop.TryGetValue(c.CoopId, out var u) ? u : new HashSet<Guid>())
+                        .SelectMany(c => usersByCoop.TryGetValue(c.CoopId, out var u) ? u : [])
                         .Distinct().Count();
                     var fills = active
                         .Where(c => c.MaxUsers is > 0)
@@ -129,7 +123,7 @@ namespace EGG9000.Common.Database {
                 foreach(var byGuild in coops.GroupBy(c => c.GuildId)) {
                     var active = byGuild.Where(c => IsActive(c, now)).ToList();
                     var usersAssigned = byGuild
-                        .SelectMany(c => usersByCoop.TryGetValue(c.CoopId, out var u) ? u : new HashSet<Guid>())
+                        .SelectMany(c => usersByCoop.TryGetValue(c.CoopId, out var u) ? u : [])
                         .Distinct().Count();
                     var activeContracts = byGuild
                         .Where(c => IsActive(c, now))

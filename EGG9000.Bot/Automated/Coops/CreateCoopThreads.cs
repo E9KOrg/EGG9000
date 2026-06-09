@@ -45,7 +45,6 @@ namespace EGG9000.Bot.Automated.Coops {
         private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
-            //return;
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
 
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -182,7 +181,6 @@ namespace EGG9000.Bot.Automated.Coops {
                                 tasks.Add(Task.Run(async () => {
                                     try {
                                         var db2 = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                                        //var users = (await db2.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == coop.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
                                         var xrefs = await db2.UserCoopXrefs.Include(x => x.User).AsQueryable().Where(x => x.CoopId == coop.Id).ToListAsync();
                                         var coopToUpdate = await db2.Coops.FirstAsync(c => c.Id == coop.Id);
 
@@ -215,14 +213,12 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     } catch(Exception ex) {
                         _logger.LogError(ex, "Error Creating Co-op Thread {coop} in {guild}", coop.Name, guildWithOverflow.Guild.Name);
-                        //guildWithOverflow.LastAccessed = DateTimeOffset.UtcNow;
 
                     }
                 }
 
                 foreach(var guildStat in guildStats.Where(x => x.Value.changed)) {
                     guildStats[guildStat.Key] = (guildStat.Value.successes, guildStat.Value.failures, false);
-                    //await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-op threads created ({guildStat.Value.failures} failed)", guildStat.Key);
                     await _botLogger.RefreshBoardingGroup((int)guildStat.Key.bggroup, guildStat.Key.contractid, guildStat.Key.guildid);
                 }
 
@@ -428,70 +424,6 @@ namespace EGG9000.Bot.Automated.Coops {
             }
             return await _queue.EnqueueLowAsync<SocketGuildChannel>(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger));
         }
-
-        //private async Task<(IThreadChannel thread, SocketGuildChannel parentChannel)> TryCreateCoopThread(GuildContract guildContract, SocketGuild guild, Coop coop, List<OverflowServer> servers) {
-        //    var contractEmbed = ContractUpdater.GetContractEmbed(guildContract, guild, (Ei.Contract.Types.PlayerGrade)coop.League);
-        //    SocketGuildChannel headerChannel = null;
-
-        //    //Check channels that already have an existing header for the contract
-        //    foreach(var server in servers.Where(x => x.ThreadsLeft > 0 && x.Guild.Channels.Any(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}"))) {
-        //        headerChannel = server.Guild.Channels.FirstOrDefault(c => c.Name == $"{coop.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(coop.League).ToLower()}");
-        //        if(headerChannel is not null)
-        //            break;
-        //    }
-
-        //    if(headerChannel is null) {
-        //        //Fall back to creating a new header channel in a server
-        //        foreach(var server in servers.Where(x => x.ThreadsLeft > 0)) {
-        //            var categories = await server.GetCoopCategories(_client);
-        //            foreach(var category in categories.Where(x => x.CurrentCount < 50)) {
-        //                var gradeRoleEnum = coop.League switch {
-        //                    5 => GuildChannelType.GradeAAA,
-        //                    4 => GuildChannelType.GradeAA,
-        //                    3 => GuildChannelType.GradeA,
-        //                    2 => GuildChannelType.GradeB,
-        //                    1 => GuildChannelType.GradeC,
-        //                    _ => GuildChannelType.General,
-        //                };
-        //                SocketRole gradeRole = null;
-        //                if(gradeRoleEnum != GuildChannelType.General) {
-        //                    gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
-        //                    if(gradeRole != null && guild.Id != server.Guild.Id) {
-        //                        gradeRole = server.Guild.Roles.FirstOrDefault(r => r.Name == gradeRole.Name);
-        //                    }
-        //                }
-
-        //                List<SocketRole> ultraRoles = [];
-        //                var ultraStandardRole = await _client.GetRoleAsync(GuildChannelType.StandardSubscription, guild);
-        //                if(ultraStandardRole != null && guild.Id != server.Guild.Id) {
-        //                    ultraStandardRole = server.Guild.Roles.FirstOrDefault(r => r.Name == ultraStandardRole.Name);
-        //                }
-        //                if(ultraStandardRole != null) ultraRoles.Add(ultraStandardRole);
-
-        //                var ultraProRole = await _client.GetRoleAsync(GuildChannelType.ProSubscription, guild);
-        //                if(ultraProRole != null && guild.Id != server.Guild.Id) {
-        //                    ultraProRole = server.Guild.Roles.FirstOrDefault(r => r.Name == ultraProRole.Name);
-        //                }
-        //                if(ultraProRole != null) ultraRoles.Add(ultraProRole);
-
-        //                _logger.LogInformation("Creating header channel for {contract} {grade} in {server}", coop.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(coop.League), server.Guild.Name);
-        //                headerChannel = await server.Guild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, coop.League, coop.Contract, _logger);
-        //                if(headerChannel is not null) break;
-        //            }
-        //            if(headerChannel is not null) break;
-        //        }
-        //    }
-
-        //    try {
-        //        return (await CreateThreadChannelAsync(coop.Name, headerChannel), headerChannel);
-        //    } catch(TaskCanceledException) {
-        //        _logger.LogWarning("Canceled create thread call due to timeout on {coopname}", coop.Name);
-        //    } catch(Exception e) {
-        //        _logger.LogError(e, "Error creating coop thread");
-        //    }
-
-        //    return (null, null);
-        //}
 
 
         private async Task<List<OverflowServer>> GetOverflowGuildsCounts(SocketGuild guild, Guild dbguild) {

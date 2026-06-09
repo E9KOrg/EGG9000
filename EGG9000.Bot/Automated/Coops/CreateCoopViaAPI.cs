@@ -126,7 +126,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 foreach(var guildStat in guildStats.Where(x => x.Value.changed)) {
                     guildStats[guildStat.Key] = (guildStat.Value.successes, guildStat.Value.failures, false);
-                    //await _botLogger.Log($"{guildStat.Value.successes} of {guildStat.Value.successes + guildStat.Value.failures} co-ops started ({guildStat.Value.failures} failed)", guildStat.Key);
                     await _botLogger.RefreshBoardingGroup((int)guildStat.Key.bggroup, guildStat.Key.contractid, guildStat.Key.guildid);
                 }
             }

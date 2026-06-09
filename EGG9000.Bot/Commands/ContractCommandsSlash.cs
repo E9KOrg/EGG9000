@@ -239,10 +239,10 @@ namespace EGG9000.Bot.Commands {
                 var rawBackup = await EggIncApi.FirstContact(account.Id);
                 var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
 
-                if((uint)customBackup.Grade != newgrade) {
+                if((uint)account.LastGrade != newgrade) {
                     await command.ModifyOriginalResponseAsync(x => {
                         x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
-                        $"({PlayerGradeDetails.GetEmoji(customBackup.Grade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji(newgrade)}).\nTry forcing a new backup?");
+                        $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji(newgrade)}).\nTry forcing a new backup?");
                     });
                     return;
                 }
@@ -433,32 +433,6 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        //[SlashCommand(Description = "Adds prefarmers from selected contract to this channel", AdminOnly = true)]
-        //public static async Task AddPrefarmers(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam] SocketChannel contractchannel) {
-        //    var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
-        //    if(guildContract == null) {
-        //        await command.RespondAsync(content: "", embed: EmbedError($"Unable to find contract details, have you tagged a contract channel?"));
-        //        return;
-        //    }
-        //    await command.RespondAsync($"Please wait...adding prefarmers");
-
-        //    var guild = _client.Guilds.First(x => x.Id == guildContract.GuildID);
-
-        //    var coopsBreakdown = await Prefarm.GetBreakdown(db, guildContract, _client);
-
-        //    foreach(var user in coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants)) {
-        //        await ((ITextChannel)command.Channel).AddPermissionOverwriteAsync(user.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-        //    }
-
-        //    foreach(var user in coopsBreakdown.ExpiredFarms) {
-        //        await ((ITextChannel)command.Channel).AddPermissionOverwriteAsync(user.DiscordUser, new OverwritePermissions(viewChannel: PermValue.Allow));
-        //    }
-
-        //    await command.Channel.SendMessageAsync($"{coopsBreakdown.PotentialCoops.SelectMany(x => x.CoopParticipants).Count()} prefarmers added");
-        //}
-
-        //GradeAutoComplete
-
         [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client,
             [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contract,
@@ -507,58 +481,6 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
         }
-
-
-        //[SlashCommand(Description = "Start a new co-op")]
-        //public static async Task NewCoop(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketChannel contractchannel, [SlashParam] string coopname, [SlashParam] string grade) {
-        //    var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == contractchannel.Id);
-        //    if(guildContract == null) {
-        //        await command.RespondAsync(content: "", embed: EmbedError("Unable to find contract details, have you tagged a contract channel?"));
-        //        return;
-        //    }
-
-        //    int league = 0;
-        //    switch(grade.ToLower().Trim()) {
-        //        case "aaa":
-        //            league = 5;
-        //            break;
-        //        case "aa":
-        //            league = 4;
-        //            break;
-        //        case "a":
-        //            league = 3;
-        //            break;
-        //        case "b":
-        //            league = 2;
-        //            break;
-        //        case "c":
-        //            league = 1;
-        //            break;
-        //    }
-
-        //    var status = await EggIncApi.GetCoopStatus(guildContract.ContractID, coopname.ToLower());
-        //    if(status != null && status.Success) {
-
-        //        var coop = new Coop {
-        //            ContractID = guildContract.ContractID,
-        //            Created = DateTimeOffset.UtcNow,
-        //            GuildId = guildContract.GuildID,
-        //            Name = coopname,
-        //            MaxUsers = guildContract.Contract.MaxUsers,
-        //            Status = CoopStatusEnum.WaitingOnAssigned,
-        //            League = (uint)league,
-        //            CoopEnds = DateTimeOffset.UtcNow.AddSeconds(status.SecondsRemaining)
-        //        };
-        //        db.Coops.Add(coop);
-        //        await db.SaveChangesAsync();
-        //        await command.RespondAsync($"Co-op Added: {coopname} for {((SocketTextChannel)contractchannel).Mention}");
-        //        return;
-        //    } else {
-        //        await command.RespondAsync(content: "", embed: EmbedError("Unable to find co-op details, double check co-op name ({coopname}) and correct contract channel ({((SocketTextChannel)contractchannel).Mention})."));
-        //        return;
-        //    }
-        //}
-
 
 
         [SlashCommand(Description = "Silently moves to coop (if needed), followed by fixing reference", AdminOnly = StaffOnlyLevel.FarmHand)]
@@ -777,7 +699,6 @@ namespace EGG9000.Bot.Commands {
                 var guild = _client.GetGuild(command.GuildId.Value);
                 var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades 
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {command.User.Mention}"); });
-                //await command.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {command.User.Mention}"));
             } else {
                 var builder = new ComponentBuilder();
                 var userList = user.EggIncAccounts;
@@ -837,7 +758,6 @@ namespace EGG9000.Bot.Commands {
             var guild = _client.GetGuild(component.GuildId.Value);
             var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"); });
-            //await component.Channel.SendMessageAsync(text: "", embed: EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {component.User.Mention}"));
         }
 
         [ComponentCommand]
@@ -963,7 +883,6 @@ namespace EGG9000.Bot.Commands {
                 case PotentialCoopCode.NoSpots1:
                 case PotentialCoopCode.NoSpots2:
                     _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    //var createNewCoopComponent = new ComponentBuilder().WithButton("Create New Coop", customId: $"NoSpotsCreateCoop:{guildContract.ContractID}|{account.Id}", emote: emote).Build();
                     await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open{(contract.cc_only ? "" : $" Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())}")} coop spots found for {contract.Name}"); /*x.Components = createNewCoopComponent;*/ });
                     return;
                 default:

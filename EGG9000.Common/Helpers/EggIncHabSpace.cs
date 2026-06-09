@@ -11,19 +11,6 @@ namespace EGG9000.Common.Helpers {
             public double baseHabSpace { get; set; }
         }
 
-        private static List<Hab> _habs { get; set; }
-
-        //public static List<Hab> Habs {
-        //    get {
-        //        if(_habs == null) {
-        //            _habs = JsonConvert.DeserializeObject<List<Hab>>(habJson);
-        //        }
-
-        //        return _habs;
-
-        //    }
-        //}
-
         public static double GetBaseHabSpace(CustomFarm farm) {
             double baseSpace = 0;
             if(farm?.Habs == null)
@@ -38,22 +25,7 @@ namespace EGG9000.Common.Helpers {
             return baseSpace;
         }
 
-        //public static double GetScaledHabSpace(CustomFarm farm, double allScalar, double portalScalar) {
-        //    double baseSpace = 0;
-        //    if(farm?.Habs == null)
-        //        return baseSpace;
-        //    foreach(var habId in farm.Habs) {
-        //        var hab = Habs.FirstOrDefault(x => x.id == habId);
-        //        if(hab != null) {
-        //            if(hab.id >= 17) baseSpace += hab.baseHabSpace * portalScalar * allScalar;
-        //            else baseSpace += hab.baseHabSpace * allScalar;
-        //        }
-        //    }
-
-        //    return baseSpace;
-        //}
-
-        public static List<Hab> Habs = new List<Hab> {
+        public static readonly List<Hab> Habs = [
           new Hab{
             id = 0,
             name = "Coop",
@@ -168,6 +140,6 @@ namespace EGG9000.Common.Helpers {
             iconPath = "egginc/ei_hab_icon_chicken_universe.png",
             baseHabSpace = 6e8,
           },
-        };
+        ];
     }
 }

@@ -26,16 +26,13 @@ namespace EGG9000.Site.Data {
         }
 
         public class DiscordAccountNotFoundException : Exception {
-            public DiscordAccountNotFoundException() {
-            }
+            public DiscordAccountNotFoundException() {}
 
             public DiscordAccountNotFoundException(string message)
-                : base(message) {
-            }
+                : base(message) {}
 
             public DiscordAccountNotFoundException(string message, Exception inner)
-                : base(message, inner) {
-            }
+                : base(message, inner) {}
         }
     }
 }
