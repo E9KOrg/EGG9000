@@ -565,7 +565,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         public static Embed BreakEmbed(DBUser user, EggIncAccount account) {
-            return MenuEmbedTemplate("Break Menu", "Setting a break will prevent you from being added to coops for the duration of the break.", account, user).AddField("Break", MCSBreakMessage(account)).Build();
+            var templateString = "Setting a break will prevent you from being added to coops for the duration of the break.";
+            if (user.GuildId == 656455567858073601 || user.GuildId == 1108127105088241746) { // Palace / Dev E9K
+                templateString += "\n\nNote that this is for setting a break from the game. **It is not a break from our server.** You are still expected to not join outside coops while on a break.";
+            }
+
+            return MenuEmbedTemplate("Break Menu", templateString, account, user).AddField("Break", MCSBreakMessage(account)).Build();
         }
 
         private static ComponentBuilder MCSBreakBuilder(EggIncAccount account, int index, DBUser dbuser) {
