@@ -156,6 +156,47 @@ namespace EGG9000.Common.Database {
             _cache.Remove("DbContext-EiContracts");
         }
 
+        // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
+        // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
+        // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
+        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, System.Threading.CancellationToken ct = default) {
+            var defs = contractDefs
+                .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
+                .GroupBy(c => c.Identifier)
+                .Select(g => g.First())
+                .ToList();
+            if(defs.Count == 0) return 0;
+
+            var existingIds = (await Contracts.Select(c => c.ID).ToListAsync(ct)).ToHashSet();
+            var missing = defs.Where(d => !existingIds.Contains(d.Identifier)).ToList();
+            if(missing.Count == 0) return 0;
+
+            foreach(var def in missing) {
+                Contracts.Add(new Contract {
+                    ID = def.Identifier,
+                    Created = DateTime.Now,
+                    Description = def.Description,
+                    Name = def.Name,
+                    goals = Newtonsoft.Json.JsonConvert.SerializeObject(def.Goals),
+                    GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)def.ExpirationTime),
+                    MaxUsers = (int)def.MaxCoopSize,
+                    coop_allowed = def.CoopAllowed,
+                    max_boosts = (int)def.MaxBoosts,
+                    max_soul_eggs = def.MaxSoulEggs,
+                    min_client_version = (int)def.MinClientVersion,
+                    debug = def.Debug,
+                    length_seconds = def.LengthSeconds,
+                    egg = def.Egg.ToString(),
+                    cc_only = def.CcOnly,
+                    _response = Newtonsoft.Json.JsonConvert.SerializeObject(def)
+                });
+            }
+
+            await SaveChangesAsync(ct);
+            ExpireCachedEiContracts();
+            return missing.Count;
+        }
+
         public readonly IMemoryCache _cache;
 #nullable enable
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMemoryCache? cache = null) : base(options) {
