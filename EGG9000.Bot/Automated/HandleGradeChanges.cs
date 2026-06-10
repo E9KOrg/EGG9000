@@ -28,7 +28,7 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);
                                 continue;
                             }
-                            if(r?.Grade != account.LastGrade) {
+                            if(r.Status == ContractPlayerInfo.Types.Status.Complete && r.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && r.Grade != account.LastGrade) {
                                 _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Backup?.UserName, account.LastGrade, r.Grade);
                                 account.PromotionTime = DateTimeOffset.Now;
                                 account.LastGrade = r.Grade;

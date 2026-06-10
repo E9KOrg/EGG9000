@@ -32,6 +32,8 @@ namespace EGG9000.Bot.Automated {
                             var response = await EggIncApi.GetContractPlayerInfo(account.Id);
                             if(response == null) {
                                 _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}");
+                            } else if(response.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
+                                _logger.LogTrace($"Skipping non-final grade ({response.Status}) for user {user.DiscordUsername} {account.Name}");
                             } else if(response.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && response.Grade != account.LastGrade) {
                                 _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {response.Grade}");
                                 account.LastGrade = response.Grade;

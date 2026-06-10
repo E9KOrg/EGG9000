@@ -83,8 +83,8 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
-        //[Key(27)]
-        //public PlayerGrade Grade { get; set; }
+        [Key(27)]
+        public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
@@ -242,8 +242,15 @@ namespace EGG9000.Common.Database {
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
             TankLevel = backup.Artifacts.TankLevel;
-            //Grade = backup.Contracts.LastCpi?.Grade ?? PlayerGrade.GradeUnset;
-            //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
+            // last_cpi was removed from backups by the Egg Inc API; derive the current grade from the
+            // most recently accepted contract instead (salt-free, present in every backup). For an
+            // active player this is the grade they are currently contracting at.
+            Grade = backup.Contracts.Contracts.Concat(backup.Contracts.Archive)
+                .Where(c => c is not null && c.Grade != PlayerGrade.GradeUnset)
+                .OrderByDescending(c => c.TimeAccepted)
+                .Select(c => c.Grade)
+                .FirstOrDefault();
+            GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
             TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;

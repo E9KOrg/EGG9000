@@ -169,13 +169,13 @@ namespace EGG9000.Common.Database.Entities {
                         _accounts.ForEach(account => {
                             if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
                                 account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
-                            //if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
-                            //    var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
-                            //    if(backupTime > account.PromotionTime) {
-                            //        account.LastGrade = account.Backup.Grade;
-                            //        needsUpdate = true;
-                            //    }
-                            //}
+                            if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
+                                var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
+                                if(backupTime > account.PromotionTime) {
+                                    account.LastGrade = account.Backup.Grade;
+                                    needsUpdate = true;
+                                }
+                            }
                             //Sync account's Device ID from backup
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
@@ -423,8 +423,8 @@ namespace EGG9000.Common.Database.Entities {
         public Ei.Contract.Types.PlayerGrade GetGrade() {
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
                 return LastGrade;
-            //if(Backup is not null && Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset)
-            //    return Backup.Grade;
+            if(Backup is not null && Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset)
+                return Backup.Grade;
             if(LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
                 return LastGrade;
 
