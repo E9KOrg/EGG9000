@@ -15,8 +15,11 @@ on:
 permissions:
   contents: read
 
+# Constant (not per-ref) concurrency group: the bot token allows one live gateway session at a time,
+# so ALL bot-smoke runs are serialized globally. A newer run cancels an older in-flight one, so two
+# runs can never hold the token simultaneously.
 concurrency:
-  group: bot-smoke-${{ github.ref }}
+  group: bot-smoke
   cancel-in-progress: true
 
 jobs:
