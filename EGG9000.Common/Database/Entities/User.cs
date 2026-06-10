@@ -422,13 +422,11 @@ namespace EGG9000.Common.Database.Entities {
 
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
-            // A manual promotion newer than the backup wins (the backup hasn't caught up yet).
+            // A manual promotion newer than the backup wins.
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
                 return LastGrade;
 
-            // Otherwise prefer the grade derived from the current backup. last_cpi was removed from
-            // backups, so the most-recent contract's grade is the live, salt-free source - it must
-            // beat a persisted LastGrade that may have frozen.
+            // Backup grade beats LastGrade, which can be stale.
             if(Backup is not null) {
                 var backupGrade = Backup.GetMostRecentContractGrade();
                 if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)

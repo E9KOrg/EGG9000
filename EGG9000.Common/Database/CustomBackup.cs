@@ -30,9 +30,8 @@ namespace EGG9000.Common.Database {
             return DateTimeOffset.FromUnixTimeSeconds(LastBackupTime);
         }
 
-        // The grade of the most recently accepted contract. The Egg Inc API removed last_cpi from
-        // backups, so this LocalContract-derived value (carried per farm) is the live, salt-free
-        // grade signal - for an active player it is the grade they are currently contracting at.
+        // Grade of the most recently accepted contract. last_cpi is no longer in backups, so this
+        // is how we read a player's current grade.
         public Ei.Contract.Types.PlayerGrade GetMostRecentContractGrade() {
             var graded = new List<(double time, Ei.Contract.Types.PlayerGrade grade)>();
             if(Farms is not null)
