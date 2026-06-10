@@ -8,6 +8,7 @@ using System.Linq;
 
 namespace EGG9000.Common.Test {
     [TestClass]
+    [TestCategory("Unit")]
     public class CoopAssignmentLookupTest {
         private static readonly Guid UserA = new("11111111-1111-1111-1111-111111111111");
         private static readonly Guid UserB = new("22222222-2222-2222-2222-222222222222");

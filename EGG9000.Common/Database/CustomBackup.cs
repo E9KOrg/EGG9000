@@ -1,4 +1,4 @@
-﻿using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
 using Google.Protobuf.Collections;
@@ -321,12 +321,11 @@ namespace EGG9000.Common.Database {
             }
 
             CustomEggMaxFarmSizeReached = [];
+            var allContractList = backup.Contracts.Archive.Concat(backup.Contracts.Contracts).ToList();
             foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
-                var allContractList = backup.Contracts.Archive;
-                allContractList.AddRange(backup.Contracts.Contracts);
                 var matchingContracts = allContractList.Where(f =>
                     f?.MaxFarmSizeReached > 0
-                    && f.Contract.Egg == Ei.Egg.CustomEgg
+                    && f.Contract?.Egg == Ei.Egg.CustomEgg
                     && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
                 ).ToList();
 
@@ -410,8 +409,8 @@ namespace EGG9000.Common.Database {
         }
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
-            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.Contract.Identifier == farm.ContractId)
-                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.Contract.Identifier == farm.ContractId);
+            var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.ContractIdentifier == farm.ContractId)
+                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.ContractIdentifier == farm.ContractId);
 
             var customFarm = new CustomFarm {
                 FarmType = farm.FarmType,
@@ -420,7 +419,7 @@ namespace EGG9000.Common.Database {
                 League = contract?.League,
                 CoopId = contract?.CoopIdentifier,
                 Cancelled = contract?.Cancelled ?? false,
-                Completed = contract != null ? contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count : false,
+                Completed = contract?.Contract != null && contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count,
                 NumChickens = farm.NumChickens,
                 CommonResearch = farm.CommonResearch.Select(x => new CustomResearch(x)).ToList(),
                 EggType = farm.EggType,
@@ -428,7 +427,7 @@ namespace EGG9000.Common.Database {
                 TrainLength = farm.TrainLength.ToList(),
                 SilosOwned = farm.SilosOwned,
                 TimeAccepted = (long)(contract?.TimeAccepted ?? 0),
-                CoopAllowed = contract?.Contract.CoopAllowed ?? false,
+                CoopAllowed = contract?.Contract?.CoopAllowed ?? false,
                 CoopSharedEndTime = (long)(contract?.CoopSharedEndTime ?? 0),
                 BoostTokensReceived = (ushort)farm.BoostTokensReceived,
                 BoostTokensGiven = (ushort)farm.BoostTokensGiven,
@@ -519,14 +518,12 @@ namespace EGG9000.Common.Database {
             foreach(var localContract in contracts) {
                 if(localContract.Contract is null) {
                     var contract = allContracts.FirstOrDefault(x => x.Identifier == localContract.ContractIdentifier);
-                    
-                    if(contract == null) {
-                        if(!localContract.HasCoopIdentifier || localContract.ContractIdentifier.Contains("\u0005")) {
-                            contract = allContracts.First();
-                        } else {
-                            Console.WriteLine($"Missing contract: {localContract.ContractIdentifier}");
-                            throw new Exception($"Missing contract: {localContract.ContractIdentifier}");
-                        }
+                    if(contract is null) {
+                        // Definition is not in our cache/DB (e.g. a contract never offered to the
+                        // reference account, absorbed lazily via get_contracts_info). Skip this entry
+                        // instead of crashing the whole backup or attaching an unrelated contract.
+                        Console.WriteLine($"Missing contract definition, skipping: {localContract.ContractIdentifier}");
+                        continue;
                     }
                     localContract.Contract = contract;
                 }
