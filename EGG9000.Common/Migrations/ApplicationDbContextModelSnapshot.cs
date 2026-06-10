@@ -17,7 +17,7 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.3")
+                .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -837,6 +837,8 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("datetimeoffset");
 
                     b.HasKey("ContractID", "GuildID", "League");
+
+                    b.HasIndex("DiscordChannelId");
 
                     b.ToTable("GuildContracts");
                 });

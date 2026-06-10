@@ -4,6 +4,7 @@ using System;
 
 namespace EGG9000.Common.Test {
     [TestClass]
+    [TestCategory("Unit")]
     public class ArgumentsHelperTest {
 
         [TestMethod]
