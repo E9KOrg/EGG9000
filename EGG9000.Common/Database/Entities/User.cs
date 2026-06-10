@@ -169,10 +169,11 @@ namespace EGG9000.Common.Database.Entities {
                         _accounts.ForEach(account => {
                             if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
                                 account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
-                            if(account.Backup is not null && account.Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && account.Backup.Grade != account.LastGrade) {
+                            var backupGrade = account.Backup?.GetMostRecentContractGrade() ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
+                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade != account.LastGrade) {
                                 var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
                                 if(backupTime > account.PromotionTime) {
-                                    account.LastGrade = account.Backup.Grade;
+                                    account.LastGrade = backupGrade;
                                     needsUpdate = true;
                                 }
                             }
@@ -421,24 +422,20 @@ namespace EGG9000.Common.Database.Entities {
 
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
+            // A manual promotion newer than the backup wins (the backup hasn't caught up yet).
             if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
                 return LastGrade;
-            if(Backup is not null && Backup.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset)
-                return Backup.Grade;
-            if(LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
-                return LastGrade;
 
+            // Otherwise prefer the grade derived from the current backup. last_cpi was removed from
+            // backups, so the most-recent contract's grade is the live, salt-free source - it must
+            // beat a persisted LastGrade that may have frozen.
             if(Backup is not null) {
-                var farms = new List<(float, Ei.Contract.Types.PlayerGrade)>();
-                farms.AddRange(Backup.Farms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((float)x.TimeAccepted, x.Grade)));
-                farms.AddRange(Backup.ArchivedFarms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((float)x.TimeAccepted, x.Grade)));
-                var latestFarms = farms.OrderByDescending(x => x.Item1).ToList();
-                if(latestFarms.Count > 0) {
-                    return latestFarms.First().Item2;
-                }
+                var backupGrade = Backup.GetMostRecentContractGrade();
+                if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
+                    return backupGrade;
             }
-            return Ei.Contract.Types.PlayerGrade.GradeUnset;
 
+            return LastGrade;
         }
 
 
