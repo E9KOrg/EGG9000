@@ -9,10 +9,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Common.IntegrationTests;
 
-// Empirical verification of what the live Egg Inc API actually returns, against the known-good
-// reference EID (EggIncApi.UserId). The proto declaring a field does NOT guarantee the API still
-// populates it - Kev's backup changes removed data the proto still describes. These tests assert
-// on real responses so we know which grade sources survive before relying on any of them.
+// Verifies what the live Egg Inc API actually returns for a known-good EID. A field existing in
+// the proto does not guarantee the API still populates it, so these tests assert on real responses
+// to confirm which grade sources survive before any code relies on them.
 [TestClass]
 [TestCategory("Network")]
 public class ApiBackupGradeTests {
@@ -37,8 +36,8 @@ public class ApiBackupGradeTests {
         Assert.IsNotNull(fc.Backup, "first_contact succeeded but Backup was null.");
     }
 
-    // Ken's claim: Kev removed `contracts` from player backups. If true, Backup.Contracts
-    // (MyContracts, proto field 13) is null - which also NPEs the CustomBackup ctor.
+    // If the API drops `contracts` from backups, Backup.Contracts (MyContracts, proto field 13)
+    // is null - which also NPEs the CustomBackup ctor, since it dereferences backup.Contracts.
     [TestMethod]
     public async Task FirstContact_BackupStillContainsContracts() {
         var fc = await EggIncApi.FirstContact(Eid);
@@ -52,13 +51,13 @@ public class ApiBackupGradeTests {
             TestContext.WriteLine($"  LastCpi null? {my.LastCpi is null}");
         }
 
-        Assert.IsNotNull(my, "Backup.Contracts is null - Kev removed `contracts` from backups. "
-            + "CustomBackup ctor dereferences backup.Contracts and will NPE.");
+        Assert.IsNotNull(my, "Backup.Contracts is null - the API no longer returns `contracts` in "
+            + "backups. CustomBackup ctor dereferences backup.Contracts and will NPE.");
     }
 
-    // The fix-driver. Does ANY grade survive in the backup? Two candidate sources:
-    //   - MyContracts.last_cpi.grade   (the old CustomBackup.Grade source)
-    //   - LocalContract.grade per active/archived contract (the GetGrade farm-inference source)
+    // Does any grade survive in the backup? Two candidate sources:
+    //   - MyContracts.last_cpi.grade
+    //   - LocalContract.grade per active/archived contract (used by GetGrade's contract inference)
     [TestMethod]
     public async Task FirstContact_BackupCarriesPlayerGrade() {
         var fc = await EggIncApi.FirstContact(Eid);
@@ -88,8 +87,8 @@ public class ApiBackupGradeTests {
             + "no LocalContract carries a grade). Grade cannot be recovered from first_contact.");
     }
 
-    // Reproduces Ken's prod warning ("No response getting grade ..."). Salt-gated: skips locally,
-    // runs where the salt is configured (prod/CI). Asserts the endpoint returns a populated grade.
+    // Exercises the salt-gated get_contract_player_info endpoint: skips locally, runs where the salt
+    // is configured (prod/CI). Asserts the endpoint returns a populated grade.
     [TestMethod]
     public async Task GetContractPlayerInfo_ReturnsGrade() {
         if(!EggIncApiSecrets.IsSaltAvailable) {
@@ -103,8 +102,8 @@ public class ApiBackupGradeTests {
         if(info is not null)
             TestContext.WriteLine($"grade: {info.Grade}, status: {info.Status}, total_cxp: {info.TotalCxp}");
 
-        Assert.IsNotNull(info, "get_contract_player_info returned null (matches Ken's prod log). "
-            + "Endpoint is dead/changed - LastGrade can no longer be sourced from it.");
+        Assert.IsNotNull(info, "get_contract_player_info returned null - endpoint is dead or changed, "
+            + "so LastGrade can no longer be sourced from it.");
         Assert.AreNotEqual(Ei.Contract.Types.PlayerGrade.GradeUnset, info.Grade,
             "get_contract_player_info returned but grade is unset.");
     }
