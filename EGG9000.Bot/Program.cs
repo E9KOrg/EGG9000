@@ -1,31 +1,9 @@
-﻿using Bugsnag.AspNet.Core;
-using Discord.WebSocket;
-using EGG9000.Bot;
-using EGG9000.Bot.Automated;
-using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.Services;
-using EGG9000.Common.Consumers;
-using EGG9000.Common.Database;
-using EGG9000.Common.Factories;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Mocks;
-using EGG9000.Common.Services;
-using MassTransit;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Web;
 using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Prometheus;
-using System.Reflection;
-using System.Collections.Generic;
-
-using Newtonsoft.Json;
 
 // Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
