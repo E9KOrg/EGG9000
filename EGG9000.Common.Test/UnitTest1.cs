@@ -6,6 +6,7 @@ using System;
 
 namespace EGG9000.Common.Test {
     [TestClass]
+    [TestCategory("Unit")]
     public class StringToTimeSpanTest {
         private DateTimeOffset startTime = new DateTimeOffset(2000,1,1,0,0,0,0,TimeSpan.Zero);
         [TestMethod]

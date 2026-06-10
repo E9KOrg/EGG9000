@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Common.Test {
     [TestClass]
+    [TestCategory("Unit")]
     public class ApiVersionTests {
 
         [TestMethod]
