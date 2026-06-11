@@ -248,7 +248,7 @@ namespace EGG9000.Common.EggIncAPI {
                 if(responseBytes == null) {
                     return ApiResult<ContractPlayerInfo>.Fail(error ?? "No response");
                 }
-                return (GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes), null);
+                return GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes);
             } catch(Exception e) {
                 return ApiResult<ContractPlayerInfo>.Fail("Bot Exception: " + e.Message);
             }
