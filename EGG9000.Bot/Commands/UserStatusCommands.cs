@@ -110,7 +110,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var backup = await EggIncApi.GetBackupAsync(account.Id, await db.CachedEiContractsAsync());
+                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, await db.CachedEiContractsAsync());
                 if(backup == null)
                     continue;
 
