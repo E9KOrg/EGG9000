@@ -57,6 +57,9 @@ static async Task RunEfMigration(string sourceCs, string targetCs) {
 
     await using var src = new ApplicationDbContext(sourceOptions);
     await using var tgt = new ApplicationDbContext(targetOptions);
+    
+    // Add timeout for source as well:
+    src.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
     tgt.ChangeTracker.AutoDetectChangesEnabled = false;
 
     Console.WriteLine("Clearing target tables (reverse FK order)...");
