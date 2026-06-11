@@ -1,4 +1,6 @@
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
@@ -51,18 +53,25 @@ internal static class EntityMigrator {
         ApplicationDbContext target,
         DbSet<T> targetSet,
         string label) where T : class {
-
+        target.Database.SetCommandTimeout(TimeSpan.FromMinutes(10)); // Avoid timeout on large batches
         Console.Write($"  {label}... ");
         int total = 0;
         var batch = new List<T>(BatchSize);
 
         await foreach (var row in source.AsNoTracking().AsAsyncEnumerable()) {
+            if(row is Demerit demerit && demerit.AdminUserId == Guid.Empty) {
+                demerit.AdminUserId = null;
+            }
+            if(row is Merit merit && merit.AdminUserId == Guid.Empty) {
+                merit.AdminUserId = null;
+            }
             batch.Add(row);
-            if (batch.Count >= BatchSize) {
+
+            if(batch.Count >= BatchSize) {
                 await Flush(batch, target, targetSet);
                 total += batch.Count;
                 batch.Clear();
-                Console.Write($"\r  {label}... {total} rows");
+                Console.Write($"\r  {label}... {total} rows  ");
             }
         }
 
@@ -71,12 +80,15 @@ internal static class EntityMigrator {
             total += batch.Count;
         }
 
-        Console.WriteLine($"\r  {label}: {total} rows");
+        Console.WriteLine($"\r  {label}: {total} rows  ");
     }
 
     private static async Task Flush<T>(List<T> batch, ApplicationDbContext target, DbSet<T> targetSet) where T : class {
         // Normalize all DateTimeOffset values to UTC before writing - Npgsql requires offset 0.
         NormalizeToUtc(batch);
+        
+        // Remove null bytes from all string properties - PostgreSQL rejects 0x00 in UTF-8 text
+        SanitizeStrings(batch);
 
         // Capture LastModified after normalization so the restored value is already UTC.
         var timestamps = batch
@@ -92,5 +104,19 @@ internal static class EntityMigrator {
 
         await target.SaveChangesAsync();
         target.ChangeTracker.Clear();
+    }
+
+    private static void SanitizeStrings<T>(List<T> batch) where T : class {
+        foreach (var entity in batch) {
+            var stringProps = typeof(T).GetProperties()
+                .Where(p => p.PropertyType == typeof(string) && p.CanWrite);
+            
+            foreach (var prop in stringProps) {
+                var value = (string)prop.GetValue(entity);
+                if (value != null && value.Contains('\0')) {
+                    prop.SetValue(entity, value.Replace("\0", ""));
+                }
+            }
+        }
     }
 }

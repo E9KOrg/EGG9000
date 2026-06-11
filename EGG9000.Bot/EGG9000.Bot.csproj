@@ -69,7 +69,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- Tools 10.0.8 floors Design at 8.0.0; pin it to 10.0.8 so design-time tooling (migrations) loads the matching assembly. -->
+    <!-- Tools 10.0.9 floors Design at 8.0.0; pin it to 10.0.9 so design-time tooling (migrations) loads the matching assembly. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
