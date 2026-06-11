@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Common.Test {
     [TestClass]
+    [TestCategory("Unit")]
     public class SIPrefixTest {
         [TestMethod]
         public void Parse1000() {
