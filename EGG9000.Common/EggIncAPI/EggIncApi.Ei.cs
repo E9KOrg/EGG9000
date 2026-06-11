@@ -235,7 +235,7 @@ namespace EGG9000.Common.EggIncAPI {
         }
 
 
-        public static async Task<ContractPlayerInfo> GetContractPlayerInfo(string UserId) {
+        public static async Task<(ContractPlayerInfo Info, string Error)> GetContractPlayerInfo(string UserId) {
             try {
                 var info = GetInfo(UserId);
 
@@ -244,13 +244,13 @@ namespace EGG9000.Common.EggIncAPI {
                 var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
                 var body = await GetBAC(GetEncodedMessage(authMessage));
 
-                var responseBytes = await PostRaw("ei_ctx/get_contract_player_info", body, HeaderProfile.Android);
+                var (responseBytes, error) = await PostRawWithError("ei_ctx/get_contract_player_info", body, HeaderProfile.Android);
                 if(responseBytes == null) {
-                    return null;
+                    return (null, error);
                 }
-                return GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes);
+                return (GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes), null);
             } catch(Exception e) {
-                return null;
+                return (null, "Bot Exception: " + e.Message);
             }
         }
 

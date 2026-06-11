@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,21 +21,26 @@ namespace EGG9000.Bot.Automated {
             var users = await _db.DBUsers.Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
 
 
+#if DEBUG
             var throttler = new SemaphoreSlim(8);
-
+            users  = [.. users.Where(x => x.DiscordUsername.StartsWith("heimdallr"))];
+#else
+            var throttler = new SemaphoreSlim(8);
+#endif
             var tasks = new List<Task>();
 
+            Random.Shared.Shuffle(CollectionsMarshal.AsSpan(users));
             foreach(var user in users) {
                 await throttler.WaitAsync(cancellationToken);
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
                             var response = await EggIncApi.GetContractPlayerInfo(account.Id);
-                            if(response == null) {
-                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}");
-                            } else if(response.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && response.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {response.Grade}");
-                                account.LastGrade = response.Grade;
+                            if(response.Info == null) {
+                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {response.Error}");
+                            } else if(response.Info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && response.Info.Grade != account.LastGrade) {
+                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {response.Info.Grade}");
+                                account.LastGrade = response.Info.Grade;
                                 user.UpdateAccounts();
 
                                 using var writeScope = _provider.CreateScope();
@@ -43,11 +49,12 @@ namespace EGG9000.Bot.Automated {
                                     .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
                                 writeDb.Dispose();
                             } else {
-                                _logger.LogTrace($"No grade change for user {user.DiscordUsername} {account.Name} grade: {response.Grade}");
+                                _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {response.Info.Grade}");
                             }
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");
                         } finally {
+                            await Task.Delay(Random.Shared.Next(200) + 1500);
                             throttler.Release();
                         }
                     }
