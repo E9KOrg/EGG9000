@@ -3,6 +3,7 @@ using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Common.Helpers;
+using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -134,10 +135,17 @@ namespace EGG9000.Common.Services {
         public static Embed GenerateBoardingGroupEmbed(BoardingGroupStatus status) {
             var coopCountText = status.Assigning ? "Currently Assigning..." : status.CoopCount.ToString();
             var complete = !status.Assigning && status.CoopCount > 0 && status.ThreadCreatedCount >= status.CoopCount;
+            var allMatch = !status.Assigning && status.CoopCount > 0
+                && status.StartedCount == status.CoopCount && status.ThreadCreatedCount == status.CoopCount;
+
+            var lastUpdated = DiscordHelpers.TimeStamper(DateTimeOffset.Now);
+            var body = allMatch
+                ? $"Coop Count: {status.CoopCount}\nAll co-ops created and started"
+                : $"Coop Count: {coopCountText}\nStarted Count: {status.StartedCount}\nThread Created Count: {status.ThreadCreatedCount}";
 
             var embedBuilder = new EmbedBuilder()
                 .WithTitle($"{status.ContractName}, BG{status.Num}")
-                .WithDescription($"Coop Count: {coopCountText}\nStarted Count: {status.StartedCount}\nThread Created Count: {status.ThreadCreatedCount}")
+                .WithDescription($"{body}\n\n-# Last updated {lastUpdated}")
                 .WithColor(complete ? Color.Green : new Color(255, 255, 0));
 
             if(!string.IsNullOrEmpty(status.EggImageUrl))

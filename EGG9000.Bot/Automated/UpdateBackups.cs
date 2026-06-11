@@ -102,7 +102,7 @@ namespace EGG9000.Bot.Automated {
                 return;
 
             foreach(var chunk in missing.Chunk(50)) {
-                var info = await EggIncApi.GetContractsInfoAsync(eggIncId, chunk);
+                var (info, _) = await EggIncApi.GetContractsInfoAsync(eggIncId, chunk);
                 if(info is null)
                     continue;
                 foreach(var def in info.Contracts) {
@@ -136,11 +136,15 @@ namespace EGG9000.Bot.Automated {
 
                     if(firstContact.Backup.SubInfo is null) {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
-                        var subscription = await EggIncApi.GetUserSubscription(backup.EggIncId);
-                        account.SubscriptionLevel = subscription.SubscriptionLevel;
-                        account.SubscriptionEnds = subscription.PeriodEnd;
-                        account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
-                        account.Backup.SubscriptionEnds = subscription.PeriodEnd;
+                        var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
+                        if(subscription is null) {
+                            _logger.LogWarning($"Failed to fetch subscription for {user.DiscordUsername} {account.Id}: {subError}");
+                        } else {
+                            account.SubscriptionLevel = subscription.SubscriptionLevel;
+                            account.SubscriptionEnds = subscription.PeriodEnd;
+                            account.Backup.SubscriptionLevel = subscription.SubscriptionLevel;
+                            account.Backup.SubscriptionEnds = subscription.PeriodEnd;
+                        }
                     }
 
                     // Always enforce roles - CheckRole is idempotent and only calls Discord API when hasRole != needsRole

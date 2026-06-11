@@ -1,0 +1,31 @@
+name: API Canary
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'EGG9000.Common/EggIncAPI/**'
+      - 'EGG9000.Common/Proto/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  periodicals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Advisory on PRs (a third-party outage or rate-limit must not block merge); a real failure
+    # on the daily schedule is the version-staleness alarm.
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test EGG9000.Common.IntegrationTests -c Release --filter "TestCategory=Network"

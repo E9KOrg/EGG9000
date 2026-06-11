@@ -62,8 +62,8 @@ namespace EGG9000.Common.Helpers {
                 var historiesOrderedBySoulPower = grade.OrderBy(x => x.SoulPower).ToArray();
                 for(var currentIndex = 0; currentIndex < historiesOrderedBySoulPower.Length; currentIndex++) {
                     double averageEggs = 0;
-var startAverage = Math.Max(0, currentIndex - 25);
-var endAverage = Math.Min(historiesOrderedBySoulPower.Length, currentIndex + 25);
+                    var startAverage = Math.Max(0, currentIndex - 25);
+                    var endAverage = Math.Min(historiesOrderedBySoulPower.Length, currentIndex + 25);
                     var count = 0;
                     for(var averageIndex = startAverage; averageIndex < endAverage; averageIndex++) {
                         if(averageIndex == currentIndex)

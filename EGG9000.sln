@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Common.Test", "EGG9000.Common.Test\EGG9000.Common.Test.csproj", "{2050A667-DF5D-4971-B07C-774BF1E478C9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Common.IntegrationTests", "EGG9000.Common.IntegrationTests\EGG9000.Common.IntegrationTests.csproj", "{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docker", "Docker", "{0F8969B7-8E86-4A21-BECC-F28963FBC1AD}"
 	ProjectSection(SolutionItems) = preProject
 		deploy-secrets-remote.ps1 = deploy-secrets-remote.ps1
@@ -163,6 +165,14 @@ Global
 		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x64.Build.0 = Release|Any CPU
 		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x86.ActiveCfg = Release|Any CPU
 		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x86.Build.0 = Release|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.DEV9001|Any CPU.ActiveCfg = DEV9001|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.DEV9001|Any CPU.Build.0 = DEV9001|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.DEV9002|Any CPU.ActiveCfg = DEV9002|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.DEV9002|Any CPU.Build.0 = DEV9002|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

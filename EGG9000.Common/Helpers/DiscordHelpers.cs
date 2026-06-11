@@ -72,6 +72,24 @@ namespace EGG9000.Bot.Helpers {
             return result;
         }
 
+        public static async Task<DMResult> BoolSendDm(IUser dmUser, Embed embed, MessageComponent components, ApplicationDbContext db) {
+            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            DBUser dbUser = null;
+            var result = DMResult.Success;
+            try {
+                dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
+                var dmChannel = await dmUser.CreateDMChannelAsync();
+                if(dmChannel is null) return DMResult.DiscordError;
+                await dmChannel.SendMessageAsync(embed: embed, components: components);
+            } catch(HttpException ex) {
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
+            } catch(Exception) {
+                return DMResult.DiscordError;
+            }
+            if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
+            return result;
+        }
+
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             var tokenSource2 = new CancellationTokenSource();
             var token2 = tokenSource2.Token;
