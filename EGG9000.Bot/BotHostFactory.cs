@@ -121,7 +121,13 @@ public static class BotHostFactory {
                     options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
                     options.ReleaseStage = "production";
                 });
-
+                
+                var salt = SecretsHelper.GetConfigOrSecret(hostContext.Configuration, "ConnectionStrings:ApiSalt", "egg_inc_api_salt");
+                if(String.IsNullOrEmpty(salt)) {
+                    bs.Notify(new Exception("ApiSalt not found in secrets or configuration"));
+                }
+                logger.Log(NLog.LogLevel.Info, String.IsNullOrEmpty(salt) ? "ApiSalt not found" : "ApiSalt found");
+                
                 var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                     hostContext.Configuration,
                     "ConnectionStrings:RabbitMQServer",
@@ -200,6 +206,7 @@ public static class BotHostFactory {
             services.AddHostedService<RefreshNasaApod>();
             services.AddHostedService<UpdateBackups>();
             services.AddHostedService<CleanAutomationLogs>();
+            services.AddHostedService<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();
